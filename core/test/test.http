@@ -1,0 +1,10 @@
+### req
+POST http://localhost:8080/rpc/test/demo/add
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "test.demo.add",
+    "params": {}
+}

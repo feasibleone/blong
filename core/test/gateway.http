@@ -1,0 +1,152 @@
+### login
+# @name login
+POST http://localhost:8080/rpc/login/token/create
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "login.token.create",
+    "params": {
+        "username": "test",
+        "password": "test",
+        "mlek":{
+            "kty": "EC",
+            "use": "enc",
+            "crv": "P-384",
+            "x": "f-qS0J9HcmWeU2zmDYnjCMwcsEw9ozb0_XE5y2hi2NKUJEyTgeMuWynBpexlhXbS",
+            "y": "22-bZgbttgc4G5lXBsoVMMV5-TYg41FjJY2uGtlJp-MSfJ2agzouRjpzrCihXi7z",
+            "alg": "ECDH-ES+A256KW"
+        },
+        "mlsk":{
+            "kty": "EC",
+            "use": "sig",
+            "crv": "P-384",
+            "x": "G4JWlybVRkliYWLLFdXDj0CjMjnkXeyiunzQswR3izK-jxvMIYdjVB52Rty5yZN9",
+            "y": "JndKKF7RQf97idkaLPLsv_jkZPBw-MJFogDqri87vvnpAEf1qyHnQTmK_gAhLAgo",
+            "alg": "ES384"
+        }
+    }
+}
+
+### req
+POST http://localhost:8080/rpc/subject/number/sum
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "subject.number.sum",
+    "params": [100, 20, 3, 0.4]
+}
+
+### pub
+POST http://localhost:8080/rpc/subject/number/sum
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "subject.number.sum",
+    "params": [100, 20, 3, 0.4]
+}
+
+### headers
+@token = {{login.response.body.$.result.access_token}}
+POST http://localhost:8080/rpc/subject/object/predicate
+Content-Type: application/json
+Cookie: ut-login=eyJhbGciOiJFZERTQSIsImtpZCI6IlI0MHliSkJlVVZKa1VwNmF1RW5rSlJVeUxBVmhzZkc5cmYyc2dzNllhd3cifQ.eyJzZXMiOiJBaCtzOWwxMXl3NWErcTZBUmlkMkdvT2tiQUNrVm50eFR5dy95WithQW9zRTRTdVlqcjNHSVpSNy83clhMRWI3VjliakVHelI3eVBzSlh6QmFheHpGdz09IiwiY2xpZW50SWQiOiJPaVlBSVBkZWNiSXd0Y2MxZU43UldEOGo4dXJGYlhXMXFsWFQ1RkdxTTVBPSIsImlhdCI6MTY5OTM2MjczMiwic3ViIjoiMTE0MDEiLCJpc3MiOiJ1dC1sb2dpbiIsImF1ZCI6InV0LWJ1cyIsImV4cCI6MTY5OTM5MTUzMn0.QpKBexUuE9JLVk4la1NYMQG7BMxRc-Lu_3bylHqihkCsorjbZN5HOgTS8otVn3ijvc5GkuvTiq8XwWbXlFBQAg
+Authorization: Bearer {{token}}
+# Authorization: Bearer eyJhbGciOiJFZERTQSIsImtpZCI6ImtNZlgxV29EYzlkV1ZSdWd3R2g5c1NMOTU2SlM3eUI4akUxeWxvNzFaLU0ifQ.eyJsYW5ndWFnZSI6eyJsYW5ndWFnZUlkIjoiMSIsImlzbzJDb2RlIjoiZW4iLCJuYW1lIjoiRW5nbGlzaCIsImxvY2FsZSI6ImVuX0dCIn0sImNoZWNrU2Vzc2lvbiI6ZmFsc2UsInR5cCI6IkJlYXJlciIsInNlcyI6IjhEM0I1ODgzLTJCODItNEM1Ny05MjU2LTUyNEZEMENDMkEwOCIsInBlciI6IkFBQUVBS2dBQUFBQUFBQUFBQUFBQUFBQUFBQUNBQUFJRUFBQUFJQUJBTUFBREFBQkFBQUFBQkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQT0iLCJpYXQiOjE2OTYzMzIzNjMsInN1YiI6IjExMjEiLCJpc3MiOiJ1dC1sb2dpbiIsImF1ZCI6InV0LWJ1cyIsImV4cCI6MjA5NjMzMjM2M30.jT7oBdzug0m7eZA8Pyexfo9Ju_j1XOpBu2LzjBX-vm8Oy3ZSMr0YbgvHUB1a8f2lyQAfDlPydUP_TlT16qMZBw
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "subject.object.predicate",
+    "params": {
+        "age": 1
+    }
+}
+
+### headers mle
+@token = {{login.response.body.$.result.access_token}}
+POST http://localhost:8080/rpc/subject/object/predicate
+Content-Type: application/json
+Cookie: ut-login=eyJhbGciOiJFZERTQSIsImtpZCI6IlI0MHliSkJlVVZKa1VwNmF1RW5rSlJVeUxBVmhzZkc5cmYyc2dzNllhd3cifQ.eyJzZXMiOiJBaCtzOWwxMXl3NWErcTZBUmlkMkdvT2tiQUNrVm50eFR5dy95WithQW9zRTRTdVlqcjNHSVpSNy83clhMRWI3VjliakVHelI3eVBzSlh6QmFheHpGdz09IiwiY2xpZW50SWQiOiJPaVlBSVBkZWNiSXd0Y2MxZU43UldEOGo4dXJGYlhXMXFsWFQ1RkdxTTVBPSIsImlhdCI6MTY5OTM2MjczMiwic3ViIjoiMTE0MDEiLCJpc3MiOiJ1dC1sb2dpbiIsImF1ZCI6InV0LWJ1cyIsImV4cCI6MTY5OTM5MTUzMn0.QpKBexUuE9JLVk4la1NYMQG7BMxRc-Lu_3bylHqihkCsorjbZN5HOgTS8otVn3ijvc5GkuvTiq8XwWbXlFBQAg
+Authorization: Bearer {{token}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "subject.object.predicate",
+    "params": {
+        "ciphertext": "tvfJuMpdwmaVSwkbvA4Wl_tK3Vh41y5gptv7UAMjgOhUSwPZFALgAe2HEKfmXbH5Gu1-y6AtbJqsHE69PT-dlr5WC-XxxHCvA6ofOQ5NC5UR944B_-4sUC_1pcbdvMKq-JHf559W4kpPOBiHl0-mNsFRq6zLEJWSlwsDRdS8pRsrwEA86EHECoqzD4Zu3ib6Vi543UFrvGIHoE51PteMH69ZM2Zghst8iNRVaCf6psE",
+        "iv": "JHnMqq0IQO7OG3G0PlfDOw",
+        "recipients": [{"encrypted_key": "IdWjAe-gfCLCU_6lbR21q3fT9B7Q42duAKmiTtC007jBQglZy1yucg"}],
+        "tag": "GFE9_6mHw5pxH3HWG3ZapQ",
+        "protected": "eyJhbGciOiJFQ0RILUVTK0EyNTZLVyIsImVuYyI6IkExMjhDQkMtSFMyNTYiLCJlcGsiOnsieCI6Ik1yclcyLWE0SXRZX1BZVXZ4eUIzZVlyVnVWVllmLS1rOUFZbnBJaHhFek5kd2NGLW0wdzREOE9WNnZsdHRJUnMiLCJjcnYiOiJQLTM4NCIsImt0eSI6IkVDIiwieSI6IlREclF2bUdHb0lFRjN3QnRJMVpNRzFXZDlJTVlKZ240RDVCa1BNNC0td2NtNFB4S003VVRocG5wVUxDZWJ1SFUifX0"
+    }
+}
+
+### hsm generate key
+POST http://localhost:8080/rpc/hsm/generateKey
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "hsm.generateKey",
+    "params": {
+        "mode": "0",
+        "keyType": "ZMK",
+        "keySchemeLmk": "U"
+    }
+}
+
+### tcp generate key
+POST http://localhost:8080/rpc/payshield/generateKey
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "payshield.generateKey",
+    "params": {
+        "mode": "0",
+        "keyType": "000",
+        "keySchemeLmk": "U",
+        "deriveKeyMode": "",
+        "deriveKeyModeLen": 0,
+        "dukptMasterKeyType": "",
+        "dukptMasterKeyTypeLen": 0,
+        "dukptMasterKey": "",
+        "dukptMasterKeyLen": 0,
+        "ksn": "",
+        "ksnLength": 0,
+        "zkaMasterKeyType": "",
+        "zkaMasterKeyTypeLength": 0,
+        "zkaMasterKey": "",
+        "zkaMasterKeyLength": 0,
+        "zkaOption": "",
+        "zkaOptionLength": 0,
+        "zkaRndi": "",
+        "zkaRndiLength": 0,
+        "delimiter": "",
+        "delimiterLength": 0,
+        "keyZmkTmkFlag": "",
+        "keyZmkTmkFlagLength": 0,
+        "keyZmkTmk": "",
+        "keyZmkTmkLength": 0,
+        "keySchemeZmkTmk": "",
+        "keySchemeZmkTmkLength": 0,
+        "delimiterLmk": "",
+        "delimiterLmkLen": 0,
+        "lmkIdentifier": "",
+        "lmkIdentifierLen": 0,
+        "tr31BlockData": "",
+        "tr31BlockDataLen": 0
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "files.associations": {
+        "rush.json": "jsonc"
+    },
+    "search.exclude": {
+        "**/.rush/temp/": true,
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/*.code-search": true
+    },
+    "cSpell.words": [
+        "apidevtools",
+        "bitsyntax",
+        "blong",
+        "codegen",
+        "dapr",
+        "Diebold",
+        "dukpt",
+        "ESOCKETTIMEDOUT",
+        "fastify",
+        "feasibleone",
+        "keyblock",
+        "mdns",
+        "mlek",
+        "mlsk",
+        "parentspanid",
+        "payshield",
+        "pino",
+        "spanid",
+        "traceid",
+        "typebox",
+        "unannounce",
+        "unstate"
+    ]
+}

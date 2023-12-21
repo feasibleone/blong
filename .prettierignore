@@ -1,0 +1,8 @@
+**/src/generated/
+**/review/*.api.md
+**/recordings/**
+**/*.yml
+**/*.yaml
+**/*.d.ts
+.env
+tsdoc-metadata.json

@@ -1,0 +1,32 @@
+POST http://localhost:8091/rpc/ports/subject/request
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "subject.number.sum",
+    "params": [[100, 20, 3, 0.4], {}]
+}
+
+###
+POST http://localhost:8091/rpc/ports/subject/request
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "subject.object.predicate2",
+    "params": [{
+        "hello": "world"
+    }, {}]
+}
+
+###
+POST http://localhost:8091/rpc/ports/subject/request
+Content-Type: application/json
+
+{
+    "jsonrpc": "2.0",
+    "method": "subject.object.predicate3",
+    "params": [{
+        "hello": "world"
+    }, {}]
+}
