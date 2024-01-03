@@ -41,6 +41,9 @@
         ".": "./types.ts"
     },
     "name": "@feasibleone/blong",
+    "scripts": {
+        "build": "true"
+    },
     "type": "module",
     "version": "1.0.0"
 }

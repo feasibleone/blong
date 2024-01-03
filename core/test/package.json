@@ -23,6 +23,9 @@
         "typescript": "^5.3.3"
     },
     "name": "@feasibleone/test",
+    "scripts": {
+        "build": "true"
+    },
     "type": "module",
     "version": "1.0.0"
 }
