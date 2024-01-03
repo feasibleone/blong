@@ -1,9 +1,10 @@
 import assert from 'node:assert';
-import { test } from 'node:test';
 
-type Step = (a: typeof assert, results: object) => object
+type Step = (a: typeof assert, results: object) => object | Promise<object>
 type Steps = Promise<(Step | Step[]) & {name: string}>[] | Step[];
-type TestContext = Parameters<Parameters<typeof test.test>[0]>[0];
+interface TestContext {
+    test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown
+}
 
 const runSteps = (steps: Steps) => async(t: TestContext) => {
     const results = {$meta: {}};
@@ -17,12 +18,15 @@ const runSteps = (steps: Steps) => async(t: TestContext) => {
                     results[name] = await step(assert, results);
                 });
             } else {
-                await t.test(`step ${index + 1}`, t => {
-                    step(assert, results);
+                await t.test(`step ${index + 1}`, async t => {
+                    await step(assert, results);
                 });
             }
         }
     }
 };
 
-export default steps => test.test(steps.name, runSteps(steps));
+export default async (test: TestContext): Promise<unknown> => {
+    const context = test || (await import('node:test')).default
+    return steps => context.test(steps.name, runSteps(steps));
+}

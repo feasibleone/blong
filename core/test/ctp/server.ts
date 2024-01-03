@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 
 import { realm } from '@feasibleone/blong';
 
@@ -20,6 +21,21 @@ export default realm(fo => ({
                 headerFormat: '6/string-left-zero'
             },
             listen: false
+        },
+        client: {
+            port: 1500,
+            host: 'localhost',
+            tls: {
+                ca: join(dirname(import.meta.url.slice(7)), 'ca.crt')
+            }
+        },
+        server: {
+            port: 1500,
+            listen: true,
+            tls: {
+                cert: join(dirname(import.meta.url.slice(7)), 'tls.crt'),
+                key: join(dirname(import.meta.url.slice(7)), 'tls.key')
+            }
         }
     },
     microservice: {

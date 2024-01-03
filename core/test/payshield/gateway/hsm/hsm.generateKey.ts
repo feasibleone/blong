@@ -7,7 +7,6 @@ export default validation(({
     }
 }) => ({
     'hsm.generateKey': () => ({
-        auth: false,
         description: 'generateKey',
         params: Type.Object({
             mode: Type.Union([Type.Literal('0'), Type.Literal('1'), Type.Literal('A'), Type.Literal('B')]),

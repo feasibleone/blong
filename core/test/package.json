@@ -12,7 +12,17 @@
         "ut-port-sql": "^9.2.1",
         "ut-port-tcp": "^7.5.1"
     },
-    "type": "module",
+    "devDependencies": {
+        "@rushstack/eslint-config": "^3.5.1",
+        "@swc/core": "^1.3.102",
+        "@types/node": "^20.10.6",
+        "eslint": "~8.56.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "tap": "^18.6.1",
+        "typescript": "^5.3.3"
+    },
     "name": "@feasibleone/test",
+    "type": "module",
     "version": "1.0.0"
 }

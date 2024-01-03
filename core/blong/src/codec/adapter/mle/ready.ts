@@ -112,7 +112,7 @@ export default handler<{
         },
         async send(params: {$http: {url?: string, method?: string, headers?: {authorization?: string}, path?: unknown}}, $meta) {
             let {$http, ...rest} = params;
-            params = await encrypt(rest);
+            params = await encrypt(params instanceof Array ? params : rest);
             await refresh.call(this);
             if (token) {
                 $http = $http || {};

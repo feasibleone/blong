@@ -32,10 +32,15 @@
         "ut-port": "^6.45.2",
         "uuid": "^9.0.1"
     },
-    "name": "@feasibleone/blong",
+    "devDependencies": {
+        "@rushstack/eslint-config": "^3.5.1",
+        "eslint": "~8.56.0",
+        "typescript": "^5.3.3"
+    },
     "exports": {
         ".": "./types.ts"
     },
+    "name": "@feasibleone/blong",
     "type": "module",
     "version": "1.0.0"
 }

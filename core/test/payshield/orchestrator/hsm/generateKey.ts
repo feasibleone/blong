@@ -9,7 +9,7 @@ export default library<{
         lmkIdentifierDefault
     },
     handler: {
-        'payshield.generateKey': generateKey,
+        'payshieldport.generateKey': generateKey,
         'error.ctp.hsm.invalidParameters': invalidParameters
     },
     lib: {

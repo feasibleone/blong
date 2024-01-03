@@ -1,4 +1,3 @@
-import { readFileSync } from 'fs';
 import createReconnect from 'reconnect-core';
 import { Stream } from 'stream';
 import bitSyntax from 'ut-bitsyntax';
@@ -7,11 +6,7 @@ import { adapter, TypedError } from '../../../types.js';
 import tls from '../../tls.js';
 
 export type config = {
-    tls?: {
-        keyPath: string
-        certPath: string
-        caPaths: string[]
-    },
+    tls?: object,
     client?: {connect: (...params: unknown[]) => Stream},
     host?: string,
     port?: number,
@@ -137,44 +132,18 @@ export default adapter<config>(api => {
 
             if (this.config.listen) {
                 server = this.config.tls
-                    ? (await import('node:tls')).createServer(tls(this.config.tls, false), connect.bind(this))
+                    ? (await import('node:tls')).createServer(tls(this.config, false), connect.bind(this))
                     : (await import('node:net')).createServer(connect.bind(this));
 
                 server
                     .on('error', onError('server').bind(this))
                     .listen(this.config.port);
             } else {
-                let connProp;
-                if (this.config.tls) {
-                    connProp = {
-                        host: this.config.host,
-                        port: this.config.port,
-                        rejectUnauthorized: false,
-                        ...this.config.connection
-                    };
-                    if (this.config.tls.keyPath) {
-                        connProp.key = readFileSync(this.config.tls.keyPath, 'utf8');
-                    }
-                    if (this.config.tls.certPath) {
-                        connProp.cert = readFileSync(this.config.tls.certPath, 'utf8');
-                    }
-                    if (Array.isArray(this.config.tls.caPaths)) {
-                        connProp.ca = this.config.tls.caPaths.map(file => readFileSync(file, 'utf8'));
-                    }
-                } else {
-                    connProp = {
-                        host: this.config.host,
-                        port: this.config.port,
-                        ...this.config.connection
-                    };
-                }
-                if (this.config.localPort) {
-                    connProp.localPort = this.config.localPort;
-                }
                 const client = this.config.client || await (this.config.tls ? import('node:tls') : import('node:net'));
                 reconnect = createReconnect((...args) => client.connect(...args))(connect.bind(this))
                     .on('error', onError('client').bind(this))
                     .connect({
+                        rejectUnauthorized: false,
                         ...tls(this.config, false),
                         ...Object.fromEntries([
                             ['host', this.config.host],

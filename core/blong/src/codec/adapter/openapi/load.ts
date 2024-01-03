@@ -20,7 +20,7 @@ export default library(({
             if (typeof location === 'object') documents.push(location);
             else if (typeof location === 'string') {
                 if (location.startsWith('http')) documents.push(await got(location, {responseType: 'json'}).json());
-                else documents.push((await import(resolve(location))).default);
+                else documents.push((await import(resolve(location), {assert: { type: "json" }})).default);
             }
         }
         const bundle = await parser.bundle(merge(...documents));

@@ -10,12 +10,12 @@ import type { ErrorFactory } from './ErrorFactory.js';
 import type { Log } from './Log.js';
 import type { Registry } from './Registry.js';
 import type { Remote } from './Remote.js';
-import chain from './chain.js';
 import layerProxy from './layerProxy.js';
 import './watch.log.js';
 
 export interface Watch {
     start: (realm: Registry, remote: Remote) => Promise<void>
+    test: (tester: unknown) => Promise<void>
     stop: () => Promise<void>
     load: <T>(config: {name: string, pkg: config['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]) => Promise<(api: T) => T>
 }
@@ -24,6 +24,8 @@ const isCode = (filename: string) => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
 const scan = async(...path: string[]) => (await readdir(join(...path), {withFileTypes: true})).sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
 
 const emit = new EventEmitter();
+
+const prefixRE = /(?:\d+-)?(.*)/;
 
 export default class WatchImpl extends internal implements Watch {
     #config = {
@@ -105,7 +107,7 @@ export default class WatchImpl extends internal implements Watch {
             const filename = join(...path);
             if (isCode(filename)) {
                 const item = (await import(filename + '?' + Date.now())).default;
-                const itemName = (!item.name || item.name === 'default') ? basename(filename, extname(filename)) : item.name;
+                const itemName = (!item.name || item.name === 'default') ? basename(filename, extname(filename)).match(prefixRE)?.[1] : item.name;
                 if (kind(item) === 'handler') {
                     this.#handlerFiles.set(filename, config);
                     return Object.defineProperty(
@@ -143,13 +145,18 @@ export default class WatchImpl extends internal implements Watch {
                 .map(folder => relative('.', folder))
         });
         if (this.#config.test) {
-            emit.on('test', async() => {
+            emit.on('test', async (done, test) => {
                 try {
+                    const chain = await (await import('./chain.js')).default(test);
+
                     const steps = await Promise.all([].concat(this.#config.test).map(test => remote.remote(test)({}, {})));
                     await Promise.all(steps.map(chain));
                 } catch (error) {
                     this.#logger?.error?.(error);
+                    done?.(error);
+                    return;
                 }
+                done?.();
             });
         }
 
@@ -205,7 +212,12 @@ export default class WatchImpl extends internal implements Watch {
             }
         });
         await registry.connected();
-        emit.emit('test');
+    }
+
+    async test(framework) {
+        return new Promise<void>((resolve, reject) => {
+            emit.emit('test', error => error ? reject(error) : resolve(), framework);
+        })
     }
 
     async stop() {

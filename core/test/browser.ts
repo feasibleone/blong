@@ -15,11 +15,11 @@ export default browser(fo => ({
         },
         watch: {
             test: [
-                'test.codec.mle'
+                'test.codec.mle',
                 // 'test.hsm.generate.key',
-                // 'test.number.sum',
-                // 'test.dispatch.loop',
-                // 'test.tcp.loop'
+                'test.number.sum',
+                'test.dispatch.loop',
+                'test.tcp.loop'
             ]
         }
     },

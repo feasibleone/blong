@@ -2,11 +2,13 @@ import { handler } from '@feasibleone/blong';
 
 export default handler(({
     handler: {
+        testLoginTokenCreate,
         testUserAdminLogin,
         subjectNumberSum
     }
 }) => ({
     testNumberSum: ({name = 'demo'}, $meta) => Object.defineProperty([
+        testLoginTokenCreate({}, $meta),
         testUserAdminLogin({}, $meta),
         'Login admin user',
         async function sum(assert, {$meta}) {

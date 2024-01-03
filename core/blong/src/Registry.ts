@@ -237,7 +237,11 @@ export default class RegistryImpl extends internal implements Registry {
     }
 
     async connected() {
-        return (await Promise.all(Array.from(this.#ports.values()).map(port => port.connected?.() ?? port.isConnected))).every(item => item);
+        return (await Promise.all(Array.from(this.#ports.values()).reverse().map(port => port.connected?.() ?? port.isConnected))).every(item => item);
+    }
+
+    async test(framework) {
+        await this.#watch.test(framework);
     }
 
     async stop() {

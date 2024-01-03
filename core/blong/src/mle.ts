@@ -40,16 +40,17 @@ export default fp<{sign: unknown, encrypt: unknown, public: {sign: unknown, encr
                     ? message
                     : mle.signEncrypt(message, request.auth?.credentials?.mlek);
                 const where = payload.jsonrpc ? payload : {result: payload, id: undefined, jsonrpc: undefined};
-                let buffer: string;
+                let result, error: string;
                 const code = reply.statusCode.toString().slice(0, 1) + 'xx';
-                if ('result' in where) buffer = reply.serializeInput(where.result, code) as string;
-                if (payload.jsonrpc && 'error' in where) buffer = reply.serializeInput(payload.error, code) as string;
+                if ('result' in where) result = reply.serializeInput(where.result, code) as string;
+                if (payload.jsonrpc && 'error' in where) error = reply.serializeInput(payload.error, code) as string;
                 reply.serializer(x => x);
                 try {
                     return JSON.stringify({
                         id: where.id,
                         jsonrpc: where.jsonrpc,
-                        result: await encrypt(Buffer.from(buffer))
+                        result: result && await encrypt(Buffer.from(result)),
+                        error: error && await encrypt(Buffer.from(error))
                     });
                 } catch (error) {
                     reply.code(400);

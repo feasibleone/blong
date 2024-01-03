@@ -13,7 +13,7 @@ export default realm(fo => ({
                 headerFormat: '6/string-left-zero'
             },
             port: 1500,
-            namespace: ['payshield'],
+            namespace: ['payshieldport'],
             imports: ['payshield.tcp'],
             listen: false
         }

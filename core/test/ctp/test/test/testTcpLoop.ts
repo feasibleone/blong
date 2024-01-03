@@ -2,17 +2,18 @@ import { handler } from '@feasibleone/blong';
 
 export default handler(({
     handler: {
+        testLoginTokenCreate,
         payshieldEcho
     }
 }) => ({
     testTcpLoop: ({name = 'ports'}, $meta) => Object.defineProperty<unknown>([
+        testLoginTokenCreate({}, $meta),
         async function tcp(assert, {$meta}) {
             const result = await payshieldEcho<{data: string}>({
-                message: 'ECHO',
+                data: 'ECHO',
                 length: 4
             }, $meta);
             assert.equal(result.data, 'ECHO', 'Return data');
-            return result;
         }
     ], 'name', {value: name})
 }));
