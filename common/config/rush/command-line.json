@@ -186,7 +186,7 @@
       "longName": "--production",
       "parameterKind": "flag",
       "description": "Perform a production build, including minification and localization steps",
-      "associatedCommands": ["build", "rebuild", "test", "retest"],
+      "associatedCommands": ["build", "rebuild"],
       "associatedPhases": ["_phase:build"]
     }
     // {
