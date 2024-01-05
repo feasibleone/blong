@@ -24,6 +24,12 @@ export default browser(blong => ({
             ],
         },
     },
+    dev: {
+        payshield: {},
+        ctp: {},
+        parking: {},
+        demo: {},
+    },
     validation: blong.type.Object({}),
     children: [
         function client() {

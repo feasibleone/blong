@@ -7,6 +7,9 @@ export default realm(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     default: {},
     dev: {
+        parking: {},
+        ctp: {},
+        demo: {},
         payshield: {
             namespace: 'payshield',
             host: 'hsm.softwaregroup-bg.com',
