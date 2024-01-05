@@ -26,7 +26,7 @@ export default (layer: {utMethod: {pkg: unknown}}): unknown =>
 
         public handlers(): object {
             return {
-                'hsm.service.get': () => layer.utMethod.pkg,
+                hsmServiceGet: () => layer.utMethod.pkg,
                 receive(msg: {type: string}) {
                     if (msg && msg instanceof Error && msg.type) {
                         switch (msg.type) {

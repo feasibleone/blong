@@ -244,7 +244,7 @@ export default class Registry extends Internal implements IRegistry {
         port: object
     ): Promise<{local: object; literals: object[]}> {
         const lib = {
-            Type,
+            type: Type,
             error: this.#error.register.bind(this.#error),
             merge,
         };

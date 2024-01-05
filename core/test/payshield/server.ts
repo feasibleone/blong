@@ -1,8 +1,8 @@
-import { createRequire } from 'node:module';
+import {createRequire} from 'node:module';
 
-import { realm } from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong';
 
-export default realm(fo => ({
+export default realm(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     default: {
         tcp: {
@@ -10,35 +10,29 @@ export default realm(fo => ({
             maxReceiveBuffer: 4096,
             format: {
                 size: '16/integer',
-                headerFormat: '6/string-left-zero'
+                headerFormat: '6/string-left-zero',
             },
             port: 1500,
             namespace: ['payshieldport'],
             imports: ['payshield.tcp'],
-            listen: false
-        }
+            listen: false,
+        },
     },
     dev: {
         tcp: {
-            host: 'hsm.softwaregroup-bg.com'
-        }
+            host: 'hsm.softwaregroup-bg.com',
+        },
     },
     microservice: {
         error: true,
         adapter: true,
         orchestrator: true,
-        gateway: true
+        gateway: true,
     },
     integration: {
-        test: true
+        test: true,
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     url: import.meta.url,
-    children: [
-        './error',
-        './adapter',
-        './orchestrator',
-        './gateway',
-        './test'
-    ]
+    children: ['./error', './adapter', './orchestrator', './gateway', './test'],
 }));

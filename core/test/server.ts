@@ -2,7 +2,7 @@ import {createRequire} from 'node:module';
 
 import {server} from '@feasibleone/blong';
 
-export default server(fo => ({
+export default server(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     url: import.meta.url,
     default: {},
@@ -10,7 +10,7 @@ export default server(fo => ({
     dev: {
         resolution: true,
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     children: [
         function ctp() {
             return import('./ctp/server.js');

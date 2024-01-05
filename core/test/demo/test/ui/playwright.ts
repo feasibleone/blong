@@ -1,4 +1,4 @@
-export default (fo): unknown =>
+export default (blong): unknown =>
     function playwright() {
         return [
             {
@@ -6,6 +6,6 @@ export default (fo): unknown =>
                 name: 'utCore.playwright',
                 result() {},
             },
-            fo.config?.type === 'unit' && 'portal.playwright.run',
+            blong.config?.type === 'unit' && 'portal.playwright.run',
         ];
     };

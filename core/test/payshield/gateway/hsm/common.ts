@@ -1,13 +1,13 @@
-import { validation } from '@feasibleone/blong';
+import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {Type}}) => ({
-    keyScheme: Type.Union([
-        Type.Literal('U'),
-        Type.Literal('X'),
-        Type.Literal('R'),
-        Type.Literal('S'),
-        Type.Literal('T'),
-        Type.Literal('Y'),
-        Type.Literal('V')
-    ])
+export default validation(({lib: {type}}) => ({
+    keyScheme: type.Union([
+        type.Literal('U'),
+        type.Literal('X'),
+        type.Literal('R'),
+        type.Literal('S'),
+        type.Literal('T'),
+        type.Literal('Y'),
+        type.Literal('V'),
+    ]),
 }));

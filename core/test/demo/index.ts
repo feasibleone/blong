@@ -12,7 +12,7 @@ import sum from './orchestrator/subject/sum.js';
 
 import validate1 from './orchestrator/subject/~.schema.js';
 
-export default realm(fo => ({
+export default realm(blong => ({
     pkg,
     default: {},
     dev: {
@@ -24,7 +24,7 @@ export default realm(fo => ({
         orchestrator: true,
         gateway: true,
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     url: import.meta.url,
     children: [
         function error(layer: ModuleApi) {

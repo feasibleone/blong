@@ -1,8 +1,8 @@
-import { createRequire } from 'node:module';
+import {createRequire} from 'node:module';
 
-import { realm } from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong';
 
-export default realm(fo => ({
+export default realm(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     default: {
         error: true,
@@ -10,17 +10,15 @@ export default realm(fo => ({
         backend: {
             logLevel: 'fatal',
             imports: ['codec.jsonrpc', 'codec.mle', /\.backend$/],
-            url: 'http://localhost:8080'
+            url: 'http://localhost:8080',
         },
         test: {
             namespace: ['test'],
-            imports: [/\.test$/]
-        }
+            imports: [/\.test$/],
+        },
     },
     dev: {},
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     url: import.meta.url,
-    children: [
-        './adapter'
-    ]
+    children: ['./adapter'],
 }));

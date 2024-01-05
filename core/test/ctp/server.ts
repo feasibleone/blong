@@ -1,9 +1,9 @@
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import {createRequire} from 'node:module';
+import {dirname, join} from 'node:path';
 
-import { realm } from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong';
 
-export default realm(fo => ({
+export default realm(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     default: {},
     dev: {
@@ -14,43 +14,39 @@ export default realm(fo => ({
             idleSend: 10000,
             maxReceiveBuffer: 4096,
             format: {
-                size: '16/integer'
+                size: '16/integer',
             },
             imports: 'ctp.payshield',
             'ctp.payshield': {
-                headerFormat: '6/string-left-zero'
+                headerFormat: '6/string-left-zero',
             },
-            listen: false
+            listen: false,
         },
         client: {
             port: 1500,
             host: 'localhost',
             tls: {
-                ca: join(dirname(import.meta.url.slice(7)), 'ca.crt')
-            }
+                ca: join(dirname(import.meta.url.slice(7)), 'ca.crt'),
+            },
         },
         server: {
             port: 1500,
             listen: true,
             tls: {
                 cert: join(dirname(import.meta.url.slice(7)), 'tls.crt'),
-                key: join(dirname(import.meta.url.slice(7)), 'tls.key')
-            }
-        }
+                key: join(dirname(import.meta.url.slice(7)), 'tls.key'),
+            },
+        },
     },
     microservice: {
         adapter: true,
         orchestrator: true,
-        gateway: true
+        gateway: true,
     },
     integration: {
-        test: true
+        test: true,
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     url: import.meta.url,
-    children: [
-        './adapter',
-        './gateway',
-        './test'
-    ]
+    children: ['./adapter', './gateway', './test'],
 }));

@@ -1,11 +1,14 @@
-import { validation } from '@feasibleone/blong';
+import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {Type}}) => function parkingTest() {
-    return {
-        params: Type.Any(),
-        result: Type.Object({
-            zone: Type.String(),
-            price: Type.Number()
-        })
-    };
-});
+export default validation(
+    ({lib: {type}}) =>
+        function parkingTest() {
+            return {
+                params: type.Any(),
+                result: type.Object({
+                    zone: type.String(),
+                    price: type.Number(),
+                }),
+            };
+        }
+);

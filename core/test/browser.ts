@@ -2,7 +2,7 @@ import {createRequire} from 'node:module';
 
 import {browser} from '@feasibleone/blong';
 
-export default browser(fo => ({
+export default browser(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     url: import.meta.url,
     default: {
@@ -24,7 +24,7 @@ export default browser(fo => ({
             ],
         },
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     children: [
         function client() {
             return import('./client/browser.js');

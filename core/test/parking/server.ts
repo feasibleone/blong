@@ -1,29 +1,25 @@
-import { createRequire } from 'node:module';
+import {createRequire} from 'node:module';
 
-import { realm } from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong';
 
-export default realm(fo => ({
+export default realm(blong => ({
     pkg: createRequire(import.meta.url)('./package.json'),
     default: {},
     dev: {
         dispatch: {
             namespace: 'parking',
-            imports: 'parking.parking'
-        }
+            imports: 'parking.parking',
+        },
     },
     microservice: {
         adapter: true,
         orchestrator: true,
-        gateway: true
+        gateway: true,
     },
     integration: {
-        test: true
+        test: true,
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     url: import.meta.url,
-    children: [
-        './orchestrator',
-        './gateway',
-        './test'
-    ]
+    children: ['./orchestrator', './gateway', './test'],
 }));

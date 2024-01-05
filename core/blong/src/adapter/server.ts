@@ -2,7 +2,7 @@ import {createRequire} from 'node:module';
 
 import {realm} from '../../types.js';
 
-export default realm(fo => ({
+export default realm(blong => ({
     pkg: createRequire(import.meta.url)('../../package.json'),
     default: {
         tcp: false,
@@ -11,7 +11,7 @@ export default realm(fo => ({
         server: true,
         common: true,
     },
-    validation: fo.Type.Object({}),
+    validation: blong.type.Object({}),
     url: import.meta.url,
     children: ['./common', './server'],
 }));

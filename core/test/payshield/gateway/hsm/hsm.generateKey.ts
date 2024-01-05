@@ -1,22 +1,22 @@
-import { validation } from '@feasibleone/blong';
+import {validation} from '@feasibleone/blong';
 
-export default validation(({
-    lib: {
-        Type,
-        keyScheme
-    }
-}) => ({
-    'hsm.generateKey': () => ({
+export default validation(({lib: {type, keyScheme}}) => ({
+    hsmGenerateKey: () => ({
         description: 'generateKey',
-        params: Type.Object({
-            mode: Type.Union([Type.Literal('0'), Type.Literal('1'), Type.Literal('A'), Type.Literal('B')]),
-            keyType: Type.String(),
-            keySchemeLmk: keyScheme
+        params: type.Object({
+            mode: type.Union([
+                type.Literal('0'),
+                type.Literal('1'),
+                type.Literal('A'),
+                type.Literal('B'),
+            ]),
+            keyType: type.String(),
+            keySchemeLmk: keyScheme,
         }),
-        result: Type.Object({
-            key: Type.String(),
-            kcv: Type.String(),
-            keyZmk: Type.Optional(Type.String())
-        })
-    })
+        result: type.Object({
+            key: type.String(),
+            kcv: type.String(),
+            keyZmk: type.Optional(type.String()),
+        }),
+    }),
 }));

@@ -167,7 +167,7 @@ export type GatewaySchema = (
 };
 
 interface ILib {
-    Type: typeof Type;
+    type: typeof Type;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     merge<T, S1>(target: T, source: S1): T & S1;
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
@@ -177,7 +177,7 @@ interface ILib {
 
 type ValidationFn = () => GatewaySchema;
 export interface IValidationProxy {
-    Type: typeof Type;
+    type: typeof Type;
     handler: {
         [name: string]: ValidationFn;
     };
@@ -189,7 +189,7 @@ export interface IValidationProxy {
     };
 }
 type ValidationDefinition = (
-    fo: IValidationProxy
+    blong: IValidationProxy
 ) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
 
 type PortHandler = <T>(
@@ -224,11 +224,11 @@ export interface IHandlerProxy<T> {
 }
 
 type ImportProxyCallback<T> = (
-    fo: IHandlerProxy<T>
+    blong: IHandlerProxy<T>
 ) => PortHandler | adapterFactory | Record<string, PortHandler>;
 type Definition<T> = object | ImportProxyCallback<T> | ImportProxyCallback<T>[];
 
-type LibProxyCallback<T> = (fo: IHandlerProxy<T>) => Record<string, LibFn> | LibFn;
+type LibProxyCallback<T> = (blong: IHandlerProxy<T>) => Record<string, LibFn> | LibFn;
 type Lib<T> = object | LibProxyCallback<T> | LibProxyCallback<T>[];
 
 export type ModuleApi = {
@@ -243,11 +243,11 @@ export type ModuleApi = {
     feature: (paths: string | string[]) => ModuleApi;
     step: (step: Record<string, () => IStep>) => ModuleApi;
 } & {
-    [name: string]: (fo: Definition<Record<string, unknown>>) => ModuleApi;
+    [name: string]: (blong: Definition<Record<string, unknown>>) => ModuleApi;
 };
 
 export type SolutionFactory = (definition: {
-    Type: typeof Type;
+    type: typeof Type;
 }) => IModuleConfig | Promise<IModuleConfig>;
 
 const Kind: symbol = Symbol('kind');

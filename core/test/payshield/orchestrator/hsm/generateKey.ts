@@ -153,11 +153,9 @@ export default library<{
                 },
                 $meta
             );
-            let {counter, restString, returnResult} = {
-                counter: 0,
-                restString: String.fromCharCode.apply(null, Buffer.from(rest, 'hex')),
-                returnResult: {key, keyZmk: undefined, kcv: undefined},
-            };
+            let counter = 0;
+            const restString = String.fromCharCode.apply(null, Buffer.from(rest, 'hex'));
+            let returnResult = {key, keyZmk: undefined, kcv: undefined};
 
             if (['1', 'B'].includes(mode)) {
                 returnResult.keyZmk = restString.slice(counter, counter + 33);

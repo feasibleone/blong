@@ -1,19 +1,19 @@
-import { validation } from '@feasibleone/blong';
+import {validation} from '@feasibleone/blong';
 
-export default validation(({
-    lib: {
-        Type,
-        keyScheme
-    }
-}) => ({
-    'payshield.generateKey': () => ({
+export default validation(({lib: {type, keyScheme}}) => ({
+    payshieldGenerateKey: () => ({
         auth: false,
         description: 'generateKey',
-        params: Type.Object({
-            mode: Type.Union([Type.Literal('0'), Type.Literal('1'), Type.Literal('A'), Type.Literal('B')]),
-            keyType: Type.String(),
-            keySchemeLmk: keyScheme
+        params: type.Object({
+            mode: type.Union([
+                type.Literal('0'),
+                type.Literal('1'),
+                type.Literal('A'),
+                type.Literal('B'),
+            ]),
+            keyType: type.String(),
+            keySchemeLmk: keyScheme,
         }),
-        result: Type.Any()
-    })
+        result: type.Any(),
+    }),
 }));

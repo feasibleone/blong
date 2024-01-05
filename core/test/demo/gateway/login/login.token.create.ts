@@ -1,12 +1,15 @@
-import { validation } from '@feasibleone/blong';
+import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {Type}}) => function loginTokenCreate() {
-    return {
-        auth: 'login',
-        params: Type.Object({
-            username: Type.String(),
-            password: Type.String()
-        }),
-        result: Type.Object({}, {additionalProperties: true})
-    };
-});
+export default validation(
+    ({lib: {type}}) =>
+        function loginTokenCreate() {
+            return {
+                auth: 'login',
+                params: type.Object({
+                    username: type.String(),
+                    password: type.String(),
+                }),
+                result: type.Object({}, {additionalProperties: true}),
+            };
+        }
+);

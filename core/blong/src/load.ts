@@ -58,7 +58,7 @@ export default async function loadRealm(
     }
 ): Promise<IRegistry> {
     const defKind = kind(def);
-    const mod = await def({Type});
+    const mod = await def({type: Type});
     const mergedConfig = {
         name,
         pkg: {name, version: '0.0'},
