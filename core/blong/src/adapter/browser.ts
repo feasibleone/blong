@@ -1,6 +1,6 @@
-import { createRequire } from 'node:module';
+import {createRequire} from 'node:module';
 
-import { realm } from '../../types.js';
+import {realm} from '../../types.js';
 
 export default realm(fo => ({
     pkg: createRequire(import.meta.url)('../../package.json'),
@@ -9,9 +9,9 @@ export default realm(fo => ({
         http: false,
         dispatch: false,
         browser: true,
-        common: true
+        common: true,
     },
     validation: fo.Type.Object({}),
     url: import.meta.url,
-    children: ['./common', './browser']
+    children: ['./common', './browser'],
 }));

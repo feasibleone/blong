@@ -1,17 +1,20 @@
-import got, { type HttpsOptions } from 'got';
+import got, {type HttpsOptions} from 'got';
 import timing from 'ut-function.timing';
 
-import type { Errors, IMeta } from '../types.js';
-import GatewayCodecImpl, { type IConfig as IConfigGatewayCodec, type IGatewayCodec } from './GatewayCodec.js';
-import type { ILocal } from './Local.js';
-import type { ILog } from './Log.js';
-import RemoteImpl, { type IRemote } from './Remote.js';
-import type { IResolution } from './Resolution.js';
-import type { IErrorFactory, IErrorMap } from './error.js';
+import type {Errors, IMeta} from '../types.js';
+import GatewayCodecImpl, {
+    type IConfig as IConfigGatewayCodec,
+    type IGatewayCodec,
+} from './GatewayCodec.js';
+import type {ILocal} from './Local.js';
+import type {ILog} from './Log.js';
+import RemoteImpl, {type IRemote} from './Remote.js';
+import type {IResolution} from './Resolution.js';
+import type {IErrorFactory, IErrorMap} from './error.js';
 import tls from './tls.js';
 
-export interface IRpcClient extends IRemote{
-    verify: IGatewayCodec['verify']
+export interface IRpcClient extends IRemote {
+    verify: IGatewayCodec['verify'];
 }
 
 interface IError extends Error {
@@ -31,19 +34,22 @@ const errorMap: IErrorMap = {
     'rpc.oidcHttp': {message: 'OpenID returned HTTP error {code}', statusCode: 401},
     'rpc.oidcNoIssuer': {message: 'Missing issuer in authentication token', statusCode: 401},
     'rpc.oidcNoKid': {message: 'Missing key id in JWT', statusCode: 401},
-    'rpc.unauthorized': {message: 'Operation {method} is not allowed for this user', statusCode: 403}
+    'rpc.unauthorized': {
+        message: 'Operation {method} is not allowed for this user',
+        statusCode: 403,
+    },
 };
 
 interface IConfig extends IConfigGatewayCodec {
-    tls?: {ca?: string | string[], key?: string, cert?: string, crl?: string}
-    logLevel?: Parameters<ILog['logger']>[0]
-    latency: number
-    debug: boolean
+    tls?: {ca?: string | string[]; key?: string; cert?: string; crl?: string};
+    logLevel?: Parameters<ILog['logger']>[0];
+    latency: number;
+    debug: boolean;
 }
 export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
     #config: IConfig = {
         latency: 50,
-        debug: false
+        debug: false,
     };
 
     #https: HttpsOptions;
@@ -51,7 +57,15 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
     #resolution: IResolution;
     #errors: Errors<typeof errorMap>;
 
-    public constructor(config: IConfig, {log, error, resolution, local}: {log: ILog, error: IErrorFactory, resolution: IResolution, local: ILocal}) {
+    public constructor(
+        config: IConfig,
+        {
+            log,
+            error,
+            resolution,
+            local,
+        }: {log: ILog; error: IErrorFactory; resolution: IResolution; local: ILocal}
+    ) {
         super(config, {log, error, local});
         config = this.merge(this.#config, config);
         this.#resolution = resolution;
@@ -67,22 +81,36 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
         );
     }
 
-    public verify(...params: Parameters<IGatewayCodec['verify']>): ReturnType<IGatewayCodec['verify']> {
+    public verify(
+        ...params: Parameters<IGatewayCodec['verify']>
+    ): ReturnType<IGatewayCodec['verify']> {
         return this.#gatewayCodec.verify(...params);
     }
 
-    public gateway(...params: Parameters<IGatewayCodec['gateway']>): ReturnType<IGatewayCodec['gateway']> {
+    public gateway(
+        ...params: Parameters<IGatewayCodec['gateway']>
+    ): ReturnType<IGatewayCodec['gateway']> {
         return this.#gatewayCodec.gateway(...params);
     }
 
-    protected sender(methodType: 'request' | 'publish'): (...params: unknown[]) => Promise<unknown> {
-        return async(msg, ...rest) => {
+    protected sender(
+        methodType: 'request' | 'publish'
+    ): (...params: unknown[]) => Promise<unknown> {
+        return async (msg, ...rest) => {
             const {stream, ...$meta} = rest.pop() as IMeta;
-            const {encode, decode, requestParams} = await this.#gatewayCodec.codec($meta, methodType);
+            const {encode, decode, requestParams} = await this.#gatewayCodec.codec(
+                $meta,
+                methodType
+            );
             const {params, headers, method = $meta.method} = await encode(msg, ...rest, $meta);
-            const sendRequest = async():Promise<unknown> => {
+            const sendRequest = async (): Promise<unknown> => {
                 try {
-                    const response = await got.post<{jsonrpc?: string, error?: unknown, validation?: unknown, debug?: unknown}>(
+                    const response = await got.post<{
+                        jsonrpc?: string;
+                        error?: unknown;
+                        validation?: unknown;
+                        debug?: unknown;
+                    }>(
                         `${requestParams.protocol}://${requestParams.hostname}:${requestParams.port}${requestParams.path}`,
                         {
                             https: this.#https,
@@ -91,35 +119,42 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                                 jsonrpc: '2.0',
                                 method,
                                 id: 1,
-                                ...$meta.timeout && $meta.timeout[0] && {timeout: timing.spare($meta.timeout, this.#config.latency)},
-                                params
+                                ...($meta.timeout &&
+                                    $meta.timeout[0] && {
+                                        timeout: timing.spare($meta.timeout, this.#config.latency),
+                                    }),
+                                params,
                             },
                             responseType: 'json',
                             headers: {
                                 'x-envoy-decorator-operation': method,
                                 ...$meta.forward,
-                                ...headers
-                            }
+                                ...headers,
+                            },
                         }
                     );
                     const {body} = response;
                     if (body?.error !== undefined) {
-                        const error: IError =
-                            body.jsonrpc
-                                ? Object.assign(new Error(), await decode(body.error, true))
-                                : typeof body.error === 'string'
-                                    ? new Error(body.error)
-                                    : Object.assign(new Error(), body.error);
-                        if (error.type) Object.defineProperty(error, 'name', {value: error.type, configurable: true, enumerable: false});
+                        const error: IError = body.jsonrpc
+                            ? Object.assign(new Error(), await decode(body.error, true))
+                            : typeof body.error === 'string'
+                            ? new Error(body.error)
+                            : Object.assign(new Error(), body.error);
+                        if (error.type)
+                            Object.defineProperty(error, 'name', {
+                                value: error.type,
+                                configurable: true,
+                                enumerable: false,
+                            });
                         error.req = response.request && {
                             httpVersion: response.httpVersion,
                             url: response.request.requestUrl,
                             method: response.request.options.method,
-                            ...this.#config.debug && this.sanitize(params, $meta)
+                            ...(this.#config.debug && this.sanitize(params, $meta)),
                         };
                         error.res = {
                             httpVersion: response.httpVersion,
-                            statusCode: response.statusCode
+                            statusCode: response.statusCode,
                         };
                         throw error;
                     } else if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -131,12 +166,12 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                             validation: response.body?.validation,
                             debug: response.body?.debug,
                             params: {
-                                code: response.statusCode
+                                code: response.statusCode,
                             },
-                            ...response.request && {
+                            ...(response.request && {
                                 url: response.request.requestUrl,
-                                method: response.request.options.method
-                            }
+                                method: response.request.options.method,
+                            }),
                         });
                     } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
                         const result = await decode(body.result);
@@ -146,14 +181,22 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                         throw this.#errors['rpc.jsonRpcEmpty']();
                     }
                 } catch (error) {
-                    if (this.#resolution && requestParams.cache) { // invalidate cache and retry upon connection fail
+                    if (this.#resolution && requestParams.cache) {
+                        // invalidate cache and retry upon connection fail
                         switch (error.code) {
                             case 'ETIMEDOUT':
                             case 'ESOCKETTIMEDOUT':
                                 if (!error.connect) break; // https://www.npmjs.com/package/request#timeouts
                             case 'ENOTFOUND': // eslint-disable-line no-fallthrough
                             case 'ECONNREFUSED':
-                                Object.assign(requestParams, await this.#resolution.resolve(requestParams.cache, true, requestParams.namespace));
+                                Object.assign(
+                                    requestParams,
+                                    await this.#resolution.resolve(
+                                        requestParams.cache,
+                                        true,
+                                        requestParams.namespace
+                                    )
+                                );
                                 delete requestParams.cache;
                                 return sendRequest();
                         }
@@ -165,9 +208,7 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
         };
     }
 
-    public async stop(): Promise<void> {
-    }
+    public async stop(): Promise<void> {}
 
-    public async start(): Promise<void> {
-    }
+    public async start(): Promise<void> {}
 }

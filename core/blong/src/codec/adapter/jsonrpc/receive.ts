@@ -1,31 +1,38 @@
-import { type Response } from 'got';
+import {type Response} from 'got';
 
-import { handler, type ITypedError } from '../../../../types.js';
+import {handler, type ITypedError} from '../../../../types.js';
 
-export default handler(({
-    lib: {
-        errors
-    }
-}) => ({
-    async receive(response: Response<{ jsonrpc?: string, error?: unknown, validation?: unknown, debug?: unknown }>) {
-        const { body } = super.receive ? await super.receive(response) : response;
+export default handler(({lib: {errors}}) => ({
+    async receive(
+        response: Response<{
+            jsonrpc?: string;
+            error?: unknown;
+            validation?: unknown;
+            debug?: unknown;
+        }>
+    ) {
+        const {body} = super.receive ? await super.receive(response) : response;
         if (body?.error !== undefined) {
-            const error: ITypedError =
-                body.jsonrpc
-                    ? Object.assign(new Error(), body.error)
-                    : typeof body.error === 'string'
-                        ? new Error(body.error)
-                        : Object.assign(new Error(), body.error);
-            if (error.type) Object.defineProperty(error, 'name', { value: error.type, configurable: true, enumerable: false });
+            const error: ITypedError = body.jsonrpc
+                ? Object.assign(new Error(), body.error)
+                : typeof body.error === 'string'
+                ? new Error(body.error)
+                : Object.assign(new Error(), body.error);
+            if (error.type)
+                Object.defineProperty(error, 'name', {
+                    value: error.type,
+                    configurable: true,
+                    enumerable: false,
+                });
             error.req = response.request && {
                 httpVersion: response.httpVersion,
                 url: response.request.requestUrl,
-                method: response.request.options.method
+                method: response.request.options.method,
                 // ...config.debug && this.sanitize(params, $meta)
             };
             error.res = {
                 httpVersion: response.httpVersion,
-                statusCode: response.statusCode
+                statusCode: response.statusCode,
             };
             throw error;
         } else if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -38,17 +45,17 @@ export default handler(({
                 debug: response.body?.debug,
                 body: response.body,
                 params: {
-                    code: response.statusCode
+                    code: response.statusCode,
                 },
-                ...response.request && {
+                ...(response.request && {
                     url: response.request.requestUrl,
-                    method: response.request.options.method
-                }
+                    method: response.request.options.method,
+                }),
             });
         } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
             return body.result;
         } else {
             throw errors['jsonrpc.empty']();
         }
-    }
+    },
 }));

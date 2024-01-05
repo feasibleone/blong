@@ -1,16 +1,19 @@
-import { LoggerOptions, pino, type Level, type LogFn, type Logger } from 'pino';
-import { Internal } from '../types.js';
+import {LoggerOptions, pino, type Level, type LogFn, type Logger} from 'pino';
+import {Internal} from '../types.js';
 
 export interface ILog {
-    logger: (level: Level, bindings: object) => {
-        trace?: LogFn
-        debug?: LogFn
-        info?: LogFn
-        warn?: LogFn
-        error?: LogFn
-        fatal?: LogFn
-    }
-    child: Logger['child']
+    logger: (
+        level: Level,
+        bindings: object
+    ) => {
+        trace?: LogFn;
+        debug?: LogFn;
+        info?: LogFn;
+        warn?: LogFn;
+        error?: LogFn;
+        fatal?: LogFn;
+    };
+    child: Logger['child'];
 }
 
 export default class Log extends Internal implements ILog {
@@ -30,8 +33,10 @@ export default class Log extends Internal implements ILog {
                     'res.statusCode',
                     '$meta.mtid',
                     '$meta.method',
-                    'msg'
-                ].map(item => `{if ${item}}{${item}} {end}`).join(''),
+                    'msg',
+                ]
+                    .map(item => `{if ${item}}{${item}} {end}`)
+                    .join(''),
                 ignore: [
                     'context',
                     'pid',
@@ -40,10 +45,10 @@ export default class Log extends Internal implements ILog {
                     'res.statusCode',
                     'req.method',
                     'req.hostname',
-                    'req.url'
-                ].join(',')
-            }
-        }
+                    'req.url',
+                ].join(','),
+            },
+        },
     };
 
     public constructor(config: LoggerOptions) {
@@ -56,7 +61,10 @@ export default class Log extends Internal implements ILog {
         return this.#logger.child(...params);
     }
 
-    public logger(level: LoggerOptions['level'] = this.#config.level, bindings: object): ReturnType<ILog['logger']> {
+    public logger(
+        level: LoggerOptions['level'] = this.#config.level,
+        bindings: object
+    ): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
         const result = {
             trace: null,
@@ -64,15 +72,21 @@ export default class Log extends Internal implements ILog {
             info: null,
             warn: null,
             error: null,
-            fatal: null
+            fatal: null,
         };
         switch (level) {
-            case 'trace': result.trace = child.trace.bind(child);
-            case 'debug': result.debug = child.debug.bind(child); // eslint-disable-line no-fallthrough
-            case 'info': result.info = child.info.bind(child); // eslint-disable-line no-fallthrough
-            case 'warn': result.warn = child.warn.bind(child); // eslint-disable-line no-fallthrough
-            case 'error': result.error = child.error.bind(child); // eslint-disable-line no-fallthrough
-            case 'fatal': result.fatal = child.fatal.bind(child); // eslint-disable-line no-fallthrough
+            case 'trace':
+                result.trace = child.trace.bind(child);
+            case 'debug': // eslint-disable-line no-fallthrough
+                result.debug = child.debug.bind(child);
+            case 'info': // eslint-disable-line no-fallthrough
+                result.info = child.info.bind(child);
+            case 'warn': // eslint-disable-line no-fallthrough
+                result.warn = child.warn.bind(child);
+            case 'error': // eslint-disable-line no-fallthrough
+                result.error = child.error.bind(child);
+            case 'fatal': // eslint-disable-line no-fallthrough
+                result.fatal = child.fatal.bind(child);
         }
         return result;
     }

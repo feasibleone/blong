@@ -1,22 +1,22 @@
 import hrtime from 'browser-process-hrtime';
-import { hostname } from 'os';
+import {hostname} from 'os';
 import multicastResolver from 'ut-bus/resolver.js';
 import discovery from 'ut-dns-discovery';
 
-import { Errors, Internal } from '../types.js';
-import type { IResolution } from './Resolution.js';
-import type { IErrorFactory, IErrorMap } from './error.js';
+import {Errors, Internal} from '../types.js';
+import type {IResolution} from './Resolution.js';
+import type {IErrorFactory, IErrorMap} from './error.js';
 
 const errorMap: IErrorMap = {
-    'mdns.notFound': "Multicast DNS: '{namespace}' service not found."
+    'mdns.notFound': "Multicast DNS: '{namespace}' service not found.",
 };
 
 interface IConfig {
-    domain: boolean
-    prefix: string
-    suffix: string
-    channel: string
-    tls: string
+    domain: boolean;
+    prefix: string;
+    suffix: string;
+    channel: string;
+    tls: string;
 }
 export default class ResolutionDiscovery extends Internal implements IResolution {
     #announce: ReturnType<discovery>;
@@ -27,7 +27,7 @@ export default class ResolutionDiscovery extends Internal implements IResolution
         prefix: '',
         suffix: '',
         tls: undefined,
-        channel: undefined
+        channel: undefined,
     };
 
     public resolve: IResolution['resolve'];
@@ -38,7 +38,7 @@ export default class ResolutionDiscovery extends Internal implements IResolution
         this.#announce = discovery();
         this.#errors = error.register(errorMap);
         const cache = {};
-        this.resolve = async(service, invalidate, namespace) => {
+        this.resolve = async (service, invalidate, namespace) => {
             try {
                 const now = hrtime();
                 const hostName = `${this._serviceId(service)}.dns-discovery.local`;
@@ -57,8 +57,8 @@ export default class ResolutionDiscovery extends Internal implements IResolution
                 }
                 const resolved = await multicastResolver(hostName, 'SRV', !!this.#config.tls);
                 const result = {
-                    hostname: (resolved.target === '0.0.0.0' ? 'localhost' : resolved.target),
-                    port: resolved.port
+                    hostname: resolved.target === '0.0.0.0' ? 'localhost' : resolved.target,
+                    port: resolved.port,
                 };
                 if (cache) cache[hostName] = [now, result];
                 return result;
@@ -74,7 +74,7 @@ export default class ResolutionDiscovery extends Internal implements IResolution
         const tld = this.#config.tls ? '.' + this.#config.channel : ''; // similar to top level domain
         const prefix = this.#config.prefix;
         const suffix = this.#config.suffix || '-service' + tld;
-        const domain = (this.#config.domain === true) ? hostname() + tld : this.#config.domain;
+        const domain = this.#config.domain === true ? hostname() + tld : this.#config.domain;
         return `${prefix}${service}${suffix}-${domain}`;
     }
 
@@ -83,24 +83,30 @@ export default class ResolutionDiscovery extends Internal implements IResolution
     }
 
     public async start(): Promise<void> {
-        await Promise.all(Array.from(this.#services.values()).map(serviceId => new Promise((resolve, reject) => {
-            const [service, port] = serviceId.split(':');
-            this.#announce.announce(
-                service,
-                port,
-                error => error ? reject(error) : resolve(true)
-            );
-        })));
+        await Promise.all(
+            Array.from(this.#services.values()).map(
+                serviceId =>
+                    new Promise((resolve, reject) => {
+                        const [service, port] = serviceId.split(':');
+                        this.#announce.announce(service, port, error =>
+                            error ? reject(error) : resolve(true)
+                        );
+                    })
+            )
+        );
     }
 
     public async stop(): Promise<void> {
-        await Promise.all(Array.from(this.#services.values()).map(serviceId => new Promise((resolve, reject) => {
-            const [service, port] = serviceId.split(':');
-            this.#announce.unannounce(
-                service,
-                port,
-                error => error ? reject(error) : this.#services.delete(service)
-            );
-        })));
+        await Promise.all(
+            Array.from(this.#services.values()).map(
+                serviceId =>
+                    new Promise((resolve, reject) => {
+                        const [service, port] = serviceId.split(':');
+                        this.#announce.unannounce(service, port, error =>
+                            error ? reject(error) : this.#services.delete(service)
+                        );
+                    })
+            )
+        );
     }
 }

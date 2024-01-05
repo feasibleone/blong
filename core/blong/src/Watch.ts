@@ -1,55 +1,66 @@
-import { Formatter, TypeScriptToTypeBox } from '@sinclair/typebox-codegen';
+import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
 import chokidar from 'chokidar';
-import { readFileSync, statSync, writeFileSync } from 'fs';
-import { readdir } from 'fs/promises';
-import { EventEmitter } from 'node:events';
-import { basename, dirname, extname, join, relative, resolve } from 'path';
+import {readFileSync, statSync, writeFileSync} from 'fs';
+import {readdir} from 'fs/promises';
+import {EventEmitter} from 'node:events';
+import {basename, dirname, extname, join, relative, resolve} from 'path';
 
-import { Internal, kind, type IModuleConfig } from '../types.js';
-import type { ILog } from './Log.js';
-import type { IRegistry } from './Registry.js';
-import type { IRemote } from './Remote.js';
-import type { IErrorFactory } from './error.js';
+import {Internal, kind, type IModuleConfig} from '../types.js';
+import type {ILog} from './Log.js';
+import type {IRegistry} from './Registry.js';
+import type {IRemote} from './Remote.js';
+import type {IErrorFactory} from './error.js';
 import layerProxy from './layerProxy.js';
 import './watch.log.js';
 
 export interface IWatch {
-    start: (realm: IRegistry, remote: IRemote) => Promise<void>
-    test: (tester: unknown) => Promise<void>
-    stop: () => Promise<void>
-    load: <T extends {result: unknown}>(config: {name: string, pkg: IModuleConfig['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]) => Promise<(api: T) => T>
+    start: (realm: IRegistry, remote: IRemote) => Promise<void>;
+    test: (tester: unknown) => Promise<void>;
+    stop: () => Promise<void>;
+    load: <T extends {result: unknown}>(
+        config: {name: string; pkg: IModuleConfig['pkg']},
+        isDirectory: boolean,
+        isFile: boolean,
+        ...path: string[]
+    ) => Promise<(api: T) => T>;
 }
 
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
-const scan = async(...path: string[]): ReturnType<typeof readdir> => (await readdir(join(...path), {withFileTypes: true})).sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+const scan = async (...path: string[]): ReturnType<typeof readdir> =>
+    (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
+        a < b ? -1 : a > b ? 1 : 0
+    );
 
 const emit: EventEmitter = new EventEmitter();
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
 interface IConfig {
-    test: string
-    ignored: string[]
-    configs: string[]
-    logLevel: Parameters<ILog['logger']>[0]
+    test: string;
+    ignored: string[];
+    configs: string[];
+    logLevel: Parameters<ILog['logger']>[0];
 }
 export default class Watch extends Internal implements IWatch {
     #config: IConfig = {
         test: '',
         ignored: [],
         configs: [],
-        logLevel: 'debug'
+        logLevel: 'debug',
     };
 
     #logger: ReturnType<ILog['logger']>;
-    #handlerFolders: Map<string, {name: string, pkg: IModuleConfig['pkg']}> = new Map();
-    #handlerFiles: Map<string, {name: string, pkg: IModuleConfig['pkg']}> = new Map();
-    #layerFiles: Map<string, {name: string, pkg: IModuleConfig['pkg']}> = new Map();
+    #handlerFolders: Map<string, {name: string; pkg: IModuleConfig['pkg']}> = new Map();
+    #handlerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']}> = new Map();
+    #layerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']}> = new Map();
     #watchers: chokidar.FSWatcher[] = [];
     #port: () => unknown;
     #error: IErrorFactory;
 
-    public constructor(config: IConfig, {error, log, port}: {error: IErrorFactory, log: ILog, port: () => unknown}) {
+    public constructor(
+        config: IConfig,
+        {error, log, port}: {error: IErrorFactory; log: ILog; port: () => unknown}
+    ) {
         super();
         this.merge(this.#config, config);
         this.#port = port;
@@ -57,25 +68,42 @@ export default class Watch extends Internal implements IWatch {
         this.#logger = log?.logger(this.#config.logLevel, {name: 'realm'});
     }
 
-    private async _generate(files: {filename: string, name: string}[], dir: string): Promise<void> {
-        const [schema, names] = files.reduce((prev, {filename, name}) => {
-            const schema = readFileSync(filename)
-                .toString()
-                .match(/^interface schema \{\n(?:[^}]?.*\n)*}$/m)
-                ?.[0];
-            return schema ? [[...prev[0], schema.replace('interface schema {', `interface ${name} {`)], [...prev[1], name]] : prev;
-        }, [[], []]);
-        if (schema.length) writeFileSync(join(dir, '~.schema.ts'), Formatter.Format(`/* eslint-disable indent,semi */
+    private async _generate(files: {filename: string; name: string}[], dir: string): Promise<void> {
+        const [schema, names] = files.reduce(
+            (prev, {filename, name}) => {
+                const schema = readFileSync(filename)
+                    .toString()
+                    .match(/^interface schema \{\n(?:[^}]?.*\n)*}$/m)?.[0];
+                return schema
+                    ? [
+                          [...prev[0], schema.replace('interface schema {', `interface ${name} {`)],
+                          [...prev[1], name],
+                      ]
+                    : prev;
+            },
+            [[], []]
+        );
+        if (schema.length)
+            writeFileSync(
+                join(dir, '~.schema.ts'),
+                Formatter.Format(`/* eslint-disable indent,semi */
             import { validation } from '@feasibleone/blong';
             ${TypeScriptToTypeBox.Generate(schema.sort().join('\n')).trim()}
 
             export default validation(() => ({
-                ${names.sort().map(name => `${name}: () => ${name}.properties`).join(',\n    ')}
+                ${names
+                    .sort()
+                    .map(name => `${name}: () => ${name}.properties`)
+                    .join(',\n    ')}
             }));
-        `));
+        `)
+            );
     }
 
-    private async _loadHandlers(config: {name: string, pkg: IModuleConfig['pkg']}, ...path: string[]): Promise<<T>(api: T) => T> {
+    private async _loadHandlers(
+        config: {name: string; pkg: IModuleConfig['pkg']},
+        ...path: string[]
+    ): Promise<<T>(api: T) => T> {
         const dir = join(...path);
         const handlers = [];
         const validations = [];
@@ -88,9 +116,13 @@ export default class Watch extends Internal implements IWatch {
                     handlerEntry.name === '~.schema.ts' &&
                     statSync(filename).mtime.getTime() < latest &&
                     handlerFilenames.length
-                ) await this._generate(handlerFilenames, dir);
+                )
+                    await this._generate(handlerFilenames, dir);
                 const item = (await import(filename + '?' + Date.now())).default;
-                const name = (!item.name || item.name === 'default') ? basename(filename, extname(filename)) : item.name;
+                const name =
+                    !item.name || item.name === 'default'
+                        ? basename(filename, extname(filename))
+                        : item.name;
                 (kind(item) === 'validation' ? validations : handlers).push(item);
                 if (kind(item) === 'handler') {
                     latest = Math.max(latest, statSync(filename).mtime.getTime());
@@ -100,39 +132,57 @@ export default class Watch extends Internal implements IWatch {
         }
         this.#handlerFolders.set(dir, config);
         return api => {
-            if (validations.length) api[basename(dir) + '.validation'](validations, config.name + '.' + basename(dir) + '.validation', relative('.', dir));
-            if (handlers.length) api[basename(dir)](handlers, config.name + '.' + basename(dir), relative('.', dir));
+            if (validations.length)
+                api[basename(dir) + '.validation'](
+                    validations,
+                    config.name + '.' + basename(dir) + '.validation',
+                    relative('.', dir)
+                );
+            if (handlers.length)
+                api[basename(dir)](handlers, config.name + '.' + basename(dir), relative('.', dir));
             return api;
         };
     }
 
-    public async load<T extends {result: unknown}>(config: {name: string, pkg: IModuleConfig['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]): Promise<(api: T) => T> {
+    public async load<T extends {result: unknown}>(
+        config: {name: string; pkg: IModuleConfig['pkg']},
+        isDirectory: boolean,
+        isFile: boolean,
+        ...path: string[]
+    ): Promise<(api: T) => T> {
         if (isDirectory) {
             return this._loadHandlers(config, ...path);
         } else if (isFile) {
             const filename = join(...path);
             if (isCode(filename)) {
                 const item = (await import(filename + '?' + Date.now())).default;
-                const itemName = (!item.name || item.name === 'default') ? basename(filename, extname(filename)).match(prefixRE)?.[1] : item.name;
+                const itemName =
+                    !item.name || item.name === 'default'
+                        ? basename(filename, extname(filename)).match(prefixRE)?.[1]
+                        : item.name;
                 if (kind(item) === 'handler') {
                     this.#handlerFiles.set(filename, config);
                     return Object.defineProperty(
-                        api => api[itemName](
-                            [item],
-                            config.name + '.' + itemName,
-                            relative('.', filename)
-                        ),
+                        api =>
+                            api[itemName](
+                                [item],
+                                config.name + '.' + itemName,
+                                relative('.', filename)
+                            ),
                         'name',
                         {value: itemName}
                     );
                 } else {
                     this.#layerFiles.set(filename, config);
                     return Object.defineProperty(
-                        api => api[itemName](
-                            (typeof item === 'function' && kind(item) !== 'adapter') ? item(api) : item,
-                            config.name + '.' + itemName,
-                            relative('.', filename)
-                        ),
+                        api =>
+                            api[itemName](
+                                typeof item === 'function' && kind(item) !== 'adapter'
+                                    ? item(api)
+                                    : item,
+                                config.name + '.' + itemName,
+                                relative('.', filename)
+                            ),
                         'name',
                         {value: itemName}
                     );
@@ -144,18 +194,19 @@ export default class Watch extends Internal implements IWatch {
     public async start(registry: IRegistry, remote: IRemote): Promise<void> {
         this.#logger?.debug?.({
             $meta: {mtid: 'event', method: 'watch.start'},
-            dir: Array
-                .from(this.#handlerFolders.keys())
+            dir: Array.from(this.#handlerFolders.keys())
                 .concat(Array.from(this.#handlerFiles.keys()))
                 .concat(Array.from(this.#layerFiles.keys()))
-                .map(folder => relative('.', folder))
+                .map(folder => relative('.', folder)),
         });
         if (this.#config.test) {
             emit.on('test', async (done, test) => {
                 try {
                     const chain = await (await import('./chain.js')).default(test);
 
-                    const steps = await Promise.all([].concat(this.#config.test).map(test => remote.remote(test)({}, {})));
+                    const steps = await Promise.all(
+                        [].concat(this.#config.test).map(test => remote.remote(test)({}, {}))
+                    );
                     await Promise.all(steps.map(chain));
                 } catch (error) {
                     this.#logger?.error?.(error);
@@ -167,27 +218,40 @@ export default class Watch extends Internal implements IWatch {
         }
 
         const fsWatcher = chokidar.watch(
-            Array.from(this.#handlerFolders.keys()).map(folder => [`${folder}/*.ts`, `${folder}/*.yaml`, `${folder}/*.sql`, `${folder}/*.html`]).flat()
+            Array.from(this.#handlerFolders.keys())
+                .map(folder => [
+                    `${folder}/*.ts`,
+                    `${folder}/*.yaml`,
+                    `${folder}/*.sql`,
+                    `${folder}/*.html`,
+                ])
+                .flat()
                 .concat(Array.from(this.#handlerFiles.keys()))
                 .concat(Array.from(this.#layerFiles.keys()))
                 .concat(this.#config.configs),
             {
                 cwd: '.',
                 ignoreInitial: true,
-                ignored: ['.git/**', 'node_modules/**', 'dist/**', ...(this.#config.ignored || [])]
-            });
+                ignored: ['.git/**', 'node_modules/**', 'dist/**', ...(this.#config.ignored || [])],
+            }
+        );
         this.#watchers.push(fsWatcher);
         fsWatcher.on('error', error => this.#logger?.error?.(error));
-        fsWatcher.on('all', async(event, filename) => {
+        fsWatcher.on('all', async (event, filename) => {
             try {
                 filename = resolve(filename);
-                this.#logger?.info?.({
-                    $meta: {mtid: 'event', method: `watch.reload.${event}`}
-                }, filename);
+                this.#logger?.info?.(
+                    {
+                        $meta: {mtid: 'event', method: `watch.reload.${event}`},
+                    },
+                    filename
+                );
                 const layerConfig = this.#layerFiles.get(filename);
                 if (layerConfig) {
                     const id = basename(filename, extname(filename));
-                    const item = (await this.load(layerConfig, false, true, filename))(layerProxy(this.#error, this.#port, layerConfig)).result[id];
+                    const item = (await this.load(layerConfig, false, true, filename))(
+                        layerProxy(this.#error, this.#port, layerConfig)
+                    ).result[id];
                     registry.ports.set(layerConfig.name + '.' + id, item.port);
                     const port = await registry.createPort(layerConfig.name + '.' + id);
                     if (!port) return;
@@ -202,12 +266,23 @@ export default class Watch extends Internal implements IWatch {
                     if (config) {
                         const importProxyCallback = await this.load(config, false, true, filename);
                         const name = importProxyCallback.name;
-                        await registry.replaceHandlers(config.name + '.' + name, importProxyCallback(layerProxy(this.#error, this.#port, config)).result[name].methods);
+                        await registry.replaceHandlers(
+                            config.name + '.' + name,
+                            importProxyCallback(layerProxy(this.#error, this.#port, config)).result[
+                                name
+                            ].methods
+                        );
                     } else {
                         const dir = dirname(filename);
                         config = this.#handlerFolders.get(dir);
                         if (config) {
-                            await registry.replaceHandlers(config.name + '.' + basename(dir), (await this._loadHandlers(config, dir))(layerProxy(this.#error, this.#port, config)).result[basename(dir)].methods);
+                            await registry.replaceHandlers(
+                                config.name + '.' + basename(dir),
+                                (
+                                    await this._loadHandlers(config, dir)
+                                )(layerProxy(this.#error, this.#port, config)).result[basename(dir)]
+                                    .methods
+                            );
                         }
                     }
                     await registry.connected();
@@ -222,8 +297,8 @@ export default class Watch extends Internal implements IWatch {
 
     public async test(framework: unknown): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            emit.emit('test', error => error ? reject(error) : resolve(), framework);
-        })
+            emit.emit('test', error => (error ? reject(error) : resolve()), framework);
+        });
     }
 
     public async stop(): Promise<void> {

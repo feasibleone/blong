@@ -1,24 +1,29 @@
-
-import type { ILog } from './Log.js';
-import type { IRegistry } from './Registry.js';
-import type { IAdapterFactory } from './adapter.js';
-
-type MethodFactory = ((params: {remote: (name: string) => unknown, lib: object, port: object, local: object, literals: object[]}) => void)
+import type {ILog} from './Log.js';
+import type {IRegistry} from './Registry.js';
+import type {IAdapterFactory} from './adapter.js';
 
 export interface IRealm {
-    addModule: (name: string | symbol, mod: IRegistry) => void
-    addLayer: (name: string | symbol, layer: IRealm) => void
+    addModule: (name: string | symbol, mod: IRegistry) => void;
+    addLayer: (name: string | symbol, layer: IRealm) => void;
 }
 
 export default class RealmImpl implements IRealm {
     #registry: IRegistry;
     #log: ILog;
     #logger: ReturnType<ILog['logger']>;
-    #config: {realm?: {logLevel?: Parameters<ILog['logger']>[0]}, name: string, pkg: {name: string, version: string}};
+    #config: {
+        realm?: {logLevel?: Parameters<ILog['logger']>[0]};
+        name: string;
+        pkg: {name: string; version: string};
+    };
 
     public constructor(
-        config: {realm?: {logLevel?: Parameters<ILog['logger']>[0]}, name: string, pkg: {name: string, version: string}},
-        { log, registry }: { log?: ILog, registry?: IRegistry }
+        config: {
+            realm?: {logLevel?: Parameters<ILog['logger']>[0]};
+            name: string;
+            pkg: {name: string; version: string};
+        },
+        {log, registry}: {log?: ILog; registry?: IRegistry}
     ) {
         this.#config = config;
         this.#registry = registry;
@@ -46,13 +51,16 @@ export default class RealmImpl implements IRealm {
         Object.entries(layer).forEach(([itemName, item]) => {
             if (item.source) source.push(item.source);
             const id = `${this.#config.name}.${itemName}`;
-            if (typeof item === 'object' && 'port' in item) this.#registry.ports.set(id, item.port as IAdapterFactory);
+            if (typeof item === 'object' && 'port' in item)
+                this.#registry.ports.set(id, item.port as IAdapterFactory);
             else if (typeof item === 'object' && 'methods' in item) {
                 const methods = this.#registry.methods.get(id);
-                if (methods) methods.push(...item.methods); else this.#registry.methods.set(id, item.methods as MethodFactory[]);
+                if (methods) methods.push(...item.methods);
+                else this.#registry.methods.set(id, item.methods);
             }
         });
-        if (source.length === 1) this.#logger?.debug?.(`Layer ${this.#config.name}.${layerName} ${source[0]}`);
+        if (source.length === 1)
+            this.#logger?.debug?.(`Layer ${this.#config.name}.${layerName} ${source[0]}`);
         else if (!source.length) this.#logger?.debug?.(`Layer ${this.#config.name}.${layerName}`);
         else this.#logger?.debug?.({source}, `Layer ${this.#config.name}.${layerName}`);
     }

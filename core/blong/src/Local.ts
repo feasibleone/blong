@@ -1,9 +1,9 @@
-import { Internal } from '../types.js';
+import {Internal} from '../types.js';
 
 export interface ILocal {
-    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void
-    unregister: (methods: string[], namespace: string) => void
-    get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>}
+    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
+    unregister: (methods: string[], namespace: string) => void;
+    get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>};
 }
 
 export default class Local extends Internal implements ILocal {
@@ -18,7 +18,12 @@ export default class Local extends Internal implements ILocal {
         }
     }
 
-    public register(methods: object, namespace: string, reply: boolean, pkg: {version: string}): void {
+    public register(
+        methods: object,
+        namespace: string,
+        reply: boolean,
+        pkg: {version: string}
+    ): void {
         if (methods instanceof Array) {
             methods.forEach(fn => {
                 if (fn instanceof Function && fn.name) {

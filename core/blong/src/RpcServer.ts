@@ -1,27 +1,27 @@
 // import { DaprServer, CommunicationProtocolEnum } from '@dapr/dapr';
-import fastify, { type FastifyReply, type FastifyRequest, type RouteOptions } from 'fastify';
+import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
-import { Internal } from '../types.js';
-import type { ILog } from './Log.js';
-import type { IResolution } from './Resolution.js';
+import {Internal} from '../types.js';
+import type {ILog} from './Log.js';
+import type {IResolution} from './Resolution.js';
 
 export interface IRpcServer {
-    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void
-    unregister: (methods: string[], namespace: string, reply: boolean) => void
-    start: () => Promise<void>
-    stop: () => Promise<void>
+    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
+    unregister: (methods: string[], namespace: string, reply: boolean) => void;
+    start: () => Promise<void>;
+    stop: () => Promise<void>;
 }
 
 interface IConfig {
-    port: number
-    host: string
-    logLevel: Parameters<ILog['logger']>[0]
+    port: number;
+    host: string;
+    logLevel: Parameters<ILog['logger']>[0];
 }
 export default class RpcServer extends Internal implements IRpcServer {
     #config: IConfig = {
         port: 8091,
         host: '0.0.0.0',
-        logLevel: 'info'
+        logLevel: 'info',
     };
 
     // #dapr: DaprServer;
@@ -30,7 +30,7 @@ export default class RpcServer extends Internal implements IRpcServer {
     #resolution: IResolution;
     #handlers: Map<string, {handle: RouteOptions['handler']}> = new Map();
 
-    public constructor(config: IConfig, {log, resolution}: {log: ILog, resolution: IResolution}) {
+    public constructor(config: IConfig, {log, resolution}: {log: ILog; resolution: IResolution}) {
         // https://docs.dapr.io/developing-applications/sdks/js/js-server/
         // this.#dapr = new DaprServer({
         //     serverHost: '127.0.0.1',
@@ -45,25 +45,38 @@ export default class RpcServer extends Internal implements IRpcServer {
         this.merge(this.#config, config);
         this.#resolution = resolution;
         this.#server = fastify({
-            logger: log?.child({name: 'rpc'}, {level: this.#config.logLevel})
+            logger: log?.child({name: 'rpc'}, {level: this.#config.logLevel}),
         });
     }
 
-    private _register(namespace: string, name: string, callback: () => unknown, object: object, pkg: unknown): void {
+    private _register(
+        namespace: string,
+        name: string,
+        callback: () => unknown,
+        object: object,
+        pkg: unknown
+    ): void {
         const url = `/rpc/${namespace}/${name.split('.').join('/')}`;
         async function handle(request: FastifyRequest, reply: FastifyReply): Promise<object> {
-            const {id, method, params} = request.body as {id: string, method: string, params: object[]};
+            const {id, method, params} = request.body as {
+                id: string;
+                method: string;
+                params: object[];
+            };
             const meta = params.pop();
-            const result = await callback.apply(object, [...params, {
-                ...meta,
-                method,
-                // forward: forward(request.headers),
-                opcode: method.split('.').pop()
-            }]);
+            const result = await callback.apply(object, [
+                ...params,
+                {
+                    ...meta,
+                    method,
+                    // forward: forward(request.headers),
+                    opcode: method.split('.').pop(),
+                },
+            ]);
             return {
                 jsonrpc: '2.0',
                 id,
-                result
+                result,
             };
         }
         const prevHandler = this.#handlers.get(url);
@@ -71,12 +84,24 @@ export default class RpcServer extends Internal implements IRpcServer {
         else {
             const handler = {handle};
             this.#handlers.set(url, handler);
-            this.#routes.push({method: 'post', url, handler: (request, reply) => handler.handle(request, reply)});
+            this.#routes.push({
+                method: 'post',
+                url,
+                handler: (request, reply) => handler.handle(request, reply),
+            });
         }
-        this.#resolution?.announce('rpc-' + name.split('.')[0].replace(/\//g, '-'), this.#config.port);
+        this.#resolution?.announce(
+            'rpc-' + name.split('.')[0].replace(/\//g, '-'),
+            this.#config.port
+        );
     }
 
-    public register(methods: object, namespace: string, reply: boolean, pkg: {version: string}): void {
+    public register(
+        methods: object,
+        namespace: string,
+        reply: boolean,
+        pkg: {version: string}
+    ): void {
         if (methods instanceof Array) {
             methods.forEach(fn => {
                 if (fn instanceof Function && fn.name) {
@@ -110,7 +135,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         this.#routes.forEach(route => this.#server.route(route));
         await this.#server.listen({
             port: this.#config.port,
-            host: this.#config.host
+            host: this.#config.host,
         });
     }
 
