@@ -1,8 +1,9 @@
+import { type OpenAPIV2 } from "openapi-types";
 import interpolate from 'ut-function.interpolate';
 
 import { library } from '../../../../types.js';
 
-export default library(proxy => function request({url, method, schemas}) {
+export default library(proxy => function request({url, method, schemas}: {url: string, method: string, schemas: OpenAPIV2.ParameterObject[]}) {
     return (msg = {body: undefined, baseUrl: '', params: {}}) => {
         const {params = msg, body, baseUrl} = msg;
         const result = {

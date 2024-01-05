@@ -1,12 +1,17 @@
+import type net from 'node:net';
 import PQueue from 'p-queue';
 import merge from 'ut-function.merge';
 
-import { type errors } from '../types.js';
-import { type Log } from './Log.js';
+import type { Errors, ITypedError } from '../types.js';
+import { IMeta } from '../types.js';
+import type { IGateway } from './Gateway.js';
+import type { ILog } from './Log.js';
+import type { IErrorFactory, IErrorMap } from './error.js';
 import loop from './loop.js';
 
-type config<T> = {
+type Config<T> = {
     id: string
+    type: string
     pkg: {
         name: string
         version: string
@@ -20,72 +25,48 @@ type config<T> = {
     disconnectOnError: boolean
     concurrency: number
     log: object
-    logLevel: Parameters<Log['logger']>[0]
+    maxReceiveBuffer: number
+    logLevel: Parameters<ILog['logger']>[0]
     namespace: string | string[]
     imports: string | string[]
 } & T
 
-type AdapterApi = {
-    adapter: (id: string) => unknown
-    utError: {
-        defineError
-        getError
-        fetchErrors
-    }
+type Logger = ReturnType<ILog['logger']>
+
+interface IError {
+    getError: IErrorFactory['get']
+    fetchErrors: IErrorFactory['fetch']
+    defineError: IErrorFactory['define']
+    register: IErrorFactory['register']
+}
+
+interface IApi {
+    id?: string
+    adapter: (id: string) => (api: {utError:IError}) => object
+    utError: IError
+    error: IErrorFactory
+    gateway: IGateway
     utBus: {
-        register: (methods: object, namespace: string, id: string, pkg: object) => void
-        subscribe: (methods: object, namespace: string, id: string, pkg: object) => void
+        config: object,
+        register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void
+        unregister: (methods: string[], namespace: string) => void
+        subscribe: (methods: object, namespace: string, id: string, pkg: {version: string}) => void
+        unsubscribe: (methods: string[], namespace: string) => void
+        dispatch: (...params: unknown[]) => boolean | Promise<unknown>
         methodId: (name: string) => string
         getPath: (name: string) => string
+        importMethod: (methodName, options?) => (...params: unknown[]) => Promise<unknown>
+        attachHandlers: (target: object, patterns: unknown) => unknown
     }
     utLog: {
-        createLog: Log['logger']
+        createLog: ILog['logger']
     }
+    handlers?: (api: {utError:IError}) => {extends?: string | ((api: {utError:IError}) => object)}
 }
 
-type hrtime = [number, number];
+export type HRTime = [number, number];
 
-export interface meta {
-    mtid: 'request' | 'response' | 'error' | 'notification' | 'discard',
-    method: string,
-    expect?: string[],
-    opcode?: string,
-    source?: string,
-    forward?: object,
-    httpResponse?: {
-        type?: string,
-        redirect?: string,
-        code?: number,
-        state?: unknown[],
-        header?: string[] | [string, unknown][]
-    },
-    httpRequest?: {
-        url: URL,
-        headers: object
-    },
-    auth: {
-        mlek: object,
-        mlsk: object,
-        permissionMap: Buffer,
-        actorId: string | number,
-        sessionId: string
-    },
-    language: {
-        languageId: string | number
-    },
-    conId: number,
-    destination?: string,
-    dispatch?: (msg?: object, $meta?: meta) => [msg: object, $meta: meta] | boolean | Promise<boolean>,
-    timeout: hrtime,
-    timer?: (name?: string, newTime?: hrtime) => {
-        [name: string]: number
-    },
-    validation?: unknown
-}
-
-type log = ReturnType<Log['logger']>
-
-const errorMap = {
+const errorMap: IErrorMap = {
     'adapter.configValidation': 'Adapter config validation:\r\n{message}',
     'adapter.missingParameters': 'Missing parameters',
     'adapter.missingMeta': 'Missing metadata',
@@ -111,25 +92,32 @@ const errorMap = {
     'adapter.noTraceId': '$meta.forward[\'x-b3-traceid\'] not passed to method {method}'
 };
 
-export type adapter<T = Record<string, unknown>> = (api: AdapterApi) => {
-    config?: config<T>
-    log?: log
-    errors?: errors<typeof errorMap>
-    imported?: ReturnType<adapter<T>>
+interface IAdapter<T> {
+    config?: Config<T>
+    log?: Logger
+    errors?: Errors<typeof errorMap>
+    imported?: ReturnType<IAdapterFactory<T>>
     extends?: object | `adapter.${string}`
-    init?: (this: ReturnType<adapter<T>>, ...config: Partial<config<T>>[]) => void
-    start?: (this: ReturnType<adapter<T>>) => Promise<void>
-    ready?: (this: ReturnType<adapter<T>>) => Promise<void>
-    stop?: (this: ReturnType<adapter<T>>) => Promise<void>
-    connected?: (this: ReturnType<adapter<T>>) => Promise<boolean>
-    error?: (error: Error, $meta: meta) => void
-    pack?: (this: ReturnType<adapter<T>>, packet: {size: number, data: Buffer}) => Buffer
-    unpackSize?: (this: ReturnType<adapter<T>>, buffer: Buffer) => {size: number, data: Buffer}
-    unpack?: (this: ReturnType<adapter<T>>, buffer: Buffer, options?: {size: number}) => Buffer
-    encode?: (data: object[], $meta: meta, context: object, log: log) => string | Buffer
-    decode?: (buff: string | Buffer, $meta: meta, context: object, log: log) => object[]
-    findValidation?: (this: ReturnType<adapter<T>>, $meta: meta) => () => object
-    getConversion?: (this: ReturnType<adapter<T>>, $meta: meta, type: 'send' | 'receive') => {name: string, fn: () => object}
+    init?: (this: ReturnType<IAdapterFactory<T>>, ...config: Partial<Config<T>>[]) => void
+    start?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>
+    ready?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>
+    stop?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>
+    connected?: (this: ReturnType<IAdapterFactory<T>>) => Promise<boolean>
+    error?: (error: Error, $meta: IMeta) => void
+    pack?: (this: ReturnType<IAdapterFactory<T>>, packet: {size: number, data: Buffer}) => Buffer
+    unpackSize?: (this: ReturnType<IAdapterFactory<T>>, buffer: Buffer) => {size: number, data: Buffer}
+    unpack?: (this: ReturnType<IAdapterFactory<T>>, buffer: Buffer, options?: {size: number}) => Buffer
+    encode?: (data: unknown, $meta: IMeta, context: object, log: Logger) => string | Buffer
+    decode?: (buff: string | Buffer, $meta: IMeta, context: object, log: Logger) => object[]
+    request?: () => Promise<unknown>
+    publish?: () => Promise<unknown>
+    drain?: () => void
+    findValidation?: (this: ReturnType<IAdapterFactory<T>>, $meta: IMeta) => () => object
+    getConversion?: (this: ReturnType<IAdapterFactory<T>>, $meta: IMeta, type: 'send' | 'receive') => {name: string, fn: () => object}
+    findHandler?: (this: ReturnType<IAdapterFactory<T>>, name: string) => () => unknown
+    handles?: (this: ReturnType<IAdapterFactory<T>>, name: string) => boolean
+    forNamespaces?: <T>(reducer: (prev: T, current: unknown) => T, initial: T) => T
+    methodPath?: (name: string) => string
     dispatch?: (...params: unknown[]) => Promise<unknown>
     exec?: (...params: unknown[]) => Promise<unknown>
     bytesSent?: (count: number) => void
@@ -137,49 +125,57 @@ export type adapter<T = Record<string, unknown>> = (api: AdapterApi) => {
     msgSent?: (count: number) => void
     msgReceived?: (count: number) => void
     isConnected?: Promise<boolean>
+    event?: (name: string, params?: unknown) => Promise<object>
+    handle?: (...params: unknown[]) => Promise<unknown>
+    connect?: (what:unknown, context: {requests: unknown, waiting: unknown, buffer: unknown}) => void
 };
 
-export interface context {
+export interface IAdapterFactory<T = Record<string, unknown>> {
+    config?: unknown
+    (api: IApi): IAdapter<T>
+}
+
+export interface IContext {
     session?: {
         [name: string]: unknown
     },
     conId?: string,
-    requests: Map<string, {$meta: meta, end: (error: Error) => {local: object, literals: object[]}}>,
+    requests: Map<string, {$meta: IMeta, end: (error: Error) => {local: object, literals: object[]}}>,
     waiting: Set<(error: Error) => void>
 }
 
-let _errors: errors<typeof errorMap>;
+let _errors: Errors<typeof errorMap>;
 
-const reserved = [
+const reserved: string[] = [
     'reducer', 'start', 'stop', 'ready', 'init', 'namespace',
     'send', 'requestSend', 'responseSend', 'errorSend',
     'receive', 'requestReceive', 'responseReceive', 'errorReceive'
 ];
 
-export default async function adapter({
+export default async function adapter<T>({
     adapter,
     utBus,
     utError,
     utLog,
     handlers
-}) {
+}: IApi): Promise<ReturnType <IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
 
     let queue: PQueue;
     let portLoop;
     let resolveConnected;
 
-    const connected = new Promise(resolve => {
+    const connected = new Promise<boolean>(resolve => {
         resolveConnected = resolve;
     });
 
-    const base = {
+    const base: ReturnType<IAdapterFactory<T>> = {
         errors: _errors,
         exec: null,
         imported: {},
-        config: {},
+        config: {} as Config<T>,
         log: null,
-        async init(...configs) {
+        async init(...configs: object[]) {
             base.config = merge({}, ...configs);
             base.log = utLog?.createLog(this.config.logLevel || 'info', { ...this.config.log, name: this.config.id, context: (this.config.type ?? 'dispatch')});
             const id = this.config.id.replace(/\./g, '-');
@@ -193,25 +189,25 @@ export default async function adapter({
                 [`${id}.drain`]: this.drain
             }, 'ports', this.config.id, this.config.pkg);
         },
-        error(error, $meta) {
+        error(error: ITypedError, $meta: IMeta) {
             if (this.log?.error) {
                 if (error.type && $meta?.expect?.includes?.(error.type)) return;
                 if ($meta) error.method = $meta.method;
                 this.log.error(error);
             }
         },
-        findValidation($meta) {
-
+        findValidation($meta: IMeta) {
+            return null
         },
-        handles(name) {
+        handles(name: string) {
             if (reserved.includes(name)) return true;
             const id = this.config.id.replace(/\./g, '-');
             return [].concat(this.config.namespace || this.config.imports || id).some(namespace => name.startsWith(namespace));
         },
-        methodPath(methodName) {
+        methodPath(methodName: string) {
             return methodName.split('/', 2)[1];
         },
-        getConversion($meta, type) {
+        getConversion($meta: IMeta, type: 'send' | 'receive') {
             let fn;
             let name;
             if ($meta) {
@@ -239,12 +235,12 @@ export default async function adapter({
             }
             return { fn, name };
         },
-        async dispatch(...args) {
+        async dispatch(...args: unknown[]) {
             const result = utBus.dispatch(...args);
             if (!result) this.log?.error?.(this.errors['adapter.dispatchFailure']({ args }));
             return result;
         },
-        async event(event, data?, mapper?) {
+        async event(event: string, data?: object, mapper?: string) {
             this.log?.info?.({$meta: {mtid: 'event', method: `adapter.${event}`}, ...data});
             const eventHandlers = [];
             this.importedMap?.forEach(imp => Object.prototype.hasOwnProperty.call(imp, event) && eventHandlers.push(imp[event]));
@@ -266,21 +262,21 @@ export default async function adapter({
         drain() {
 
         },
-        findHandler(methodName) {
+        findHandler(methodName: string) {
             methodName = utBus.methodId(methodName);
             return this.imported[methodName];
         },
-        async request(...params) {
+        async request(...params: unknown[]) {
             return queue.add(portLoop(params, true));
         },
-        async publish(...params) {
-            queue.add(portLoop(params, false));
+        async publish(...params: unknown[]) {
+            await queue.add(portLoop(params, false));
             return [true, params[params.length - 1]];
         },
         async ready() {
             return this.event('ready');
         },
-        forNamespaces(reducer, initial) {
+        forNamespaces<T>(reducer: (prev: T, current: unknown) => T, initial: T) {
             const id = this.config.id.replace(/\./g, '-');
             return [].concat(this.config.namespace || this.config.imports || id).reduce(reducer.bind(this), initial);
         },
@@ -297,8 +293,8 @@ export default async function adapter({
             utBus.subscribe(pub, 'ports', this.config.id, this.config.pkg);
             return this.event('start', {config: this.config});
         },
-        async handle(...params) {
-            const $meta = params && params.length > 1 && params[params.length - 1];
+        async handle(...params: unknown[]) {
+            const $meta = params && params.length > 1 && params[params.length - 1] as IMeta;
             const method = ($meta && $meta.method) || 'exec';
             const handler = this.findHandler(method) || this.imported.exec;
             if (handler instanceof Function) {
@@ -307,7 +303,7 @@ export default async function adapter({
                 throw this.errors['adapter.methodNotFound']({ params: { method } });
             }
         },
-        connect(what = this.handle.bind(this), context = this.config.context) {
+        connect(what: net.Socket | (() => void) = this.handle.bind(this), context: Parameters<typeof loop>[2] = this.config.context) {
             portLoop = loop(what, this, context);
             resolveConnected(true);
         },
@@ -328,5 +324,5 @@ export default async function adapter({
     }
     Object.setPrototypeOf(current, base);
 
-    return result;
+    return result as ReturnType<IAdapterFactory>;
 }

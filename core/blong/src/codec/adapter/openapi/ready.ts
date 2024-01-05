@@ -1,11 +1,11 @@
-import { handler } from '../../../../types.js';
+import { handler, type IMeta } from '../../../../types.js';
 
-export default handler<{openApi: object, namespace: string[]}>(async function({
+export default handler(async ({
     lib: {
         errors,
         load
     }
-}) {
+}) => {
     let handlers;
     return {
         async ready() {
@@ -16,11 +16,11 @@ export default handler<{openApi: object, namespace: string[]}>(async function({
             });
             handlers = await load(this.config.openApi, /./);
         },
-        send(params, $meta) {
+        send(params: unknown, $meta: IMeta) {
             const handler = handlers?.[$meta.method];
             return handler ? handler.call(this, params, $meta) : params;
         },
-        receive(response) {
+        receive(response: {body: unknown}) {
             return response.body;
         }
     };

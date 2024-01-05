@@ -1,26 +1,23 @@
-import { internal, type TypedError } from '../types.js';
-import type { Log } from './Log.js';
-import type { meta } from './adapter.js';
-import utError from './error.js';
+import type { IMeta } from '../types.js';
+import { Internal, type ITypedError } from '../types.js';
+import Errors, { type IErrorFactory } from './error.js';
+import type { ILog } from './Log.js';
 
-export interface ErrorFactory {
-    register: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: meta) => TypedError>
-    get: (name?: string) => Record<string, (params?: unknown, $meta?: meta) => TypedError>
-    fetch: (type?: string) => unknown
-    define: (id, superType, message) => unknown
+interface IConfig {
+    logLevel: Parameters<ILog['logger']>[0]
+    errorPrint: string
 }
-
-export default class ErrorFactoryImpl extends internal implements ErrorFactory {
-    #error: ReturnType<typeof utError>;
-    #config = {
+export default class ErrorFactory extends Internal implements IErrorFactory {
+    #error: ReturnType<typeof Errors>;
+    #config: IConfig = {
         logLevel: 'debug',
         errorPrint: ''
     };
 
-    constructor(config: {logLevel: Parameters<Log['logger']>[0], errorPrint: string}, {log}: {log: Log}) {
+    public constructor(config: IConfig, {log}: {log: ILog}) {
         super();
         this.merge(this.#config, config);
-        this.#error = utError({
+        this.#error = Errors({
             logFactory: {
                 createLog: (logLevel, bindings) => log?.logger(logLevel, bindings) || {}
             },
@@ -29,19 +26,19 @@ export default class ErrorFactoryImpl extends internal implements ErrorFactory {
         });
     }
 
-    register(errors) {
+    public register<T>(errors: T): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError> {
         return this.#error.register(errors);
     }
 
-    get(name) {
+    public get(name: string): unknown {
         return this.#error.get(name);
     }
 
-    fetch(type) {
+    public fetch(type: string): object {
         return this.#error.fetch(type);
     }
 
-    define(id, superType, message) {
+    public define(id: string, superType: string | { type: string; }, message: string): (params?: unknown, $meta?: IMeta) => ITypedError {
         return this.#error.define(id, superType, message);
     }
 }

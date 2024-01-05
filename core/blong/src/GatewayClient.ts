@@ -1,32 +1,32 @@
 import ky from 'ky';
 import { spare } from 'ut-function.timing';
-import type { Log } from './Log.js';
+import type { ILog } from './Log.js';
 
-import { errors } from '../types.js';
-import { type ErrorFactory } from './ErrorFactory.js';
-import type { Local } from './Local.js';
+import { Errors } from '../types.js';
+import type { IErrorFactory, IErrorMap } from './error.js';
+import type { ILocal } from './Local.js';
 import Remote from './Remote.js';
 
-export interface GatewayClient {
+export interface IGatewayClient {
     start: () => Promise<void>
     stop: () => Promise<void>
 }
 
-interface HTTPError extends Error {
+interface IError extends Error {
     type?: string;
     req?: object;
     res?: object;
 }
 
-const errorMap = {
+const errorMap: IErrorMap = {
     'gw.notFound': 'Local method "{method}" not found',
     'gw.jsonRpcEmpty': 'JSON RPC response without response and error',
     'gw.jsonRpcHttp': 'JSON RPC returned HTTP error {code}'
 };
 
-export default class GatewayClientImpl extends Remote implements GatewayClient {
-    #log: Log;
-    #errors: errors<typeof errorMap>;
+export default class GatewayClientImpl extends Remote implements IGatewayClient {
+    #log: ILog;
+    #errors: Errors<typeof errorMap>;
     #config = {
         url: 'http://localhost:8080/rpc',
         debug: false,
@@ -35,7 +35,7 @@ export default class GatewayClientImpl extends Remote implements GatewayClient {
 
     gateway(meta: object, method: string) {}
 
-    constructor(config, {log, error, local}: {log: Log, error: ErrorFactory, local: Local}) {
+    constructor(config, {log, error, local}: {log: ILog, error: IErrorFactory, local: ILocal}) {
         super(config, {log, error, local});
         this.merge(this.#config, config);
         this.#log = log;
@@ -74,7 +74,7 @@ export default class GatewayClientImpl extends Remote implements GatewayClient {
                 );
                 const body = await response.json<{jsonrpc?: string, error?: unknown, validation?: unknown, debug?: unknown}>();
                 if (body?.error !== undefined) {
-                    const error: HTTPError =
+                    const error: IError =
                             body.jsonrpc
                                 ? Object.assign(new Error(), body.error)
                                 : typeof body.error === 'string'

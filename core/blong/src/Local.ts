@@ -1,15 +1,15 @@
-import { internal } from '../types.js';
+import { Internal } from '../types.js';
 
-export interface Local {
+export interface ILocal {
     register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void
     unregister: (methods: string[], namespace: string) => void
     get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>}
 }
 
-export default class LocalImpl extends internal implements Local {
-    #mapLocal = {};
+export default class Local extends Internal implements ILocal {
+    #mapLocal: object = {};
 
-    private localRegister(namespace: string, name: string, method) {
+    private _localRegister(namespace: string, name: string, method: string): void {
         const local = this.#mapLocal[namespace + '.' + name];
         if (local) {
             local.method = method;
@@ -18,31 +18,31 @@ export default class LocalImpl extends internal implements Local {
         }
     }
 
-    register(methods: object, namespace: string, reply: boolean, pkg: {version: string}) {
+    public register(methods: object, namespace: string, reply: boolean, pkg: {version: string}): void {
         if (methods instanceof Array) {
             methods.forEach(fn => {
                 if (fn instanceof Function && fn.name) {
-                    this.localRegister(namespace, fn.name, fn);
+                    this._localRegister(namespace, fn.name, fn);
                 }
             });
         } else {
             Object.keys(methods).forEach(key => {
                 if (methods[key] instanceof Function) {
-                    this.localRegister(namespace, key, methods[key].bind(methods));
+                    this._localRegister(namespace, key, methods[key].bind(methods));
                 }
             });
         }
     }
 
-    private localUnregister(namespace: string, name: string) {
+    private _localUnregister(namespace: string, name: string): void {
         delete this.#mapLocal[namespace + '.' + name];
     }
 
-    unregister(methods: string[], namespace: string) {
-        methods.forEach(fn => this.localUnregister(namespace, fn));
+    public unregister(methods: string[], namespace: string): void {
+        methods.forEach(fn => this._localUnregister(namespace, fn));
     }
 
-    get(name: string) {
+    public get(name: string): ReturnType<ILocal['get']> {
         // if (!this.#mapLocal[name]) console.log({name, local: this.#mapLocal});
         return this.#mapLocal[name];
     }

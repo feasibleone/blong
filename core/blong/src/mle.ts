@@ -1,13 +1,17 @@
-import type { FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 
 import jose from './jose.js';
 
-export default fp<{sign: unknown, encrypt: unknown, public: {sign: unknown, encrypt: unknown}}>(
-    async function mlePlugin(fastify, config) {
+interface IConfig {sign?: unknown, encrypt?: unknown, public?: {sign?: unknown, encrypt?: unknown}}
+
+export default fp<IConfig>(
+    async function mlePlugin(fastify: FastifyInstance, config: IConfig) {
         const mle = await jose(config);
-        config.public.sign = mle.keys.sign;
-        config.public.encrypt = mle.keys.encrypt;
+        if (config) {
+            config.public.sign = mle.keys.sign;
+            config.public.encrypt = mle.keys.encrypt;
+        }
         fastify.addHook('preValidation', async(request: FastifyRequest<{Body: {jsonrpc?: string}}>, reply) => {
             if (request.routeOptions.config.auth && request.headers['content-type'] === 'application/json') {
                 const [where, what] = request.body?.jsonrpc ? [request.body, 'params'] : [request, 'body'];
@@ -36,7 +40,7 @@ export default fp<{sign: unknown, encrypt: unknown, public: {sign: unknown, encr
         fastify.addHook<unknown, unknown, {auth: unknown, mle: unknown}>('preSerialization', async(request, reply, payload: Error | {id?: unknown, jsonrpc?: unknown, result?: Record<string, unknown>, error?: Record<string, unknown>}) => {
             if (payload instanceof Error) return payload;
             if (request.routeOptions.config.auth && request.headers['content-type'] === 'application/json' && payload) {
-                const encrypt = message => request.routeOptions.config.mle === false
+                const encrypt: (message: object) => unknown = message => request.routeOptions.config.mle === false
                     ? message
                     : mle.signEncrypt(message, request.auth?.credentials?.mlek);
                 const where = payload.jsonrpc ? payload : {result: payload, id: undefined, jsonrpc: undefined};

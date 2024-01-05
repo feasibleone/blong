@@ -2,49 +2,63 @@ import { Type } from '@sinclair/typebox';
 import merge from 'ut-function.merge';
 
 import type { GatewaySchema } from '../types.js';
-import { internal } from '../types.js';
-import type { ErrorFactory } from './ErrorFactory.js';
-import type { Gateway } from './Gateway.js';
-import type { Local } from './Local.js';
-import type { Log } from './Log.js';
-import type { Remote } from './Remote.js';
-import type { Resolution } from './Resolution.js';
-import type { RpcServer } from './RpcServer.js';
-import type { Watch } from './Watch.js';
-import type { adapter } from './adapter.js';
+import { Internal } from '../types.js';
+import type { IGateway } from './Gateway.js';
+import type { ILocal } from './Local.js';
+import type { ILog } from './Log.js';
+import type { IRemote } from './Remote.js';
+import type { IResolution } from './Resolution.js';
+import type { IRpcServer } from './RpcServer.js';
+import type { IWatch } from './Watch.js';
+import type { IAdapterFactory } from './adapter.js';
+import type { IErrorFactory } from './error.js';
 import { methodId, methodParts } from './lib.js';
 
-export interface Registry {
-    ports: Map<string, adapter>
-    methods: Map<string, ((params: {remote: unknown, lib: object, port: object, local: object, literals: object[]}) => void)[]>
-    modules: Map<string | symbol, unknown[]>
-    createPort: (id: string) => Promise<ReturnType<adapter>>
+type Handlers = ((params: {
+    remote: unknown,
+    lib: object
+    port: object
+    local: object
+    literals: object[]
+    gateway: IGateway
+}) => void)[]
+
+export interface IRegistry {
+    ports: Map<string, IAdapterFactory>
+    methods: Map<string, Handlers>
+    modules: Map<string | symbol, IRegistry[]>
+    createPort: (id: string) => Promise<ReturnType<IAdapterFactory>>
     replaceHandlers: (id: string, handlers: object) => Promise<void>;
     connected: () => Promise<boolean>
 }
 
-type matchMethodsCallback = (name: string, local: object, literals: object[]) => void
-const API = /\.validation|\.api|^validation$|^api$/;
+type MatchMethodsCallback = (name: string, local: object, literals: object[]) => void
+const API: RegExp = /\.validation|\.api|^validation$|^api$/;
 
-export default class RegistryImpl extends internal implements Registry {
-    modules = new Map();
-    ports = new Map();
-    methods = new Map();
-    #ports = new Map<string, ReturnType<adapter>>();
-    #error: ErrorFactory;
-    #portAttachments = new Map();
+export default class Registry extends Internal implements IRegistry {
+    public modules: Map<string | symbol, IRegistry[]> = new Map();
+    public ports: Map<string, IAdapterFactory> = new Map();
+    public methods: Map<string, Handlers> = new Map();
+    #ports: Map<string, ReturnType<IAdapterFactory>> = new Map();
+    #error: IErrorFactory;
+    #portAttachments: Map<string, [{
+        port: object,
+        target: {importedMap: Map<string, object>},
+        parent: object,
+        pointer: object
+    }]> = new Map();
     #validations: Record<string, GatewaySchema> = {};
 
-    #resolution: Resolution;
-    #rpcServer: RpcServer;
-    #remote: Remote;
-    #gateway: Gateway;
-    #local: Local;
-    #watch : Watch;
-    #log: Log;
+    #resolution: IResolution;
+    #rpcServer: IRpcServer;
+    #remote: IRemote;
+    #gateway: IGateway;
+    #local: ILocal;
+    #watch : IWatch;
+    #log: ILog;
 
-    constructor(
-        config,
+    public constructor(
+        config: object,
         {
             log,
             error,
@@ -55,14 +69,14 @@ export default class RegistryImpl extends internal implements Registry {
             resolution,
             watch
         }: {
-            log?: Log,
-            error?: ErrorFactory,
-            rpcServer?: RpcServer,
-            remote?: Remote,
-            gateway?: Gateway,
-            local?: Local,
-            resolution?: Resolution,
-            watch?: Watch
+            log?: ILog,
+            error?: IErrorFactory,
+            rpcServer?: IRpcServer,
+            remote?: IRemote,
+            gateway?: IGateway,
+            local?: ILocal,
+            resolution?: IResolution,
+            watch?: IWatch
         }
     ) {
         super();
@@ -76,14 +90,14 @@ export default class RegistryImpl extends internal implements Registry {
         this.#watch = watch;
     }
 
-    async createPort(id: string) {
+    public async createPort(id: string): Promise<ReturnType<IAdapterFactory>> {
         const port = this.ports.get(id);
         await this.#ports.get(id)?.stop();
         if (port.config === false) {
             this.#ports.delete(id);
             return;
         }
-        const api = {
+        const api: Parameters<IAdapterFactory>[0] = {
             id,
             adapter: id => this.ports.get(id),
             utError: {
@@ -126,32 +140,32 @@ export default class RegistryImpl extends internal implements Registry {
         };
         const result = await port(api);
         this.#ports.set(id, result);
-        api.utBus.attachHandlers = this.attachHandlers(result);
+        api.utBus.attachHandlers = this._attachHandlers(result);
         return result;
     }
 
-    private async matchMethods(mode: 'extend' | 'merge', patterns: (string | RegExp)[] | string | RegExp, port: object | matchMethodsCallback, callback?: matchMethodsCallback) {
+    private async _matchMethods(mode: 'extend' | 'merge', patterns: (string | RegExp)[] | string | RegExp, port: object | MatchMethodsCallback, callback?: MatchMethodsCallback): Promise<void> {
         if (typeof port === 'function' && !callback) {
-            callback = port as matchMethodsCallback;
+            callback = port as MatchMethodsCallback;
             port = undefined;
         }
         for (const [name, value] of this.methods.entries()) {
             if ([].concat(patterns).some(pattern => (pattern instanceof RegExp && pattern.test(name)) || (pattern === name))) {
                 if (mode === 'merge') {
                     for (const item of value) {
-                        const { local, literals } = await this.createHandlers([item], port);
+                        const { local, literals } = await this._createHandlers([item], port);
                         callback(name, local, literals);
                     }
                 } else {
-                    const { local, literals } = await this.createHandlers(value, port);
+                    const { local, literals } = await this._createHandlers(value, port);
                     callback(name, local, literals);
                 }
             }
         }
     }
 
-    async validations() {
-        await this.matchMethods('merge', API, (name, local, literals) => {
+    private async _validations(): Promise<Record<string, GatewaySchema>> {
+        await this._matchMethods('merge', API, (name, local, literals) => {
             Object.entries(local).forEach(([name, validation]) => {
                 if (typeof validation === 'function') {
                     const schema = (validation as () => GatewaySchema)();
@@ -163,13 +177,13 @@ export default class RegistryImpl extends internal implements Registry {
         return this.#validations;
     }
 
-    attachHandlers(port: object) {
+    private _attachHandlers(port: object): (target: object, patterns: unknown) => unknown {
         return (target: {importedMap: Map<string, object>, imported: object}, patterns: (string | RegExp)[] | string | RegExp) => {
             target.imported = {};
             Object.setPrototypeOf(target.imported, target);
             if (patterns && (!Array.isArray(patterns) || patterns.length)) {
                 target.importedMap = new Map(); // preserve patterns order
-                return this.matchMethods('extend', patterns, port, (name, local, literals) => {
+                return this._matchMethods('extend', patterns, port, (name, local, literals) => {
                     const ports = this.#portAttachments.get(name);
                     const info = {port, target, parent: target.imported, pointer: {}};
                     if (ports) ports.push(info); else this.#portAttachments.set(name, [info]);
@@ -183,11 +197,11 @@ export default class RegistryImpl extends internal implements Registry {
         };
     }
 
-    async replaceHandlers(id, handlers) {
+    public async replaceHandlers(id: string, handlers: Handlers): Promise<void> {
         const attachments = this.#portAttachments.get(id);
         if (attachments) {
             for (const {port, target, parent, pointer} of attachments) {
-                const { local, literals } = await this.createHandlers(handlers, port);
+                const { local, literals } = await this._createHandlers(handlers, port);
                 target.importedMap.set(id, local);
                 literals.forEach(literal => Object.setPrototypeOf(literal, parent));
                 Object.setPrototypeOf(local, parent);
@@ -196,11 +210,11 @@ export default class RegistryImpl extends internal implements Registry {
         }
         if (API.test(id)) {
             this.methods.set(id, handlers);
-            await this.validations();
+            await this._validations();
         }
     }
 
-    private async createHandlers(handlers, port) {
+    private async _createHandlers(handlers: Handlers, port: object): Promise<{local: object, literals: object[]}> {
         const lib = {
             Type,
             error: this.#error.register.bind(this.#error),
@@ -221,11 +235,11 @@ export default class RegistryImpl extends internal implements Registry {
         return { local, literals };
     }
 
-    async start() {
+    public async start(): Promise<void> {
         for (const id of Array.from(this.ports.keys())) await this.createPort(id);
         for (const port of this.#ports.values()) await port.start();
         for (const port of this.#ports.values()) await port.ready();
-        this.#gateway?.route(await this.validations(), {name: '', version: ''});
+        this.#gateway?.route(await this._validations(), {name: '', version: ''});
         await this.#resolution?.start();
         await this.#rpcServer?.start();
         await this.#remote?.start();
@@ -236,15 +250,15 @@ export default class RegistryImpl extends internal implements Registry {
         // console.dir(created);
     }
 
-    async connected() {
+    public async connected(): Promise<boolean> {
         return (await Promise.all(Array.from(this.#ports.values()).reverse().map(port => port.connected?.() ?? port.isConnected))).every(item => item);
     }
 
-    async test(framework) {
+    public async test(framework: unknown): Promise<void> {
         await this.#watch.test(framework);
     }
 
-    async stop() {
+    public async stop(): Promise<void> {
         await this.#watch?.stop();
         await this.#gateway?.stop();
         await this.#remote?.stop();

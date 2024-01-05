@@ -1,12 +1,12 @@
 import timing from 'ut-function.timing';
-import { handler } from '../../../../types.js';
+import { handler, type IMeta } from '../../../../types.js';
 
 export default handler(({
     config
 }) => {
     let id = 1;
     return {
-        send(msg: {$http: {method?: string, headers?: unknown, path?: unknown}}, $meta, context) {
+        send(msg: {$http: {method?: string, headers?: unknown, path?: unknown}}, $meta: IMeta, context: unknown) {
             const params = (msg && !(msg instanceof Array) && Object.assign({}, msg)) || msg;
             const $http = params?.$http;
             delete params?.$http;

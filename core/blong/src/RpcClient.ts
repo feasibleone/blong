@@ -1,26 +1,26 @@
 import got, { type HttpsOptions } from 'got';
 import timing from 'ut-function.timing';
 
-import type { errors } from '../types.js';
-import { type ErrorFactory } from './ErrorFactory.js';
-import GatewayCodecImpl, { type GatewayCodec } from './GatewayCodec.js';
-import type { Local } from './Local.js';
-import type { Log } from './Log.js';
-import RemoteImpl, { type Remote } from './Remote.js';
-import type { Resolution } from './Resolution.js';
+import type { Errors, IMeta } from '../types.js';
+import GatewayCodecImpl, { type IConfig as IConfigGatewayCodec, type IGatewayCodec } from './GatewayCodec.js';
+import type { ILocal } from './Local.js';
+import type { ILog } from './Log.js';
+import RemoteImpl, { type IRemote } from './Remote.js';
+import type { IResolution } from './Resolution.js';
+import type { IErrorFactory, IErrorMap } from './error.js';
 import tls from './tls.js';
 
-export interface RpcClient extends Remote{
-    verify: GatewayCodec['verify']
+export interface IRpcClient extends IRemote{
+    verify: IGatewayCodec['verify']
 }
 
-interface HTTPError extends Error {
+interface IError extends Error {
     type?: string;
     req?: object;
     res?: object;
 }
 
-const errorMap = {
+const errorMap: IErrorMap = {
     'rpc.actionEmpty': {message: 'Listing actions returned empty response', statusCode: 403},
     'rpc.actionHttp': {message: 'Listing actions returned HTTP error {code}', statusCode: 403},
     'rpc.jsonRpcEmpty': 'JSON RPC response without response and error',
@@ -34,26 +34,24 @@ const errorMap = {
     'rpc.unauthorized': {message: 'Operation {method} is not allowed for this user', statusCode: 403}
 };
 
-export default class RpcClientImpl extends RemoteImpl implements RpcClient {
-    #config = {
+interface IConfig extends IConfigGatewayCodec {
+    tls?: {ca?: string | string[], key?: string, cert?: string, crl?: string}
+    logLevel?: Parameters<ILog['logger']>[0]
+    latency: number
+    debug: boolean
+}
+export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
+    #config: IConfig = {
         latency: 50,
         debug: false
     };
 
     #https: HttpsOptions;
-    #gatewayCodec: GatewayCodec;
-    #resolution: Resolution;
-    #errors: errors<typeof errorMap>;
+    #gatewayCodec: IGatewayCodec;
+    #resolution: IResolution;
+    #errors: Errors<typeof errorMap>;
 
-    verify(token, options, isId) {
-        return this.#gatewayCodec.verify(token, options, isId);
-    }
-
-    gateway(meta, method) {
-        return this.#gatewayCodec.gateway(meta, method);
-    }
-
-    constructor(config, {log, error, resolution, local}: {log: Log, error: ErrorFactory, resolution: Resolution, local: Local}) {
+    public constructor(config: IConfig, {log, error, resolution, local}: {log: ILog, error: IErrorFactory, resolution: IResolution, local: ILocal}) {
         super(config, {log, error, local});
         config = this.merge(this.#config, config);
         this.#resolution = resolution;
@@ -69,12 +67,20 @@ export default class RpcClientImpl extends RemoteImpl implements RpcClient {
         );
     }
 
-    sender(methodType: 'request' | 'publish') {
+    public verify(...params: Parameters<IGatewayCodec['verify']>): ReturnType<IGatewayCodec['verify']> {
+        return this.#gatewayCodec.verify(...params);
+    }
+
+    public gateway(...params: Parameters<IGatewayCodec['gateway']>): ReturnType<IGatewayCodec['gateway']> {
+        return this.#gatewayCodec.gateway(...params);
+    }
+
+    protected sender(methodType: 'request' | 'publish'): (...params: unknown[]) => Promise<unknown> {
         return async(msg, ...rest) => {
-            const {stream, ...$meta} = rest.pop();
+            const {stream, ...$meta} = rest.pop() as IMeta;
             const {encode, decode, requestParams} = await this.#gatewayCodec.codec($meta, methodType);
             const {params, headers, method = $meta.method} = await encode(msg, ...rest, $meta);
-            const sendRequest = async() => {
+            const sendRequest = async():Promise<unknown> => {
                 try {
                     const response = await got.post<{jsonrpc?: string, error?: unknown, validation?: unknown, debug?: unknown}>(
                         `${requestParams.protocol}://${requestParams.hostname}:${requestParams.port}${requestParams.path}`,
@@ -98,7 +104,7 @@ export default class RpcClientImpl extends RemoteImpl implements RpcClient {
                     );
                     const {body} = response;
                     if (body?.error !== undefined) {
-                        const error: HTTPError =
+                        const error: IError =
                             body.jsonrpc
                                 ? Object.assign(new Error(), await decode(body.error, true))
                                 : typeof body.error === 'string'
@@ -159,9 +165,9 @@ export default class RpcClientImpl extends RemoteImpl implements RpcClient {
         };
     }
 
-    async stop() {
+    public async stop(): Promise<void> {
     }
 
-    async start() {
+    public async start(): Promise<void> {
     }
 }

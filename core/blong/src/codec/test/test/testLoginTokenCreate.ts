@@ -1,4 +1,4 @@
-import { handler } from '@feasibleone/blong';
+import { handler, type IMeta } from '../../../../types.js';
 
 export default handler(({
     handler: {
@@ -6,7 +6,7 @@ export default handler(({
     }
 }) => ({
     testLoginTokenCreate: ({name = 'login token'}) => Object.defineProperty<unknown>([
-        function login(assert, {$meta}) {
+        function login(assert: unknown, {$meta}: {$meta: IMeta}) {
             return loginTokenCreate({
                 username: 'test',
                 password: 'test'

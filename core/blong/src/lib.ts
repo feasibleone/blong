@@ -6,9 +6,10 @@ export function methodId<T>(what: T): T {
         ) as T;
 }
 
-export function methodParts(what: string) {
+export function methodParts(what: string): string {
     if (what.includes('.')) return what;
-    const lowercase = (match, word1, word2, letter) => `${word1}.${word2.toLowerCase()}${letter ? ('.' + letter.toLowerCase()) : ''}`;
+    const lowercase = (match: string, word1: string, word2: string, letter: string): string =>
+        `${word1}.${word2.toLowerCase()}${letter ? ('.' + letter.toLowerCase()) : ''}`;
     const capitalWords = /^([^A-Z]+)([A-Z][^A-Z]+)([A-Z])?/;
     return what.replace(capitalWords, lowercase);
 }

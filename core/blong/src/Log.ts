@@ -1,7 +1,7 @@
-import {pino, type Level, type LogFn, type Logger } from 'pino';
-import { internal } from '../types.js';
+import { LoggerOptions, pino, type Level, type LogFn, type Logger } from 'pino';
+import { Internal } from '../types.js';
 
-export interface Log {
+export interface ILog {
     logger: (level: Level, bindings: object) => {
         trace?: LogFn
         debug?: LogFn
@@ -10,13 +10,13 @@ export interface Log {
         error?: LogFn
         fatal?: LogFn
     }
-    child: (bindings?: object, options?: object) => Logger
+    child: Logger['child']
 }
 
-export default class LogImpl extends internal implements Log {
+export default class Log extends Internal implements ILog {
     #logger: Logger;
-    #config = {
-        level: 'info' as Level,
+    #config: LoggerOptions = {
+        level: 'info',
         transport: {
             target: 'pino-pretty',
             options: {
@@ -46,17 +46,17 @@ export default class LogImpl extends internal implements Log {
         }
     };
 
-    constructor(config) {
+    public constructor(config: LoggerOptions) {
         super();
         this.merge(this.#config, config);
         this.#logger = pino(this.#config);
     }
 
-    child(bindings, options) {
-        return this.#logger.child(bindings, options);
+    public child(...params: Parameters<Logger['child']>): ReturnType<Logger['child']> {
+        return this.#logger.child(...params);
     }
 
-    logger(level: Level = this.#config.level, bindings: object) {
+    public logger(level: LoggerOptions['level'] = this.#config.level, bindings: object): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
         const result = {
             trace: null,

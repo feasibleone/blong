@@ -1,17 +1,18 @@
 import merge from 'ut-function.merge';
 
-import { config, kind } from '../types.js';
-import createPort, { type adapter } from './adapter.js';
+import { kind, type IModuleConfig } from '../types.js';
+import type { IPort } from './Port.js';
+import createPort, { type IAdapterFactory } from './adapter.js';
+import { type IErrorFactory } from './error.js';
 import { methodId } from './lib.js';
-import type { Port } from './Port.js';
 
-export default function layerProxy(errors, port, moduleConfig: {pkg: config['pkg']}) {
+export default function layerProxy(errors: IErrorFactory, port: () => void, moduleConfig: {pkg: IModuleConfig['pkg']}): {result: unknown} {
     return new Proxy({
         error: errors.register.bind(errors),
         result: {error: errors.get()},
         feature() {}
     }, {
-        get(target, name, receiver) {
+        get(target: {error: unknown, result: {error: unknown}, feature: unknown}, name: string, receiver: unknown) {
             switch (name) {
                 case 'utPort': return port;
                 case 'registerErrors': return target.error;
@@ -25,14 +26,14 @@ export default function layerProxy(errors, port, moduleConfig: {pkg: config['pkg
                         }, [[], []]);
                         ports.forEach(what => {
                             if (what.prototype instanceof port) {
-                                where.port = async({id, ...portApi}: Parameters<adapter>[0] & {id: string}) => {
-                                    const port = new (what as Port)({ ...portApi, config: {...moduleConfig?.[name], id, pkg: moduleConfig.pkg} });
+                                where.port = async({id, ...portApi}: Parameters<IAdapterFactory>[0] & {id: string}) => {
+                                    const port = new (what as IPort)({ ...portApi, config: {...moduleConfig?.[name], id, pkg: moduleConfig.pkg} });
                                     await port.init();
                                     return port;
                                 };
                                 where.port.config = moduleConfig?.[name];
                             } else if (kind(what) === 'adapter') {
-                                where.port = async({id, ...portApi}: Parameters<adapter>[0] & {id: string}) => {
+                                where.port = async({id, ...portApi}: Parameters<IAdapterFactory>[0] & {id: string}) => {
                                     if (!id) return what(portApi);
                                     const port = await createPort({ ...portApi, handlers: what });
                                     await port.init({...moduleConfig?.[name], id, pkg: moduleConfig.pkg});
@@ -41,12 +42,20 @@ export default function layerProxy(errors, port, moduleConfig: {pkg: config['pkg
                                 where.port.config = moduleConfig?.[name];
                             }
                         });
-                        others.length && where.methods.push(async function({remote, lib, local, literals, port, ...rest}) {
+                        if (others.length) where.methods.push(async function(
+                            {remote, lib, local, literals, port, ...rest}: {
+                                remote: (methodName: string) => () => unknown
+                                lib: object
+                                local: object
+                                literals: unknown[]
+                                port: ReturnType<IAdapterFactory>
+                            }
+                        ) {
                             const layerApi = {
                                 ...rest,
                                 config: merge({}, moduleConfig[name], port?.config?.[namespace]),
                                 lib: new Proxy(lib, {
-                                    get(target, functionName) {
+                                    get(target: object, functionName: string) {
                                         let fn: () => unknown;
                                         return target[functionName] ?? function(...params: unknown[]) {
                                             fn ||= target[functionName];
@@ -56,9 +65,9 @@ export default function layerProxy(errors, port, moduleConfig: {pkg: config['pkg
                                     }
                                 }),
                                 handler: new Proxy(local, {
-                                    get(target, handlerName) {
+                                    get(target: unknown, handlerName: string) {
                                         let fn: () => unknown;
-                                        function rename(value, fn) {
+                                        function rename<T>(value: string, fn: T): T {
                                             Object.defineProperty(fn, 'name', {value, configurable: true, enumerable: false});
                                             return fn;
                                         }

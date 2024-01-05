@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import jose from './jose.js';
 
-test('jose', async t => {
+await test('jose', async t => {
     const {signEncrypt, decryptVerify} = await jose({
         encrypt: {
             kty: 'EC',

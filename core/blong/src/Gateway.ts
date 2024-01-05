@@ -1,29 +1,31 @@
-import { Type } from '@sinclair/typebox';
+import { Type, type TSchema } from '@sinclair/typebox';
 import fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
 import os from 'os';
+import type { LevelWithSilent } from 'pino';
 import { after } from 'ut-function.timing';
 import { v4 } from 'uuid';
 
-import type { GatewaySchema } from '../types.js';
-import { internal, type errors } from '../types.js';
-import type { Local } from './Local.js';
-import type { Log } from './Log.js';
-import type { Resolution } from './Resolution.js';
-import { type RpcClient } from './RpcClient.js';
+import type { GatewaySchema, IMeta } from '../types.js';
+import { Internal, type Errors } from '../types.js';
+import type { ILocal } from './Local.js';
+import type { ILog } from './Log.js';
+import type { IResolution } from './Resolution.js';
+import type { IRpcClient } from './RpcClient.js';
+import type { IErrorFactory, IErrorMap } from './error.js';
 import jwt from './jwt.js';
 import { methodParts } from './lib.js';
 import swagger from './swagger.js';
 
-const osName = [os.type(), os.platform(), os.release()].join(':');
-const hostName = os.hostname();
+const osName: string = [os.type(), os.platform(), os.release()].join(':');
+const hostName: string = os.hostname();
 
-const typedError = Type.Object({
+const typedError: TSchema = Type.Object({
     message: Type.Optional(Type.String()),
     type: Type.Optional(Type.String()),
     print: Type.Optional(Type.String())
 });
 
-const jsonRpcError = Type.Object({ // error
+const jsonRpcError: TSchema = Type.Object({ // error
     jsonrpc: Type.Literal('2.0'),
     id: Type.Union([
         Type.String(),
@@ -32,33 +34,52 @@ const jsonRpcError = Type.Object({ // error
     error: typedError
 });
 
-type GatewayRequest = FastifyRequest & {auth: {credentials: {language?: unknown, [name: string]: unknown}}};
+type GatewayRequest = FastifyRequest;
 
-export interface Gateway {
+export interface IGateway {
     route: (validations: Record<string, GatewaySchema>, pkg: {name: string, version: string}) => void
     start: () => Promise<void>
     stop: () => Promise<void>
 }
 
-const errorMap = {
+const errorMap: IErrorMap = {
     'gateway.jwtMissingHeader': {message: 'Missing bearer authorization header', statusCode: 401}
 };
 
 declare module 'fastify' {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     interface FastifyContextConfig {
         auth: unknown
         mle?: unknown
     }
 }
 
-export default class GatewayImpl extends internal implements Gateway {
+interface IConfig {
+    host?: string
+    port?: number
+    logLevel?: LevelWithSilent
+    cors?: unknown
+    sign?: unknown
+    encrypt?: unknown
+    public?: {
+        sign?: unknown
+        encrypt?: unknown
+    }
+    debug?: boolean
+    errorFields: unknown[]
+    jwt: {
+        cache: object
+        audience: string
+    }
+}
+export default class Gateway extends Internal implements IGateway {
     #server: ReturnType<typeof fastify> = null;
-    #resolution: Resolution;
-    #log: Log;
-    #config = {
+    #resolution: IResolution;
+    #log: ILog;
+    #config: IConfig = {
         host: '0.0.0.0',
         port: 8080,
-        logLevel: 'trace' as Parameters<Log['logger']>[0],
+        logLevel: 'trace',
         cors: undefined,
         sign: undefined,
         encrypt: undefined,
@@ -74,13 +95,19 @@ export default class GatewayImpl extends internal implements Gateway {
         }
     };
 
-    #errors: errors<typeof errorMap>;
-    #rpcClient: RpcClient;
+    #errors: Errors<typeof errorMap>;
+    #rpcClient: IRpcClient;
     #routes: RouteOptions[] = [];
-    #local: Local;
-    #errorFields = [];
+    #local: ILocal;
+    #errorFields: [string, unknown][] = [];
 
-    constructor(config, {log, remote, error, resolution, local}) {
+    public constructor(config: IConfig, {log, remote, error, resolution, local}: {
+        log?: ILog,
+        error?: IErrorFactory,
+        remote?: IRpcClient,
+        local?: ILocal,
+        resolution?: IResolution
+     }) {
         super();
         this.#log = log;
         this.merge(this.#config, config);
@@ -102,12 +129,12 @@ export default class GatewayImpl extends internal implements Gateway {
         this.#local = local;
     }
 
-    config() {
+    protected config(): object {
         return Object.freeze({...this.#config});
     }
 
     // https://github.com/openzipkin/b3-propagation
-    forward(headers) {
+    private _forward(headers: object): object {
         return [
             ['x-request-id'],
             ['x-b3-traceid', () => v4().replace(/-/g, '')],
@@ -117,14 +144,14 @@ export default class GatewayImpl extends internal implements Gateway {
             ['x-b3-flags'],
             ['x-ot-span-context'],
             ['x-ut-stack']
-        ].reduce(function(object, [key, value]: [string, () => string]) {
+        ].reduce(function(object: object, [key, value]: [string, () => string]) {
             if (typeof key === 'string' && key in headers) object[key] = headers[key];
             else if (value) object[key] = value();
             return object;
         }, {});
     }
 
-    meta(req: GatewayRequest, version: string, serviceName: string) {
+    private _meta(req: GatewayRequest, version: string, serviceName: string): Partial<IMeta> {
         const {
             'user-agent': frontEnd,
             'geo-position': gps, // https://datatracker.ietf.org/doc/html/draft-daviel-http-geo-header-05
@@ -139,7 +166,7 @@ export default class GatewayImpl extends internal implements Gateway {
         const [latitude, longitude] = (typeof gps === 'string') ? gps.split(' ', 1)[0].split(';') : [req.headers.latitude, req.headers.longitude];
         const {language, ...auth} = req.auth?.credentials || {};
         return {
-            forward: this.forward(req.headers),
+            forward: this._forward(req.headers),
             frontEnd,
             latitude,
             longitude,
@@ -161,8 +188,8 @@ export default class GatewayImpl extends internal implements Gateway {
         };
     }
 
-    applyMeta(response, {httpResponse}: {httpResponse?: unknown}) {
-        httpResponse && [
+    private _applyMeta(response: object, {httpResponse}: {httpResponse?: unknown}): object {
+        if (httpResponse) [
             'code', 'redirect', 'type',
             'created', 'etag', 'location', 'ttl', 'temporary', 'permanent', 'state', 'unstate', // todo
             'header'
@@ -179,7 +206,7 @@ export default class GatewayImpl extends internal implements Gateway {
         return response;
     }
 
-    route(validations: Record<string, GatewaySchema>, pkg) {
+    public route(validations: Record<string, GatewaySchema>, pkg: {name: string, version: string}): void {
         const wildcard: [string, GatewaySchema][] = Array.from(new Set(Object.keys(validations).map(name => name.split('.', 1)[0])).values()).map(namespace => [`${namespace}.*`, {
             params: Type.Any(),
             result: Type.Any(),
@@ -208,6 +235,7 @@ export default class GatewayImpl extends internal implements Gateway {
                             params: value.params
                         })
                     } : undefined,
+                    /* eslint-disable @typescript-eslint/naming-convention */
                     ...'response' in value ? {response: {'2xx': value.response}} : 'result' in value ? {
                         response: ((this.#config.sign || this.#config.encrypt) && (value.auth ?? 'jwt')) ? {
                             '2xx': value.result,
@@ -234,6 +262,7 @@ export default class GatewayImpl extends internal implements Gateway {
                             '5xx': jsonRpcError
                         }
                     } : undefined,
+                    /* eslint-enable @typescript-eslint/naming-convention */
                     security: [value.auth === false ? {} : {
                         'ut-login': ['api']
                     }],
@@ -257,9 +286,9 @@ export default class GatewayImpl extends internal implements Gateway {
                             opcode: methodName.split('.').pop(),
                             ...timeout && {timeout: after(timeout)},
                             ...expect && {expect: [].concat(expect)},
-                            ...this.meta(request, pkg?.version, methodName.split('.')[0])
+                            ...this._meta(request, pkg?.version, methodName.split('.')[0])
                         };
-                        const notfound = () => reply.code(404).type('text/plain').send('namespace not found for method ' + methodName);
+                        const notfound = (): unknown => reply.code(404).type('text/plain').send('namespace not found for method ' + methodName);
                         if (isWildcard && !validations[methodParts(methodName)]) {
                             return reply.code(404).type('text/plain').send('validation not found for method ' + methodName);
                         }
@@ -268,12 +297,12 @@ export default class GatewayImpl extends internal implements Gateway {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
                             const [result, resultMeta] = await req.method(params, meta) ?? null;
-                            this.applyMeta(reply, resultMeta);
+                            this._applyMeta(reply, resultMeta);
                             return result;
                         } else if (id == null) {
                             const pub = this.#local.get(pubName);
                             if (!pub) return notfound();
-                            pub.method(params, meta);
+                            pub.method(params, meta).catch(error => {});
                             return {
                                 jsonrpc: '2.0',
                                 result: true
@@ -282,7 +311,7 @@ export default class GatewayImpl extends internal implements Gateway {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
                             const [result, resultMeta] = await req.method(params, meta) ?? null;
-                            this.applyMeta(reply, resultMeta);
+                            this._applyMeta(reply, resultMeta);
                             return {
                                 jsonrpc: '2.0',
                                 id,
@@ -290,11 +319,11 @@ export default class GatewayImpl extends internal implements Gateway {
                             };
                         }
                     } catch (error) {
-                        this.applyMeta(reply.header('x-envoy-decorator-operation', methodName).code(error?.statusCode || 500), {httpResponse: error.httpResponse});
+                        this._applyMeta(reply.header('x-envoy-decorator-operation', methodName).code(error?.statusCode || 500), {httpResponse: error.httpResponse});
                         return {
                             jsonrpc: '2.0',
                             id,
-                            error: this.formatError(error)
+                            error: this._formatError(error)
                         };
                     }
                 }
@@ -302,7 +331,7 @@ export default class GatewayImpl extends internal implements Gateway {
         });
     }
 
-    async start() {
+    public async start(): Promise<void> {
         this.#server = fastify({
             logger: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel})
         });
@@ -310,7 +339,7 @@ export default class GatewayImpl extends internal implements Gateway {
             return reply.status(500).send({
                 jsonrpc: '2.0',
                 id: request.body.id,
-                error: this.formatError(error)
+                error: this._formatError(error)
             });
         });
         await this.#server.register(jwt, {
@@ -331,17 +360,17 @@ export default class GatewayImpl extends internal implements Gateway {
         });
     }
 
-    async stop() {
+    public async stop(): Promise<void> {
         await this.#server?.close();
         this.#server = null;
     }
 
-    async restart() {
+    protected async restart(): Promise<void> {
         await this.stop();
         await this.start();
     }
 
-    formatError(error) {
+    private _formatError(error: Error): object {
         return this.#errorFields
             .reduce((e, [key, value]) => {
                 if (value && typeof error[key] !== 'undefined') {
@@ -350,7 +379,7 @@ export default class GatewayImpl extends internal implements Gateway {
                             e[key] = error[key];
                             break;
                         case 'error':
-                            e[key] = this.formatError(error[key]);
+                            e[key] = this._formatError(error[key]);
                             break;
                         default:
                             break;

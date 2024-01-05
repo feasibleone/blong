@@ -6,19 +6,26 @@ import { handler } from '../../../../types.js';
 
 const isBrowser: boolean = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
-const key = async(alg, options) => ({alg, ...await exportJWK((await generateKeyPair(alg, options)).privateKey)});
+const key = async(alg, options): Promise<object> => ({alg, ...await exportJWK((await generateKeyPair(alg, options)).privateKey)});
+
+interface IToken {
+    access_token: string
+    expires_in: number
+    refresh_token?: string
+    refresh_token_expires_in?: number // eslint-disable-line @typescript-eslint/naming-convention
+}
 
 export default handler<{
-    token: object
+    token: unknown
     tokenExpire: number
 }>(({
     config: {
         token, tokenExpire
     }
 }) => {
-    let jose, serverKey: { encrypt: unknown; sign: unknown; }, pending: {body?: unknown}, refreshToken: null, refreshTokenExpire: number;
+    let jose, serverKey: { encrypt: unknown; sign: unknown; }, pending: {body?: unknown}, refreshToken: string, refreshTokenExpire: number;
 
-    const encrypt = (msg, protectedHeader?) => {
+    const encrypt = (msg, protectedHeader?): unknown => {
         return jose
             ? global.window && msg && msg.formData instanceof window.FormData
                 ? msg
@@ -26,16 +33,17 @@ export default handler<{
             : msg;
     };
 
-    const decrypt = async(object, property) => {
-        if (object && object[property] && typeof object[property] !== 'string') {
-            if (typeof window === 'object' && object.result instanceof window.Blob) {
+    const decrypt = async(object: object, property: string): Promise<void> => {
+        if (object?.[property] && typeof object[property] !== 'string') {
+            if (typeof window === 'object' && 'result' in object && object.result instanceof window.Blob) {
                 object[property] = object.result;
             } else if (jose) {
-                object[property] = await jose.decryptVerify(object[property], serverKey.sign);
+                const decrypted = await jose.decryptVerify(object[property], serverKey.sign)
+                if (object) object[property] = decrypted;
             }
         }
     };
-    function readToken(where) {
+    function readToken(where: IToken): void {
         tokenExpire = Date.now() + where.expires_in * 1000 - 5000; // let it refresh 5 seconds earlier
         token = where.access_token;
         if (where.refresh_token) {
@@ -44,14 +52,14 @@ export default handler<{
         }
     }
 
-    function clearTokens() {
+    function clearTokens(): void {
         token = null;
         tokenExpire = 0;
         refreshToken = null;
         refreshTokenExpire = 0;
     }
 
-    async function refresh() {
+    async function refresh(): Promise<void> {
         const now = Date.now();
         if (token && tokenExpire < now) {
             if (refreshToken && refreshTokenExpire > now) {
@@ -65,8 +73,8 @@ export default handler<{
                         }
                     }, {});
                     const result = await pending;
-                    pending = null;
-                    readToken(result.body);
+                    if (pending !== null) pending = null;
+                    readToken(result.body as IToken);
                 } catch (error) {
                     pending = null;
                     clearTokens();
@@ -110,8 +118,8 @@ export default handler<{
                 serverKey = mleKey.serverKey;
             }
         },
-        async send(params: {$http: {url?: string, method?: string, headers?: {authorization?: string}, path?: unknown}}, $meta) {
-            let {$http, ...rest} = params;
+        async send(params: {$http?: {url?: string, method?: string, headers?: {authorization?: string}, path?: unknown}}, $meta: unknown) {
+            let {$http, ...rest} = params; // eslint-disable-line prefer-const
             params = await encrypt(params instanceof Array ? params : rest);
             await refresh.call(this);
             if (token) {
@@ -119,33 +127,33 @@ export default handler<{
                 if (!$http.headers) $http.headers = {};
                 $http.headers.authorization = 'Bearer ' + token;
             }
-            if ($http) params.$http = $http;
+            if ($http && params) params.$http = $http;
             return super.send(params, $meta);
         },
-        async receive(result: Response<{jsonrpc?: string, error?: unknown, validation?: unknown, debug?: unknown}>, $meta) {
+        async receive(result: Response<{jsonrpc?: string, error?: unknown, validation?: unknown, debug?: unknown}>, $meta: unknown) {
             await decrypt(result.body, 'error');
             await decrypt(result.body, 'result');
             return super.receive(result, $meta);
         },
-        async errorReceive(result: Response, $meta) {
+        async errorReceive(result: Response, $meta: unknown) {
             if (result.statusCode === 401) token = null;
-            await decrypt(result.body, 'error');
+            await decrypt(result.body as object, 'error');
             return super.receive(result, $meta);
         },
-        async loginTokenCreateRequestSend(params: {$http?: unknown}, $meta) {
+        async loginTokenCreateRequestSend(params: {$http?: unknown}, $meta: unknown) {
             if (jose) {
                 const {$http, ...rest} = params;
                 params = await encrypt(rest, jose && {
                     mlsk: jose.keys.sign,
                     mlek: jose.keys.encrypt
                 });
-                if ($http) params.$http = $http;
+                if ($http && params) params.$http = $http;
             }
             return super.send(params, $meta);
         },
-        async loginTokenCreateResponseReceive(result: Response<{result: unknown}>, $meta) {
+        async loginTokenCreateResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
             await decrypt(result.body, 'result');
-            readToken(result.body.result);
+            readToken(result.body.result as IToken);
             return super.receive(result, $meta);
         }
     };

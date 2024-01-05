@@ -1,4 +1,4 @@
-export interface Resolution {
+export interface IResolution {
     start: () => Promise<void>
     stop: () => Promise<void>
     announce: (service: string, port: number) => void

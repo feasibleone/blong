@@ -1,30 +1,39 @@
 import basic from '@fastify/basic-auth';
 import bearer from '@fastify/bearer-auth';
 import cookie from '@fastify/cookie';
+import type { FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import {LRUCache} from 'lru-cache';
+import { LRUCache } from 'lru-cache';
 
-import { type errors } from '../types.js';
-import { type GatewayCodec } from './GatewayCodec.js';
+import { type Errors } from '../types.js';
+import { type IGatewayCodec } from './GatewayCodec.js';
 
 declare module 'fastify' {
-  interface FastifyRequest {
-    auth: {credentials: {language?: unknown, [name: string]: unknown}}
+  interface FastifyRequest { // eslint-disable-line @typescript-eslint/naming-convention
+    auth: {credentials: {
+        language?: unknown
+        mlek?: object | 'header'
+        mlsk?: object | 'header'
+        permissionMap?: Buffer
+        actorId?: string | number
+        sessionId?: string
+    }}
   }
-  interface FastifyReply {
-    myPluginProp: number
+  interface FastifyReply { // eslint-disable-line @typescript-eslint/naming-convention
+    unstate: (name: string) => this
+    state: (name: string, value: string, options: unknown) => this
   }
 }
 
-export default fp<{cache: object | false, audience: string, verify: GatewayCodec['verify'], errors: errors<object>}>(
-    async function jwtPlugin(fastify, {cache: cacheConfig, audience, verify, errors}) {
+export default fp<{cache: object | false, audience: string, verify: IGatewayCodec['verify'], errors: Errors<object>}>(
+    async function jwtPlugin(fastify: FastifyInstance, {cache: cacheConfig, audience, verify, errors}: FastifyPluginOptions) {
         const cache = (![0, false, 'false'].includes(cacheConfig as string | number | boolean)) && new LRUCache({max: 1000, ...cacheConfig});
         await fastify.register(basic, {
-            async validate(username, password, req, reply) {
+            async validate(username: string, password: string, req: unknown, reply: unknown) {
 
             }
         });
-        fastify.addHook('preValidation', function(request, reply, done) {
+        fastify.addHook('preValidation', function(request: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void) {
             const auth = request.routeOptions.config.auth;
             if (auth !== false) {
                 if (auth === 'login') {
@@ -48,17 +57,11 @@ export default fp<{cache: object | false, audience: string, verify: GatewayCodec
                 const decoded = await verify(token, {audience});
                 const {
                     // standard
-                    aud,
                     exp,
-                    iss,
-                    iat,
-                    jti,
-                    nbf,
+                    aud, iss, iat, jti, nbf, // eslint-disable-line @typescript-eslint/no-unused-vars
                     sub: actorId,
                     // headers
-                    typ,
-                    cty,
-                    alg,
+                    typ, cty, alg, // eslint-disable-line @typescript-eslint/no-unused-vars
                     // custom
                     sig: mlsk,
                     enc: mlek,
@@ -82,11 +85,10 @@ export default fp<{cache: object | false, audience: string, verify: GatewayCodec
         });
         await fastify.register(cookie, {});
         fastify.decorateRequest('auth');
-        fastify.decorateReply('unstate', function(name) {
-            this.clearCookie(name);
-            //
+        fastify.decorateReply('unstate', function(name: string) {
+            return this.clearCookie(name);
         });
-        fastify.decorateReply('state', function(name, value, {
+        fastify.decorateReply('state', function(name: string, value: string, {
             // https://hapi.dev/api/?v=21.3.2#server.state()
             ttl: maxAge,
             isSecure: secure,
@@ -94,8 +96,15 @@ export default fp<{cache: object | false, audience: string, verify: GatewayCodec
             isSameSite: sameSite,
             path,
             domain
+        }: {
+            ttl?: number
+            isSecure?: boolean
+            isHttpOnly?: boolean
+            isSameSite?: boolean
+            path?: string
+            domain?: string
         }) {
-            this.setCookie(name, value, Object.fromEntries(Object.entries({
+            return this.setCookie(name, value, Object.fromEntries(Object.entries({
                 maxAge: maxAge && Math.floor(maxAge / 1000),
                 secure,
                 httpOnly,

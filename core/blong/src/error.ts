@@ -1,15 +1,14 @@
-import type { TypedError } from '../types.js';
-import type { meta } from './adapter.js';
+import type { IMeta, ITypedError } from '../types.js';
 
-const typeRegex = /^[a-z]\w*(\.!?\w+)*$/;
-const paramsRegex = /\{([^}]*)\}/g;
+const typeRegex: RegExp = /^[a-z]\w*(\.!?\w+)*$/;
+const paramsRegex: RegExp = /\{([^}]*)\}/g;
 
-const interpolate = (string: string, params = {}) => {
+const interpolate = (string: string, params = {}): string => {
     return string.replace(paramsRegex, (placeholder, label) => {
         return typeof params[label] === 'undefined' ? `?${label}?` : params[label];
     });
 };
-const getWarnHandler = ({logFactory, logLevel}) => {
+const getWarnHandler = ({logFactory, logLevel}): (msg: unknown, context: {method: string, args: unknown}) => void => {
     if (logFactory) {
         const log = logFactory.createLog(logLevel, {name: 'utError', context: 'utError'});
         if (log.warn) {
@@ -32,14 +31,29 @@ const getWarnHandler = ({logFactory, logLevel}) => {
     return () => {};
 };
 
-export default ({logFactory, logLevel, errorPrint}) => {
+export interface IErrorFactory {
+    get(type?: string): unknown;
+    fetch(type: string): object;
+    define(id: string, superType: string | { type: string; }, message: string): (params?: unknown, $meta?: IMeta) => ITypedError;
+    register<T>(errorsMap: T): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
+}
+
+export interface IErrorMap {
+    [name: string]: string | {
+        message: string
+        print?: string
+        statusCode?: number
+    }
+}
+
+export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
     const warn = getWarnHandler({logFactory, logLevel});
     const errors = {};
     const api = {
-        get(type) {
+        get(type: string) {
             return type ? errors[type] : errors;
         },
-        fetch(type) {
+        fetch(type: string) {
             const result = {};
             Object.keys(errors).forEach(key => {
                 if (key.startsWith(type)) {
@@ -48,7 +62,7 @@ export default ({logFactory, logLevel, errorPrint}) => {
             });
             return result;
         },
-        define(id, superType, message) {
+        define(id: string, superType: string | {type: string}, message: string) {
             const type = [
                 superType
                     ? typeof superType === 'string'
@@ -59,8 +73,8 @@ export default ({logFactory, logLevel, errorPrint}) => {
             ].filter(x => x).join('.');
             return api.register({[type]: message})[type];
         },
-        register<T>(errorsMap: T) : Record<keyof T, (params?: unknown, $meta?: meta) => TypedError> {
-            const result = {} as Record<keyof T, (params?: unknown, $meta?: meta) => TypedError>;
+        register<T>(errorsMap: T) : Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError> {
+            const result = {} as Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
             Object.entries(errorsMap).forEach(([type, message]) => {
                 if (!typeRegex.test(type)) {
                     warn?.(`Invalid error type format: '${type}'!`, {
@@ -85,8 +99,8 @@ export default ({logFactory, logLevel, errorPrint}) => {
 
                 if (!props.print && errorPrint) props.print = typeof errorPrint === 'string' ? errorPrint : props.message;
 
-                const handler = (params = {params: undefined}, $meta) => {
-                    const error = new Error() as TypedError;
+                const handler = (params = {params: undefined}, $meta): ITypedError | ITypedError[] => {
+                    const error = new Error() as ITypedError;
                     if (params instanceof Error) {
                         error.cause = params;
                     } else {

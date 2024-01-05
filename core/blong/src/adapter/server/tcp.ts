@@ -1,13 +1,13 @@
 import createReconnect from 'reconnect-core';
-import { Stream } from 'stream';
 import bitSyntax from 'ut-bitsyntax';
 
-import { adapter, TypedError } from '../../../types.js';
+import { Socket } from 'net';
+import { adapter, ITypedError } from '../../../types.js';
 import tls from '../../tls.js';
 
-export type config = {
+export interface IConfig {
     tls?: object,
-    client?: {connect: (...params: unknown[]) => Stream},
+    client?: {connect: (...params: unknown[]) => Socket},
     host?: string,
     port?: number,
     localPort?: number,
@@ -26,19 +26,19 @@ export type config = {
     }
 }
 
-export default adapter<config>(api => {
+export default adapter<IConfig>(api => {
     let conCount = 0;
     const streams = [];
 
-    const onError = type => function(err) {
+    const onError = (type: string): (error: Error) => void => function(err: Error): void {
         if (this.log?.error) {
-            const error = new Error(`TCP ${type}`) as TypedError;
+            const error = new Error(`TCP ${type}`) as ITypedError;
             error.cause = err;
             error.type = `portTCP.${type}`;
             this.log.error(error);
         }
     };
-    function connect(stream) {
+    function connect(stream: Socket): void {
         conCount += 1;
         if (conCount > 0x1FFFFFFFFFFFFF) {
             conCount = 1;
@@ -87,7 +87,7 @@ export default adapter<config>(api => {
     let codec;
 
     return {
-        async init(...configs) {
+        async init(...configs: object[]) {
             await super.init({
                 logLevel: 'debug',
                 type: 'tcp',
@@ -139,8 +139,8 @@ export default adapter<config>(api => {
                     .on('error', onError('server').bind(this))
                     .listen(this.config.port);
             } else {
-                const client = this.config.client || await (this.config.tls ? import('node:tls') : import('node:net'));
-                reconnect = createReconnect((...args) => client.connect(...args))(connect.bind(this))
+                const client: {connect: (...args: unknown[]) => unknown} = this.config.client || await (this.config.tls ? import('node:tls') : import('node:net'));
+                reconnect = createReconnect((...args: unknown[]) => client.connect(...args))(connect.bind(this))
                     .on('error', onError('client').bind(this))
                     .connect({
                         rejectUnauthorized: false,
@@ -149,19 +149,19 @@ export default adapter<config>(api => {
                             ['host', this.config.host],
                             ['port', this.config.port],
                             ['localPort', this.config.localPort]
-                        ].filter(([_, value]) => value != null))
+                        ].filter(([, value]) => value != null))
                     });
             }
 
             return result;
         },
-        async stop(...params) {
+        async stop(...params: unknown[]) {
             let result;
             try {
                 if (reconnect) {
                     reconnect.removeAllListeners();
                     const e = reconnect.disconnect();
-                    e && e._connection && e._connection.unref();
+                    e?._connection?.unref();
                     reconnect = null;
                 }
                 if (server) {

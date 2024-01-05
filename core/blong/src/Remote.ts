@@ -1,55 +1,47 @@
 import hrtime from 'browser-process-hrtime';
 
-import { internal, type errors } from '../types.js';
-import type { ErrorFactory } from './ErrorFactory.js';
-import type { Local } from './Local.js';
-import type { Log } from './Log.js';
+import type { IMeta } from '../types.js';
+import { Internal, type Errors, type ITypedError } from '../types.js';
+import type { ILocal } from './Local.js';
+import type { ILog } from './Log.js';
+import type { IErrorFactory, IErrorMap } from './error.js';
 
-export interface Remote {
-    remote: (methodName, options?) => (...params: unknown[]) => Promise<unknown>
-    dispatch: (...params: unknown[]) => Promise<unknown>
+
+type RemoteMethod = (...params: unknown[]) => Promise<unknown>
+export interface IRemote {
+    remote: (methodName, options?) => RemoteMethod
+    dispatch: (...params: unknown[]) => boolean | Promise<unknown>
     start: () => Promise<void>
     stop: () => Promise<void>
 }
 
-const errorMap = {
+const errorMap: IErrorMap = {
     'remote.bindingFailed': 'Method binding failed for {typeName} {methodType} {methodName}',
     'remote.cacheFailed': 'Method cache failed for {typeName} {methodType} {methodName}',
     'remote.cacheOperationMissing': 'Cache before and after operations missing for {typeName} {methodType} {methodName}',
     'remote.noMeta': '$meta not passed to method: {method}',
     'remote.timeout': 'Method {method} timed out'
 };
-export default class RemoteImpl extends internal implements Remote {
-    #config = {
+
+export default class Remote extends Internal implements IRemote {
+    #config: {
+        canSkipSocket: boolean
+        requireMeta: 'trace' | 'debug' | 'warn' | 'error' | 'fatal' | 'info' | true
+    } = {
         canSkipSocket: false,
-        requireMeta: true as 'trace' | 'debug' | 'warn' | 'error' | 'fatal' | 'info' | true
+        requireMeta: true
     };
 
-    #importCache = {};
-    #requireMeta;
-    #logger;
-    #errors: errors<typeof errorMap>;
-    #local: Local;
+    #importCache: object = {};
+    #requireMeta: (method: string) => void;
+    #logger: ReturnType<ILog['logger']>;
+    #errors: Errors<typeof errorMap>;
+    #local: ILocal;
 
-    #brokerRequest;
-    #brokerPublish;
+    #brokerRequest: RemoteMethod;
+    #brokerPublish: RemoteMethod;
 
-    gateway(meta: object, method: string): object | void {}
-
-    sender(methodType: 'request' | 'publish', typeName): unknown {
-        return async(...rest) => {
-            const $meta = rest.pop();
-            throw this.#errors['remote.bindingFailed']({
-                params: {
-                    methodName: $meta.method,
-                    methodType,
-                    typeName
-                }
-            });
-        };
-    }
-
-    constructor(config, {log, error, local}: {log: Log, error: ErrorFactory, local: Local}) {
+    public constructor(config: {logLevel?: Parameters<ILog['logger']>[0]}, {log, error, local}: {log: ILog, error: IErrorFactory, local: ILocal}) {
         super();
         config = this.merge(this.#config, config);
         this.#local = local;
@@ -78,17 +70,32 @@ export default class RemoteImpl extends internal implements Remote {
                 this.#requireMeta = null;
                 break;
         }
-        this.#brokerRequest = this.getMethod('req', 'request', undefined, {returnMeta: true});
-        this.#brokerPublish = this.getMethod('pub', 'publish', undefined, {returnMeta: true});
+        this.#brokerRequest = this._getMethod('req', 'request', undefined, {returnMeta: true});
+        this.#brokerPublish = this._getMethod('pub', 'publish', undefined, {returnMeta: true});
     }
 
-    remote(methodName, options) {
+    protected gateway(meta: object, method: string): object | void {}
+
+    protected sender(methodType: 'request' | 'publish', typeName: 'req' | 'pub'): unknown {
+        return async(...rest) => {
+            const $meta = rest.pop();
+            throw this.#errors['remote.bindingFailed']({
+                params: {
+                    methodName: $meta.method,
+                    methodType,
+                    typeName
+                }
+            });
+        };
+    }
+
+    public remote(methodName: string, options: {method?: string, timeout?: number}): RemoteMethod {
         methodName = options?.method || methodName;
         let result; // = !options && this.#importCache[methodName];
 
-        const startRetry = (fn, {timeout, retry}) => {
+        const startRetry = (fn, {timeout, retry}: {timeout?: number, retry?:number}): Promise<unknown> => {
             return new Promise((resolve, reject) => {
-                const attempt = () => fn()
+                const attempt = (): void => fn()
                     .then(resolve)
                     .catch(error => { // todo maybe log these errors
                         if (Date.now() > timeout) {
@@ -103,9 +110,9 @@ export default class RemoteImpl extends internal implements Remote {
         };
 
         if (!result) {
-            const method = this.getMethod('req', 'request', methodName, options);
-            result = Object.assign(function(...params) {
-                const $meta = params.length > 1 && params[params.length - 1];
+            const method = this._getMethod('req', 'request', methodName, options);
+            result = Object.assign(function(...params: unknown[]) {
+                const $meta = params.length > 1 && params[params.length - 1] as IMeta;
                 if ($meta && $meta.timeout && $meta.retry) {
                     return startRetry(() => method(...params), $meta);
                 } else {
@@ -119,7 +126,17 @@ export default class RemoteImpl extends internal implements Remote {
         return result;
     }
 
-    getMethod(typeName, methodType, methodName, options) {
+    private _getMethod(
+        typeName: 'req' | 'pub',
+        methodType: 'request' | 'publish',
+        methodName: string,
+        options: {
+            fallback?: boolean
+            returnMeta?: boolean
+            timeout?: number
+            cache?: IMeta['cache']
+        }
+    ): RemoteMethod {
         let fn = null;
         let unpack = true;
         const fallback = options && options.fallback;
@@ -128,8 +145,8 @@ export default class RemoteImpl extends internal implements Remote {
         let fnCache = null;
         const cache = options && options.cache;
 
-        const busMethod = async(...params) => {
-            const $meta = (params.length > 1 && params[params.length - 1]);
+        const busMethod: RemoteMethod = async(...params) => {
+            const $meta = (params.length > 1 && params[params.length - 1]) as IMeta;
             let $applyMeta;
             if (!$meta) {
                 this.#requireMeta?.(methodName);
@@ -149,15 +166,15 @@ export default class RemoteImpl extends internal implements Remote {
             if (!fn) {
                 // don't try skipping socket if there is a gateway configured
                 if (methodName && !(this.gateway?.($applyMeta, methodName))) {
-                    this.#config.canSkipSocket && (fn = this.findMethod(methodName, methodType));
-                    fn && (unpack = true);
+                    if (this.#config.canSkipSocket) fn = this._findMethod(methodName, methodType);
+                    if (fn) unpack = true;
                 }
                 if (!fn) {
                     fn = this.sender(methodType, typeName);
                 }
             }
             if (cache && !fnCache) {
-                fnCache = this.findMethod(`${cache.port || 'cache'}`, methodType);
+                fnCache = this._findMethod(`${cache.port || 'cache'}`, methodType);
                 // todo || bus.rpc.brokerMethod(typeName, methodType);
                 if (!fnCache && !cache.optional) {
                     return Promise.reject(this.#errors['remote.cacheFailed']({
@@ -170,7 +187,7 @@ export default class RemoteImpl extends internal implements Remote {
             if (fn) {
                 let $metaBefore, $metaAfter;
                 if (methodName) {
-                    $applyMeta.opcode = this.getOpcode(methodName);
+                    $applyMeta.opcode = this._getOpcode(methodName);
                     $applyMeta.mtid = 'request';
                     $applyMeta.method = methodName;
                     if (cache) {
@@ -238,7 +255,7 @@ export default class RemoteImpl extends internal implements Remote {
                     if (fnCache && $metaAfter && $metaAfter.cache.key && typeof result[0] !== 'undefined') await fnCache.call(this, result[0], $metaAfter);
                     if ($meta.timer) {
                         const $resultMeta = (result.length > 1 && result[result.length - 1]);
-                        $resultMeta && $resultMeta.calls && $meta.timer($resultMeta.calls);
+                        if ($resultMeta && $resultMeta.calls) $meta.timer($resultMeta.calls);
                     }
                     if (!unpack || (options && options.returnMeta)) {
                         return result;
@@ -246,11 +263,11 @@ export default class RemoteImpl extends internal implements Remote {
                     return result[0];
                 } catch (error) {
                     if (fallback && (fallback !== applyFn) && error.type === 'bus.methodNotFound') {
-                        fn = fallback;
+                        if (fn) fn = fallback;
                         unpack = false;
                         return fn.apply(this, params);
                     }
-                    return Promise.reject(this.processError(error, $applyMeta));
+                    return Promise.reject(this._processError(error, $applyMeta));
                 }
             } else {
                 return Promise.reject(this.#errors['remote.bindingFailed']({
@@ -264,13 +281,13 @@ export default class RemoteImpl extends internal implements Remote {
         return busMethod;
     }
 
-    dispatch(...params) {
-        const $meta = (params.length > 1 && params[params.length - 1]);
+    public dispatch(...params: unknown[]): boolean | Promise<unknown> {
+        const $meta = (params.length > 1 && params[params.length - 1]) as IMeta;
         let mtid;
         if ($meta) {
             mtid = $meta.mtid;
             if (mtid === 'discard') return true;
-            const handler = this.#config.canSkipSocket && this.findMethod($meta.destination || $meta.method, mtid === 'request' ? 'request' : 'publish');
+            const handler = this.#config.canSkipSocket && this._findMethod($meta.destination || $meta.method, mtid === 'request' ? 'request' : 'publish');
             if (handler) {
                 return Promise.resolve(handler(...params));
             } else {
@@ -285,16 +302,16 @@ export default class RemoteImpl extends internal implements Remote {
         }
     }
 
-    getPath(method) {
+    private _getPath(method: string): string {
         return method.match(/^[^[#?]*/)[0];
     }
 
-    getOpcode(name) {
-        return this.getPath(name).split('.').pop();
+    private _getOpcode(name: string): string {
+        return this._getPath(name).split('.').pop();
     }
 
-    findMethod(methodName, type) {
-        methodName = this.getPath(methodName);
+    private _findMethod(methodName: string, type: 'request' | 'publish'): RemoteMethod {
+        methodName = this._getPath(methodName);
         const key = ['ports', methodName, type].join('.');
         let result = this.#local.get(key) || this.#local.get(methodName);
         if (!result) {
@@ -307,7 +324,7 @@ export default class RemoteImpl extends internal implements Remote {
         return result && result.method;
     }
 
-    processError(obj, $meta) {
+    private _processError(obj: ITypedError, $meta: IMeta): object {
         if (obj && $meta && $meta.method) {
             if (Array.isArray(obj.method)) {
                 obj.method.push($meta.method);
@@ -320,10 +337,11 @@ export default class RemoteImpl extends internal implements Remote {
         return obj;
     }
 
-    sanitize(params, {httpRequest, mtid, method, forward, language, cache}) {
+    protected sanitize(params: unknown, {httpRequest, mtid, method, forward, language, cache}: IMeta): {params: unknown, meta: object} {
         if (Array.isArray(params) && params.length) {
-            params = [...params];
-            params[params.length - 1] = 'meta&';
+            const paramsArray = [...params];
+            paramsArray[paramsArray.length - 1] = 'meta&';
+            params = paramsArray;
         }
         return {
             params,

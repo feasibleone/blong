@@ -1,14 +1,28 @@
+import type net from 'node:net';
 import { v4 } from 'uuid';
 
-import type { adapter, meta } from './adapter.js';
+import type { IMeta, ITypedError } from '../types.js';
+import type { IAdapterFactory } from './adapter.js';
 
-export default function loop(fn, handlers, context = {requests: undefined, waiting: undefined, buffer: undefined}) {
+interface IContext {
+    requests: Map<string, {end?: () => void, $meta: IMeta}>
+    waiting: Set<unknown>
+    buffer: Buffer
+    conId?: number
+    session?: {log?: unknown}
+}
+
+export default function loop(
+    fn: net.Socket | (() => void),
+    handlers: ReturnType<IAdapterFactory>,
+    context: IContext = {requests: undefined, waiting: undefined, buffer: undefined}
+): unknown {
     const checkDeadlock = deadlockChecker(handlers);
     context.requests = new Map();
     context.waiting = new Set();
     context.buffer = Buffer.alloc(0);
     if (typeof fn === 'function') {
-        return (params, promise) => async({signal}) => {
+        return (params: unknown[], promise) => async({signal}) => {
             const $meta = getMeta(params, handlers);
             const encodedPacket = await sendEncode(handlers, context, params, checkDeadlock);
             if (!encodedPacket) return [encodedPacket, $meta];
@@ -16,37 +30,37 @@ export default function loop(fn, handlers, context = {requests: undefined, waiti
             return checkError(await decodeReceive(handlers, context, frame, checkDeadlock));
         };
     } else if (fn.readable && fn.writable) {
-        function cleanup() {
-            fn.removeListener('data', streamData);
-            fn.removeListener('close', streamClose);
-            fn.removeListener('error', streamError);
-        }
-        function streamClose() {
-            cleanup();
-            event(handlers, context, 'disconnected', handlers.log?.info);
-        }
-        function streamError(error) {
-            handlers.error(handlers.errors['adapter.stream']({ context, error }), { method: 'adapter.pull' });
-        }
-        async function streamData(frame) {
+        const streamData = async(frame): Promise<void> => {
             try {
                 let receivedPacket = await decodeReceive(handlers, context, frame, checkDeadlock);
                 while (receivedPacket) {
                     const dispatchedPacket = await dispatch(handlers, receivedPacket);
-                    if (dispatchedPacket) fn?.write(dispatchedPacket);
+                    if (dispatchedPacket) fn?.write(dispatchedPacket as Buffer);
                     receivedPacket = await decodeReceive(handlers, context, undefined, checkDeadlock);
                 }
             } catch (error) {
                 fn.destroy(error);
             }
         }
+        const cleanup = (): void => {
+            fn.removeListener('data', streamData);
+            fn.removeListener('close', streamClose);
+            fn.removeListener('error', streamError);
+        }
+        function streamClose(): void {
+            cleanup();
+            event(handlers, context, 'disconnected', handlers.log?.info).catch(error => handlers.log?.error?.(error));
+        }
+        function streamError(error: Error): void {
+            handlers.error(handlers.errors['adapter.stream']({ context, error }), { method: 'adapter.pull' });
+        }
         fn.on('error', streamError);
         fn.on('close', streamClose);
         fn.on('data', streamData);
-        handlers.config.socketTimeOut && fn.setTimeout(handlers.config.socketTimeOut, () => {
+        if (Number.isInteger(handlers.config.socketTimeOut)) fn.setTimeout?.(handlers.config.socketTimeOut as number, () => {
             fn.destroy(handlers.errors['handlers.socketTimeout']({params: {timeout: handlers.config.socketTimeOut}}));
         });
-        return (params, promise) => async({signal}) => {
+        return (params: unknown[], promise) => async({signal}) => {
             const $meta = getMeta(params, handlers);
             const result = new Promise((resolve, reject) => {
                 $meta.dispatch = (...params) => {
@@ -70,15 +84,15 @@ export default function loop(fn, handlers, context = {requests: undefined, waiti
     }
 }
 
-function getMeta(params, handlers) {
+function getMeta(params: unknown[], handlers: ReturnType<IAdapterFactory>): IMeta {
     if (!params.length) throw handlers.errors['adapter.missingParameters']();
     else if (params.length === 1 || !params[params.length - 1]) throw handlers.errors['adapter.missingMeta']();
-    const $meta = params[params.length - 1] = Object.assign({}, params[params.length - 1]);
+    const $meta = params[params.length - 1] = Object.assign({}, params[params.length - 1]) as IMeta;
     $meta.method = $meta.method?.split('/').pop();
     return $meta;
 }
 
-function handleError(handlers, error, $meta) {
+function handleError(handlers: ReturnType<IAdapterFactory>, error: ITypedError, $meta: IMeta): [Error, IMeta] {
     handlers.error(error, $meta);
     if ($meta) {
         $meta.mtid = 'error';
@@ -88,21 +102,27 @@ function handleError(handlers, error, $meta) {
     return [error, $meta];
 }
 
-function checkError(dataPacket) {
-    const $meta = dataPacket.length > 1 && dataPacket[dataPacket.length - 1];
+function checkError(dataPacket: unknown[]): typeof dataPacket {
+    const $meta = dataPacket.length > 1 && dataPacket[dataPacket.length - 1] as IMeta;
     if ($meta.mtid === 'error' || dataPacket[0] instanceof Error) throw dataPacket[0];
     return dataPacket;
 }
 
-async function sendEncode(adapter: ReturnType<adapter>, context, dataPacket, checkDeadlock) {
+async function sendEncode(
+    adapter: ReturnType<IAdapterFactory>,
+    context: IContext,
+    dataPacket: unknown[],
+    checkDeadlock: (dataPacket: unknown) => void
+): Promise<unknown> {
     checkDeadlock(dataPacket);
     // send
-    const $meta = dataPacket.length > 1 && dataPacket[dataPacket.length - 1];
+    const $meta = dataPacket.length > 1 && dataPacket[dataPacket.length - 1] as IMeta;
     const validate = adapter.findValidation($meta);
     if (validate) dataPacket[0] = validate.apply(adapter, dataPacket);
     const {fn, name} = adapter.getConversion($meta, 'send');
     if (fn) {
-        dataPacket[0] = await fn.apply(adapter, Array.prototype.concat(dataPacket, context));
+        const result = await fn.apply(adapter, Array.prototype.concat(dataPacket, context))
+        if (dataPacket) dataPacket[0] = result;
         adapter.log?.trace?.({
             message: dataPacket,
             $meta: {method: name, mtid: 'convert'},
@@ -119,13 +139,13 @@ async function sendEncode(adapter: ReturnType<adapter>, context, dataPacket, che
     traceMeta(adapter, context, $meta, 'out/', 'in/');
     if (adapter.imported.pack) {
         const sizeAdjust = (adapter.imported.encode && adapter.imported.unpackSize) ? adapter.config.format.sizeAdjust : 0;
-        encodeBuffer = adapter.imported.pack({size: encodeBuffer?.length + sizeAdjust, data: encodeBuffer});
+        encodeBuffer = adapter.imported.pack({size: encodeBuffer?.length + sizeAdjust, data: encodeBuffer as Buffer});
         encodeBuffer = encodeBuffer.slice(0, encodeBuffer.length - sizeAdjust);
         adapter.bytesSent?.(encodeBuffer.length);
     }
     if (encodeBuffer) {
         adapter.msgSent?.(1);
-        !adapter.imported.encode && adapter.log?.trace?.({
+        if (!adapter.imported.encode) adapter.log?.trace?.({
             $meta: {
                 mtid: 'payload',
                 method: $meta.method ? $meta.method + '.encode' : 'adapter.encode'
@@ -138,7 +158,14 @@ async function sendEncode(adapter: ReturnType<adapter>, context, dataPacket, che
     return [encodeBuffer, $meta];
 }
 
-function traceMeta(adapter: ReturnType<adapter>, context, $meta, set, get, time?) {
+function traceMeta(
+    adapter: ReturnType<IAdapterFactory>,
+    context: IContext,
+    $meta: IMeta,
+    set: string,
+    get: string,
+    time?: Parameters<IMeta['timer']>[1]
+): IMeta {
     // if ($meta && !$meta.timer && $meta.mtid === 'request') {
     //     $meta.timer = packetTimer(adapter.bus.getPath($meta.method), '*', adapter.config.id, $meta.timeout);
     // }
@@ -158,7 +185,7 @@ function traceMeta(adapter: ReturnType<adapter>, context, $meta, set, get, time?
             if (request) {
                 context.requests.delete(get + $meta.trace);
                 request.end?.();
-                request.$meta?.timer && time && request.$meta.timer('exec', time);
+                if (request.$meta?.timer && time) request.$meta.timer('exec', time);
                 return Object.assign(request.$meta, $meta);
             } else {
                 return $meta;
@@ -169,8 +196,8 @@ function traceMeta(adapter: ReturnType<adapter>, context, $meta, set, get, time?
     }
 }
 
-async function exec(adapter: ReturnType<adapter>, fn, execPacket) {
-    const $meta = execPacket.length > 1 && execPacket[execPacket.length - 1];
+async function exec(adapter: ReturnType<IAdapterFactory>, fn: (this: ReturnType<IAdapterFactory>) => unknown, execPacket: unknown[]): Promise<[unknown, IMeta]> {
+    const $meta = execPacket.length > 1 && execPacket[execPacket.length - 1] as IMeta;
     if ($meta?.mtid === 'request') $meta.mtid = 'response';
     if ($meta?.mtid === 'notification') $meta.mtid = 'discard';
     try {
@@ -180,7 +207,7 @@ async function exec(adapter: ReturnType<adapter>, fn, execPacket) {
     }
 }
 
-function getFrame(adapter: ReturnType<adapter>, buffer) {
+function getFrame(adapter: ReturnType<IAdapterFactory>, buffer: Buffer): {rest: Buffer, data: Buffer} {
     let result;
     let size;
     if (adapter.imported.unpackSize) {
@@ -205,7 +232,7 @@ function getFrame(adapter: ReturnType<adapter>, buffer) {
     return result;
 }
 
-const metaFromContext = (context, rest?) => ({
+const metaFromContext = (context, rest?): IMeta => ({
     ...context && {
         conId: context.conId
     },
@@ -215,7 +242,7 @@ const metaFromContext = (context, rest?) => ({
     ...rest
 });
 
-function deadlockChecker(adapter: ReturnType<adapter>) {
+function deadlockChecker(adapter: ReturnType<IAdapterFactory>): (packet: unknown[]) => unknown {
     const stackId = '->' + (adapter.config.stackId || adapter.config.id) + '(';
     const extendStack = adapter.config.debug
         ? (stack, method) => stack + stackId + method + ')'
@@ -244,7 +271,7 @@ function deadlockChecker(adapter: ReturnType<adapter>) {
             break;
     }
     return packet => {
-        const $meta = packet?.length > 1 && packet[packet.length - 1];
+        const $meta = packet?.length > 1 && packet[packet.length - 1] as IMeta;
         if (!$meta) return observe('adapter.noMeta');
         if ($meta.mtid !== 'request' && $meta.mtid !== 'notification') return true;
         if (!$meta.forward) return observe('adapter.noMetaForward', {method: $meta.method});
@@ -264,18 +291,18 @@ function deadlockChecker(adapter: ReturnType<adapter>) {
     };
 }
 
-async function decodeReceive(adapter: ReturnType<adapter>, context, dataPacket, checkDeadlock) {
+async function decodeReceive(adapter: ReturnType<IAdapterFactory>, context: IContext, dataPacket: Buffer | unknown[], checkDeadlock: (packet: unknown[]) => unknown): Promise<unknown[]> {
     // frame
     if (adapter.imported.unpack) {
         if (dataPacket) {
             adapter.bytesReceived?.(dataPacket.length);
-            !adapter.imported.decode && adapter.log?.trace?.({
+            if (!adapter.imported.decode) adapter.log?.trace?.({
                 $meta: { mtid: 'payload', method: 'adapter.decode' },
                 message: dataPacket,
                 ...context?.session && { log: context.session.log }
             });
             // todo check buffer size
-            context.buffer = Buffer.concat([context.buffer, dataPacket]);
+            context.buffer = Buffer.concat([context.buffer, dataPacket as Buffer]);
         }
         const frame = getFrame(adapter, context.buffer);
         if (frame) {
@@ -285,36 +312,39 @@ async function decodeReceive(adapter: ReturnType<adapter>, context, dataPacket, 
     }
     // decode
     const time = false; // timing.now();
+    let result: unknown[];
     adapter.msgReceived?.(1);
     if (adapter.imported.decode) {
         const $meta = metaFromContext(context);
         try {
-            dataPacket = [await adapter.imported.decode(dataPacket, $meta, context, adapter.log), traceMeta(adapter, context, $meta, 'in/', 'out/', time)];
+            result = [await adapter.imported.decode(dataPacket as Buffer, $meta, context, adapter.log), traceMeta(adapter, context, $meta, 'in/', 'out/', time)];
         } catch (decodeError) {
             $meta.mtid = 'error';
             if (!decodeError || !decodeError.keepConnection) {
                 throw adapter.errors['adapter.disconnect'](decodeError);
             } else {
-                dataPacket = [decodeError, $meta];
+                result = [decodeError, $meta];
             }
         }
-    } else if (dataPacket?.constructor?.name === 'Buffer') {
-        dataPacket = [{payload: dataPacket}, metaFromContext(context, {mtid: 'notification', opcode: 'payload'})];
+    } else if (dataPacket instanceof Buffer) {
+        result = [{payload: result}, metaFromContext(context, {mtid: 'notification', opcode: 'payload'})];
     } else {
-        const $meta = (dataPacket.length > 1) && dataPacket[dataPacket.length - 1];
-        $meta && context?.conId && ($meta.conId = context.conId);
-        (dataPacket.length > 1) && (dataPacket[dataPacket.length - 1] = traceMeta(adapter, context, $meta, 'in/', 'out/', time));
+        result = dataPacket;
+        const $meta = (result.length > 1) && result[result.length - 1] as IMeta;
+        if ($meta && context?.conId) $meta.conId = context.conId;
+        if (result.length > 1) result[result.length - 1] = traceMeta(adapter, context, $meta, 'in/', 'out/', time);
     }
-    checkDeadlock(dataPacket);
-    return await receive(adapter, context, dataPacket);
+    checkDeadlock(result);
+    return await receive(adapter, context, result);
 }
 
-async function receive(adapter: ReturnType<adapter>, context, dataPacket) {
-    const $meta = dataPacket.length > 1 && dataPacket[dataPacket.length - 1];
+async function receive(adapter: ReturnType<IAdapterFactory>, context: IContext, dataPacket: unknown[]): Promise<unknown[]> {
+    const $meta = dataPacket.length > 1 && dataPacket[dataPacket.length - 1] as IMeta;
     try {
         const {fn, name} = adapter.getConversion($meta, 'receive');
         if (fn) {
-            dataPacket[0] = await fn.apply(adapter, Array.prototype.concat(dataPacket, context));
+            const result = await fn.apply(adapter, Array.prototype.concat(dataPacket, context));
+            if (dataPacket) dataPacket[0] = result;
             adapter.log?.trace?.({
                 message: dataPacket,
                 $meta: { method: name, mtid: 'convert' },
@@ -329,10 +359,10 @@ async function receive(adapter: ReturnType<adapter>, context, dataPacket) {
     }
 }
 
-const CONNECTED = Symbol('adapter.pull.CONNECTED');
+const CONNECTED: symbol = Symbol('adapter.pull.CONNECTED');
 
-async function dispatch(adapter: ReturnType<adapter>, dispatchPacket) {
-    const $meta = (dispatchPacket.length > 1 && dispatchPacket[dispatchPacket.length - 1]) || {};
+async function dispatch(adapter: ReturnType<IAdapterFactory>, dispatchPacket: unknown[]): Promise<unknown> {
+    const $meta = (dispatchPacket.length > 1 && dispatchPacket[dispatchPacket.length - 1])  as IMeta || {} as IMeta;
     if ($meta.dispatch) {
         // reportTimes(adapter, $meta);
         return $meta.dispatch.apply(adapter, dispatchPacket);
@@ -347,8 +377,8 @@ async function dispatch(adapter: ReturnType<adapter>, dispatchPacket) {
     const opcode = $meta.opcode;
     const method = $meta.method;
 
-    const portDispatchResult = (isError, dispatchResult) => {
-        const $metaResult = (!isError && dispatchResult.length > 1 && dispatchResult[dispatchResult.length - 1]) || {};
+    const portDispatchResult = (isError: boolean, dispatchResult: Error | unknown[]): unknown[] => {
+        const $metaResult = (!isError && (dispatchResult as []).length > 1 && dispatchResult[(dispatchResult as []).length - 1]) as IMeta || {} as IMeta;
         if (mtid === 'request' && $metaResult.mtid !== 'discard') {
             if (!$metaResult.opcode) $metaResult.opcode = opcode;
             if (!$metaResult.method) $metaResult.method = method;
@@ -359,10 +389,10 @@ async function dispatch(adapter: ReturnType<adapter>, dispatchPacket) {
             $metaResult.trace = $meta.trace;
             if ($meta.request) $metaResult.request = $meta.request;
             if (isError) {
-                adapter.error(dispatchResult, $meta);
+                adapter.error(dispatchResult as Error, $meta);
                 return [dispatchResult, $metaResult];
             } else {
-                return dispatchResult;
+                return dispatchResult as [];
             }
         }
     };
@@ -384,17 +414,24 @@ async function dispatch(adapter: ReturnType<adapter>, dispatchPacket) {
     return portDispatchResult(false, result);
 }
 
-async function event(adapter: ReturnType<adapter>, context, event, logger, stream?) {
-    context && (typeof logger === 'function') && logger({
+async function event(
+    adapter: ReturnType<IAdapterFactory>,
+    context: IContext,
+    event: string,
+    logger: (info: unknown) => void,
+    stream?: net.Socket
+): Promise<void> {
+    if (context && (typeof logger === 'function')) logger({
         $meta: {mtid: 'event', method: 'adapter.' + event},
         connection: context,
         ...context && context.session && {log: context.session.log}
     });
     if (event === 'disconnected') {
         if (context && context.requests && context.requests.size) {
-            Array.from(context.requests.values()).forEach((request: {$meta: meta}) => {
+            Array.from(context.requests.values()).forEach((request: {$meta: IMeta}) => {
                 request.$meta.mtid = 'error';
-                request.$meta.dispatch && request.$meta.dispatch(adapter.errors['adapter.disconnectBeforeResponse'](), request.$meta);
+                const result = request.$meta.dispatch?.(adapter.errors['adapter.disconnectBeforeResponse'](), request.$meta);
+                if (typeof result === 'object' && 'catch' in result) result.catch(() => {})
             });
             context.requests.clear();
         }
@@ -417,7 +454,7 @@ async function event(adapter: ReturnType<adapter>, context, event, logger, strea
 
     const receivedPacket = await receive(adapter, context, decodedPacket);
     const dispatchedPacket = await dispatch(adapter, receivedPacket);
-    if (dispatchedPacket) stream?.write(dispatchedPacket);
+    if (dispatchedPacket) stream?.write(dispatchedPacket as Buffer);
 }
 
 // todo drain on connect

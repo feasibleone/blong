@@ -26,6 +26,7 @@
         "parentspanid",
         "payshield",
         "pino",
+        "rushstack",
         "spanid",
         "traceid",
         "typebox",

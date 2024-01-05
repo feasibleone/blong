@@ -1,9 +1,10 @@
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import fp from 'fastify-plugin';
 
 export default fp<{version: string}>(
-    async function swaggerPlugin(fastify, {version}) {
+    async function swaggerPlugin(fastify: FastifyInstance, {version}: FastifyPluginOptions) {
         await fastify.register(swagger, {
             openapi: {
                 info: {

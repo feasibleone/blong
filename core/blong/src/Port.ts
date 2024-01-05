@@ -1,15 +1,15 @@
-import { Port } from 'ut-port';
+import { Port as UtPort } from 'ut-port';
 
-import { internal } from '../types.js';
-import type { adapter } from './adapter.js';
+import { Internal } from '../types.js';
+import type { IAdapterFactory } from './adapter.js';
 
-export type Port = {
-    new(portApi: Parameters<adapter>[0] & {config: unknown})
+export interface IPort {
+    new(portApi: Parameters<IAdapterFactory>[0] & {config: unknown})
 }
 
-export default class PortImpl extends internal {
-    constructor(config) {
+export default class Port extends Internal {
+    public constructor(config: unknown) {
         super();
-        return Port(config);
+        return UtPort(config);
     }
 }

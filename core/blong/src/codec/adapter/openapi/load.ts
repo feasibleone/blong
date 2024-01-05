@@ -4,14 +4,14 @@ import { resolve } from 'node:path';
 
 import { library } from '../../../../types.js';
 
-const httpVerbs = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
+const httpVerbs: string[] = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
 
 export default library(({
     lib: {
         request,
         merge
     }
-}) => async function load(config, pattern) {
+}) => async function load(config: object, pattern: RegExp | string) {
     const test = pattern instanceof RegExp ? key => pattern.test(key) : key => key.includes(pattern);
     const handlers = {};
     for (const [ns, locations] of Object.entries(config)) {

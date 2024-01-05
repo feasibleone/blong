@@ -5,45 +5,51 @@ import { readdir } from 'fs/promises';
 import { EventEmitter } from 'node:events';
 import { basename, dirname, extname, join, relative, resolve } from 'path';
 
-import { internal, kind, type config } from '../types.js';
-import type { ErrorFactory } from './ErrorFactory.js';
-import type { Log } from './Log.js';
-import type { Registry } from './Registry.js';
-import type { Remote } from './Remote.js';
+import { Internal, kind, type IModuleConfig } from '../types.js';
+import type { ILog } from './Log.js';
+import type { IRegistry } from './Registry.js';
+import type { IRemote } from './Remote.js';
+import type { IErrorFactory } from './error.js';
 import layerProxy from './layerProxy.js';
 import './watch.log.js';
 
-export interface Watch {
-    start: (realm: Registry, remote: Remote) => Promise<void>
+export interface IWatch {
+    start: (realm: IRegistry, remote: IRemote) => Promise<void>
     test: (tester: unknown) => Promise<void>
     stop: () => Promise<void>
-    load: <T>(config: {name: string, pkg: config['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]) => Promise<(api: T) => T>
+    load: <T extends {result: unknown}>(config: {name: string, pkg: IModuleConfig['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]) => Promise<(api: T) => T>
 }
 
-const isCode = (filename: string) => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
-const scan = async(...path: string[]) => (await readdir(join(...path), {withFileTypes: true})).sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
+const scan = async(...path: string[]): ReturnType<typeof readdir> => (await readdir(join(...path), {withFileTypes: true})).sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
 
-const emit = new EventEmitter();
+const emit: EventEmitter = new EventEmitter();
 
-const prefixRE = /(?:\d+-)?(.*)/;
+const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
-export default class WatchImpl extends internal implements Watch {
-    #config = {
+interface IConfig {
+    test: string
+    ignored: string[]
+    configs: string[]
+    logLevel: Parameters<ILog['logger']>[0]
+}
+export default class Watch extends Internal implements IWatch {
+    #config: IConfig = {
         test: '',
         ignored: [],
         configs: [],
-        logLevel: 'debug' as Parameters<Log['logger']>[0]
+        logLevel: 'debug'
     };
 
-    #logger: ReturnType<Log['logger']>;
-    #handlerFolders = new Map<string, {name: string, pkg: config['pkg']}>();
-    #handlerFiles = new Map<string, {name: string, pkg: config['pkg']}>();
-    #layerFiles = new Map<string, {name: string, pkg: config['pkg']}>();
+    #logger: ReturnType<ILog['logger']>;
+    #handlerFolders: Map<string, {name: string, pkg: IModuleConfig['pkg']}> = new Map();
+    #handlerFiles: Map<string, {name: string, pkg: IModuleConfig['pkg']}> = new Map();
+    #layerFiles: Map<string, {name: string, pkg: IModuleConfig['pkg']}> = new Map();
     #watchers: chokidar.FSWatcher[] = [];
-    #port: unknown;
-    #error: ErrorFactory;
+    #port: () => unknown;
+    #error: IErrorFactory;
 
-    constructor(config, {error, log, port}: {error: ErrorFactory, log: Log, port: unknown}) {
+    public constructor(config: IConfig, {error, log, port}: {error: IErrorFactory, log: ILog, port: () => unknown}) {
         super();
         this.merge(this.#config, config);
         this.#port = port;
@@ -51,7 +57,7 @@ export default class WatchImpl extends internal implements Watch {
         this.#logger = log?.logger(this.#config.logLevel, {name: 'realm'});
     }
 
-    async generate(files, dir) {
+    private async _generate(files: {filename: string, name: string}[], dir: string): Promise<void> {
         const [schema, names] = files.reduce((prev, {filename, name}) => {
             const schema = readFileSync(filename)
                 .toString()
@@ -59,7 +65,7 @@ export default class WatchImpl extends internal implements Watch {
                 ?.[0];
             return schema ? [[...prev[0], schema.replace('interface schema {', `interface ${name} {`)], [...prev[1], name]] : prev;
         }, [[], []]);
-        schema.length && writeFileSync(join(dir, '~.schema.ts'), Formatter.Format(`/* eslint-disable indent,semi */
+        if (schema.length) writeFileSync(join(dir, '~.schema.ts'), Formatter.Format(`/* eslint-disable indent,semi */
             import { validation } from '@feasibleone/blong';
             ${TypeScriptToTypeBox.Generate(schema.sort().join('\n')).trim()}
 
@@ -69,7 +75,7 @@ export default class WatchImpl extends internal implements Watch {
         `));
     }
 
-    async loadHandlers(config, ...path: string[]) {
+    private async _loadHandlers(config: {name: string, pkg: IModuleConfig['pkg']}, ...path: string[]): Promise<<T>(api: T) => T> {
         const dir = join(...path);
         const handlers = [];
         const validations = [];
@@ -82,7 +88,7 @@ export default class WatchImpl extends internal implements Watch {
                     handlerEntry.name === '~.schema.ts' &&
                     statSync(filename).mtime.getTime() < latest &&
                     handlerFilenames.length
-                ) this.generate(handlerFilenames, dir);
+                ) await this._generate(handlerFilenames, dir);
                 const item = (await import(filename + '?' + Date.now())).default;
                 const name = (!item.name || item.name === 'default') ? basename(filename, extname(filename)) : item.name;
                 (kind(item) === 'validation' ? validations : handlers).push(item);
@@ -100,9 +106,9 @@ export default class WatchImpl extends internal implements Watch {
         };
     }
 
-    async load(config: {name: string, pkg: config['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]) {
+    public async load<T extends {result: unknown}>(config: {name: string, pkg: IModuleConfig['pkg']}, isDirectory: boolean, isFile: boolean, ...path: string[]): Promise<(api: T) => T> {
         if (isDirectory) {
-            return this.loadHandlers(config, ...path);
+            return this._loadHandlers(config, ...path);
         } else if (isFile) {
             const filename = join(...path);
             if (isCode(filename)) {
@@ -135,7 +141,7 @@ export default class WatchImpl extends internal implements Watch {
         }
     }
 
-    async start(registry: Registry, remote: Remote) {
+    public async start(registry: IRegistry, remote: IRemote): Promise<void> {
         this.#logger?.debug?.({
             $meta: {mtid: 'event', method: 'watch.start'},
             dir: Array
@@ -201,7 +207,7 @@ export default class WatchImpl extends internal implements Watch {
                         const dir = dirname(filename);
                         config = this.#handlerFolders.get(dir);
                         if (config) {
-                            await registry.replaceHandlers(config.name + '.' + basename(dir), (await this.loadHandlers(config, dir))(layerProxy(this.#error, this.#port, config)).result[basename(dir)].methods);
+                            await registry.replaceHandlers(config.name + '.' + basename(dir), (await this._loadHandlers(config, dir))(layerProxy(this.#error, this.#port, config)).result[basename(dir)].methods);
                         }
                     }
                     await registry.connected();
@@ -214,13 +220,13 @@ export default class WatchImpl extends internal implements Watch {
         await registry.connected();
     }
 
-    async test(framework) {
+    public async test(framework: unknown): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             emit.emit('test', error => error ? reject(error) : resolve(), framework);
         })
     }
 
-    async stop() {
+    public async stop(): Promise<void> {
         while (this.#watchers.length) {
             const watcher = this.#watchers.pop();
             await watcher.close();

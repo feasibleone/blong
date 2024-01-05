@@ -1,30 +1,32 @@
-import got, { type HTTPSOptions } from 'got';
-import { adapter, type errors } from '../../../types.js';
+import got, { type HttpsOptions, type Options } from 'got';
+import type { IMeta } from '../../../types.js';
+import { adapter, type Errors } from '../../../types.js';
+import type { IErrorMap } from '../../error.js';
 import tls from '../../tls.js';
 
-export type config = {
+export interface IConfig {
     tls?: {
-        keyPath: string
-        certPath: string
-        caPaths: string[]
+        key?: string
+        cert?: string
+        ca?: string | string[]
     }
     url?: string
 }
 
-const errorMap = {
+const errorMap: IErrorMap = {
     'http.generic': 'HTTP Error'
 };
 
-let _errors: errors<typeof errorMap>;
+let _errors: Errors<typeof errorMap>;
 
-export default adapter<config>(({
+export default adapter<IConfig>(({
     utError
 }) => {
     // _errors ||= utError.defineError(errorMap);
 
-    let https: HTTPSOptions;
+    let https: HttpsOptions;
     return {
-        async init(...configs) {
+        async init(...configs: object[]) {
             await super.init({
                 type: 'http'
             }, ...configs);
@@ -44,7 +46,17 @@ export default adapter<config>(({
             body,
             form,
             json
-        }, {stream, ...$meta}) {
+        }: {
+            path: string
+            query: string
+            url: URL,
+            responseType: Options['responseType'],
+            method: Options['method']
+            headers: Options['headers']
+            body: Options['body']
+            form: Options['form']
+            json: Options['json']
+        }, {stream}: IMeta) {
             try {
                 return got({
                     url,

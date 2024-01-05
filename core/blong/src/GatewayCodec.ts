@@ -1,24 +1,25 @@
-import got from 'got';
+import got, { type HTTPAlias, type Headers } from 'got';
 import type { JWTPayload } from 'jose';
 
 import busGateway from 'ut-bus/gateway.js';
 import jose from 'ut-bus/jose.js';
 import oidc from 'ut-bus/oidc.js';
-import type { Resolution } from './Resolution.js';
+import type { IMeta } from '../types.js';
+import type { IResolution } from './Resolution.js';
 import tls from './tls.js';
 
-type protocol = 'http' | 'https'
-export interface GatewayCodec {
+type Protocol = 'http' | 'https'
+export interface IGatewayCodec {
     gateway: ($meta: object, methodName: string) => object;
     codec: ($meta: object, methodType: 'request' | 'publish') => Promise<{
-        encode: (...params: unknown[]) => {
+        encode: (...params: unknown[]) => Promise<{
             params: object,
-            headers: object,
-            method: string
-        }
-        decode: (result: unknown, unpack?: boolean) => object
+            headers?: object,
+            method?: string
+        }>
+        decode: (result: unknown, unpack?: boolean) => Promise<unknown>
         requestParams: {
-            protocol: protocol
+            protocol: Protocol
             hostname: string
             port: string
             path: string
@@ -29,31 +30,61 @@ export interface GatewayCodec {
     verify: (token, flags: {nonce?: string, audience: string}, isId?) => Promise<JWTPayload & {per?: string}>
 }
 
-export default class GatewayCodecImpl implements GatewayCodec {
+export interface IConfig {
+    client?: {tls?: {ca?: string | string[], key?: string, cert?: string, crl?: string}}
+    gateway?: object
+    protocol?: Protocol
+    host?: string
+    port?: string
+    service?: string
+    openId?: unknown
+    utLogin?: unknown
+}
+
+type Sender = (a:unknown, b:unknown) => Promise<unknown>
+
+export default class GatewayCodecImpl implements IGatewayCodec {
     #gatewayCodec: Promise<ReturnType<busGateway>>;
-    #protocol: protocol;
-    #port;
-    #config;
-    #tlsClient;
-    #resolution: Resolution;
+    #protocol: Protocol;
+    #port: string;
+    #config: IConfig;
+    #tlsClient: object;
+    #resolution: IResolution;
 
-    verify = undefined;
+    public verify: IGatewayCodec['verify'] = undefined;
 
-    constructor(config, protocol: protocol, port, errors, sender, resolution) {
+    public constructor(config: IConfig, protocol: Protocol, port: string, errors: unknown, sender: Sender, resolution: IResolution) {
         this.#config = config;
         this.#protocol = protocol;
         this.#port = port;
         this.#tlsClient = tls(this.#config.client, true);
         this.#resolution = resolution;
 
-        async function session(token) {
+        async function session(token: {
+            oid?: string
+            sub?: string
+            per?: string
+            ses?: string
+            enc?: object
+            sig?: object
+        }): Promise<void> {
             const result = await sender({
                 username: token.oid || token.sub,
                 installationId: token.oid || token.sub,
                 type: 'oidc',
                 password: '*',
                 channel: 'web'
-            }, {method: 'identity.checkInternal'});
+            }, {method: 'identity.checkInternal'}) as [{
+                'identity.check': {
+                    actorId: unknown
+                    sessionId: string
+                }
+                permissionMap: string
+                mle?: {
+                    mlek: string
+                    mlsk: string
+                }
+            }];
             const [{
                 'identity.check': {
                     actorId,
@@ -62,11 +93,13 @@ export default class GatewayCodecImpl implements GatewayCodec {
                 permissionMap,
                 mle
             }] = result;
-            token.per = permissionMap;
-            token.ses = sessionId;
-            if (mle && mle.mlek) token.enc = JSON.parse(mle.mlek);
-            if (mle && mle.mlsk) token.sig = JSON.parse(mle.mlsk);
-            token.sub = String(actorId);
+            if (token) {
+                token.per = permissionMap;
+                token.ses = sessionId;
+                if (mle && mle.mlek) token.enc = JSON.parse(mle.mlek);
+                if (mle && mle.mlsk) token.sig = JSON.parse(mle.mlsk);
+                token.sub = String(actorId);
+            }
         }
 
         const {verify, get} = oidc({
@@ -75,7 +108,12 @@ export default class GatewayCodecImpl implements GatewayCodec {
                 method,
                 url,
                 headers
-            }, callback) {
+            }: {
+                json: unknown
+                method: HTTPAlias,
+                url: string
+                headers: Headers
+            }, callback: (error: Error, response?: unknown, body?: unknown) => void) {
                 try {
                     const response = await got(url, {
                         method,
@@ -88,7 +126,7 @@ export default class GatewayCodecImpl implements GatewayCodec {
                     callback(error);
                 }
             },
-            discoverService: this.discoverService.bind(this),
+            discoverService: this._discoverService.bind(this),
             errorPrefix: 'rpc.',
             errors,
             session,
@@ -110,7 +148,7 @@ export default class GatewayCodecImpl implements GatewayCodec {
         this.verify = verify;
     }
 
-    gateway($meta, methodName = $meta.method) {
+    public gateway($meta: IMeta, methodName:string = $meta.method): object {
         if (this.#config.gateway && methodName !== 'identity.checkInternal') {
             const [prefix, method] = methodName.split('/');
             if (method) {
@@ -125,7 +163,7 @@ export default class GatewayCodecImpl implements GatewayCodec {
         if ($meta.gateway) return {...$meta.gateway, method: methodName};
     }
 
-    async codec($meta, methodType) {
+    public async codec($meta: IMeta, methodType: 'request' | 'publish'): ReturnType<IGatewayCodec['codec']> {
         const gatewayConfig = this.gateway($meta);
 
         if (gatewayConfig) return (await this.#gatewayCodec)(gatewayConfig);
@@ -135,16 +173,21 @@ export default class GatewayCodecImpl implements GatewayCodec {
         const op = ['start', 'stop', 'drain'].includes(event) ? event : methodType;
 
         return {
-            encode: (...params) => ({params}),
-            decode: result => result,
+            encode: async(...params) => ({params}),
+            decode: async result => result,
             requestParams: {
-                ...await this.discoverService('rpc-' + namespace),
+                ...await this._discoverService('rpc-' + namespace),
                 path: `/rpc/ports/${namespace}/${op}`
             }
         };
     }
 
-    async discoverService(namespace) {
+    private async _discoverService(namespace: string): Promise<{
+        protocol: Protocol,
+        hostname: string
+        port: string
+        service: string
+    }> {
         const serviceName = namespace.replace(/\//g, '-');
         const params = {
             protocol: this.#config.protocol || this.#protocol,
