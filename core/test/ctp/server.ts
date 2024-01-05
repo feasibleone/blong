@@ -37,7 +37,7 @@ export default realm(blong => ({
             listen: true,
             tls: {
                 cert: join(dirname(import.meta.url.slice(7)), 'tls.crt'),
-                key: join(dirname(import.meta.url.slice(7)), 'tls.key'),
+                key: join(dirname(import.meta.url.slice(7)), 'tls.txt'),
             },
         },
     },
