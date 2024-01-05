@@ -3,7 +3,7 @@ import fp from 'fastify-plugin';
 
 import jose from './jose.js';
 
-type IConfig = Parameters<typeof jose>[0] & {public: {sign: unknown; encrypt: unknown}};
+export type IConfig = Parameters<typeof jose>[0] & {public: {sign: unknown; encrypt: unknown}};
 
 export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, config: IConfig) {
     const mle = await jose(config);

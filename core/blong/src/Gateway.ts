@@ -14,6 +14,7 @@ import type {IRpcClient} from './RpcClient.js';
 import type {IErrorFactory, IErrorMap} from './error.js';
 import jwt from './jwt.js';
 import {methodParts} from './lib.js';
+import type {IConfig as IConfigMLE} from './mle.js';
 import swagger from './swagger.js';
 
 const osName: string = [os.type(), os.platform(), os.release()].join(':');
@@ -55,17 +56,11 @@ declare module 'fastify' {
     }
 }
 
-interface IConfig {
+interface IConfig extends IConfigMLE {
     host?: string;
     port?: number;
     logLevel?: LevelWithSilent;
     cors?: unknown;
-    sign?: unknown;
-    encrypt?: unknown;
-    public?: {
-        sign?: unknown;
-        encrypt?: unknown;
-    };
     debug?: boolean;
     errorFields: unknown[];
     jwt: {

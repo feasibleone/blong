@@ -7,6 +7,7 @@ export interface IMeta {
     mtid?: 'request' | 'response' | 'error' | 'notification' | 'discard' | 'event';
     request?: IMeta;
     stream?: unknown;
+    headers?: object;
     trace?: string;
     retry?: number;
     method: string;

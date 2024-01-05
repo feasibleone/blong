@@ -2,7 +2,7 @@ import ky from 'ky';
 import {spare} from 'ut-function.timing';
 import type {ILog} from './Log.js';
 
-import {Errors} from '../types.js';
+import {Errors, IMeta} from '../types.js';
 import type {IErrorFactory, IErrorMap} from './error.js';
 import type {ILocal} from './Local.js';
 import Remote from './Remote.js';
@@ -24,31 +24,42 @@ const errorMap: IErrorMap = {
     'gw.jsonRpcHttp': 'JSON RPC returned HTTP error {code}',
 };
 
+interface IConfig {
+    logLevel?: Parameters<ILog['logger']>[0];
+    url: string;
+    debug: boolean;
+    latency: number;
+}
 export default class GatewayClientImpl extends Remote implements IGatewayClient {
-    #log: ILog;
     #errors: Errors<typeof errorMap>;
-    #config = {
+    #config: IConfig = {
         url: 'http://localhost:8080/rpc',
         debug: false,
         latency: 100,
     };
 
-    gateway(meta: object, method: string) {}
-
-    constructor(config, {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal}) {
+    public constructor(
+        config: IConfig,
+        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal}
+    ) {
         super(config, {log, error, local});
         this.merge(this.#config, config);
-        this.#log = log;
         this.#errors = error.register(errorMap);
     }
 
-    sender(methodType: 'request' | 'publish') {
+    public gateway(meta: object, method: string): void {}
+
+    protected sender(
+        methodType: 'request' | 'publish'
+    ): (...params: unknown[]) => Promise<unknown> {
         return async (...rest) => {
-            const {stream, ...$meta} = rest.pop();
+            const {stream, ...$meta} = rest.pop() as IMeta;
             const params = rest;
-            const {$http: {method: httpMethod = 'POST'} = {}} = params?.[0] || {};
+            const {$http: {method: httpMethod = 'POST'} = {}} = (params?.[0] || {}) as {
+                $http?: {method?: string};
+            };
             const {headers, method} = $meta;
-            const sendRequest = async () => {
+            const sendRequest = async (): Promise<unknown> => {
                 const url = new URL(method.split('.').join('/'), this.#config.url);
                 const response = await ky(url, {
                     // https: this.#https,
@@ -66,7 +77,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
                             }),
                         params,
                     },
-                    headers,
+                    headers: headers as Parameters<typeof ky>[1]['headers'],
                 });
                 const body = await response.json<{
                     jsonrpc?: string;

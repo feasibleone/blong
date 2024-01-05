@@ -35,14 +35,17 @@
     "devDependencies": {
         "@rushstack/eslint-config": "^3.5.1",
         "eslint": "~8.56.0",
-        "typescript": "^5.3.3"
+        "typescript": "^5.3.3",
+        "@rushstack/heft": "~0.63.6",
+        "@rushstack/heft-typescript-plugin": "~0.2.16",
+        "@rushstack/heft-lint-plugin": "~0.2.16"
     },
     "exports": {
         ".": "./types.ts"
     },
     "name": "@feasibleone/blong",
     "scripts": {
-        "build": "true"
+        "build": "heft build --clean"
     },
     "type": "module",
     "version": "1.0.0"
