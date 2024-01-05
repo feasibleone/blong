@@ -1,17 +1,18 @@
-import { createRequire } from 'node:module';
+import {createRequire} from 'node:module';
 
-import { browser } from '@feasibleone/blong';
+import {browser} from '@feasibleone/blong';
 
 export default browser(fo => ({
     pkg: createRequire(import.meta.url)('./package.json'),
+    url: import.meta.url,
     default: {
         client: {
             backend: {
-                namespace: ['subject', 'hsm', 'parking', 'payshield', 'login']
-            }
+                namespace: ['subject', 'hsm', 'parking', 'payshield', 'login'],
+            },
         },
         remote: {
-            canSkipSocket: true
+            canSkipSocket: true,
         },
         watch: {
             test: [
@@ -19,16 +20,26 @@ export default browser(fo => ({
                 // 'test.hsm.generate.key',
                 'test.number.sum',
                 'test.dispatch.loop',
-                'test.tcp.loop'
-            ]
-        }
+                'test.tcp.loop',
+            ],
+        },
     },
     validation: fo.Type.Object({}),
     children: [
-        function client() { return import('./client/browser.js'); },
-        function payshield() { return import('./payshield/server.js'); },
-        function ctp() { return import('./ctp/server.js'); },
-        function parking() { return import('./parking/server.js'); },
-        function demo() { return import('./demo/server.js'); }
-    ]
+        function client() {
+            return import('./client/browser.js');
+        },
+        function payshield() {
+            return import('./payshield/server.js');
+        },
+        function ctp() {
+            return import('./ctp/server.js');
+        },
+        function parking() {
+            return import('./parking/server.js');
+        },
+        function demo() {
+            return import('./demo/server.js');
+        },
+    ],
 }));

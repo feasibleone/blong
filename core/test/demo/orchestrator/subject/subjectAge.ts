@@ -1,23 +1,25 @@
-import { handler } from '@feasibleone/blong';
+import {IMeta, handler} from '@feasibleone/blong';
 
-interface schema {
+interface ISchema {
     /** */
     params: {
         /** @description "Birth Date" */
-        birthDate: string
-    }
+        birthDate: string;
+    };
     result: {
-        age: number
-    }
+        age: number;
+    };
 }
 
-export default handler(({
-    lib: {
-        age
-    }
-}) => function subjectAge({birthDate}: schema['params'], $meta): schema['result'] {
-    $meta.httpResponse = {
-        header: [['h1', 1], ['h2', 2]]
-    };
-    return {age: age(new Date(birthDate))};
-});
+export default handler(
+    ({lib: {age}}) =>
+        function subjectAge({birthDate}: ISchema['params'], $meta: IMeta): ISchema['result'] {
+            $meta.httpResponse = {
+                header: [
+                    ['h1', 1],
+                    ['h2', 2],
+                ],
+            };
+            return {age: age(new Date(birthDate))};
+        }
+);

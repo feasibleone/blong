@@ -73,10 +73,13 @@ export default class Watch extends Internal implements IWatch {
             (prev, {filename, name}) => {
                 const schema = readFileSync(filename)
                     .toString()
-                    .match(/^interface schema \{\n(?:[^}]?.*\n)*}$/m)?.[0];
+                    .match(/^interface ISchema \{\n(?:[^}]?.*\n)*}$/m)?.[0];
                 return schema
                     ? [
-                          [...prev[0], schema.replace('interface schema {', `interface ${name} {`)],
+                          [
+                              ...prev[0],
+                              schema.replace('interface ISchema {', `interface ${name} {`),
+                          ],
                           [...prev[1], name],
                       ]
                     : prev;
@@ -87,6 +90,9 @@ export default class Watch extends Internal implements IWatch {
             writeFileSync(
                 join(dir, '~.schema.ts'),
                 Formatter.Format(`/* eslint-disable indent,semi */
+            /* eslint-disable @typescript-eslint/naming-convention */
+            /* eslint-disable @rushstack/typedef-var */
+
             import { validation } from '@feasibleone/blong';
             ${TypeScriptToTypeBox.Generate(schema.sort().join('\n')).trim()}
 

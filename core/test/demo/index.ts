@@ -1,78 +1,80 @@
-
-import { realm } from '@feasibleone/blong';
+import {ModuleApi, realm} from '@feasibleone/blong';
 import pkg from './package.json';
 
-import mock from './adapter/mock';
-import script from './adapter/script';
-import errors from './error/error';
-import subjectDispatch from './orchestrator/subjectDispatch';
+import mock from './adapter/mock.js';
+import script from './adapter/script.js';
+import errors from './error/error.js';
+import subjectDispatch from './orchestrator/subjectDispatch.js';
 
-import subjectNumberSum from './orchestrator/subject/subjectNumberSum';
-import subjectObjectPredicate2 from './orchestrator/subject/subjectObjectPredicate2';
-import sum from './orchestrator/subject/sum';
+import subjectAge from './orchestrator/subject/subjectAge.js';
+import subjectNumberSum from './orchestrator/subject/subjectNumberSum.js';
+import sum from './orchestrator/subject/sum.js';
 
-import validate1 from './gateway/subject.validation/subjectNumberSum';
-import validate2 from './gateway/subject.validation/subjectObjectPredicate2';
+import validate1 from './orchestrator/subject/~.schema.js';
 
 export default realm(fo => ({
     pkg,
     default: {},
     dev: {
-        test: true
+        test: true,
     },
     microservice: {
         error: true,
         adapter: true,
         orchestrator: true,
-        gateway: true
+        gateway: true,
     },
     validation: fo.Type.Object({}),
+    url: import.meta.url,
     children: [
-        function error(layer) { return layer.error(errors); },
-        function adapter(layer) { return layer.mock(mock); },
-        function adapter(layer) { return layer.script(script(layer)); },
-        function orchestrator(layer) { return layer.subjectDispatch(subjectDispatch(layer)); },
-        function orchestrator(layer) {
+        function error(layer: ModuleApi) {
+            return layer.error(errors);
+        },
+        function adapter(layer: ModuleApi) {
+            return layer.mock(mock);
+        },
+        function adapter(layer: ModuleApi) {
+            return layer.script(script(layer));
+        },
+        function orchestrator(layer: ModuleApi) {
+            return layer.subjectDispatch(subjectDispatch(layer));
+        },
+        function orchestrator(layer: ModuleApi) {
             return layer
-                .subject(import('./orchestrator/subject/subjectObjectPredicate'))
-                .subject([
-                    sum,
-                    subjectNumberSum,
-                    subjectObjectPredicate2
-                ])
-                .subject(import('./orchestrator/subject/subjectObjectSendReceive'));
+                .subject(import('./orchestrator/subject/age.js'))
+                .subject([sum, subjectNumberSum, subjectAge])
+                .subject(import('./orchestrator/subject/subjectObjectSendReceive.js'));
         },
-        function gateway(layer) {
-            return layer.validation([
-                validate1,
-                validate2
-            ], 'subject');
+        function gateway(layer: ModuleApi) {
+            return layer.validation([validate1], 'subject');
         },
-        function test(layer) { return layer.feature(''); },
-        function test(layer) {
+        function test(layer: ModuleApi) {
+            return layer.feature('');
+        },
+        function test(layer: ModuleApi) {
             return layer.sequence(function add() {
                 return [
                     '',
                     {
                         name: '',
-                        method: ''
-                    }
+                        method: '',
+                    },
                 ];
             });
         },
         function test() {
-            return function ui(fo) {
-                return fo.sequence(function playwright() {
+            return function ui(layer: ModuleApi) {
+                return layer.sequence(function playwright() {
                     return [
                         {
                             params: {__dirname},
                             name: 'utCore.playwright',
-                            result() {}
+                            result() {},
                         },
-                        fo.config?.type === 'unit' && 'portal.playwright.run'
+                        layer.config?.type === 'unit' && 'portal.playwright.run',
                     ];
                 });
             };
-        }
-    ]
+        },
+    ],
 }));

@@ -1,4 +1,7 @@
 /* eslint-disable indent,semi */
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @rushstack/typedef-var */
+
 import { validation } from '@feasibleone/blong'
 import { Type, Static } from '@sinclair/typebox'
 

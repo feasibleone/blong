@@ -1,20 +1,16 @@
-import { createRequire } from 'node:module';
+import {handler, type IContext, type ILogger, type IMeta} from '@feasibleone/blong';
+import {createRequire} from 'node:module';
 import bitsyntax from 'ut-bitsyntax';
 
-import { handler } from '@feasibleone/blong';
-
-export default handler(({
-    config,
-    lib: {
-        errors,
-        commands,
-        lmk,
-        upperCaseObject,
-        mask
-    }
-}) => {
-    const nonCorrectableFields = Object.assign({}, createRequire(import.meta.url)('./fields.json'), config.nonCorrectableFields);
-    const headerPattern = bitsyntax.parse('headerNo:' + config.headerFormat + ', code:2/string, body/binary');
+export default handler(({config, lib: {errors, commands, lmk, upperCaseObject, mask}}) => {
+    const nonCorrectableFields = Object.assign(
+        {},
+        createRequire(import.meta.url)('./fields.json'),
+        config.nonCorrectableFields
+    );
+    const headerPattern = bitsyntax.parse(
+        'headerNo:' + config.headerFormat + ', code:2/string, body/binary'
+    );
 
     if (headerPattern === false) {
         throw errors['payshield.parser.header']({});
@@ -23,14 +19,17 @@ export default handler(({
     const headerNoSize = headerPattern.filter(value => value.name === 'headerNo').pop().size;
     const maxTrace = parseInt('9'.repeat(headerNoSize));
 
-    return function encode(data, $meta, context, log) {
+    return function encode(data: object, $meta: IMeta, context: IContext, log: ILogger) {
         const commandName = $meta.method.split('.').pop() + ':' + $meta.mtid;
 
-        if (commands[commandName] === undefined) throw errors['payshield.notImplemented']({params: {opcode: commandName}});
+        if (commands[commandName] === undefined)
+            throw errors['payshield.notImplemented']({params: {opcode: commandName}});
 
-        let headerNo = ($meta.mtid === 'request') ? null : $meta.trace;
+        let headerNo = $meta.mtid === 'request' ? null : $meta.trace;
         if (headerNo === undefined || headerNo === null) {
-            headerNo = $meta.trace = ('0'.repeat(headerNoSize) + context.trace).substr(-headerNoSize);
+            headerNo = $meta.trace = ('0'.repeat(headerNoSize) + context.trace).substr(
+                -headerNoSize
+            );
             context.trace += 1;
             if (context.trace > maxTrace) {
                 context.trace = 0;
@@ -43,18 +42,16 @@ export default handler(({
         const buffer = bitsyntax.build(headerPattern, {
             headerNo,
             code: commands[commandName].code,
-            body: bodyBuff
+            body: bodyBuff,
         });
         log?.trace?.({
             $meta: {mtid: 'frame', method: 'payshield.encode'},
-            message: mask(
-                buffer.toString(),
-                dataCorrected, {
-                    pattern: commands[commandName].pattern,
-                    maskedKeys: config.maskedKeys,
-                    maskSymbol: '*'
-                }),
-            log: context?.session?.log
+            message: mask(buffer.toString(), dataCorrected, {
+                pattern: commands[commandName].pattern,
+                maskedKeys: config.maskedKeys,
+                maskSymbol: '*',
+            }),
+            log: context?.session?.log,
         });
         return buffer;
     };

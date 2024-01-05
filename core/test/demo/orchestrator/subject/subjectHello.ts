@@ -1,12 +1,15 @@
-import { handler } from '@feasibleone/blong';
+import {IMeta, handler} from '@feasibleone/blong';
 
-interface schema {
-    params: unknown
+interface ISchema {
+    params: unknown;
     result: {
-        hello: unknown
-    }
+        hello: unknown;
+    };
 }
 
-export default handler(proxy => function subjectHello(params: schema['params'], $meta): schema['result'] {
-    return {hello: $meta.auth};
-});
+export default handler(
+    proxy =>
+        function subjectHello(params: ISchema['params'], $meta: IMeta): ISchema['result'] {
+            return {hello: $meta.auth};
+        }
+);

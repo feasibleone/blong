@@ -1,16 +1,15 @@
-import { handler } from '@feasibleone/blong';
+import {IMeta, handler} from '@feasibleone/blong';
 
-interface schema {
+interface ISchema {
     /** @description "array of numbers to sum" */
-    params: number[]
+    params: number[];
     /** @description "calculated sum" */
-    result: number
+    result: number;
 }
 
-export default handler(({
-    lib: {
-        sum
-    }
-}) => function subjectNumberSum(params: schema['params'], $meta): schema['result'] {
-    return sum(...params);
-});
+export default handler(
+    ({lib: {sum}}) =>
+        function subjectNumberSum(params: ISchema['params'], $meta: IMeta): ISchema['result'] {
+            return sum(...params);
+        }
+);

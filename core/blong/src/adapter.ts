@@ -66,8 +66,6 @@ interface IApi {
     };
 }
 
-export type HRTime = [number, number];
-
 const errorMap: IErrorMap = {
     'adapter.configValidation': 'Adapter config validation:\r\n{message}',
     'adapter.missingParameters': 'Missing parameters',
@@ -150,18 +148,6 @@ interface IAdapter<T> {
 export interface IAdapterFactory<T = Record<string, unknown>> {
     config?: unknown;
     (api: IApi): IAdapter<T>;
-}
-
-export interface IContext {
-    session?: {
-        [name: string]: unknown;
-    };
-    conId?: string;
-    requests: Map<
-        string,
-        {$meta: IMeta; end: (error: Error) => {local: object; literals: object[]}}
-    >;
-    waiting: Set<(error: Error) => void>;
 }
 
 let _errors: Errors<typeof errorMap>;

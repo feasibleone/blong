@@ -1,18 +1,8 @@
-import {LoggerOptions, pino, type Level, type LogFn, type Logger} from 'pino';
-import {Internal} from '../types.js';
+import {LoggerOptions, pino, type Level, type Logger} from 'pino';
+import {Internal, type ILogger} from '../types.js';
 
 export interface ILog {
-    logger: (
-        level: Level,
-        bindings: object
-    ) => {
-        trace?: LogFn;
-        debug?: LogFn;
-        info?: LogFn;
-        warn?: LogFn;
-        error?: LogFn;
-        fatal?: LogFn;
-    };
+    logger: (level: Level, bindings: object) => ILogger;
     child: Logger['child'];
 }
 

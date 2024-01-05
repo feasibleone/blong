@@ -24,6 +24,9 @@ type Handlers = ((params: {
 }) => void)[];
 
 export interface IRegistry {
+    start: () => Promise<void>;
+    test: (tester?: unknown) => Promise<void>;
+    stop: () => Promise<void>;
     ports: Map<string, IAdapterFactory>;
     methods: Map<string, Handlers>;
     modules: Map<string | symbol, IRegistry[]>;

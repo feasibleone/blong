@@ -1,13 +1,12 @@
-import { createRequire } from 'node:module';
+import {createRequire} from 'node:module';
 
-import { realm } from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong';
 
 export default realm(fo => ({
     pkg: createRequire(import.meta.url)('./package.json'),
-    default: {
-    },
+    url: import.meta.url,
+    default: {},
     microservice: {},
     validation: fo.Type.Object({}),
-    url: import.meta.url,
-    children: ['./adapter']
+    children: ['./adapter'],
 }));

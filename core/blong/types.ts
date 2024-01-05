@@ -1,7 +1,8 @@
 import {TSchema, Type} from '@sinclair/typebox';
+import type {LogFn} from 'pino';
 import merge from 'ut-function.merge';
 
-import type {IAdapterFactory as adapterFactory, IContext} from './src/adapter.js';
+import type {IAdapterFactory as adapterFactory} from './src/adapter.js';
 
 export interface IMeta {
     mtid?: 'request' | 'response' | 'error' | 'notification' | 'discard' | 'event';
@@ -10,8 +11,8 @@ export interface IMeta {
     headers?: object;
     trace?: string;
     retry?: number;
-    method: string;
-    expect?: string[];
+    method?: string;
+    expect?: string[] | string;
     opcode?: string;
     source?: string;
     forward?: object;
@@ -78,7 +79,21 @@ export interface IMeta {
     validation?: unknown;
 }
 
-import {HRTime} from './src/adapter.js';
+type HRTime = [number, number];
+
+export interface IContext {
+    trace: number;
+    session?: {
+        [name: string]: unknown;
+    };
+    conId?: string;
+    requests: Map<
+        string,
+        {$meta: IMeta; end: (error: Error) => {local: object; literals: object[]}}
+    >;
+    waiting: Set<(error: Error) => void>;
+}
+
 export {default} from './src/load.js';
 
 export interface ITypedError extends Error {
@@ -111,7 +126,16 @@ export interface IModuleConfig {
     url: string;
     default: object;
     validation: TSchema;
-    children: string[];
+    children: string[] | ((layer: ModuleApi) => unknown)[];
+}
+
+export interface ILogger {
+    trace?: LogFn;
+    debug?: LogFn;
+    info?: LogFn;
+    warn?: LogFn;
+    error?: LogFn;
+    fatal?: LogFn;
 }
 
 interface IStep {
