@@ -9,9 +9,7 @@ export default server(blong => ({
     microservice: {},
     dev: {
         resolution: true,
-        payshield: {},
         parking: {},
-        ctp: {},
         gateway: {
             logLevel: 'warn',
             debug: true,

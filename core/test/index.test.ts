@@ -5,8 +5,8 @@ import browser from './browser.js';
 import server from './server.js';
 
 const realms = await Promise.all([
-    load(server, 'impl', 'impl', ['microservice', 'dev']),
-    load(browser, 'impl', 'impl', ['integration', 'dev']),
+    load(server, 'impl', 'impl', ['microservice', 'dev', 'test']),
+    load(browser, 'impl', 'impl', ['integration', 'dev', 'test']),
 ]);
 for (const realm of realms) await realm.start();
 for (const realm of realms) await realm.test(tap);

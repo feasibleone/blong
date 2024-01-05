@@ -23,4 +23,4 @@ jobs:
       - name: Rush rebuild
         run: node common/scripts/install-run-rush.js rebuild --verbose
       - name: test
-        run: ./core/test/node_modules/.bin/tap **/*.test.ts
+        run: ./core/test/node_modules/.bin/tap core/**/*.test.ts

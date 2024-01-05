@@ -25,10 +25,13 @@ export default browser(blong => ({
         },
     },
     dev: {
-        payshield: {},
-        ctp: {},
         parking: {},
         demo: {},
+    },
+    test: {
+        watch: {
+            test: ['test.codec.mle', 'test.number.sum', 'test.dispatch.loop'],
+        },
     },
     validation: blong.type.Object({}),
     children: [
