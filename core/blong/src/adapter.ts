@@ -98,7 +98,7 @@ interface IAdapter<T> {
     log?: Logger;
     errors?: Errors<typeof errorMap>;
     imported?: ReturnType<IAdapterFactory<T>>;
-    extends?: object | `adapter.${string}`;
+    extends?: object | `adapter.${string}` | `orchestrator.${string}`;
     init?: (this: ReturnType<IAdapterFactory<T>>, ...config: Partial<Config<T>>[]) => void;
     start?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
     ready?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;

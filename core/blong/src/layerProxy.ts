@@ -39,7 +39,7 @@ export default function layerProxy(
                                     (prev, item) => {
                                         if (
                                             item.prototype instanceof port ||
-                                            kind(item) === 'adapter'
+                                            ['adapter', 'orchestrator'].includes(kind(item))
                                         )
                                             prev[0].push(item);
                                         else prev[1].push(item);
@@ -65,7 +65,7 @@ export default function layerProxy(
                                             return port;
                                         };
                                         where.port.config = moduleConfig?.[name];
-                                    } else if (kind(what) === 'adapter') {
+                                    } else if (['adapter', 'orchestrator'].includes(kind(what))) {
                                         where.port = async ({
                                             id,
                                             ...portApi

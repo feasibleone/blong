@@ -183,7 +183,8 @@ export default class Watch extends Internal implements IWatch {
                     return Object.defineProperty(
                         api =>
                             api[itemName](
-                                typeof item === 'function' && kind(item) !== 'adapter'
+                                typeof item === 'function' &&
+                                    !['adapter', 'orchestrator'].includes(kind(item))
                                     ? item(api)
                                     : item,
                                 config.name + '.' + itemName,

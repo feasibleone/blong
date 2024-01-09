@@ -79,6 +79,7 @@ export default async function loadRealm(
             port: {},
             codec: {},
             adapter: {},
+            orchestrator: {},
             remote: {},
             local: {},
             rpcServer: {},
@@ -118,7 +119,10 @@ export default async function loadRealm(
                         return import('./Registry.js');
                     },
                     function codec() {
-                        return import('./codec/browser.js');
+                        return import('./codec/server.js');
+                    },
+                    function orchestrator() {
+                        return import('./orchestrator/index.js');
                     },
                     function adapter() {
                         return import('./adapter/server.js');
@@ -133,6 +137,9 @@ export default async function loadRealm(
                     },
                     function codec() {
                         return import('./codec/browser.js');
+                    },
+                    function orchestrator() {
+                        return import('./orchestrator/index.js');
                     },
                     function adapter() {
                         return import('./adapter/browser.js');

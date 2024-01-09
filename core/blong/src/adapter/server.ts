@@ -7,11 +7,9 @@ export default realm(blong => ({
     default: {
         tcp: false,
         http: false,
-        dispatch: false,
         server: true,
-        common: true,
     },
     validation: blong.type.Object({}),
     url: import.meta.url,
-    children: ['./common', './server'],
+    children: ['./server'],
 }));

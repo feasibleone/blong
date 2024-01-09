@@ -1,5 +1,5 @@
-import { adapter } from '@feasibleone/blong';
+import {orchestrator} from '@feasibleone/blong';
 
-export default adapter(() => ({
-    extends: 'adapter.dispatch'
+export default orchestrator(() => ({
+    extends: 'orchestrator.dispatch',
 }));
