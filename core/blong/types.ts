@@ -1,8 +1,8 @@
-import { TSchema, Type } from '@sinclair/typebox';
-import type { LogFn } from 'pino';
+import {TSchema, Type} from '@sinclair/typebox';
+import type {LogFn} from 'pino';
 import merge from 'ut-function.merge';
 
-import type { IAdapterFactory as adapterFactory } from './src/adapter.js';
+import type {IAdapterFactory as adapterFactory} from './src/adapter.js';
 
 export interface IMeta {
     mtid?: 'request' | 'response' | 'error' | 'notification' | 'discard' | 'event';
@@ -94,7 +94,7 @@ export interface IContext {
     waiting: Set<(error: Error) => void>;
 }
 
-export { default } from './src/load.js';
+export {default} from './src/load.js';
 
 export interface ITypedError extends Error {
     type: string;
@@ -276,4 +276,12 @@ export const orchestrator = <T>(definition: adapterFactory<T>): adapterFactory<T
     Object.defineProperty(definition, Kind, {value: 'orchestrator'});
 export const kind = <T>(
     what: T
-): 'lib' | 'validation' | 'solution' | 'server' | 'browser' | 'adapter' | 'orchestrator' | 'handler' => what[Kind];
+):
+    | 'lib'
+    | 'validation'
+    | 'solution'
+    | 'server'
+    | 'browser'
+    | 'adapter'
+    | 'orchestrator'
+    | 'handler' => what[Kind];

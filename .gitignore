@@ -112,7 +112,7 @@ todo.md
 dev
 dist
 .scannerwork
-.docusaurus
+**/.docusaurus
 help
 .tap
 temp

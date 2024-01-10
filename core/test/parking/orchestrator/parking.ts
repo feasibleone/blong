@@ -1,4 +1,4 @@
-import { handler } from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 
 export default handler(({lib: {error}}) => {
     const errors = error({'parking.invalidZone': 'Invalid zone'});
@@ -7,8 +7,8 @@ export default handler(({lib: {error}}) => {
             if (!['blue', 'green'].includes(zone)) throw errors['parking.invalidZone']();
             return {
                 zone,
-                price: {blue: 2, green: 1}[zone]
+                price: {blue: 2, green: 1}[zone],
             };
-        }
+        },
     };
 });

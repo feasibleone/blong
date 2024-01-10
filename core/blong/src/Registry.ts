@@ -116,6 +116,7 @@ export default class Registry extends Internal implements IRegistry {
             },
             error: this.#error,
             gateway: this.#gateway,
+            remote: this.#remote,
             utBus: {
                 config: {},
                 methodId,

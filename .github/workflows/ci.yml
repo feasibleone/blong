@@ -11,6 +11,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 2
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            docs: docs/blong/**
       - name: Git config user
         uses: snow-actions/git-config-user@v1.0.0
       - uses: actions/setup-node@v3
@@ -22,5 +27,11 @@ jobs:
         run: node common/scripts/install-run-rush.js install
       - name: Rush rebuild
         run: node common/scripts/install-run-rush.js rebuild --verbose
+      - if: steps.changes.outputs.docs == 'true'
+        name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/blong/build
       - name: test
         run: ./core/test/node_modules/.bin/tap core/**/*.test.ts

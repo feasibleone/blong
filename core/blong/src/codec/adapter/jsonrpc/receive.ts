@@ -2,7 +2,7 @@ import {type Response} from 'got';
 
 import {handler, type ITypedError} from '../../../../types.js';
 
-export default handler(({lib: {errors}}) => ({
+export default handler(({error}) => ({
     async receive(
         response: Response<{
             jsonrpc?: string;
@@ -36,7 +36,7 @@ export default handler(({lib: {errors}}) => ({
             };
             throw error;
         } else if (response.statusCode < 200 || response.statusCode >= 300) {
-            throw errors['jsonrpc.http']({
+            throw error.jsonrpcHttp({
                 statusCode: response.statusCode,
                 // statusText: response.statusText,
                 statusMessage: response.statusMessage,
@@ -55,7 +55,7 @@ export default handler(({lib: {errors}}) => ({
         } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
             return body.result;
         } else {
-            throw errors['jsonrpc.empty']();
+            throw error.jsonrpcEmpty();
         }
     },
 }));

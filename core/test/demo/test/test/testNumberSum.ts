@@ -19,9 +19,9 @@ export default handler(
                         await assert.rejects(
                             subjectNumberSum([-1], {
                                 ...$meta,
-                                expect: 'subject.sum',
+                                expect: 'subjectSum',
                             }) as Promise<unknown>,
-                            {type: 'subject.sum'},
+                            {type: 'subjectSum'},
                             'reject negative'
                         );
                     },

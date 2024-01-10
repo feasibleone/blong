@@ -1,0 +1,8 @@
+{
+    "label": "Patterns",
+    "position": 4,
+    "link": {
+        "type": "generated-index",
+        "description": "Reusable patterns for implementing different concepts while using the framework"
+    }
+}

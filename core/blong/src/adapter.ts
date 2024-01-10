@@ -6,6 +6,7 @@ import type {Errors, ITypedError} from '../types.js';
 import {IMeta} from '../types.js';
 import type {IGateway} from './Gateway.js';
 import type {ILog} from './Log.js';
+import {IRemote} from './Remote.js';
 import type {IErrorFactory, IErrorMap} from './error.js';
 import loop from './loop.js';
 
@@ -46,6 +47,7 @@ interface IApi {
     utError: IError;
     error: IErrorFactory;
     gateway: IGateway;
+    remote: IRemote;
     utBus: {
         config: object;
         register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;

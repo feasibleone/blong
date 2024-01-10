@@ -33,13 +33,18 @@ export default realm(blong => ({
     dev: {
         http: {
             namespace: ['time', 'k8s', 'github'],
-            openApi: {
-                time: ['core/test/api/world-time.json', 'core/test/api/world-time.operations.json'],
-                k8s: [
-                    'core/test/api/k8s-apps.json',
-                    'core/test/api/k8s-discovery.json',
-                    'core/test/api/k8s-version.json',
-                ],
+            'codec.openapi': {
+                namespace: {
+                    time: [
+                        'core/test/api/world-time.json',
+                        'core/test/api/world-time.operations.json',
+                    ],
+                    k8s: [
+                        'core/test/api/k8s-apps.json',
+                        'core/test/api/k8s-discovery.json',
+                        'core/test/api/k8s-version.json',
+                    ],
+                },
             },
         },
     },

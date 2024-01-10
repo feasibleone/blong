@@ -9,7 +9,7 @@ export default realm(blong => ({
         adapter: true,
         backend: {
             logLevel: 'fatal',
-            imports: ['codec.jsonrpc', 'codec.mle', /\.backend$/],
+            imports: [/\.backend$/, 'codec.jsonrpc', 'codec.mle'],
             url: 'http://localhost:8080',
         },
         test: {

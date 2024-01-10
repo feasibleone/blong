@@ -1,19 +1,19 @@
 import {handler, type IMeta} from '../../../../types.js';
 
-export default handler(async ({lib: {errors, load}}) => {
+export default handler(async ({config, lib: {load}, error}) => {
     let handlers;
     return {
         async ready() {
-            Object.keys({...this.config.openApi})
+            Object.keys(config.namespace)
                 .filter(Boolean)
                 .forEach(namespace => {
                     if (![].concat(this.config.namespace).find(n => namespace.startsWith(n))) {
-                        throw errors['openapi.namespaceNotDefined']({
+                        throw error.openapiNamespaceNotDefined({
                             params: {namespace: namespace.split('.')[0]},
                         });
                     }
                 });
-            handlers = await load(this.config.openApi, /./);
+            handlers = await load(config.namespace, /./);
         },
         send(params: unknown, $meta: IMeta) {
             const handler = handlers?.[$meta.method];
