@@ -1,9 +1,9 @@
 import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
-export default handler(({handler: {testLoginTokenCreate, parkingTest}}) => ({
+export default handler(({lib: {rename}, handler: {testLoginTokenCreate, parkingTest}}) => ({
     testDispatchLoop: ({name = 'ports'}, $meta) =>
-        Object.defineProperty<unknown>(
+        rename(
             [
                 testLoginTokenCreate({}, $meta),
                 async function dispatch(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
@@ -22,7 +22,6 @@ export default handler(({handler: {testLoginTokenCreate, parkingTest}}) => ({
                     );
                 },
             ],
-            'name',
-            {value: name}
+            name
         ),
 }));

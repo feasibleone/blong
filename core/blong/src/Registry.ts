@@ -248,6 +248,8 @@ export default class Registry extends Internal implements IRegistry {
             type: Type,
             error: this.#error.register.bind(this.#error),
             merge,
+            rename: (object: object, value: string) =>
+                Object.defineProperty<unknown>(object, 'name', {value}),
         };
         const local = {};
         const literals = [];

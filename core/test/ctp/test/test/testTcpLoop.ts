@@ -1,9 +1,9 @@
 import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
-export default handler(({handler: {testLoginTokenCreate, payshieldEcho}}) => ({
+export default handler(({lib: {rename}, handler: {testLoginTokenCreate, payshieldEcho}}) => ({
     testTcpLoop: ({name = 'ports'}, $meta) =>
-        Object.defineProperty<unknown>(
+        rename(
             [
                 testLoginTokenCreate({}, $meta),
                 async function tcp(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
@@ -17,7 +17,6 @@ export default handler(({handler: {testLoginTokenCreate, payshieldEcho}}) => ({
                     assert.equal(result.data, 'ECHO', 'Return data');
                 },
             ],
-            'name',
-            {value: name}
+            name
         ),
 }));

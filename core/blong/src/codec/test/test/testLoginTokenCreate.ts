@@ -1,8 +1,8 @@
 import {handler, type IMeta} from '../../../../types.js';
 
-export default handler(({handler: {loginTokenCreate}}) => ({
+export default handler(({lib: {rename}, handler: {loginTokenCreate}}) => ({
     testLoginTokenCreate: ({name = 'login token'}) =>
-        Object.defineProperty<unknown>(
+        rename<unknown>(
             [
                 function login(assert: unknown, {$meta}: {$meta: IMeta}) {
                     return loginTokenCreate(
@@ -14,7 +14,6 @@ export default handler(({handler: {loginTokenCreate}}) => ({
                     );
                 },
             ],
-            'name',
-            {value: name}
+            name
         ),
 }));
