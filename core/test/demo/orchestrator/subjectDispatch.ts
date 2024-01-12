@@ -1,7 +1,5 @@
-import dispatchDb from 'ut-dispatch-db';
+import {orchestrator} from '@feasibleone/blong';
 
-export default dispatchDb(
-    ['subject'],
-    ['demo.subject'],
-    ['demo.subject.validation']
-);
+export default orchestrator(() => ({
+    extends: 'orchestrator.dispatch',
+}));

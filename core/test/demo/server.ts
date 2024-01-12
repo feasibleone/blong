@@ -29,6 +29,11 @@ export default realm(blong => ({
             imports: ['demo.login'],
             validations: ['demo.login.validation'],
         },
+        subjectDispatch: {
+            namespace: 'subject',
+            imports: ['demo.subject'],
+            validations: ['demo.subject.validation'],
+        },
     },
     dev: {
         http: {
