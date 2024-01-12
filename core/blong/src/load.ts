@@ -1,5 +1,6 @@
 import {Type} from '@sinclair/typebox';
 import {readdir} from 'fs/promises';
+import {createRequire} from 'node:module';
 import {basename, dirname, join} from 'path';
 import {load} from 'ut-config';
 import merge from 'ut-function.merge';
@@ -59,6 +60,7 @@ export default async function loadRealm(
 ): Promise<IRegistry> {
     const defKind = kind(def);
     const mod = await def({type: Type});
+    if (!('pkg' in mod)) mod.pkg = createRequire(mod.url)('./package.json');
     const mergedConfig = {
         name,
         pkg: {name, version: '0.0'},

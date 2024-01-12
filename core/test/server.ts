@@ -1,10 +1,28 @@
-import {createRequire} from 'node:module';
-
 import {server} from '@feasibleone/blong';
 
 export default server(blong => ({
-    pkg: createRequire(import.meta.url)('./package.json'),
     url: import.meta.url,
+    validation: blong.type.Object({}),
+    children: [
+        function login() {
+            return import('./login/server.js');
+        },
+        function ctp() {
+            return import('./ctp/server.js');
+        },
+        function parking() {
+            return import('./parking/server.js');
+        },
+        function payshield() {
+            return import('./payshield/server.js');
+        },
+        function demo() {
+            return import('./demo/server.js');
+        },
+        function db() {
+            return import('./db/server.js');
+        },
+    ],
     default: {},
     microservice: {},
     dev: {
@@ -35,25 +53,4 @@ export default server(blong => ({
         },
         demo: {},
     },
-    validation: blong.type.Object({}),
-    children: [
-        function login() {
-            return import('./login/server.js');
-        },
-        function ctp() {
-            return import('./ctp/server.js');
-        },
-        function parking() {
-            return import('./parking/server.js');
-        },
-        function payshield() {
-            return import('./payshield/server.js');
-        },
-        function demo() {
-            return import('./demo/server.js');
-        },
-        function db() {
-            return import('./db/server.js');
-        },
-    ],
 }));

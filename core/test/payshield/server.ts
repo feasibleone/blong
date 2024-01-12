@@ -1,9 +1,9 @@
-import {createRequire} from 'node:module';
-
 import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
-    pkg: createRequire(import.meta.url)('./package.json'),
+    validation: blong.type.Object({}),
+    url: import.meta.url,
+    children: ['./error', './adapter', './orchestrator', './gateway', './test'],
     default: {
         tcp: {
             idleSend: 10000,
@@ -32,7 +32,4 @@ export default realm(blong => ({
     integration: {
         test: true,
     },
-    validation: blong.type.Object({}),
-    url: import.meta.url,
-    children: ['./error', './adapter', './orchestrator', './gateway', './test'],
 }));

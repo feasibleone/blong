@@ -13,13 +13,16 @@ the effective one.
 
 ## Environments and use cases
 
-There are some established names for some environments and use cases:
+The configuration is usually split in several parts, which are activated based
+on the environment and the use case. There are some established names for some
+of the activations:
 
-- `default`: the base configuration valid for all cases
-- `dev`: the development environment
-- `prod`: the user acceptance test and production environments
+- `default`: the base configuration, active for all cases
+- `dev`: active in the development environment
+- `prod`: active in the user acceptance test and production environments
 - `test`: active during automated tests
 - `db`: active during database creation
+- `realm`: active when focusing the development on a single realm
 
 ## Source code configuration
 

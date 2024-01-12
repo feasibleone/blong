@@ -1,16 +1,13 @@
-import {createRequire} from 'node:module';
-
 import {realm} from '../../types.js';
 
 export default realm(blong => ({
-    pkg: createRequire(import.meta.url)('../../package.json'),
+    url: import.meta.url,
+    validation: blong.type.Object({}),
+    children: ['./adapter'],
     default: {
         adapter: true,
     },
     dev: {},
     microservice: {},
     integration: {},
-    validation: blong.type.Object({}),
-    url: import.meta.url,
-    children: ['./adapter'],
 }));

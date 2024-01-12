@@ -118,7 +118,7 @@ export type Errors<T> = {
 };
 
 export interface IModuleConfig {
-    pkg: {
+    pkg?: {
         name: string;
         version: string;
     };
