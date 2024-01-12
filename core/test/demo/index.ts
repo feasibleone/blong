@@ -4,7 +4,6 @@ import pkg from './package.json';
 import mock from './adapter/mock.js';
 import script from './adapter/script.js';
 import errors from './error/error.js';
-import subjectDispatch from './orchestrator/subjectDispatch.js';
 
 import subjectAge from './orchestrator/subject/subjectAge.js';
 import subjectNumberSum from './orchestrator/subject/subjectNumberSum.js';
@@ -37,7 +36,7 @@ export default realm(blong => ({
             return layer.script(script(layer));
         },
         function orchestrator(layer: ModuleApi) {
-            return layer.subjectDispatch(subjectDispatch(layer));
+            // return layer.subjectDispatch(subjectDispatch(layer));
         },
         function orchestrator(layer: ModuleApi) {
             return layer
