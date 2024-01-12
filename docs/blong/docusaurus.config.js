@@ -15,8 +15,8 @@ const config = {
     baseUrl: '/blong-docs/',
 
     organizationName: 'feasibleone', // Usually your GitHub org/user name.
-    projectName: 'blong', // Usually your repo name.
-    deploymentBranch: 'gh-pages',
+    projectName: 'blong-docs', // Usually your repo name.
+    deploymentBranch: 'main',
     trailingSlash: false,
 
     onBrokenLinks: 'throw',

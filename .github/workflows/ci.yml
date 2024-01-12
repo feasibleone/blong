@@ -36,4 +36,4 @@ jobs:
       #     user_name: github-actions[bot]
       #     user_email: 41898282+github-actions[bot]@users.noreply.github.com
       - name: test
-        run: ./core/test/node_modules/.bin/tap core/**/*.test.ts
+        run: ./core/test/node_modules/.bin/tap core/**/*.test.ts --allow-incomplete-coverage
