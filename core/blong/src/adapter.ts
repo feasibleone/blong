@@ -45,7 +45,7 @@ interface IApi {
     id?: string;
     adapter: (id: string) => (api: {utError: IError}) => object;
     utError: IError;
-    error: IErrorFactory;
+    errors: IErrorFactory;
     gateway: IGateway;
     remote: IRemote;
     utBus: {

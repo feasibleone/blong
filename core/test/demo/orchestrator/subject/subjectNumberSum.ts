@@ -10,6 +10,6 @@ interface ISchema {
 export default handler(
     ({lib: {sum}}) =>
         function subjectNumberSum(params: ISchema['params'], $meta: IMeta): ISchema['result'] {
-            return sum(...params);
+            return sum(params);
         }
 );

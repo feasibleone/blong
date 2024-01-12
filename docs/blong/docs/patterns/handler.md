@@ -58,6 +58,10 @@ access control, we can imagine it has the following namespaces:
   - `userUserAdd` - for creating users
   - `userRoleEdit` - for editing roles
 
+:::note
+All handlers are converted to async functions
+:::
+
 ## Library functions
 
 The library functions implement some reusable functionality, that
@@ -70,14 +74,177 @@ exposed anywhere else, except to the sibling handlers.
 
 The handlers and library functions are grouped together and given a name.
 This happens by defining them in a sub-folder within the realm folder.
+This folder is usually in another one, which is used for defining a layer.
 The most common approach is to create a separate file for each handler and
 use the handler name as file name. This serves multiple reasons:
 
 - allow fast finding of handlers within code editors. For example
   in VSCode ctrl+p and then typing the first letters of the semantic
-  triple will bring the desired handler (i.e. ctrl+p uua is likely to find userUserAdd)
+  triple will bring the desired handler (i.e. `ctrl+p uua` is likely to find `userUserAdd.ts`)
 - easier code review by avoiding files with thousands of rows and a lot of nesting
 - better isolation between the handlers
 
 The group name is in the format `realmname.foldername`.
 This name is then used in the `imports` property in the adapters and orchestrators.
+
+Let's imagine a realm named `example` which implements a namespace `math` with
+several methods for calculating the sum and the average of an array of integer numbers.
+To do so, it defines a library function `sum` and handlers `mathNumberSum` and
+`mathNumberAverage`. It attaches the handlers to an orchestrator `mathDispatch`.
+
+The following structure is be used:
+
+<!-- markdownlint-capture -->
+<!-- markdownlint-disable MD033 MD013 MD037 -->
+<pre>
+📁 example
+├──📁 orchestrator
+|   ├──📁 math
+|   |   ├── error.ts
+|   |   ├── sum.ts
+|   |   ├── mathNumberSum.ts
+|   |   └── mathNumberAverage.ts
+|   └── mathDispatch.ts
+└── server.ts
+</pre>
+<!-- markdownlint-restore -->
+
+## Defining handlers and library functions
+
+To enable interoperability between the handlers, library functions,
+orchestrators, adapters and the framework, a specific pattern is used
+to define them.
+
+To define a library function, use the `library` function from the framework and
+pass a function that returns the desired library function with the appropriate name:
+
+```ts
+// example/orchestrator/math/sum.ts
+import {library} from '@feasibleone/blong';
+
+export default library(api =>
+    function sum(...params: number[]) {
+        // implementation
+    }
+);
+```
+
+To define a handler, use the `handler` function from the framework and
+pass a function that returns the desired handler with the appropriate name:
+
+```ts
+// example/orchestrator/math/mathNumberSum.ts
+import {handler} from '@feasibleone/blong';
+
+export default handler(api =>
+    function mathNumberSum(...params: number[]) {
+        // implementation
+    }
+);
+```
+
+## Interoperability
+
+Handlers and functions can call each other by referring through
+the `api` parameter. It also allows to access other functions of
+the framework.
+
+The `api` parameter has the properties, which are often
+used through destructuring. Check the following example,
+that explain their usage:
+
+- `example/orchestrator/math/error.ts` - defines the errors.
+
+  ```ts
+  import {handler} from '@feasibleone/blong';
+
+  export default library(({
+    lib: {
+          error          // framework function for defining typed errors
+    }
+  }) => {
+      error({
+          numberInteger: 'Numbers must be integer'
+      })
+  });
+  ```
+
+- `example/orchestrator/math/sum.ts` - defines the reusable library function `sum`.
+
+  ```ts
+  import { library } from '@feasibleone/blong';
+
+  export default library(({
+      errors             // access the defined errors
+  }) =>
+      function sum(params: number[]) {
+          if (!params.every(Number.isInteger)) throw errors.numberInteger();
+          return params.reduce((prev, cur) => prev + cur, 0);
+      }
+  );
+  ```
+
+- `example/orchestrator/math/mathNumberSum.ts` - defines the handler for
+  calculating the sum.
+
+  ```ts
+  import {handler} from '@feasibleone/blong';
+
+  export default handler(({
+      lib: {
+          sum            // user defined library function
+      }
+  }) =>
+      function mathNumberSum(params) {
+          return sum(params);
+      }
+  );
+  ```
+
+- `example/orchestrator/math/mathNumberAverage.ts` - defines the handler for
+  calculating the average.
+
+  ```ts
+  import {handler} from '@feasibleone/blong';
+
+  export default handler(({
+      config: {
+          precision      // access configuration
+      },
+      handler: {
+          mathNumberSum  // local or remote handler
+      }
+  }) => async function mathNumberAverage(numbers: number[], $meta){
+      if (!numbers?.length) return;
+      return ((await mathNumberSum(numbers, $meta)) / numbers.length).toPrecision(precision)
+  })
+  ```
+
+- `example/orchestrator/mathDispatch.ts` - defines a
+  [dispatch orchestrator](./orchestrator#dispatch).
+
+  ```ts
+  import {orchestrator} from '@feasibleone/blong';
+
+  export default orchestrator(() => ({
+      extends: 'orchestrator.dispatch',
+  }));
+  ```
+
+- `example/server.ts` - defines the `example` [realm](./realm) and
+  the default configuration for the orchestrator.
+
+  ```ts
+  import {realm} from '@feasibleone/blong';
+
+  export default realm(() => ({
+      default: {
+          mathDispatch: {
+              namespace: 'number',
+              imports: 'example.number',
+          },
+      },
+      children: ['./orchestrator'],
+      ...rest
+  }));
+  ```

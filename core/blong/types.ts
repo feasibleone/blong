@@ -62,7 +62,6 @@ export interface IMeta {
     latitude?: string | string[];
     longitude?: string | string[];
     conId?: number;
-    destination?: string;
     dispatch?: (
         msg?: object,
         $meta?: IMeta
@@ -212,7 +211,7 @@ export interface IHandlerProxy<T> {
     lib: ILib & {
         [name: string]: LibFn;
     };
-    error: {
+    errors: {
         [name: string]: (...params: unknown[]) => ITypedError;
     };
     utBus: {

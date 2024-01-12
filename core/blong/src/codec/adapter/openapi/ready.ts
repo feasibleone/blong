@@ -1,6 +1,6 @@
 import {handler, type IMeta} from '../../../../types.js';
 
-export default handler(async ({config, lib: {load}, error}) => {
+export default handler(async ({config, lib: {load}, errors}) => {
     let handlers;
     return {
         async ready() {
@@ -8,7 +8,7 @@ export default handler(async ({config, lib: {load}, error}) => {
                 .filter(Boolean)
                 .forEach(namespace => {
                     if (![].concat(this.config.namespace).find(n => namespace.startsWith(n))) {
-                        throw error.openapiNamespaceNotDefined({
+                        throw errors.openapiNamespaceNotDefined({
                             params: {namespace: namespace.split('.')[0]},
                         });
                     }

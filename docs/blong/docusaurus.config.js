@@ -9,31 +9,42 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
     title: 'Blong',
-    tagline: 'Modular framework',
+    tagline: 'API focused RAD framework',
     favicon: 'img/favicon.ico',
+    url: 'https://feasibleone.github.io',
+    baseUrl: '/blong-docs/',
 
-    // Set the production url of your site here
-    url: 'https://your-docusaurus-site.example.com',
-    // Set the /<baseUrl>/ pathname under which your site is served
-    // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: '/',
-
-    // GitHub pages deployment config.
-    // If you aren't using GitHub pages, you don't need these.
     organizationName: 'feasibleone', // Usually your GitHub org/user name.
     projectName: 'blong', // Usually your repo name.
     deploymentBranch: 'gh-pages',
+    trailingSlash: false,
 
     onBrokenLinks: 'throw',
     onBrokenMarkdownLinks: 'warn',
 
-    // Even if you don't use internationalization, you can use this field to set
-    // useful metadata like html lang. For example, if your site is Chinese, you
-    // may want to replace "en" with "zh-Hans".
     i18n: {
         defaultLocale: 'en',
         locales: ['en'],
     },
+
+    headTags: [
+        {
+            tagName: 'link',
+            attributes: {
+                rel: 'icon',
+                sizes: '32x32',
+                href: 'img/manta32.png',
+            },
+        },
+        {
+            tagName: 'link',
+            attributes: {
+                rel: 'icon',
+                sizes: '64x64',
+                href: 'img/manta64.png',
+            },
+        },
+    ],
 
     presets: [
         [
@@ -42,17 +53,11 @@ const config = {
             ({
                 docs: {
                     sidebarPath: './sidebars.js',
-                    // Please change this to your repo.
-                    // Remove this to remove the "edit this page" links.
-                    editUrl:
-                        'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+                    // editUrl: 'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
                 },
                 blog: {
                     showReadingTime: true,
-                    // Please change this to your repo.
-                    // Remove this to remove the "edit this page" links.
-                    editUrl:
-                        'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+                    // editUrl: 'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
                 },
                 theme: {
                     customCss: './src/css/custom.css',
@@ -65,12 +70,12 @@ const config = {
         /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
             // Replace with your project's social card
-            image: 'img/docusaurus-social-card.jpg',
+            image: 'img/blong-social-card.jpg',
             navbar: {
                 title: 'Blong',
                 logo: {
                     alt: 'Blong Logo',
-                    src: 'img/logo.svg',
+                    src: 'img/manta200.png',
                 },
                 items: [
                     {
@@ -81,7 +86,7 @@ const config = {
                     },
                     {to: '/blog', label: 'Blog', position: 'left'},
                     {
-                        href: 'https://github.com/facebook/docusaurus',
+                        href: 'https://github.com/feasibleone/blong',
                         label: 'GitHub',
                         position: 'right',
                     },

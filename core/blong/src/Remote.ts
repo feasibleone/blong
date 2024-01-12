@@ -335,10 +335,7 @@ export default class Remote extends Internal implements IRemote {
             if (mtid === 'discard') return true;
             const handler =
                 this.#config.canSkipSocket &&
-                this._findMethod(
-                    $meta.destination || $meta.method,
-                    mtid === 'request' ? 'request' : 'publish'
-                );
+                this._findMethod($meta.method, mtid === 'request' ? 'request' : 'publish');
             if (handler) {
                 return Promise.resolve(handler(...params));
             } else {

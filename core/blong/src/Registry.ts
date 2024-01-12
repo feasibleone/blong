@@ -114,7 +114,7 @@ export default class Registry extends Internal implements IRegistry {
                 getError: this.#error.get.bind(this.#error),
                 fetchErrors: this.#error.fetch.bind(this.#error),
             },
-            error: this.#error,
+            errors: this.#error,
             gateway: this.#gateway,
             remote: this.#remote,
             utBus: {

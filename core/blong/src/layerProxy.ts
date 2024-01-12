@@ -153,7 +153,7 @@ export default function layerProxy(
                                                         : remote(handlerName);
                                                 },
                                             }),
-                                            error: target.result.error,
+                                            errors: target.result.error,
                                         };
                                         for (let what of others) {
                                             switch (`${typeof what}:${kind(what)}`) {

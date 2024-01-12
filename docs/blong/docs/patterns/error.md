@@ -76,10 +76,10 @@ Simple errors do not expect any parameters:
 ```ts
 import {library} from '@feasibleone/blong';
 
-export default library(({error}) =>
+export default library(({errors}) =>
     function sum(...params: number[]) {
         // some processing
-        throw error.subjectSum();
+        throw errors.subjectSum();
     }
 );
 ```
@@ -90,12 +90,12 @@ pass it in the `cause`.
 ```ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(({error}) => ({
+export default handler(({errors}) => ({
     async parkingPay({zone}) {
         try {
             // some processing
         } catch (cause) {
-            throw error.parkingInvalidZone({
+            throw errors.parkingInvalidZone({
                 cause,
                 params: {
                     zone
