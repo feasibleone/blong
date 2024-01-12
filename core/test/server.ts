@@ -10,6 +10,7 @@ export default server(blong => ({
     dev: {
         resolution: true,
         parking: {},
+        login: {},
         gateway: {
             logLevel: 'warn',
             debug: true,
@@ -32,25 +33,13 @@ export default server(blong => ({
                 alg: 'ECDH-ES+A256KW',
             },
         },
-        demo: {
-            login: {
-                keys: {
-                    refresh: 'b1226b7ed6c6e5aded611ffb55a26a18154fb2263c8c2ea0974dd63e8e11919b',
-                    access: {
-                        crv: 'Ed25519',
-                        x: 'hhcGW1iHk_YWlNYDxn7P4PGV1N6mPjghBge4O7zterQ',
-                        d: 'KGpSfEzpbelEdQStQBlYmHPkHrG4cEcRx_yJZkRc_qY',
-                        kty: 'OKP',
-                        kid: 'kMfX1WoDc9dWVRugwGh9sSL956JS7yB8jE1ylo71Z-M',
-                        use: 'sig',
-                        alg: 'EdDSA',
-                    },
-                },
-            },
-        },
+        demo: {},
     },
     validation: blong.type.Object({}),
     children: [
+        function login() {
+            return import('./login/server.js');
+        },
         function ctp() {
             return import('./ctp/server.js');
         },

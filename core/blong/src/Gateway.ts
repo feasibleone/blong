@@ -412,7 +412,7 @@ export default class Gateway extends Internal implements IGateway {
         this.#server.setErrorHandler((error, request: {body: {id?: unknown}}, reply) => {
             return reply.status(500).send({
                 jsonrpc: '2.0',
-                id: request.body.id,
+                id: request.body?.id,
                 error: this._formatError(error),
             });
         });

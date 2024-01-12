@@ -73,7 +73,7 @@ export default class Watch extends Internal implements IWatch {
             (prev, {filename, name}) => {
                 const schema = readFileSync(filename)
                     .toString()
-                    .match(/^interface ISchema \{\n(?:[^}]?.*\n)*}$/m)?.[0];
+                    .match(/^interface ISchema \{((?!\n}\n).)*\n}\n/ms)?.[0];
                 return schema
                     ? [
                           [

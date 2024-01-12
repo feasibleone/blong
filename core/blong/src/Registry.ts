@@ -36,7 +36,7 @@ export interface IRegistry {
 }
 
 type MatchMethodsCallback = (name: string, local: object, literals: object[]) => void;
-const API: RegExp = /\.validation|\.api|^validation$|^api$/;
+const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
 
 export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();

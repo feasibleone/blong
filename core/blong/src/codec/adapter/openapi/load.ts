@@ -35,7 +35,7 @@ export default library(
                             )
                             .forEach(
                                 ([method, def]: [keyof typeof methods, typeof methods.get]) => {
-                                    const name = `${ns}.${def.operationId}`;
+                                    const name = `${ns}${def.operationId}`.toLowerCase();
                                     if (!test(name)) return;
                                     const formatProps = {
                                         method,

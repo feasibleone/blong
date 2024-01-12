@@ -26,6 +26,7 @@ export default browser(blong => ({
     },
     dev: {
         parking: {},
+        login: {},
         demo: {},
     },
     test: {
@@ -37,6 +38,9 @@ export default browser(blong => ({
     children: [
         function client() {
             return import('./client/browser.js');
+        },
+        function login() {
+            return import('./login/browser.js');
         },
         function payshield() {
             return import('./payshield/server.js');
