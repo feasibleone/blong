@@ -55,21 +55,21 @@ export default validationHandlers({
 
 declare module '@feasibleone/blong' {
   interface IRemoteHandler {
-    subjectAge(
+    subjectAge<T = ReturnType<subjectAge>>(
       params: Parameters<subjectAge>[0],
       $meta: IMeta
-    ): ReturnType<subjectAge>
-    subjectHello(
+    ): T
+    subjectHello<T = ReturnType<subjectHello>>(
       params: Parameters<subjectHello>[0],
       $meta: IMeta
-    ): ReturnType<subjectHello>
-    subjectNumberSum(
+    ): T
+    subjectNumberSum<T = ReturnType<subjectNumberSum>>(
       params: Parameters<subjectNumberSum>[0],
       $meta: IMeta
-    ): ReturnType<subjectNumberSum>
-    subjectTime(
+    ): T
+    subjectTime<T = ReturnType<subjectTime>>(
       params: Parameters<subjectTime>[0],
       $meta: IMeta
-    ): ReturnType<subjectTime>
+    ): T
   }
 }

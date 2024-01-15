@@ -104,7 +104,7 @@ export default class Watch extends Internal implements IWatch {
                     ${names
                         .map(
                             name =>
-                                `${name}(params: Parameters<${name}>[0], $meta: IMeta): ReturnType<${name}>;`
+                                `${name}<T=ReturnType<${name}>>(params: Parameters<${name}>[0], $meta: IMeta): T;`
                         )
                         .join('\n')}
                 }
