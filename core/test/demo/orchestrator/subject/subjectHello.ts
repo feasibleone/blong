@@ -1,15 +1,15 @@
 import {IMeta, handler} from '@feasibleone/blong';
 
-interface ISchema {
-    params: unknown;
-    result: {
-        hello: unknown;
-    };
-}
+type Handler = (params: unknown) => Promise<{
+    hello: unknown;
+}>;
 
 export default handler(
     proxy =>
-        function subjectHello(params: ISchema['params'], $meta: IMeta): ISchema['result'] {
+        async function subjectHello(
+            params: Parameters<Handler>[0],
+            $meta: IMeta
+        ): ReturnType<Handler> {
             return {hello: $meta.auth};
         }
 );

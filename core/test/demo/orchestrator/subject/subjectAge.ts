@@ -1,19 +1,20 @@
 import {IMeta, handler} from '@feasibleone/blong';
 
-interface ISchema {
-    /** */
-    params: {
-        /** @description "Birth Date" */
-        birthDate: string;
-    };
-    result: {
-        age: number;
-    };
-}
+/** @description "Calculate age" */
+type Handler = (params: {
+    /** @description "Birth Date" */
+    birthDate: string;
+}) => Promise<{
+    /** @description "Age in years" */
+    age: number;
+}>;
 
 export default handler(
     ({lib: {age}}) =>
-        function subjectAge({birthDate}: ISchema['params'], $meta: IMeta): ISchema['result'] {
+        async function subjectAge(
+            {birthDate}: Parameters<Handler>[0],
+            $meta: IMeta
+        ): ReturnType<Handler> {
             $meta.httpResponse = {
                 header: [
                     ['h1', 1],

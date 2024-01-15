@@ -15,26 +15,28 @@ For automatic definitions the following is required:
 
 - Put a file named `~.schema.ts` in the folder where the handlers are defined.
   This file is automatically updated when it's date is older than another
-  file within the folder, where interface `ISchema` is defined.
-- Define the interface `ISchema` for each handler that will use automatic
+  file within the folder, where a type named `Handler` is defined.
+- Define the type `Handler` for each handler that will use automatic
   validations. Here is an example how it must be defined:
 
   ```ts
 
   import {IMeta, handler} from '@feasibleone/blong';
 
-  interface ISchema { // this must be on a separate line
-      /** @description "description of parameter" */
-      params: object;
-      /** @description "description of result" */
-      result: number;
-  } // this must be on a separate line
+  /** @description "Description of the handler" */
+  type Handler = ({
+      /** @description "Description of param property" */
+      paramProperty: string
+  ) => Promise<{
+      /** @description "Description of result property" */
+      resultProperty: number;
+  }>;
 
   export default handler(() =>
-    function subjectObjectPredicate(
-        params: ISchema['params'],
+    async function subjectObjectPredicate(
+        params: Parameters<Handler>[0],
         $meta: IMeta
-    ): ISchema['result'] {
+    ): ReturnType<Handler> {
         // implementation
     }
   );

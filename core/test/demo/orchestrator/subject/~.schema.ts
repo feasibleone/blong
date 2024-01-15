@@ -2,44 +2,74 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @rushstack/typedef-var */
 
-import { validation } from '@feasibleone/blong'
+import { validationHandlers } from '@feasibleone/blong'
 import { Type, Static } from '@sinclair/typebox'
 
 type subjectAge = Static<typeof subjectAge>
-const subjectAge = Type.Object({
-  params: Type.Object({
-    birthDate: Type.String({ description: 'Birth Date' })
-  }),
-  result: Type.Object({
-    age: Type.Number()
-  })
-})
+const subjectAge = Type.Function(
+  [
+    Type.Object({
+      birthDate: Type.String({ description: 'Birth Date' })
+    })
+  ],
+  Type.Promise(
+    Type.Object({
+      age: Type.Number({ description: 'Age in years' })
+    })
+  ),
+  { description: 'Calculate age' }
+)
 
 type subjectHello = Static<typeof subjectHello>
-const subjectHello = Type.Object({
-  params: Type.Unknown(),
-  result: Type.Object({
-    hello: Type.Unknown()
-  })
-})
+const subjectHello = Type.Function(
+  [Type.Unknown()],
+  Type.Promise(
+    Type.Object({
+      hello: Type.Unknown()
+    })
+  )
+)
 
 type subjectNumberSum = Static<typeof subjectNumberSum>
-const subjectNumberSum = Type.Object({
-  params: Type.Array(Type.Number(), { description: 'array of numbers to sum' }),
-  result: Type.Number({ description: 'calculated sum' })
-})
+const subjectNumberSum = Type.Function(
+  [Type.Array(Type.Number())],
+  Type.Promise(Type.Number())
+)
 
 type subjectTime = Static<typeof subjectTime>
-const subjectTime = Type.Object({
-  params: Type.Unknown(),
-  result: Type.Object({
-    abbreviation: Type.Optional(Type.String())
-  })
+const subjectTime = Type.Function(
+  [Type.Unknown()],
+  Type.Promise(
+    Type.Object({
+      abbreviation: Type.String()
+    })
+  )
+)
+
+export default validationHandlers({
+  subjectAge,
+  subjectHello,
+  subjectNumberSum,
+  subjectTime
 })
 
-export default validation(() => ({
-  subjectAge: () => subjectAge.properties,
-  subjectHello: () => subjectHello.properties,
-  subjectNumberSum: () => subjectNumberSum.properties,
-  subjectTime: () => subjectTime.properties
-}))
+declare module '@feasibleone/blong' {
+  interface IRemoteHandler {
+    subjectAge(
+      params: Parameters<subjectAge>[0],
+      $meta: IMeta
+    ): ReturnType<subjectAge>
+    subjectHello(
+      params: Parameters<subjectHello>[0],
+      $meta: IMeta
+    ): ReturnType<subjectHello>
+    subjectNumberSum(
+      params: Parameters<subjectNumberSum>[0],
+      $meta: IMeta
+    ): ReturnType<subjectNumberSum>
+    subjectTime(
+      params: Parameters<subjectTime>[0],
+      $meta: IMeta
+    ): ReturnType<subjectTime>
+  }
+}

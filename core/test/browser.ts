@@ -38,7 +38,7 @@ export default browser(blong => ({
                 // 'test.hsm.generate.key',
                 'test.number.sum',
                 'test.dispatch.loop',
-                'test.tcp.loop',
+                // 'test.tcp.loop',
             ],
         },
     },

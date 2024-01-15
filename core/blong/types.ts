@@ -1,4 +1,4 @@
-import {TSchema, Type} from '@sinclair/typebox';
+import {Type, type JavaScriptTypeBuilder, type TFunction, type TSchema} from '@sinclair/typebox';
 import type {LogFn} from 'pino';
 import merge from 'ut-function.merge';
 
@@ -162,11 +162,12 @@ export type GatewaySchema = (
       }
 ) & {
     auth?: false | 'basic' | 'login';
+    description?: string;
     security?: true;
 };
 
 interface ILib {
-    type: typeof Type;
+    type: JavaScriptTypeBuilder;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T>(object: T, name: string) => T & {name: string};
     merge<T, S1>(target: T, source: S1): T & S1;
@@ -177,7 +178,7 @@ interface ILib {
 
 type ValidationFn = () => GatewaySchema;
 export interface IValidationProxy {
-    type: typeof Type;
+    type: JavaScriptTypeBuilder;
     handler: {
         [name: string]: ValidationFn;
     };
@@ -200,15 +201,16 @@ type PortHandler = <T>(
 ) => Promise<T> | T;
 type PortHandlerBound = <T>(params: unknown, $meta: IMeta, context?: IContext) => Promise<T> | T;
 type LibFn = <T>(...params: unknown[]) => T;
+export interface IRemoteHandler {
+    [name: string]: PortHandlerBound;
+}
 export interface IHandlerProxy<T> {
     config: T;
     handler: {
         [name: `error${string}`]: (
             message?: string | {params?: object; cause?: Error}
         ) => ITypedError;
-    } & {
-        [name: string]: PortHandlerBound;
-    };
+    } & IRemoteHandler;
     lib: ILib & {
         [name: string]: LibFn;
     };
@@ -247,7 +249,7 @@ export type ModuleApi = {
 };
 
 export type SolutionFactory = (definition: {
-    type: typeof Type;
+    type: JavaScriptTypeBuilder;
 }) => IModuleConfig | Promise<IModuleConfig>;
 
 const Kind: symbol = Symbol('kind');
@@ -264,6 +266,27 @@ export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T>
     Object.defineProperty(definition, Kind, {value: 'lib'});
 export const validation = (validation: ValidationDefinition): ValidationDefinition =>
     Object.defineProperty(validation, Kind, {value: 'validation'});
+
+export const validationHandlers: (
+    handlers: Record<string, TFunction>
+) => ValidationDefinition = handlers =>
+    validation(() =>
+        Object.fromEntries(
+            Object.entries(handlers).map(([name, handler]) => [
+                name,
+                Object.defineProperty(
+                    () => ({
+                        params: Type.Parameters(handler).items[0],
+                        result: Type.Awaited(Type.ReturnType(handler)),
+                        description: handler.description,
+                    }),
+                    'name',
+                    {value: name}
+                ),
+            ])
+        )
+    );
+
 export const realm = (definition: SolutionFactory): SolutionFactory =>
     Object.defineProperty(definition, Kind, {value: 'solution'});
 export const server = (definition: SolutionFactory): SolutionFactory =>

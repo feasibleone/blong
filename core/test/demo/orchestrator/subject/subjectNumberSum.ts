@@ -1,15 +1,13 @@
 import {IMeta, handler} from '@feasibleone/blong';
 
-interface ISchema {
-    /** @description "array of numbers to sum" */
-    params: number[];
-    /** @description "calculated sum" */
-    result: number;
-}
+type Handler = (params: number[]) => Promise<number>;
 
 export default handler(
     ({lib: {sum}}) =>
-        function subjectNumberSum(params: ISchema['params'], $meta: IMeta): ISchema['result'] {
+        async function subjectNumberSum(
+            params: Parameters<Handler>[0],
+            $meta: IMeta
+        ): ReturnType<Handler> {
             return sum(params);
         }
 );

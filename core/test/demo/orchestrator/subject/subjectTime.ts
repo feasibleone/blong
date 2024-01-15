@@ -1,18 +1,15 @@
 import {IMeta, handler} from '@feasibleone/blong';
 
-interface ISchema {
-    params: unknown;
-    result: {
-        abbreviation?: string;
-    };
-}
+type Handler = (params: unknown) => Promise<{
+    abbreviation: string;
+}>;
 
 export default handler(
     ({handler: {timeGet}}) =>
         async function subjectTime(
-            params: ISchema['params'],
+            params: Parameters<Handler>[0],
             $meta: IMeta
-        ): Promise<ISchema['result']> {
+        ): ReturnType<Handler> {
             return timeGet(params, $meta);
         }
 );

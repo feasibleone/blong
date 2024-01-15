@@ -73,13 +73,12 @@ export default class Watch extends Internal implements IWatch {
             (prev, {filename, name}) => {
                 const schema = readFileSync(filename)
                     .toString()
-                    .match(/^interface ISchema \{((?!\n}\n).)*\n}\n/ms)?.[0];
+                    .match(
+                        /^(\/\*\*((?!\*\/\n).)*\*\/\n)?type Handler = \(((?!(>|}|>});?\n).)*(>|}|>});?\n/ms
+                    )?.[0];
                 return schema
                     ? [
-                          [
-                              ...prev[0],
-                              schema.replace('interface ISchema {', `interface ${name} {`),
-                          ],
+                          [...prev[0], schema.replace('type Handler = (', `type ${name} = (`)],
                           [...prev[1], name],
                       ]
                     : prev;
@@ -93,15 +92,24 @@ export default class Watch extends Internal implements IWatch {
             /* eslint-disable @typescript-eslint/naming-convention */
             /* eslint-disable @rushstack/typedef-var */
 
-            import { validation } from '@feasibleone/blong';
+            import {validationHandlers} from '@feasibleone/blong';
             ${TypeScriptToTypeBox.Generate(schema.sort().join('\n')).trim()}
 
-            export default validation(() => ({
-                ${names
-                    .sort()
-                    .map(name => `${name}: () => ${name}.properties`)
-                    .join(',\n    ')}
-            }));
+            export default validationHandlers({
+                ${names.sort().join(',\n')}
+            });
+
+            declare module '@feasibleone/blong' {
+                interface IRemoteHandler {
+                    ${names
+                        .map(
+                            name =>
+                                `${name}(params: Parameters<${name}>[0], $meta: IMeta): ReturnType<${name}>;`
+                        )
+                        .join('\n')}
+                }
+            }
+
         `)
             );
     }
