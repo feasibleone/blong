@@ -21,10 +21,10 @@
         "react-dom": "^18.2.0"
     },
     "devDependencies": {
-        "@algolia/client-search": "^4.22.0",
+        "@algolia/client-search": "^4.22.1",
         "@docusaurus/module-type-aliases": "^3.1.0",
         "@docusaurus/types": "^3.1.0",
-        "@types/react": "^18.2.47",
+        "@types/react": "^18.2.48",
         "search-insights": "^2.13.0",
         "typescript": "^5.3.3"
     },
