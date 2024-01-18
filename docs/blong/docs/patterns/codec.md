@@ -33,11 +33,11 @@ The framework includes the following commonly used HTTP codecs:
 Import `codec.openapi`, to enable easy calling of external API, when it has
 OpenAPI or Swagger definition available. This usually happens at the server,
 when integrating with third party systems. The adapter can be called using an
-`operationId` from the API definition. Then this codec will determine the
-required HTTP method, path, headers and body for the request, based on the API
-definition. If operationId is not defined in the API, then it can be configured
-by merging and additional definition, that specifies operationId for each HTTP
-method and path.
+`operationId` from the API definition, prefixed with the namespace. Then this
+codec will determine the required HTTP method, path, headers and body for the
+request, based on the API definition. If `operationId` is not defined in the
+API, then it can be configured by merging and additional definition, that
+specifies `operationId` for each HTTP method and path.
 
 This codec has the following configuration:
 

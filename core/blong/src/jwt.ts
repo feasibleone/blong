@@ -49,7 +49,7 @@ export default fp<{
             'preValidation',
             function (request: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void) {
                 const auth = request.routeOptions.config.auth;
-                if (auth !== false) {
+                if (auth !== false && !request.originalUrl.startsWith('/documentation')) {
                     if (auth === 'login') {
                         request.auth = {credentials: {mlek: 'header', mlsk: 'header'}};
                         done();

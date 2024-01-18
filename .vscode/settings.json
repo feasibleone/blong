@@ -35,6 +35,7 @@
         "blong",
         "codegen",
         "dapr",
+        "datetime",
         "Diebold",
         "dukpt",
         "ESOCKETTIMEDOUT",
@@ -53,6 +54,7 @@
         "traceid",
         "typebox",
         "unannounce",
+        "unixtime",
         "unstate"
     ]
 }

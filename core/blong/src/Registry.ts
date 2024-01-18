@@ -188,12 +188,16 @@ export default class Registry extends Internal implements IRegistry {
     private async _validations(): Promise<Record<string, GatewaySchema>> {
         await this._matchMethods('merge', API, (name, local, literals) => {
             Object.entries(local).forEach(([name, validation]) => {
-                if (typeof validation === 'function') {
-                    const schema = (validation as () => GatewaySchema)();
-                    const prev = this.#validations[methodParts(validation.name)];
-                    if (prev) merge(prev, schema);
-                    else this.#validations[methodParts(validation.name)] = schema;
-                }
+                const schema =
+                    typeof validation === 'function'
+                        ? (validation as () => GatewaySchema)()
+                        : typeof validation === 'object'
+                        ? validation
+                        : {};
+                if (typeof validation === 'function') name = validation.name;
+                const prev = this.#validations[methodParts(name)];
+                if (prev) merge(prev, schema);
+                else this.#validations[methodParts(name)] = schema;
             });
         });
         return this.#validations;

@@ -1,8 +1,5 @@
-import parser from '@apidevtools/swagger-parser';
-import got from 'got';
-import {resolve} from 'node:path';
-
 import {library} from '../../../../types.js';
+import {loadApi} from '../../../api.js';
 
 const httpVerbs: string[] = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
 
@@ -13,19 +10,7 @@ export default library(
                 pattern instanceof RegExp ? key => pattern.test(key) : key => key.includes(pattern);
             const handlers = {};
             for (const [ns, locations] of Object.entries(config)) {
-                const documents = [];
-                for (const location of [].concat(locations)) {
-                    if (typeof location === 'object') documents.push(location);
-                    else if (typeof location === 'string') {
-                        if (location.startsWith('http'))
-                            documents.push(await got(location, {responseType: 'json'}).json());
-                        else
-                            documents.push(
-                                (await import(resolve(location), {assert: {type: 'json'}})).default
-                            );
-                    }
-                }
-                const bundle = await parser.bundle(merge(...documents));
+                const bundle = await loadApi(locations);
                 Object.entries(bundle.paths).forEach(
                     ([path, methods]: [string, typeof bundle.paths.foo]) =>
                         Object.entries(methods)

@@ -160,10 +160,14 @@ export type GatewaySchema = (
     | {
           auth: false | 'basic' | 'login';
       }
+    | {
+          namespace: Record<string, string | string[]>;
+      }
 ) & {
     auth?: false | 'basic' | 'login';
     description?: string;
     security?: true;
+    basePath?: string;
 };
 
 interface ILib {
@@ -192,6 +196,10 @@ export interface IValidationProxy {
 type ValidationDefinition = (
     blong: IValidationProxy
 ) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
+
+type ApiDefinition = (blong: IValidationProxy) => {
+    namespace: Record<string, string | string[]>;
+};
 
 type PortHandler = <T>(
     this: ReturnType<adapterFactory>,
@@ -266,6 +274,8 @@ export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T>
     Object.defineProperty(definition, Kind, {value: 'lib'});
 export const validation = (validation: ValidationDefinition): ValidationDefinition =>
     Object.defineProperty(validation, Kind, {value: 'validation'});
+export const api = (api: ApiDefinition): ApiDefinition =>
+    Object.defineProperty(api, Kind, {value: 'api'});
 
 export const validationHandlers: (
     handlers: Record<string, TFunction>
@@ -302,6 +312,7 @@ export const kind = <T>(
 ):
     | 'lib'
     | 'validation'
+    | 'api'
     | 'solution'
     | 'server'
     | 'browser'

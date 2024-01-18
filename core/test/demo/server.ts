@@ -9,8 +9,8 @@ export default realm(blong => ({
             imports: ['codec.openapi'],
         },
         subjectDispatch: {
-            namespace: 'subject',
-            imports: ['demo.subject'],
+            namespace: ['subject', 'clock'],
+            imports: ['demo.subject', 'demo.clock'],
             validations: ['demo.subject.validation'],
         },
     },

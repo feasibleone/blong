@@ -3,6 +3,7 @@ import merge from 'ut-function.merge';
 import {kind, type IModuleConfig} from '../types.js';
 import type {IPort} from './Port.js';
 import createPort, {type IAdapterFactory} from './adapter.js';
+import {apiSchema} from './api.js';
 import {type IErrorFactory} from './error.js';
 import {methodId} from './lib.js';
 
@@ -172,6 +173,9 @@ export default function layerProxy(
                                                 case 'object:handler':
                                                 case 'object:validation':
                                                     merge(local, what);
+                                                    break;
+                                                case 'function:api':
+                                                    merge(local, await apiSchema(what(layerApi)));
                                                     break;
                                                 case 'function:handler':
                                                 case 'function:validation':

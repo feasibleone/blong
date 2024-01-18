@@ -226,183 +226,163 @@ export default class Gateway extends Internal implements IGateway {
         validations: Record<string, GatewaySchema>,
         pkg: {name: string; version: string}
     ): void {
-        const wildcard: [string, GatewaySchema][] = Array.from(
-            new Set(Object.keys(validations).map(name => name.split('.', 1)[0])).values()
-        ).map(namespace => [
-            `${namespace}.*`,
-            {
-                params: Type.Any(),
-                result: Type.Any(),
-                auth: false,
-            },
-        ]);
-        Object.entries(validations)
-            .concat(wildcard)
-            .forEach(([method, value]) => {
-                const reqName = `ports.${method.split('.', 1)[0]}.request`;
-                const pubName = `ports.${method.split('.', 1)[0]}.publish`;
-                const isWildcard = method.endsWith('.*');
-                this.#resolution?.announce(
-                    method.split('.')[0].replace(/\//g, '-'),
-                    this.#config.port
-                );
-                this.#routes.push({
-                    method: 'method' in value ? value.method : 'POST',
-                    url:
-                        'path' in value
-                            ? `/rpc/${method.split('.', 1)[0]}${value.path}`
-                            : `/rpc/${method.split('.').join('/')}`,
-                    config: {
-                        auth: value.auth ?? 'jwt',
-                    },
-                    schema: Type && {
-                        ...('body' in value
-                            ? {body: value.body}
-                            : 'params' in value
-                            ? {
-                                  body: Type.Object({
-                                      jsonrpc: Type.Literal('2.0'),
-                                      id: Type.Optional(Type.Union([Type.String(), Type.Number()])),
-                                      method: isWildcard ? Type.String() : Type.Literal(method),
-                                      params: value.params,
-                                  }),
-                              }
-                            : undefined),
-                        /* eslint-disable @typescript-eslint/naming-convention */
-                        ...('response' in value
-                            ? {response: {'2xx': value.response}}
-                            : 'result' in value
-                            ? {
-                                  response:
-                                      (this.#config.sign || this.#config.encrypt) &&
-                                      (value.auth ?? 'jwt')
-                                          ? {
-                                                '2xx': value.result,
-                                                '3xx': typedError,
-                                                '4xx': typedError,
-                                                '5xx': typedError,
-                                            }
-                                          : {
-                                                '2xx': Type.Union([
-                                                    Type.Object({
-                                                        // response
-                                                        jsonrpc: Type.Literal('2.0'),
-                                                        id: Type.Union([
-                                                            Type.String(),
-                                                            Type.Number(),
-                                                        ]),
-                                                        result: value.result,
-                                                    }),
-                                                    Type.Object({
-                                                        // notification
-                                                        jsonrpc: Type.Literal('2.0'),
-                                                        result: Type.Boolean(),
-                                                    }),
-                                                ]),
-                                                '3xx': jsonRpcError,
-                                                '4xx': jsonRpcError,
-                                                '5xx': jsonRpcError,
-                                            },
-                              }
-                            : undefined),
-                        /* eslint-enable @typescript-eslint/naming-convention */
-                        security: [
-                            value.auth === false
-                                ? {}
-                                : {
-                                      'ut-login': ['api'],
-                                  },
-                        ],
-                        tags: [method.split('.')[0] + ' ' + pkg.name + '@' + pkg.version],
-                    },
-                    // onError: async(request, reply, error) => {
-                    //     const {id} = 'params' in value ? request.body as {id: string} : {id: 1};
-                    //     return {
-                    //         jsonrpc: '2.0',
-                    //         id,
-                    //         error: this.formatError(error)
-                    //     };
-                    // },
-                    handler: async (request: GatewayRequest, reply) => {
-                        const {id, params, timeout, expect} =
-                            'params' in value
-                                ? (request.body as {
-                                      id: string;
-                                      params: unknown;
-                                      timeout: unknown;
-                                      expect: unknown;
-                                  })
-                                : {id: 1, params: {}, timeout: false, expect: undefined};
-                        const methodName = isWildcard
-                            ? new URL(request.url, 'http://localhost').pathname
-                                  .slice(5)
-                                  .split('/')
-                                  .join('.')
-                            : method;
-                        try {
-                            const meta = {
-                                mtid: !id ? 'notification' : 'request',
-                                method: methodName,
-                                opcode: methodName.split('.').pop(),
-                                ...(timeout && {timeout: after(timeout)}),
-                                ...(expect && {expect: [].concat(expect)}),
-                                ...this._meta(request, pkg?.version, methodName.split('.')[0]),
-                            };
-                            const notfound = (): unknown =>
-                                reply
-                                    .code(404)
-                                    .type('text/plain')
-                                    .send('namespace not found for method ' + methodName);
-                            if (isWildcard && !validations[methodParts(methodName)]) {
-                                return reply
-                                    .code(404)
-                                    .type('text/plain')
-                                    .send('validation not found for method ' + methodName);
-                            }
+        Object.entries(validations).forEach(([method, value]) => {
+            const reqName = `ports.${method.split('.', 1)[0]}.request`;
+            const pubName = `ports.${method.split('.', 1)[0]}.publish`;
+            const isWildcard = method.endsWith('.*');
+            this.#resolution?.announce(method.split('.')[0].replace(/\//g, '-'), this.#config.port);
+            this.#routes.push({
+                method: 'method' in value ? value.method : 'POST',
+                url:
+                    'path' in value
+                        ? `${value.basePath ?? '/rpc/' + method.split('.', 1)[0]}${value.path}`
+                        : `/${value.basePath ?? 'rpc'}/${method.split('.').join('/')}`,
+                config: {
+                    auth: value.auth ?? 'jwt',
+                },
+                schema: Type && {
+                    ...('body' in value
+                        ? {body: value.body}
+                        : 'params' in value
+                        ? {
+                              body: Type.Object({
+                                  jsonrpc: Type.Literal('2.0'),
+                                  id: Type.Optional(Type.Union([Type.String(), Type.Number()])),
+                                  method: isWildcard ? Type.String() : Type.Literal(method),
+                                  params: value.params,
+                              }),
+                          }
+                        : undefined),
+                    /* eslint-disable @typescript-eslint/naming-convention */
+                    ...('response' in value
+                        ? {response: {'2xx': value.response}}
+                        : 'result' in value
+                        ? {
+                              response:
+                                  (this.#config.sign || this.#config.encrypt) &&
+                                  (value.auth ?? 'jwt')
+                                      ? {
+                                            '2xx': value.result,
+                                            '3xx': typedError,
+                                            '4xx': typedError,
+                                            '5xx': typedError,
+                                        }
+                                      : {
+                                            '2xx': Type.Union([
+                                                Type.Object({
+                                                    // response
+                                                    jsonrpc: Type.Literal('2.0'),
+                                                    id: Type.Union([Type.String(), Type.Number()]),
+                                                    result: value.result,
+                                                }),
+                                                Type.Object({
+                                                    // notification
+                                                    jsonrpc: Type.Literal('2.0'),
+                                                    result: Type.Boolean(),
+                                                }),
+                                            ]),
+                                            '3xx': jsonRpcError,
+                                            '4xx': jsonRpcError,
+                                            '5xx': jsonRpcError,
+                                        },
+                          }
+                        : undefined),
+                    /* eslint-enable @typescript-eslint/naming-convention */
+                    security: [
+                        value.auth === false
+                            ? {}
+                            : {
+                                  'ut-login': ['api'],
+                              },
+                    ],
+                    tags: [method.split('.')[0] + ' ' + pkg.name + '@' + pkg.version],
+                },
+                // onError: async(request, reply, error) => {
+                //     const {id} = 'params' in value ? request.body as {id: string} : {id: 1};
+                //     return {
+                //         jsonrpc: '2.0',
+                //         id,
+                //         error: this.formatError(error)
+                //     };
+                // },
+                handler: async (request: GatewayRequest, reply) => {
+                    const {id, params, timeout, expect} =
+                        'params' in value
+                            ? (request.body as {
+                                  id: string;
+                                  params: unknown;
+                                  timeout: unknown;
+                                  expect: unknown;
+                              })
+                            : {id: 1, params: {}, timeout: false, expect: undefined};
+                    const methodName = isWildcard
+                        ? new URL(request.url, 'http://localhost').pathname
+                              .slice(5)
+                              .split('/')
+                              .join('.')
+                        : method;
+                    try {
+                        const meta = {
+                            mtid: !id ? 'notification' : 'request',
+                            method: methodName,
+                            opcode: methodName.split('.').pop(),
+                            ...(timeout && {timeout: after(timeout)}),
+                            ...(expect && {expect: [].concat(expect)}),
+                            ...this._meta(request, pkg?.version, methodName.split('.')[0]),
+                        };
+                        const notfound = (): unknown =>
+                            reply
+                                .code(404)
+                                .type('text/plain')
+                                .send('namespace not found for method ' + methodName);
+                        if (isWildcard && !validations[methodParts(methodName)]) {
+                            return reply
+                                .code(404)
+                                .type('text/plain')
+                                .send('validation not found for method ' + methodName);
+                        }
 
-                            if (!('result' in value)) {
-                                const req = this.#local.get(reqName);
-                                if (!req) return notfound();
-                                const [result, resultMeta] =
-                                    (await req.method(params, meta)) ?? null;
-                                this._applyMeta(reply, resultMeta);
-                                return result;
-                            } else if (id == null) {
-                                const pub = this.#local.get(pubName);
-                                if (!pub) return notfound();
-                                pub.method(params, meta).catch(error => {});
-                                return {
-                                    jsonrpc: '2.0',
-                                    result: true,
-                                };
-                            } else {
-                                const req = this.#local.get(reqName);
-                                if (!req) return notfound();
-                                const [result, resultMeta] =
-                                    (await req.method(params, meta)) ?? null;
-                                this._applyMeta(reply, resultMeta);
-                                return {
-                                    jsonrpc: '2.0',
-                                    id,
-                                    result,
-                                };
-                            }
-                        } catch (error) {
-                            this._applyMeta(
-                                reply
-                                    .header('x-envoy-decorator-operation', methodName)
-                                    .code(error?.statusCode || 500),
-                                {httpResponse: error.httpResponse}
-                            );
+                        if (!('result' in value)) {
+                            const req = this.#local.get(reqName);
+                            if (!req) return notfound();
+                            const [result, resultMeta] = (await req.method(params, meta)) ?? null;
+                            this._applyMeta(reply, resultMeta);
+                            return result;
+                        } else if (id == null) {
+                            const pub = this.#local.get(pubName);
+                            if (!pub) return notfound();
+                            pub.method(params, meta).catch(error => {});
+                            return {
+                                jsonrpc: '2.0',
+                                result: true,
+                            };
+                        } else {
+                            const req = this.#local.get(reqName);
+                            if (!req) return notfound();
+                            const [result, resultMeta] = (await req.method(params, meta)) ?? null;
+                            this._applyMeta(reply, resultMeta);
                             return {
                                 jsonrpc: '2.0',
                                 id,
-                                error: this._formatError(error),
+                                result,
                             };
                         }
-                    },
-                });
+                    } catch (error) {
+                        this._applyMeta(
+                            reply
+                                .header('x-envoy-decorator-operation', methodName)
+                                .code(error?.statusCode || 500),
+                            {httpResponse: error.httpResponse}
+                        );
+                        return {
+                            jsonrpc: '2.0',
+                            id,
+                            error: this._formatError(error),
+                        };
+                    }
+                },
             });
+        });
     }
 
     public async start(): Promise<void> {
