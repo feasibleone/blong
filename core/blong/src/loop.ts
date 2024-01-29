@@ -40,7 +40,17 @@ export default function loop(
                 let receivedPacket = await decodeReceive(handlers, context, frame, checkDeadlock);
                 while (receivedPacket) {
                     const dispatchedPacket = await dispatch(handlers, receivedPacket);
-                    if (dispatchedPacket) fn?.write(dispatchedPacket as Buffer);
+                    if (dispatchedPacket) {
+                        const encodedPacket = await sendEncode(
+                            handlers,
+                            context,
+                            dispatchedPacket as unknown[],
+                            checkDeadlock
+                        );
+                        if (encodedPacket)
+                            fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
+                    }
+                    if (!handlers.imported.unpack) break;
                     receivedPacket = await decodeReceive(
                         handlers,
                         context,
@@ -72,13 +82,14 @@ export default function loop(
         fn.on('close', streamClose);
         fn.on('data', streamData);
         if (Number.isInteger(handlers.config.socketTimeOut))
-            fn.setTimeout?.(handlers.config.socketTimeOut as number, () => {
-                fn.destroy(
-                    handlers.errors['handlers.socketTimeout']({
-                        params: {timeout: handlers.config.socketTimeOut},
-                    })
-                );
-            });
+            if ('setTimeout' in fn)
+                fn.setTimeout?.(handlers.config.socketTimeOut as number, () => {
+                    fn.destroy(
+                        handlers.errors['handlers.socketTimeout']({
+                            params: {timeout: handlers.config.socketTimeOut},
+                        })
+                    );
+                });
         return (params: unknown[], promise) =>
             async ({signal}) => {
                 const $meta = getMeta(params, handlers);

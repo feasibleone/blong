@@ -7,6 +7,7 @@ export default realm(blong => ({
     default: {
         tcp: false,
         http: false,
+        kafka: false,
         server: true,
     },
 }));
