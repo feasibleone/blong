@@ -1,6 +1,7 @@
 import {Type} from '@sinclair/typebox';
 import merge from 'ut-function.merge';
 
+import PQueue from 'p-queue';
 import type {GatewaySchema} from '../types.js';
 import {Internal} from '../types.js';
 import type {IGateway} from './Gateway.js';
@@ -42,6 +43,7 @@ export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();
     public ports: Map<string, IAdapterFactory> = new Map();
     public methods: Map<string, Handlers> = new Map();
+    #reload: PQueue = new PQueue({concurrency: 1});
     #ports: Map<string, ReturnType<IAdapterFactory>> = new Map();
     #error: IErrorFactory;
     #portAttachments: Map<
@@ -239,8 +241,14 @@ export default class Registry extends Internal implements IRegistry {
             }
         }
         if (API.test(id)) {
-            this.methods.set(id, handlers);
-            await this._validations();
+            await this.#reload.add(async () => {
+                this.methods.set(id, handlers);
+                this.#validations = {};
+                this.#gateway?.route(await this._validations(), {name: '', version: ''});
+                console.log('start');
+                await this.#gateway?.start();
+                console.log('started');
+            });
         }
     }
 

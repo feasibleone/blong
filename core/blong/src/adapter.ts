@@ -202,7 +202,6 @@ export default async function adapter<T>({
                 context: this.config.type ?? 'dispatch',
             });
             const id = this.config.id.replace(/\./g, '-');
-            const PQueue = (await import('p-queue')).default;
             queue = new PQueue({concurrency: this.config.concurrency || 100});
             utBus.register(
                 {

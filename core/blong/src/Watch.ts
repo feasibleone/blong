@@ -303,13 +303,18 @@ export default class Watch extends Internal implements IWatch {
                         const dir = dirname(filename);
                         config = this.#handlerFolders.get(dir);
                         if (config) {
+                            const handlers = (await this._loadHandlers(config, dir))(
+                                layerProxy(this.#error, this.#port, config)
+                            );
                             await registry.replaceHandlers(
                                 config.name + '.' + basename(dir),
-                                (
-                                    await this._loadHandlers(config, dir)
-                                )(layerProxy(this.#error, this.#port, config)).result[basename(dir)]
-                                    .methods
+                                handlers.result[basename(dir)].methods
                             );
+                            if (handlers.result[basename(dir) + '.validation'])
+                                await registry.replaceHandlers(
+                                    config.name + '.' + basename(dir) + '.validation',
+                                    handlers.result[basename(dir) + '.validation'].methods
+                                );
                         }
                     }
                     await registry.connected();

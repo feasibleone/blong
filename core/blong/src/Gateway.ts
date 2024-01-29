@@ -93,7 +93,7 @@ export default class Gateway extends Internal implements IGateway {
 
     #errors: Errors<typeof errorMap>;
     #rpcClient: IRpcClient;
-    #routes: RouteOptions[] = [];
+    #routes: RouteOptions[];
     #local: ILocal;
     #errorFields: [string, unknown][] = [];
 
@@ -226,6 +226,7 @@ export default class Gateway extends Internal implements IGateway {
         validations: Record<string, GatewaySchema>,
         pkg: {name: string; version: string}
     ): void {
+        this.#routes = [];
         Object.entries(validations).forEach(([method, value]) => {
             const reqName = `ports.${method.split('.', 1)[0]}.request`;
             const pubName = `ports.${method.split('.', 1)[0]}.publish`;
@@ -386,30 +387,36 @@ export default class Gateway extends Internal implements IGateway {
     }
 
     public async start(): Promise<void> {
-        this.#server = fastify({
-            logger: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel}),
-        });
-        this.#server.setErrorHandler((error, request: {body: {id?: unknown}}, reply) => {
-            return reply.status(500).send({
-                jsonrpc: '2.0',
-                id: request.body?.id,
-                error: this._formatError(error),
+        const old = this.#server;
+        try {
+            this.#server = fastify({
+                logger: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel}),
+                forceCloseConnections: true,
             });
-        });
-        await this.#server.register(jwt, {
-            cache: this.#config.jwt?.cache,
-            verify: (token, options) => this.#rpcClient.verify(token, options),
-            errors: this.#errors,
-            audience: this.#config.jwt.audience,
-        });
-        if (this.#config.cors)
-            await this.#server.register((await import('./cors.js')).default, this.#config.cors);
-        if (this.#config.sign || this.#config.encrypt)
-            await this.#server.register((await import('./mle.js')).default, this.#config);
-        await this.#server.register(swagger, {
-            version: '',
-        });
-        this.#routes.forEach(route => this.#server.route(route));
+            this.#server.setErrorHandler((error, request: {body: {id?: unknown}}, reply) => {
+                return reply.status(500).send({
+                    jsonrpc: '2.0',
+                    id: request.body?.id,
+                    error: this._formatError(error),
+                });
+            });
+            await this.#server.register(jwt, {
+                cache: this.#config.jwt?.cache,
+                verify: (token, options) => this.#rpcClient.verify(token, options),
+                errors: this.#errors,
+                audience: this.#config.jwt.audience,
+            });
+            if (this.#config.cors)
+                await this.#server.register((await import('./cors.js')).default, this.#config.cors);
+            if (this.#config.sign || this.#config.encrypt)
+                await this.#server.register((await import('./mle.js')).default, this.#config);
+            await this.#server.register(swagger, {
+                version: '',
+            });
+            this.#routes.forEach(route => this.#server.route(route));
+        } finally {
+            await old?.close();
+        }
         await this.#server.listen({
             port: this.#config.port,
             host: this.#config.host,
