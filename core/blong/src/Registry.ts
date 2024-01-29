@@ -245,9 +245,7 @@ export default class Registry extends Internal implements IRegistry {
                 this.methods.set(id, handlers);
                 this.#validations = {};
                 this.#gateway?.route(await this._validations(), {name: '', version: ''});
-                console.log('start');
                 await this.#gateway?.start();
-                console.log('started');
             });
         }
     }
