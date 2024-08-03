@@ -2,13 +2,12 @@ import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(
-    ({handler: {testLoginTokenCreate, testUserAdminLogin, subjectNumberSum}}) => ({
+    ({lib: {rename}, handler: {testLoginTokenCreate, testUserAdminLogin, subjectNumberSum}}) => ({
         testNumberSum: ({name = 'demo'}, $meta) =>
-            Object.defineProperty(
+            rename(
                 [
                     testLoginTokenCreate({}, $meta),
                     testUserAdminLogin({}, $meta),
-                    'Login admin user',
                     async function sum(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                         assert.equal(
                             await subjectNumberSum([1000, 200, 30, 4], $meta),
@@ -26,8 +25,7 @@ export default handler(
                         );
                     },
                 ],
-                'name',
-                {value: name}
+                name
             ),
     })
 );

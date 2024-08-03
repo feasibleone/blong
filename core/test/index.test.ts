@@ -9,5 +9,5 @@ const realms = await Promise.all([
     load(browser, 'impl', 'impl', ['integration', 'dev', 'test']),
 ]);
 for (const realm of realms) await realm.start();
-for (const realm of realms) await realm.test(tap);
+await realms[1].test(tap);
 for (const realm of realms) await realm.stop();

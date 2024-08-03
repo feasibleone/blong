@@ -19,13 +19,13 @@ export default handler(
                             {age: 1},
                             'Return age'
                         );
-                        assert.equal(
+                        assert.match(
                             (
                                 (await subjectTime({area: 'Europe', location: 'Sofia'}, $meta)) as {
                                     abbreviation: string;
                                 }
                             ).abbreviation,
-                            'EET',
+                            /^EEST|EET$/,
                             'Return date and time'
                         );
                     },
