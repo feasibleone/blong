@@ -1,6 +1,6 @@
 import {orchestrator, type IMeta} from '../../../types.js';
 
-export default orchestrator<object>(({remote}) => ({
+export default orchestrator<{destination?: string}>(({remote}) => ({
     async init(...configs: object[]) {
         await super.init({type: 'dispatch'}, ...configs);
     },
