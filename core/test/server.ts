@@ -52,5 +52,6 @@ export default server(blong => ({
             },
         },
         demo: {},
+        payshield: {},
     },
 }));

@@ -3,7 +3,7 @@ import {realm} from '@feasibleone/blong';
 export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
-    children: ['./error', './adapter', './orchestrator', './gateway', './test'],
+    children: ['./error', './adapter', './orchestrator', './gateway'],
     default: {
         http: {
             imports: ['codec.openapi'],
@@ -38,7 +38,5 @@ export default realm(blong => ({
         orchestrator: true,
         gateway: true,
     },
-    integration: {
-        test: true,
-    },
+    integration: {},
 }));

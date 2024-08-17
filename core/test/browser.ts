@@ -11,16 +11,16 @@ export default browser(blong => ({
             return import('./login/browser.js');
         },
         function payshield() {
-            return import('./payshield/server.js');
+            return import('./payshield/browser.js');
         },
         function ctp() {
-            return import('./ctp/server.js');
+            return import('./ctp/browser.js');
         },
         function parking() {
-            return import('./parking/server.js');
+            return import('./parking/browser.js');
         },
         function demo() {
-            return import('./demo/server.js');
+            return import('./demo/browser.js');
         },
     ],
     default: {
@@ -35,10 +35,10 @@ export default browser(blong => ({
         watch: {
             test: [
                 'test.codec.mle',
-                // 'test.hsm.generate.key',
                 'test.number.sum',
                 'test.dispatch.loop',
-                // 'test.tcp.loop',
+                'test.hsm.generateKey',
+                'test.tcp.loop',
             ],
         },
     },
@@ -46,10 +46,17 @@ export default browser(blong => ({
         parking: {},
         login: {},
         demo: {},
+        payshield: {},
     },
     test: {
         watch: {
-            test: ['test.codec.mle', 'test.number.sum', 'test.dispatch.loop'],
+            test: [
+                'test.codec.mle',
+                'test.number.sum',
+                'test.dispatch.loop',
+                'test.hsm.generateKey',
+                'test.tcp.loop',
+            ],
         },
     },
 }));

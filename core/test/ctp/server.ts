@@ -5,16 +5,15 @@ import {realm} from '@feasibleone/blong';
 export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
-    children: ['./adapter', './gateway', './test'],
-    default: {},
-    dev: {
+    children: ['./sim', './adapter', './gateway'],
+    default: {
         parking: {},
         ctp: {},
         demo: {},
         payshield: {
             namespace: 'payshield',
-            host: 'hsm.softwaregroup-bg.com',
-            port: 1500,
+            host: 'hsm.localhost',
+            port: 1600,
             idleSend: 10000,
             maxReceiveBuffer: 4096,
             format: {
@@ -25,6 +24,18 @@ export default realm(blong => ({
                 headerFormat: '6/string-left-zero',
             },
             listen: false,
+        },
+        payshieldSim: {
+            port: 1600,
+            maxReceiveBuffer: 4096,
+            format: {
+                size: '16/integer',
+            },
+            imports: 'ctp.payshield',
+            'ctp.payshield': {
+                headerFormat: '6/string-left-zero',
+            },
+            listen: true,
         },
         client: {
             port: 1500,
@@ -42,12 +53,19 @@ export default realm(blong => ({
             },
         },
     },
+    dev: {
+        payshield: {
+            // host: 'hsm.softwaregroup-bg.com',
+            // port: 1500
+        },
+    },
+    test: {},
     microservice: {
         adapter: true,
         orchestrator: true,
         gateway: true,
     },
     integration: {
-        test: true,
+        sim: true,
     },
 }));

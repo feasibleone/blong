@@ -2,7 +2,7 @@ import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {rename}, handler: {testLoginTokenCreate, payshieldEcho}}) => ({
-    testTcpLoop: ({name = 'ports'}, $meta) =>
+    testTcpLoop: ({name = 'adapters'}, $meta) =>
         rename(
             [
                 testLoginTokenCreate({}, $meta),

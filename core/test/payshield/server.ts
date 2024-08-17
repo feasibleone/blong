@@ -3,7 +3,7 @@ import {realm} from '@feasibleone/blong';
 export default realm(blong => ({
     validation: blong.type.Object({}),
     url: import.meta.url,
-    children: ['./error', './adapter', './orchestrator', './gateway', './test'],
+    children: ['./error', './sim', './adapter', './orchestrator', './gateway'],
     default: {
         tcp: {
             idleSend: 10000,
@@ -12,17 +12,35 @@ export default realm(blong => ({
                 size: '16/integer',
                 headerFormat: '6/string-left-zero',
             },
-            port: 1500,
+            host: 'hsm.localhost',
+            port: 1601,
             namespace: ['payshieldport'],
             imports: ['payshield.tcp'],
             listen: false,
         },
+        payshieldSim: {
+            port: 1601,
+            maxReceiveBuffer: 4096,
+            format: {
+                size: '16/integer',
+                headerFormat: '6/string-left-zero',
+                messageFormat: {
+                    generateKey: {
+                        requestPattern: 'mode:1/string, keyType:3/string, keySchemeLmk:1/string',
+                    },
+                },
+            },
+            namespace: ['payshieldsim'],
+            listen: true,
+        },
     },
     dev: {
         tcp: {
-            host: 'hsm.softwaregroup-bg.com',
+            // host: 'hsm.softwaregroup-bg.com',
+            // port: 1500
         },
     },
+    test: {},
     microservice: {
         error: true,
         adapter: true,
@@ -30,6 +48,6 @@ export default realm(blong => ({
         gateway: true,
     },
     integration: {
-        test: true,
+        sim: true,
     },
 }));
