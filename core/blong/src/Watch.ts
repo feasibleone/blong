@@ -122,6 +122,7 @@ export default class Watch extends Internal implements IWatch {
         const handlers = [];
         const validations = [];
         const apis = [];
+        const libs = [];
         const handlerFilenames = [];
         let latest = 0;
         for (const handlerEntry of (await scan(dir)).sort()) {
@@ -142,6 +143,8 @@ export default class Watch extends Internal implements IWatch {
                     ? validations
                     : kind(item) === 'api'
                     ? apis
+                    : kind(item) === 'lib'
+                    ? libs
                     : handlers
                 ).push(item);
                 if (kind(item) === 'handler') {
@@ -154,18 +157,22 @@ export default class Watch extends Internal implements IWatch {
         return api => {
             if (validations.length)
                 api[basename(dir) + '.validation'](
-                    validations,
+                    [...libs, ...validations],
                     config.name + '.' + basename(dir) + '.validation',
                     relative('.', dir)
                 );
             if (apis.length)
                 api[basename(dir) + '.api'](
-                    apis,
+                    [...libs, ...apis],
                     config.name + '.' + basename(dir) + '.api',
                     relative('.', dir)
                 );
             if (handlers.length)
-                api[basename(dir)](handlers, config.name + '.' + basename(dir), relative('.', dir));
+                api[basename(dir)](
+                    [...libs, ...handlers],
+                    config.name + '.' + basename(dir),
+                    relative('.', dir)
+                );
             return api;
         };
     }

@@ -12,21 +12,21 @@
         ]
     },
     "dependencies": {
-        "@docusaurus/core": "^3.1.0",
-        "@docusaurus/preset-classic": "^3.1.0",
-        "@mdx-js/react": "^3.0.0",
-        "clsx": "^2.1.0",
+        "@docusaurus/core": "^3.5.2",
+        "@docusaurus/preset-classic": "^3.5.2",
+        "@mdx-js/react": "^3.0.1",
+        "clsx": "^2.1.1",
         "prism-react-renderer": "^2.3.1",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0"
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1"
     },
     "devDependencies": {
-        "@algolia/client-search": "^4.22.1",
-        "@docusaurus/module-type-aliases": "^3.1.0",
-        "@docusaurus/types": "^3.1.0",
-        "@types/react": "^18.2.48",
-        "search-insights": "^2.13.0",
-        "typescript": "^5.3.3"
+        "@algolia/client-search": "^5.0.0",
+        "@docusaurus/module-type-aliases": "^3.5.2",
+        "@docusaurus/types": "^3.5.2",
+        "@types/react": "^18.3.3",
+        "search-insights": "^2.16.3",
+        "typescript": "^5.5.4"
     },
     "engines": {
         "node": ">=18.0"
