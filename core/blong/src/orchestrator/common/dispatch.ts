@@ -13,10 +13,12 @@ export default orchestrator<object>(({remote}) => ({
         if (destination && params.length > 1) {
             const $meta = params.pop() as IMeta;
             if ($meta?.method) {
-                return remote.dispatch(...params, {
-                    ...$meta,
-                    method: destination + '/' + $meta.method,
-                });
+                return (
+                    await remote.dispatch(...params, {
+                        ...$meta,
+                        method: destination + '/' + $meta.method,
+                    })
+                )?.[0];
             }
         }
     },

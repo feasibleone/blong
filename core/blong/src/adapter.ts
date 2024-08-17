@@ -43,7 +43,7 @@ interface IError {
 
 interface IApi {
     id?: string;
-    adapter: (id: string) => (api: {utError: IError}) => object;
+    adapter: (id: string) => (api: {utError: IError; remote: IRemote}) => object;
     utError: IError;
     errors: IErrorFactory;
     gateway: IGateway;
@@ -64,7 +64,7 @@ interface IApi {
         createLog: ILog['logger'];
     };
     handlers?: (api: {utError: IError}) => {
-        extends?: string | ((api: {utError: IError}) => object);
+        extends?: string | ((api: {utError: IError; remote: IRemote}) => object);
     };
 }
 
@@ -133,7 +133,7 @@ interface IAdapter<T> {
     forNamespaces?: <T>(reducer: (prev: T, current: unknown) => T, initial: T) => T;
     methodPath?: (name: string) => string;
     dispatch?: (...params: unknown[]) => Promise<unknown>;
-    exec?: (...params: unknown[]) => Promise<unknown>;
+    exec?: (this: ReturnType<IAdapterFactory<T>>, ...params: unknown[]) => Promise<unknown>;
     bytesSent?: (count: number) => void;
     bytesReceived?: (count: number) => void;
     msgSent?: (count: number) => void;
@@ -177,6 +177,7 @@ export default async function adapter<T>({
     utError,
     utLog,
     handlers,
+    remote,
 }: IApi): Promise<ReturnType<IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
 
@@ -365,8 +366,8 @@ export default async function adapter<T>({
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapter(current.extends)({utError})
-            : current.extends({utError}));
+            ? adapter(current.extends)({utError, remote})
+            : current.extends({utError, remote}));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }

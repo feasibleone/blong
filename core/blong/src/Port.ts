@@ -10,6 +10,11 @@ export interface IPort {
 export default class Port extends Internal {
     public constructor(config: unknown) {
         super();
-        return UtPort(config);
+        const result = UtPort(config);
+        const findHandler = result.prototype.findHandler;
+        result.prototype.findHandler = function (name: string) {
+            return findHandler.call(this, name.replaceAll('.', '').toLowerCase());
+        };
+        return result;
     }
 }

@@ -256,10 +256,11 @@ async function exec(
     execPacket: unknown[]
 ): Promise<[unknown, IMeta]> {
     const $meta = execPacket.length > 1 && (execPacket[execPacket.length - 1] as IMeta);
-    if ($meta?.mtid === 'request') $meta.mtid = 'response';
-    if ($meta?.mtid === 'notification') $meta.mtid = 'discard';
     try {
-        return [await fn.apply(adapter, execPacket), $meta];
+        const result = await fn.apply(adapter, execPacket);
+        if ($meta?.mtid === 'request') $meta.mtid = 'response';
+        if ($meta?.mtid === 'notification') $meta.mtid = 'discard';
+        return [result, $meta];
     } catch (error) {
         return handleError(adapter, error, $meta);
     }
