@@ -1,4 +1,4 @@
-import load from '@feasibleone/blong';
+import load from '@feasibleone/gogo';
 import tap from 'tap';
 
 import browser from './browser.js';

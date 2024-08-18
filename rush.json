@@ -437,6 +437,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/gogo",
+            "projectFolder": "core/gogo",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/test",
             "projectFolder": "core/test",
             "reviewCategory": "core",

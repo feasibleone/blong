@@ -30,7 +30,10 @@
     },
     "cSpell.words": [
         "adaptername",
+        "Ambrym",
+        "Anders",
         "apidevtools",
+        "Bislama",
         "bitsyntax",
         "blong",
         "codegen",
@@ -41,13 +44,18 @@
         "ESOCKETTIMEDOUT",
         "fastify",
         "feasibleone",
+        "Hejlsberg",
+        "kalinkrustev",
         "keyblock",
         "mdns",
         "mlek",
         "mlsk",
+        "npmjs",
         "parentspanid",
         "payshield",
         "pino",
+        "pnpmfile",
+        "rdkafka",
         "realmname",
         "rushstack",
         "spanid",
@@ -56,5 +64,15 @@
         "unannounce",
         "unixtime",
         "unstate"
+    ],
+    "cSpell.ignorePaths": [
+        "package-lock.json",
+        "node_modules",
+        "vscode-extension",
+        ".git/objects",
+        ".vscode",
+        ".vscode-insiders",
+        "pnpm-lock.yaml",
+        "rush.json"
     ]
 }

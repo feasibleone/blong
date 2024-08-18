@@ -1,6 +1,7 @@
 {
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/gogo": "workspace:^1.0.0",
         "@sinclair/typebox": "^0.33.7",
         "jose": "^5.6.3",
         "ut-bitsyntax": "^6.2.7",

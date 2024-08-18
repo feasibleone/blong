@@ -1,8 +1,153 @@
 import {Type, type JavaScriptTypeBuilder, type TFunction, type TSchema} from '@sinclair/typebox';
-import type {LogFn} from 'pino';
+import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
 
-import type {IAdapterFactory as adapterFactory} from './src/adapter.js';
+export interface ILog {
+    logger: (level: Level, bindings: object) => ILogger;
+    child: PinoLogger['child'];
+}
+
+export interface IErrorFactory {
+    get(type?: string): unknown;
+    fetch(type: string): object;
+    define(
+        id: string,
+        superType: string | {type: string},
+        message: string
+    ): (params?: unknown, $meta?: IMeta) => ITypedError;
+    register<T>(errorsMap: T): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
+}
+
+interface IError {
+    getError: IErrorFactory['get'];
+    fetchErrors: IErrorFactory['fetch'];
+    defineError: IErrorFactory['define'];
+    register: IErrorFactory['register'];
+}
+
+export type Config<T> = {
+    id: string;
+    type: string;
+    pkg: {
+        name: string;
+        version: string;
+    };
+    format?: {
+        sizeAdjust?: number;
+    };
+    context: object;
+    debug: boolean;
+    test: boolean;
+    disconnectOnError: boolean;
+    concurrency: number;
+    log: object;
+    maxReceiveBuffer: number;
+    logLevel: Parameters<ILog['logger']>[0];
+    namespace: string | string[];
+    imports: string | string[];
+} & T;
+
+export type RemoteMethod = (...params: unknown[]) => Promise<unknown>;
+export interface IRemote {
+    remote: (methodName, options?) => RemoteMethod;
+    dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
+    start: () => Promise<void>;
+    stop: () => Promise<void>;
+}
+
+export interface IApi {
+    id?: string;
+    adapter: (id: string) => (api: {utError: IError; remote: IRemote}) => object;
+    utError: IError;
+    errors: IErrorFactory;
+    gateway: unknown;
+    remote: IRemote;
+    utBus: {
+        config: object;
+        register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
+        unregister: (methods: string[], namespace: string) => void;
+        subscribe: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
+        unsubscribe: (methods: string[], namespace: string) => void;
+        dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
+        methodId: (name: string) => string;
+        getPath: (name: string) => string;
+        importMethod: (methodName, options?) => (...params: unknown[]) => Promise<unknown>;
+        attachHandlers: (target: object, patterns: unknown) => unknown;
+    };
+    utLog: {
+        createLog: ILog['logger'];
+    };
+    handlers?: (api: {utError: IError}) => {
+        extends?: string | ((api: {utError: IError; remote: IRemote}) => object);
+    };
+}
+
+export interface IErrorMap {
+    [name: string]:
+        | string
+        | {
+              message: string;
+              print?: string;
+              statusCode?: number;
+          };
+}
+
+interface IAdapter<T> {
+    config?: Config<T>;
+    log?: ILogger;
+    errors?: Errors<IErrorMap>;
+    imported?: ReturnType<IAdapterFactory<T>>;
+    extends?: object | `adapter.${string}` | `orchestrator.${string}`;
+    init?: (this: ReturnType<IAdapterFactory<T>>, ...config: Partial<Config<T>>[]) => void;
+    start?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
+    ready?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
+    stop?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
+    connected?: (this: ReturnType<IAdapterFactory<T>>) => Promise<boolean>;
+    error?: (error: Error, $meta: IMeta) => void;
+    pack?: (this: ReturnType<IAdapterFactory<T>>, packet: {size: number; data: Buffer}) => Buffer;
+    unpackSize?: (
+        this: ReturnType<IAdapterFactory<T>>,
+        buffer: Buffer
+    ) => {size: number; data: Buffer};
+    unpack?: (
+        this: ReturnType<IAdapterFactory<T>>,
+        buffer: Buffer,
+        options?: {size: number}
+    ) => Buffer;
+    encode?: (data: unknown, $meta: IMeta, context: object, log: ILogger) => string | Buffer;
+    decode?: (buff: string | Buffer, $meta: IMeta, context: object, log: ILogger) => object[];
+    request?: () => Promise<unknown>;
+    publish?: () => Promise<unknown>;
+    drain?: () => void;
+    findValidation?: (this: ReturnType<IAdapterFactory<T>>, $meta: IMeta) => () => object;
+    getConversion?: (
+        this: ReturnType<IAdapterFactory<T>>,
+        $meta: IMeta,
+        type: 'send' | 'receive'
+    ) => {name: string; fn: () => object};
+    findHandler?: (this: ReturnType<IAdapterFactory<T>>, name: string) => () => unknown;
+    handles?: (this: ReturnType<IAdapterFactory<T>>, name: string) => boolean;
+    forNamespaces?: <T>(reducer: (prev: T, current: unknown) => T, initial: T) => T;
+    methodPath?: (name: string) => string;
+    dispatch?: (...params: unknown[]) => Promise<unknown>;
+    exec?: (this: ReturnType<IAdapterFactory<T>>, ...params: unknown[]) => Promise<unknown>;
+    bytesSent?: (count: number) => void;
+    bytesReceived?: (count: number) => void;
+    msgSent?: (count: number) => void;
+    msgReceived?: (count: number) => void;
+    isConnected?: Promise<boolean>;
+    event?: (name: string, params?: unknown) => Promise<object>;
+    handle?: (...params: unknown[]) => Promise<unknown>;
+    connect?: (
+        what: unknown,
+        context: {requests: unknown; waiting: unknown; buffer: unknown}
+    ) => void;
+}
+
+export interface IAdapterFactory<T = Record<string, unknown>> {
+    config?: unknown;
+    (api: IApi): IAdapter<T>;
+}
 
 export interface IMeta {
     mtid?: 'request' | 'response' | 'error' | 'notification' | 'discard' | 'event';
@@ -92,8 +237,6 @@ export interface IContext {
     >;
     waiting: Set<(error: Error) => void>;
 }
-
-export {default} from './src/load.js';
 
 export interface ITypedError extends Error {
     type: string;
@@ -202,7 +345,7 @@ type ApiDefinition = (blong: IValidationProxy) => {
 };
 
 type PortHandler = <T>(
-    this: ReturnType<adapterFactory>,
+    this: ReturnType<IAdapterFactory>,
     params: unknown,
     $meta: IMeta,
     context?: IContext
@@ -235,7 +378,7 @@ export interface IHandlerProxy<T> {
 
 type ImportProxyCallback<T> = (
     blong: IHandlerProxy<T>
-) => PortHandler | adapterFactory | Record<string, PortHandler>;
+) => PortHandler | IAdapterFactory | Record<string, PortHandler>;
 type Definition<T> = object | ImportProxyCallback<T> | ImportProxyCallback<T>[];
 
 type LibProxyCallback<T> = (blong: IHandlerProxy<T>) => Record<string, LibFn> | LibFn;
@@ -243,7 +386,7 @@ type Lib<T> = object | LibProxyCallback<T> | LibProxyCallback<T>[];
 
 export type ModuleApi = {
     config: Record<string, unknown>;
-    parent: adapterFactory;
+    parent: IAdapterFactory;
     error: (errors: object) => ModuleApi;
     validation: (
         method: ValidationDefinition | ValidationDefinition[],
@@ -303,9 +446,9 @@ export const server = (definition: SolutionFactory): SolutionFactory =>
     Object.defineProperty(definition, Kind, {value: 'server'});
 export const browser = (definition: SolutionFactory): SolutionFactory =>
     Object.defineProperty(definition, Kind, {value: 'browser'});
-export const adapter = <T>(definition: adapterFactory<T>): adapterFactory<T> =>
+export const adapter = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'adapter'});
-export const orchestrator = <T>(definition: adapterFactory<T>): adapterFactory<T> =>
+export const orchestrator = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'orchestrator'});
 export const kind = <T>(
     what: T
