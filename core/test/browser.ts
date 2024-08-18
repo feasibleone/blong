@@ -47,6 +47,7 @@ export default browser(blong => ({
         login: {},
         demo: {},
         payshield: {},
+        ctp: {},
     },
     test: {
         watch: {
