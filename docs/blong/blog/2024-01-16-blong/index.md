@@ -8,7 +8,9 @@ tags: [blong]
 I am happy to announce the release of Blong 2024, codename Ambrym.
 
 This framework is the result of many years of efforts around producing
-reusable software. Its is descendant of the UnderTree framework, whose roots
+reusable software.
+<!-- truncate -->
+Its is descendant of the UnderTree framework, whose roots
 started as a Delphi application. It aims to follow the RAD spirit of
 Delphi while using TypeScript, which both have
 [Anders Hejlsberg](https://en.wikipedia.org/wiki/Anders_Hejlsberg) as

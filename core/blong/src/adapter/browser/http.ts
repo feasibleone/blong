@@ -20,7 +20,7 @@ const errorMap: IErrorMap = {
 let _errors: Errors<typeof errorMap>;
 
 export default adapter<IConfig>(({utError}) => {
-    // _errors ||= utError.defineError(errorMap);
+    _errors ||= utError.register(errorMap);
 
     let https: HttpsOptions;
     return {
