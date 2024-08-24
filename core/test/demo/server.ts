@@ -2,7 +2,9 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),
+    validation: blong.type.Object({
+        http: blong.type.Object({}),
+    }),
     children: ['./error', './adapter', './orchestrator', './gateway'],
     config: {
         default: {

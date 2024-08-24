@@ -1,7 +1,10 @@
 import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
-    validation: blong.type.Object({}),
+    validation: blong.type.Object({
+        tcp: blong.type.Object({}),
+        payshieldSim: blong.type.Object({}),
+    }),
     url: import.meta.url,
     children: ['./error', './sim', './adapter', './orchestrator', './gateway'],
     config: {

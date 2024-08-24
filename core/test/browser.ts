@@ -2,7 +2,17 @@ import {browser} from '@feasibleone/blong';
 
 export default browser(blong => ({
     url: import.meta.url,
-    validation: blong.type.String(),
+    validation: blong.type.Object(
+        {
+            parking: blong.type.Object({}),
+            login: blong.type.Object({}),
+            demo: blong.type.Object({}),
+            payshield: blong.type.Object({}),
+            ctp: blong.type.Object({}),
+            client: blong.type.Object({}),
+        },
+        {additionalProperties: false}
+    ),
     children: ['./client', './login', './payshield', './ctp', './parking', './demo'],
     config: {
         default: {

@@ -2,7 +2,41 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),
+    validation: blong.type.Object({
+        login: blong.type.Object({
+            expire: blong.type.Object({
+                code: blong.type.Number(),
+                access: blong.type.Number(),
+                cookie: blong.type.Number(),
+                refresh: blong.type.Number(),
+                nonce: blong.type.Number(),
+            }),
+            cookie: blong.type.Object({
+                encoding: blong.type.String(),
+                isSecure: blong.type.Boolean(),
+                isHttpOnly: blong.type.Boolean(),
+                clearInvalid: blong.type.Boolean(),
+                strictHeader: blong.type.Boolean(),
+            }),
+            keys: blong.type.Object({
+                refresh: blong.type.String(),
+                access: blong.type.Object({
+                    crv: blong.type.String(),
+                    x: blong.type.String(),
+                    d: blong.type.String(),
+                    kty: blong.type.String(),
+                    kid: blong.type.String(),
+                    use: blong.type.String(),
+                    alg: blong.type.String(),
+                }),
+            }),
+        }),
+        loginDispatch: blong.type.Object({
+            namespace: blong.type.String(),
+            imports: blong.type.Array(blong.type.String()),
+            validations: blong.type.Array(blong.type.String()),
+        }),
+    }),
     children: ['./orchestrator', './gateway'],
     config: {
         default: {

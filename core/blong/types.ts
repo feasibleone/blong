@@ -1,4 +1,14 @@
-import {Type, type JavaScriptTypeBuilder, type TFunction, type TSchema} from '@sinclair/typebox';
+import {
+    Type,
+    type JavaScriptTypeBuilder,
+    type Static,
+    type TArray,
+    type TBoolean,
+    type TFunction,
+    type TObject,
+    type TSchema,
+    type TString,
+} from '@sinclair/typebox';
 import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
 
@@ -260,17 +270,36 @@ export type Errors<T> = {
     [name in keyof T]: (params?: unknown, $meta?: IMeta) => ITypedError;
 };
 
-export interface IModuleConfig {
+interface IBaseConfig
+    extends TObject<{
+        watch: TObject<{
+            test: TArray<TString>;
+        }>;
+        remote: TObject<{
+            canSkipSocket: TBoolean;
+        }>;
+        adapter: TBoolean;
+        orchestrator: TBoolean;
+        test: TBoolean;
+        integration: TBoolean;
+        dev: TBoolean;
+        sim: TBoolean;
+        resolution: TBoolean;
+    }> {
+    additionalProperties: false;
+}
+
+export interface IModuleConfig<T extends TObject = TObject> {
     pkg?: {
         name: string;
         version: string;
     };
     url: string;
     config: {
-        default: object;
-        [name: string]: object;
+        default: Partial<Static<IBaseConfig> & Static<T>>;
+        [name: string]: Partial<Static<IBaseConfig> & Static<T>>;
     };
-    validation: TSchema;
+    validation: T;
     children: string[] | ((layer: ModuleApi) => unknown)[];
 }
 
@@ -402,9 +431,9 @@ export type ModuleApi = {
     [name: string]: (blong: Definition<Record<string, unknown>>) => ModuleApi;
 };
 
-export type SolutionFactory = (definition: {
+export type SolutionFactory<T extends TObject = TObject> = (definition: {
     type: JavaScriptTypeBuilder;
-}) => IModuleConfig | Promise<IModuleConfig>;
+}) => IModuleConfig<T> | Promise<IModuleConfig<T>>;
 
 const Kind: symbol = Symbol('kind');
 
@@ -443,11 +472,11 @@ export const validationHandlers: (
         )
     );
 
-export const realm = (definition: SolutionFactory): SolutionFactory =>
+export const realm = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'solution'});
-export const server = (definition: SolutionFactory): SolutionFactory =>
+export const server = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'server'});
-export const browser = (definition: SolutionFactory): SolutionFactory =>
+export const browser = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'browser'});
 export const adapter = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'adapter'});
