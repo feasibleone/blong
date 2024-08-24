@@ -15,6 +15,7 @@
         "chokidar": "^3.6.0",
         "fastify": "^4.28.1",
         "fastify-plugin": "^4.5.1",
+        "globby": "^14.0.2",
         "got": "^14.4.2",
         "jose": "^5.7.0",
         "knex": "^3.1.0",
@@ -49,7 +50,7 @@
     "exports": {
         ".": "./src/load.ts"
     },
-    "name": "@feasibleone/gogo",
+    "name": "@feasibleone/blong-gogo",
     "scripts": {
         "build": "heft build --clean"
     },
