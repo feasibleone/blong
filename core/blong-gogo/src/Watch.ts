@@ -298,7 +298,7 @@ export default class Watch extends Internal implements IWatch {
                     await registry.connected();
                     emit.emit('test');
                 } else if (this.#config.configs.includes(filename)) {
-                    writeFileSync(join(dirname(import.meta.url.slice(5)), 'watch.log.ts'), '');
+                    writeFileSync(join(dirname(import.meta.url.slice(7)), 'watch.log.ts'), '');
                 } else {
                     let config = this.#handlerFiles.get(filename);
                     if (config) {

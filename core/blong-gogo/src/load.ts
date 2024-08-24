@@ -3,6 +3,7 @@ import {
     kind,
     type IErrorFactory,
     type ILog,
+    type ILogger,
     type IModuleConfig,
     type SolutionFactory,
 } from '@feasibleone/blong';
@@ -13,10 +14,10 @@ import {basename, dirname, join} from 'path';
 import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 
+import layerProxy from './layerProxy.js';
 import RealmImpl, {type IRealm} from './Realm.js';
 import type {IRegistry} from './Registry.js';
 import type {IWatch} from './Watch.js';
-import layerProxy from './layerProxy.js';
 
 const scan = async (...path: string[]): ReturnType<typeof readdir> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
@@ -71,6 +72,8 @@ export default async function loadRealm(
         pkg: {name, version: '0.0'},
         children: [],
         url: '',
+        load: undefined,
+        kopi: undefined,
         watch: undefined,
         configs: undefined,
     };
@@ -158,16 +161,18 @@ export default async function loadRealm(
     loadedConfigs.push(...activeConfigs(mod, configNames));
     loadedConfigs.push(await loadConfig(parentConfig));
     merge(mergedConfig, ...loadedConfigs.filter(Boolean));
+    let logger: ILogger;
     if (typeof parentConfig === 'string' && mergedConfig.watch)
         mergedConfig.watch.configs = mergedConfig.configs;
     let realm: IRealm;
     for (let item of items.concat(mod.children)) {
         const itemName = typeof item === 'string' ? basename(item) : item.name;
         const config = mergedConfig[itemName];
+        logger?.debug?.(`Loading ${defKind}/${itemName}`);
         if (config) {
             if (typeof item === 'string') {
-                const base = mergedConfig.url.startsWith('file:/')
-                    ? dirname(mergedConfig.url.slice(5))
+                const base = mergedConfig.url.startsWith('file://')
+                    ? dirname(mergedConfig.url.slice(7))
                     : mergedConfig.url;
                 switch (defKind) {
                     case 'server':
@@ -176,8 +181,23 @@ export default async function loadRealm(
                             ? join(base, item, `${defKind}.js`)
                             : item;
                         item = async () => {
-                            const mod = await import(fileName);
-                            return mod.default ?? mod;
+                            try {
+                                const mod = await import(fileName);
+                                return mod.default ?? mod;
+                            } catch (error) {
+                                if (
+                                    !['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(
+                                        error.code
+                                    ) ||
+                                    !mergedConfig?.kopi?.realm
+                                )
+                                    throw error;
+
+                                const {createRealm} = await import('./kopi.js');
+                                await createRealm(import.meta.resolve(fileName), logger);
+                                const mod = await import(fileName);
+                                return mod.default ?? mod;
+                            }
                         };
                         break;
                     default:
@@ -202,6 +222,10 @@ export default async function loadRealm(
                 if (typeof fn === 'function' && (fn.prototype instanceof Internal || fn[System])) {
                     api[itemName] = new (fn as IConstructor)(config, api);
                     await api[itemName].init?.();
+                    if (itemName === 'log')
+                        logger = api.log.logger(mergedConfig.load?.logLevel ?? 'warn', {
+                            name: 'load',
+                        });
                 } else if (['solution', 'server', 'browser'].includes(kind(fn))) {
                     realm ||= new RealmImpl(mergedConfig, api);
                     realm.addModule(

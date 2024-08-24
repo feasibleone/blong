@@ -437,8 +437,14 @@
             "tags": ["core"]
         },
         {
-            "packageName": "@feasibleone/gogo",
-            "projectFolder": "core/gogo",
+            "packageName": "@feasibleone/blong-gogo",
+            "projectFolder": "core/blong-gogo",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-kopi",
+            "projectFolder": "core/blong-kopi",
             "reviewCategory": "core",
             "tags": ["core"]
         },
