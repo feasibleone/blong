@@ -187,8 +187,8 @@ importers:
         specifier: ^6.2.7
         version: 6.2.7
       ut-codec-payshield:
-        specifier: ^8.0.0
-        version: 8.0.0
+        specifier: ^7.3.0
+        version: 7.3.0
       ut-dispatch-db:
         specifier: ^1.5.0
         version: 1.5.0(ut-port-script@7.2.1)
@@ -14617,8 +14617,8 @@ packages:
       - openapi-types
     dev: false
 
-  /ut-codec-payshield@8.0.0:
-    resolution: {integrity: sha512-SnRKzu+V6u4J81zrPmnXHMfRg4qnng9SS14e0uaDAiny25m/iWih6JJ7+BCJxXjQivNF+BtGmDXaWclswp4Mxg==}
+  /ut-codec-payshield@7.3.0:
+    resolution: {integrity: sha512-zR9fuqgGZtLEbC64hP+/njx3LQdqLLoVd6PGvsI+uDbjGPAcxPrD8bKqrxFyq+WKmgdocZaG/5pRGqZKsPt2xw==}
     dependencies:
       lodash.merge: 4.6.2
       ut-bitsyntax: 6.2.7
