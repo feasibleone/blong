@@ -35,8 +35,10 @@ export default realm(blong => ({
             );
         },
     ],
-    default: {},
-    microservice: {
-        adapter: true,
+    config: {
+        default: {},
+        microservice: {
+            adapter: true,
+        },
     },
 }));

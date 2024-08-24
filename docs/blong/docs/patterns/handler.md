@@ -238,10 +238,12 @@ that explain their usage:
   import {realm} from '@feasibleone/blong';
 
   export default realm(() => ({
-      default: {
-          mathDispatch: {
-              namespace: 'number',
-              imports: 'example.number',
+      config: {
+          default: {
+              mathDispatch: {
+                  namespace: 'number',
+                  imports: 'example.number',
+              },
           },
       },
       children: ['./orchestrator'],

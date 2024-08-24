@@ -32,12 +32,12 @@ interface IConstructor {
     new (config?: object, api?: object): object;
 }
 
-function activeConfigs(config: IModuleConfig, configNames: string[]): (boolean | object)[] {
+function activeConfigs(mod: IModuleConfig, configNames: string[]): (boolean | object)[] {
     return ['default']
         .concat(configNames)
-        .map(name => config[name])
+        .map(name => mod.config?.[name])
         .filter(Boolean)
-        .concat({pkg: config.pkg, children: config.children, url: config.url});
+        .concat({pkg: mod.pkg, children: mod.children, url: mod.url});
 }
 
 async function loadConfig(config: string | object): Promise<object> {

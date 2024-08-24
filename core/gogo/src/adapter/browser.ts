@@ -4,8 +4,10 @@ export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
     children: ['./browser'],
-    default: {
-        http: false,
-        browser: true,
+    config: {
+        default: {
+            http: false,
+            browser: true,
+        },
     },
 }));

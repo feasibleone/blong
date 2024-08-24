@@ -4,18 +4,20 @@ export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
     children: ['./adapter'],
-    default: {
-        error: true,
-        adapter: true,
-        backend: {
-            logLevel: 'fatal',
-            imports: [/\.backend$/, 'codec.jsonrpc', 'codec.mle'],
-            url: 'http://localhost:8080',
+    config: {
+        default: {
+            error: true,
+            adapter: true,
+            backend: {
+                logLevel: 'fatal',
+                imports: [/\.backend$/, 'codec.jsonrpc', 'codec.mle'],
+                url: 'http://localhost:8080',
+            },
+            test: {
+                namespace: ['test'],
+                imports: [/\.test$/],
+            },
         },
-        test: {
-            namespace: ['test'],
-            imports: [/\.test$/],
-        },
+        dev: {},
     },
-    dev: {},
 }));

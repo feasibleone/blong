@@ -4,10 +4,12 @@ export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
     children: ['./adapter'],
-    default: {
-        adapter: true,
+    config: {
+        default: {
+            adapter: true,
+        },
+        dev: {},
+        microservice: {},
+        integration: {},
     },
-    dev: {},
-    microservice: {},
-    integration: {},
 }));

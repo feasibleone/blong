@@ -413,8 +413,18 @@ export default class Gateway extends Internal implements IGateway {
             });
             if (this.#config.cors)
                 await this.#server.register((await import('./cors.js')).default, this.#config.cors);
-            if (this.#config.sign || this.#config.encrypt)
+            if (this.#config.sign || this.#config.encrypt) {
                 await this.#server.register((await import('./mle.js')).default, this.#config);
+            } else {
+                this.#server.route({
+                    method: 'GET',
+                    url: '/rpc/login/.well-known/mle',
+                    config: {auth: false},
+                    handler() {
+                        return {};
+                    },
+                });
+            }
             await this.#server.register(swagger, {
                 version: '',
             });

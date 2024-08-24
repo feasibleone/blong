@@ -266,7 +266,10 @@ export interface IModuleConfig {
         version: string;
     };
     url: string;
-    default: object;
+    config: {
+        default: object;
+        [name: string]: object;
+    };
     validation: TSchema;
     children: string[] | ((layer: ModuleApi) => unknown)[];
 }

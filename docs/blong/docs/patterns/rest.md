@@ -53,19 +53,21 @@ for example:
    import {realm} from '@feasibleone/blong';
 
    export default realm(blong => ({
-       default: {
-           http: {
-               imports: ['codec.openapi'],
-               namespace: ['time'],
-               'codec.openapi': {
-                   namespace: {
-                       time: [
-                           'world-time.json',
-                           'world-time.operations.json'
-                       ]
+       config: {
+           default: {
+               http: {
+                   imports: ['codec.openapi'],
+                   namespace: ['time'],
+                   'codec.openapi': {
+                       namespace: {
+                           time: [
+                               'world-time.json',
+                               'world-time.operations.json'
+                           ]
+                       }
                    }
                }
-           }
+           },
        },
        children: ['./adapter']
    }));

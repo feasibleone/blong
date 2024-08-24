@@ -23,41 +23,43 @@ export default browser(blong => ({
             return import('./demo/browser.js');
         },
     ],
-    default: {
-        client: {
-            backend: {
-                namespace: ['subject', 'hsm', 'parking', 'payshield', 'login'],
+    config: {
+        default: {
+            client: {
+                backend: {
+                    namespace: ['subject', 'hsm', 'parking', 'payshield', 'login'],
+                },
+            },
+            remote: {
+                canSkipSocket: true,
+            },
+            watch: {
+                test: [
+                    'test.codec.mle',
+                    'test.number.sum',
+                    'test.dispatch.loop',
+                    'test.hsm.generateKey',
+                    'test.tcp.loop',
+                ],
             },
         },
-        remote: {
-            canSkipSocket: true,
+        dev: {
+            parking: {},
+            login: {},
+            demo: {},
+            payshield: {},
+            ctp: {},
         },
-        watch: {
-            test: [
-                'test.codec.mle',
-                'test.number.sum',
-                'test.dispatch.loop',
-                'test.hsm.generateKey',
-                'test.tcp.loop',
-            ],
-        },
-    },
-    dev: {
-        parking: {},
-        login: {},
-        demo: {},
-        payshield: {},
-        ctp: {},
-    },
-    test: {
-        watch: {
-            test: [
-                'test.codec.mle',
-                'test.number.sum',
-                'test.dispatch.loop',
-                'test.hsm.generateKey',
-                'test.tcp.loop',
-            ],
+        test: {
+            watch: {
+                test: [
+                    'test.codec.mle',
+                    'test.number.sum',
+                    'test.dispatch.loop',
+                    'test.hsm.generateKey',
+                    'test.tcp.loop',
+                ],
+            },
         },
     },
 }));

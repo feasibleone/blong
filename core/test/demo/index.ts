@@ -13,15 +13,17 @@ import validate1 from './orchestrator/subject/~.schema.js';
 
 export default realm(blong => ({
     pkg,
-    default: {},
-    dev: {
-        test: true,
-    },
-    microservice: {
-        error: true,
-        adapter: true,
-        orchestrator: true,
-        gateway: true,
+    config: {
+        default: {},
+        dev: {
+            test: true,
+        },
+        microservice: {
+            error: true,
+            adapter: true,
+            orchestrator: true,
+            gateway: true,
+        },
     },
     validation: blong.type.Object({}),
     url: import.meta.url,

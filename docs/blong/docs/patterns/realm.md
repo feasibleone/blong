@@ -46,12 +46,14 @@ export default realm(blong => ({
     validation: blong.type.Object({}),
     children: ['./adapter'],
     // config activations
-    default: {},
-    test: {
-        adapter: true
-    },
-    realm: {
-        adapter: true
-    },
+    config: {
+        default: {},
+        test: {
+            adapter: true
+        },
+        realm: {
+            adapter: true
+        },
+    }
 }));
 ```

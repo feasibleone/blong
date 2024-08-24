@@ -41,16 +41,18 @@ per environment configuration
 import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
-    default: {
-        adaptername: {
-            // base configuration
-            // usually namespace and imports are specified here
-        }
-    },
-    dev: {
-        adaptername: {
-            // dev env overrides
-        }
+    config: {
+      default: {
+          adaptername: {
+              // base configuration
+              // usually namespace and imports are specified here
+          }
+      },
+      dev: {
+          adaptername: {
+              // dev env overrides
+          }
+      }
     }
 }));
 ```
