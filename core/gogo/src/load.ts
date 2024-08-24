@@ -166,22 +166,35 @@ export default async function loadRealm(
         const config = mergedConfig[itemName];
         if (config) {
             if (typeof item === 'string') {
-                const loaded = [];
                 const base = mergedConfig.url.startsWith('file:/')
                     ? dirname(mergedConfig.url.slice(5))
                     : mergedConfig.url;
-                for (const dirEntry of await scan(base, item))
-                    loaded.push(
-                        await api.watch.load(
-                            mergedConfig,
-                            dirEntry.isDirectory(),
-                            dirEntry.isFile(),
-                            base,
-                            item,
-                            dirEntry.name
-                        )
-                    );
-                item = async () => loaded;
+                switch (defKind) {
+                    case 'server':
+                    case 'browser':
+                        const fileName = item.startsWith('.')
+                            ? join(base, item, `${defKind}.js`)
+                            : item;
+                        item = async () => {
+                            const mod = await import(fileName);
+                            return mod.default ?? mod;
+                        };
+                        break;
+                    default:
+                        const loaded = [];
+                        for (const dirEntry of await scan(base, item))
+                            loaded.push(
+                                await api.watch.load(
+                                    mergedConfig,
+                                    dirEntry.isDirectory(),
+                                    dirEntry.isFile(),
+                                    base,
+                                    item,
+                                    dirEntry.name
+                                )
+                            );
+                        item = async () => loaded;
+                }
             }
             for (const module of [].concat(await item())) {
                 const item = await module;

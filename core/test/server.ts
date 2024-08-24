@@ -3,26 +3,7 @@ import {server} from '@feasibleone/blong';
 export default server(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
-    children: [
-        function login() {
-            return import('./login/server.js');
-        },
-        function ctp() {
-            return import('./ctp/server.js');
-        },
-        function parking() {
-            return import('./parking/server.js');
-        },
-        function payshield() {
-            return import('./payshield/server.js');
-        },
-        function demo() {
-            return import('./demo/server.js');
-        },
-        function db() {
-            return import('./db/server.js');
-        },
-    ],
+    children: ['./login', './ctp', './parking', './payshield', './demo', './db'],
     config: {
         default: {},
         microservice: {},
