@@ -238,6 +238,25 @@ importers:
       ut-function.cbc:
         specifier: ^1.1.6
         version: 1.1.6
+    devDependencies:
+      '@rushstack/eslint-config':
+        specifier: ^4.0.1
+        version: 4.0.1(eslint@8.57.0)(typescript@5.5.4)
+      '@rushstack/heft':
+        specifier: ~0.67.0
+        version: 0.67.0(@types/node@20.16.1)
+      '@rushstack/heft-lint-plugin':
+        specifier: ~0.4.1
+        version: 0.4.1(@rushstack/heft@0.67.0)(@types/node@20.16.1)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ~0.5.25
+        version: 0.5.25(@rushstack/heft@0.67.0)(@types/node@20.16.1)
+      eslint:
+        specifier: ~8.57.0
+        version: 8.57.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.5.4
 
   ../../core/test:
     dependencies:
