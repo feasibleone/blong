@@ -9,7 +9,8 @@ import {
     type TSchema,
     type TString,
 } from '@sinclair/typebox';
-import type {Level, LogFn, Logger as PinoLogger} from 'pino';
+import { type OpenAPIV2, type OpenAPIV3_1 } from 'openapi-types';
+import type { Level, LogFn, Logger as PinoLogger } from 'pino';
 import merge from 'ut-function.merge';
 
 export interface ILog {
@@ -328,7 +329,7 @@ export type GatewaySchema = (
           response: TSchema;
       }
     | {
-          method: 'GET';
+          method: 'GET' | 'POST' | 'PUT' | 'DELETE';
           path?: string;
           response?: TSchema;
       }
@@ -340,10 +341,17 @@ export type GatewaySchema = (
       }
 ) & {
     auth?: false | 'basic' | 'login';
+    rpc?: boolean;
     description?: string;
+    summary?: string;
     security?: true;
     basePath?: string;
+    subject?: string;
+    operation?: OpenAPIV3_1.OperationObject | OpenAPIV2.OperationObject;
 };
+
+export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
+export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.SchemaObject;
 
 interface ILib {
     type: JavaScriptTypeBuilder;

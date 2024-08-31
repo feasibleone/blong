@@ -14,6 +14,7 @@ import {basename, dirname, join} from 'path';
 import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 
+import type {IApiSchema} from './ApiSchema.js';
 import layerProxy from './layerProxy.js';
 import RealmImpl, {type IRealm} from './Realm.js';
 import type {IRegistry} from './Registry.js';
@@ -58,6 +59,7 @@ export default async function loadRealm(
     configNames: string[],
     api?: {
         watch?: IWatch;
+        apiSchema?: IApiSchema;
         error?: IErrorFactory;
         port?: () => void;
         log?: ILog;
@@ -84,6 +86,7 @@ export default async function loadRealm(
         loadedConfigs.push({
             watch: {},
             log: {},
+            apiSchema: {},
             error: {},
             registry: {},
             port: {},
@@ -98,6 +101,9 @@ export default async function loadRealm(
         items = [
             function log() {
                 return import('./Log.js');
+            },
+            function apiSchema() {
+                return import('./ApiSchema.js');
             },
             function port() {
                 return import('./Port.js');
@@ -236,7 +242,7 @@ export default async function loadRealm(
                     realm ||= new RealmImpl(mergedConfig, api);
                     realm.addLayer(
                         itemName,
-                        fn(layerProxy(api.error, api.port, mergedConfig)).result
+                        fn(layerProxy(api.error, api.apiSchema, api.port, mergedConfig)).result
                     );
                 }
             }

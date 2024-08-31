@@ -6,13 +6,14 @@ import {
 } from '@feasibleone/blong';
 import merge from 'ut-function.merge';
 
-import type {IPort} from './Port.js';
 import createPort from './adapter.js';
-import {apiSchema} from './api.js';
+import type {IApiSchema} from './ApiSchema.js';
 import {methodId} from './lib.js';
+import type {IPort} from './Port.js';
 
 export default function layerProxy(
     errors: IErrorFactory,
+    apiSchema: IApiSchema,
     port: () => void,
     moduleConfig: {pkg: IModuleConfig['pkg']}
 ): {result: unknown} {
@@ -181,7 +182,10 @@ export default function layerProxy(
                                                 case 'function:api':
                                                     merge(
                                                         local,
-                                                        await apiSchema(what(layerApi), source)
+                                                        await apiSchema.schema(
+                                                            what(layerApi),
+                                                            source
+                                                        )
                                                     );
                                                     break;
                                                 case 'function:handler':
