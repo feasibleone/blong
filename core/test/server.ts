@@ -5,7 +5,7 @@ export default server(blong => ({
     validation: blong.type.Object({}),
     children: [
         async function login() {
-            return import('@feasibleone/blong-login/server');
+            return import('@feasibleone/blong-login/server.js');
         },
         './ctp',
         './parking',

@@ -9,8 +9,8 @@ import {
     type TSchema,
     type TString,
 } from '@sinclair/typebox';
-import { type OpenAPIV2, type OpenAPIV3_1 } from 'openapi-types';
-import type { Level, LogFn, Logger as PinoLogger } from 'pino';
+import type {OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
+import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
 
 export interface ILog {
@@ -301,7 +301,7 @@ export interface IModuleConfig<T extends TObject = TObject> {
         [name: string]: Partial<Static<IBaseConfig> & Static<T>>;
     };
     validation: T;
-    children: string[] | ((layer: ModuleApi) => unknown)[];
+    children: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
 }
 
 export interface ILogger {

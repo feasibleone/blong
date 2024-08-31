@@ -16,7 +16,7 @@ export default browser(blong => ({
     children: [
         './client',
         async function login() {
-            return import('@feasibleone/blong-login/browser');
+            return import('@feasibleone/blong-login/browser.js');
         },
         './payshield',
         './ctp',
