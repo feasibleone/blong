@@ -260,7 +260,7 @@ export default class Gateway extends Internal implements IGateway {
                           }
                         : undefined),
                     /* eslint-disable @typescript-eslint/naming-convention */
-                    ...('response' in value
+                    ...('response' in value && value.response
                         ? {response: {'2xx': value.response}}
                         : 'result' in value
                         ? {

@@ -40,6 +40,7 @@ const emit: EventEmitter = new EventEmitter();
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
 interface IConfig {
+    enabled: boolean;
     test: string;
     ignored: string[];
     configs: string[];
@@ -47,6 +48,7 @@ interface IConfig {
 }
 export default class Watch extends Internal implements IWatch {
     #config: IConfig = {
+        enabled: false,
         test: '',
         ignored: [],
         configs: [],
@@ -229,32 +231,7 @@ export default class Watch extends Internal implements IWatch {
         }
     }
 
-    public async start(registry: IRegistry, remote: IRemote): Promise<void> {
-        this.#logger?.debug?.({
-            $meta: {mtid: 'event', method: 'watch.start'},
-            dir: Array.from(this.#handlerFolders.keys())
-                .concat(Array.from(this.#handlerFiles.keys()))
-                .concat(Array.from(this.#layerFiles.keys()))
-                .map(folder => relative('.', folder)),
-        });
-        if (this.#config.test) {
-            emit.on('test', async (done, test) => {
-                try {
-                    const chain = await (await import('./chain.js')).default(test);
-
-                    const steps = await Promise.all(
-                        [].concat(this.#config.test).map(test => remote.remote(test)({}, {}))
-                    );
-                    await Promise.all(steps.map(chain));
-                } catch (error) {
-                    this.#logger?.error?.(error);
-                    done?.(error);
-                    return;
-                }
-                done?.();
-            });
-        }
-
+    private _watch(registry: IRegistry): void {
         const fsWatcher = chokidar.watch(
             Array.from(this.#handlerFolders.keys())
                 .map(folder => [
@@ -335,6 +312,35 @@ export default class Watch extends Internal implements IWatch {
                 this.#logger?.error?.(error);
             }
         });
+    }
+
+    public async start(registry: IRegistry, remote: IRemote): Promise<void> {
+        this.#logger?.debug?.({
+            $meta: {mtid: 'event', method: 'watch.start'},
+            dir: Array.from(this.#handlerFolders.keys())
+                .concat(Array.from(this.#handlerFiles.keys()))
+                .concat(Array.from(this.#layerFiles.keys()))
+                .map(folder => relative('.', folder)),
+        });
+        if (this.#config.test) {
+            emit.on('test', async (done, test) => {
+                try {
+                    const chain = await (await import('./chain.js')).default(test);
+
+                    const steps = await Promise.all(
+                        [].concat(this.#config.test).map(test => remote.remote(test)({}, {}))
+                    );
+                    await Promise.all(steps.map(chain));
+                } catch (error) {
+                    this.#logger?.error?.(error);
+                    done?.(error);
+                    return;
+                }
+                done?.();
+            });
+        }
+        if (this.#config.enabled) this._watch(registry);
+
         await registry.connected();
     }
 

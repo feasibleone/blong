@@ -5,7 +5,8 @@ import {resolve} from 'node:path';
 import merge from 'ut-function.merge';
 
 export async function loadApi(
-    locations: string | string[] | object | object[]
+    locations: string | string[] | object | object[],
+    source: string = process.cwd()
 ): ReturnType<typeof parser.dereference> {
     const documents = [];
     for (const location of [].concat(locations)) {
@@ -14,19 +15,24 @@ export async function loadApi(
             if (location.startsWith('http'))
                 documents.push(await got(location, {responseType: 'json'}).json());
             else
-                documents.push((await import(resolve(location), {assert: {type: 'json'}})).default);
+                documents.push(
+                    (await import(resolve(source, location), {assert: {type: 'json'}})).default
+                );
         }
     }
     return await parser.dereference(merge(...documents));
 }
 
-export async function apiSchema(def: {
-    namespace: Record<string, string | string[]>;
-}): Promise<Record<string, GatewaySchema>> {
+export async function apiSchema(
+    def: {
+        namespace: Record<string, string | string[]>;
+    },
+    source: string
+): Promise<Record<string, GatewaySchema>> {
     const result = {};
 
     for (const [namespace, locations] of Object.entries(def.namespace)) {
-        const bundle = await loadApi(locations);
+        const bundle = await loadApi(locations, source);
         Object.entries(bundle.paths).forEach(
             ([path, methods]: [string, typeof bundle.paths.foo]) => {
                 Object.entries(methods).forEach(([method, def]) => {

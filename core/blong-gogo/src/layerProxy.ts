@@ -36,7 +36,7 @@ export default function layerProxy(
                     case 'result':
                         return target.result;
                     default:
-                        return (fn: unknown, namespace, source) => {
+                        return (fn: unknown, namespace: string, source: string) => {
                             const where = (target.result[name] ||= {methods: [], source});
                             if (target[name]) merge(where, target[name](fn));
                             else {
@@ -179,7 +179,10 @@ export default function layerProxy(
                                                     merge(local, what);
                                                     break;
                                                 case 'function:api':
-                                                    merge(local, await apiSchema(what(layerApi)));
+                                                    merge(
+                                                        local,
+                                                        await apiSchema(what(layerApi), source)
+                                                    );
                                                     break;
                                                 case 'function:handler':
                                                 case 'function:validation':

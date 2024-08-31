@@ -4,7 +4,7 @@ export default validation(
     ({lib: {type}}) =>
         function $subject$ObjectEdit() {
             return {
-                params: type.Object({eventId: type.String()}, {additionalProperties: true}),
+                params: type.Object({$objectId: type.String()}, {additionalProperties: true}),
                 result: type.Any(),
             };
         }

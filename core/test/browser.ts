@@ -13,7 +13,16 @@ export default browser(blong => ({
         },
         {additionalProperties: false}
     ),
-    children: ['./client', './login', './payshield', './ctp', './parking', './demo'],
+    children: [
+        './client',
+        async function login() {
+            return import('@feasibleone/blong-login/browser');
+        },
+        './payshield',
+        './ctp',
+        './parking',
+        './demo',
+    ],
     config: {
         default: {
             client: {

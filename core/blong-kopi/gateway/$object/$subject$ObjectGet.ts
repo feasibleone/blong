@@ -4,7 +4,7 @@ export default validation(
     ({lib: {type}}) =>
         function $subject$ObjectGet() {
             return {
-                params: type.Object({eventId: type.String()}),
+                params: type.Object({$objectId: type.String()}),
                 result: type.Any(),
             };
         }

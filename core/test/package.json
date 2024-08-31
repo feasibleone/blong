@@ -2,6 +2,7 @@
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
         "@sinclair/typebox": "^0.33.7",
         "jose": "^5.7.0",
         "ut-bitsyntax": "^6.2.7",

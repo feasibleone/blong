@@ -221,6 +221,21 @@ importers:
         specifier: ^5.5.4
         version: 5.5.4
 
+  ../../core/blong-login:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      '@sinclair/typebox':
+        specifier: ^0.33.7
+        version: 0.33.7
+      jose:
+        specifier: ^5.7.0
+        version: 5.7.0
+      ut-function.cbc:
+        specifier: ^1.1.6
+        version: 1.1.6
+
   ../../core/test:
     dependencies:
       '@feasibleone/blong':
@@ -229,6 +244,9 @@ importers:
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
       '@sinclair/typebox':
         specifier: ^0.33.7
         version: 0.33.7
