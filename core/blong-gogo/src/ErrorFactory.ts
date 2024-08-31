@@ -15,7 +15,7 @@ export default class ErrorFactory extends Internal implements IErrorFactory {
     };
 
     public constructor(config: IConfig, {log}: {log: ILog}) {
-        super();
+        super({log});
         this.merge(this.#config, config);
         this.#error = Errors({
             logFactory: {

@@ -118,7 +118,7 @@ export default class Gateway extends Internal implements IGateway {
             resolution?: IResolution;
         }
     ) {
-        super();
+        super({log});
         this.#log = log;
         this.merge(this.#config, config);
         this.#errorFields = Object.entries({

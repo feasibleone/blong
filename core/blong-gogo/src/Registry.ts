@@ -91,7 +91,7 @@ export default class Registry extends Internal implements IRegistry {
             watch?: IWatch;
         }
     ) {
-        super();
+        super({log});
         this.#resolution = resolution;
         this.#rpcServer = rpcServer;
         this.#error = error;

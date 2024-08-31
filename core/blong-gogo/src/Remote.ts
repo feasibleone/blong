@@ -33,7 +33,6 @@ export default class Remote extends Internal implements IRemote {
 
     #importCache: object = {};
     #requireMeta: (method: string) => void;
-    #logger: ReturnType<ILog['logger']>;
     #errors: Errors<typeof errorMap>;
     #local: ILocal;
 
@@ -44,10 +43,9 @@ export default class Remote extends Internal implements IRemote {
         config: {logLevel?: Parameters<ILog['logger']>[0]},
         {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal}
     ) {
-        super();
+        super({log});
         config = this.merge(this.#config, config);
         this.#local = local;
-        this.#logger = log?.logger(config.logLevel, {context: 'rpc client'});
         this.#errors = error.register(errorMap);
         switch (this.#config.requireMeta) {
             case 'trace':
@@ -55,7 +53,7 @@ export default class Remote extends Internal implements IRemote {
             case 'info':
             case 'warn': {
                 this.#requireMeta = method =>
-                    this.#logger?.[this.#config.requireMeta.toString()]?.(
+                    this.log?.[this.#config.requireMeta.toString()]?.(
                         this.#errors['remote.noMeta']({params: {method}})
                     );
                 break;
@@ -67,7 +65,7 @@ export default class Remote extends Internal implements IRemote {
                     this.#config.requireMeta === true ? 'error' : this.#config.requireMeta;
                 this.#requireMeta = method => {
                     const error = this.#errors['remote.noMeta']({params: {method}});
-                    this.#logger?.[logLevel]?.(error);
+                    this.log?.[logLevel]?.(error);
                     throw error;
                 };
                 break;

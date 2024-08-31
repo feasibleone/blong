@@ -40,7 +40,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         //         daprPort: '3500'
         //     }
         // });
-        super();
+        super({log});
         this.merge(this.#config, config);
         this.#resolution = resolution;
         this.#server = fastify({

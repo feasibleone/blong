@@ -438,7 +438,17 @@ export type SolutionFactory<T extends TObject = TObject> = (definition: {
 const Kind: symbol = Symbol('kind');
 
 export abstract class Internal {
-    protected merge: typeof merge = merge;
+    #log: ILog;
+    protected log?: ReturnType<ILog['logger']>;
+    public constructor(api?: {log: ILog}) {
+        this.#log = api?.log;
+    }
+    protected merge: typeof merge = (...args) => {
+        const result = merge(...args);
+        if (result.logLevel && this.#log)
+            this.log = this.#log.logger(result.logLevel, {name: this.constructor.name});
+        return result;
+    };
     public async stop(): Promise<void> {}
     public async start(...params: unknown[]): Promise<void> {}
 }
