@@ -60,8 +60,13 @@ export default class ApiSchema extends Internal implements IApiSchema {
                         ] = {
                             rpc: false,
                             auth: false,
-                            ...(operation.requestBody && {body: operation.requestBody}),
-                            basePath: '/rest',
+                            ...(operation.requestBody && {
+                                body:
+                                    'openapi' in bundle
+                                        ? operation.requestBody.content['application/json']
+                                        : operation.requestBody,
+                            }),
+                            basePath: `/rest/${namespace}`,
                             response:
                                 operation.responses?.['200']?.content?.['application/json']?.schema,
                             description: methods.description,
@@ -147,7 +152,7 @@ export default handler(
     }
 
     private _response({operation}: GatewaySchema): string {
-        if (!operation || !(200 in operation.responses)) return '';
+        if (!operation?.responses || !(200 in operation.responses)) return '';
         if (!('schema' in operation.responses[200])) return '';
         const schema = operation.responses?.[200]?.schema;
         if (!schema || !('properties' in schema)) return '';
