@@ -38,7 +38,8 @@
         "ut-function.merge": "^1.5.6",
         "ut-function.timing": "^1.2.0",
         "ut-port": "^6.45.2",
-        "uuid": "^10.0.0"
+        "uuid": "^10.0.0",
+        "yaml": "^2.5.1"
     },
     "devDependencies": {
         "@rushstack/eslint-config": "^4.0.1",
