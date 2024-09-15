@@ -12,7 +12,7 @@ export async function createRealm(
     destUrl = destUrl.startsWith('file://') ? dirname(destUrl.slice(7)) : url;
     const subject = basename(destUrl);
     const replace = (str: string): string =>
-        str.replace('$subject', subject).replace('$Subject', 'Subject');
+        str.replaceAll('$subject', subject).replaceAll('$Subject', subject.toUpperCase());
     logger?.warn?.(`Creating realm ${destUrl} from ${cwd}`);
     for (const file of globSync(['**/*.ts'], {
         cwd,
