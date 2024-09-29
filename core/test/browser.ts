@@ -9,12 +9,18 @@ export default browser(blong => ({
             demo: blong.type.Object({}),
             payshield: blong.type.Object({}),
             ctp: blong.type.Object({}),
-            client: blong.type.Object({}),
+            testClient: blong.type.Object({
+                backend: blong.type.Object({
+                    namespace: blong.type.Array(blong.type.String()),
+                }),
+            }),
         },
         {additionalProperties: false}
     ),
     children: [
-        './client',
+        async function testClient() {
+            return import('@feasibleone/blong-test/browser.js');
+        },
         async function login() {
             return import('@feasibleone/blong-login/browser.js');
         },
@@ -25,22 +31,8 @@ export default browser(blong => ({
     ],
     config: {
         default: {
-            client: {
-                backend: {
-                    namespace: ['subject', 'hsm', 'parking', 'payshield', 'login'],
-                },
-            },
             remote: {
                 canSkipSocket: true,
-            },
-            watch: {
-                test: [
-                    'test.codec.mle',
-                    'test.number.sum',
-                    'test.dispatch.loop',
-                    'test.hsm.generateKey',
-                    'test.tcp.loop',
-                ],
             },
         },
         dev: {
@@ -50,7 +42,12 @@ export default browser(blong => ({
             payshield: {},
             ctp: {},
         },
-        test: {
+        integration: {
+            testClient: {
+                backend: {
+                    namespace: ['subject', 'hsm', 'parking', 'payshield', 'login'],
+                },
+            },
             watch: {
                 test: [
                     'test.codec.mle',

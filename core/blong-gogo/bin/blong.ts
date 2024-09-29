@@ -6,4 +6,4 @@ import load from '../src/load.js';
 
 const argv: {_: string[]} = minimist(process.argv.slice(2));
 
-(await import(resolve(argv._[0]))).default(load);
+(await import(resolve(argv._[0] ?? 'index.ts'))).default(load);

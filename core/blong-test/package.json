@@ -1,0 +1,19 @@
+{
+    "name": "@feasibleone/blong-test",
+    "scripts": {
+        "build": "heft build --clean"
+    },
+    "type": "module",
+    "version": "1.0.0",
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "@rushstack/eslint-config": "^4.0.1",
+        "@rushstack/heft": "~0.67.0",
+        "@rushstack/heft-lint-plugin": "~0.4.1",
+        "@rushstack/heft-typescript-plugin": "~0.5.25",
+        "eslint": "~8.57.0",
+        "typescript": "^5.5.4"
+    }
+}
