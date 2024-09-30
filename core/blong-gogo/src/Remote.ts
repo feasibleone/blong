@@ -2,6 +2,7 @@ import type {
     Errors,
     IErrorFactory,
     IErrorMap,
+    ILocal,
     ILog,
     IMeta,
     IRemote,
@@ -10,8 +11,6 @@ import type {
 } from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
 import hrtime from 'browser-process-hrtime';
-
-import type {ILocal} from './Local.js';
 
 const errorMap: IErrorMap = {
     'remote.bindingFailed': 'Method binding failed for {typeName} {methodType} {methodName}',

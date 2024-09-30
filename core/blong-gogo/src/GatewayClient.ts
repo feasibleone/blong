@@ -1,8 +1,7 @@
-import type {Errors, IErrorFactory, IErrorMap, ILog, IMeta} from '@feasibleone/blong';
+import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta} from '@feasibleone/blong';
 import ky from 'ky';
 import {spare} from 'ut-function.timing';
 
-import type {ILocal} from './Local.js';
 import Remote from './Remote.js';
 
 export interface IGatewayClient {

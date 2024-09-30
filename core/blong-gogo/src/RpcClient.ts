@@ -1,4 +1,12 @@
-import type {Errors, IErrorFactory, IErrorMap, ILog, IMeta, IRemote} from '@feasibleone/blong';
+import type {
+    Errors,
+    IErrorFactory,
+    IErrorMap,
+    ILocal,
+    ILog,
+    IMeta,
+    IRemote,
+} from '@feasibleone/blong';
 import got, {type HttpsOptions} from 'got';
 import timing from 'ut-function.timing';
 
@@ -6,7 +14,6 @@ import GatewayCodecImpl, {
     type IConfig as IConfigGatewayCodec,
     type IGatewayCodec,
 } from './GatewayCodec.js';
-import type {ILocal} from './Local.js';
 import RemoteImpl from './Remote.js';
 import type {IResolution} from './Resolution.js';
 import tls from './tls.js';
