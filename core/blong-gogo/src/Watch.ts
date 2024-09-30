@@ -23,7 +23,7 @@ export interface IWatch {
     test: (tester: unknown) => Promise<void>;
     stop: () => Promise<void>;
     load: <T extends {result: unknown}>(
-        config: {name: string; pkg: IModuleConfig['pkg']},
+        config: {name: string; pkg: IModuleConfig['pkg']; base: string},
         isDirectory: boolean,
         isFile: boolean,
         ...path: string[]
@@ -56,9 +56,10 @@ export default class Watch extends Internal implements IWatch {
         logLevel: 'debug',
     };
 
-    #handlerFolders: Map<string, {name: string; pkg: IModuleConfig['pkg']}> = new Map();
-    #handlerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']}> = new Map();
-    #layerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']}> = new Map();
+    #handlerFolders: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> =
+        new Map();
+    #handlerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> = new Map();
+    #layerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> = new Map();
     #watchers: chokidar.FSWatcher[] = [];
     #port: () => unknown;
     #error: IErrorFactory;
@@ -127,7 +128,7 @@ export default class Watch extends Internal implements IWatch {
     }
 
     private async _loadHandlers(
-        config: {name: string; pkg: IModuleConfig['pkg']},
+        config: {name: string; pkg: IModuleConfig['pkg']; base: string},
         ...path: string[]
     ): Promise<<T>(api: T) => T> {
         const dir = join(...path);
@@ -194,7 +195,7 @@ export default class Watch extends Internal implements IWatch {
     }
 
     public async load<T extends {result: unknown}>(
-        config: {name: string; pkg: IModuleConfig['pkg']},
+        config: {name: string; pkg: IModuleConfig['pkg']; base: string},
         isDirectory: boolean,
         isFile: boolean,
         ...path: string[]

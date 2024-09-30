@@ -44,8 +44,8 @@ This codec has the following configuration:
 ```yaml
 namespace:                           # API definitions per namespace
   time:                              # Namespace for the definitions
-    - some/path/world-time.json      # OpenAPI/Swagger definition files
-    - some/path/world-time.operations.json
+    - some/path/world-time.yaml      # OpenAPI/Swagger definition files
+    - some/path/world-time.operations.yaml
   k8s:                               # Namespace for the definitions
     - http://k8s.com/k8s-apps.json   # OpenAPI/Swagger definition URLs
     - http://k8s.com/k8s-discovery.json

@@ -13,8 +13,8 @@ To implement REST APIs:
    export default api(() => ({
        namespace: {
            clock: [
-               'core/test/api/world-time.json',
-               'core/test/api/world-time.operations.json'
+               'core/test/api/world-time.yaml',
+               'core/test/api/world-time.operations.yaml'
            ],
        },
    }));
@@ -61,8 +61,8 @@ for example:
                    'codec.openapi': {
                        namespace: {
                            time: [
-                               'world-time.json',
-                               'world-time.operations.json'
+                               'world-time.yaml',
+                               'world-time.operations.yaml'
                            ]
                        }
                    }

@@ -15,8 +15,8 @@ export default realm(blong => ({
             $subjectDispatch: {
                 destination: 'db',
                 namespace: ['$subject'],
-                imports: ['$subject.$object'],
-                validations: ['$subject.$object.validation'],
+                imports: [/^$subject\./],
+                validations: [/^$subject\.\w+\.validation$/],
             },
         },
         dev: {},

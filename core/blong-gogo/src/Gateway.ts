@@ -3,6 +3,7 @@ import type {
     GatewaySchema,
     IErrorFactory,
     IErrorMap,
+    ILocal,
     ILog,
     IMeta,
 } from '@feasibleone/blong';
@@ -14,7 +15,6 @@ import type {LevelWithSilent} from 'pino';
 import {after} from 'ut-function.timing';
 import {v4} from 'uuid';
 
-import type {ILocal} from './Local.js';
 import type {IResolution} from './Resolution.js';
 import type {IRpcClient} from './RpcClient.js';
 import jwt from './jwt.js';

@@ -2,8 +2,10 @@ import type {
     GatewaySchema,
     IAdapterFactory,
     IErrorFactory,
+    ILocal,
     ILog,
     IRemote,
+    IRpcServer,
 } from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
 import {Type} from '@sinclair/typebox';
@@ -11,9 +13,7 @@ import PQueue from 'p-queue';
 import merge from 'ut-function.merge';
 
 import type {IGateway} from './Gateway.js';
-import type {ILocal} from './Local.js';
 import type {IResolution} from './Resolution.js';
-import type {IRpcServer} from './RpcServer.js';
 import type {IWatch} from './Watch.js';
 import {methodId, methodParts} from './lib.js';
 
@@ -121,6 +121,8 @@ export default class Registry extends Internal implements IRegistry {
             errors: this.#error,
             gateway: this.#gateway,
             remote: this.#remote,
+            rpc: this.#rpcServer,
+            local: this.#local,
             utBus: {
                 config: {},
                 methodId,

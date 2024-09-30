@@ -2,7 +2,7 @@ import {Internal, type IAdapterFactory} from '@feasibleone/blong';
 import {Port as UtPort} from 'ut-port';
 
 export interface IPort {
-    new (portApi: Parameters<IAdapterFactory>[0] & {config: unknown});
+    new (portApi: Parameters<IAdapterFactory>[0] & {config: unknown; configBase: string});
 }
 
 export default class Port extends Internal {

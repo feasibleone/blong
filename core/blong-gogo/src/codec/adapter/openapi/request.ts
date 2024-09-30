@@ -13,14 +13,14 @@ export default library(
             method: string;
             schemas: OpenAPIV2.ParameterObject[];
         }) {
-            return (msg = {body: undefined, baseUrl: '', params: {}}) => {
-                const {params = msg, body, baseUrl} = msg;
+            return (msg = {body: undefined, baseUrl: '', params: {}, headers: undefined}) => {
+                const {params = msg, body, baseUrl, headers} = msg;
                 const result = {
                     url: baseUrl ? baseUrl + url : url,
                     method,
                     body,
                     responseType: 'json',
-                    headers: undefined,
+                    headers,
                     form: undefined,
                     query: undefined,
                 };

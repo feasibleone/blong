@@ -59,14 +59,10 @@ const reserved: string[] = [
     'errorReceive',
 ];
 
-export default async function adapter<T>({
-    adapter,
-    utBus,
-    utError,
-    utLog,
-    handlers,
-    remote,
-}: IApi): Promise<ReturnType<IAdapterFactory>> {
+export default async function adapter<T>(
+    {adapter, utBus, utError, utLog, handlers, remote, rpc, local}: IApi,
+    configBase: string
+): Promise<ReturnType<IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
 
     let queue: PQueue;
@@ -82,6 +78,7 @@ export default async function adapter<T>({
         exec: null,
         imported: {},
         config: {} as Config<T>,
+        configBase,
         log: null,
         async init(...configs: object[]) {
             base.config = merge({}, ...configs);
@@ -254,8 +251,8 @@ export default async function adapter<T>({
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapter(current.extends)({utError, remote})
-            : current.extends({utError, remote}));
+            ? adapter(current.extends)({utError, remote, rpc, local})
+            : current.extends({utError, remote, rpc, local}));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }

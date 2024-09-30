@@ -1,5 +1,0 @@
-{
-    "paths": {
-        "/timezone/{area}/{location}": {"get": {"operationId": "get"}}
-    }
-}

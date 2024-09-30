@@ -4,7 +4,7 @@ export default handler(
     ({lib: {token}}) =>
         function loginTokenCreate(
             {username, password}: {username: string; password: string},
-            {auth: {mlek, mlsk}}: IMeta
+            {auth: {mlek, mlsk} = {}}: IMeta
         ) {
             return token({
                 clientId: username,

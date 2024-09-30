@@ -7,12 +7,12 @@ interface ITestContext {
 }
 
 const runSteps =
-    (steps: Steps): ((t: ITestContext) => Promise<void>) =>
+    (steps: Steps, results = {$meta: {}}): ((t: ITestContext) => Promise<void>) =>
     async (t: ITestContext) => {
-        const results = {$meta: {}};
         for (const [index, stepPromise] of steps.entries()) {
             const step = await stepPromise;
-            if (Array.isArray(step)) t.test(step.name || `step ${index + 1}`, runSteps(step));
+            if (Array.isArray(step))
+                t.test(step.name || `step ${index + 1}`, runSteps(step, results));
             else if (typeof step === 'function') {
                 const name = step.name;
                 if (name) {

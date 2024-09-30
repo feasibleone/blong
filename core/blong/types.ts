@@ -66,13 +66,30 @@ export interface IRemote {
     stop: () => Promise<void>;
 }
 
+export interface IRpcServer {
+    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
+    unregister: (methods: string[], namespace: string, reply: boolean) => void;
+    start: () => Promise<void>;
+    stop: () => Promise<void>;
+}
+
+export interface ILocal {
+    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
+    unregister: (methods: string[], namespace: string) => void;
+    get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>};
+}
+
 export interface IApi {
     id?: string;
-    adapter: (id: string) => (api: {utError: IError; remote: IRemote}) => object;
+    adapter: (
+        id: string
+    ) => (api: {utError: IError; remote: IRemote; rpc: IRpcServer; local: ILocal}) => object;
     utError: IError;
     errors: IErrorFactory;
     gateway: unknown;
     remote: IRemote;
+    rpc: IRpcServer;
+    local: ILocal;
     utBus: {
         config: object;
         register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
@@ -89,7 +106,9 @@ export interface IApi {
         createLog: ILog['logger'];
     };
     handlers?: (api: {utError: IError}) => {
-        extends?: string | ((api: {utError: IError; remote: IRemote}) => object);
+        extends?:
+            | string
+            | ((api: {utError: IError; remote: IRemote; rpc: IRpcServer; local: ILocal}) => object);
     };
 }
 
@@ -105,6 +124,7 @@ export interface IErrorMap {
 
 interface IAdapter<T> {
     config?: Config<T>;
+    configBase?: string;
     log?: ILogger;
     errors?: Errors<IErrorMap>;
     imported?: ReturnType<IAdapterFactory<T>>;

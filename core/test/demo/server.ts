@@ -22,14 +22,11 @@ export default realm(blong => ({
                 namespace: ['time', 'k8s', 'github'],
                 'codec.openapi': {
                     namespace: {
-                        time: [
-                            'core/test/api/world-time.json',
-                            'core/test/api/world-time.operations.json',
-                        ],
+                        time: ['../api/world-time.yaml', '../api/world-time.operations.yaml'],
                         k8s: [
-                            'core/test/api/k8s-apps.json',
-                            'core/test/api/k8s-discovery.json',
-                            'core/test/api/k8s-version.json',
+                            '../api/k8s-apps.json',
+                            '../api/k8s-discovery.json',
+                            '../api/k8s-version.json',
                         ],
                     },
                 },

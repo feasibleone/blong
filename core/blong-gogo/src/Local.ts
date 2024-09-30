@@ -1,10 +1,4 @@
-import {Internal} from '@feasibleone/blong';
-
-export interface ILocal {
-    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
-    unregister: (methods: string[], namespace: string) => void;
-    get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>};
-}
+import {ILocal, Internal} from '@feasibleone/blong';
 
 export default class Local extends Internal implements ILocal {
     #mapLocal: object = {};

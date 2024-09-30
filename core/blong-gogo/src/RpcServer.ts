@@ -1,15 +1,8 @@
 // import { DaprServer, CommunicationProtocolEnum } from '@dapr/dapr';
-import {Internal, type ILog} from '@feasibleone/blong';
+import {Internal, type ILog, type IRpcServer} from '@feasibleone/blong';
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
 import type {IResolution} from './Resolution.js';
-
-export interface IRpcServer {
-    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
-    unregister: (methods: string[], namespace: string, reply: boolean) => void;
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
-}
 
 interface IConfig {
     port: number;

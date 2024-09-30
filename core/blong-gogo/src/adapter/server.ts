@@ -8,6 +8,7 @@ export default realm(blong => ({
         kafka: blong.type.Boolean(),
         knex: blong.type.Boolean(),
         server: blong.type.Boolean(),
+        webhook: blong.type.Boolean(),
     }),
     children: ['./server'],
     config: {
@@ -17,6 +18,7 @@ export default realm(blong => ({
             kafka: false,
             knex: false,
             server: true,
+            webhook: false,
         },
     },
 }));

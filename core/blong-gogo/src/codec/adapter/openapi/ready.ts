@@ -15,7 +15,7 @@ export default handler(async ({config, lib: {load}, errors}) => {
                         });
                     }
                 });
-            handlers = await load(config.namespace, /./);
+            handlers = await load(config.namespace, /./, this.configBase);
         },
         send(params: unknown, $meta: IMeta) {
             const handler = handlers?.[methodId($meta.method)];

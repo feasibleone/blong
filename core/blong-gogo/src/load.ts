@@ -74,6 +74,7 @@ export default async function loadRealm(
         pkg: {name, version: '0.0'},
         children: [],
         url: '',
+        base: '',
         load: undefined,
         kopi: undefined,
         watch: undefined,
@@ -175,11 +176,12 @@ export default async function loadRealm(
         const itemName = typeof item === 'string' ? basename(item) : item.name;
         const config = mergedConfig[itemName];
         logger?.debug?.(`Loading ${defKind}/${itemName}`);
+        const base = mergedConfig.url.startsWith('file://')
+            ? dirname(mergedConfig.url.slice(7))
+            : mergedConfig.url;
+        mergedConfig.base = base;
         if (config) {
             if (typeof item === 'string') {
-                const base = mergedConfig.url.startsWith('file://')
-                    ? dirname(mergedConfig.url.slice(7))
-                    : mergedConfig.url;
                 switch (defKind) {
                     case 'server':
                     case 'browser':

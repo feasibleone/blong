@@ -5,13 +5,13 @@ import loadApi from '../../../loadApi.js';
 const httpVerbs: string[] = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
 
 export default library(
-    ({lib: {request, merge}}) =>
-        async function load(config: object, pattern: RegExp | string) {
+    ({lib: {request}}) =>
+        async function load(config: object, pattern: RegExp | string, source: string) {
             const test =
                 pattern instanceof RegExp ? key => pattern.test(key) : key => key.includes(pattern);
             const handlers = {};
             for (const [ns, locations] of Object.entries(config)) {
-                const bundle = await loadApi(locations);
+                const bundle = await loadApi(locations, source);
                 Object.entries(bundle.paths).forEach(
                     ([path, methods]: [string, typeof bundle.paths.foo]) =>
                         Object.entries(methods)
