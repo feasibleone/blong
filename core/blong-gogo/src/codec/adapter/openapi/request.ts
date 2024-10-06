@@ -2,6 +2,8 @@ import {library} from '@feasibleone/blong';
 import {type OpenAPIV2} from 'openapi-types';
 import interpolate from 'ut-function.interpolate';
 
+import {snakeToCamel} from '../../../lib.js';
+
 export default library(
     proxy =>
         function request({
@@ -25,10 +27,11 @@ export default library(
                     query: undefined,
                 };
                 schemas.forEach(schema => {
+                    const identifier = snakeToCamel(schema.name);
                     const param =
-                        typeof params[schema.name] === 'undefined'
+                        typeof params[identifier] === 'undefined'
                             ? schema.default
-                            : params[schema.name];
+                            : params[identifier];
                     switch (schema.in) {
                         case 'header':
                             result.headers ||= {};

@@ -371,7 +371,7 @@ export type GatewaySchema = (
 };
 
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
-export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.SchemaObject;
+export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.PathItemObject;
 
 interface ILib {
     type: JavaScriptTypeBuilder;

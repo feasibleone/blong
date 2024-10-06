@@ -18,3 +18,12 @@ export function methodParts(what: string): string {
     const capitalWords = /^([^A-Z]+)([A-Z][^A-Z]+)([A-Z])?/;
     return what.replace(capitalWords, lowercase);
 }
+
+export function snakeToCamel(string: string): string {
+    return string.replace(/([-_]\w)/g, g => g[1].toUpperCase());
+}
+
+export function identifier(string: string): string {
+    string = this._snakeToCamel(string);
+    return /[^\w$]/.test(string) ? `'${string}'` : string;
+}

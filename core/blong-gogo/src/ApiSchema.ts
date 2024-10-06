@@ -3,6 +3,7 @@ import {Internal} from '@feasibleone/blong';
 import {createReadStream, statSync, writeFileSync, type Dirent} from 'node:fs';
 import path, {basename, extname} from 'node:path';
 
+import {identifier} from './lib.js';
 import loadApi from './loadApi.js';
 
 interface IConfig {
@@ -40,6 +41,10 @@ export default class ApiSchema extends Internal implements IApiSchema {
         this.merge(this.#config, config);
     }
 
+    public method(operation: {operationId?: string}): string {
+        return operation?.['x-blong-method'] || operation.operationId;
+    }
+
     public async schema(
         def: {
             namespace: Record<string, string | string[]>;
@@ -52,26 +57,28 @@ export default class ApiSchema extends Internal implements IApiSchema {
             const bundle = await loadApi(locations, source);
             Object.entries(bundle.paths).forEach(([path, methods]: [string, PathItemObject]) => {
                 ['get', 'post', 'put', 'delete'].forEach(
-                    (method: 'get' | 'post' | 'put' | 'delete') => {
-                        const operation = methods[method];
+                    (httpMethod: 'get' | 'post' | 'put' | 'delete') => {
+                        const operation = methods[httpMethod];
                         if (!operation) return;
-                        this.#loaded[`${namespace}${operation.operationId}`.toLowerCase()] = result[
-                            `${namespace}.${operation.operationId}`.toLowerCase()
+                        const method = this.method(operation);
+                        this.#loaded[`${namespace}${method}`.toLowerCase()] = result[
+                            `${namespace}.${method}`.toLowerCase()
                         ] = {
                             rpc: false,
                             auth: false,
-                            ...(operation.requestBody && {
+                            ...('requestBody' in operation && {
                                 body:
                                     'openapi' in bundle
-                                        ? operation.requestBody.content['application/json']
+                                        ? 'content' in operation.requestBody &&
+                                          operation.requestBody.content?.['application/json']
                                         : operation.requestBody,
                             }),
                             basePath: `/rest/${namespace}`,
-                            response:
-                                operation.responses?.['200']?.content?.['application/json']?.schema,
-                            description: methods.description,
-                            summary: methods.summary,
-                            method: method.toUpperCase() as Uppercase<typeof method>,
+                            response: (operation.responses?.['200'] as {content: unknown})
+                                ?.content?.['application/json']?.schema,
+                            description: operation.description,
+                            summary: operation.summary,
+                            method: httpMethod.toUpperCase() as Uppercase<typeof httpMethod>,
                             subject: namespace,
                             operation,
                             path: path.replaceAll('{', ':').replaceAll('}', ''),
@@ -82,21 +89,16 @@ export default class ApiSchema extends Internal implements IApiSchema {
         }
         const generate = [];
         for (const [prefix, record] of Object.entries(this.#generateDir)) {
-            for (const [operationId, operation] of Object.entries(this.#loaded)) {
-                const filename = operation.subject + operation.operation.operationId + '.ts';
-                if (
-                    operationId.startsWith(prefix) &&
-                    !record.existing.has(filename.toLowerCase())
-                ) {
+            for (const [method, operation] of Object.entries(this.#loaded)) {
+                const filename = operation.subject + this.method(operation.operation) + '.ts';
+                if (method.startsWith(prefix) && !record.existing.has(filename.toLowerCase())) {
                     generate.push(path.join(record.dir, filename));
                 }
             }
         }
         for (const filename of generate.concat(Array.from(this.#generateFile))) {
-            // #region
-            const operationId = basename(filename, extname(filename));
-            const schema = this.#loaded[operationId.toLowerCase()];
-            // #endregion
+            const method = basename(filename, extname(filename));
+            const schema = this.#loaded[method.toLowerCase()];
             if (schema) {
                 // console.log(schema.operation.responses);
                 this.log?.warn?.(`Writing ${filename}`);
@@ -115,7 +117,7 @@ ${this._response(schema)}
 
 export default handler(
     () =>
-        async function ${operationId}(
+        async function ${method}(
             params: Parameters<Handler>[0],
             $meta: IMeta
         ): ReturnType<Handler> {
@@ -135,20 +137,38 @@ export default handler(
                 if ('$ref' in param) return '';
                 if (!('in' in param)) return;
                 switch (param.in) {
+                    case 'header':
                     case 'path':
-                        return `    ${param.name}: string`;
                     case 'query':
-                        return `    ${param.name}: string`;
+                        return `    ${identifier(param.name)}${
+                            param.required ? ':' : '?:'
+                        } ${this._paramType(param)};${
+                            param.description
+                                ? ` // ${param.description.replaceAll(/[\r\n]/g, '')}`
+                                : ''
+                        }`;
                     case 'body':
                         if (param.schema?.type === 'object') {
                             return Object.entries(param.schema.properties)
-                                .map(([name, property]) => `    ${name}: ${this._type(property)}`)
-                                .join(',\n');
+                                .map(
+                                    ([name, property]: [string, {description?: string}]) =>
+                                        `    ${name}${param.required ? ':' : '?:'} ${this._type(
+                                            property
+                                        )};${
+                                            property.description
+                                                ? ` // ${property.description.replaceAll(
+                                                      /[\r\n]/g,
+                                                      ''
+                                                  )}`
+                                                : ''
+                                        }`
+                                )
+                                .join('\n');
                         }
                 }
             })
             .filter(Boolean)
-            .join(',\n');
+            .join('\n');
     }
 
     private _response({operation}: GatewaySchema): string {
@@ -163,6 +183,20 @@ export default handler(
             .join('\n');
     }
 
+    private _paramType(param: {}): string {
+        if (!('type' in param)) return 'unknown';
+        switch (param.type) {
+            case 'string':
+                return 'string';
+            case 'integer':
+                return 'number';
+            case 'boolean':
+                return 'boolean';
+            default:
+                return 'unknown';
+        }
+    }
+
     private _type(schema: SchemaObject): string {
         switch (schema.type) {
             case 'string':
@@ -174,9 +208,9 @@ export default handler(
             case 'array':
                 return `${this._type(schema.items)}[]`;
             case 'object':
-                return `{${Object.entries(schema.properties).map(
-                    ([name, property]) => `${name}: ${this._type(property)}`
-                )}}`;
+                return `{${Object.entries(schema.properties)
+                    .map(([name, property]) => `${name}: ${this._type(property)}`)
+                    .join('; ')}}`;
         }
     }
 

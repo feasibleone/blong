@@ -24,6 +24,7 @@ export default adapter<IConfig>(({utError, local}) => {
     _errors ||= utError.register(errorMap);
     let stream: Duplex = null;
     let https: HttpsOptions;
+    const pending = new Map<string, IMeta>();
 
     return {
         async init(...configs: object[]) {
@@ -114,7 +115,8 @@ export default adapter<IConfig>(({utError, local}) => {
                                 const result = await got(request);
                                 const {headers, body, statusCode} = result;
                                 this.log.trace?.({headers, body, statusCode});
-                                readable.push([result, {...$meta, mtid: 'response'}]);
+                                if ($meta.trace) pending.set($meta.trace, $meta);
+                                else readable.push([result, {...$meta, mtid: 'response'}]);
                             }
                         } catch (error) {
                             callback(_errors['webhook.http'](error));

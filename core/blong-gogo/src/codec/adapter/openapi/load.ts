@@ -17,11 +17,14 @@ export default library(
                         Object.entries(methods)
                             .filter(
                                 ([method, def]: [keyof typeof methods, typeof methods.get]) =>
-                                    def.operationId && httpVerbs.includes(method)
+                                    (def.operationId || def['x-blong-method']) &&
+                                    httpVerbs.includes(method)
                             )
                             .forEach(
                                 ([method, def]: [keyof typeof methods, typeof methods.get]) => {
-                                    const name = `${ns}${def.operationId}`.toLowerCase();
+                                    const name = `${ns}${
+                                        def['x-blong-method'] || def.operationId
+                                    }`.toLowerCase();
                                     if (!test(name)) return;
                                     const formatProps = {
                                         method,

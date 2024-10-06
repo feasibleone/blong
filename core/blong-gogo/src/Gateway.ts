@@ -18,7 +18,7 @@ import {v4} from 'uuid';
 import type {IResolution} from './Resolution.js';
 import type {IRpcClient} from './RpcClient.js';
 import jwt from './jwt.js';
-import {methodParts} from './lib.js';
+import {methodParts, snakeToCamel} from './lib.js';
 import type {IConfig as IConfigMLE} from './mle.js';
 import swagger from './swagger.js';
 
@@ -73,6 +73,37 @@ interface IConfig extends IConfigMLE {
         audience: string;
     };
 }
+
+function operationParams(operation: GatewaySchema['operation'], request: GatewayRequest): unknown {
+    return (
+        operation?.parameters?.reduce((result, parameter) => {
+            if ('in' in parameter && 'name' in parameter) {
+                let where;
+                switch (parameter.in) {
+                    case 'header':
+                        where = request.headers;
+                        break;
+                    case 'query':
+                        where = request.query;
+                        break;
+                    case 'path':
+                        where = request.params;
+                        break;
+                    case 'cookie':
+                        where = request.cookies;
+                        break;
+                    case 'body':
+                        where = request;
+                        break;
+                }
+                if (where && parameter.name in where)
+                    result[snakeToCamel(parameter.name)] = where[parameter.name];
+            }
+            return result;
+        }, {}) ?? {}
+    );
+}
+
 export default class Gateway extends Internal implements IGateway {
     #server: ReturnType<typeof fastify> = null;
     #resolution: IResolution;
@@ -320,7 +351,12 @@ export default class Gateway extends Internal implements IGateway {
                                   timeout: unknown;
                                   expect: unknown;
                               })
-                            : {id: 1, params: {}, timeout: false, expect: undefined};
+                            : {
+                                  id: 1,
+                                  params: operationParams(value.operation, request),
+                                  timeout: false,
+                                  expect: undefined,
+                              };
                     const methodName = isWildcard
                         ? new URL(request.url, 'http://localhost').pathname
                               .slice(5)
