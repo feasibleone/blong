@@ -78,6 +78,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
                                 ?.content?.['application/json']?.schema,
                             description: operation.description,
                             summary: operation.summary,
+                            destination: bundle['x-blong-namespace'],
                             method: httpMethod.toUpperCase() as Uppercase<typeof httpMethod>,
                             subject: namespace,
                             operation,

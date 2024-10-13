@@ -10,7 +10,7 @@ export default library(
             const test =
                 pattern instanceof RegExp ? key => pattern.test(key) : key => key.includes(pattern);
             const handlers = {};
-            for (const [ns, locations] of Object.entries(config)) {
+            for (const [namespace, locations] of Object.entries(config)) {
                 const bundle = await loadApi(locations, source);
                 Object.entries(bundle.paths).forEach(
                     ([path, methods]: [string, typeof bundle.paths.foo]) =>
@@ -22,7 +22,7 @@ export default library(
                             )
                             .forEach(
                                 ([method, def]: [keyof typeof methods, typeof methods.get]) => {
-                                    const name = `${ns}${
+                                    const name = `${namespace}${
                                         def['x-blong-method'] || def.operationId
                                     }`.toLowerCase();
                                     if (!test(name)) return;

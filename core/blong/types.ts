@@ -9,7 +9,7 @@ import {
     type TSchema,
     type TString,
 } from '@sinclair/typebox';
-import type {OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
+import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
 import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
 
@@ -367,6 +367,7 @@ export type GatewaySchema = (
     security?: true;
     basePath?: string;
     subject?: string;
+    destination?: string;
     operation?: OpenAPIV3_1.OperationObject | OpenAPIV2.OperationObject;
 };
 
@@ -401,7 +402,10 @@ type ValidationDefinition = (
 ) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
 
 type ApiDefinition = (blong: IValidationProxy) => {
-    namespace: Record<string, string | string[]>;
+    namespace: Record<
+        string,
+        string | (string | Partial<OpenAPI.Document & {'x-blong-namespace': string}>)[]
+    >;
 };
 
 type PortHandler = <T>(

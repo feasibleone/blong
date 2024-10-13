@@ -47,11 +47,17 @@ export default adapter<IConfig>(({utError, local}) => {
 
             local.register(
                 {
-                    async [`${this.config.handle}.request`](...params: unknown[]) {
-                        // console.log('request', params);
-                        readable.push(params);
-                    },
-                    async [`${this.config.handle}.publish`](...params: unknown[]) {
+                    [`${this.config.namespace}Webhook.request`]: async (
+                        params: unknown,
+                        $meta: IMeta
+                    ) =>
+                        new Promise((resolve, reject) => {
+                            $meta.dispatch = function (...packet: unknown[]) {
+                                this.dispatch(...packet).then(resolve, reject);
+                            };
+                            readable.push([params, $meta]);
+                        }),
+                    [`${this.config.namespace}Webhook.publish`]: async (...params: unknown[]) => {
                         // console.log('publish', params);
                         readable.push(params);
                     },

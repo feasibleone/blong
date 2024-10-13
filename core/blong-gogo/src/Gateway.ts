@@ -264,8 +264,8 @@ export default class Gateway extends Internal implements IGateway {
     ): void {
         this.#routes = [];
         Object.entries(validations).forEach(([method, value]) => {
-            const reqName = `ports.${method.split('.', 1)[0]}.request`;
-            const pubName = `ports.${method.split('.', 1)[0]}.publish`;
+            const reqName = `ports.${value.destination ?? method.split('.', 1)[0]}.request`;
+            const pubName = `ports.${value.destination ?? method.split('.', 1)[0]}.publish`;
             const isWildcard = method.endsWith('.*');
             this.#resolution?.announce(method.split('.')[0].replace(/\//g, '-'), this.#config.port);
             this.#routes.push({
