@@ -1,9 +1,11 @@
 import {
     Internal,
     kind,
+    type IApiSchema,
     type IErrorFactory,
     type ILog,
     type IModuleConfig,
+    type IRegistry,
     type IRemote,
 } from '@feasibleone/blong';
 import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
@@ -13,9 +15,7 @@ import {readdir} from 'fs/promises';
 import {EventEmitter} from 'node:events';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
 
-import type {IApiSchema} from './ApiSchema.js';
 import layerProxy from './layerProxy.js';
-import type {IRegistry} from './Registry.js';
 import './watch.log.js';
 
 export interface IWatch {
