@@ -24,6 +24,6 @@ export function snakeToCamel(string: string): string {
 }
 
 export function identifier(string: string): string {
-    string = this._snakeToCamel(string);
+    string = snakeToCamel(string);
     return /[^\w$]/.test(string) ? `'${string}'` : string;
 }

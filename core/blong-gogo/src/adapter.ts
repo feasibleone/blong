@@ -60,7 +60,7 @@ const reserved: string[] = [
 ];
 
 export default async function adapter<T>(
-    {adapter, utBus, utError, utLog, handlers, remote, rpc, local}: IApi,
+    {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry}: IApi,
     configBase: string
 ): Promise<ReturnType<IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
@@ -251,8 +251,8 @@ export default async function adapter<T>(
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapter(current.extends)({utError, remote, rpc, local})
-            : current.extends({utError, remote, rpc, local}));
+            ? adapter(current.extends)({utError, remote, rpc, local, registry})
+            : current.extends({utError, remote, rpc, local, registry}));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }

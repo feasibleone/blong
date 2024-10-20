@@ -1,45 +1,30 @@
 import type {
     GatewaySchema,
+    Handlers,
     IAdapterFactory,
+    IApiSchema,
     IErrorFactory,
+    IGateway,
     ILocal,
     ILog,
+    IRegistry,
     IRemote,
     IRpcServer,
 } from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
 import {Type} from '@sinclair/typebox';
 import PQueue from 'p-queue';
+import {monotonicFactory} from 'ulidx';
 import merge from 'ut-function.merge';
+import {v4 as uuid4, v7 as uuid7} from 'uuid';
 
-import type {IGateway} from './Gateway.js';
 import type {IResolution} from './Resolution.js';
 import type {IWatch} from './Watch.js';
 import {methodId, methodParts} from './lib.js';
 
-type Handlers = ((params: {
-    remote: unknown;
-    lib: object;
-    port: object;
-    local: object;
-    literals: object[];
-    gateway: IGateway;
-}) => void)[];
-
-export interface IRegistry {
-    start: () => Promise<void>;
-    test: (tester?: unknown) => Promise<void>;
-    stop: () => Promise<void>;
-    ports: Map<string, IAdapterFactory>;
-    methods: Map<string, Handlers>;
-    modules: Map<string | symbol, IRegistry[]>;
-    createPort: (id: string) => Promise<ReturnType<IAdapterFactory>>;
-    replaceHandlers: (id: string, handlers: object) => Promise<void>;
-    connected: () => Promise<boolean>;
-}
-
 type MatchMethodsCallback = (name: string, local: object, literals: object[]) => void;
 const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
+const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
 
 export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();
@@ -68,6 +53,7 @@ export default class Registry extends Internal implements IRegistry {
     #local: ILocal;
     #watch: IWatch;
     #log: ILog;
+    #apiSchema: IApiSchema;
 
     public constructor(
         config: object,
@@ -80,6 +66,7 @@ export default class Registry extends Internal implements IRegistry {
             local,
             resolution,
             watch,
+            apiSchema,
         }: {
             log?: ILog;
             error?: IErrorFactory;
@@ -89,6 +76,7 @@ export default class Registry extends Internal implements IRegistry {
             local?: ILocal;
             resolution?: IResolution;
             watch?: IWatch;
+            apiSchema?: IApiSchema;
         }
     ) {
         super({log});
@@ -100,6 +88,7 @@ export default class Registry extends Internal implements IRegistry {
         this.#local = local;
         this.#log = log;
         this.#watch = watch;
+        this.#apiSchema = apiSchema;
     }
 
     public async createPort(id: string): Promise<ReturnType<IAdapterFactory>> {
@@ -123,6 +112,7 @@ export default class Registry extends Internal implements IRegistry {
             remote: this.#remote,
             rpc: this.#rpcServer,
             local: this.#local,
+            registry: this,
             utBus: {
                 config: {},
                 methodId,
@@ -262,6 +252,9 @@ export default class Registry extends Internal implements IRegistry {
             type: Type,
             error: this.#error.register.bind(this.#error),
             merge,
+            ulid,
+            uuid4,
+            uuid7,
             rename: (object: object, value: string) =>
                 Object.defineProperty<unknown>(object, 'name', {value}),
         };
@@ -316,5 +309,16 @@ export default class Registry extends Internal implements IRegistry {
         await this.#rpcServer?.stop();
         await this.#resolution?.stop();
         for (const port of this.#ports.values()) await port.stop();
+    }
+
+    public async loadApi(
+        id: string,
+        def: {
+            namespace: Record<string, string | string[]>;
+        },
+        source: string
+    ): Promise<void> {
+        const api = await this.#apiSchema.schema(def, source);
+        this.methods.set(id, [({local}) => merge(local, api)]);
     }
 }

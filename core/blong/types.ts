@@ -9,6 +9,7 @@ import {
     type TSchema,
     type TString,
 } from '@sinclair/typebox';
+import type {Dirent} from 'node:fs';
 import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
 import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
@@ -79,17 +80,70 @@ export interface ILocal {
     get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>};
 }
 
+export interface IApiSchema {
+    schema(
+        def: {namespace: Record<string, string | string[]>},
+        source: string
+    ): Promise<Record<string, GatewaySchema>>;
+    generateFile(file: string): Promise<boolean>;
+    generateDir(dir: string, files: Dirent[]): Promise<boolean>;
+}
+
+export interface IGateway {
+    route: (
+        validations: Record<string, GatewaySchema>,
+        pkg: {name: string; version: string}
+    ) => void;
+    start: () => Promise<void>;
+    stop: () => Promise<void>;
+}
+
+export type Handlers = ((params: {
+    remote: unknown;
+    lib: object;
+    port: object;
+    local: object;
+    literals: object[];
+    gateway: IGateway;
+}) => void)[];
+
+export interface IRegistry {
+    start: () => Promise<void>;
+    test: (tester?: unknown) => Promise<void>;
+    stop: () => Promise<void>;
+    ports: Map<string, IAdapterFactory>;
+    methods: Map<string, Handlers>;
+    modules: Map<string | symbol, IRegistry[]>;
+    createPort: (id: string) => Promise<ReturnType<IAdapterFactory>>;
+    replaceHandlers: (id: string, handlers: object) => Promise<void>;
+    loadApi: (
+        id: string,
+        def: {
+            namespace: Record<string, string | string[]>;
+        },
+        source: string
+    ) => Promise<void>;
+    connected: () => Promise<boolean>;
+}
+
 export interface IApi {
     id?: string;
     adapter: (
         id: string
-    ) => (api: {utError: IError; remote: IRemote; rpc: IRpcServer; local: ILocal}) => object;
+    ) => (api: {
+        utError: IError;
+        remote: IRemote;
+        rpc: IRpcServer;
+        local: ILocal;
+        registry: IRegistry;
+    }) => object;
     utError: IError;
     errors: IErrorFactory;
     gateway: unknown;
     remote: IRemote;
     rpc: IRpcServer;
     local: ILocal;
+    registry: IRegistry;
     utBus: {
         config: object;
         register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
@@ -108,7 +162,13 @@ export interface IApi {
     handlers?: (api: {utError: IError}) => {
         extends?:
             | string
-            | ((api: {utError: IError; remote: IRemote; rpc: IRpcServer; local: ILocal}) => object);
+            | ((api: {
+                  utError: IError;
+                  remote: IRemote;
+                  rpc: IRpcServer;
+                  local: ILocal;
+                  registry: IRegistry;
+              }) => object);
     };
 }
 
@@ -378,6 +438,9 @@ interface ILib {
     type: JavaScriptTypeBuilder;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T>(object: T, name: string) => T & {name: string};
+    ulid: () => string;
+    uuid4: () => string;
+    uuid7: () => string;
     merge<T, S1>(target: T, source: S1): T & S1;
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
     merge<T, S1, S2, S3>(target: T, source1: S1, source2: S2, source3: S3): T & S1 & S2 & S3;

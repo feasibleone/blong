@@ -1,10 +1,12 @@
 import {
     Internal,
     kind,
+    type IApiSchema,
     type IErrorFactory,
     type ILog,
     type ILogger,
     type IModuleConfig,
+    type IRegistry,
     type SolutionFactory,
 } from '@feasibleone/blong';
 import {Type} from '@sinclair/typebox';
@@ -14,10 +16,8 @@ import {basename, dirname, join} from 'path';
 import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 
-import type {IApiSchema} from './ApiSchema.js';
 import layerProxy from './layerProxy.js';
 import RealmImpl, {type IRealm} from './Realm.js';
-import type {IRegistry} from './Registry.js';
 import type {IWatch} from './Watch.js';
 
 const scan = async (...path: string[]): ReturnType<typeof readdir> =>

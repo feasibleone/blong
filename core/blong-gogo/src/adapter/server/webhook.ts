@@ -20,11 +20,10 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError, local}) => {
+export default adapter<IConfig>(({utError, local, registry}) => {
     _errors ||= utError.register(errorMap);
     let stream: Duplex = null;
     let https: HttpsOptions;
-    const pending = new Map<string, IMeta>();
 
     return {
         async init(...configs: object[]) {
@@ -36,6 +35,12 @@ export default adapter<IConfig>(({utError, local}) => {
                 ...configs
             );
             https = tls(this.config, true);
+            if (this.config['codec.openapi'])
+                await registry.loadApi(
+                    this.config.id + '.api',
+                    this.config['codec.openapi'],
+                    this.configBase
+                );
         },
 
         async start() {
@@ -116,13 +121,18 @@ export default adapter<IConfig>(({utError, local}) => {
                                 followRedirect: false,
                                 // isStream: false,
                             };
-                            this.log.trace?.(request);
+                            if (this.log.trace) this.log.trace(request);
+                            else this.log.info?.(`${request.method.toUpperCase()} ${url}`);
                             {
                                 const result = await got(request);
-                                const {headers, body, statusCode} = result;
-                                this.log.trace?.({headers, body, statusCode});
-                                if ($meta.trace) pending.set($meta.trace, $meta);
-                                else readable.push([result, {...$meta, mtid: 'response'}]);
+                                const {headers, body, statusCode, statusMessage} = result;
+                                if (this.log.trace) this.log.trace({headers, body, statusCode});
+                                else
+                                    this.log.info?.(
+                                        `${statusCode} ${statusMessage} ${request.method.toUpperCase()} ${url}`
+                                    );
+                                if (!$meta.trace)
+                                    readable.push([result, {...$meta, mtid: 'response'}]);
                             }
                         } catch (error) {
                             callback(_errors['webhook.http'](error));

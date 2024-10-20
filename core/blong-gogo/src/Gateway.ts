@@ -3,6 +3,7 @@ import type {
     GatewaySchema,
     IErrorFactory,
     IErrorMap,
+    IGateway,
     ILocal,
     ILog,
     IMeta,
@@ -39,15 +40,6 @@ const jsonRpcError: TSchema = Type.Object({
 });
 
 type GatewayRequest = FastifyRequest;
-
-export interface IGateway {
-    route: (
-        validations: Record<string, GatewaySchema>,
-        pkg: {name: string; version: string}
-    ) => void;
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
-}
 
 const errorMap: IErrorMap = {
     'gateway.jwtMissingHeader': {message: 'Missing bearer authorization header', statusCode: 401},
@@ -93,7 +85,11 @@ function operationParams(operation: GatewaySchema['operation'], request: Gateway
                         where = request.cookies;
                         break;
                     case 'body':
-                        where = request;
+                        if (request.body && parameter.schema?.properties)
+                            Object.entries(parameter.schema.properties).forEach(([name, value]) => {
+                                if (name in (request.body as {}))
+                                    result[snakeToCamel(name)] = request.body[name];
+                            });
                         break;
                 }
                 if (where && parameter.name in where)
@@ -433,6 +429,12 @@ export default class Gateway extends Internal implements IGateway {
             this.#server = fastify({
                 logger: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel}),
                 forceCloseConnections: true,
+                ajv: {
+                    customOptions: {
+                        allErrors: true,
+                        strict: false,
+                    },
+                },
             });
             this.#server.setErrorHandler((error, request: {body: {id?: unknown}}, reply) => {
                 return reply.status(500).send({

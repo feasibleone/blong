@@ -1,13 +1,13 @@
 import {
     kind,
     type IAdapterFactory,
+    type IApiSchema,
     type IErrorFactory,
     type IModuleConfig,
 } from '@feasibleone/blong';
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.js';
-import type {IApiSchema} from './ApiSchema.js';
 import {methodId} from './lib.js';
 import type {IPort} from './Port.js';
 

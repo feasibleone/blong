@@ -1,4 +1,10 @@
-import type {GatewaySchema, ILog, PathItemObject, SchemaObject} from '@feasibleone/blong';
+import type {
+    GatewaySchema,
+    IApiSchema,
+    ILog,
+    PathItemObject,
+    SchemaObject,
+} from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
 import {createReadStream, statSync, writeFileSync, type Dirent} from 'node:fs';
 import path, {basename, extname} from 'node:path';
@@ -9,15 +15,6 @@ import loadApi from './loadApi.js';
 interface IConfig {
     logLevel?: Parameters<ILog['logger']>[0];
     generate?: boolean;
-}
-
-export interface IApiSchema {
-    schema(
-        def: {namespace: Record<string, string | string[]>},
-        source: string
-    ): Promise<Record<string, GatewaySchema>>;
-    generateFile(file: string): Promise<boolean>;
-    generateDir(dir: string, files: Dirent[]): Promise<boolean>;
 }
 
 export default class ApiSchema extends Internal implements IApiSchema {
@@ -53,19 +50,26 @@ export default class ApiSchema extends Internal implements IApiSchema {
     ): Promise<Record<string, GatewaySchema>> {
         const result: Record<string, GatewaySchema> = {};
 
-        for (const [namespace, locations] of Object.entries(def.namespace)) {
+        for (const [name, locations] of Object.entries(def.namespace)) {
             const bundle = await loadApi(locations, source);
+            const {namespace = name, destination} = bundle['x-blong'] ?? {};
             Object.entries(bundle.paths).forEach(([path, methods]: [string, PathItemObject]) => {
                 ['get', 'post', 'put', 'delete'].forEach(
                     (httpMethod: 'get' | 'post' | 'put' | 'delete') => {
                         const operation = methods[httpMethod];
                         if (!operation) return;
+                        const bodyParam = (
+                            operation.parameters as {in?: string; schema: unknown}[]
+                        )?.find?.(param => param?.in === 'body')?.schema;
                         const method = this.method(operation);
                         this.#loaded[`${namespace}${method}`.toLowerCase()] = result[
                             `${namespace}.${method}`.toLowerCase()
                         ] = {
                             rpc: false,
                             auth: false,
+                            ...(bodyParam && {
+                                body: bodyParam,
+                            }),
                             ...('requestBody' in operation && {
                                 body:
                                     'openapi' in bundle
@@ -78,7 +82,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
                                 ?.content?.['application/json']?.schema,
                             description: operation.description,
                             summary: operation.summary,
-                            destination: bundle['x-blong-namespace'],
+                            destination,
                             method: httpMethod.toUpperCase() as Uppercase<typeof httpMethod>,
                             subject: namespace,
                             operation,

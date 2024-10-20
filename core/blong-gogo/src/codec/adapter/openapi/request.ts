@@ -25,6 +25,7 @@ export default library(
                     headers,
                     form: undefined,
                     query: undefined,
+                    json: undefined,
                 };
                 schemas.forEach(schema => {
                     const identifier = snakeToCamel(schema.name);
@@ -34,6 +35,7 @@ export default library(
                             : params[identifier];
                     switch (schema.in) {
                         case 'header':
+                            if (schema.name.toLocaleLowerCase() === 'content-length') return;
                             result.headers ||= {};
                             result.headers[schema.name] = param;
                             break;
@@ -47,6 +49,22 @@ export default library(
                             break;
                         case 'path':
                             result.url = interpolate(result.url, {[schema.name]: param});
+                            break;
+                        case 'body':
+                            if (schema.schema?.properties)
+                                result.json = Object.fromEntries(
+                                    Object.entries(schema.schema.properties)
+                                        .map(
+                                            ([name, value]: [string, {default: unknown}]) =>
+                                                name in params && [
+                                                    name,
+                                                    typeof params[name] === 'undefined'
+                                                        ? value.default
+                                                        : params[name],
+                                                ]
+                                        )
+                                        .filter(Boolean)
+                                );
                             break;
                         default:
                             break;
