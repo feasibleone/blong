@@ -8,7 +8,9 @@ export default handler(
                 abbreviation: 'UTC',
                 client_ip: '127.0.0.1',
                 datetime: date.toString(),
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 day_of_week: date.getDay(),
+                // eslint-disable-next-line @typescript-eslint/naming-convention
                 day_of_year: Math.floor(
                     (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) /
                         1000 /
