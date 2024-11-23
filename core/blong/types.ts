@@ -121,7 +121,7 @@ export interface IRegistry {
         def: {
             namespace: Record<string, string | string[]>;
         },
-        source: string
+        source?: string
     ) => Promise<void>;
     connected: () => Promise<boolean>;
 }
@@ -154,7 +154,7 @@ export interface IApi {
         methodId: (name: string) => string;
         getPath: (name: string) => string;
         importMethod: (methodName, options?) => (...params: unknown[]) => Promise<unknown>;
-        attachHandlers: (target: object, patterns: unknown) => unknown;
+        attachHandlers: (target: object, patterns: unknown, adapter?: boolean) => unknown;
     };
     utLog: {
         createLog: ILog['logger'];

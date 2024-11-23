@@ -207,7 +207,7 @@ export default async function adapter<T>(
                 .reduce(reducer.bind(this), initial);
         },
         async start() {
-            await utBus.attachHandlers(this, this.config.imports);
+            await utBus.attachHandlers(this, this.config.imports, true);
             const {req, pub} = this.forNamespaces(
                 (prev, next) => {
                     if (typeof next === 'string') {
@@ -220,7 +220,7 @@ export default async function adapter<T>(
             );
             utBus.register(req, 'ports', this.config.id, this.config.pkg);
             utBus.subscribe(pub, 'ports', this.config.id, this.config.pkg);
-            return this.event('start', {config: this.config});
+            return this.event('start', {configBase: this.configBase, config: this.config});
         },
         async handle(...params: unknown[]) {
             const $meta = params && params.length > 1 && (params[params.length - 1] as IMeta);

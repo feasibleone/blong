@@ -25,7 +25,8 @@ export default class ResolutionLocal extends Internal implements IResolution {
         namespace: string
     ): ReturnType<IResolution['resolve']> {
         return {
-            hostname: `${service}-service.${this.#config.domain}`,
+            // hostname: `${service}-service.${this.#config.domain}`,
+            hostname: 'localhost',
             port: service.startsWith('rpc-')
                 ? `${this.#config.portRpc}`
                 : `${this.#config.portGateway}`,

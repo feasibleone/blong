@@ -267,6 +267,31 @@ importers:
         specifier: ^5.5.4
         version: 5.5.4
 
+  ../../core/blong-openapi:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+    devDependencies:
+      '@rushstack/eslint-config':
+        specifier: ^4.0.1
+        version: 4.0.1(eslint@8.57.0)(typescript@5.5.4)
+      '@rushstack/heft':
+        specifier: ~0.67.0
+        version: 0.67.0(@types/node@20.16.1)
+      '@rushstack/heft-lint-plugin':
+        specifier: ~0.4.1
+        version: 0.4.1(@rushstack/heft@0.67.0)(@types/node@20.16.1)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ~0.5.25
+        version: 0.5.25(@rushstack/heft@0.67.0)(@types/node@20.16.1)
+      eslint:
+        specifier: ~8.57.0
+        version: 8.57.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.5.4
+
   ../../core/blong-test:
     dependencies:
       '@feasibleone/blong':
@@ -303,6 +328,9 @@ importers:
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
         version: link:../blong-login
+      '@feasibleone/blong-openapi':
+        specifier: workspace:^1.0.0
+        version: link:../blong-openapi
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
         version: link:../blong-test

@@ -25,7 +25,7 @@ export default handler(
                                     abbreviation: string;
                                 }
                             ).abbreviation,
-                            /^EEST|EET$/,
+                            /^EEST|EET|UTC$/,
                             'Return date and time'
                         );
                     },

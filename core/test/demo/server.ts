@@ -20,9 +20,14 @@ export default realm(blong => ({
         dev: {
             http: {
                 namespace: ['time', 'k8s', 'github'],
+                logLevel: 'trace',
                 'codec.openapi': {
                     namespace: {
-                        time: ['../api/world-time.yaml', '../api/world-time.operations.yaml'],
+                        time: [
+                            '../api/world-time.yaml',
+                            '../api/world-time.operations.yaml',
+                            {servers: [{url: 'http://localhost:8080/rest/mocktime'}]},
+                        ],
                         k8s: [
                             '../api/k8s-apps.json',
                             '../api/k8s-discovery.json',

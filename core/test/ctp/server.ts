@@ -16,7 +16,7 @@ export default realm(blong => ({
             demo: {},
             payshield: {
                 namespace: 'payshield',
-                host: 'hsm.localhost',
+                host: 'localhost',
                 port: 1600,
                 idleSend: 10000,
                 maxReceiveBuffer: 4096,

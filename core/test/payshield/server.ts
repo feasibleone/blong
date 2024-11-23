@@ -16,7 +16,7 @@ export default realm(blong => ({
                     size: '16/integer',
                     headerFormat: '6/string-left-zero',
                 },
-                host: 'hsm.localhost',
+                host: 'localhost',
                 port: 1601,
                 namespace: ['payshieldport'],
                 imports: ['payshield.tcp'],

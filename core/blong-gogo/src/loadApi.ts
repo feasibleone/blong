@@ -1,7 +1,7 @@
 import parser from '@apidevtools/swagger-parser';
 import got from 'got';
 import fs from 'node:fs';
-import {resolve} from 'node:path';
+import {dirname, resolve} from 'node:path';
 import merge from 'ut-function.merge';
 import yaml from 'yaml';
 
@@ -10,6 +10,8 @@ export default async function loadApi(
     source: string = process.cwd()
 ): ReturnType<typeof parser.dereference> {
     const documents = [];
+    source = source.startsWith('file://') ? dirname(source.slice(7)) : source;
+
     for (const location of [].concat(locations)) {
         if (typeof location === 'object') documents.push(location);
         else if (typeof location === 'string') {
@@ -41,13 +43,14 @@ export default async function loadApi(
                         throw new Error(`Unsupported content type: ${contentType}`);
                 }
             } else {
-                if (location.endsWith('.yaml') || location.endsWith('.yml'))
+                const filename = location.startsWith('file://') ? location.slice(7) : location;
+                if (filename.endsWith('.yaml') || filename.endsWith('.yml'))
                     documents.push(
-                        yaml.parse(fs.readFileSync(resolve(source, location), {encoding: 'utf-8'}))
+                        yaml.parse(fs.readFileSync(resolve(source, filename), {encoding: 'utf-8'}))
                     );
-                else if (location.endsWith('.json'))
+                else if (filename.endsWith('.json'))
                     documents.push(
-                        (await import(resolve(source, location), {assert: {type: 'json'}})).default
+                        (await import(resolve(source, filename), {assert: {type: 'json'}})).default
                     );
             }
         }

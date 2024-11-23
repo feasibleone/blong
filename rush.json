@@ -455,6 +455,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-openapi",
+            "projectFolder": "core/blong-openapi",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-test",
             "projectFolder": "core/blong-test",
             "reviewCategory": "core",

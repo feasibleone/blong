@@ -22,9 +22,16 @@ import type {IResolution} from './Resolution.js';
 import type {IWatch} from './Watch.js';
 import {methodId, methodParts} from './lib.js';
 
-type MatchMethodsCallback = (name: string, local: object, literals: object[]) => void;
+type MatchMethodsCallback = (
+    name: string,
+    local: {config?: object; namespace?: string | string[]},
+    literals: object[]
+) => void;
 const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
 const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
+interface IConfig {
+    api?: Record<string, {source: string; def: {namespace: Record<string, string | string[]>}}>;
+}
 
 export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();
@@ -54,6 +61,7 @@ export default class Registry extends Internal implements IRegistry {
     #watch: IWatch;
     #log: ILog;
     #apiSchema: IApiSchema;
+    #config: IConfig = {};
 
     public constructor(
         config: object,
@@ -80,6 +88,7 @@ export default class Registry extends Internal implements IRegistry {
         }
     ) {
         super({log});
+        this.merge(this.#config, config);
         this.#resolution = resolution;
         this.#rpcServer = rpcServer;
         this.#error = error;
@@ -193,7 +202,7 @@ export default class Registry extends Internal implements IRegistry {
                 if (typeof validation === 'function') name = validation.name;
                 const prev = this.#validations[methodParts(name)];
                 if (prev) merge(prev, schema);
-                else this.#validations[methodParts(name)] = schema;
+                else this.#validations[methodParts(name)] = schema as GatewaySchema;
             });
         });
         return this.#validations;
@@ -201,8 +210,15 @@ export default class Registry extends Internal implements IRegistry {
 
     private _attachHandlers(port: object): (target: object, patterns: unknown) => unknown {
         return (
-            target: {importedMap: Map<string, object>; imported: object},
-            patterns: (string | RegExp)[] | string | RegExp
+            target: {
+                importedMap: Map<string, object>;
+                imported: object;
+                config: {
+                    namespace?: string | string[];
+                };
+            },
+            patterns: (string | RegExp)[] | string | RegExp,
+            adapter?: boolean
         ) => {
             target.imported = {};
             Object.setPrototypeOf(target.imported, target);
@@ -214,6 +230,13 @@ export default class Registry extends Internal implements IRegistry {
                     if (ports) ports.push(info);
                     else this.#portAttachments.set(name, [info]);
                     target.importedMap.set(name, local);
+                    if (adapter) {
+                        if (local.config) merge(target.config, local.config);
+                        if (local.namespace)
+                            target.config.namespace = target.config.namespace
+                                ? [].concat(target.config.namespace, local.namespace)
+                                : local.namespace;
+                    }
                     literals.forEach(literal => Object.setPrototypeOf(literal, target.imported));
                     Object.setPrototypeOf(local, info.parent);
                     Object.setPrototypeOf(info.pointer, local);
@@ -271,6 +294,11 @@ export default class Registry extends Internal implements IRegistry {
             });
         }
         return {local, literals};
+    }
+
+    public async init(): Promise<void> {
+        for (const [id, {source, def}] of Object.entries(this.#config.api || {}))
+            await this.loadApi(id, def, source);
     }
 
     public async start(): Promise<void> {

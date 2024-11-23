@@ -2,20 +2,30 @@ import {server} from '@feasibleone/blong';
 
 export default server(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),
+    validation: blong.type.Object({
+        mock: blong.type.Object({}),
+    }),
     children: [
         async function login() {
             return import('@feasibleone/blong-login/server.js');
+        },
+        async function openapi() {
+            return import('@feasibleone/blong-openapi/server.js');
         },
         './ctp',
         './parking',
         './payshield',
         './demo',
         './db',
+        './mock',
     ],
     config: {
         default: {},
         microservice: {},
+        integration: {
+            mock: {},
+            openapi: {},
+        },
         dev: {
             resolution: true,
             parking: {},
