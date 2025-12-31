@@ -3,7 +3,7 @@
 ## Primary goal
 
 The primary goal of the framework is to  decrease the cost of developing and
-running solutions by. It does so by:
+running solutions by:
 
 - Minimizing the development effort - test driven development with less restarts
   and fast load times

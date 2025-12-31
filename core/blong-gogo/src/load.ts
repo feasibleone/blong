@@ -45,9 +45,10 @@ function activeConfigs(mod: IModuleConfig, configNames: string[]): (boolean | ob
 async function loadConfig(config: string | object): Promise<object> {
     return typeof config === 'string'
         ? load({
-              implementation: config,
               resolve: import.meta.resolve,
-              config: {},
+              config: {
+                  implementation: config,
+              },
           })
         : config;
 }
