@@ -405,58 +405,6 @@ importers:
         specifier: ^5.5.4
         version: 5.5.4
 
-  ../../dev/tools:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../../core/blong
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../../core/blong-login
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.7
-      jose:
-        specifier: ^5.7.0
-        version: 5.7.0
-    devDependencies:
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../../core/blong-test
-      '@rushstack/eslint-config':
-        specifier: ^4.0.1
-        version: 4.0.1(eslint@8.57.0)(typescript@5.5.4)
-      '@rushstack/heft':
-        specifier: ~0.67.0
-        version: 0.67.0(@types/node@20.16.1)
-      '@rushstack/heft-lint-plugin':
-        specifier: ~0.4.1
-        version: 0.4.1(@rushstack/heft@0.67.0)(@types/node@20.16.1)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ~0.5.25
-        version: 0.5.25(@rushstack/heft@0.67.0)(@types/node@20.16.1)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.7.14
-      '@types/node':
-        specifier: ^20.16.1
-        version: 20.16.1
-      eslint:
-        specifier: ~8.57.0
-        version: 8.57.0
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      tap:
-        specifier: ^18.8.0
-        version: 18.8.0(@swc/core@1.7.14)(@types/node@20.16.1)(react-dom@18.3.1)(react@18.3.1)(typescript@5.5.4)
-      typescript:
-        specifier: ^5.5.4
-        version: 5.5.4
-
   ../../docs/blong:
     dependencies:
       '@docusaurus/core':
