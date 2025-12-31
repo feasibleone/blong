@@ -473,12 +473,6 @@
             "tags": ["core"]
         },
         {
-            "packageName": "@feasibleone/tools",
-            "projectFolder": "dev/tools",
-            "reviewCategory": "dev",
-            "tags": ["dev"]
-        },
-        {
             "packageName": "@feasibleone/blong-docs",
             "projectFolder": "docs/blong",
             "reviewCategory": "docs",
