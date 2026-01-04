@@ -65,6 +65,7 @@
         "spanid",
         "traceid",
         "typebox",
+        "ulidx",
         "unannounce",
         "unixtime",
         "unstate"

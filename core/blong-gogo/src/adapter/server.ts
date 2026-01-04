@@ -10,6 +10,10 @@ export default realm(blong => ({
         mongodb: blong.type.Boolean(),
         server: blong.type.Boolean(),
         webhook: blong.type.Boolean(),
+        k8s: blong.type.Boolean(),
+        vault: blong.type.Boolean(),
+        keycloak: blong.type.Boolean(),
+        s3: blong.type.Boolean(),
     }),
     children: ['./server'],
     config: {
@@ -21,6 +25,10 @@ export default realm(blong => ({
             mongodb: false,
             server: true,
             webhook: false,
+            k8s: false,
+            vault: false,
+            keycloak: false,
+            s3: false,
         },
     },
 }));
