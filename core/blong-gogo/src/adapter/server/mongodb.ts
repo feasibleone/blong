@@ -29,7 +29,7 @@ export default adapter<IConfig>(({utError}) => {
                 {
                     type: 'mongodb',
                 },
-                ...configs
+                ...configs,
             );
         },
         async start() {
@@ -59,7 +59,7 @@ export default adapter<IConfig>(({utError}) => {
                       collection?: string;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta
+            {method}: IMeta,
         ) {
             const [, _table, operation] = method.split('.');
             let table = _table;
@@ -90,9 +90,9 @@ export default adapter<IConfig>(({utError}) => {
                                                   ...acc,
                                                   [field.trim()]: 1,
                                               }),
-                                              {}
+                                              {},
                                           ),
-                            }
+                            },
                         );
                 }
                 case 'find': {
@@ -113,7 +113,7 @@ export default adapter<IConfig>(({utError}) => {
                                                   ...acc,
                                                   [field.trim()]: 1,
                                               }),
-                                              {}
+                                              {},
                                           ),
                                 limit: typeof limit === 'number' ? limit : undefined,
                                 skip: typeof offset === 'number' ? offset : undefined,
@@ -122,15 +122,15 @@ export default adapter<IConfig>(({utError}) => {
                                           (acc, field) => ({
                                               ...acc,
                                               [field.trim().replace(/^-/, '')]: field.startsWith(
-                                                  '-'
+                                                  '-',
                                               )
                                                   ? -1
                                                   : 1,
                                           }),
-                                          {}
+                                          {},
                                       )
                                     : undefined,
-                            }
+                            },
                         )
                         .toArray();
                 }

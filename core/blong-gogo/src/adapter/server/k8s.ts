@@ -24,6 +24,7 @@ export interface IConfig {
         appsV1Api: k8s.AppsV1Api;
         networkingV1Api: k8s.NetworkingV1Api;
         rbacV1Api: k8s.RbacAuthorizationV1Api;
+        watcher: k8s.Watch;
     };
 }
 
@@ -50,34 +51,34 @@ export default adapter<IConfig>(({utError}) => {
                 {
                     type: 'k8s',
                 },
-                ...configs
+                ...configs,
             );
         },
         async start() {
             const kc = new k8s.KubeConfig();
-
+            const k8sConfig = this.config.k8s || {};
             // Load kubeconfig based on configuration
-            if (this.config.k8s.kubeconfig) {
-                kc.loadFromFile(this.config.k8s.kubeconfig);
-            } else if (this.config.k8s.cluster && this.config.k8s.user) {
+            if (k8sConfig.kubeconfig) {
+                kc.loadFromFile(k8sConfig.kubeconfig);
+            } else if (k8sConfig.cluster && k8sConfig.user) {
                 // Manual configuration
                 kc.loadFromOptions({
                     clusters: [
                         {
                             name: 'cluster',
-                            server: this.config.k8s.cluster.server,
-                            skipTLSVerify: this.config.k8s.cluster.skipTLSVerify,
-                            caData: this.config.k8s.cluster.caData,
+                            server: k8sConfig.cluster.server,
+                            skipTLSVerify: k8sConfig.cluster.skipTLSVerify,
+                            caData: k8sConfig.cluster.caData,
                         },
                     ],
                     users: [
                         {
                             name: 'user',
-                            token: this.config.k8s.user.token,
-                            username: this.config.k8s.user.username,
-                            password: this.config.k8s.user.password,
-                            certData: this.config.k8s.user.certData,
-                            keyData: this.config.k8s.user.keyData,
+                            token: k8sConfig.user.token,
+                            username: k8sConfig.user.username,
+                            password: k8sConfig.user.password,
+                            certData: k8sConfig.user.certData,
+                            keyData: k8sConfig.user.keyData,
                         },
                     ],
                     contexts: [
@@ -85,7 +86,7 @@ export default adapter<IConfig>(({utError}) => {
                             name: 'context',
                             cluster: 'cluster',
                             user: 'user',
-                            namespace: this.config.k8s.namespace,
+                            namespace: k8sConfig.namespace,
                         },
                     ],
                     currentContext: 'context',
@@ -96,8 +97,8 @@ export default adapter<IConfig>(({utError}) => {
             }
 
             // Set context if specified
-            if (this.config.k8s.context) {
-                kc.setCurrentContext(this.config.k8s.context);
+            if (k8sConfig.context) {
+                kc.setCurrentContext(k8sConfig.context);
             }
 
             // Initialize API clients
@@ -106,6 +107,7 @@ export default adapter<IConfig>(({utError}) => {
                 appsV1Api: kc.makeApiClient(k8s.AppsV1Api),
                 networkingV1Api: kc.makeApiClient(k8s.NetworkingV1Api),
                 rbacV1Api: kc.makeApiClient(k8s.RbacAuthorizationV1Api),
+                watcher: new k8s.Watch(kc),
             };
 
             super.connect();
@@ -134,12 +136,15 @@ export default adapter<IConfig>(({utError}) => {
                       resourceVersion?: string;
                       watch?: boolean;
                       limit?: number;
+                      timeout?: number;
                       continue?: string;
+                      onEvent?: (event: {type: string; object: unknown}) => unknown;
+                      onWatch?: (watch: {existing: unknown}) => void;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta
+            {method}: IMeta,
         ) {
-            const [, resourceType, operation] = method.split('.');
+            const [, _resourceType, operation] = method.split('.');
             const namespace =
                 (!Array.isArray(params) && params.namespace) ||
                 this.config.k8s.namespace ||
@@ -147,7 +152,7 @@ export default adapter<IConfig>(({utError}) => {
 
             // Determine which API to use based on resource type
             const getApiForResource = (
-                resource: string
+                resource: string,
             ): k8s.CoreV1Api | k8s.AppsV1Api | k8s.NetworkingV1Api | k8s.RbacAuthorizationV1Api => {
                 switch (resource.toLowerCase()) {
                     case 'pod':
@@ -194,8 +199,53 @@ export default adapter<IConfig>(({utError}) => {
                         return this.config.context.coreV1Api;
                 }
             };
+            const getResourceType = (resource: string): string => {
+                // Normalize resource type for method naming
+                switch (resource.toLowerCase()) {
+                    case 'pods':
+                        return 'pod';
+                    case 'services':
+                        return 'service';
+                    case 'configmaps':
+                        return 'configmap';
+                    case 'secrets':
+                        return 'secret';
+                    case 'namespaces':
+                        return 'namespace';
+                    case 'nodes':
+                        return 'node';
+                    case 'persistentvolumes':
+                        return 'persistentvolume';
+                    case 'persistentvolumeclaims':
+                        return 'persistentvolumeclaim';
+                    case 'deployments':
+                        return 'deployment';
+                    case 'replicasets':
+                        return 'replicaset';
+                    case 'daemonsets':
+                        return 'daemonset';
+                    case 'statefulsets':
+                        return 'statefulset';
+                    case 'ingresses':
+                        return 'ingress';
+                    case 'networkpolicies':
+                        return 'networkpolicy';
+                    case 'roles':
+                        return 'role';
+                    case 'rolebindings':
+                        return 'rolebinding';
+                    case 'clusterroles':
+                        return 'clusterrole';
+                    case 'clusterrolebindings':
+                        return 'clusterrolebinding';
+                    default:
+                        return resource;
+                }
+            };
 
-            const api = getApiForResource(resourceType);
+            const resourceType = getResourceType(_resourceType);
+
+            const api = getApiForResource(_resourceType);
 
             try {
                 switch (operation) {
@@ -209,8 +259,7 @@ export default adapter<IConfig>(({utError}) => {
                             .charAt(0)
                             .toUpperCase()}${resourceType.slice(1)}`;
                         if (typeof api[methodName] === 'function') {
-                            const result = await api[methodName](name, namespace);
-                            return result.body;
+                            return await api[methodName]({name, namespace});
                         }
                         throw _errors['k8s.invalid']();
                     }
@@ -229,27 +278,14 @@ export default adapter<IConfig>(({utError}) => {
                             .charAt(0)
                             .toUpperCase()}${resourceType.slice(1)}`;
                         if (typeof api[methodName] === 'function') {
-                            const args = namespace ? [namespace] : [];
-                            const options = {
-                                labelSelector,
-                                fieldSelector,
-                                limit,
-                                continue: continueToken,
-                            };
-                            const result = await api[methodName](
-                                ...args,
-                                undefined,
-                                undefined,
-                                undefined,
-                                undefined,
-                                options.labelSelector,
-                                undefined,
-                                undefined,
-                                options.fieldSelector,
-                                options.limit,
-                                options.continue
-                            );
-                            return result.body;
+                            const options: Record<string, unknown> = {};
+                            if (namespace) options.namespace = namespace;
+                            if (labelSelector) options.labelSelector = labelSelector;
+                            if (fieldSelector) options.fieldSelector = fieldSelector;
+                            if (limit) options.limit = limit;
+                            if (continueToken) options.continue = continueToken;
+
+                            return await api[methodName](options);
                         }
                         throw _errors['k8s.invalid']();
                     }
@@ -266,9 +302,10 @@ export default adapter<IConfig>(({utError}) => {
                             .charAt(0)
                             .toUpperCase()}${resourceType.slice(1)}`;
                         if (typeof api[methodName] === 'function') {
-                            const args = namespace ? [namespace, resourceBody] : [resourceBody];
-                            const result = await api[methodName](...args);
-                            return result.body;
+                            const options = namespace
+                                ? {namespace, body: resourceBody}
+                                : {body: resourceBody};
+                            return await api[methodName](options);
                         }
                         throw _errors['k8s.invalid']();
                     }
@@ -286,11 +323,10 @@ export default adapter<IConfig>(({utError}) => {
                             .charAt(0)
                             .toUpperCase()}${resourceType.slice(1)}`;
                         if (typeof api[methodName] === 'function') {
-                            const args = namespace
-                                ? [name, namespace, resourceBody]
-                                : [name, resourceBody];
-                            const result = await api[methodName](...args);
-                            return result.body;
+                            const options = namespace
+                                ? {name, namespace, body: resourceBody}
+                                : {name, body: resourceBody};
+                            return await api[methodName](options);
                         }
                         throw _errors['k8s.invalid']();
                     }
@@ -305,16 +341,29 @@ export default adapter<IConfig>(({utError}) => {
                             .charAt(0)
                             .toUpperCase()}${resourceType.slice(1)}`;
                         if (typeof api[methodName] === 'function') {
-                            const args = namespace ? [name, namespace, body] : [name, body];
-                            const result = await api[methodName](
-                                ...args,
-                                undefined,
-                                undefined,
-                                undefined,
-                                undefined,
-                                {'Content-Type': 'application/strategic-merge-patch+json'}
-                            );
-                            return result.body;
+                            const options = namespace
+                                ? {
+                                      name,
+                                      namespace,
+                                      body,
+                                      options: {
+                                          headers: {
+                                              'Content-Type':
+                                                  'application/strategic-merge-patch+json',
+                                          },
+                                      },
+                                  }
+                                : {
+                                      name,
+                                      body,
+                                      options: {
+                                          headers: {
+                                              'Content-Type':
+                                                  'application/strategic-merge-patch+json',
+                                          },
+                                      },
+                                  };
+                            return await api[methodName](options);
                         }
                         throw _errors['k8s.invalid']();
                     }
@@ -329,9 +378,8 @@ export default adapter<IConfig>(({utError}) => {
                             .charAt(0)
                             .toUpperCase()}${resourceType.slice(1)}`;
                         if (typeof api[methodName] === 'function') {
-                            const args = namespace ? [name, namespace] : [name];
-                            const result = await api[methodName](...args);
-                            return result.body;
+                            const options = namespace ? {name, namespace} : {name};
+                            return await api[methodName](options);
                         }
                         throw _errors['k8s.invalid']();
                     }
@@ -351,25 +399,25 @@ export default adapter<IConfig>(({utError}) => {
                             const getMethodName = `read${resourceType
                                 .charAt(0)
                                 .toUpperCase()}${resourceType.slice(1)}`;
-                            await api[getMethodName](name, namespace);
+                            await api[getMethodName]({name, namespace});
 
                             // Resource exists, update it
                             const updateMethodName = `replace${
                                 namespace ? 'Namespaced' : ''
                             }${resourceType.charAt(0).toUpperCase()}${resourceType.slice(1)}`;
-                            const args = namespace
-                                ? [name, namespace, resourceBody]
-                                : [name, resourceBody];
-                            const result = await api[updateMethodName](...args);
-                            return result.body;
+                            const options = namespace
+                                ? {name, namespace, body: resourceBody}
+                                : {name, body: resourceBody};
+                            return await api[updateMethodName](options);
                         } catch (error) {
                             // Resource doesn't exist, create it
                             const createMethodName = `create${
                                 namespace ? 'Namespaced' : ''
                             }${resourceType.charAt(0).toUpperCase()}${resourceType.slice(1)}`;
-                            const args = namespace ? [namespace, resourceBody] : [resourceBody];
-                            const result = await api[createMethodName](...args);
-                            return result.body;
+                            const options = namespace
+                                ? {namespace, body: resourceBody}
+                                : {body: resourceBody};
+                            return await api[createMethodName](options);
                         }
                     }
                     case 'scale': {
@@ -407,6 +455,90 @@ export default adapter<IConfig>(({utError}) => {
                         }
                         throw _errors['k8s.invalid']();
                     }
+                    case 'watch': {
+                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        const {labelSelector, fieldSelector, timeout = 30000} = params;
+                        const methodName = `list${namespace ? 'Namespaced' : ''}${resourceType
+                            .charAt(0)
+                            .toUpperCase()}${resourceType.slice(1)}`;
+                        if (typeof api[methodName] === 'function') {
+                            const options: Record<string, unknown> = {};
+                            if (namespace) options.namespace = namespace;
+                            if (labelSelector) options.labelSelector = labelSelector;
+                            if (fieldSelector) options.fieldSelector = fieldSelector;
+
+                            const existing = await api[methodName](options);
+                            const resourceVersion = existing.metadata?.resourceVersion;
+
+                            let timer: NodeJS.Timeout | null;
+                            const clearTimer = (): void => {
+                                if (timer) {
+                                    clearTimeout(timer);
+                                    timer = null;
+                                }
+                            };
+                            const events: Promise<{type: string; object: unknown}>[] = [];
+                            let eventResolve: (value: {type: string; object: unknown}) => void,
+                                eventReject: (reason?: unknown) => void;
+                            const createEventPromise = (): void => {
+                                events.push(
+                                    new Promise<{type: string; object: unknown}>(
+                                        (resolve, reject) => {
+                                            eventResolve = value => {
+                                                createEventPromise();
+                                                resolve(value);
+                                            };
+                                            eventReject = reject;
+                                        },
+                                    ),
+                                );
+                            };
+                            createEventPromise();
+
+                            const watch = await this.config.context.watcher.watch(
+                                `/api/v1/namespaces/${namespace}/${_resourceType.toLowerCase()}`,
+                                {fieldSelector, resourceVersion, labelSelector},
+                                (type, object) => {
+                                    this.log.debug?.(`Event: ${type}`, object);
+                                    if (type === 'ERROR') {
+                                        eventReject(
+                                            new Error(object.message || 'Watch error event'),
+                                        );
+                                    } else eventResolve({type, object});
+                                },
+                                error => {
+                                    if (watch?.signal && !watch.signal.reason) return;
+                                    eventReject(new Error(watch?.signal?.reason || error.message));
+                                },
+                            );
+                            let aborted = false;
+                            const abortOnce = (reason?: unknown): void => {
+                                clearTimer();
+                                if (!aborted) {
+                                    aborted = true;
+                                    watch?.abort(reason);
+                                }
+                            };
+                            timer = setTimeout(
+                                () =>
+                                    abortOnce(
+                                        `Timeout watching ${namespace}/${resourceType.toLowerCase()}/${fieldSelector || ''} ${labelSelector || ''} after ${timeout}ms`,
+                                    ),
+                                timeout,
+                            );
+                            return {
+                                events: (async function* watchEvents() {
+                                    try {
+                                        while (true) yield await events.shift();
+                                    } finally {
+                                        abortOnce(false);
+                                    }
+                                })(),
+                                existing,
+                            };
+                        }
+                        throw _errors['k8s.invalid']();
+                    }
                 }
             } catch (error: unknown) {
                 const k8sError = error as {
@@ -421,7 +553,7 @@ export default adapter<IConfig>(({utError}) => {
                 } else if (k8sError.response?.statusCode === 409) {
                     throw _errors['k8s.exists']();
                 }
-                throw _errors['k8s.generic']();
+                throw _errors['k8s.generic'](error);
             }
 
             throw _errors['k8s.generic']();
