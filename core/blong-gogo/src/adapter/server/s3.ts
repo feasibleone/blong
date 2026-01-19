@@ -8,6 +8,8 @@ import {
     S3Client,
 } from '@aws-sdk/client-s3';
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {createReadStream, statSync} from 'fs';
+import {Readable} from 'stream';
 
 export interface IConfig {
     s3: {
@@ -19,6 +21,10 @@ export interface IConfig {
         };
         forcePathStyle?: boolean;
     };
+    bucket?: {
+        Bucket: string;
+    };
+    url?: string;
     context: {
         s3: S3Client;
     };
@@ -44,13 +50,16 @@ export default adapter<IConfig>(({utError}) => {
             await super.init(
                 {
                     type: 's3',
+                    s3: {
+                        requestStreamBufferSize: 64 * 1024,
+                    },
+                    bucket: {},
                 },
-                ...configs
+                ...configs,
             );
         },
         async start() {
             this.config.context = {s3: new S3Client(this.config.s3)};
-
             super.connect();
             return super.start();
         },
@@ -69,7 +78,8 @@ export default adapter<IConfig>(({utError}) => {
                 | ({
                       bucket?: string;
                       key?: string;
-                      body?: string | Uint8Array | Buffer;
+                      body?: PutObjectCommand['input']['Body'];
+                      url?: string;
                       contentType?: string;
                       metadata?: Record<string, string>;
                       prefix?: string;
@@ -78,10 +88,10 @@ export default adapter<IConfig>(({utError}) => {
                       sourceKey?: string;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta
+            {method}: IMeta,
         ) {
             const [, resource, operation] = method.split('.');
-            let bucket = resource;
+            let bucket: string | undefined;
             let actualParams = params;
 
             if (!Array.isArray(params) && params.bucket) {
@@ -91,7 +101,7 @@ export default adapter<IConfig>(({utError}) => {
                 actualParams = rest;
             }
 
-            if (!bucket) throw _errors['s3.missingBucket']();
+            if (!bucket && !this.config.bucket.Bucket) throw _errors['s3.missingBucket']();
 
             switch (operation) {
                 case 'get': {
@@ -101,7 +111,8 @@ export default adapter<IConfig>(({utError}) => {
                     if (!key) throw _errors['s3.missingKey']({key: 'key'});
 
                     const command = new GetObjectCommand({
-                        Bucket: bucket,
+                        ...this.config.bucket,
+                        ...(bucket && {Bucket: bucket}),
                         Key: key,
                     });
                     const response = await this.config.context.s3.send(command);
@@ -114,22 +125,49 @@ export default adapter<IConfig>(({utError}) => {
                         etag: response.ETag,
                     };
                 }
-                case 'put':
-                case 'upload': {
+                case 'add': {
                     // Put object to S3
                     if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
-                    const {key, body, contentType, metadata} = actualParams;
+                    const {url, key, metadata} = actualParams;
+                    let {body, contentType} = actualParams;
                     if (!key) throw _errors['s3.missingKey']({key: 'key'});
+                    let contentLength: number | undefined;
+                    if (url && !body) {
+                        if (/^https?:\/\//.test(url)) {
+                            try {
+                                const response = await fetch(url);
+                                contentType ||= response.headers.get('content-type');
+                                contentLength = Number(response.headers.get('content-length'));
+                                body =
+                                    contentLength > 0
+                                        ? Readable.fromWeb(response.body)
+                                        : Buffer.from(await response.arrayBuffer());
+                            } catch (error) {
+                                this.log?.error?.(
+                                    `Error fetching report from ${url}: ${error.message}`,
+                                );
+                                throw error;
+                            }
+                        } else {
+                            contentLength = statSync(url).size;
+                            body = createReadStream(url);
+                            contentType ||= 'text/html';
+                        }
+                    }
+
                     if (body === undefined) throw _errors['s3.missingKey']({key: 'body'});
 
                     const command = new PutObjectCommand({
-                        Bucket: bucket,
+                        ...this.config.bucket,
+                        ...(bucket && {Bucket: bucket}),
                         Key: key,
                         Body: body,
                         ContentType: contentType,
+                        ...(contentLength > 0 && {ContentLength: contentLength}),
                         Metadata: metadata,
                     });
-                    return this.config.context.s3.send(command);
+                    await this.config.context.s3.send(command);
+                    return this.config.url?.replace?.('{key}', key);
                 }
                 case 'delete':
                 case 'remove': {
@@ -139,7 +177,8 @@ export default adapter<IConfig>(({utError}) => {
                     if (!key) throw _errors['s3.missingKey']({key: 'key'});
 
                     const command = new DeleteObjectCommand({
-                        Bucket: bucket,
+                        ...this.config.bucket,
+                        ...(bucket && {Bucket: bucket}),
                         Key: key,
                     });
                     return this.config.context.s3.send(command);
@@ -151,7 +190,8 @@ export default adapter<IConfig>(({utError}) => {
                     const {prefix, maxKeys = 1000} = actualParams;
 
                     const command = new ListObjectsV2Command({
-                        Bucket: bucket,
+                        ...this.config.bucket,
+                        ...(bucket && {Bucket: bucket}),
                         Prefix: prefix,
                         MaxKeys: maxKeys,
                     });
@@ -165,7 +205,8 @@ export default adapter<IConfig>(({utError}) => {
                     if (!key) throw _errors['s3.missingKey']({key: 'key'});
 
                     const command = new HeadObjectCommand({
-                        Bucket: bucket,
+                        ...this.config.bucket,
+                        ...(bucket && {Bucket: bucket}),
                         Key: key,
                     });
                     return this.config.context.s3.send(command);
@@ -179,7 +220,8 @@ export default adapter<IConfig>(({utError}) => {
                     if (!sourceKey) throw _errors['s3.missingKey']({key: 'sourceKey'});
 
                     const command = new CopyObjectCommand({
-                        Bucket: bucket,
+                        ...this.config.bucket,
+                        ...(bucket && {Bucket: bucket}),
                         Key: key,
                         CopySource: `${sourceBucket}/${sourceKey}`,
                     });

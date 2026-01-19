@@ -18,7 +18,7 @@ export default library(
                             .filter(
                                 ([method, def]: [keyof typeof methods, typeof methods.get]) =>
                                     (def.operationId || def['x-blong-method']) &&
-                                    httpVerbs.includes(method)
+                                    httpVerbs.includes(method),
                             )
                             .forEach(
                                 ([method, def]: [keyof typeof methods, typeof methods.get]) => {
@@ -33,6 +33,19 @@ export default library(
                                         schemas: []
                                             .concat(methods.parameters)
                                             .concat(def.parameters)
+                                            .concat(
+                                                'requestBody' in def &&
+                                                    def.requestBody &&
+                                                    'content' in def.requestBody &&
+                                                    def.requestBody.content?.['application/json']
+                                                        ?.schema && {
+                                                        name: 'body',
+                                                        in: 'body',
+                                                        schema: def.requestBody.content[
+                                                            'application/json'
+                                                        ].schema,
+                                                    },
+                                            )
                                             .filter(Boolean),
                                     };
                                     switch (true) {
@@ -70,10 +83,10 @@ export default library(
                                         }
                                     }
                                     handlers[name] = request(formatProps);
-                                }
-                            )
+                                },
+                            ),
                 );
             }
             return handlers;
-        }
+        },
 );

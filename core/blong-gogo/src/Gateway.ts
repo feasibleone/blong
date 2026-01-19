@@ -66,8 +66,12 @@ interface IConfig extends IConfigMLE {
     };
 }
 
-function operationParams(operation: GatewaySchema['operation'], request: GatewayRequest): unknown {
-    return (
+function operationParams(
+    operation: GatewaySchema['operation'],
+    bodySchema: TSchema,
+    request: GatewayRequest,
+): unknown {
+    const result =
         operation?.parameters?.reduce((result, parameter) => {
             if ('in' in parameter && 'name' in parameter) {
                 let where;
@@ -85,19 +89,35 @@ function operationParams(operation: GatewaySchema['operation'], request: Gateway
                         where = request.cookies;
                         break;
                     case 'body':
-                        if (request.body && parameter.schema?.properties)
-                            Object.entries(parameter.schema.properties).forEach(([name, value]) => {
-                                if (name in (request.body as {}))
-                                    result[snakeToCamel(name)] = request.body[name];
-                            });
+                        if (request.body) {
+                            if (parameter.schema?.additionalProperties)
+                                Object.assign(result, request.body);
+                            else if (parameter.schema?.properties)
+                                Object.entries(parameter.schema.properties).forEach(
+                                    ([name, value]) => {
+                                        if (name in (request.body as {}))
+                                            result[snakeToCamel(name)] = request.body[name];
+                                    },
+                                );
+                        }
                         break;
                 }
                 if (where && parameter.name in where)
                     result[snakeToCamel(parameter.name)] = where[parameter.name];
             }
             return result;
-        }, {}) ?? {}
-    );
+        }, {}) ?? {};
+    if (
+        bodySchema?.type === 'object' &&
+        (bodySchema.properties || bodySchema?.additionalProperties)
+    ) {
+        if (bodySchema.additionalProperties) Object.assign(result, request.body);
+        else if (bodySchema.properties)
+            Object.entries(bodySchema.properties).forEach(([name, value]) => {
+                if (name in (request.body as {})) result[snakeToCamel(name)] = request.body[name];
+            });
+    }
+    return result;
 }
 
 export default class Gateway extends Internal implements IGateway {
@@ -143,7 +163,7 @@ export default class Gateway extends Internal implements IGateway {
             remote?: IRpcClient;
             local?: ILocal;
             resolution?: IResolution;
-        }
+        },
     ) {
         super({log});
         this.#log = log;
@@ -256,7 +276,7 @@ export default class Gateway extends Internal implements IGateway {
 
     public route(
         validations: Record<string, GatewaySchema>,
-        pkg: {name: string; version: string}
+        pkg: {name: string; version: string},
     ): void {
         this.#routes = [];
         Object.entries(validations).forEach(([method, value]) => {
@@ -277,49 +297,52 @@ export default class Gateway extends Internal implements IGateway {
                     ...('body' in value
                         ? {body: value.body}
                         : 'params' in value
-                        ? {
-                              body: Type.Object({
-                                  jsonrpc: Type.Literal('2.0'),
-                                  id: Type.Optional(Type.Union([Type.String(), Type.Number()])),
-                                  method: isWildcard ? Type.String() : Type.Literal(method),
-                                  params: value.params,
-                              }),
-                          }
-                        : undefined),
+                          ? {
+                                body: Type.Object({
+                                    jsonrpc: Type.Literal('2.0'),
+                                    id: Type.Optional(Type.Union([Type.String(), Type.Number()])),
+                                    method: isWildcard ? Type.String() : Type.Literal(method),
+                                    params: value.params,
+                                }),
+                            }
+                          : undefined),
                     /* eslint-disable @typescript-eslint/naming-convention */
                     ...('response' in value && value.response
                         ? {response: {'2xx': value.response}}
                         : 'result' in value
-                        ? {
-                              response:
-                                  (this.#config.sign || this.#config.encrypt) &&
-                                  (value.auth ?? 'jwt')
-                                      ? {
-                                            '2xx': value.result,
-                                            '3xx': typedError,
-                                            '4xx': typedError,
-                                            '5xx': typedError,
-                                        }
-                                      : {
-                                            '2xx': Type.Union([
-                                                Type.Object({
-                                                    // response
-                                                    jsonrpc: Type.Literal('2.0'),
-                                                    id: Type.Union([Type.String(), Type.Number()]),
-                                                    result: value.result,
-                                                }),
-                                                Type.Object({
-                                                    // notification
-                                                    jsonrpc: Type.Literal('2.0'),
-                                                    result: Type.Boolean(),
-                                                }),
-                                            ]),
-                                            '3xx': jsonRpcError,
-                                            '4xx': jsonRpcError,
-                                            '5xx': jsonRpcError,
-                                        },
-                          }
-                        : undefined),
+                          ? {
+                                response:
+                                    (this.#config.sign || this.#config.encrypt) &&
+                                    (value.auth ?? 'jwt')
+                                        ? {
+                                              '2xx': value.result,
+                                              '3xx': typedError,
+                                              '4xx': typedError,
+                                              '5xx': typedError,
+                                          }
+                                        : {
+                                              '2xx': Type.Union([
+                                                  Type.Object({
+                                                      // response
+                                                      jsonrpc: Type.Literal('2.0'),
+                                                      id: Type.Union([
+                                                          Type.String(),
+                                                          Type.Number(),
+                                                      ]),
+                                                      result: value.result,
+                                                  }),
+                                                  Type.Object({
+                                                      // notification
+                                                      jsonrpc: Type.Literal('2.0'),
+                                                      result: Type.Boolean(),
+                                                  }),
+                                              ]),
+                                              '3xx': jsonRpcError,
+                                              '4xx': jsonRpcError,
+                                              '5xx': jsonRpcError,
+                                          },
+                            }
+                          : undefined),
                     /* eslint-enable @typescript-eslint/naming-convention */
                     security: [
                         value.auth === false
@@ -349,7 +372,11 @@ export default class Gateway extends Internal implements IGateway {
                               })
                             : {
                                   id: 1,
-                                  params: operationParams(value.operation, request),
+                                  params: operationParams(
+                                      value.operation,
+                                      'body' in value ? value.body?.schema : undefined,
+                                      request,
+                                  ),
                                   timeout: false,
                                   expect: undefined,
                               };
@@ -410,7 +437,7 @@ export default class Gateway extends Internal implements IGateway {
                             reply
                                 .header('x-envoy-decorator-operation', methodName)
                                 .code(error?.statusCode || 500),
-                            {httpResponse: error.httpResponse}
+                            {httpResponse: error.httpResponse},
                         );
                         return {
                             jsonrpc: '2.0',

@@ -61,7 +61,7 @@ const reserved: string[] = [
 
 export default async function adapter<T>(
     {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry}: IApi,
-    configBase: string
+    configBase: string,
 ): Promise<ReturnType<IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
 
@@ -96,7 +96,7 @@ export default async function adapter<T>(
                 },
                 'ports',
                 this.config.id,
-                this.config.pkg
+                this.config.pkg,
             );
             utBus.subscribe(
                 {
@@ -104,7 +104,7 @@ export default async function adapter<T>(
                 },
                 'ports',
                 this.config.id,
-                this.config.pkg
+                this.config.pkg,
             );
         },
         error(error: ITypedError, $meta: IMeta) {
@@ -166,13 +166,13 @@ export default async function adapter<T>(
             this.importedMap?.forEach(
                 imp =>
                     Object.prototype.hasOwnProperty.call(imp, event) &&
-                    eventHandlers.push(imp[event])
+                    eventHandlers.push(imp[event]),
             );
             let result = data;
             switch (mapper) {
                 case 'asyncMap':
                     result = await Promise.all(
-                        eventHandlers.map(handler => handler.call(this, data))
+                        eventHandlers.map(handler => handler.call(this, data)),
                     );
                     break;
                 case 'reduce':
@@ -216,11 +216,12 @@ export default async function adapter<T>(
                     }
                     return prev;
                 },
-                {req: {}, pub: {}}
+                {req: {}, pub: {}},
             );
             utBus.register(req, 'ports', this.config.id, this.config.pkg);
             utBus.subscribe(pub, 'ports', this.config.id, this.config.pkg);
-            return this.event('start', {configBase: this.configBase, config: this.config});
+            const {context, ...config} = this.config; // eslint-disable-line @typescript-eslint/no-unused-vars
+            return this.event('start', {configBase: this.configBase, config});
         },
         async handle(...params: unknown[]) {
             const $meta = params && params.length > 1 && (params[params.length - 1] as IMeta);
@@ -234,7 +235,7 @@ export default async function adapter<T>(
         },
         connect(
             what: net.Socket | (() => void) = this.handle.bind(this),
-            context: Parameters<typeof loop>[2] = this.config.context
+            context: Parameters<typeof loop>[2] = this.config.context,
         ) {
             portLoop = loop(what, this, context);
             resolveConnected(true);

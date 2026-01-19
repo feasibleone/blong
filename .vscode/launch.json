@@ -1,0 +1,18 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "tools",
+            "skipFiles": ["<node_internals>/**"],
+            "runtimeExecutable": "${workspaceFolder}/core/blong-gogo/bin/blong.ts",
+            "cwd": "${workspaceFolder}/dev/tools",
+            "console": "integratedTerminal",
+            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"]
+        }
+    ]
+}

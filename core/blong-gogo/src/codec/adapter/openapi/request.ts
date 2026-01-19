@@ -15,8 +15,16 @@ export default library(
             method: string;
             schemas: OpenAPIV2.ParameterObject[];
         }) {
-            return (msg = {body: undefined, baseUrl: '', params: {}, headers: undefined}) => {
-                const {params = msg, body, baseUrl, headers} = msg;
+            return (
+                msg = {
+                    body: undefined,
+                    baseUrl: '',
+                    params: {},
+                    payload: undefined,
+                    headers: undefined,
+                },
+            ) => {
+                const {params = msg, body, baseUrl, headers, payload} = msg;
                 const result = {
                     url: baseUrl ? baseUrl + url : url,
                     method,
@@ -51,20 +59,22 @@ export default library(
                             result.url = interpolate(result.url, {[schema.name]: param});
                             break;
                         case 'body':
-                            if (schema.schema?.properties)
-                                result.json = Object.fromEntries(
-                                    Object.entries(schema.schema.properties)
-                                        .map(
-                                            ([name, value]: [string, {default: unknown}]) =>
-                                                name in params && [
-                                                    name,
-                                                    typeof params[name] === 'undefined'
-                                                        ? value.default
-                                                        : params[name],
-                                                ]
-                                        )
-                                        .filter(Boolean)
-                                );
+                            if (schema.schema?.properties || schema.schema?.additionalProperties)
+                                result.json = schema.schema.additionalProperties
+                                    ? payload
+                                    : Object.fromEntries(
+                                          Object.entries(schema.schema.properties)
+                                              .map(
+                                                  ([name, value]: [string, {default: unknown}]) =>
+                                                      name in params && [
+                                                          name,
+                                                          typeof params[name] === 'undefined'
+                                                              ? value.default
+                                                              : params[name],
+                                                      ],
+                                              )
+                                              .filter(Boolean),
+                                      );
                             break;
                         default:
                             break;
@@ -72,5 +82,5 @@ export default library(
                 });
                 return result;
             };
-        }
+        },
 );
