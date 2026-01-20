@@ -37,7 +37,7 @@ export default fp<{
 }>(
     async function jwtPlugin(
         fastify: FastifyInstance,
-        {cache: cacheConfig, audience, verify, errors}: FastifyPluginOptions
+        {cache: cacheConfig, audience, verify, errors}: FastifyPluginOptions,
     ) {
         const cache =
             ![0, false, 'false'].includes(cacheConfig as string | number | boolean) &&
@@ -57,7 +57,7 @@ export default fp<{
                         return this.verifyBearerAuth(request, reply, done);
                     }
                 } else done();
-            }
+            },
         );
         await fastify.register(bearer, {
             keys: new Set([]),
@@ -129,7 +129,7 @@ export default fp<{
                     isSameSite?: boolean;
                     path?: string;
                     domain?: string;
-                }
+                },
             ) {
                 return this.setCookie(
                     name,
@@ -142,14 +142,14 @@ export default fp<{
                             sameSite,
                             path,
                             domain,
-                        }).filter(([, value]) => value != null)
-                    )
+                        }).filter(([, value]) => value != null),
+                    ),
                 );
-            }
+            },
         );
     },
     {
-        fastify: '4.x',
+        fastify: '5.x',
         name: 'blong-jwt',
-    }
+    },
 );

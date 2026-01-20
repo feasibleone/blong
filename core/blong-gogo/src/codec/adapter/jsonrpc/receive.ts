@@ -8,15 +8,15 @@ export default handler(({errors}) => ({
             error?: unknown;
             validation?: unknown;
             debug?: unknown;
-        }>
+        }>,
     ) {
         const {body} = super.receive ? await super.receive(response) : response;
         if (body?.error !== undefined) {
             const error: ITypedError = body.jsonrpc
                 ? Object.assign(new Error(), body.error)
                 : typeof body.error === 'string'
-                ? new Error(body.error)
-                : Object.assign(new Error(), body.error);
+                  ? new Error(body.error)
+                  : Object.assign(new Error(), body.error);
             if (error.type)
                 Object.defineProperty(error, 'name', {
                     value: error.type,

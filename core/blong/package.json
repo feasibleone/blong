@@ -1,7 +1,7 @@
 {
     "dependencies": {
         "@sinclair/typebox": "^0.33.7",
-        "pino": "^9.3.2",
+        "pino": "^10.2.1",
         "ut-function.merge": "^1.5.6"
     },
     "devDependencies": {

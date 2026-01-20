@@ -33,7 +33,7 @@ export interface IWatch {
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
 const scan = async (...path: string[]): ReturnType<typeof readdir> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
-        a < b ? -1 : a > b ? 1 : 0
+        a < b ? -1 : a > b ? 1 : 0,
     );
 
 const emit: EventEmitter = new EventEmitter();
@@ -72,7 +72,7 @@ export default class Watch extends Internal implements IWatch {
             log,
             port,
             apiSchema,
-        }: {error: IErrorFactory; log: ILog; port: () => unknown; apiSchema: IApiSchema}
+        }: {error: IErrorFactory; log: ILog; port: () => unknown; apiSchema: IApiSchema},
     ) {
         super({log});
         this.merge(this.#config, config);
@@ -87,7 +87,7 @@ export default class Watch extends Internal implements IWatch {
                 const schema = readFileSync(filename)
                     .toString()
                     .match(
-                        /^(\/\*\*((?!\*\/\n).)*\*\/\n)?type Handler = \(((?!(>|}|>});?\n).)*(>|}|>});?\n/ms
+                        /^(\/\*\*((?!\*\/\n).)*\*\/\n)?type Handler = \(((?!(>|}|>});?\n).)*(>|}|>});?\n/ms,
                     )?.[0];
                 return schema
                     ? [
@@ -96,7 +96,7 @@ export default class Watch extends Internal implements IWatch {
                       ]
                     : prev;
             },
-            [[], []]
+            [[], []],
         );
         if (schema.length)
             writeFileSync(
@@ -117,13 +117,13 @@ export default class Watch extends Internal implements IWatch {
                     ${names
                         .map(
                             name =>
-                                `${name}<T=ReturnType<${name}>>(params: Parameters<${name}>[0], $meta: IMeta): T;`
+                                `${name}<T=ReturnType<${name}>>(params: Parameters<${name}>[0], $meta: IMeta): T;`,
                         )
                         .join('\n')}
                 }
             }
 
-        `)
+        `),
             );
     }
 
@@ -160,10 +160,10 @@ export default class Watch extends Internal implements IWatch {
             (kind(item) === 'validation'
                 ? validations
                 : kind(item) === 'api'
-                ? apis
-                : kind(item) === 'lib'
-                ? libs
-                : handlers
+                  ? apis
+                  : kind(item) === 'lib'
+                    ? libs
+                    : handlers
             ).push(item);
             if (kind(item) === 'handler') {
                 latest = Math.max(latest, statSync(filename).mtime.getTime());
@@ -176,19 +176,19 @@ export default class Watch extends Internal implements IWatch {
                 api[basename(dir) + '.validation'](
                     [...libs, ...validations],
                     config.name + '.' + basename(dir) + '.validation',
-                    relative('.', dir)
+                    relative('.', dir),
                 );
             if (apis.length)
                 api[basename(dir) + '.api'](
                     [...libs, ...apis],
                     config.name + '.' + basename(dir) + '.api',
-                    relative('.', dir)
+                    relative('.', dir),
                 );
             if (handlers.length)
                 api[basename(dir)](
                     [...libs, ...handlers],
                     config.name + '.' + basename(dir),
-                    relative('.', dir)
+                    relative('.', dir),
                 );
             return api;
         };
@@ -217,10 +217,10 @@ export default class Watch extends Internal implements IWatch {
                             api[itemName](
                                 [item],
                                 config.name + '.' + itemName,
-                                relative('.', filename)
+                                relative('.', filename),
                             ),
                         'name',
-                        {value: itemName}
+                        {value: itemName},
                     );
                 } else {
                     this.#layerFiles.set(filename, config);
@@ -232,10 +232,10 @@ export default class Watch extends Internal implements IWatch {
                                     ? item(api)
                                     : item,
                                 config.name + '.' + itemName,
-                                relative('.', filename)
+                                relative('.', filename),
                             ),
                         'name',
-                        {value: itemName}
+                        {value: itemName},
                     );
                 }
             }
@@ -259,7 +259,7 @@ export default class Watch extends Internal implements IWatch {
                 cwd: '.',
                 ignoreInitial: true,
                 ignored: ['.git/**', 'node_modules/**', 'dist/**', ...(this.#config.ignored || [])],
-            }
+            },
         );
         this.#watchers.push(fsWatcher);
         fsWatcher.on('error', error => this.log?.error?.(error));
@@ -270,13 +270,13 @@ export default class Watch extends Internal implements IWatch {
                     {
                         $meta: {mtid: 'event', method: `watch.reload.${event}`},
                     },
-                    filename
+                    filename,
                 );
                 const layerConfig = this.#layerFiles.get(filename);
                 if (layerConfig) {
                     const id = basename(filename, extname(filename));
                     const item = (await this.load(layerConfig, false, true, filename))(
-                        layerProxy(this.#error, this.#apiSchema, this.#port, layerConfig)
+                        layerProxy(this.#error, this.#apiSchema, this.#port, layerConfig),
                     ).result[id];
                     registry.ports.set(layerConfig.name + '.' + id, item.port);
                     const port = await registry.createPort(layerConfig.name + '.' + id);
@@ -295,24 +295,24 @@ export default class Watch extends Internal implements IWatch {
                         await registry.replaceHandlers(
                             config.name + '.' + name,
                             importProxyCallback(
-                                layerProxy(this.#error, this.#apiSchema, this.#port, config)
-                            ).result[name].methods
+                                layerProxy(this.#error, this.#apiSchema, this.#port, config),
+                            ).result[name].methods,
                         );
                     } else {
                         const dir = dirname(filename);
                         config = this.#handlerFolders.get(dir);
                         if (config) {
                             const handlers = (await this._loadHandlers(config, dir))(
-                                layerProxy(this.#error, this.#apiSchema, this.#port, config)
+                                layerProxy(this.#error, this.#apiSchema, this.#port, config),
                             );
                             await registry.replaceHandlers(
                                 config.name + '.' + basename(dir),
-                                handlers.result[basename(dir)].methods
+                                handlers.result[basename(dir)].methods,
                             );
                             if (handlers.result[basename(dir) + '.validation'])
                                 await registry.replaceHandlers(
                                     config.name + '.' + basename(dir) + '.validation',
-                                    handlers.result[basename(dir) + '.validation'].methods
+                                    handlers.result[basename(dir) + '.validation'].methods,
                                 );
                         }
                     }
@@ -339,7 +339,7 @@ export default class Watch extends Internal implements IWatch {
                     const chain = await (await import('./chain.js')).default(test);
 
                     const steps = await Promise.all(
-                        [].concat(this.#config.test).map(test => remote.remote(test)({}, {}))
+                        [].concat(this.#config.test).map(test => remote.remote(test)({}, {})),
                     );
                     await Promise.all(steps.map(chain));
                 } catch (error) {

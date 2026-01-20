@@ -437,7 +437,7 @@ export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.PathItemObje
 interface ILib {
     type: JavaScriptTypeBuilder;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
-    rename: <T>(object: T, name: string) => T & {name: string};
+    rename: <T extends object>(object: T, name: string) => T & {name: string};
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;

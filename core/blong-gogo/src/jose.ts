@@ -42,15 +42,15 @@ const isKey = async (o): Promise<boolean> => {
         return isKeyObject
             ? isKeyObject(o)
             : KeyObject
-            ? o instanceof KeyObject
-            : isCryptoKey
-            ? isCryptoKey(o)
-            : typeof o === 'object' && o.constructor !== Object && typeof o.type === 'string';
+              ? o instanceof KeyObject
+              : isCryptoKey
+                ? isCryptoKey(o)
+                : typeof o === 'object' && o.constructor !== Object && typeof o.type === 'string';
     }
 };
 
 async function importKey(
-    jwk: JWK | KeyLike | Uint8Array
+    jwk: JWK | KeyLike | Uint8Array,
 ): Promise<{key: KeyLike | Uint8Array; alg: string}> {
     const is = await isKey(jwk);
     const {alg} = is ? await exportKey(jwk as KeyLike | Uint8Array) : (jwk as JWK);
@@ -74,7 +74,7 @@ async function exportKey(key: KeyLike | Uint8Array | JWK, priv: boolean = false)
 async function sign(
     message: object,
     {key, alg}: {key: KeyLike | Uint8Array; alg: string},
-    options: {serialization?: unknown}
+    options: {serialization?: unknown},
 ): Promise<FlattenedJWS | GeneralJWS | string> {
     const payload = Buffer.isBuffer(message) ? message : Buffer.from(JSON.stringify(message));
     switch (options?.serialization) {
@@ -92,7 +92,7 @@ function encrypt(
     {key, alg}: {key: KeyLike | Uint8Array; alg: string},
     protectedHeader: object,
     unprotectedHeader: JWEHeaderParameters,
-    options: {serialization?: unknown}
+    options: {serialization?: unknown},
 ): Promise<string | FlattenedJWE | GeneralJWE> {
     switch (options?.serialization) {
         case 'compact':
@@ -127,20 +127,20 @@ function encrypt(
 async function decrypt(
     jwe: string | GeneralJWE,
     {key}: {key: KeyLike | Uint8Array},
-    options?: {complete?: unknown}
+    options?: {complete?: unknown},
 ): Promise<Uint8Array | CompactDecryptResult | GeneralDecryptResult | FlattenedDecryptResult> {
     const {plaintext, protectedHeader} =
         typeof jwe === 'string'
             ? await compactDecrypt(jwe, key)
             : jwe.recipients
-            ? await generalDecrypt(jwe, key)
-            : await flattenedDecrypt(jwe, key);
+              ? await generalDecrypt(jwe, key)
+              : await flattenedDecrypt(jwe, key);
     return options?.complete ? {plaintext, protectedHeader} : plaintext;
 }
 
 async function verify(
     plaintext: string | Uint8Array,
-    {key}: {key: KeyLike | Uint8Array}
+    {key}: {key: KeyLike | Uint8Array},
 ): Promise<object> {
     return JSON.parse(new TextDecoder().decode((await compactVerify(plaintext, key)).payload));
 }
@@ -151,21 +151,21 @@ async function signEncrypt(
     mlekPub?: Parameters<typeof encrypt>[1],
     protectedHeader?: Parameters<typeof encrypt>[2],
     unprotectedHeader?: Parameters<typeof encrypt>[3],
-    options?: {encrypt?: Parameters<typeof encrypt>[4]; sign?: Parameters<typeof sign>[2]}
+    options?: {encrypt?: Parameters<typeof encrypt>[4]; sign?: Parameters<typeof sign>[2]},
 ): ReturnType<typeof encrypt> {
     return encrypt(
         (await sign(message, mlsk, options?.sign)) as string,
         mlekPub,
         protectedHeader,
         unprotectedHeader,
-        options?.encrypt
+        options?.encrypt,
     );
 }
 
 async function decryptVerify(
     message: Parameters<typeof decrypt>[0],
     mlskPub: Parameters<typeof verify>[1],
-    mlek?: Parameters<typeof decrypt>[1]
+    mlek?: Parameters<typeof decrypt>[1],
 ): ReturnType<typeof verify> {
     return verify((await decrypt(message, mlek)) as Uint8Array, mlskPub);
 }
@@ -177,12 +177,12 @@ export default async function jose({sign, encrypt}: {sign: JWK; encrypt: JWK}): 
         key: Parameters<typeof importKey>[0],
         protectedHeader?: Parameters<typeof signEncrypt>[3],
         unprotectedHeader?: Parameters<typeof signEncrypt>[4],
-        options?: Parameters<typeof signEncrypt>[5]
+        options?: Parameters<typeof signEncrypt>[5],
     ) => unknown;
     decryptVerify: (msg, key) => unknown;
     decrypt: (
         msg: string | GeneralJWE,
-        options: unknown
+        options: unknown,
     ) => ReturnType<typeof decrypt> | typeof msg;
     verify: (plaintext: string | Uint8Array, key: KeyLike | Uint8Array) => Promise<object>;
 }> {
@@ -198,7 +198,7 @@ export default async function jose({sign, encrypt}: {sign: JWK; encrypt: JWK}): 
             key: Parameters<typeof importKey>[0],
             protectedHeader?: Parameters<typeof signEncrypt>[3],
             unprotectedHeader?: Parameters<typeof signEncrypt>[4],
-            options?: Parameters<typeof signEncrypt>[5]
+            options?: Parameters<typeof signEncrypt>[5],
         ) =>
             mlsk
                 ? signEncrypt(
@@ -207,7 +207,7 @@ export default async function jose({sign, encrypt}: {sign: JWK; encrypt: JWK}): 
                       await importKey(key),
                       protectedHeader,
                       unprotectedHeader,
-                      options
+                      options,
                   )
                 : msg,
         decryptVerify: async (msg, key) =>

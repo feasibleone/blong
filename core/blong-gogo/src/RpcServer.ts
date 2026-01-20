@@ -37,7 +37,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         this.merge(this.#config, config);
         this.#resolution = resolution;
         this.#server = fastify({
-            logger: log?.child({name: 'rpc'}, {level: this.#config.logLevel}),
+            loggerInstance: log?.child({name: 'rpc'}, {level: this.#config.logLevel}),
         });
     }
 
@@ -46,7 +46,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         name: string,
         callback: () => unknown,
         object: object,
-        pkg: unknown
+        pkg: unknown,
     ): void {
         const url = `/rpc/${namespace}/${name.split('.').join('/')}`;
         async function handle(request: FastifyRequest, reply: FastifyReply): Promise<object> {
@@ -84,7 +84,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         }
         this.#resolution?.announce(
             'rpc-' + name.split('.')[0].replace(/\//g, '-'),
-            this.#config.port
+            this.#config.port,
         );
     }
 
@@ -92,7 +92,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         methods: object,
         namespace: string,
         reply: boolean,
-        pkg: {version: string}
+        pkg: {version: string},
     ): void {
         if (methods instanceof Array) {
             methods.forEach(fn => {

@@ -238,7 +238,7 @@ export default class Gateway extends Internal implements IGateway {
             version,
             serviceName,
             httpRequest: {
-                url: req.protocol + '://' + req.hostname + req.url,
+                url: req.protocol + '://' + req.host + req.url,
                 state: req.cookies,
                 headers: req.headers,
             },
@@ -454,7 +454,7 @@ export default class Gateway extends Internal implements IGateway {
         const old = this.#server;
         try {
             this.#server = fastify({
-                logger: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel}),
+                loggerInstance: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel}),
                 forceCloseConnections: true,
                 ajv: {
                     customOptions: {

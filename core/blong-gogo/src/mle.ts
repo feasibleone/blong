@@ -48,7 +48,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                     }
                 }
             }
-        }
+        },
     );
     fastify.addHook<unknown, unknown, {auth: unknown; mle: unknown}>(
         'preSerialization',
@@ -62,7 +62,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                       jsonrpc?: unknown;
                       result?: Record<string, unknown>;
                       error?: Record<string, unknown>;
-                  }
+                  },
         ) => {
             if (payload instanceof Error) return payload;
             if (
@@ -75,7 +75,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                         ? message
                         : mle.signEncrypt(
                               message,
-                              request.auth?.credentials?.mlek as {type: string}
+                              request.auth?.credentials?.mlek as {type: string},
                           );
                 const where = payload.jsonrpc
                     ? payload
@@ -98,7 +98,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                     throw error;
                 }
             }
-        }
+        },
     );
     fastify.route({
         method: 'GET',
