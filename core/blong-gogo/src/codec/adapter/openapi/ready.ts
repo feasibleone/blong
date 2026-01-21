@@ -21,8 +21,8 @@ export default handler(async ({config, lib: {load}, errors}) => {
             const handler = handlers?.[methodId($meta.method)];
             return handler ? handler.call(this, params, $meta) : params;
         },
-        // responseReceive(response: {body: unknown}) {
-        //     return response.body;
-        // },
+        responseReceive(response: {body: unknown}) {
+            return response.body;
+        },
     };
 });
