@@ -25,7 +25,7 @@ export interface IErrorFactory {
     define(
         id: string,
         superType: string | {type: string},
-        message: string
+        message: string,
     ): (params?: unknown, $meta?: IMeta) => ITypedError;
     register<T>(errorsMap: T): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
 }
@@ -83,7 +83,7 @@ export interface ILocal {
 export interface IApiSchema {
     schema(
         def: {namespace: Record<string, string | string[]>},
-        source: string
+        source: string,
     ): Promise<Record<string, GatewaySchema>>;
     generateFile(file: string): Promise<boolean>;
     generateDir(dir: string, files: Dirent[]): Promise<boolean>;
@@ -92,7 +92,7 @@ export interface IApiSchema {
 export interface IGateway {
     route: (
         validations: Record<string, GatewaySchema>,
-        pkg: {name: string; version: string}
+        pkg: {name: string; version: string},
     ) => void;
     start: () => Promise<void>;
     stop: () => Promise<void>;
@@ -121,7 +121,7 @@ export interface IRegistry {
         def: {
             namespace: Record<string, string | string[]>;
         },
-        source?: string
+        source?: string,
     ) => Promise<void>;
     connected: () => Promise<boolean>;
 }
@@ -129,7 +129,7 @@ export interface IRegistry {
 export interface IApi {
     id?: string;
     adapter: (
-        id: string
+        id: string,
     ) => (api: {
         utError: IError;
         remote: IRemote;
@@ -198,12 +198,12 @@ interface IAdapter<T> {
     pack?: (this: ReturnType<IAdapterFactory<T>>, packet: {size: number; data: Buffer}) => Buffer;
     unpackSize?: (
         this: ReturnType<IAdapterFactory<T>>,
-        buffer: Buffer
+        buffer: Buffer,
     ) => {size: number; data: Buffer};
     unpack?: (
         this: ReturnType<IAdapterFactory<T>>,
         buffer: Buffer,
-        options?: {size: number}
+        options?: {size: number},
     ) => Buffer;
     encode?: (data: unknown, $meta: IMeta, context: object, log: ILogger) => string | Buffer;
     decode?: (buff: string | Buffer, $meta: IMeta, context: object, log: ILogger) => object[];
@@ -214,7 +214,7 @@ interface IAdapter<T> {
     getConversion?: (
         this: ReturnType<IAdapterFactory<T>>,
         $meta: IMeta,
-        type: 'send' | 'receive'
+        type: 'send' | 'receive',
     ) => {name: string; fn: () => object};
     findHandler?: (this: ReturnType<IAdapterFactory<T>>, name: string) => () => unknown;
     handles?: (this: ReturnType<IAdapterFactory<T>>, name: string) => boolean;
@@ -231,7 +231,7 @@ interface IAdapter<T> {
     handle?: (...params: unknown[]) => Promise<unknown>;
     connect?: (
         what: unknown,
-        context: {requests: unknown; waiting: unknown; buffer: unknown}
+        context: {requests: unknown; waiting: unknown; buffer: unknown},
     ) => void;
 }
 
@@ -300,13 +300,13 @@ export interface IMeta {
     conId?: number;
     dispatch?: (
         msg?: object,
-        $meta?: IMeta
+        $meta?: IMeta,
     ) => [msg: object, $meta: IMeta] | boolean | void | Promise<boolean>;
     reply?: unknown;
     timeout?: number;
     timer?: (
         name?: string,
-        newTime?: HRTime | false
+        newTime?: HRTime | false,
     ) => {
         [name: string]: number;
     };
@@ -351,22 +351,21 @@ export type Errors<T> = {
     [name in keyof T]: (params?: unknown, $meta?: IMeta) => ITypedError;
 };
 
-interface IBaseConfig
-    extends TObject<{
-        watch: TObject<{
-            test: TArray<TString>;
-        }>;
-        remote: TObject<{
-            canSkipSocket: TBoolean;
-        }>;
-        adapter: TBoolean;
-        orchestrator: TBoolean;
-        test: TBoolean;
-        integration: TBoolean;
-        dev: TBoolean;
-        sim: TBoolean;
-        resolution: TBoolean;
-    }> {
+interface IBaseConfig extends TObject<{
+    watch: TObject<{
+        test: TArray<TString>;
+    }>;
+    remote: TObject<{
+        canSkipSocket: TBoolean;
+    }>;
+    adapter: TBoolean;
+    orchestrator: TBoolean;
+    test: TBoolean;
+    integration: TBoolean;
+    dev: TBoolean;
+    sim: TBoolean;
+    resolution: TBoolean;
+}> {
     additionalProperties: false;
 }
 
@@ -461,7 +460,7 @@ export interface IValidationProxy {
     };
 }
 type ValidationDefinition = (
-    blong: IValidationProxy
+    blong: IValidationProxy,
 ) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
 
 type ApiDefinition = (blong: IValidationProxy) => {
@@ -475,7 +474,7 @@ type PortHandler = <T>(
     this: ReturnType<IAdapterFactory>,
     params: unknown,
     $meta: IMeta,
-    context?: IContext
+    context?: IContext,
 ) => Promise<T> | T;
 type PortHandlerBound = <T>(params: unknown, $meta: IMeta, context?: IContext) => Promise<T> | T;
 type LibFn = <T>(...params: unknown[]) => T;
@@ -486,7 +485,7 @@ export interface IHandlerProxy<T> {
     config: T;
     handler: {
         [name: `error${string}`]: (
-            message?: string | {params?: object; cause?: Error}
+            message?: string | {params?: object; cause?: Error},
         ) => ITypedError;
     } & IRemoteHandler;
     lib: ILib & {
@@ -504,7 +503,7 @@ export interface IHandlerProxy<T> {
 }
 
 type ImportProxyCallback<T> = (
-    blong: IHandlerProxy<T>
+    blong: IHandlerProxy<T>,
 ) => PortHandler | IAdapterFactory | Record<string, PortHandler>;
 type Definition<T> = object | ImportProxyCallback<T> | ImportProxyCallback<T>[];
 
@@ -517,7 +516,7 @@ export type ModuleApi = {
     error: (errors: object) => ModuleApi;
     validation: (
         method: ValidationDefinition | ValidationDefinition[],
-        namespace?: string
+        namespace?: string,
     ) => ModuleApi;
     sequence: (fn: () => Sequence) => ModuleApi;
     feature: (paths: string | string[]) => ModuleApi;
@@ -558,7 +557,7 @@ export const api = (api: ApiDefinition): ApiDefinition =>
     Object.defineProperty(api, Kind, {value: 'api'});
 
 export const validationHandlers: (
-    handlers: Record<string, TFunction>
+    handlers: Record<string, TFunction>,
 ) => ValidationDefinition = handlers =>
     validation(() =>
         Object.fromEntries(
@@ -571,10 +570,10 @@ export const validationHandlers: (
                         description: handler.description,
                     }),
                     'name',
-                    {value: name}
+                    {value: name},
                 ),
-            ])
-        )
+            ]),
+        ),
     );
 
 export const realm = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
@@ -588,7 +587,7 @@ export const adapter = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =
 export const orchestrator = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'orchestrator'});
 export const kind = <T>(
-    what: T
+    what: T,
 ):
     | 'lib'
     | 'validation'

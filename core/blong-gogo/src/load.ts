@@ -16,13 +16,14 @@ import {basename, dirname, join} from 'path';
 import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 
+import type {Dirent} from 'fs';
 import layerProxy from './layerProxy.js';
 import RealmImpl, {type IRealm} from './Realm.js';
 import type {IWatch} from './Watch.js';
 
-const scan = async (...path: string[]): ReturnType<typeof readdir> =>
+const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
-        a < b ? -1 : a > b ? 1 : 0
+        a < b ? -1 : a > b ? 1 : 0,
     );
 const System: symbol = Symbol('system');
 
@@ -65,7 +66,7 @@ export default async function loadRealm(
         port?: () => void;
         log?: ILog;
         registry?: IRegistry;
-    }
+    },
 ): Promise<IRegistry> {
     const defKind = kind(def);
     const mod = await def({type: Type});
@@ -196,7 +197,7 @@ export default async function loadRealm(
                             } catch (error) {
                                 if (
                                     !['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(
-                                        error.code
+                                        error.code,
                                     ) ||
                                     !mergedConfig?.kopi?.realm
                                 )
@@ -219,8 +220,8 @@ export default async function loadRealm(
                                     dirEntry.isFile(),
                                     base,
                                     item,
-                                    dirEntry.name
-                                )
+                                    dirEntry.name.toString(),
+                                ),
                             );
                         item = async () => loaded;
                 }
@@ -239,13 +240,13 @@ export default async function loadRealm(
                     realm ||= new RealmImpl(mergedConfig, api);
                     realm.addModule(
                         itemName,
-                        await loadRealm(fn, itemName, config, configNames, api)
+                        await loadRealm(fn, itemName, config, configNames, api),
                     );
                 } else if (typeof fn === 'function') {
                     realm ||= new RealmImpl(mergedConfig, api);
                     realm.addLayer(
                         itemName,
-                        fn(layerProxy(api.error, api.apiSchema, api.port, mergedConfig)).result
+                        fn(layerProxy(api.error, api.apiSchema, api.port, mergedConfig)).result,
                     );
                 }
             }

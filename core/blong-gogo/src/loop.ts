@@ -13,7 +13,7 @@ interface IContext {
 export default function loop(
     fn: net.Socket | (() => void),
     handlers: ReturnType<IAdapterFactory>,
-    context: IContext = {requests: undefined, waiting: undefined, buffer: undefined}
+    context: IContext = {requests: undefined, waiting: undefined, buffer: undefined},
 ): unknown {
     const checkDeadlock = deadlockChecker(handlers);
     context.requests = new Map();
@@ -28,7 +28,7 @@ export default function loop(
                 const frame = await exec(
                     handlers,
                     fn,
-                    handlers.pack ? encodedPacket[0] : encodedPacket
+                    handlers.pack ? encodedPacket[0] : encodedPacket,
                 );
                 return checkError(await decodeReceive(handlers, context, frame, checkDeadlock));
             };
@@ -43,7 +43,7 @@ export default function loop(
                             handlers,
                             context,
                             dispatchedPacket as unknown[],
-                            checkDeadlock
+                            checkDeadlock,
                         );
                         if (encodedPacket)
                             fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
@@ -53,7 +53,7 @@ export default function loop(
                         handlers,
                         context,
                         undefined,
-                        checkDeadlock
+                        checkDeadlock,
                     );
                 }
             } catch (error) {
@@ -68,7 +68,7 @@ export default function loop(
         function streamClose(): void {
             cleanup();
             event(handlers, context, 'disconnected', handlers.log?.info).catch(error =>
-                handlers.log?.error?.(error)
+                handlers.log?.error?.(error),
             );
         }
         function streamError(error: Error): void {
@@ -85,7 +85,7 @@ export default function loop(
                     fn.destroy(
                         handlers.errors['handlers.socketTimeout']({
                             params: {timeout: handlers.config.socketTimeOut},
-                        })
+                        }),
                     );
                 });
         return (params: unknown[], promise) =>
@@ -106,7 +106,7 @@ export default function loop(
                         handlers,
                         context,
                         params,
-                        checkDeadlock
+                        checkDeadlock,
                     );
                     if (!encodedPacket) return [encodedPacket, $meta];
                     fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
@@ -124,7 +124,7 @@ function getMeta(params: unknown[], handlers: ReturnType<IAdapterFactory>): IMet
         throw handlers.errors['adapter.missingMeta']();
     const $meta = (params[params.length - 1] = Object.assign(
         {},
-        params[params.length - 1]
+        params[params.length - 1],
     ) as IMeta);
     $meta.method = $meta.method?.split('/').pop();
     return $meta;
@@ -133,7 +133,7 @@ function getMeta(params: unknown[], handlers: ReturnType<IAdapterFactory>): IMet
 function handleError(
     handlers: ReturnType<IAdapterFactory>,
     error: ITypedError,
-    $meta: IMeta
+    $meta: IMeta,
 ): [Error, IMeta] {
     handlers.error(error, $meta);
     if ($meta) {
@@ -154,7 +154,7 @@ async function sendEncode(
     adapter: ReturnType<IAdapterFactory>,
     context: IContext,
     dataPacket: unknown[],
-    checkDeadlock: (dataPacket: unknown) => void
+    checkDeadlock: (dataPacket: unknown) => void,
 ): Promise<unknown> {
     checkDeadlock(dataPacket);
     // send
@@ -215,7 +215,7 @@ function traceMeta(
     $meta: IMeta,
     set: string,
     get: string,
-    time?: Parameters<IMeta['timer']>[1]
+    time?: Parameters<IMeta['timer']>[1],
 ): IMeta {
     // if ($meta && !$meta.timer && $meta.mtid === 'request') {
     //     $meta.timer = packetTimer(adapter.bus.getPath($meta.method), '*', adapter.config.id, $meta.timeout);
@@ -251,7 +251,7 @@ function traceMeta(
 async function exec(
     adapter: ReturnType<IAdapterFactory>,
     fn: (this: ReturnType<IAdapterFactory>) => unknown,
-    execPacket: unknown[]
+    execPacket: unknown[],
 ): Promise<[unknown, IMeta]> {
     const $meta = execPacket.length > 1 && (execPacket[execPacket.length - 1] as IMeta);
     try {
@@ -266,7 +266,7 @@ async function exec(
 
 function getFrame(
     adapter: ReturnType<IAdapterFactory>,
-    buffer: Buffer
+    buffer: Buffer,
 ): {rest: Buffer; data: Buffer} {
     let result;
     let size;
@@ -366,7 +366,7 @@ async function decodeReceive(
     adapter: ReturnType<IAdapterFactory>,
     context: IContext,
     dataPacket: Buffer | unknown[],
-    checkDeadlock: (packet: unknown[]) => unknown
+    checkDeadlock: (packet: unknown[]) => unknown,
 ): Promise<unknown[]> {
     // frame
     if (adapter.imported.unpack) {
@@ -412,7 +412,7 @@ async function decodeReceive(
             metaFromContext(context, {mtid: 'notification', opcode: 'payload'}),
         ];
     } else {
-        result = dataPacket;
+        result = dataPacket as unknown[];
         const $meta = result.length > 1 && (result[result.length - 1] as IMeta);
         if ($meta && context?.conId) $meta.conId = context.conId;
         if (result.length > 1)
@@ -425,7 +425,7 @@ async function decodeReceive(
 async function receive(
     adapter: ReturnType<IAdapterFactory>,
     context: IContext,
-    dataPacket: unknown[]
+    dataPacket: unknown[],
 ): Promise<unknown[]> {
     const $meta = dataPacket.length > 1 && (dataPacket[dataPacket.length - 1] as IMeta);
     try {
@@ -451,7 +451,7 @@ const CONNECTED: symbol = Symbol('adapter.pull.CONNECTED');
 
 async function dispatch(
     adapter: ReturnType<IAdapterFactory>,
-    dispatchPacket: unknown[]
+    dispatchPacket: unknown[],
 ): Promise<unknown> {
     const $meta =
         ((dispatchPacket.length > 1 && dispatchPacket[dispatchPacket.length - 1]) as IMeta) ||
@@ -515,7 +515,7 @@ async function event(
     context: IContext,
     event: string,
     logger: (info: unknown) => void,
-    stream?: net.Socket
+    stream?: net.Socket,
 ): Promise<void> {
     if (context && typeof logger === 'function')
         logger({
@@ -529,7 +529,7 @@ async function event(
                 request.$meta.mtid = 'error';
                 const result = request.$meta.dispatch?.(
                     adapter.errors['adapter.disconnectBeforeResponse'](),
-                    request.$meta
+                    request.$meta,
                 );
                 if (typeof result === 'object' && 'catch' in result) result.catch(() => {});
             });

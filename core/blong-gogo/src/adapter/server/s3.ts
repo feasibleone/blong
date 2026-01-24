@@ -90,7 +90,7 @@ export default adapter<IConfig>(({utError}) => {
                 | unknown[],
             {method}: IMeta,
         ) {
-            const [, resource, operation] = method.split('.');
+            const [, , operation] = method.split('.');
             let bucket: string | undefined;
             let actualParams = params;
 

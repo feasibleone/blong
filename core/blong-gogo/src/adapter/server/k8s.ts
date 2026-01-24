@@ -499,7 +499,7 @@ export default adapter<IConfig>(({utError}) => {
                                 `/api/v1/namespaces/${namespace}/${_resourceType.toLowerCase()}`,
                                 {fieldSelector, resourceVersion, labelSelector},
                                 (type, object) => {
-                                    this.log.debug?.(`Event: ${type}`, object);
+                                    this.log.debug?.({object}, `Event: ${type}`);
                                     if (type === 'ERROR') {
                                         eventReject(
                                             new Error(object.message || 'Watch error event'),

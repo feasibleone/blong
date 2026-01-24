@@ -2,7 +2,7 @@ import {handler, type IMeta} from '@feasibleone/blong';
 
 export default handler(({lib: {rename}, handler: {loginTokenCreate}}) => ({
     testLoginTokenCreate: ({name = 'login token'}) =>
-        rename<unknown>(
+        rename<{}>(
             [
                 function login(assert: unknown, {$meta}: {$meta: IMeta}) {
                     return loginTokenCreate(
@@ -10,10 +10,10 @@ export default handler(({lib: {rename}, handler: {loginTokenCreate}}) => ({
                             username: 'test',
                             password: 'test',
                         },
-                        $meta
+                        $meta,
                     );
                 },
             ],
-            name
+            name,
         ),
 }));

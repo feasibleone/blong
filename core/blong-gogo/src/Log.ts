@@ -42,13 +42,13 @@ export default class Log extends Internal implements ILog {
         this.#logger = pino(this.#config);
     }
 
-    public child(...params: Parameters<Logger['child']>): ReturnType<Logger['child']> {
-        return this.#logger.child(...params);
+    public child<T extends string>(...params: Parameters<Logger<never>['child']>): Logger<T> {
+        return this.#logger.child(...params) as Logger<T>;
     }
 
     public logger(
         level: LoggerOptions['level'] = this.#config.level,
-        bindings: object
+        bindings: object,
     ): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
         const result = {

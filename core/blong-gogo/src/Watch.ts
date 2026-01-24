@@ -10,6 +10,7 @@ import {
 } from '@feasibleone/blong';
 import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
 import chokidar from 'chokidar';
+import type {Dirent} from 'fs';
 import {readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {EventEmitter} from 'node:events';
@@ -31,7 +32,7 @@ export interface IWatch {
 }
 
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
-const scan = async (...path: string[]): ReturnType<typeof readdir> =>
+const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
         a < b ? -1 : a > b ? 1 : 0,
     );
