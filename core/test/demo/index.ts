@@ -1,5 +1,5 @@
 import {ModuleApi, realm} from '@feasibleone/blong';
-import pkg from './package.json';
+import pkg from './package.json' with {type: 'json'};
 
 import mock from './adapter/mock.js';
 import script from './adapter/script.js';
