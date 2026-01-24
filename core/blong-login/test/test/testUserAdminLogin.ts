@@ -2,7 +2,7 @@ import {handler} from '@feasibleone/blong';
 
 export default handler(({lib: {rename}}) => ({
     testUserAdminLogin: ({name = 'login'}) =>
-        rename<unknown>(
+        rename<{}>(
             [
                 function createAdmin() {
                     return {username: 'sa', password: '123'};
@@ -11,6 +11,6 @@ export default handler(({lib: {rename}}) => ({
                     return {accessToken: 'xxx'};
                 },
             ],
-            name
+            name,
         ),
 }));

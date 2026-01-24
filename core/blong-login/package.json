@@ -1,7 +1,12 @@
 {
     "name": "@feasibleone/blong-login",
     "scripts": {
-        "build": "heft build --clean"
+        "build": "heft build --clean",
+        "ci-publish": "npm publish --access public"
+    },
+    "export": {
+        "/server.js": "./dist/server.js",
+        "/browser.js": "./dist/browser.js"
     },
     "type": "module",
     "version": "1.0.0",

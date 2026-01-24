@@ -1,10 +1,10 @@
 import {library} from '@feasibleone/blong';
-import {SignJWT, calculateJwkThumbprint, createLocalJWKSet, importJWK} from 'jose';
+import {SignJWT, calculateJwkThumbprint, createLocalJWKSet, importJWK, type JWK} from 'jose';
 
 export default library<{
     keys: {
-        access: Record<string, string>;
-        id: Record<string, string>;
+        access: JWK;
+        id: JWK;
     };
     expire: Record<string, string>;
 }>(
@@ -27,7 +27,7 @@ export default library<{
         return {
             async jwks(
                 header: Parameters<typeof keyStore>[0] = {},
-                token: Parameters<typeof keyStore>[1]
+                token: Parameters<typeof keyStore>[1],
             ) {
                 return Object.keys(header).length ? keyStore(header, token) : jwks;
             },
@@ -79,5 +79,5 @@ export default library<{
                 };
             },
         };
-    }
+    },
 );

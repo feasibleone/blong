@@ -1,7 +1,8 @@
 {
     "name": "@feasibleone/blong-test",
     "scripts": {
-        "build": "heft build --clean"
+        "build": "heft build --clean",
+        "ci-unit": "tap **/*.test.ts --allow-incomplete-coverage"
     },
     "type": "module",
     "version": "1.0.0",

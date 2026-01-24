@@ -1,0 +1,8 @@
+{
+    "bootstrap-sha": "f0ad26480bf6eafa7aba66525f8f73e5dc378542",
+    "packages": {
+        "core/blong": {},
+        "core/blong-login": {},
+        "docs/blong": {}
+    }
+}

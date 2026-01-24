@@ -42,7 +42,8 @@
         "start": "docusaurus start --no-open",
         "swizzle": "docusaurus swizzle",
         "write-heading-ids": "docusaurus write-heading-ids",
-        "write-translations": "docusaurus write-translations"
+        "write-translations": "docusaurus write-translations",
+        "ci-publish": "echo \"pages=build\" >> $GITHUB_OUTPUT"
     },
-    "version": "0.0.0"
+    "version": "1.0.0"
 }

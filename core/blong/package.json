@@ -14,11 +14,12 @@
         "typescript": "^5.5.4"
     },
     "exports": {
-        ".": "./types.ts"
+        ".": "./dist/types.js"
     },
     "name": "@feasibleone/blong",
     "scripts": {
-        "build": "heft build --clean"
+        "build": "heft build --clean",
+        "ci-publish": "npm publish --access public"
     },
     "type": "module",
     "version": "1.0.0"

@@ -46,7 +46,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
         def: {
             namespace: Record<string, string | string[]>;
         },
-        source: string
+        source: string,
     ): Promise<Record<string, GatewaySchema>> {
         const result: Record<string, GatewaySchema> = {};
 
@@ -88,7 +88,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
                             operation,
                             path: path.replaceAll('{', ':').replaceAll('}', ''),
                         };
-                    }
+                    },
                 );
             });
         }
@@ -129,7 +129,7 @@ export default handler(
             return {};
         }
 );
-`
+`,
                 );
             }
         }
@@ -158,15 +158,15 @@ export default handler(
                                 .map(
                                     ([name, property]: [string, {description?: string}]) =>
                                         `    ${name}${param.required ? ':' : '?:'} ${this._type(
-                                            property
+                                            property,
                                         )};${
                                             property.description
                                                 ? ` // ${property.description.replaceAll(
                                                       /[\r\n]/g,
-                                                      ''
+                                                      '',
                                                   )}`
                                                 : ''
-                                        }`
+                                        }`,
                                 )
                                 .join('\n');
                         }
@@ -223,7 +223,7 @@ export default handler(
         if (this.#config.generate === false) return false;
         if (statSync(filename).size !== 0) return false;
         let content = '';
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
             createReadStream(filename, {end: 50, encoding: 'utf-8'})
                 .on('data', chunk => {
                     content += chunk;
