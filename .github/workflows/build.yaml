@@ -8,5 +8,8 @@ on:
 jobs:
   build:
     permissions:
+      contents: read
+      packages: write
+      security-events: write
       pull-requests: read
     uses: infitx-org/actions/.github/workflows/rush.yaml@main
