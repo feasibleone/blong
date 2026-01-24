@@ -9,7 +9,7 @@ import {
     type IRemote,
 } from '@feasibleone/blong';
 import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
-import chokidar from 'chokidar';
+import chokidar, {type FSWatcher} from 'chokidar';
 import type {Dirent} from 'fs';
 import {readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
@@ -61,7 +61,7 @@ export default class Watch extends Internal implements IWatch {
         new Map();
     #handlerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> = new Map();
     #layerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> = new Map();
-    #watchers: chokidar.FSWatcher[] = [];
+    #watchers: FSWatcher[] = [];
     #port: () => unknown;
     #error: IErrorFactory;
     #apiSchema: IApiSchema;
