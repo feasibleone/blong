@@ -10,10 +10,10 @@
     },
     "devDependencies": {
         "@rushstack/eslint-config": "^4.0.1",
-        "@rushstack/heft": "~0.67.0",
-        "@rushstack/heft-lint-plugin": "~0.4.1",
-        "@rushstack/heft-typescript-plugin": "~0.5.25",
-        "eslint": "~8.57.0",
+        "@rushstack/heft": "^1.1.7",
+        "@rushstack/heft-lint-plugin": "^1.1.10",
+        "@rushstack/heft-typescript-plugin": "^1.1.7",
+        "eslint": "~9.39.2",
         "typescript": "^5.5.4"
     }
 }

@@ -7,7 +7,7 @@ import yaml from 'yaml';
 
 export default async function loadApi(
     locations: string | string[] | object | object[],
-    source: string = process.cwd()
+    source: string = process.cwd(),
 ): ReturnType<typeof parser.dereference> {
     const documents = [];
     source = source.startsWith('file://') ? dirname(source.slice(7)) : source;
@@ -46,11 +46,11 @@ export default async function loadApi(
                 const filename = location.startsWith('file://') ? location.slice(7) : location;
                 if (filename.endsWith('.yaml') || filename.endsWith('.yml'))
                     documents.push(
-                        yaml.parse(fs.readFileSync(resolve(source, filename), {encoding: 'utf-8'}))
+                        yaml.parse(fs.readFileSync(resolve(source, filename), {encoding: 'utf-8'})),
                     );
                 else if (filename.endsWith('.json'))
                     documents.push(
-                        (await import(resolve(source, filename), {assert: {type: 'json'}})).default
+                        (await import(resolve(source, filename), {with: {type: 'json'}})).default,
                     );
             }
         }
