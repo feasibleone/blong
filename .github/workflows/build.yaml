@@ -7,4 +7,6 @@ on:
 
 jobs:
   build:
+    permissions:
+      pull-requests: read
     uses: infitx-org/actions/.github/workflows/rush.yaml@main
