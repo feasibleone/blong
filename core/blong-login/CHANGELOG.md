@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.7](https://github.com/feasibleone/blong/compare/blong-login-v1.0.6...blong-login-v1.0.7) (2026-01-25)
+
+
+### Bug Fixes
+
+* add exports for package.json in login and test modules ([5041cb7](https://github.com/feasibleone/blong/commit/5041cb7c8d63cb631f5c7ba27cc8c840deade2c9))
+* add include field for package.json and TypeScript files in tsconfig.json ([9086f1d](https://github.com/feasibleone/blong/commit/9086f1d49cfe30c730bb9e473f6a1c6484917d76))
+* add package.json export to login and test modules ([59a9a60](https://github.com/feasibleone/blong/commit/59a9a608177bed306b47d9969d66e89ba12ecf50))
+* correct exports field in package.json and add .npmignore for test module ([1cf8edc](https://github.com/feasibleone/blong/commit/1cf8edc22acfb00437f84c7fcb13591d918544ff))
+* filter out falsy values in loaded modules and update tsconfig includes ([cb00bb4](https://github.com/feasibleone/blong/commit/cb00bb4afce43ad58281bc290d8f94e1cd8f887e))
+
 ## [1.0.6](https://github.com/feasibleone/blong/compare/blong-login-v1.0.5...blong-login-v1.0.6) (2026-01-25)
 
 

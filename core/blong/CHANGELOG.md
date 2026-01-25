@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.7](https://github.com/feasibleone/blong/compare/blong-v1.0.6...blong-v1.0.7) (2026-01-25)
+
+
+### Bug Fixes
+
+* correct exports field in package.json and add .npmignore for test module ([1cf8edc](https://github.com/feasibleone/blong/commit/1cf8edc22acfb00437f84c7fcb13591d918544ff))
+
 ## [1.0.6](https://github.com/feasibleone/blong/compare/blong-v1.0.5...blong-v1.0.6) (2026-01-25)
 
 
