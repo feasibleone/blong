@@ -1,6 +1,9 @@
 {
     "name": "@feasibleone/blong-test",
     "description": "Development and unit testing utilities for the Blong framework",
+    "repository": {
+        "url": "https://github.com/feasibleone/blong"
+    },
     "scripts": {
         "build": "heft build --clean",
         "ci-unit": "true",
