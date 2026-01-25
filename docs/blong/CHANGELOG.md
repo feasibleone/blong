@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/feasibleone/blong/compare/blong-docs-v1.0.2...blong-docs-v1.0.3) (2026-01-25)
+
+
+### Bug Fixes
+
+* update keywords in package.json files for consistency ([3a391a7](https://github.com/feasibleone/blong/commit/3a391a740e4e9d33a0f0c23aa9be9d8f59013bf8))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-docs-v1.0.1...blong-docs-v1.0.2) (2026-01-25)
 
 
