@@ -2,7 +2,7 @@
     "name": "@feasibleone/blong-test",
     "description": "Development and unit testing utilities for the Blong framework",
     "repository": {
-        "url": "https://github.com/feasibleone/blong"
+        "url": "git+https://github.com/feasibleone/blong.git"
     },
     "scripts": {
         "build": "heft build --clean",

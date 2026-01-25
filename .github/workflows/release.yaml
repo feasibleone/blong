@@ -8,7 +8,7 @@ on:
 jobs:
   release-docker:
     permissions:
-      contents: read
+      contents: write
       packages: write
       security-events: write
       id-token: write

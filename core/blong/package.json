@@ -2,7 +2,7 @@
     "name": "@feasibleone/blong",
     "description": "API and DRY focused RAD framework https://feasibleone.github.io/blong-docs",
     "repository": {
-        "url": "https://github.com/feasibleone/blong"
+        "url": "git+https://github.com/feasibleone/blong.git"
     },
     "dependencies": {
         "@sinclair/typebox": "^0.33.7",

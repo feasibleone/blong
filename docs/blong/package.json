@@ -1,4 +1,5 @@
 {
+    "name": "@feasibleone/blong-docs",
     "browserslist": {
         "development": [
             "last 3 chrome version",
@@ -31,7 +32,6 @@
     "engines": {
         "node": ">=18.0"
     },
-    "name": "@feasibleone/blong-docs",
     "private": true,
     "scripts": {
         "build": "docusaurus build",
