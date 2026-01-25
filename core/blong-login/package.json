@@ -1,6 +1,11 @@
 {
     "name": "@feasibleone/blong-login",
     "description": "Login and authentication utilities for the Blong framework",
+    "keywords": [
+        "blong",
+        "rad",
+        "framework"
+    ],
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },
