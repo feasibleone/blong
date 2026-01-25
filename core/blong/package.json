@@ -26,5 +26,5 @@
         "ci-publish": "npm publish --access public --provenance"
     },
     "type": "module",
-    "version": "1.0.3"
+    "version": "1.0.4"
 }
