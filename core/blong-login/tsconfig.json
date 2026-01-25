@@ -21,5 +21,6 @@
         "files": true,
         "experimentalResolver": true
     },
+    "include": ["./package.json", "**/*.ts"],
     "exclude": ["node_modules", ".lint", ".docusaurus", "dist"]
 }

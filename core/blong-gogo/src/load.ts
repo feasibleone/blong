@@ -223,7 +223,7 @@ export default async function loadRealm(
                                     dirEntry.name.toString(),
                                 ),
                             );
-                        item = async () => loaded;
+                        item = async () => loaded.filter(Boolean);
                 }
             }
             for (const module of [].concat(await item())) {
