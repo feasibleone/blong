@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/feasibleone/blong/compare/blong-test-v1.0.2...blong-test-v1.0.3) (2026-01-25)
+
+
+### Bug Fixes
+
+* update repository URLs in package.json files for consistency ([a1856ea](https://github.com/feasibleone/blong/commit/a1856ea8d9ef44495a8776e72b18b81a7e692e7f))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-test-v1.0.1...blong-test-v1.0.2) (2026-01-25)
 
 
