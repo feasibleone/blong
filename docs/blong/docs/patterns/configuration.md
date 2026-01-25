@@ -13,7 +13,7 @@ the effective one.
 
 ## Environments and use cases
 
-The configuration is usually split in several parts, which are activated based
+The configuration is usually split into several parts, which are activated based
 on the environment and the use case. There are some established names for some
 of the activations:
 
@@ -33,7 +33,7 @@ to define some defaults for the appropriate use cases and environments.
 
 To configure the adapter, use one of the possible configuration places:
 
-In the same realm, where the adapter is defined, define defaults and
+In the same realm where the adapter is defined, define defaults and
 per environment configuration
 
 ```js
@@ -57,7 +57,7 @@ export default realm(blong => ({
 }));
 ```
 
-In the global to configuration override the defaults, use:
+In the global configuration, override the defaults using:
 
 ```yaml
 realmname:

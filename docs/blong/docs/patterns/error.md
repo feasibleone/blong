@@ -1,11 +1,11 @@
 # Error
 
 The patterns below can be used to define and throw
-[typed errors](../concepts/errors.md) within the framework
+[typed errors](../concepts/errors.md) within the framework.
 
 ## Defining errors
 
-To define typed errors withing the framework, call the `error`
+To define typed errors within the framework, call the `error`
 function with an object where each property defines a single error.
 Property names must use prefixes, so that name collisions are avoided.
 
@@ -29,7 +29,7 @@ error({
 })
 ```
 
-The `error` function defines the error, so that it can easily
+The `error` function defines the error so that it can easily
 be thrown in various places of the source code.
 This function is available in various places when using the framework
 and can be used both implicitly and explicitly, for example:

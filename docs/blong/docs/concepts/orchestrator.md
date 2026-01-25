@@ -1,14 +1,14 @@
 # Orchestrator
 
 The role of the orchestrator is to provide an intermediate point in the
-architecture, where the business logic can be implemented in a way,
+architecture where the business logic can be implemented in a way that is
 decoupled from the integration protocols and APIs.
 
-Orchestrators are the place where the API namespaces are defined,
+Orchestrators are the place where the API namespaces are defined;
 usually there is one orchestrator per namespace. The orchestrators
 can call adapters within the same realm or orchestrators in
 another realm. Calling adapters from another realm is discouraged
-and is only feasible in isolated cases, where maximizing the performance
+and is only feasible in isolated cases where maximizing performance
 is needed. The namespaces of the orchestrators are used for service
 discovery and also become the service names in Kubernetes. So the
 orchestrator is the place where the server side solution is glued together

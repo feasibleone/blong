@@ -55,4 +55,4 @@ All orchestrators share some common configuration properties, such as:
 - `validations` - validations to attach in the orchestrator
 
 See the [configuration pattern](./configuration.md) for more details
-about the places where adapters can be configured.
+about the places where adapters and orchestrators can be configured.

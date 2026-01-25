@@ -2,11 +2,11 @@
 
 ![architecture](img/architecture-dark.png#gh-dark-mode-only)![architecture](img/architecture-light.png#gh-light-mode-only)
 
-The framework allows certain flexibility during the deployment, in something
-that may be called "bring your own architecture". The functionality is split
-in realms and the realms in layers. When deploying, each layer can be activated
-in a process (also known as microservice) alone or with some other layers.
-This allows the solution to run in as many or as few process, as required,
+The framework offers flexibility during deployment, in what may be called
+"bring your own architecture". The functionality is split into realms and
+realms into layers. When deploying, each layer can be activated
+in a process (also known as a microservice) alone or with some other layers.
+This allows the solution to run in as many or as few processes as required,
 including running in a single process like a monolith app.
 
 For more information see [layer](./layer.md) and [realm](./realm.md).

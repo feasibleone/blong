@@ -1,6 +1,6 @@
 # Realm
 
-To define a [realm](../concepts/realm.md) use the `realm` function from the framework.
+To define a [realm](../concepts/realm.md), use the `realm` function from the framework.
 The function passed to `realm` must return an object with the following properties:
 
 - `url`: the URL of the realm

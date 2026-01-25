@@ -1,6 +1,6 @@
 # Meta
 
-To implement various functionality the framework uses a metadata object,
+To implement various kinds of functionality the framework uses a metadata object,
 which is passed to the handlers. The convention is to use a variable
 named `$meta` to refer to that parameter.
 
@@ -28,8 +28,8 @@ The metadata may contain the following properties:
   - `state`: request cookies
   - `headers`: request headers
 - `expect`: used during tests to suppress logging of expected error types
-- `forward`: contains [br-propagation](https://github.com/openzipkin/b3-propagation)
-   data used for tracing
+- `forward`: contains [b3-propagation](https://github.com/openzipkin/b3-propagation)
+  data used for tracing
 - `dispatch`: optional function to be called during the `dispatch` step of the
   [adapter loop](../concepts/adapter#adapter-loop), instead of the framework's
   built-in dispatch function

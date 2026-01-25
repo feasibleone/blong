@@ -1,9 +1,9 @@
 # Handler
 
-Handlers are functions being called by the adapters and orchestrators to
-implement certain functionality. Handlers can be based on user defined
-API or be related to internal logic, for example the
-[adapter loop](../concepts/adapter#adapter-loop)
+Handlers are functions that are called by adapters and orchestrators to
+implement certain functionality. Handlers can be based on user-defined
+APIs or be related to internal logic, for example the
+[adapter loop](../concepts/adapter#adapter-loop).
 
 ## Internal handlers
 
@@ -14,7 +14,7 @@ to some common integration tasks. They have the following purpose:
   The input data is assumed to be protocol/API independent as much as possible.
 - `receive`: transform the received data to be protocol/API independent and remove
   any data not needed by the rest of the system.
-- `encode`: JavaScript objects passed to this handlers are converted to Buffer,
+- `encode`: JavaScript objects passed to these handlers are converted to Buffer,
   which is then passed to the network.
 - `decode`: data frames coming from the network as Buffers are passed to this
   handler and it converts them to JavaScript objects
@@ -27,8 +27,8 @@ to some common integration tasks. They have the following purpose:
   sends some kind of echo/keep alive message available in the protocol.
 - `idleReceive`: this handler is called when there has been an idle period
   (longer than the configured) of no incoming messages. It usually disconnects
-  the adapter as the expectations is that the other side is sending some
-  keep alive messages.
+  the adapter, as the expectation is that the other side is sending some
+  keep-alive messages.
 - `drainSend`: this handler is called when the send queue is emptied or has been
   empty for a pre-configured period. It can be used to trigger processing of
   some pending operations that happen during the idle time of the adapter.
@@ -48,7 +48,7 @@ in the format `subjectObjectPredicate`, where:
 
 Here are some examples:
 
-If we have a realm named `user` that has the goal to implement role based
+If we have a realm named `user` that has the goal to implement role-based
 access control, we can imagine it has the following namespaces:
 
 - `identity`: for implementing the authentication
@@ -64,7 +64,7 @@ All handlers are converted to async functions
 
 ## Library functions
 
-The library functions implement some reusable functionality, that
+The library functions implement some reusable functionality that
 is repeated across some of the handlers within the same realm.
 Any handler, that has a name that does not match the internal handlers
 or the API namespaces is considered to be a library function and is not
@@ -73,12 +73,12 @@ exposed anywhere else, except to the sibling handlers.
 ## Folder structure
 
 The handlers and library functions are grouped together and given a name.
-This happens by defining them in a sub-folder within the realm folder.
+This happens by defining them in a subfolder within the realm folder.
 This folder is usually in another one, which is used for defining a layer.
 The most common approach is to create a separate file for each handler and
 use the handler name as file name. This serves multiple reasons:
 
-- allow fast finding of handlers within code editors. For example
+- allow fast finding of handlers within code editors. For example,
   in VSCode ctrl+p and then typing the first letters of the semantic
   triple will bring the desired handler (i.e. `ctrl+p uua` is likely to find `userUserAdd.ts`)
 - easier code review by avoiding files with thousands of rows and a lot of nesting
@@ -92,7 +92,7 @@ several methods for calculating the sum and the average of an array of integer n
 To do so, it defines a library function `sum` and handlers `mathNumberSum` and
 `mathNumberAverage`. It attaches the handlers to an orchestrator `mathDispatch`.
 
-The following structure is be used:
+The following structure is used:
 
 <!-- markdownlint-capture -->
 <!-- markdownlint-disable MD033 MD013 MD037 -->
@@ -156,7 +156,7 @@ that explain their usage:
 - `example/orchestrator/math/error.ts` - defines the errors.
 
   ```ts
-  import {handler} from '@feasibleone/blong';
+  import {library} from '@feasibleone/blong';
 
   export default library(({
     lib: {

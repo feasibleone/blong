@@ -4,7 +4,7 @@ Blong includes the following commonly used adapters:
 
 ## TCP
 
-Used for stream based adapters
+Used for stream-based adapters.
 
 To use them follow this pattern:
 
@@ -42,7 +42,7 @@ tls:                                 # TLS config
 
 ## HTTP
 
-Used for HTTP based adapters
+Used for HTTP-based adapters.
 
 ```ts
 // realmname/adapter/adaptername.ts

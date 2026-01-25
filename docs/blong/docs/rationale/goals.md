@@ -2,15 +2,15 @@
 
 ## Primary goal
 
-The primary goal of the framework is to  decrease the cost of developing and
+The primary goal of the framework is to decrease the cost of developing and
 running solutions by:
 
 - Minimizing the development effort - test driven development with less restarts
   and fast load times
-- Easier learning curve - minimal concepts to learn as the framework exposes a
-  minimal API
-- Faster build and deploy cycles - the framework more like a runtime, available
-  in a base image or a single dependency
+- An easier learning curve - minimal concepts to learn as the framework
+  exposes a minimal API
+- Faster build and deploy cycles - the framework is more like a runtime,
+  available in a base image or a single dependency
 - Having a 100% test coverage
 
 ## Approach

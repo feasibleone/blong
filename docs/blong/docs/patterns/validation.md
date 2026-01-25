@@ -7,14 +7,14 @@ Validation definitions are used for:
 - constructing responses
 
 Validations can be automatically derived from types defined
-for the handler parameters and result or can be manually specified.
+for the handler parameters and result, or can be manually specified.
 
 ## Automatic
 
 For automatic definitions the following is required:
 
 - Put a file named `~.schema.ts` in the folder where the handlers are defined.
-  This file is automatically updated when it's date is older than another
+    This file is automatically updated when its date is older than another
   file within the folder, where a type named `Handler` is defined.
 - Define the type `Handler` for each handler that will use automatic
   validations. Here is an example how it must be defined:
@@ -59,7 +59,7 @@ import {validation} from '@feasibleone/blong';
 export default validation(({lib: {type}}) =>
     function subjectObjectPredicate() {
         return {
-            // as minimum, define the types of params and result
+            // at a minimum, define the types of params and result
             params: type.Any(),
             result: type.Any(),
             // some optional overrides

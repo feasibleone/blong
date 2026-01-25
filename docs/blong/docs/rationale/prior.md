@@ -1,6 +1,6 @@
 # Prior art
 
-Blong blends the good parts of well known paradigms like:
+Blong blends the good parts of well-known paradigms like:
 
 - [API-first approach](https://www.google.com/search?q=API-first+approach)
 - [Application server](https://en.wikipedia.org/wiki/Application_server)

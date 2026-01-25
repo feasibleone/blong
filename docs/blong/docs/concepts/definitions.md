@@ -2,8 +2,8 @@
 
 We will use the following definitions:
 
-* `Microservice` - A buzzword, referring to the deployment of a modular
-  application server middleware, which is using service oriented
+* `Microservice` - A buzzword referring to the deployment of a modular
+  application server middleware that is using service oriented
   architecture (SOA). In this framework, we are not targeting only
   server side middleware. The same principles can apply for a much bigger
   domain of software. When mentioning microservice in this framework,
@@ -24,13 +24,13 @@ We will use the following definitions:
   placed in the orchestrator layer.
 
 * `Platform` - the platform that is going to run the software.
-  Although primary focus will be `server`, same concepts can be applied for
-  other platforms:
+  Although the primary focus will be `server`, the same concepts can be
+  applied for other platforms:
   * `desktop` - Desktop application
-  * `browser` - Browser base application
+  * `browser` - Browser-based application
   * `mobile` - Mobile application
 
-* `Modular approach` - allow solutions to be created by combining
+* `Modular approach` - allows solutions to be created by combining
   functionality of several `realms`, while keeping maximum isolation
   between them.
 
@@ -42,9 +42,9 @@ We will use the following definitions:
   * `loan realm` - a module for handling a Loan lifecycle
   * `transfer realm` - a module for handling electronic funds transfers
 
-* [Layer](./layer.md) - this is partial functionality of certain `realm`,
+* [Layer](./layer.md) - this is partial functionality of a certain `realm`,
   usually relating to some architectural layers (like database, front-end, etc.)
-  or functional aspect(like transaction processing, reporting, etc.).
+  or functional aspects (like transaction processing, reporting, etc.).
 
 :::note
   The primary goal of the `layers` is to name a set of `handlers`,
@@ -52,7 +52,7 @@ We will use the following definitions:
   By grouping them, it is easier to run them together.
 :::
 
-* `Handlers` - individual functions, usually grouped by their role, for example:
-  validations, error definitions, database schema, etc. These handlers are often
-  named in the form `subjectObjectPredicate`, to allow for name-spacing between realms,
-  `subject` being the namespace.
+* `Handlers` - individual functions, usually grouped by their role, for
+  example: validations, error definitions, database schema, etc. These
+  handlers are often named in the form `subjectObjectPredicate`, to allow
+  for name-spacing between realms, `subject` being the namespace.
