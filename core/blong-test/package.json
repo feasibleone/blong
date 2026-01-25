@@ -15,7 +15,7 @@
         "ci-publish": "npm publish --access public --provenance"
     },
     "type": "module",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "dependencies": {},
     "peerDependencies": {
         "@feasibleone/blong": "^1.0.0"
