@@ -45,5 +45,5 @@
         "write-translations": "docusaurus write-translations",
         "ci-publish": "echo \"pages=build\" >> $GITHUB_OUTPUT"
     },
-    "version": "1.0.0"
+    "version": "1.0.1"
 }
