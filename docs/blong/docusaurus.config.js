@@ -9,7 +9,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
     title: 'Blong',
-    tagline: 'API focused RAD framework',
+    tagline: 'API and DRY focused RAD framework',
     favicon: 'img/favicon.ico',
     url: 'https://feasibleone.github.io',
     baseUrl: '/blong-docs/',

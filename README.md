@@ -5,7 +5,7 @@
 
 # Blong
 
-API focused RAD framework
+API and DRY focused RAD framework
 
 [![docs](img/button.png)](https://feasibleone.github.io/blong-docs/)
 
