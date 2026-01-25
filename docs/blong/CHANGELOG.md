@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/feasibleone/blong/compare/blong-docs-v1.0.3...blong-docs-v1.0.4) (2026-01-25)
+
+
+### Bug Fixes
+
+* update tagline in Docusaurus config and add README files for login and test modules ([0dd37a4](https://github.com/feasibleone/blong/commit/0dd37a48a34d622e16544917a3f6ca89acbae43f))
+
 ## [1.0.3](https://github.com/feasibleone/blong/compare/blong-docs-v1.0.2...blong-docs-v1.0.3) (2026-01-25)
 
 

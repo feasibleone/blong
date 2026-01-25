@@ -18,7 +18,7 @@
         "/browser.js": "./dist/browser.js"
     },
     "type": "module",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "dependencies": {
         "@sinclair/typebox": "^0.33.7",
         "ut-function.cbc": "^1.1.6",
