@@ -11,8 +11,8 @@ const config = {
     title: 'Blong',
     tagline: 'API and DRY focused RAD framework',
     favicon: 'img/favicon.ico',
-    url: 'https://feasibleone.github.io',
-    baseUrl: '/blong-docs/',
+    url: 'http://blong.feasible.one',
+    baseUrl: '/',
 
     organizationName: 'feasibleone', // Usually your GitHub org/user name.
     projectName: 'blong-docs', // Usually your repo name.
