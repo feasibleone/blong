@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/feasibleone/blong/compare/blong-login-v1.0.2...blong-login-v1.0.3) (2026-01-25)
+
+
+### Bug Fixes
+
+* add repository field to package.json files for consistency ([0d881d5](https://github.com/feasibleone/blong/commit/0d881d58fbaf52a03c6a4e89e50901c3440c56f6))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-login-v1.0.1...blong-login-v1.0.2) (2026-01-25)
 
 
