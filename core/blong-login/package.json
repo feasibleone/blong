@@ -16,6 +16,7 @@
     "exports": {
         "./server.js": "./dist/server.js",
         "./browser.js": "./dist/browser.js",
+        "./dist/package.json": "./package.json",
         "./package.json": "./package.json"
     },
     "type": "module",
