@@ -19,7 +19,7 @@
     "name": "@feasibleone/blong",
     "scripts": {
         "build": "heft build --clean",
-        "ci-publish": "npm publish --access public"
+        "ci-publish": "npm publish --access public --provenance"
     },
     "type": "module",
     "version": "1.0.0"
