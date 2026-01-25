@@ -6,10 +6,12 @@
     },
     "type": "module",
     "version": "1.0.0",
-    "dependencies": {
-        "@feasibleone/blong": "workspace:^1.0.0"
+    "dependencies": {},
+    "peerDependencies": {
+        "@feasibleone/blong": "^1.0.0"
     },
     "devDependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
         "@rushstack/eslint-config": "^4.0.1",
         "@rushstack/heft-lint-plugin": "^1.1.10",
         "@rushstack/heft-typescript-plugin": "^1.1.7",

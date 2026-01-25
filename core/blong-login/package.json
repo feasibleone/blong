@@ -11,12 +11,15 @@
     "type": "module",
     "version": "1.0.0",
     "dependencies": {
-        "@feasibleone/blong": "workspace:^1.0.0",
         "@sinclair/typebox": "^0.33.7",
         "ut-function.cbc": "^1.1.6",
         "jose": "^5.7.0"
     },
+    "peerDependencies": {
+        "@feasibleone/blong": "^1.0.0"
+    },
     "devDependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
         "@rushstack/eslint-config": "^4.0.1",
         "@rushstack/heft": "^1.1.7",
         "@rushstack/heft-lint-plugin": "^1.1.10",
