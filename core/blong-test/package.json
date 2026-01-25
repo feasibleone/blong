@@ -2,7 +2,8 @@
     "name": "@feasibleone/blong-test",
     "scripts": {
         "build": "heft build --clean",
-        "ci-unit": "true"
+        "ci-unit": "true",
+        "ci-publish": "npm publish --access public --provenance"
     },
     "type": "module",
     "version": "1.0.0",

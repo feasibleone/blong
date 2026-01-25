@@ -3,6 +3,7 @@
     "packages": {
         "core/blong": {},
         "core/blong-login": {},
+        "core/blong-test": {},
         "docs/blong": {}
     }
 }
