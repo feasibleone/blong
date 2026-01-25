@@ -529,7 +529,7 @@ export type SolutionFactory<T extends TObject = TObject> = (definition: {
     type: JavaScriptTypeBuilder;
 }) => IModuleConfig<T> | Promise<IModuleConfig<T>>;
 
-const Kind: symbol = Symbol('kind');
+const Kind: symbol = Symbol.for('blong:kind');
 
 export abstract class Internal {
     #log: ILog;

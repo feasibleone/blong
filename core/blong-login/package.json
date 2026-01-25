@@ -13,9 +13,9 @@
         "build": "heft build --clean",
         "ci-publish": "npm publish --access public --provenance"
     },
-    "export": {
-        "/server.js": "./dist/server.js",
-        "/browser.js": "./dist/browser.js"
+    "exports": {
+        "./server.js": "./dist/server.js",
+        "./browser.js": "./dist/browser.js"
     },
     "type": "module",
     "version": "1.0.6",
