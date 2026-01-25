@@ -1,5 +1,6 @@
 {
     "name": "@feasibleone/blong-test",
+    "description": "Development and unit testing utilities for the Blong framework",
     "scripts": {
         "build": "heft build --clean",
         "ci-unit": "true",

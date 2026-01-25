@@ -1,5 +1,6 @@
 {
     "name": "@feasibleone/blong-login",
+    "description": "Login and authentication utilities for the Blong framework",
     "scripts": {
         "build": "heft build --clean",
         "ci-publish": "npm publish --access public --provenance"

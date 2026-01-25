@@ -1,4 +1,6 @@
 {
+    "name": "@feasibleone/blong",
+    "description": "API and DRY focused RAD framework https://feasibleone.github.io/blong-docs",
     "dependencies": {
         "@sinclair/typebox": "^0.33.7",
         "pino": "^10.2.1",
@@ -16,7 +18,6 @@
     "exports": {
         ".": "./dist/types.js"
     },
-    "name": "@feasibleone/blong",
     "scripts": {
         "build": "heft build --clean",
         "ci-publish": "npm publish --access public --provenance"
