@@ -15,7 +15,8 @@
     },
     "exports": {
         "./server.js": "./dist/server.js",
-        "./browser.js": "./dist/browser.js"
+        "./browser.js": "./dist/browser.js",
+        "./package.json": "./package.json"
     },
     "type": "module",
     "version": "1.0.6",
