@@ -1,12 +1,5 @@
 # Changelog
 
-## [1.0.1](https://github.com/feasibleone/blong/compare/blong-v1.0.0...blong-v1.0.1) (2026-01-25)
-
-
-### Bug Fixes
-
-* update ci-publish script to include --provenance flag in package.json ([6580bd3](https://github.com/feasibleone/blong/commit/6580bd38dca27f55b730c062fe9756892d56dd37))
-
 ## 1.0.0 (2026-01-25)
 
 
@@ -17,6 +10,7 @@
 
 ### Bug Fixes
 
+* add ci-publish script to package.json and include blong-test in release-please config ([b982769](https://github.com/feasibleone/blong/commit/b9827690fce7844fcf45d1287fbd87baea0723cd))
 * add ESLint configuration files and update Watch class to use FSWatcher type ([3f358aa](https://github.com/feasibleone/blong/commit/3f358aae8c00cd223a612225f4663a054678d198))
 * prepare for publishing ([6c4e8b1](https://github.com/feasibleone/blong/commit/6c4e8b1da59f5c79ddda19708276d746af6a64ca))
-* update type definitions ([c59d627](https://github.com/feasibleone/blong/commit/c59d6275e7f3b0fb3790a7fc52e7619ef0a825ff))
+* update package.json to correctly define peerDependencies and remove unnecessary dependencies ([eb55a88](https://github.com/feasibleone/blong/commit/eb55a88b4883f4d4feef014dfe0537c8e6b4a90e))

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/feasibleone/blong/compare/blong-login-v1.0.0...blong-login-v1.0.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* update ci-publish script to include --provenance flag in package.json ([6580bd3](https://github.com/feasibleone/blong/commit/6580bd38dca27f55b730c062fe9756892d56dd37))
+* update package.json to correctly define peerDependencies and remove unnecessary dependencies ([eb55a88](https://github.com/feasibleone/blong/commit/eb55a88b4883f4d4feef014dfe0537c8e6b4a90e))
+
 ## 1.0.0 (2026-01-25)
 
 
