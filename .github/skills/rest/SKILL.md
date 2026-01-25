@@ -435,7 +435,7 @@ export default api(() => ({
     namespace: {
         agreement: [
             // External Mojaloop API
-            'https://raw.githubusercontent.com/mojaloop/quoting-service/feat/fx-impl/src/interface/swagger.json',
+            'https://raw.githubusercontent.com/mojaloop/quoting-service/main/src/interface/swagger.json',
             // Local extensions with x-blong-method
             './agreement.yaml',
         ],
