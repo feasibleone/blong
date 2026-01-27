@@ -2,7 +2,7 @@
     "name": "rest-fs",
     "displayName": "REST Filesystem",
     "description": "A filesystem provider backed by REST API",
-    "version": "0.0.7",
+    "version": "1.0.0",
     "repository": {
         "url": "git+https://github.com/feasibleone/wanples.git"
     },

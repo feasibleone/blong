@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.0.4...blong-docs-v1.1.0) (2026-01-27)
+
+
+### Features
+
+* implement rest-fs extension ([29589ff](https://github.com/feasibleone/blong/commit/29589ff7d57cb078b36c9df36ce27f513b9a8b3a))
+
+
+### Bug Fixes
+
+* update Docusaurus config URL and base path; add CNAME file ([651a89d](https://github.com/feasibleone/blong/commit/651a89db352ad9d9d45d418e630ac2cc9d8fd279))
+
 ## [1.0.4](https://github.com/feasibleone/blong/compare/blong-docs-v1.0.3...blong-docs-v1.0.4) (2026-01-25)
 
 

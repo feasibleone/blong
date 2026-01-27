@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-test-v1.0.6...blong-test-v1.1.0) (2026-01-27)
+
+
+### Features
+
+* implement rest-fs extension ([29589ff](https://github.com/feasibleone/blong/commit/29589ff7d57cb078b36c9df36ce27f513b9a8b3a))
+
 ## [1.0.6](https://github.com/feasibleone/blong/compare/blong-test-v1.0.5...blong-test-v1.0.6) (2026-01-25)
 
 
