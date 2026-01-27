@@ -8,18 +8,18 @@ const restFsPlugin = require('./restfs-plugin');
  */
 async function initializeSampleData(baseDir) {
     try {
-        await fs.mkdir(baseDir, { recursive: true });
+        await fs.mkdir(baseDir, {recursive: true});
 
         // Create some sample files
         await fs.writeFile(
             path.join(baseDir, 'welcome.txt'),
-            'Welcome to REST Filesystem with Hapi!\n\nThis is a sample file.'
+            'Welcome to REST Filesystem with Hapi!\n\nThis is a sample file.',
         );
 
-        await fs.mkdir(path.join(baseDir, 'sample-folder'), { recursive: true });
+        await fs.mkdir(path.join(baseDir, 'sample-folder'), {recursive: true});
         await fs.writeFile(
             path.join(baseDir, 'sample-folder', 'readme.md'),
-            '# Sample Folder\n\nThis is a sample markdown file in a subfolder.'
+            '# Sample Folder\n\nThis is a sample markdown file in a subfolder.',
         );
 
         console.log('Sample files created successfully');
@@ -41,9 +41,9 @@ const init = async () => {
             cors: {
                 origin: ['*'],
                 headers: ['Accept', 'Content-Type', 'Authorization'],
-                additionalHeaders: ['X-Requested-With']
-            }
-        }
+                additionalHeaders: ['X-Requested-With'],
+            },
+        },
     });
 
     // Register the REST filesystem plugin
@@ -52,8 +52,8 @@ const init = async () => {
         options: {
             baseDir: baseDir,
             routePrefix: '/api/fs',
-            maxFileSize: 52428800 // 50MB
-        }
+            maxFileSize: 52428800, // 50MB
+        },
     });
 
     // Initialize sample data
@@ -72,7 +72,7 @@ const init = async () => {
     console.log('  POST   /api/fs/copy');
 };
 
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', err => {
     console.error(err);
     process.exit(1);
 });

@@ -23,7 +23,6 @@ const restFsPlugin = {
     name: 'rest-fs',
     version: '1.0.0',
     register: async function (server, options) {
-
         // GET /stat/{path*} - Get file/directory metadata
         server.route({
             method: 'GET',
@@ -42,9 +41,9 @@ const restFsPlugin = {
                         size: stats.size,
                     };
                 } catch (error) {
-                    return h.response({ error: 'Not found' }).code(404);
+                    return h.response({error: 'Not found'}).code(404);
                 }
-            }
+            },
         });
 
         // GET /readdir/{path*} - List directory contents
@@ -56,7 +55,7 @@ const restFsPlugin = {
                     const requestPath = request.params.path || '/';
                     const fullPath = resolvePath(requestPath);
 
-                    const entries = await fs.readdir(fullPath, { withFileTypes: true });
+                    const entries = await fs.readdir(fullPath, {withFileTypes: true});
 
                     const result = entries.map(entry => ({
                         name: entry.name,
@@ -65,9 +64,9 @@ const restFsPlugin = {
 
                     return result;
                 } catch (error) {
-                    return h.response({ error: 'Directory not found' }).code(404);
+                    return h.response({error: 'Directory not found'}).code(404);
                 }
-            }
+            },
         });
 
         // POST /mkdir/{path*} - Create directory
@@ -79,12 +78,12 @@ const restFsPlugin = {
                     const requestPath = request.params.path || '/';
                     const fullPath = resolvePath(requestPath);
 
-                    await fs.mkdir(fullPath, { recursive: true });
-                    return { success: true };
+                    await fs.mkdir(fullPath, {recursive: true});
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         // GET /read/{path*} - Read file contents
@@ -99,9 +98,9 @@ const restFsPlugin = {
                     const content = await fs.readFile(fullPath);
                     return h.response(content).type('application/octet-stream');
                 } catch (error) {
-                    return h.response({ error: 'File not found' }).code(404);
+                    return h.response({error: 'File not found'}).code(404);
                 }
-            }
+            },
         });
 
         // POST /write/{path*} - Write file contents
@@ -114,7 +113,7 @@ const restFsPlugin = {
                     parse: false,
                     allow: 'application/octet-stream',
                     maxBytes: 52428800, // 50MB
-                }
+                },
             },
             handler: async (request, h) => {
                 try {
@@ -122,14 +121,14 @@ const restFsPlugin = {
                     const fullPath = resolvePath(requestPath);
 
                     // Ensure parent directory exists
-                    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+                    await fs.mkdir(path.dirname(fullPath), {recursive: true});
 
                     await fs.writeFile(fullPath, request.payload);
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         // DELETE /delete/{path*} - Delete file or directory
@@ -145,16 +144,16 @@ const restFsPlugin = {
                     const stats = await fs.stat(fullPath);
 
                     if (stats.isDirectory()) {
-                        await fs.rm(fullPath, { recursive });
+                        await fs.rm(fullPath, {recursive});
                     } else {
                         await fs.unlink(fullPath);
                     }
 
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: 'Not found' }).code(404);
+                    return h.response({error: 'Not found'}).code(404);
                 }
-            }
+            },
         });
 
         // POST /rename - Rename/move file or directory
@@ -163,16 +162,16 @@ const restFsPlugin = {
             path: '/api/fs/rename',
             handler: async (request, h) => {
                 try {
-                    const { oldPath, newPath } = request.payload;
+                    const {oldPath, newPath} = request.payload;
                     const oldFullPath = resolvePath(oldPath);
                     const newFullPath = resolvePath(newPath);
 
                     await fs.rename(oldFullPath, newFullPath);
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         // POST /copy - Copy file or directory
@@ -181,25 +180,25 @@ const restFsPlugin = {
             path: '/api/fs/copy',
             handler: async (request, h) => {
                 try {
-                    const { source, destination } = request.payload;
+                    const {source, destination} = request.payload;
                     const sourceFullPath = resolvePath(source);
                     const destFullPath = resolvePath(destination);
 
                     const stats = await fs.stat(sourceFullPath);
 
                     if (stats.isDirectory()) {
-                        await fs.cp(sourceFullPath, destFullPath, { recursive: true });
+                        await fs.cp(sourceFullPath, destFullPath, {recursive: true});
                     } else {
                         await fs.copyFile(sourceFullPath, destFullPath);
                     }
 
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
-    }
+    },
 };
 
 /**
@@ -207,18 +206,18 @@ const restFsPlugin = {
  */
 async function initialize() {
     try {
-        await fs.mkdir(BASE_DIR, { recursive: true });
+        await fs.mkdir(BASE_DIR, {recursive: true});
 
         // Create some sample files
         await fs.writeFile(
             path.join(BASE_DIR, 'welcome.txt'),
-            'Welcome to REST Filesystem!\n\nThis is a sample file.'
+            'Welcome to REST Filesystem!\n\nThis is a sample file.',
         );
 
-        await fs.mkdir(path.join(BASE_DIR, 'sample-folder'), { recursive: true });
+        await fs.mkdir(path.join(BASE_DIR, 'sample-folder'), {recursive: true});
         await fs.writeFile(
             path.join(BASE_DIR, 'sample-folder', 'readme.md'),
-            '# Sample Folder\n\nThis is a sample markdown file in a subfolder.'
+            '# Sample Folder\n\nThis is a sample markdown file in a subfolder.',
         );
 
         console.log(`Base directory: ${BASE_DIR}`);
@@ -239,9 +238,9 @@ const init = async () => {
             cors: {
                 origin: ['*'],
                 headers: ['Accept', 'Content-Type', 'Authorization'],
-                additionalHeaders: ['X-Requested-With']
-            }
-        }
+                additionalHeaders: ['X-Requested-With'],
+            },
+        },
     });
 
     // Register the REST filesystem plugin
@@ -263,7 +262,7 @@ const init = async () => {
     console.log('  POST   /api/fs/copy');
 };
 
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', err => {
     console.log(err);
     process.exit(1);
 });

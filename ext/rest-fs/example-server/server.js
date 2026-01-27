@@ -11,7 +11,7 @@ const BASE_DIR = path.join(__dirname, 'data');
 
 // Middleware
 app.use(bodyParser.json());
-app.use(bodyParser.raw({ type: 'application/octet-stream', limit: '50mb' }));
+app.use(bodyParser.raw({type: 'application/octet-stream', limit: '50mb'}));
 
 // CORS for development
 app.use((req, res, next) => {
@@ -48,7 +48,7 @@ app.get('/api/fs/stat/*', async (req, res) => {
             size: stats.size,
         });
     } catch (error) {
-        res.status(404).json({ error: 'Not found' });
+        res.status(404).json({error: 'Not found'});
     }
 });
 
@@ -58,7 +58,7 @@ app.get('/api/fs/readdir/*', async (req, res) => {
         const requestPath = req.params[0] || '/';
         const fullPath = resolvePath(requestPath);
 
-        const entries = await fs.readdir(fullPath, { withFileTypes: true });
+        const entries = await fs.readdir(fullPath, {withFileTypes: true});
 
         const result = entries.map(entry => ({
             name: entry.name,
@@ -67,7 +67,7 @@ app.get('/api/fs/readdir/*', async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        res.status(404).json({ error: 'Directory not found' });
+        res.status(404).json({error: 'Directory not found'});
     }
 });
 
@@ -77,10 +77,10 @@ app.post('/api/fs/mkdir/*', async (req, res) => {
         const requestPath = req.params[0] || '/';
         const fullPath = resolvePath(requestPath);
 
-        await fs.mkdir(fullPath, { recursive: true });
-        res.json({ success: true });
+        await fs.mkdir(fullPath, {recursive: true});
+        res.json({success: true});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({error: error.message});
     }
 });
 
@@ -93,7 +93,7 @@ app.get('/api/fs/read/*', async (req, res) => {
         const content = await fs.readFile(fullPath);
         res.send(content);
     } catch (error) {
-        res.status(404).json({ error: 'File not found' });
+        res.status(404).json({error: 'File not found'});
     }
 });
 
@@ -104,12 +104,12 @@ app.post('/api/fs/write/*', async (req, res) => {
         const fullPath = resolvePath(requestPath);
 
         // Ensure parent directory exists
-        await fs.mkdir(path.dirname(fullPath), { recursive: true });
+        await fs.mkdir(path.dirname(fullPath), {recursive: true});
 
         await fs.writeFile(fullPath, req.body);
-        res.json({ success: true });
+        res.json({success: true});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({error: error.message});
     }
 });
 
@@ -123,67 +123,67 @@ app.delete('/api/fs/delete/*', async (req, res) => {
         const stats = await fs.stat(fullPath);
 
         if (stats.isDirectory()) {
-            await fs.rm(fullPath, { recursive });
+            await fs.rm(fullPath, {recursive});
         } else {
             await fs.unlink(fullPath);
         }
 
-        res.json({ success: true });
+        res.json({success: true});
     } catch (error) {
-        res.status(404).json({ error: 'Not found' });
+        res.status(404).json({error: 'Not found'});
     }
 });
 
 // POST /rename - Rename/move file or directory
 app.post('/api/fs/rename', async (req, res) => {
     try {
-        const { oldPath, newPath } = req.body;
+        const {oldPath, newPath} = req.body;
         const oldFullPath = resolvePath(oldPath);
         const newFullPath = resolvePath(newPath);
 
         await fs.rename(oldFullPath, newFullPath);
-        res.json({ success: true });
+        res.json({success: true});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({error: error.message});
     }
 });
 
 // POST /copy - Copy file or directory
 app.post('/api/fs/copy', async (req, res) => {
     try {
-        const { source, destination } = req.body;
+        const {source, destination} = req.body;
         const sourceFullPath = resolvePath(source);
         const destFullPath = resolvePath(destination);
 
         const stats = await fs.stat(sourceFullPath);
 
         if (stats.isDirectory()) {
-            await fs.cp(sourceFullPath, destFullPath, { recursive: true });
+            await fs.cp(sourceFullPath, destFullPath, {recursive: true});
         } else {
             await fs.copyFile(sourceFullPath, destFullPath);
         }
 
-        res.json({ success: true });
+        res.json({success: true});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({error: error.message});
     }
 });
 
 // Initialize base directory
 async function initialize() {
     try {
-        await fs.mkdir(BASE_DIR, { recursive: true });
+        await fs.mkdir(BASE_DIR, {recursive: true});
 
         // Create some sample files
         await fs.writeFile(
             path.join(BASE_DIR, 'welcome.txt'),
-            'Welcome to REST Filesystem!\n\nThis is a sample file.'
+            'Welcome to REST Filesystem!\n\nThis is a sample file.',
         );
 
-        await fs.mkdir(path.join(BASE_DIR, 'sample-folder'), { recursive: true });
+        await fs.mkdir(path.join(BASE_DIR, 'sample-folder'), {recursive: true});
         await fs.writeFile(
             path.join(BASE_DIR, 'sample-folder', 'readme.md'),
-            '# Sample Folder\n\nThis is a sample markdown file in a subfolder.'
+            '# Sample Folder\n\nThis is a sample markdown file in a subfolder.',
         );
 
         console.log(`REST Filesystem server running on http://localhost:${PORT}`);

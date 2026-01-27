@@ -39,7 +39,7 @@ const plugin = {
         const resolvePath = createPathResolver(baseDir);
 
         // Ensure base directory exists
-        await fs.mkdir(baseDir, { recursive: true });
+        await fs.mkdir(baseDir, {recursive: true});
 
         // GET /stat/{path*} - Get file/directory metadata
         server.route({
@@ -59,9 +59,9 @@ const plugin = {
                         size: stats.size,
                     };
                 } catch (error) {
-                    return h.response({ error: 'Not found' }).code(404);
+                    return h.response({error: 'Not found'}).code(404);
                 }
-            }
+            },
         });
 
         // GET /readdir/{path*} - List directory contents
@@ -73,16 +73,16 @@ const plugin = {
                     const requestPath = request.params.path || '/';
                     const fullPath = resolvePath(requestPath);
 
-                    const entries = await fs.readdir(fullPath, { withFileTypes: true });
+                    const entries = await fs.readdir(fullPath, {withFileTypes: true});
 
                     return entries.map(entry => ({
                         name: entry.name,
                         type: entry.isDirectory() ? 'directory' : 'file',
                     }));
                 } catch (error) {
-                    return h.response({ error: 'Directory not found' }).code(404);
+                    return h.response({error: 'Directory not found'}).code(404);
                 }
-            }
+            },
         });
 
         // POST /mkdir/{path*} - Create directory
@@ -94,12 +94,12 @@ const plugin = {
                     const requestPath = request.params.path || '/';
                     const fullPath = resolvePath(requestPath);
 
-                    await fs.mkdir(fullPath, { recursive: true });
-                    return { success: true };
+                    await fs.mkdir(fullPath, {recursive: true});
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         // GET /read/{path*} - Read file contents
@@ -114,9 +114,9 @@ const plugin = {
                     const content = await fs.readFile(fullPath);
                     return h.response(content).type('application/octet-stream');
                 } catch (error) {
-                    return h.response({ error: 'File not found' }).code(404);
+                    return h.response({error: 'File not found'}).code(404);
                 }
-            }
+            },
         });
 
         // POST /write/{path*} - Write file contents
@@ -129,7 +129,7 @@ const plugin = {
                     parse: false,
                     allow: 'application/octet-stream',
                     maxBytes: options.maxFileSize || 52428800, // Default 50MB
-                }
+                },
             },
             handler: async (request, h) => {
                 try {
@@ -137,14 +137,14 @@ const plugin = {
                     const fullPath = resolvePath(requestPath);
 
                     // Ensure parent directory exists
-                    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+                    await fs.mkdir(path.dirname(fullPath), {recursive: true});
 
                     await fs.writeFile(fullPath, request.payload);
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         // DELETE /delete/{path*} - Delete file or directory
@@ -160,16 +160,16 @@ const plugin = {
                     const stats = await fs.stat(fullPath);
 
                     if (stats.isDirectory()) {
-                        await fs.rm(fullPath, { recursive });
+                        await fs.rm(fullPath, {recursive});
                     } else {
                         await fs.unlink(fullPath);
                     }
 
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: 'Not found' }).code(404);
+                    return h.response({error: 'Not found'}).code(404);
                 }
-            }
+            },
         });
 
         // POST /rename - Rename/move file or directory
@@ -178,16 +178,16 @@ const plugin = {
             path: `${routePrefix}/rename`,
             handler: async (request, h) => {
                 try {
-                    const { oldPath, newPath } = request.payload;
+                    const {oldPath, newPath} = request.payload;
                     const oldFullPath = resolvePath(oldPath);
                     const newFullPath = resolvePath(newPath);
 
                     await fs.rename(oldFullPath, newFullPath);
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         // POST /copy - Copy file or directory
@@ -196,28 +196,28 @@ const plugin = {
             path: `${routePrefix}/copy`,
             handler: async (request, h) => {
                 try {
-                    const { source, destination } = request.payload;
+                    const {source, destination} = request.payload;
                     const sourceFullPath = resolvePath(source);
                     const destFullPath = resolvePath(destination);
 
                     const stats = await fs.stat(sourceFullPath);
 
                     if (stats.isDirectory()) {
-                        await fs.cp(sourceFullPath, destFullPath, { recursive: true });
+                        await fs.cp(sourceFullPath, destFullPath, {recursive: true});
                     } else {
                         await fs.copyFile(sourceFullPath, destFullPath);
                     }
 
-                    return { success: true };
+                    return {success: true};
                 } catch (error) {
-                    return h.response({ error: error.message }).code(500);
+                    return h.response({error: error.message}).code(500);
                 }
-            }
+            },
         });
 
         console.log(`REST Filesystem plugin registered at ${routePrefix}`);
         console.log(`Base directory: ${baseDir}`);
-    }
+    },
 };
 
 module.exports = plugin;
