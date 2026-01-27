@@ -4,6 +4,7 @@
         "core/blong": {},
         "core/blong-login": {},
         "core/blong-test": {},
-        "docs/blong": {}
+        "docs/blong": {},
+        "ext/rest-fs": {}
     }
 }

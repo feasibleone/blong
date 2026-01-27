@@ -36,6 +36,6 @@
         "@rushstack/heft-lint-plugin": "^1.1.10",
         "@rushstack/heft-typescript-plugin": "^1.1.7",
         "eslint": "~9.39.2",
-        "typescript": "^5.5.4"
+        "typescript": "^5.9.3"
     }
 }

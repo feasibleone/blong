@@ -479,6 +479,12 @@
             "projectFolder": "docs/blong",
             "reviewCategory": "docs",
             "tags": ["docs"]
+        },
+        {
+            "packageName": "rest-fs",
+            "projectFolder": "ext/rest-fs",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

@@ -5,14 +5,46 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
+            "name": "Run Extension",
+            "type": "extensionHost",
             "request": "launch",
-            "name": "tools",
-            "skipFiles": ["<node_internals>/**"],
-            "runtimeExecutable": "${workspaceFolder}/core/blong-gogo/bin/blong.ts",
-            "cwd": "${workspaceFolder}/dev/tools",
-            "console": "integratedTerminal",
-            "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"]
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/ext/rest-fs",
+                "--disable-extensions"
+            ],
+            "outFiles": ["${workspaceFolder}/ext/rest-fs/dist/**/*.js"],
+            "preLaunchTask": "${defaultBuildTask}",
+            "sourceMaps": true
+        },
+        {
+            "name": "Run Extension (No Build)",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}/ext/rest-fs"],
+            "outFiles": ["${workspaceFolder}/ext/rest-fs/dist/**/*.js"],
+            "sourceMaps": true
+        },
+        {
+            "name": "Run Extension (with sample workspace)",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/ext/rest-fs",
+                "${workspaceFolder}/ext/rest-fs/example-server/data"
+            ],
+            "outFiles": ["${workspaceFolder}/ext/rest-fs/dist/**/*.js"],
+            "preLaunchTask": "${defaultBuildTask}"
+        },
+        {
+            "name": "Extension Tests",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/ext/rest-fs",
+                "--extensionTestsPath=${workspaceFolder}/ext/rest-fs/out/test/suite/index"
+            ],
+            "outFiles": ["${workspaceFolder}/ext/rest-fs/out/test/**/*.js"],
+            "preLaunchTask": "${defaultBuildTask}"
         }
     ]
 }

@@ -1,0 +1,16 @@
+{
+  "name": "rest-fs-example-server",
+  "version": "1.0.0",
+  "description": "Example REST API server for testing the REST Filesystem VS Code extension",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:hapi": "node server-hapi.js",
+    "start:plugin": "node server-with-plugin.js"
+  },
+  "dependencies": {
+    "@hapi/hapi": "^21.4.4",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2"
+  }
+}
