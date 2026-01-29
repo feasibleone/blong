@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-v1.1.0...blong-v1.2.0) (2026-01-29)
+
+
+### Features
+
+* export default object containing various types and handlers ([d68407e](https://github.com/feasibleone/blong/commit/d68407e6ac9ba28a1501c4b267afd3918d534959))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-v1.0.7...blong-v1.1.0) (2026-01-27)
 
 

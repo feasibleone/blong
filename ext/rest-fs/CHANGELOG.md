@@ -4,6 +4,13 @@ All notable changes to the "rest-filesystem" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/rest-fs-v1.0.0...rest-fs-v1.1.0) (2026-01-29)
+
+
+### Features
+
+* add REST shell task provider and related configurations ([6f9d5ac](https://github.com/feasibleone/blong/commit/6f9d5ac7a001744357d4e71b8f22f690a2b0e589))
+
 ## 1.0.0 (2026-01-27)
 
 
