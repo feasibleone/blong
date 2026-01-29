@@ -598,3 +598,16 @@ export const kind = <T>(
     | 'adapter'
     | 'orchestrator'
     | 'handler' => what[Kind];
+
+export default {
+    handler,
+    library,
+    validation,
+    api,
+    realm,
+    server,
+    browser,
+    adapter,
+    orchestrator,
+    kind,
+};
