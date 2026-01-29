@@ -2,7 +2,7 @@
     "name": "rest-fs",
     "displayName": "REST Filesystem",
     "description": "A filesystem provider backed by REST API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },
