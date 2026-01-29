@@ -1,0 +1,3 @@
+Welcome to REST Filesystem!
+
+This is a sample file.

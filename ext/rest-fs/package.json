@@ -4,7 +4,7 @@
     "description": "A filesystem provider backed by REST API",
     "version": "1.0.0",
     "repository": {
-        "url": "git+https://github.com/feasibleone/wanples.git"
+        "url": "git+https://github.com/feasibleone/blong.git"
     },
     "license": "BlueOak-1.0.0",
     "publisher": "undertree",
@@ -33,6 +33,29 @@
             {
                 "command": "restfs.configure",
                 "title": "REST FS: Configure API Endpoint"
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "restfs-shell",
+                "required": [
+                    "workspace",
+                    "command"
+                ],
+                "properties": {
+                    "workspace": {
+                        "type": "string",
+                        "description": "Name of the REST FS workspace to execute the shell command in"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to execute on the REST backend"
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "Optional working directory for the shell command"
+                    }
+                }
             }
         ],
         "configuration": {

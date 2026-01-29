@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "restfs-shell",
+            "label": "REST Shell: List Files",
+            "workspace": "local",
+            "command": "ls -la",
+            "cwd": "/"
+        },
+        {
+            "type": "restfs-shell",
+            "label": "REST Shell: Echo Test",
+            "workspace": "local",
+            "command": "echo 'Hello from REST shell!'"
+        },
+        {
+            "type": "restfs-shell",
+            "label": "REST Shell: Node Version",
+            "workspace": "local",
+            "command": "node --version"
+        },
+        {
+            "type": "restfs-shell",
+            "label": "REST Shell: PWD",
+            "workspace": "local",
+            "command": "pwd"
+        }
+    ]
+}

@@ -1,5 +1,14 @@
 import * as vscode from 'vscode';
 import {RestFileSystemProvider} from './restFileSystemProvider';
+import {RestShellTaskProvider} from './restShellTaskProvider';
+
+type RestFsWorkspaceConfig = Record<
+    string,
+    {
+        baseUrl: string;
+        headers?: Record<string, string>;
+    }
+>;
 
 /**
  * This method is called when your extension is activated
@@ -11,8 +20,13 @@ export function activate(context: vscode.ExtensionContext) {
     // Get configuration for the REST API endpoint
     const config = vscode.workspace.getConfiguration('restfs');
 
+    const workspaceConfig = config.get<RestFsWorkspaceConfig>(
+        'workspace',
+        {} as RestFsWorkspaceConfig,
+    );
+
     // Create and register the filesystem provider
-    const restFs = new RestFileSystemProvider(config.get('workspace', {}));
+    const restFs = new RestFileSystemProvider(workspaceConfig);
 
     // Register the filesystem provider for the 'restfs' scheme
     const provider = vscode.workspace.registerFileSystemProvider('restfs', restFs, {
@@ -47,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
             const uri = vscode.Uri.parse(`restfs://${workspace}/`);
             try {
                 await vscode.commands.executeCommand('vscode.openFolder', uri, {
-                    forceNewWindow: true,
+                    forceNewWindow: false,
                 });
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to open REST filesystem: ${error}`);
@@ -65,6 +79,9 @@ export function activate(context: vscode.ExtensionContext) {
                 placeHolder: 'Select REST FS workspace to configure',
             },
         );
+        if (!workspace) {
+            return;
+        }
         const baseUrl = await vscode.window.showInputBox({
             prompt: 'Enter REST API base URL',
             value: config.get<string>(
@@ -73,6 +90,9 @@ export function activate(context: vscode.ExtensionContext) {
             ),
             placeHolder: 'http://localhost:3000/api/fs',
         });
+        if (!baseUrl) {
+            return;
+        }
         const userName = await vscode.window.showInputBox({
             prompt: 'Enter Username (leave blank if not required)',
             value:
@@ -149,6 +169,15 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(addWorkspaceCommand);
+
+    // Register shell task provider that uses a REST shell endpoint and streams output
+    const shellTaskProvider = new RestShellTaskProvider(workspaceConfig);
+    const shellTaskProviderRegistration = vscode.tasks.registerTaskProvider(
+        RestShellTaskProvider.taskType,
+        shellTaskProvider,
+    );
+
+    context.subscriptions.push(shellTaskProviderRegistration);
 }
 
 export function deactivate() {}

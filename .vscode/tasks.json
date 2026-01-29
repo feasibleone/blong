@@ -4,6 +4,9 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "options": {
+                "cwd": "${workspaceFolder}/ext/rest-fs"
+            },
             "label": "watch",
             "dependsOn": ["npm: watch:tsc", "npm: watch:esbuild"],
             "presentation": {
@@ -15,6 +18,9 @@
             }
         },
         {
+            "options": {
+                "cwd": "${workspaceFolder}/ext/rest-fs"
+            },
             "type": "npm",
             "script": "watch:esbuild",
             "group": "build",
@@ -27,6 +33,9 @@
             }
         },
         {
+            "options": {
+                "cwd": "${workspaceFolder}/ext/rest-fs"
+            },
             "type": "npm",
             "script": "watch:tsc",
             "group": "build",
@@ -39,6 +48,9 @@
             }
         },
         {
+            "options": {
+                "cwd": "${workspaceFolder}/ext/rest-fs"
+            },
             "type": "npm",
             "script": "watch-tests",
             "problemMatcher": "$tsc-watch",
@@ -50,6 +62,9 @@
             "group": "build"
         },
         {
+            "options": {
+                "cwd": "${workspaceFolder}/ext/rest-fs"
+            },
             "label": "tasks: watch-tests",
             "dependsOn": ["npm: watch", "npm: watch-tests"],
             "problemMatcher": []
