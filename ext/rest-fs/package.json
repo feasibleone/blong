@@ -103,10 +103,14 @@
         "ci-unit": "xvfb-run -a npm run test",
         "ci-lint": "npm run lint"
     },
+    "dependencies": {
+        "ws": "^8.18.0"
+    },
     "devDependencies": {
         "@types/vscode": "^1.107.0",
         "@types/mocha": "^10.0.10",
         "@types/node": "^24",
+        "@types/ws": "^8.5.13",
         "typescript-eslint": "^8.48.1",
         "eslint": "~9.39.2",
         "esbuild": "^0.27.1",
