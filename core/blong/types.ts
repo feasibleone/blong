@@ -1,3 +1,12 @@
+// import type {S3Client} from '@aws-sdk/client-s3';
+import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
+// import {
+//     AppsV1Api,
+//     CoreV1Api,
+//     NetworkingV1Api,
+//     RbacAuthorizationV1Api,
+//     Watch,
+// } from '@kubernetes/client-node';
 import {
     Type,
     type JavaScriptTypeBuilder,
@@ -9,10 +18,48 @@ import {
     type TSchema,
     type TString,
 } from '@sinclair/typebox';
+import type {IncomingWebhook} from '@slack/webhook';
+import type {MongoClient} from 'mongodb';
+// import type {client} from 'node-vault';
 import type {Dirent} from 'node:fs';
+import type {Duplex} from 'node:stream';
 import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
 import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
+import type {Knex} from './knex.js';
+
+// export {
+//     AppsV1Api,
+//     CoreV1Api,
+//     NetworkingV1Api,
+//     RbacAuthorizationV1Api,
+//     Watch,
+// } from '@kubernetes/client-node';
+export * from '@slack/webhook';
+export * from 'mongodb';
+// export type {client} from 'node-vault';
+export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
+// export type {Level, LogFn, Logger as PinoLogger} from 'pino';
+export type {Knex} from './knex.js';
+
+export type ServerContext = {
+    queryBuilder?: Knex;
+    // coreV1Api?: CoreV1Api;
+    // appsV1Api?: AppsV1Api;
+    // networkingV1Api?: NetworkingV1Api;
+    // rbacV1Api?: RbacAuthorizationV1Api;
+    // watcher?: Watch;
+    kcAdminClient?: KeycloakAdminClient;
+    kafkaStream?: Duplex;
+    mongodb?: MongoClient;
+    // s3?: S3Client;
+    slack?: IncomingWebhook;
+    // vault?: client;
+};
+
+export type BrowserContext = {};
+
+export type AdapterContext = ServerContext & BrowserContext;
 
 export interface ILog {
     logger: (level: Level, bindings: object) => ILogger;
@@ -30,14 +77,14 @@ export interface IErrorFactory {
     register<T>(errorsMap: T): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
 }
 
-interface IError {
+export interface IError {
     getError: IErrorFactory['get'];
     fetchErrors: IErrorFactory['fetch'];
     defineError: IErrorFactory['define'];
     register: IErrorFactory['register'];
 }
 
-export type Config<T> = {
+export type Config<T, C> = {
     id: string;
     type: string;
     pkg: {
@@ -47,7 +94,7 @@ export type Config<T> = {
     format?: {
         sizeAdjust?: number;
     };
-    context: object;
+    context: C;
     debug: boolean;
     test: boolean;
     disconnectOnError: boolean;
@@ -182,26 +229,29 @@ export interface IErrorMap {
           };
 }
 
-interface IAdapter<T> {
-    config?: Config<T>;
+export interface IAdapter<T, C> {
+    config?: Config<T, C>;
     configBase?: string;
     log?: ILogger;
     errors?: Errors<IErrorMap>;
-    imported?: ReturnType<IAdapterFactory<T>>;
+    imported?: ReturnType<IAdapterFactory<T, C>>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
-    init?: (this: ReturnType<IAdapterFactory<T>>, ...config: Partial<Config<T>>[]) => void;
-    start?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
-    ready?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
-    stop?: (this: ReturnType<IAdapterFactory<T>>) => Promise<object>;
-    connected?: (this: ReturnType<IAdapterFactory<T>>) => Promise<boolean>;
+    init?: (this: ReturnType<IAdapterFactory<T, C>>, ...config: Partial<Config<T, C>>[]) => void;
+    start?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
+    ready?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
+    stop?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
+    connected?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<boolean>;
     error?: (error: Error, $meta: IMeta) => void;
-    pack?: (this: ReturnType<IAdapterFactory<T>>, packet: {size: number; data: Buffer}) => Buffer;
+    pack?: (
+        this: ReturnType<IAdapterFactory<T, C>>,
+        packet: {size: number; data: Buffer},
+    ) => Buffer;
     unpackSize?: (
-        this: ReturnType<IAdapterFactory<T>>,
+        this: ReturnType<IAdapterFactory<T, C>>,
         buffer: Buffer,
     ) => {size: number; data: Buffer};
     unpack?: (
-        this: ReturnType<IAdapterFactory<T>>,
+        this: ReturnType<IAdapterFactory<T, C>>,
         buffer: Buffer,
         options?: {size: number},
     ) => Buffer;
@@ -210,18 +260,18 @@ interface IAdapter<T> {
     request?: () => Promise<unknown>;
     publish?: () => Promise<unknown>;
     drain?: () => void;
-    findValidation?: (this: ReturnType<IAdapterFactory<T>>, $meta: IMeta) => () => object;
+    findValidation?: (this: ReturnType<IAdapterFactory<T, C>>, $meta: IMeta) => () => object;
     getConversion?: (
-        this: ReturnType<IAdapterFactory<T>>,
+        this: ReturnType<IAdapterFactory<T, C>>,
         $meta: IMeta,
         type: 'send' | 'receive',
     ) => {name: string; fn: () => object};
-    findHandler?: (this: ReturnType<IAdapterFactory<T>>, name: string) => () => unknown;
-    handles?: (this: ReturnType<IAdapterFactory<T>>, name: string) => boolean;
+    findHandler?: (this: ReturnType<IAdapterFactory<T, C>>, name: string) => () => unknown;
+    handles?: (this: ReturnType<IAdapterFactory<T, C>>, name: string) => boolean;
     forNamespaces?: <T>(reducer: (prev: T, current: unknown) => T, initial: T) => T;
     methodPath?: (name: string) => string;
     dispatch?: (...params: unknown[]) => Promise<unknown>;
-    exec?: (this: ReturnType<IAdapterFactory<T>>, ...params: unknown[]) => Promise<unknown>;
+    exec?: (this: ReturnType<IAdapterFactory<T, C>>, ...params: unknown[]) => Promise<unknown>;
     bytesSent?: (count: number) => void;
     bytesReceived?: (count: number) => void;
     msgSent?: (count: number) => void;
@@ -235,9 +285,9 @@ interface IAdapter<T> {
     ) => void;
 }
 
-export interface IAdapterFactory<T = Record<string, unknown>> {
+export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
     config?: unknown;
-    (api: IApi): IAdapter<T>;
+    (api: IApi): IAdapter<T, C>;
 }
 
 export interface IMeta {
@@ -314,7 +364,7 @@ export interface IMeta {
     validation?: unknown;
 }
 
-type HRTime = [number, number];
+export type HRTime = [number, number];
 
 export interface IContext {
     trace: number;
@@ -351,7 +401,7 @@ export type Errors<T> = {
     [name in keyof T]: (params?: unknown, $meta?: IMeta) => ITypedError;
 };
 
-interface IBaseConfig extends TObject<{
+export interface IBaseConfig extends TObject<{
     watch: TObject<{
         test: TArray<TString>;
     }>;
@@ -392,11 +442,11 @@ export interface ILogger {
     fatal?: LogFn;
 }
 
-interface IStep {
+export interface IStep {
     name: string;
     method?: string;
 }
-type Sequence = (boolean | string | IStep)[];
+export type Sequence = (boolean | string | IStep)[];
 
 export type GatewaySchema = (
     | {
@@ -433,7 +483,7 @@ export type GatewaySchema = (
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
 export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.PathItemObject;
 
-interface ILib {
+export interface ILib {
     type: JavaScriptTypeBuilder;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
@@ -446,7 +496,7 @@ interface ILib {
     merge<T>(...args: unknown[]): T;
 }
 
-type ValidationFn = () => GatewaySchema;
+export type ValidationFn = () => GatewaySchema;
 export interface IValidationProxy {
     type: JavaScriptTypeBuilder;
     handler: {
@@ -459,25 +509,29 @@ export interface IValidationProxy {
         [name: string]: (...params: unknown[]) => ITypedError;
     };
 }
-type ValidationDefinition = (
+export type ValidationDefinition = (
     blong: IValidationProxy,
 ) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
 
-type ApiDefinition = (blong: IValidationProxy) => {
+export type ApiDefinition = (blong: IValidationProxy) => {
     namespace: Record<
         string,
         string | (string | Partial<OpenAPI.Document & {'x-blong-namespace': string}>)[]
     >;
 };
 
-type PortHandler = <T>(
-    this: ReturnType<IAdapterFactory>,
+export type PortHandler<T, C> = <R>(
+    this: ReturnType<IAdapterFactory<T, C>>,
+    params: unknown,
+    $meta: IMeta,
+    context?: IContext,
+) => Promise<R> | R;
+export type PortHandlerBound = <T>(
     params: unknown,
     $meta: IMeta,
     context?: IContext,
 ) => Promise<T> | T;
-type PortHandlerBound = <T>(params: unknown, $meta: IMeta, context?: IContext) => Promise<T> | T;
-type LibFn = <T>(...params: unknown[]) => T;
+export type LibFn = <T>(...params: unknown[]) => T;
 export interface IRemoteHandler {
     [name: string]: PortHandlerBound;
 }
@@ -502,13 +556,13 @@ export interface IHandlerProxy<T> {
     };
 }
 
-type ImportProxyCallback<T> = (
+export type ImportProxyCallback<T, C> = (
     blong: IHandlerProxy<T>,
-) => PortHandler | IAdapterFactory | Record<string, PortHandler>;
-type Definition<T> = object | ImportProxyCallback<T> | ImportProxyCallback<T>[];
+) => PortHandler<T, C> | IAdapterFactory<T, C> | Record<string, PortHandler<T, C>>;
+export type Definition<T, C> = object | ImportProxyCallback<T, C> | ImportProxyCallback<T, C>[];
 
-type LibProxyCallback<T> = (blong: IHandlerProxy<T>) => Record<string, LibFn> | LibFn;
-type Lib<T> = object | LibProxyCallback<T> | LibProxyCallback<T>[];
+export type LibProxyCallback<T> = (blong: IHandlerProxy<T>) => Record<string, LibFn> | LibFn;
+export type Lib<T> = object | LibProxyCallback<T> | LibProxyCallback<T>[];
 
 export type ModuleApi = {
     config: Record<string, unknown>;
@@ -522,7 +576,9 @@ export type ModuleApi = {
     feature: (paths: string | string[]) => ModuleApi;
     step: (step: Record<string, () => IStep>) => ModuleApi;
 } & {
-    [name: string]: (blong: Definition<Record<string, unknown>>) => ModuleApi;
+    [name: string]: (
+        blong: Definition<Record<string, unknown>, Record<string, unknown>>,
+    ) => ModuleApi;
 };
 
 export type SolutionFactory<T extends TObject = TObject> = (definition: {
@@ -537,7 +593,7 @@ export abstract class Internal {
     public constructor(api?: {log: ILog}) {
         this.#log = api?.log;
     }
-    protected merge: typeof merge = (...args) => {
+    protected merge: ILib['merge'] = (...args) => {
         const result = merge(...args);
         if (result.logLevel && this.#log)
             this.log = this.#log.logger(result.logLevel, {name: this.constructor.name});
@@ -547,8 +603,9 @@ export abstract class Internal {
     public async start(...params: unknown[]): Promise<void> {}
 }
 
-export const handler = <T = Record<string, unknown>>(definition: Definition<T>): Definition<T> =>
-    Object.defineProperty(definition, Kind, {value: 'handler'});
+export const handler = <T = Record<string, unknown>, C = AdapterContext>(
+    definition: Definition<T, C>,
+): Definition<T, C> => Object.defineProperty(definition, Kind, {value: 'handler'});
 export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T> =>
     Object.defineProperty(definition, Kind, {value: 'lib'});
 export const validation = (validation: ValidationDefinition): ValidationDefinition =>
@@ -582,10 +639,12 @@ export const server = <T extends TObject>(definition: SolutionFactory<T>): Solut
     Object.defineProperty(definition, Kind, {value: 'server'});
 export const browser = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'browser'});
-export const adapter = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =>
-    Object.defineProperty(definition, Kind, {value: 'adapter'});
-export const orchestrator = <T>(definition: IAdapterFactory<T>): IAdapterFactory<T> =>
-    Object.defineProperty(definition, Kind, {value: 'orchestrator'});
+export const adapter = <T, C = AdapterContext>(
+    definition: IAdapterFactory<T, C>,
+): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'adapter'});
+export const orchestrator = <T, C = AdapterContext>(
+    definition: IAdapterFactory<T, C>,
+): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'orchestrator'});
 export const kind = <T>(
     what: T,
 ):

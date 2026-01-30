@@ -30,7 +30,7 @@
             "request": "launch",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}/ext/rest-fs",
-                "${workspaceFolder}/ext/rest-fs/example-server/data"
+                "${workspaceFolder}/ext/rest-fs/example-server"
             ],
             "outFiles": ["${workspaceFolder}/ext/rest-fs/dist/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}"

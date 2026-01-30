@@ -15,6 +15,9 @@ export interface IConfig {
         encode: (data: object[], $meta, context, log) => string | Buffer;
         decode: (buff: string | Buffer, $meta, context, log) => object[];
     };
+    context: {
+        kafkaStream?: Duplex;
+    };
 }
 
 export default adapter<IConfig>(api => {
@@ -31,7 +34,7 @@ export default adapter<IConfig>(api => {
                 {
                     connection,
                 },
-                ...configs
+                ...configs,
             );
         },
 
@@ -46,7 +49,7 @@ export default adapter<IConfig>(api => {
                     {},
                     {
                         objectMode: true,
-                    }
+                    },
                 ),
                 readable: Kafka.KafkaConsumer.createReadStream(
                     {
@@ -54,9 +57,11 @@ export default adapter<IConfig>(api => {
                         'group.id': this.config.consume.groupId,
                     },
                     {},
-                    {topics: this.config.consume.topics}
+                    {topics: this.config.consume.topics},
                 ),
             });
+
+            this.config.context.kafkaStream = stream;
 
             super.connect(stream);
 
@@ -69,6 +74,7 @@ export default adapter<IConfig>(api => {
                 stream?.destroy();
             } finally {
                 stream = null;
+                this.config.context = null;
                 result = await super.stop(...params);
             }
             return result;

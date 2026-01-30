@@ -1,0 +1,71 @@
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
+
+    // Include the definitions that are required for API Extractor
+    "extends": ["@microsoft/api-extractor/extends/tsdoc-base.json"],
+
+    // noStandardTags: false,
+
+    "tagDefinitions": [
+        // Define a custom tag and specify how it should be parsed
+        {
+            "tagName": "@category",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@description",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@type",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@event",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@memberof",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@export",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@class",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@sinceServerVersion",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        },
+        {
+            "tagName": "@params",
+            "syntaxKind": "block",
+            "allowMultiple": true
+        }
+    ],
+
+    "supportForTags": {
+        // Indicate that the custom tag is supported by your tooling.  (Without this, warnings may
+        // be reported saying that the tag is unsupported.)
+        "@params": true,
+        "@category": true,
+        "@description": true,
+        "@type": true,
+        "@event": true,
+        "@export": true,
+        "@class": true,
+        "@sinceServerVersion": true,
+        "@memberof": true
+    }
+}
