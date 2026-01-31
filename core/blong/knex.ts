@@ -17,7 +17,7 @@
 // Minimal Stream Interfaces (replacing 'stream' module)
 // ============================================================================
 
-interface ReadableStream {
+interface ReadableStreamKnex {
     readable: boolean;
     read(size?: number): any;
     setEncoding(encoding: string): this;
@@ -29,7 +29,7 @@ interface ReadableStream {
     wrap(oldStream: any): this;
 }
 
-interface WritableStream {
+interface WritableStreamKnex {
     writable: boolean;
     write(chunk: any, encoding?: string, cb?: Function): boolean;
     write(chunk: any, cb?: Function): boolean;
@@ -38,19 +38,19 @@ interface WritableStream {
     end(chunk: any, cb?: Function): void;
 }
 
-interface DuplexStream extends ReadableStream, WritableStream {
+interface DuplexStreamKnex extends ReadableStreamKnex, WritableStream {
     [key: string]: any;
 }
 
-type Duplex = DuplexStream;
-type PassThrough = DuplexStream & AsyncIterable<any>;
-type Stream = ReadableStream | WritableStream | DuplexStream;
+type DuplexKnex = DuplexStreamKnex;
+type PassThroughKnex = DuplexStreamKnex & AsyncIterable<any>;
+type StreamKnex = ReadableStreamKnex | WritableStreamKnex | DuplexStreamKnex;
 
 // ============================================================================
 // Minimal EventEmitter Interface (replacing 'events' module)
 // ============================================================================
 
-interface EventEmitter {
+interface EventEmitterKnex {
     addListener(event: string | symbol, listener: (...args: any[]) => void): this;
     on(event: string | symbol, listener: (...args: any[]) => void): this;
     once(event: string | symbol, listener: (...args: any[]) => void): this;
@@ -73,7 +73,7 @@ interface EventEmitter {
 // Minimal TLS Interface (replacing 'tls' module)
 // ============================================================================
 
-interface ConnectionOptions {
+interface ConnectionOptionsKnex {
     host?: string;
     port?: number;
     pfx?: string | Buffer | Array<string | Buffer | object>;
@@ -184,7 +184,7 @@ declare namespace knex {
 }
 
 interface Knex<TRecord extends {} = any, TResult = any[]>
-    extends Knex.QueryInterface<TRecord, TResult>, EventEmitter {
+    extends Knex.QueryInterface<TRecord, TResult>, EventEmitterKnex {
     <TTable extends Knex.TableNames>(
         tableName: TTable,
         options?: TableOptions,
@@ -1761,7 +1761,8 @@ declare namespace Knex {
 
     // Raw
 
-    interface Raw<TResult = any> extends EventEmitter, ChainableInterface<ResolveResult<TResult>> {
+    interface Raw<TResult = any>
+        extends EventEmitterKnex, ChainableInterface<ResolveResult<TResult>> {
         timeout(ms: number, options?: {cancel?: boolean}): Raw<TResult>;
         wrap<TResult2 = TResult>(before: string, after: string): Raw<TResult>;
         toSQL(): Sql;
@@ -1913,18 +1914,18 @@ declare namespace Knex {
         connection(connection: any): this;
         debug(enabled: boolean): this;
         transacting(trx: Transaction): this;
-        stream(handler: (readable: PassThrough) => any): Promise<any>;
+        stream(handler: (readable: PassThroughKnex) => any): Promise<any>;
         stream(
             options: Readonly<{[key: string]: any}>,
-            handler: (readable: PassThrough) => any,
+            handler: (readable: PassThroughKnex) => any,
         ): Promise<any>;
         stream(
             options?: Readonly<{[key: string]: any}>,
-        ): PassThrough & AsyncIterable<ArrayMember<T>>;
+        ): PassThroughKnex & AsyncIterable<ArrayMember<T>>;
         pipe<T extends WritableStream>(
             writable: T,
             options?: Readonly<{[key: string]: any}>,
-        ): PassThrough;
+        ): PassThroughKnex;
         asCallback(callback: Function): Promise<T>;
     }
 
@@ -2545,7 +2546,7 @@ declare namespace Knex {
         nestTables?: boolean | string;
         passwordSha1?: string;
         rowsAsArray?: boolean;
-        stream?: boolean | ((opts: any) => Stream) | Stream;
+        stream?: boolean | ((opts: any) => StreamKnex) | StreamKnex;
         uri?: string;
     }
 
@@ -2570,10 +2571,10 @@ declare namespace Knex {
         host?: string;
         connectionString?: string;
         keepAlive?: boolean;
-        stream?: () => Duplex | undefined;
+        stream?: () => DuplexKnex | undefined;
         statement_timeout?: false | number;
         parseInputDatesAsUTC?: boolean;
-        ssl?: boolean | ConnectionOptions;
+        ssl?: boolean | ConnectionOptionsKnex;
         query_timeout?: number;
         keepAliveInitialDelayMillis?: number;
         idle_in_transaction_session_timeout?: number;

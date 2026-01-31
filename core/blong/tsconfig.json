@@ -10,8 +10,8 @@
         "jsx": "react",
         "outDir": "dist",
         "target": "ES2022",
-        "declaration": true,
-        "declarationMap": true,
+        "declaration": false,
+        "declarationMap": false,
         "resolveJsonModule": true
     },
     "ts-node": {

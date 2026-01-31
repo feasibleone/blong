@@ -1,0 +1,25 @@
+{
+    "entries": [
+        {
+            "filePath": "./types.ts",
+            "outFile": "./dist/types.d.ts",
+            "libraries": {
+                "inlinedLibraries": [
+                    "@aws-sdk/client-s3",
+                    "@keycloak/keycloak-admin-client",
+                    "@kubernetes/client-node",
+                    "@slack/types",
+                    "@slack/webhook",
+                    "@types/request",
+                    "bson",
+                    "form-data",
+                    "mongodb",
+                    "node-vault",
+                    "openapi-types",
+                    "tarn",
+                    "tough-cookie"
+                ]
+            }
+        }
+    ]
+}
