@@ -12,6 +12,13 @@
      */
     "commands": [
         {
+            "name": "build",
+            "commandKind": "bulk",
+            "summary": "Build projects",
+            "enableParallelism": true,
+            "allowWarningsInSuccessfulBuild": true
+        },
+        {
             "commandKind": "bulk",
             "name": "ci-unit",
             "summary": "Run unit tests",
