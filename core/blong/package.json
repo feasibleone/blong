@@ -37,11 +37,11 @@
         "typescript": "^5.9.3"
     },
     "exports": {
-        ".": "./dist/types.js"
+        ".": "./dist/blong.js"
     },
     "typings": "./dist/blong.d.ts",
     "scripts": {
-        "build": "heft build --clean;api-extractor run --local --verbose",
+        "build": "heft build --clean;api-extractor run --local --verbose;cp dist/types.js dist/blong.js",
         "ci-publish": "npm publish --access public --provenance"
     },
     "type": "module",
