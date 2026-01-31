@@ -4,9 +4,6 @@ import {MongoClient} from 'mongodb';
 
 export interface IConfig {
     mongodb: object;
-    context: {
-        mongodb: MongoClient;
-    };
 }
 
 const errorMap: IErrorMap = {
@@ -33,7 +30,9 @@ export default adapter<IConfig>(({utError}) => {
             );
         },
         async start() {
-            this.config.context = {mongodb: new MongoClient(mongoUriBuilder(this.config.mongodb))};
+            this.config.context = {
+                mongodb: new MongoClient(mongoUriBuilder(this.config.mongodb)) as any,
+            };
             await this.config.context.mongodb.connect();
 
             super.connect();

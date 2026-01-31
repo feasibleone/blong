@@ -44,14 +44,14 @@ export default adapter<IConfig>(({utError}) => {
                 {
                     type: 'keycloak',
                 },
-                ...configs
+                ...configs,
             );
         },
         async start() {
             const kcAdminClient = new KcAdminClient({
                 baseUrl: this.config.keycloak.baseUrl,
                 realmName: this.config.keycloak.realmName || 'master',
-            });
+            }) as any;
 
             this.config.context = {kcAdminClient};
 
@@ -135,7 +135,7 @@ export default adapter<IConfig>(({utError}) => {
                       briefRepresentation?: boolean;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta
+            {method}: IMeta,
         ) {
             const [, resourceType, operation] = method.split('.');
             const targetRealm =
@@ -150,7 +150,7 @@ export default adapter<IConfig>(({utError}) => {
                 async handleUserOperations(
                     operation: string,
                     params: unknown[] | Record<string, unknown>,
-                    client: KcAdminClient
+                    client: KcAdminClient,
                 ): Promise<unknown> {
                     const handleParams = Array.isArray(params) ? {} : params;
 
@@ -291,7 +291,7 @@ export default adapter<IConfig>(({utError}) => {
                 async handleGroupOperations(
                     operation: string,
                     params: unknown[] | Record<string, unknown>,
-                    client: KcAdminClient
+                    client: KcAdminClient,
                 ): Promise<unknown> {
                     const handleParams = Array.isArray(params) ? {} : params;
 
@@ -368,7 +368,7 @@ export default adapter<IConfig>(({utError}) => {
                 async handleRoleOperations(
                     operation: string,
                     params: unknown[] | Record<string, unknown>,
-                    client: KcAdminClient
+                    client: KcAdminClient,
                 ): Promise<unknown> {
                     const handleParams = Array.isArray(params) ? {} : params;
 
@@ -458,12 +458,12 @@ export default adapter<IConfig>(({utError}) => {
                                         id: updateClientUuid as string,
                                         roleName: updateRoleName as string,
                                     },
-                                    updateData
+                                    updateData,
                                 );
                             } else {
                                 return await client.roles.updateByName(
                                     {name: updateRoleName as string},
-                                    updateData
+                                    updateData,
                                 );
                             }
                         }
@@ -495,7 +495,7 @@ export default adapter<IConfig>(({utError}) => {
                 async handleClientOperations(
                     operation: string,
                     params: unknown[] | Record<string, unknown>,
-                    client: KcAdminClient
+                    client: KcAdminClient,
                 ): Promise<unknown> {
                     const handleParams = Array.isArray(params) ? {} : params;
 
@@ -582,7 +582,7 @@ export default adapter<IConfig>(({utError}) => {
                             if (!clientUpdateId) throw _errors['keycloak.missingKey']({key: 'id'});
                             return await client.clients.update(
                                 {id: clientUpdateId as string},
-                                clientUpdateData
+                                clientUpdateData,
                             );
                         }
 
@@ -617,7 +617,7 @@ export default adapter<IConfig>(({utError}) => {
                 async handleRealmOperations(
                     operation: string,
                     params: unknown[] | Record<string, unknown>,
-                    client: KcAdminClient
+                    client: KcAdminClient,
                 ): Promise<unknown> {
                     const handleParams = Array.isArray(params) ? {} : params;
 
@@ -655,7 +655,7 @@ export default adapter<IConfig>(({utError}) => {
                             if (!updateRealm) throw _errors['keycloak.missingKey']({key: 'realm'});
                             return await client.realms.update(
                                 {realm: updateRealm as string},
-                                realmUpdateData
+                                realmUpdateData,
                             );
                         }
 

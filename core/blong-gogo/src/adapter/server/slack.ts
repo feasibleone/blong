@@ -5,9 +5,6 @@ export interface IConfig {
     slack: {
         webhookUrl: string;
     };
-    context: {
-        slack: IncomingWebhook;
-    };
 }
 
 const errorMap: IErrorMap = {
@@ -36,7 +33,7 @@ export default adapter<IConfig>(({utError}) => {
         },
         start() {
             this.config.context = {
-                slack: new IncomingWebhook(this.config.slack.webhookUrl),
+                slack: new IncomingWebhook(this.config.slack.webhookUrl) as any,
             };
             super.connect();
             return super.start();
