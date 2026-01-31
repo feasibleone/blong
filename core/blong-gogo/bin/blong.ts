@@ -1,4 +1,4 @@
-#!/usr/bin/env -S tsx watch --ignore **/test/**
+#!/usr/bin/env -S tsx watch --inspect --ignore **/test/**
 
 import minimist from 'minimist';
 import {resolve} from 'node:path';
