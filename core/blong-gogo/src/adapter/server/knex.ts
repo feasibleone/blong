@@ -28,11 +28,11 @@ export default adapter<IConfig>(({utError}) => {
                 {
                     type: 'knex',
                 },
-                ...configs
+                ...configs,
             );
         },
         start() {
-            this.config.context = {queryBuilder: Knex(this.config.knex)};
+            this.config.context = {queryBuilder: Knex(this.config.knex) as any};
             super.connect();
             return super.start();
         },
@@ -54,7 +54,7 @@ export default adapter<IConfig>(({utError}) => {
                 limit: number;
                 offset: number;
             } & Record<string, unknown>,
-            {method}: IMeta
+            {method}: IMeta,
         ) {
             const [, table, operation] = method.split('.');
             switch (operation) {

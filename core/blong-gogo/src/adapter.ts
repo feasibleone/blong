@@ -59,7 +59,7 @@ const reserved: string[] = [
     'errorReceive',
 ];
 
-export default async function adapter<T>(
+export default async function adapter<T, C>(
     {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry}: IApi,
     configBase: string,
 ): Promise<ReturnType<IAdapterFactory>> {
@@ -73,11 +73,11 @@ export default async function adapter<T>(
         resolveConnected = resolve;
     });
 
-    const base: ReturnType<IAdapterFactory<T>> = {
+    const base: ReturnType<IAdapterFactory<T, C>> = {
         errors: _errors,
         exec: null,
         imported: {},
-        config: {} as Config<T>,
+        config: {} as Config<T, C>,
         configBase,
         log: null,
         async init(...configs: object[]) {

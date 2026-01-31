@@ -286,7 +286,7 @@ export interface IAdapter<T, C> {
 }
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
-    config?: unknown;
+    config?: Config<T, C> | false;
     (api: IApi): IAdapter<T, C>;
 }
 
