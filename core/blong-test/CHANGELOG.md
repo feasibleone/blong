@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-test-v1.1.0...blong-test-v1.2.0) (2026-01-31)
+
+
+### Features
+
+* update @rushstack/heft and related plugins to latest versions ([f6a6f26](https://github.com/feasibleone/blong/commit/f6a6f26bdfd9cc95cb1322461aa494f5345bd821))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-test-v1.0.6...blong-test-v1.1.0) (2026-01-27)
 
 

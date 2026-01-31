@@ -4,6 +4,13 @@ All notable changes to the "rest-filesystem" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/rest-fs-v1.1.0...rest-fs-v1.2.0) (2026-01-31)
+
+
+### Features
+
+* add ws as a dependency and include @types/ws in devDependencies ([cda15ad](https://github.com/feasibleone/blong/commit/cda15ade7bdda868c3bbdadb942d139d18614b4e))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/rest-fs-v1.0.0...rest-fs-v1.1.0) (2026-01-29)
 
 

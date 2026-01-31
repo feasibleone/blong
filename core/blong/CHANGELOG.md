@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-v1.2.0...blong-v1.3.0) (2026-01-31)
+
+
+### Features
+
+* enhance adapter type definitions to support additional context ([326ad32](https://github.com/feasibleone/blong/commit/326ad32c0a8d012c7cabead3b2f33e7793c9f7ab))
+* update @rushstack/heft and related plugins to latest versions ([f6a6f26](https://github.com/feasibleone/blong/commit/f6a6f26bdfd9cc95cb1322461aa494f5345bd821))
+* update dependencies and enhance type definitions ([d969546](https://github.com/feasibleone/blong/commit/d96954690b8f7393d1b43866ce8b18afe951129a))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-v1.1.0...blong-v1.2.0) (2026-01-29)
 
 

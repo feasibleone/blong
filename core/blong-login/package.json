@@ -20,7 +20,7 @@
         "./package.json": "./package.json"
     },
     "type": "module",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "dependencies": {
         "@sinclair/typebox": "^0.33.7",
         "ut-function.cbc": "^1.1.6",
