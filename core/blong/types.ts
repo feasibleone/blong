@@ -36,6 +36,7 @@ import type {Knex} from './knex.js';
 //     Watch,
 // } from '@kubernetes/client-node';
 export * from '@slack/webhook';
+export * from 'bson';
 export * from 'mongodb';
 // export type {client} from 'node-vault';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';

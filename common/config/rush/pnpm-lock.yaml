@@ -58,6 +58,9 @@ importers:
       '@types/request':
         specifier: ^2.48.13
         version: 2.48.13
+      bson:
+        specifier: ^7.0.0
+        version: 7.1.1
       eslint:
         specifier: ~9.39.2
         version: 9.39.2(jiti@1.21.7)
