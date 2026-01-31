@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-v1.3.0...blong-v1.4.0) (2026-01-31)
+
+
+### Features
+
+* add bson as a dependency and export it in types ([cae349d](https://github.com/feasibleone/blong/commit/cae349dadc02b261240cef13cba548628829215f))
+* add dts-gen configuration and update package.json for type generation ([ce34fda](https://github.com/feasibleone/blong/commit/ce34fda893d31ff88b1e9d26c8e05522d594a731))
+
+
+### Bug Fixes
+
+* update build script and exports path in package.json ([dd3c28b](https://github.com/feasibleone/blong/commit/dd3c28b9d6b174a84311c75e0cf90ab3b394c417))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-v1.2.0...blong-v1.3.0) (2026-01-31)
 
 
