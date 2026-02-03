@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/feasibleone/blong/compare/blong-chain-v1.0.0...blong-chain-v1.0.1) (2026-02-03)
+
+
+### Bug Fixes
+
+* publishing ([dac7a64](https://github.com/feasibleone/blong/commit/dac7a649340467c026764abe102caa4f03599fe1))
+
 ## 1.0.0 (2026-02-03)
 
 
