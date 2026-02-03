@@ -20,7 +20,7 @@ A collection of Agent Skills for implementing components in the Blong TypeScript
 
 - **[blong-handler](./handler/)** - Create API handlers and library functions with semantic triple naming
 - **[blong-error](./error/)** - Define and throw typed errors with parameterized messages
-- **[blong-test](./test/)** - Write automated tests with context passing and assertions
+- **[blong-test](./test/)** - Write automated tests with parallel execution and automatic dependencies
 - **[blong-validation](./validation/)** - Define input/output validation and generate OpenAPI docs
 
 ## Quick Reference

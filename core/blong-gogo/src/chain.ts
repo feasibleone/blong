@@ -1,3 +1,4 @@
+import {TestExecutor} from '@feasibleone/blong-chain';
 import assert from 'node:assert';
 
 type Step = (a: typeof assert, results: object) => object | Promise<object>;
@@ -7,6 +8,35 @@ interface ITestContext {
 }
 
 const runSteps =
+    (steps: Steps, results = {$meta: {}}): ((t: ITestContext) => Promise<void>) =>
+    async (t: ITestContext) => {
+        // Use new parallel TestExecutor for improved performance
+        const executor = new TestExecutor({concurrency: 10});
+
+        // Resolve any promises in steps array
+        const resolvedSteps: (Step | Step[])[] = [];
+        for (const stepPromise of steps) {
+            resolvedSteps.push(await stepPromise);
+        }
+
+        // Execute with parallel executor
+        try {
+            await executor.execute(resolvedSteps as any, results.$meta || {});
+
+            // Copy results from executor context to results object
+            const progress = executor.getProgress();
+            for (const [name, stepProgress] of progress.steps) {
+                if (stepProgress.result !== undefined) {
+                    results[name] = stepProgress.result;
+                }
+            }
+        } catch (error) {
+            // Preserve error with context
+            throw error;
+        }
+    };
+
+const runStepsSerial =
     (steps: Steps, results = {$meta: {}}): ((t: ITestContext) => Promise<void>) =>
     async (t: ITestContext) => {
         for (const [index, stepPromise] of steps.entries()) {

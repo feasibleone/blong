@@ -32,7 +32,7 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 - **blong-handler** - Handler and library function patterns, semantic triple naming
 - **blong-error** - Typed error definitions and error handling
-- **blong-test** - Test handler patterns and organization
+- **blong-test** - Test handler patterns with parallel execution and automatic dependencies
 
 ## Framework Concepts
 

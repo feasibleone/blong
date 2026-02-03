@@ -1,13 +1,17 @@
 ---
 name: blong-test
-description: Write automated tests for Blong handlers using test handler patterns. Tests return arrays of steps with context passing between them. Supports assertions, error testing, and test reuse. Use for test-driven development, API testing, integration testing, or verifying business logic.
+description: Write automated tests for Blong handlers using parallel test
+  execution. Tests run in parallel by default with automatic dependency
+  detection via thenable proxies. Supports assertions, error testing, and test
+  reuse. Use for test-driven development, API testing, integration testing, or
+  verifying business logic with improved performance.
 ---
 
 # Implementing Tests
 
 ## Overview
 
-Test handlers follow the same patterns as business handlers but are organized in the `test/test` folder. They return arrays of test steps that can be executed by the framework's test runner.
+Test handlers follow the same patterns as business handlers but are organized in the `test/test` folder. They return arrays of test steps that are executed in **parallel by default** by the framework's test runner, with automatic dependency detection via thenable proxies.
 
 ## Purpose
 
@@ -45,13 +49,13 @@ import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {
         realmEntityAction  // Handler to test
     }
 }) => ({
     testExample: ({name = 'example'}, $meta) =>
-        rename([
+        group(name)([
             async function testCase(
                 assert: typeof Assert,
                 {$meta}: {$meta: IMeta}
@@ -62,7 +66,7 @@ export default handler(({
 
                 assert.equal(result.output, 'expected', 'Verify output');
             }
-        ], name)
+        ])
 }));
 ```
 
@@ -70,7 +74,7 @@ export default handler(({
 
 ```typescript
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {
         userUserAdd,
         userUserFind,
@@ -78,7 +82,7 @@ export default handler(({
     }
 }) => ({
     testUserLifecycle: ({name = 'user lifecycle'}, $meta) =>
-        rename([
+        group(name)([
             // Step 1: Create user
             async function createUser(
                 assert: typeof Assert,
@@ -127,7 +131,7 @@ export default handler(({
                     'User not found after deletion'
                 );
             }
-        ], name)
+        ])
 }));
 ```
 
@@ -137,7 +141,7 @@ export default handler(({
 
 ```typescript
 testExample: ({name = 'default name'}, $meta) =>
-    rename([/* steps */], name)
+    group(name)([/* steps */])
 ```
 
 ### Custom Parameters
@@ -148,7 +152,7 @@ testExample: ({
     username = 'testuser',
     amount = 100
 }, $meta) =>
-    rename([
+    group(name)([
         async function test(assert, {$meta}) {
             const result = await handler({
                 username,
@@ -156,40 +160,68 @@ testExample: ({
             }, $meta);
             assert.ok(result);
         }
-    ], name)
+    ])
 ```
 
-## Context Passing
+## Context Passing & Parallel Execution
 
-Tests start with empty context. Each step can add to context:
+### Automatic Parallel Execution
+
+Steps run **in parallel by default** unless they have dependencies. Dependencies are automatically detected when steps access context properties from other steps.
+
+### Thenable Proxy Pattern
+
+All context properties are **thenable proxies** - they act as promises and must be awaited. This enables automatic dependency detection and parallel execution. Four access patterns are supported:
 
 ```typescript
-rename([
-    // Step 1: Returns {userId: 123}
-    async function step1(assert, {$meta}) {
-        const user = await userUserAdd({...}, $meta);
-        return {userId: user.userId};
+group(name)([
+    // Step 1: Setup data (runs immediately)
+    async function createUser(assert, {$meta}) {
+        const user = await userUserAdd({username: 'test'}, $meta);
+        return {userId: user.userId, profile: {name: 'Test', age: 30}};
     },
 
-    // Step 2: Receives {$meta, userId: 123}
-    async function step2(assert, {$meta, userId}) {
-        const payment = await paymentCreate({userId}, $meta);
-        return {userId, paymentId: payment.id};
+    // Pattern 1: Direct context access
+    async function pattern1(assert, context) {
+        const result = await context.createUser;  // Wait for createUser
+        assert.ok(result.userId);
     },
 
-    // Step 3: Receives {$meta, userId: 123, paymentId: 456}
-    async function step3(assert, {$meta, userId, paymentId}) {
-        await verifyPayment({userId, paymentId}, $meta);
+    // Pattern 2: Destructure then await
+    async function pattern2(assert, {createUser}) {
+        const result = await createUser;  // Wait for createUser
+        assert.ok(result.userId);
+    },
+
+    // Pattern 3: Access nested properties
+    async function pattern3(assert, {createUser}) {
+        const name = await createUser.profile.name;  // Wait and extract property
+        assert.equal(name, 'Test');
+    },
+
+    // Pattern 4: Nested destructuring
+    async function pattern4(assert, {createUser: {profile}}) {
+        const age = await profile.age;  // Wait and extract nested property
+        assert.equal(age, 30);
+    },
+
+    // Independent step (runs in parallel with dependent steps)
+    async function independent(assert, {$meta}) {
+        // No dependencies - runs immediately in parallel
+        const data = await otherHandler({}, $meta);
+        assert.ok(data);
     }
-], name)
+])
 ```
 
 **Context Rules:**
 
 - Function name determines context property name
 - Returned value is added to context
-- Subsequent steps receive accumulated context
-- Always includes `$meta`
+- **Steps accessing context properties wait for those steps to complete**
+- **Independent steps run in parallel automatically**
+- `$meta` is always available directly (not a thenable proxy)
+- Configurable concurrency limit (default: 10 parallel steps)
 
 ## Assertions
 
@@ -247,7 +279,7 @@ Call other test handlers to share setup:
 
 ```typescript
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {
         testLoginTokenCreate,    // Reusable login test
         testUserAdminLogin,      // Reusable admin login
@@ -255,7 +287,7 @@ export default handler(({
     }
 }) => ({
     testNumberSum: ({name = 'number sum'}, $meta) =>
-        rename([
+        group(name)([
             // Reuse authentication tests
             testLoginTokenCreate({}, $meta),
             testUserAdminLogin({}, $meta),
@@ -268,19 +300,19 @@ export default handler(({
                     'Sum array'
                 );
             }
-        ], name)
+        ])
 }));
 ```
 
 **Test Composition Pattern:**
 
-The `rename` library function allows test arrays to be composed and reused:
+The `group` library function allows test arrays to be composed and reused:
 
 ```typescript
 // ledger/test/test/testParticipant.ts
 export default handler(
     ({
-        lib: {rename},
+        lib: {group},
         handler: {
             testLoginTokenCreate,
             ledgerParticipantGet,
@@ -288,10 +320,9 @@ export default handler(
         },
     }) => ({
         testParticipant: ({name = 'ledger'}, $meta) =>
-            rename(
-                [
-                    testLoginTokenCreate({}, $meta),  // Reuse login setup
-                    async function participant(
+            group(name)([
+                testLoginTokenCreate({}, $meta),  // Reuse login setup
+                async function participant(
                         assert: typeof Assert,
                         {$meta}: {$meta: IMeta}
                     ) {
@@ -307,9 +338,7 @@ export default handler(
                             'participant add'
                         );
                     },
-                ],
-                name
-            ),
+                ]),
     })
 );
 ```
@@ -319,28 +348,81 @@ export default handler(
 - Share common setup (authentication, database initialization)
 - Compose complex test scenarios from simple building blocks
 - DRY principle for test code
-- Name tests clearly using the `rename` function
+- Name tests clearly using the `group` function
 
-## Nested Test Arrays
+## Controlling Execution Order
 
-Group related tests:
+### Parallel Execution (Default)
+
+Steps at the same level run in parallel unless they have dependencies:
 
 ```typescript
-rename([
+group(name)([
+    // These three steps run in parallel
+    async function fetchUserData(assert, {$meta}) {
+        return await userUserGet({userId: 1}, $meta);
+    },
+    async function fetchAccountData(assert, {$meta}) {
+        return await accountGet({accountId: 1}, $meta);
+    },
+    async function fetchPaymentData(assert, {$meta}) {
+        return await paymentGet({paymentId: 1}, $meta);
+    },
+
+    // This step waits for fetchUserData to complete
+    async function validateUser(assert, {fetchUserData}) {
+        const user = await fetchUserData;
+        assert.ok(user.validated);
+    }
+])
+```
+
+### Sequential Execution (Nested Arrays)
+
+Use nested arrays to force sequential execution of groups:
+
+```typescript
+group(name)([
     testSetup({}, $meta),
 
-    // Nested array of tests
+    // First group completes before second group starts
     [
         async function testCase1(assert, context) {
             // Test 1
         },
         async function testCase2(assert, context) {
-            // Test 2
+            // Test 2 - runs in parallel with testCase1
+        }
+    ],
+
+    // This nested array waits for above array to complete
+    [
+        async function testCase3(assert, context) {
+            // Test 3
         }
     ],
 
     testTeardown({}, $meta)
-], name)
+])
+```
+
+### Using group() for Test Organization
+
+Use the `group()` function for clearer test naming:
+
+```typescript
+export default handler(({lib: {group}}) => ({
+    testWorkflow: ({name = 'workflow'}, $meta) =>
+        group(name)([
+            async function setup(assert, {$meta}) {
+                return {data: 'test'};
+            },
+            async function validate(assert, {setup}) {
+                const data = await setup;
+                assert.equal(data.data, 'test');
+            }
+        ])
+}));
 ```
 
 ## Complete Example
@@ -351,7 +433,7 @@ import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {
         testLoginTokenCreate,
         testUserAdminLogin,
@@ -364,7 +446,7 @@ export default handler(({
         name = 'transfer',
         amount = 100
     }, $meta) =>
-        rename([
+        group(name)([
             // Setup: Login
             testLoginTokenCreate({}, $meta),
             testUserAdminLogin({}, $meta),
@@ -436,7 +518,7 @@ export default handler(({
                     'Balance decreased by transfer amount'
                 );
             }
-        ], name)
+        ])
 }));
 ```
 
@@ -444,13 +526,13 @@ export default handler(({
 
 ```typescript
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {
         userUserAdd
     }
 }) => ({
     testUserAdd: ({name = 'user add'}, $meta) =>
-        rename([
+        group(name)([
             async function addUser(assert, {$meta}) {
                 const testData = {
                     username: `user_${Date.now()}`,
@@ -463,7 +545,7 @@ export default handler(({
                 assert.equal(result.username, testData.username);
                 assert.ok(result.userId > 0);
             }
-        ], name)
+        ])
 }));
 ```
 
@@ -521,11 +603,64 @@ test/test/
 3. **Clean Up:** Clean up test data (or use transactions)
 4. **Assertions:** Include meaningful assertion messages
 5. **Reuse Setup:** Share common setup via test handlers
-6. **Context Flow:** Use context to pass data between steps
+6. **Context Flow:** Use thenable proxies - await all context property access
 7. **Error Testing:** Test both success and error cases
 8. **Parameterization:** Use parameters for flexible test data
 9. **Comprehensive Coverage:** Test all business logic paths
-10. **Fast Tests:** Keep tests fast for TDD workflow
+10. **Fast Tests:** Leverage parallel execution for faster test runs
+11. **Dependency Clarity:** Steps accessing context properties will wait automatically
+12. **Concurrency Control:** Use `$meta.concurrency` to limit parallel execution if needed
+13. **Sequential Groups:** Use nested arrays when order must be guaranteed
+
+## Performance Tips
+
+### Maximize Parallelism
+
+Structure tests so independent steps can run in parallel:
+
+```typescript
+// Good: Three API calls run in parallel
+group(name)([
+    async function fetchUsers(assert, {$meta}) {
+        return await userUserList({}, $meta);
+    },
+    async function fetchAccounts(assert, {$meta}) {
+        return await accountList({}, $meta);
+    },
+    async function fetchPayments(assert, {$meta}) {
+        return await paymentList({}, $meta);
+    }
+])
+```
+
+### Avoid Unnecessary Dependencies
+
+Only access context when truly needed:
+
+```typescript
+// Bad: Creates unnecessary dependency
+async function independentTest(assert, {setupUser, $meta}) {
+    // Don't access setupUser if not needed
+    const result = await otherHandler({}, $meta);
+    assert.ok(result);
+}
+
+// Good: No dependency on setupUser
+async function independentTest(assert, {$meta}) {
+    const result = await otherHandler({}, $meta);
+    assert.ok(result);
+}
+```
+
+### Monitor Test Performance
+
+Use latency metrics to identify slow tests:
+
+```typescript
+// Tests complete with timing information
+// Check test output for step execution times
+// Optimize bottlenecks that block many other steps
+```
 
 ## Snapshot Testing
 
@@ -535,18 +670,18 @@ For snapshot testing, use `@tapjs/snapshot`:
 import {IMeta, handler} from '@feasibleone/blong';
 
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {userUserGet}
 }) => ({
     testUserSnapshot: ({name = 'user snapshot'}, $meta) =>
-        rename([
+        group(name)([
             async function snapshot(assert, {$meta}) {
                 const result = await userUserGet({userId: 1}, $meta);
 
                 // Use matchSnapshot from tap
                 assert.matchSnapshot(result, 'user data');
             }
-        ], name)
+        ])
 }));
 ```
 

@@ -1,0 +1,26 @@
+{
+    "name": "@feasibleone/blong-chain",
+    "scripts": {
+        "build": "heft build --clean",
+        "test": "node --test **/*.test.js",
+        "ci-unit": "npm run test",
+        "ci-publish": "npm publish --access public --provenance"
+    },
+    "exports": {
+        ".": "./dist/index.js"
+    },
+    "type": "module",
+    "version": "1.0.0",
+    "dependencies": {
+        "p-queue": "^9.1.0"
+    },
+    "devDependencies": {
+        "@rushstack/eslint-config": "^4.0.1",
+        "@rushstack/heft": "^1.1.11",
+        "@rushstack/heft-lint-plugin": "^1.1.14",
+        "@rushstack/heft-typescript-plugin": "^1.1.11",
+        "@types/node": "^24",
+        "eslint": "~9.39.2",
+        "typescript": "^5.9.3"
+    }
+}

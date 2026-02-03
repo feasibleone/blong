@@ -80,6 +80,34 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  ../../core/blong-chain:
+    dependencies:
+      p-queue:
+        specifier: ^9.1.0
+        version: 9.1.0
+    devDependencies:
+      '@rushstack/eslint-config':
+        specifier: ^4.0.1
+        version: 4.6.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      '@rushstack/heft':
+        specifier: ^1.1.11
+        version: 1.1.11(@types/node@24.10.9)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.1.14
+        version: 1.1.14(@rushstack/heft@1.1.11(@types/node@24.10.9))(@types/node@24.10.9)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.1.11
+        version: 1.1.11(@rushstack/heft@1.1.11(@types/node@24.10.9))(@types/node@24.10.9)
+      '@types/node':
+        specifier: ^24
+        version: 24.10.9
+      eslint:
+        specifier: ~9.39.2
+        version: 9.39.2(jiti@1.21.7)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   ../../core/blong-gogo:
     dependencies:
       '@apidevtools/swagger-parser':
@@ -109,6 +137,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-chain':
+        specifier: workspace:^1.0.0
+        version: link:../blong-chain
       '@feasibleone/blong-kopi':
         specifier: workspace:^1.0.0
         version: link:../blong-kopi

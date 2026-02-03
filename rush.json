@@ -438,6 +438,13 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-chain",
+            "projectFolder": "core/blong-chain",
+            "reviewCategory": "core",
+            "shouldPublish": true,
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-gogo",
             "projectFolder": "core/blong-gogo",
             "reviewCategory": "core",

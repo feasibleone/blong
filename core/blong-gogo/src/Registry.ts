@@ -25,7 +25,7 @@ import {methodId, methodParts} from './lib.js';
 type MatchMethodsCallback = (
     name: string,
     local: {config?: object; namespace?: string | string[]},
-    literals: object[]
+    literals: object[],
 ) => void;
 const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
 const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
@@ -48,7 +48,7 @@ export default class Registry extends Internal implements IRegistry {
                 target: {importedMap: Map<string, object>};
                 parent: object;
                 pointer: object;
-            }
+            },
         ]
     > = new Map();
     #validations: Record<string, GatewaySchema> = {};
@@ -85,7 +85,7 @@ export default class Registry extends Internal implements IRegistry {
             resolution?: IResolution;
             watch?: IWatch;
             apiSchema?: IApiSchema;
-        }
+        },
     ) {
         super({log});
         this.merge(this.#config, config);
@@ -162,7 +162,7 @@ export default class Registry extends Internal implements IRegistry {
         mode: 'extend' | 'merge',
         patterns: (string | RegExp)[] | string | RegExp,
         port: object | MatchMethodsCallback,
-        callback?: MatchMethodsCallback
+        callback?: MatchMethodsCallback,
     ): Promise<void> {
         if (typeof port === 'function' && !callback) {
             callback = port as MatchMethodsCallback;
@@ -174,7 +174,7 @@ export default class Registry extends Internal implements IRegistry {
                     .concat(patterns)
                     .some(
                         pattern =>
-                            (pattern instanceof RegExp && pattern.test(name)) || pattern === name
+                            (pattern instanceof RegExp && pattern.test(name)) || pattern === name,
                     )
             ) {
                 if (mode === 'merge') {
@@ -197,8 +197,8 @@ export default class Registry extends Internal implements IRegistry {
                     typeof validation === 'function'
                         ? (validation as () => GatewaySchema)()
                         : typeof validation === 'object'
-                        ? validation
-                        : {};
+                          ? validation
+                          : {};
                 if (typeof validation === 'function') name = validation.name;
                 const prev = this.#validations[methodParts(name)];
                 if (prev) merge(prev, schema);
@@ -218,7 +218,7 @@ export default class Registry extends Internal implements IRegistry {
                 };
             },
             patterns: (string | RegExp)[] | string | RegExp,
-            adapter?: boolean
+            adapter?: boolean,
         ) => {
             target.imported = {};
             Object.setPrototypeOf(target.imported, target);
@@ -269,7 +269,7 @@ export default class Registry extends Internal implements IRegistry {
 
     private async _createHandlers(
         handlers: Handlers,
-        port: object
+        port: object,
     ): Promise<{local: object; literals: object[]}> {
         const lib = {
             type: Type,
@@ -280,6 +280,12 @@ export default class Registry extends Internal implements IRegistry {
             uuid7,
             rename: (object: object, value: string) =>
                 Object.defineProperty<unknown>(object, 'name', {value}),
+            group: (name: string) => (steps: unknown[]) =>
+                Object.defineProperty(steps, 'name', {
+                    value: name,
+                    enumerable: false,
+                    writable: true,
+                }),
         };
         const local = {};
         const literals = [];
@@ -321,7 +327,7 @@ export default class Registry extends Internal implements IRegistry {
             await Promise.all(
                 Array.from(this.#ports.values())
                     .reverse()
-                    .map(port => port.connected?.() ?? port.isConnected)
+                    .map(port => port.connected?.() ?? port.isConnected),
             )
         ).every(item => item);
     }
@@ -344,7 +350,7 @@ export default class Registry extends Internal implements IRegistry {
         def: {
             namespace: Record<string, string | string[]>;
         },
-        source: string
+        source: string,
     ): Promise<void> {
         const api = await this.#apiSchema.schema(def, source);
         this.methods.set(id, [({local}) => merge(local, api)]);
