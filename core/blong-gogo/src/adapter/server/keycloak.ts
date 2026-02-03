@@ -51,6 +51,12 @@ export default adapter<IConfig>(({utError}) => {
             const kcAdminClient = new KcAdminClient({
                 baseUrl: this.config.keycloak.baseUrl,
                 realmName: this.config.keycloak.realmName || 'master',
+                // requestOptions: {
+                //     agent: new https.Agent({
+                //         requestCert: true,
+                //         rejectUnauthorized: false,
+                //     }),
+                // },
             }) as any;
 
             this.config.context = {kcAdminClient};

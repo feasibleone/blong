@@ -1,16 +1,13 @@
 import {handler} from '@feasibleone/blong';
 
-export default handler(({lib: {rename}}) => ({
+export default handler(({lib: {group}}) => ({
     testUserAdminLogin: ({name = 'login'}) =>
-        rename<{}>(
-            [
-                function createAdmin() {
-                    return {username: 'sa', password: '123'};
-                },
-                function loginAdmin() {
-                    return {accessToken: 'xxx'};
-                },
-            ],
-            name,
-        ),
+        group(name)([
+            function createAdmin() {
+                return {username: 'sa', password: '123'};
+            },
+            function loginAdmin() {
+                return {accessToken: 'xxx'};
+            },
+        ]),
 }));

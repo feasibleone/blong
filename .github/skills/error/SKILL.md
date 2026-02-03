@@ -386,11 +386,11 @@ import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({
-    lib: {rename},
+    lib: {group},
     handler: {subjectNumberSum}
 }) => ({
     testErrorHandling: ({name = 'error handling'}, $meta) =>
-        rename([
+        group(name)([
             async function testNegativeNumber(assert, {$meta}) {
                 await assert.rejects(
                     subjectNumberSum([-1], {
@@ -401,7 +401,7 @@ export default handler(({
                     'Should reject negative numbers'
                 );
             }
-        ], name)
+        ])
 }));
 ```
 

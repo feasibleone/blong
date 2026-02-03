@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({
-        lib: {rename},
+        lib: {group},
         handler: {
             testLoginTokenCreate,
             $subject$ObjectGet,
@@ -13,24 +13,18 @@ export default handler(
         },
     }) => ({
         test$Object: ({name = '$subject'}, $meta) =>
-            rename(
-                [
-                    testLoginTokenCreate({}, $meta),
-                    async function $object(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                        const {$objectId} = await $subject$ObjectAdd({name: '$object'}, $meta);
-                        assert.ok($objectId, '$object add');
-                        assert.ok(
-                            await $subject$ObjectEdit({$objectId, name: 'new name'}, $meta),
-                            '$object edit'
-                        );
-                        assert.ok(await $subject$ObjectGet({$objectId}, $meta), '$object get');
-                        assert.ok(
-                            await $subject$ObjectRemove({$objectId}, $meta),
-                            '$object remove'
-                        );
-                    },
-                ],
-                name
-            ),
-    })
+            group(name)([
+                testLoginTokenCreate({}, $meta),
+                async function $object(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                    const {$objectId} = await $subject$ObjectAdd({name: '$object'}, $meta);
+                    assert.ok($objectId, '$object add');
+                    assert.ok(
+                        await $subject$ObjectEdit({$objectId, name: 'new name'}, $meta),
+                        '$object edit',
+                    );
+                    assert.ok(await $subject$ObjectGet({$objectId}, $meta), '$object get');
+                    assert.ok(await $subject$ObjectRemove({$objectId}, $meta), '$object remove');
+                },
+            ]),
+    }),
 );
