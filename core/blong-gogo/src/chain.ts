@@ -19,9 +19,9 @@ const runSteps =
             resolvedSteps.push(await stepPromise);
         }
 
-        // Execute with parallel executor
+        // Execute with parallel executor, passing test context for nested output
         try {
-            await executor.execute(resolvedSteps as any, results.$meta || {});
+            await executor.execute(resolvedSteps as any, results.$meta || {}, t as any);
 
             // Copy results from executor context to results object
             const progress = executor.getProgress();
@@ -42,7 +42,7 @@ const runStepsSerial =
         for (const [index, stepPromise] of steps.entries()) {
             const step = await stepPromise;
             if (Array.isArray(step))
-                t.test(step.name || `step ${index + 1}`, runSteps(step, results));
+                t.test(step.name || `step ${index + 1}`, runStepsSerial(step, results));
             else if (typeof step === 'function') {
                 const name = step.name;
                 if (name) {

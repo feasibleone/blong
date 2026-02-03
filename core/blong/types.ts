@@ -20,6 +20,7 @@ import {
 } from '@sinclair/typebox';
 import type {IncomingWebhook} from '@slack/webhook';
 import type {MongoClient} from 'mongodb';
+import type Assert from 'node:assert';
 // import type {client} from 'node-vault';
 import type {Dirent} from 'node:fs';
 import type {Duplex} from 'node:stream';
@@ -484,10 +485,15 @@ export type GatewaySchema = (
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
 export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.PathItemObject;
 
+export type ChainStep =
+    | ((assert: typeof Assert, context: {$meta: IMeta}) => Promise<object>)
+    | object;
+
 export interface ILib {
     type: JavaScriptTypeBuilder;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
+    group: (name: string) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;

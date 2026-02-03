@@ -40,6 +40,15 @@ export interface IMeta {
     [key: string]: unknown;
 }
 
+/**
+ * Test framework context (e.g., from node:test or tap)
+ * Enables nested test output with automatic indentation
+ */
+export interface ITestFrameworkContext {
+    /** Creates a nested test scope for proper indentation */
+    test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown;
+}
+
 // ============================================================================
 // Thenable Proxy Types
 // ============================================================================
@@ -322,7 +331,7 @@ export interface ITestExecutorConfig {
  */
 export interface ITestExecutor {
     /** Execute test steps */
-    execute(steps: StepArray, $meta: IMeta): Promise<void>;
+    execute(steps: StepArray, $meta: IMeta, testContext?: ITestFrameworkContext): Promise<void>;
     /** Get current progress snapshot */
     getProgress(): ITestProgress;
     /** Get dependency graph */

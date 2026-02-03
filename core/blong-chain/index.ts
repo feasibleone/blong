@@ -380,6 +380,9 @@ export class TestExecutor extends EventEmitter {
     // Promise manager (needs realContext, initialized in constructor)
     private promiseManager: PromiseManager;
 
+    // Test framework context for nested test output
+    private testContext?: import('./test-types.js').ITestFrameworkContext;
+
     constructor(config: ITestExecutorConfig = {}) {
         super();
 
@@ -398,7 +401,14 @@ export class TestExecutor extends EventEmitter {
     /**
      * Executes an array of test steps
      */
-    async execute(steps: StepArray, $meta: IMeta): Promise<void> {
+    async execute(
+        steps: StepArray,
+        $meta: IMeta,
+        testContext?: import('./test-types.js').ITestFrameworkContext,
+    ): Promise<void> {
+        // Store test context for nested execution
+        this.testContext = testContext;
+
         // Clear and initialize context with $meta (preserve reference for PromiseManager)
         Object.keys(this.realContext).forEach(key => delete this.realContext[key]);
         this.realContext.$meta = $meta;
@@ -416,7 +426,7 @@ export class TestExecutor extends EventEmitter {
 
         try {
             // Execute all steps
-            await this._executeSteps(steps, []);
+            await this._executeSteps(steps, [], this.testContext as any);
 
             // Mark as completed
             this.progress.status = 'completed';
@@ -436,7 +446,11 @@ export class TestExecutor extends EventEmitter {
     /**
      * Recursively executes steps, handling both functions and nested arrays
      */
-    private async _executeSteps(steps: StepArray, groupPath: string[]): Promise<void> {
+    private async _executeSteps(
+        steps: StepArray,
+        groupPath: string[],
+        parentTestContext?: unknown,
+    ): Promise<void> {
         const stepPromises: Promise<void>[] = [];
 
         for (const step of steps) {
@@ -445,11 +459,31 @@ export class TestExecutor extends EventEmitter {
                 await Promise.all(stepPromises);
                 stepPromises.length = 0;
 
-                // Then execute nested steps sequentially
-                await this._executeSteps(step, [...groupPath, step.name || 'group']);
+                const nestedGroupPath = [...groupPath, step.name || `group-${groupPath.length}`];
+
+                // If we have a test context, use it to create nested test scope
+                if (this.testContext && parentTestContext) {
+                    const nestedName = step.name || `group-${groupPath.length}`;
+                    await (this.testContext.test as any).call(
+                        parentTestContext,
+                        nestedName,
+                        async (nestedContext: unknown) => {
+                            await this._executeSteps(step, nestedGroupPath, nestedContext);
+                        },
+                    );
+                } else if (this.testContext && groupPath.length === 0) {
+                    // Top-level nested array
+                    const nestedName = step.name || `group-${groupPath.length}`;
+                    await this.testContext.test(nestedName, async (nestedContext: unknown) => {
+                        await this._executeSteps(step, nestedGroupPath, nestedContext);
+                    });
+                } else {
+                    // No test context, execute directly
+                    await this._executeSteps(step, nestedGroupPath, parentTestContext);
+                }
             } else if (typeof step === 'function') {
                 // Execute function step in parallel
-                const promise = this._executeStep(step, groupPath);
+                const promise = this._executeStep(step, groupPath, parentTestContext);
                 stepPromises.push(promise);
             }
         }
@@ -461,7 +495,11 @@ export class TestExecutor extends EventEmitter {
     /**
      * Executes a single step function
      */
-    private async _executeStep(fn: StepFunction, groupPath: string[]): Promise<void> {
+    private async _executeStep(
+        fn: StepFunction,
+        groupPath: string[],
+        parentTestContext?: unknown,
+    ): Promise<void> {
         const stepName = fn.name || 'anonymous';
 
         // Capture source location if enabled
@@ -500,8 +538,8 @@ export class TestExecutor extends EventEmitter {
         };
         this.latencyMetrics.set(stepName, latency);
 
-        // Add to queue
-        await this.queue.add(async () => {
+        // Wrap execution function for potential test context wrapping
+        const executeStepFn = async () => {
             latency.startedAt = Date.now();
             latency.queueTime = latency.startedAt - latency.queuedAt;
 
@@ -583,7 +621,39 @@ export class TestExecutor extends EventEmitter {
 
                 throw error;
             }
-        });
+        };
+
+        // If we have test context, wrap in nested test
+        if (this.testContext && parentTestContext) {
+            await this.queue.add(async () => {
+                try {
+                    await (this.testContext!.test as any).call(
+                        parentTestContext,
+                        stepName,
+                        async () => {
+                            await executeStepFn();
+                        },
+                    );
+                } catch (error) {
+                    // Error already handled in executeStepFn, don't rethrow to break the queue
+                    // The test framework will report it
+                }
+            });
+        } else if (this.testContext && groupPath.length === 0) {
+            // Top-level step with test context
+            await this.queue.add(async () => {
+                try {
+                    await this.testContext!.test(stepName, async () => {
+                        await executeStepFn();
+                    });
+                } catch (error) {
+                    // Error already handled in executeStepFn, don't rethrow to break the queue
+                }
+            });
+        } else {
+            // No test context or not at top level
+            await this.queue.add(executeStepFn);
+        }
     }
 
     /**
@@ -740,3 +810,6 @@ export class TestExecutor extends EventEmitter {
         return super.emit(event, ...args);
     }
 }
+
+// Export all types
+export type * from './test-types.js';
