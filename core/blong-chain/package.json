@@ -1,5 +1,14 @@
 {
     "name": "@feasibleone/blong-chain",
+    "description": "Parallel testing with automatic dependencies",
+    "keywords": [
+        "blong",
+        "rad",
+        "framework"
+    ],
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
     "scripts": {
         "build": "heft build --clean",
         "test": "node --test dist/index.test.js",
