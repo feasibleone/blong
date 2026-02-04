@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-test-v1.2.0...blong-test-v1.3.0) (2026-02-04)
+
+
+### Features
+
+* run as TypeScript ([fd7c6b7](https://github.com/feasibleone/blong/commit/fd7c6b7af21a76e88c35fddd9a4158852ac71ff6))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-test-v1.1.0...blong-test-v1.2.0) (2026-01-31)
 
 

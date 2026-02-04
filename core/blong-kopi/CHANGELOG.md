@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.0.0...blong-kopi-v1.1.0) (2026-02-04)
+
+
+### Features
+
+* run as TypeScript ([fd7c6b7](https://github.com/feasibleone/blong/commit/fd7c6b7af21a76e88c35fddd9a4158852ac71ff6))
+
 ## 1.0.0 (2026-02-03)
 
 
