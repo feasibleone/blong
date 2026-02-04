@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-v1.4.0...blong-v1.5.0) (2026-02-04)
+
+
+### Features
+
+* nested test context integration and error reporting capabilities ([9470aa5](https://github.com/feasibleone/blong/commit/9470aa53c9d1d676cd50ff004b3bb0eea491d782))
+* run as TypeScript ([fd7c6b7](https://github.com/feasibleone/blong/commit/fd7c6b7af21a76e88c35fddd9a4158852ac71ff6))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-v1.3.0...blong-v1.4.0) (2026-01-31)
 
 
