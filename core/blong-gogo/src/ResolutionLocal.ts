@@ -1,6 +1,6 @@
 import {Internal} from '@feasibleone/blong';
 
-import type {IResolution} from './Resolution.js';
+import type {IResolution} from './Resolution.ts';
 
 interface IConfig {
     portRpc: number;
@@ -22,7 +22,7 @@ export default class ResolutionLocal extends Internal implements IResolution {
     public async resolve(
         service: string,
         invalidate: boolean,
-        namespace: string
+        namespace: string,
     ): ReturnType<IResolution['resolve']> {
         return {
             // hostname: `${service}-service.${this.#config.domain}`,

@@ -1,10 +1,10 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({lib: {token}}) =>
         function loginTokenCreate(
             {username, password}: {username: string; password: string},
-            {auth: {mlek, mlsk} = {}}: IMeta
+            {auth: {mlek, mlsk} = {}}: IMeta,
         ) {
             return token({
                 clientId: username,
@@ -16,5 +16,5 @@ export default handler(
                 mlek,
                 mlsk,
             });
-        }
+        },
 );

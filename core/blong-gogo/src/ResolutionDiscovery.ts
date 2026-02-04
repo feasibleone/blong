@@ -1,10 +1,10 @@
 import {Internal, type Errors, type IErrorFactory, type IErrorMap} from '@feasibleone/blong';
 import hrtime from 'browser-process-hrtime';
 import {hostname} from 'os';
-import multicastResolver from 'ut-bus/resolver.js';
+import multicastResolver from 'ut-bus/resolver.ts';
 import discovery from 'ut-dns-discovery';
 
-import type {IResolution} from './Resolution.js';
+import type {IResolution} from './Resolution.ts';
 
 const errorMap: IErrorMap = {
     'mdns.notFound': "Multicast DNS: '{namespace}' service not found.",
@@ -88,10 +88,10 @@ export default class ResolutionDiscovery extends Internal implements IResolution
                     new Promise((resolve, reject) => {
                         const [service, port] = serviceId.split(':');
                         this.#announce.announce(service, port, error =>
-                            error ? reject(error) : resolve(true)
+                            error ? reject(error) : resolve(true),
                         );
-                    })
-            )
+                    }),
+            ),
         );
     }
 
@@ -102,10 +102,10 @@ export default class ResolutionDiscovery extends Internal implements IResolution
                     new Promise((resolve, reject) => {
                         const [service, port] = serviceId.split(':');
                         this.#announce.unannounce(service, port, error =>
-                            error ? reject(error) : this.#services.delete(service)
+                            error ? reject(error) : this.#services.delete(service),
                         );
-                    })
-            )
+                    }),
+            ),
         );
     }
 }

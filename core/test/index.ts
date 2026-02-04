@@ -1,5 +1,5 @@
-import browser from './browser.js';
-import server from './server.js';
+import browser from './browser.ts';
+import server from './server.ts';
 
 export default async (load): Promise<void> => {
     const realms: Awaited<ReturnType<typeof load>>[] = await Promise.all([

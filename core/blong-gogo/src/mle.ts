@@ -1,7 +1,7 @@
 import type {FastifyInstance, FastifyRequest} from 'fastify';
 import fp from 'fastify-plugin';
 
-import jose from './jose.js';
+import jose from './jose.ts';
 
 export type IConfig = Parameters<typeof jose>[0] & {public: {sign: unknown; encrypt: unknown}};
 

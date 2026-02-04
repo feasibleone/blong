@@ -81,7 +81,7 @@ export default handler<{
                                     refresh_token: refreshToken,
                                 },
                             },
-                            {}
+                            {},
                         );
                     const result = await pending;
                     if (pending !== null) pending = null;
@@ -106,7 +106,7 @@ export default handler<{
                             responseType: 'json',
                             path: '/rpc/login/.well-known/mle',
                         },
-                        {}
+                        {},
                     );
                 if (sign && encrypt) {
                     const signKey = await key('ES384', {crv: 'P-384', extractable: true});
@@ -146,7 +146,7 @@ export default handler<{
                     path?: unknown;
                 };
             },
-            $meta: unknown
+            $meta: unknown,
         ) {
             let {$http, ...rest} = params; // eslint-disable-line prefer-const
             params = await encrypt(params instanceof Array ? params : rest);
@@ -166,7 +166,7 @@ export default handler<{
                 validation?: unknown;
                 debug?: unknown;
             }>,
-            $meta: unknown
+            $meta: unknown,
         ) {
             await decrypt(result.body, 'error');
             await decrypt(result.body, 'result');
@@ -185,7 +185,7 @@ export default handler<{
                     jose && {
                         mlsk: jose.keys.sign,
                         mlek: jose.keys.encrypt,
-                    }
+                    },
                 );
                 if ($http && params) params.$http = $http;
             }

@@ -2,11 +2,13 @@
     "compilerOptions": {
         "allowJs": true,
         "checkJs": false,
-        "moduleResolution": "NodeNext",
+        "moduleResolution": "bundler",
         "esModuleInterop": true,
-        "module": "NodeNext",
+        "module": "preserve",
         "sourceMap": true,
         "jsx": "react",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
         "outDir": "dist",
         "target": "ES2022",
         "resolveJsonModule": true

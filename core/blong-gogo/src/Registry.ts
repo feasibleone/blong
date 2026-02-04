@@ -18,9 +18,9 @@ import {monotonicFactory} from 'ulidx';
 import merge from 'ut-function.merge';
 import {v4 as uuid4, v7 as uuid7} from 'uuid';
 
-import type {IResolution} from './Resolution.js';
-import type {IWatch} from './Watch.js';
-import {methodId, methodParts} from './lib.js';
+import type {IResolution} from './Resolution.ts';
+import type {IWatch} from './Watch.ts';
+import {methodId, methodParts} from './lib.ts';
 
 type MatchMethodsCallback = (
     name: string,

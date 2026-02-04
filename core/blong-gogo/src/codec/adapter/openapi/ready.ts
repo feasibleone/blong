@@ -1,6 +1,6 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 
-import {methodId} from '../../../lib.js';
+import {methodId} from '../../../lib.ts';
 
 export default handler(async ({config, lib: {load}, errors}) => {
     let handlers;

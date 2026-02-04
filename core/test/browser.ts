@@ -15,14 +15,14 @@ export default browser(blong => ({
                 }),
             }),
         },
-        {additionalProperties: false}
+        {additionalProperties: false},
     ),
     children: [
         async function testClient() {
-            return import('@feasibleone/blong-test/browser.js');
+            return import('@feasibleone/blong-test/browser.ts');
         },
         async function login() {
-            return import('@feasibleone/blong-login/browser.js');
+            return import('@feasibleone/blong-login/browser.ts');
         },
         './payshield',
         './ctp',

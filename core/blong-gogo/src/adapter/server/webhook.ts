@@ -2,7 +2,7 @@ import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blo
 import got, {type HttpsOptions, type Options} from 'got';
 import {Duplex, Readable, Writable} from 'stream';
 
-import tls from '../../tls.js';
+import tls from '../../tls.ts';
 
 export interface IConfig {
     tls?: {
@@ -32,14 +32,14 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                     type: 'webhook',
                     url: 'http://localhost:8080',
                 },
-                ...configs
+                ...configs,
             );
             https = tls(this.config, true);
             if (this.config['codec.openapi'])
                 await registry.loadApi(
                     this.config.id + '.api',
                     this.config['codec.openapi'],
-                    this.configBase
+                    this.configBase,
                 );
         },
 
@@ -54,7 +54,7 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                 {
                     [`${this.config.namespace}Webhook.request`]: async (
                         params: unknown,
-                        $meta: IMeta
+                        $meta: IMeta,
                     ) =>
                         new Promise((resolve, reject) => {
                             $meta.dispatch = function (...packet: unknown[]) {
@@ -69,7 +69,7 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                 },
                 'ports',
                 false,
-                this.config.pkg
+                this.config.pkg,
             );
 
             stream = Duplex.from({
@@ -101,10 +101,10 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 form: Options['form'];
                                 json: Options['json'];
                             },
-                            IMeta
+                            IMeta,
                         ],
                         encoding: Parameters<ConstructorParameters<typeof Writable>[0]['write']>[1],
-                        callback: Parameters<ConstructorParameters<typeof Writable>[0]['write']>[2]
+                        callback: Parameters<ConstructorParameters<typeof Writable>[0]['write']>[2],
                     ) => {
                         try {
                             const request = {
@@ -129,7 +129,7 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 if (this.log.trace) this.log.trace({headers, body, statusCode});
                                 else
                                     this.log.info?.(
-                                        `${statusCode} ${statusMessage} ${request.method.toUpperCase()} ${url}`
+                                        `${statusCode} ${statusMessage} ${request.method.toUpperCase()} ${url}`,
                                     );
                                 if (!$meta.trace)
                                     readable.push([result, {...$meta, mtid: 'response'}]);

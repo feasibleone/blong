@@ -1,4 +1,4 @@
-import {adapter, IMeta} from '@feasibleone/blong';
+import {adapter, type IMeta} from '@feasibleone/blong';
 
 export default adapter<object>(api => ({
     extends: 'adapter.tcp',

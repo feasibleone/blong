@@ -13,10 +13,10 @@ import timing from 'ut-function.timing';
 import GatewayCodecImpl, {
     type IConfig as IConfigGatewayCodec,
     type IGatewayCodec,
-} from './GatewayCodec.js';
-import RemoteImpl from './Remote.js';
-import type {IResolution} from './Resolution.js';
-import tls from './tls.js';
+} from './GatewayCodec.ts';
+import RemoteImpl from './Remote.ts';
+import type {IResolution} from './Resolution.ts';
+import tls from './tls.ts';
 
 export interface IRpcClient extends IRemote {
     verify: IGatewayCodec['verify'];
@@ -69,7 +69,7 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
             error,
             resolution,
             local,
-        }: {log: ILog; error: IErrorFactory; resolution: IResolution; local: ILocal}
+        }: {log: ILog; error: IErrorFactory; resolution: IResolution; local: ILocal},
     ) {
         super(config, {log, error, local});
         config = this.merge(this.#config, config);
@@ -82,7 +82,7 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
             '8091',
             this.#errors,
             this.sender('request'),
-            this.#resolution
+            this.#resolution,
         );
     }
 
@@ -99,13 +99,13 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
     }
 
     protected sender(
-        methodType: 'request' | 'publish'
+        methodType: 'request' | 'publish',
     ): (...params: unknown[]) => Promise<unknown> {
         return async (msg, ...rest) => {
             const {stream, ...$meta} = rest.pop() as IMeta;
             const {encode, decode, requestParams} = await this.#gatewayCodec.codec(
                 $meta,
-                methodType
+                methodType,
             );
             const {params, headers, method = $meta.method} = await encode(msg, ...rest, $meta);
             const sendRequest = async (): Promise<unknown> => {
@@ -136,15 +136,15 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                                 ...$meta.forward,
                                 ...headers,
                             },
-                        }
+                        },
                     );
                     const {body} = response;
                     if (body?.error !== undefined) {
                         const error: IError = body.jsonrpc
                             ? Object.assign(new Error(), await decode(body.error, true))
                             : typeof body.error === 'string'
-                            ? new Error(body.error)
-                            : Object.assign(new Error(), body.error);
+                              ? new Error(body.error)
+                              : Object.assign(new Error(), body.error);
                         if (error.type)
                             Object.defineProperty(error, 'name', {
                                 value: error.type,
@@ -199,8 +199,8 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                                     await this.#resolution.resolve(
                                         requestParams.cache,
                                         true,
-                                        requestParams.namespace
-                                    )
+                                        requestParams.namespace,
+                                    ),
                                 );
                                 delete requestParams.cache;
                                 return sendRequest();

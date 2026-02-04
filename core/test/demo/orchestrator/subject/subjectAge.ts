@@ -1,4 +1,4 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 /** @description "Calculate age" */
 type Handler = (params: {
@@ -13,7 +13,7 @@ export default handler(
     ({lib: {age}}) =>
         async function subjectAge(
             {birthDate}: Parameters<Handler>[0],
-            $meta: IMeta
+            $meta: IMeta,
         ): ReturnType<Handler> {
             $meta.httpResponse = {
                 header: [
@@ -22,5 +22,5 @@ export default handler(
                 ],
             };
             return {age: age(new Date(birthDate))};
-        }
+        },
 );

@@ -1,8 +1,8 @@
 import load from '@feasibleone/blong-gogo';
 import tap from 'tap';
 
-import browser from './browser.js';
-import server from './server.js';
+import browser from './browser.ts';
+import server from './server.ts';
 
 const realms = await Promise.all([
     load(server, 'impl', 'impl', ['microservice', 'dev', 'test', 'integration']),

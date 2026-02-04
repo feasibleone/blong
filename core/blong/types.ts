@@ -36,9 +36,9 @@ import type {Knex} from './knex.js';
 //     RbacAuthorizationV1Api,
 //     Watch,
 // } from '@kubernetes/client-node';
-export * from '@slack/webhook';
-export * from 'bson';
-export * from 'mongodb';
+export type * from '@slack/webhook';
+export type * from 'bson';
+export type * from 'mongodb';
 // export type {client} from 'node-vault';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';

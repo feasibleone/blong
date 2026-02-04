@@ -6,7 +6,7 @@ import type {FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest
 import fp from 'fastify-plugin';
 import {LRUCache} from 'lru-cache';
 
-import {type IGatewayCodec} from './GatewayCodec.js';
+import {type IGatewayCodec} from './GatewayCodec.ts';
 
 declare module 'fastify' {
     // eslint-disable-next-line @typescript-eslint/naming-convention

@@ -1,4 +1,4 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {group}, handler: {testLoginTokenCreate, payshieldEcho}}) => ({

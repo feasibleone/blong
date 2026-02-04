@@ -2,7 +2,7 @@ import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong';
 import {adapter} from '@feasibleone/blong';
 import got, {type HttpsOptions, type Options} from 'got';
 
-import tls from '../../tls.js';
+import tls from '../../tls.ts';
 
 export interface IConfig {
     tls?: {
@@ -54,7 +54,7 @@ export default adapter<IConfig>(({utError}) => {
                 form: Options['form'];
                 json: Options['json'];
             },
-            {stream}: IMeta
+            {stream}: IMeta,
         ) {
             try {
                 return got({

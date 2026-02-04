@@ -1,7 +1,7 @@
 import type {IErrorFactory, ILog, IMeta, ITypedError} from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
 
-import Errors from './error.js';
+import Errors from './error.ts';
 
 interface IConfig {
     logLevel: Parameters<ILog['logger']>[0];
@@ -27,7 +27,7 @@ export default class ErrorFactory extends Internal implements IErrorFactory {
     }
 
     public register<T>(
-        errors: T
+        errors: T,
     ): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError> {
         return this.#error.register(errors);
     }
@@ -43,7 +43,7 @@ export default class ErrorFactory extends Internal implements IErrorFactory {
     public define(
         id: string,
         superType: string | {type: string},
-        message: string
+        message: string,
     ): (params?: unknown, $meta?: IMeta) => ITypedError {
         return this.#error.define(id, superType, message);
     }

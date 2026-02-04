@@ -1,7 +1,7 @@
 import codec from 'ut-codec-payshield';
 import tcpPort from 'ut-port-tcp';
 
-import log from '../log.js';
+import log from '../log.ts';
 
 export default (layer: unknown): unknown =>
     class extends tcpPort(layer) {

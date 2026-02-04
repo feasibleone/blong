@@ -5,15 +5,15 @@ import busGateway from 'ut-bus/gateway.js';
 import jose from 'ut-bus/jose.js';
 import oidc from 'ut-bus/oidc.js';
 
-import type {IResolution} from './Resolution.js';
-import tls from './tls.js';
+import type {IResolution} from './Resolution.ts';
+import tls from './tls.ts';
 
 type Protocol = 'http' | 'https';
 export interface IGatewayCodec {
     gateway: ($meta: object, methodName: string) => object;
     codec: (
         $meta: object,
-        methodType: 'request' | 'publish'
+        methodType: 'request' | 'publish',
     ) => Promise<{
         encode: (...params: unknown[]) => Promise<{
             params: object;
@@ -33,7 +33,7 @@ export interface IGatewayCodec {
     verify: (
         token,
         flags: {nonce?: string; audience: string},
-        isId?
+        isId?,
     ) => Promise<JWTPayload & {per?: string}>;
 }
 
@@ -66,7 +66,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         port: string,
         errors: unknown,
         sender: Sender,
-        resolution: IResolution
+        resolution: IResolution,
     ) {
         this.#config = config;
         this.#protocol = protocol;
@@ -90,7 +90,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
                     password: '*',
                     channel: 'web',
                 },
-                {method: 'identity.checkInternal'}
+                {method: 'identity.checkInternal'},
             )) as [
                 {
                     'identity.check': {
@@ -102,7 +102,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
                         mlek: string;
                         mlsk: string;
                     };
-                }
+                },
             ];
             const [
                 {
@@ -133,7 +133,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
                     url: string;
                     headers: Headers;
                 },
-                callback: (error: Error, response?: unknown, body?: unknown) => void
+                callback: (error: Error, response?: unknown, body?: unknown) => void,
             ) {
                 try {
                     const response = await got(url, {
@@ -161,7 +161,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
             const mleClient = await jose(config.client || {});
             return busGateway({
                 errorPrefix: 'rpc.',
-                serverInfo: key => ({protocol, port}[key]),
+                serverInfo: key => ({protocol, port})[key],
                 mleClient,
                 errors,
                 get,
@@ -189,7 +189,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
 
     public async codec(
         $meta: IMeta,
-        methodType: 'request' | 'publish'
+        methodType: 'request' | 'publish',
     ): ReturnType<IGatewayCodec['codec']> {
         const gatewayConfig = this.gateway($meta);
 
@@ -226,7 +226,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         if (this.#resolution)
             Object.assign(
                 requestParams,
-                await this.#resolution.resolve(serviceName, false, namespace)
+                await this.#resolution.resolve(serviceName, false, namespace),
             );
         return requestParams;
     }

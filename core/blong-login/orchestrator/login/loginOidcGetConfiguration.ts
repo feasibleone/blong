@@ -1,10 +1,10 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     () =>
         function loginOidcGetConfiguration(
             params: unknown,
-            {httpRequest: {url: urlRequest, headers}}: IMeta
+            {httpRequest: {url: urlRequest, headers}}: IMeta,
         ) {
             const url = new URL(urlRequest);
             if (headers['x-forwarded-host']) {
@@ -22,5 +22,5 @@ export default handler(
                 token_endpoint: new URL('../token', url.href).href,
                 jwks_uri: new URL('../jwks', url.href).href,
             };
-        }
+        },
 );

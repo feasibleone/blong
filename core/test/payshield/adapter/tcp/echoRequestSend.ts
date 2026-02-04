@@ -1,14 +1,14 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     proxy =>
         function echoRequestSend(
             params: {data?: string; length?: number; message?: string},
-            $meta: IMeta
+            $meta: IMeta,
         ) {
             params = params || {};
             params.data = params.message || 'ping';
             params.length = params.data.length;
             return params;
-        }
+        },
 );

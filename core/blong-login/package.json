@@ -15,7 +15,9 @@
     },
     "exports": {
         "./server.js": "./dist/server.js",
+        "./server.ts": "./server.ts",
         "./browser.js": "./dist/browser.js",
+        "./browser.ts": "./browser.ts",
         "./dist/package.json": "./package.json",
         "./package.json": "./package.json"
     },

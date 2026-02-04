@@ -16,8 +16,8 @@ import {readdir} from 'fs/promises';
 import {EventEmitter} from 'node:events';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
 
-import layerProxy from './layerProxy.js';
-import './watch.log.js';
+import layerProxy from './layerProxy.ts';
+import './watch.log.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote) => Promise<void>;
@@ -337,7 +337,7 @@ export default class Watch extends Internal implements IWatch {
         if (this.#config.test) {
             emit.on('test', async (done, test) => {
                 try {
-                    const chain = await (await import('./chain.js')).default(test);
+                    const chain = await (await import('./chain.ts')).default(test);
 
                     const steps = await Promise.all(
                         [].concat(this.#config.test).map(test => remote.remote(test)({}, {})),

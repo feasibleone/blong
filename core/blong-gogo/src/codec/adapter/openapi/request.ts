@@ -2,7 +2,7 @@ import {library} from '@feasibleone/blong';
 import {type OpenAPIV2} from 'openapi-types';
 import interpolate from 'ut-function.interpolate';
 
-import {snakeToCamel} from '../../../lib.js';
+import {snakeToCamel} from '../../../lib.ts';
 
 export default library(
     proxy =>

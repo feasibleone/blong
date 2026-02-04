@@ -17,9 +17,9 @@ import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 
 import type {Dirent} from 'fs';
-import layerProxy from './layerProxy.js';
-import RealmImpl, {type IRealm} from './Realm.js';
-import type {IWatch} from './Watch.js';
+import layerProxy from './layerProxy.ts';
+import RealmImpl, {type IRealm} from './Realm.ts';
+import type {IWatch} from './Watch.ts';
 
 const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
@@ -103,65 +103,65 @@ export default async function loadRealm(
         });
         items = [
             function log() {
-                return import('./Log.js');
+                return import('./Log.ts');
             },
             function apiSchema() {
-                return import('./ApiSchema.js');
+                return import('./ApiSchema.ts');
             },
             function port() {
-                return import('./Port.js');
+                return import('./Port.ts');
             },
             function error() {
-                return import('./ErrorFactory.js');
+                return import('./ErrorFactory.ts');
             },
             function watch() {
-                return import('./Watch.js');
+                return import('./Watch.ts');
             },
             function local() {
-                return import('./Local.js');
+                return import('./Local.ts');
             },
             function resolution() {
-                return import('./ResolutionLocal.js');
+                return import('./ResolutionLocal.ts');
             },
             ...({
                 server: [
                     function remote() {
-                        return import('./RpcClient.js');
+                        return import('./RpcClient.ts');
                     },
                     function rpcServer() {
-                        return import('./RpcServer.js');
+                        return import('./RpcServer.ts');
                     },
                     function gateway() {
-                        return import('./Gateway.js');
+                        return import('./Gateway.ts');
                     },
                     function registry() {
-                        return import('./Registry.js');
+                        return import('./Registry.ts');
                     },
                     function codec() {
-                        return import('./codec/server.js');
+                        return import('./codec/server.ts');
                     },
                     function orchestrator() {
-                        return import('./orchestrator/index.js');
+                        return import('./orchestrator/index.ts');
                     },
                     function adapter() {
-                        return import('./adapter/server.js');
+                        return import('./adapter/server.ts');
                     },
                 ],
                 browser: [
                     function remote() {
-                        return import('./Remote.js');
+                        return import('./Remote.ts');
                     },
                     function registry() {
-                        return import('./Registry.js');
+                        return import('./Registry.ts');
                     },
                     function codec() {
-                        return import('./codec/browser.js');
+                        return import('./codec/browser.ts');
                     },
                     function orchestrator() {
-                        return import('./orchestrator/index.js');
+                        return import('./orchestrator/index.ts');
                     },
                     function adapter() {
-                        return import('./adapter/browser.js');
+                        return import('./adapter/browser.ts');
                     },
                 ],
             }[defKind] ?? []),
@@ -188,7 +188,7 @@ export default async function loadRealm(
                     case 'server':
                     case 'browser':
                         const fileName = item.startsWith('.')
-                            ? join(base, item, `${defKind}.js`)
+                            ? join(base, item, `${defKind}.ts`)
                             : item;
                         item = async () => {
                             try {
@@ -203,7 +203,7 @@ export default async function loadRealm(
                                 )
                                     throw error;
 
-                                const {createRealm} = await import('./kopi.js');
+                                const {createRealm} = await import('./kopi.ts');
                                 await createRealm(import.meta.resolve(fileName), logger);
                                 const mod = await import(fileName);
                                 return mod.default ?? mod;

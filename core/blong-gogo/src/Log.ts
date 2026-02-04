@@ -1,5 +1,5 @@
-import {ILog, Internal} from '@feasibleone/blong';
-import {LoggerOptions, pino, type Logger} from 'pino';
+import {Internal, type ILog} from '@feasibleone/blong';
+import {pino, type Logger, type LoggerOptions} from 'pino';
 
 export default class Log extends Internal implements ILog {
     #logger: Logger;

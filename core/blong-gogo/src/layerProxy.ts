@@ -7,15 +7,15 @@ import {
 } from '@feasibleone/blong';
 import merge from 'ut-function.merge';
 
-import createPort from './adapter.js';
-import {methodId} from './lib.js';
-import type {IPort} from './Port.js';
+import createPort from './adapter.ts';
+import {methodId} from './lib.ts';
+import type {IPort} from './Port.ts';
 
 export default function layerProxy(
     errors: IErrorFactory,
     apiSchema: IApiSchema,
     port: () => void,
-    moduleConfig: {pkg: IModuleConfig['pkg']; base: string}
+    moduleConfig: {pkg: IModuleConfig['pkg']; base: string},
 ): {result: unknown} {
     return new Proxy(
         {
@@ -27,7 +27,7 @@ export default function layerProxy(
             get(
                 target: {error: unknown; result: {error: unknown}; feature: unknown},
                 name: string,
-                receiver: unknown
+                receiver: unknown,
             ) {
                 switch (name) {
                     case 'utPort':
@@ -51,7 +51,7 @@ export default function layerProxy(
                                         else prev[1].push(item);
                                         return prev;
                                     },
-                                    [[], []]
+                                    [[], []],
                                 );
                                 ports.forEach(what => {
                                     if (what.prototype instanceof port) {
@@ -83,7 +83,7 @@ export default function layerProxy(
                                                     ...portApi,
                                                     handlers: what,
                                                 },
-                                                moduleConfig.base
+                                                moduleConfig.base,
                                             );
                                             await port.init({
                                                 ...moduleConfig?.[name],
@@ -115,7 +115,7 @@ export default function layerProxy(
                                             config: merge(
                                                 {},
                                                 moduleConfig[name],
-                                                port?.config?.[namespace]
+                                                port?.config?.[namespace],
                                             ),
                                             lib: new Proxy(lib, {
                                                 get(target: object, functionName: string) {
@@ -127,8 +127,8 @@ export default function layerProxy(
                                                             if (!fn)
                                                                 throw new Error(
                                                                     `Lib property '${functionName.toString()}' not found. Available properties are: ${Object.keys(
-                                                                        target
-                                                                    ).sort()}`
+                                                                        target,
+                                                                    ).sort()}`,
                                                                 );
                                                             return fn.apply(port, params);
                                                         }
@@ -155,10 +155,10 @@ export default function layerProxy(
                                                                       port.findHandler(handlerName);
                                                                   if (!fn)
                                                                       throw new Error(
-                                                                          `Handler '${handlerName.toString()}' not found`
+                                                                          `Handler '${handlerName.toString()}' not found`,
                                                                       );
                                                                   return fn.apply(port, params);
-                                                              }
+                                                              },
                                                           )
                                                         : remote(handlerName);
                                                 },
@@ -188,8 +188,8 @@ export default function layerProxy(
                                                         local,
                                                         await apiSchema.schema(
                                                             what(layerApi),
-                                                            source
-                                                        )
+                                                            source,
+                                                        ),
                                                     );
                                                     break;
                                                 case 'function:handler':
@@ -210,6 +210,6 @@ export default function layerProxy(
                         };
                 }
             },
-        }
+        },
     );
 }

@@ -1,4 +1,4 @@
-import {ILocal, Internal} from '@feasibleone/blong';
+import {type ILocal, Internal} from '@feasibleone/blong';
 
 export default class Local extends Internal implements ILocal {
     #mapLocal: object = {};
@@ -16,7 +16,7 @@ export default class Local extends Internal implements ILocal {
         methods: object,
         namespace: string,
         reply: boolean,
-        pkg: {version: string}
+        pkg: {version: string},
     ): void {
         if (methods instanceof Array) {
             methods.forEach(fn => {

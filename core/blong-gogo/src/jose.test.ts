@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import {test} from 'node:test';
 
-import jose from './jose.js';
+import jose from './jose.ts';
 
 await test('jose', async t => {
     const {signEncrypt, decryptVerify} = await jose({
@@ -36,8 +36,8 @@ await test('jose', async t => {
                 x: 's8uFX_D-Ow5Q6UoRs6tFDBDkpdpcsueSl7-oyPpBFdgY6Co9L2AZknuqA4vDSKe4',
                 y: 'IffoB24bdS2nk699nXMB4cVe7LgLdinCKNGgrgcPHlPXnqfdJ7T5DLucLLJP0DQA',
                 alg: 'ECDH-ES+A256KW',
-            }
-        )
+            },
+        ),
     );
 
     assert.ok(
@@ -61,7 +61,7 @@ await test('jose', async t => {
                 x: 'pM8gcPvgdKrKaxQmIC7Q67AvV7KteWqU5I4X83ErVinZnAgeT1KwfhCYssD3YNvK',
                 y: 'SVsvfEm3CVu2WjOho2frL7LnaXeOQHC1JT856bOH-Vp3E-4_1j2Kp9KHJJf7Qn1v',
                 alg: 'ES384',
-            }
-        )
+            },
+        ),
     );
 });

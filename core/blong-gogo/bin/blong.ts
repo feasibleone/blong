@@ -1,8 +1,8 @@
-#!/usr/bin/env -S tsx watch --inspect --ignore **/test/**
+#!/usr/bin/env -S node --watch --inspect
 
 import minimist from 'minimist';
 import {resolve} from 'node:path';
-import load from '../src/load.js';
+import load from '../src/load.ts';
 
 const argv: {_: string[]} = minimist(process.argv.slice(2));
 

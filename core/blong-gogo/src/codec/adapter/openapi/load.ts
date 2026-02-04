@@ -1,6 +1,6 @@
 import {library} from '@feasibleone/blong';
 
-import loadApi from '../../../loadApi.js';
+import loadApi from '../../../loadApi.ts';
 
 const httpVerbs: string[] = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
 

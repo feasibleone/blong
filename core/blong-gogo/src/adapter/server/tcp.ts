@@ -1,9 +1,9 @@
-import {adapter, ITypedError} from '@feasibleone/blong';
+import {adapter, type ITypedError} from '@feasibleone/blong';
 import {Socket} from 'net';
 import createReconnect from 'reconnect-core';
 import bitSyntax from 'ut-bitsyntax';
 
-import tls from '../../tls.js';
+import tls from '../../tls.ts';
 
 export interface IConfig {
     tls?: object;
@@ -48,7 +48,7 @@ export default adapter<IConfig>(api => {
 
         if (streams.length > this.config.maxConnections) {
             this.log?.warn?.(
-                `Connection limit exceeded (max ${this.config.maxConnections}). Closing ${this.config.connectionDropPolicy} connection.`
+                `Connection limit exceeded (max ${this.config.maxConnections}). Closing ${this.config.connectionDropPolicy} connection.`,
             );
             switch (this.config.connectionDropPolicy) {
                 case 'oldest':
@@ -111,7 +111,7 @@ export default adapter<IConfig>(api => {
                         prefix: '',
                     },
                 },
-                ...configs
+                ...configs,
             );
         },
         async start() {
@@ -128,16 +128,16 @@ export default adapter<IConfig>(api => {
             } else if (this.config.format.size) {
                 const {size, sizeAdjust, prefix} = this.config.format;
                 this.pack = bitSyntax.builder(
-                    `${prefix}${prefix && ', '}size:${size}, data:size/binary`
+                    `${prefix}${prefix && ', '}size:${size}, data:size/binary`,
                 );
                 if (sizeAdjust || this.config.maxReceiveBuffer) {
                     this.unpackSize = bitSyntax.matcher(
-                        `${prefix}${prefix && ', '}size:${size}, data/binary`
+                        `${prefix}${prefix && ', '}size:${size}, data/binary`,
                     );
                     this.unpack = bitSyntax.matcher('data:size/binary, rest/binary');
                 } else {
                     this.unpack = bitSyntax.matcher(
-                        `${prefix}${prefix && ', '}size:${size}, data:size/binary, rest/binary`
+                        `${prefix}${prefix && ', '}size:${size}, data:size/binary, rest/binary`,
                     );
                 }
             }
@@ -146,7 +146,7 @@ export default adapter<IConfig>(api => {
                 server = this.config.tls
                     ? (await import('node:tls')).createServer(
                           tls(this.config, false),
-                          connect.bind(this)
+                          connect.bind(this),
                       )
                     : (await import('node:net')).createServer(connect.bind(this));
 
@@ -156,7 +156,7 @@ export default adapter<IConfig>(api => {
                     this.config.client ||
                     (await (this.config.tls ? import('node:tls') : import('node:net')));
                 reconnect = createReconnect((...args: unknown[]) => client.connect(...args))(
-                    connect.bind(this)
+                    connect.bind(this),
                 )
                     .on('error', onError('client').bind(this))
                     .connect({
@@ -167,7 +167,7 @@ export default adapter<IConfig>(api => {
                                 ['host', this.config.host],
                                 ['port', this.config.port],
                                 ['localPort', this.config.localPort],
-                            ].filter(([, value]) => value != null)
+                            ].filter(([, value]) => value != null),
                         ),
                     });
             }

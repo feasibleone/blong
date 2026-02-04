@@ -1,4 +1,4 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 type ApiHandler = (params: {location?: string; area?: string}) => Promise<object>;
 
@@ -20,7 +20,7 @@ export default handler(
     () =>
         async function clockGet(
             params: Parameters<ApiHandler>[0],
-            $meta: IMeta
+            $meta: IMeta,
         ): ReturnType<ApiHandler> {
             const now = new Date();
             const dst_offset = dstOffset(now);
@@ -42,5 +42,5 @@ export default handler(
                 utc_offset: now.getTimezoneOffset(),
                 week_number: weekNumber(now),
             };
-        }
+        },
 );

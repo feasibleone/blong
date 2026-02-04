@@ -16,12 +16,12 @@ import type {LevelWithSilent} from 'pino';
 import {after} from 'ut-function.timing';
 import {v4} from 'uuid';
 
-import type {IResolution} from './Resolution.js';
-import type {IRpcClient} from './RpcClient.js';
-import jwt from './jwt.js';
-import {methodParts, snakeToCamel} from './lib.js';
-import type {IConfig as IConfigMLE} from './mle.js';
-import swagger from './swagger.js';
+import type {IResolution} from './Resolution.ts';
+import type {IRpcClient} from './RpcClient.ts';
+import jwt from './jwt.ts';
+import {methodParts, snakeToCamel} from './lib.ts';
+import type {IConfig as IConfigMLE} from './mle.ts';
+import swagger from './swagger.ts';
 
 const osName: string = [os.type(), os.platform(), os.release()].join(':');
 const hostName: string = os.hostname();
@@ -477,9 +477,9 @@ export default class Gateway extends Internal implements IGateway {
                 audience: this.#config.jwt.audience,
             });
             if (this.#config.cors)
-                await this.#server.register((await import('./cors.js')).default, this.#config.cors);
+                await this.#server.register((await import('./cors.ts')).default, this.#config.cors);
             if (this.#config.sign || this.#config.encrypt) {
-                await this.#server.register((await import('./mle.js')).default, this.#config);
+                await this.#server.register((await import('./mle.ts')).default, this.#config);
             } else {
                 this.#server.route({
                     method: 'GET',

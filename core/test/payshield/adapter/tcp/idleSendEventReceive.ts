@@ -1,4 +1,4 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     proxy =>
@@ -14,5 +14,5 @@ export default handler(
                     dispatch: () => false,
                 },
             ];
-        }
+        },
 );

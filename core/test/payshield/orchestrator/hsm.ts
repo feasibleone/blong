@@ -1,6 +1,6 @@
 import scriptPort from 'ut-port-script';
 
-import log from '../log.js';
+import log from '../log.ts';
 
 export default (layer: {utMethod: {pkg: unknown}}): unknown =>
     class extends scriptPort(layer) {

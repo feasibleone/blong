@@ -9,8 +9,8 @@ import {Internal} from '@feasibleone/blong';
 import {createReadStream, statSync, writeFileSync, type Dirent} from 'node:fs';
 import path, {basename, extname} from 'node:path';
 
-import {identifier} from './lib.js';
-import loadApi from './loadApi.js';
+import {identifier} from './lib.ts';
+import loadApi from './loadApi.ts';
 
 interface IConfig {
     logLevel?: Parameters<ILog['logger']>[0];
@@ -110,7 +110,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
                 writeFileSync(
                     filename,
                     `import unchanged from '@feasibleone/blong';
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 // #region API
 type Handler = (params: {

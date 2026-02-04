@@ -1,4 +1,4 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 type Handler = (params: number[]) => Promise<number>;
 
@@ -6,8 +6,8 @@ export default handler(
     ({lib: {sum}}) =>
         async function subjectNumberSum(
             params: Parameters<Handler>[0],
-            $meta: IMeta
+            $meta: IMeta,
         ): ReturnType<Handler> {
             return sum(params);
-        }
+        },
 );

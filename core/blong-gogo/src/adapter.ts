@@ -11,7 +11,7 @@ import type net from 'node:net';
 import PQueue from 'p-queue';
 import merge from 'ut-function.merge';
 
-import loop from './loop.js';
+import loop from './loop.ts';
 
 const errorMap: IErrorMap = {
     'adapter.configValidation': 'Adapter config validation:\r\n{message}',

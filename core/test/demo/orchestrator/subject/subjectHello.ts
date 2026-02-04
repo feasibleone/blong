@@ -1,4 +1,4 @@
-import {IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong';
 
 type Handler = (params: unknown) => Promise<{
     hello: unknown;
@@ -8,8 +8,8 @@ export default handler(
     proxy =>
         async function subjectHello(
             params: Parameters<Handler>[0],
-            $meta: IMeta
+            $meta: IMeta,
         ): ReturnType<Handler> {
             return {hello: $meta.auth};
-        }
+        },
 );

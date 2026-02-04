@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Test blong",
+            "program": "${workspaceFolder}/core/test/index.test.ts",
+            "cwd": "${workspaceFolder}/core/test",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "type": "node"
+        },
+        {
             "name": "Run Extension",
             "type": "extensionHost",
             "request": "launch",

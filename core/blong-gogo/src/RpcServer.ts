@@ -2,7 +2,7 @@
 import {Internal, type ILog, type IRpcServer} from '@feasibleone/blong';
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
-import type {IResolution} from './Resolution.js';
+import type {IResolution} from './Resolution.ts';
 
 interface IConfig {
     port: number;

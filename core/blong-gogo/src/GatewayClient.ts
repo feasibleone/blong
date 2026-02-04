@@ -2,7 +2,7 @@ import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta} from '@feasi
 import ky from 'ky';
 import {spare} from 'ut-function.timing';
 
-import Remote from './Remote.js';
+import Remote from './Remote.ts';
 
 export interface IGatewayClient {
     start: () => Promise<void>;
@@ -37,7 +37,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
 
     public constructor(
         config: IConfig,
-        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal}
+        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal},
     ) {
         super(config, {log, error, local});
         this.merge(this.#config, config);
@@ -47,7 +47,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
     public gateway(meta: object, method: string): void {}
 
     protected sender(
-        methodType: 'request' | 'publish'
+        methodType: 'request' | 'publish',
     ): (...params: unknown[]) => Promise<unknown> {
         return async (...rest) => {
             const {stream, ...$meta} = rest.pop() as IMeta;
@@ -86,8 +86,8 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
                     const error: IError = body.jsonrpc
                         ? Object.assign(new Error(), body.error)
                         : typeof body.error === 'string'
-                        ? new Error(body.error)
-                        : Object.assign(new Error(), body.error);
+                          ? new Error(body.error)
+                          : Object.assign(new Error(), body.error);
                     if (error.type)
                         Object.defineProperty(error, 'name', {
                             value: error.type,

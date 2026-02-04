@@ -7,10 +7,10 @@ export default server(blong => ({
     }),
     children: [
         async function login() {
-            return import('@feasibleone/blong-login/server.js');
+            return import('@feasibleone/blong-login/server.ts');
         },
         async function openapi() {
-            return import('@feasibleone/blong-openapi/server.js');
+            return import('@feasibleone/blong-openapi/server.ts');
         },
         './ctp',
         './parking',
