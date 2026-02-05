@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/feasibleone/blong/compare/blong-v1.5.0...blong-v1.5.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* update exports path in package.json ([603ddc1](https://github.com/feasibleone/blong/commit/603ddc102ad5bb0e747524e2ac35dfa6bce83aa8))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/blong-v1.4.0...blong-v1.5.0) (2026-02-04)
 
 
