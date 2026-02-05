@@ -11,11 +11,9 @@
     },
     "scripts": {
         "build": "heft build --clean",
-        "test": "node --test dist/index.test.js",
+        "test": "tap *.test.ts",
         "test:examples": "node --test dist/examples/*.test.js",
-        "test:examples:ci": "./test-examples-ci.sh",
-        "test:all": "node --test **/*.test.js",
-        "ci-unit": "npm run test",
+        "ci-unit": "npm run test;./test-examples-ci.sh",
         "ci-examples": "npm run test:examples:ci",
         "ci-all": "npm run ci-unit && npm run ci-examples",
         "ci-publish": "npm publish --access public --provenance"
@@ -35,6 +33,7 @@
         "@rushstack/heft-typescript-plugin": "^1.1.11",
         "@types/node": "^24",
         "eslint": "~9.39.2",
+        "tap": "^21.5.0",
         "typescript": "^5.9.3"
     }
 }
