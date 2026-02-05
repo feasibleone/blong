@@ -11,12 +11,12 @@
  * - Latency metrics
  */
 
-import {strict as assert} from 'node:assert';
-import {describe, it} from 'node:test';
+import assert from 'assert';
+import tap from 'tap';
 import {TestExecutor} from './index.js';
 
-describe('TestExecutor - Thenable Proxy Patterns', () => {
-    it('Pattern 1: await context.propertyName', async () => {
+tap.test('TestExecutor - Thenable Proxy Patterns', async t => {
+    t.test('Pattern 1: await context.propertyName', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -40,7 +40,7 @@ describe('TestExecutor - Thenable Proxy Patterns', () => {
         assert.equal(progress.failedSteps, 0);
     });
 
-    it('Pattern 2: {propertyName} then await propertyName', async () => {
+    t.test('Pattern 2: {propertyName} then await propertyName', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -64,7 +64,7 @@ describe('TestExecutor - Thenable Proxy Patterns', () => {
         assert.equal(graph.edges[0].to, 'setupData');
     });
 
-    it('Pattern 3: {propertyName} then await propertyName.nestedProperty', async () => {
+    t.test('Pattern 3: {propertyName} then await propertyName.nestedProperty', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -90,31 +90,34 @@ describe('TestExecutor - Thenable Proxy Patterns', () => {
         assert.equal(progress.status, 'completed');
     });
 
-    it('Pattern 4: {propertyName: {nestedProperty}} then await nestedProperty', async () => {
-        const executor = new TestExecutor({concurrency: 10});
+    t.test(
+        'Pattern 4: {propertyName: {nestedProperty}} then await nestedProperty',
+        async () => {
+            const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
-            async function setupAccount() {
-                return {
-                    accountId: 'acct-999',
-                    owner: {name: 'Diana', email: 'diana@example.com'},
-                };
-            },
-            async function processOwner(assert: any, context: any) {
-                // Pattern 4: Nested destructuring, then await
-                const {
-                    setupAccount: {owner},
-                } = context;
-                const ownerData = await owner;
-                assert.equal(ownerData.name, 'Diana');
-                assert.equal(ownerData.email, 'diana@example.com');
-            },
-        ];
+            const steps = [
+                async function setupAccount() {
+                    return {
+                        accountId: 'acct-999',
+                        owner: {name: 'Diana', email: 'diana@example.com'},
+                    };
+                },
+                async function processOwner(assert: any, context: any) {
+                    // Pattern 4: Nested destructuring, then await
+                    const {
+                        setupAccount: {owner},
+                    } = context;
+                    const ownerData = await owner;
+                    assert.equal(ownerData.name, 'Diana');
+                    assert.equal(ownerData.email, 'diana@example.com');
+                },
+            ];
 
-        await executor.execute(steps, {});
-    });
+            await executor.execute(steps, {});
+        },
+    );
 
-    it('$meta is always available directly without await', async () => {
+    t.test('$meta is always available directly without await', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const testMeta = {testId: 'test-123', environment: 'dev'};
@@ -134,8 +137,8 @@ describe('TestExecutor - Thenable Proxy Patterns', () => {
     });
 });
 
-describe('TestExecutor - Parallel Execution', () => {
-    it('independent steps run in parallel', async () => {
+tap.test('TestExecutor - Parallel Execution', async t => {
+    t.test('independent steps run in parallel', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
@@ -175,7 +178,7 @@ describe('TestExecutor - Parallel Execution', () => {
         );
     });
 
-    it('dependent steps wait for dependencies', async () => {
+    t.test('dependent steps wait for dependencies', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
@@ -206,7 +209,7 @@ describe('TestExecutor - Parallel Execution', () => {
         assert.ok(dbEndIndex < queryEndIndex, 'Dependent step should complete after dependency');
     });
 
-    it('respects concurrency limit', async () => {
+    t.test('respects concurrency limit', async () => {
         const executor = new TestExecutor({concurrency: 2}); // Limit to 2 concurrent steps
         let concurrentSteps = 0;
         let maxConcurrent = 0;
@@ -234,8 +237,8 @@ describe('TestExecutor - Parallel Execution', () => {
     });
 });
 
-describe('TestExecutor - Dependency Graph', () => {
-    it('tracks simple dependency', async () => {
+tap.test('TestExecutor - Dependency Graph', async t => {
+    t.test('tracks simple dependency', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -259,7 +262,7 @@ describe('TestExecutor - Dependency Graph', () => {
         assert.equal(graph.edges[0].property, 'stepA');
     });
 
-    it('tracks multiple dependencies', async () => {
+    t.test('tracks multiple dependencies', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -288,7 +291,7 @@ describe('TestExecutor - Dependency Graph', () => {
         assert.ok(deps.some(e => e.to === 'setupAccount'));
     });
 
-    it('tracks nested property dependencies', async () => {
+    t.test('tracks nested property dependencies', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -311,8 +314,8 @@ describe('TestExecutor - Dependency Graph', () => {
     });
 });
 
-describe('TestExecutor - Progress Tracking', () => {
-    it('tracks overall test progress', async () => {
+tap.test('TestExecutor - Progress Tracking', async t => {
+    t.test('tracks overall test progress', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -342,7 +345,7 @@ describe('TestExecutor - Progress Tracking', () => {
         assert.equal(progressSnapshots.length, 6); // 3 starts + 3 ends
     });
 
-    it('tracks individual step progress', async () => {
+    t.test('tracks individual step progress', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -364,7 +367,7 @@ describe('TestExecutor - Progress Tracking', () => {
         assert.ok(stepProgress.duration && stepProgress.duration >= 50);
     });
 
-    it('emits real-time progress events', async () => {
+    t.test('emits real-time progress events', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const events: string[] = [];
 
@@ -391,8 +394,8 @@ describe('TestExecutor - Progress Tracking', () => {
     });
 });
 
-describe('TestExecutor - Error Handling', () => {
-    it('captures step errors with context', async () => {
+tap.test('TestExecutor - Error Handling', async t => {
+    t.test('captures step errors with context', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -418,7 +421,7 @@ describe('TestExecutor - Error Handling', () => {
         assert.ok(stepProgress.error.message.includes('Intentional test failure'));
     });
 
-    it('includes dependency chain in error', async () => {
+    t.test('includes dependency chain in error', async () => {
         const executor = new TestExecutor({concurrency: 10, captureStackTraces: true});
 
         const steps = [
@@ -444,7 +447,7 @@ describe('TestExecutor - Error Handling', () => {
         assert.ok(stepProgress.dependencies.includes('step2'));
     });
 
-    it('captures source location for failed steps', async () => {
+    t.test('captures source location for failed steps', async () => {
         const executor = new TestExecutor({concurrency: 10, captureStackTraces: true});
 
         const steps = [
@@ -466,8 +469,8 @@ describe('TestExecutor - Error Handling', () => {
     });
 });
 
-describe('TestExecutor - Latency Metrics', () => {
-    it('tracks step latency', async () => {
+tap.test('TestExecutor - Latency Metrics', async t => {
+    t.test('tracks step latency', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -488,7 +491,7 @@ describe('TestExecutor - Latency Metrics', () => {
         assert.equal(stepLatency.waitTime, 0); // No dependencies, no wait time
     });
 
-    it('distinguishes queue time, wait time, and execution time', async () => {
+    t.test('distinguishes queue time, wait time, and execution time', async () => {
         const executor = new TestExecutor({concurrency: 1}); // Force queueing
 
         const steps = [
@@ -528,7 +531,7 @@ describe('TestExecutor - Latency Metrics', () => {
         );
     });
 
-    it('identifies critical path', async () => {
+    t.test('identifies critical path', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -566,8 +569,8 @@ describe('TestExecutor - Latency Metrics', () => {
     });
 });
 
-describe('TestExecutor - Nested Steps (Sequential Execution)', () => {
-    it('executes nested arrays sequentially', async () => {
+tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
+    t.test('executes nested arrays sequentially', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
@@ -596,10 +599,165 @@ describe('TestExecutor - Nested Steps (Sequential Execution)', () => {
 
         assert.ok(step1Index < step2Index, 'Nested array should wait for outer level to complete');
     });
+
+    t.test('empty array acts as checkpoint for parallel execution', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+        const executionOrder: Array<{step: string; event: string; time: number}> = [];
+        const startTime = Date.now();
+
+        const steps = [
+            async function parallelStep1() {
+                executionOrder.push({
+                    step: 'parallel1',
+                    event: 'start',
+                    time: Date.now() - startTime,
+                });
+                await new Promise(resolve => setTimeout(resolve, 50));
+                executionOrder.push({
+                    step: 'parallel1',
+                    event: 'end',
+                    time: Date.now() - startTime,
+                });
+                return {data: 1};
+            },
+
+            async function parallelStep2() {
+                executionOrder.push({
+                    step: 'parallel2',
+                    event: 'start',
+                    time: Date.now() - startTime,
+                });
+                await new Promise(resolve => setTimeout(resolve, 50));
+                executionOrder.push({
+                    step: 'parallel2',
+                    event: 'end',
+                    time: Date.now() - startTime,
+                });
+                return {data: 2};
+            },
+
+            async function parallelStep3() {
+                executionOrder.push({
+                    step: 'parallel3',
+                    event: 'start',
+                    time: Date.now() - startTime,
+                });
+                await new Promise(resolve => setTimeout(resolve, 50));
+                executionOrder.push({
+                    step: 'parallel3',
+                    event: 'end',
+                    time: Date.now() - startTime,
+                });
+                return {data: 3};
+            },
+
+            // Checkpoint - wait for all parallel steps above to complete
+            [],
+
+            async function afterCheckpoint1() {
+                executionOrder.push({step: 'after1', event: 'start', time: Date.now() - startTime});
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push({step: 'after1', event: 'end', time: Date.now() - startTime});
+                return {data: 4};
+            },
+
+            async function afterCheckpoint2() {
+                executionOrder.push({step: 'after2', event: 'start', time: Date.now() - startTime});
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push({step: 'after2', event: 'end', time: Date.now() - startTime});
+                return {data: 5};
+            },
+        ];
+
+        await executor.execute(steps, {});
+
+        // Verify all parallel steps end before any after-checkpoint steps start
+        const parallel1End = executionOrder.find(e => e.step === 'parallel1' && e.event === 'end')!;
+        const parallel2End = executionOrder.find(e => e.step === 'parallel2' && e.event === 'end')!;
+        const parallel3End = executionOrder.find(e => e.step === 'parallel3' && e.event === 'end')!;
+        const after1Start = executionOrder.find(e => e.step === 'after1' && e.event === 'start')!;
+        const after2Start = executionOrder.find(e => e.step === 'after2' && e.event === 'start')!;
+
+        const lastParallelEnd = Math.max(parallel1End.time, parallel2End.time, parallel3End.time);
+        const firstAfterStart = Math.min(after1Start.time, after2Start.time);
+
+        assert.ok(
+            lastParallelEnd <= firstAfterStart,
+            `Checkpoint should ensure all parallel steps complete (${lastParallelEnd}ms) before next steps start (${firstAfterStart}ms)`,
+        );
+
+        const progress = executor.getProgress();
+        assert.equal(progress.completedSteps, 5);
+    });
+
+    t.test('multiple checkpoints create multiple synchronization barriers', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+        const executionOrder: string[] = [];
+
+        const steps = [
+            async function phase1Step1() {
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push('phase1-1');
+                return {phase: 1, step: 1};
+            },
+
+            async function phase1Step2() {
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push('phase1-2');
+                return {phase: 1, step: 2};
+            },
+
+            [], // Checkpoint 1
+
+            async function phase2Step1() {
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push('phase2-1');
+                return {phase: 2, step: 1};
+            },
+
+            async function phase2Step2() {
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push('phase2-2');
+                return {phase: 2, step: 2};
+            },
+
+            [], // Checkpoint 2
+
+            async function phase3Step1() {
+                await new Promise(resolve => setTimeout(resolve, 30));
+                executionOrder.push('phase3-1');
+                return {phase: 3, step: 1};
+            },
+        ];
+
+        await executor.execute(steps, {});
+
+        // Verify ordering
+        const phase1Index = Math.max(
+            executionOrder.indexOf('phase1-1'),
+            executionOrder.indexOf('phase1-2'),
+        );
+        const phase2Index = Math.min(
+            executionOrder.indexOf('phase2-1'),
+            executionOrder.indexOf('phase2-2'),
+        );
+        const phase3Index = executionOrder.indexOf('phase3-1');
+
+        assert.ok(phase1Index < phase2Index, 'Phase 1 should complete before Phase 2 starts');
+
+        const phase2MaxIndex = Math.max(
+            executionOrder.indexOf('phase2-1'),
+            executionOrder.indexOf('phase2-2'),
+        );
+        assert.ok(phase2MaxIndex < phase3Index, 'Phase 2 should complete before Phase 3 starts');
+
+        const progress = executor.getProgress();
+        assert.equal(progress.completedSteps, 5);
+    });
 });
 
-describe('TestExecutor - Promise Resolution', () => {
-    it('resolves main step promise', async () => {
+tap.test('TestExecutor - Promise Resolution', async t => {
+    t.test('resolves main step promise', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -615,7 +773,7 @@ describe('TestExecutor - Promise Resolution', () => {
         await executor.execute(steps, {});
     });
 
-    it('resolves nested property promises', async () => {
+    t.test('resolves nested property promises', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -636,7 +794,7 @@ describe('TestExecutor - Promise Resolution', () => {
         await executor.execute(steps, {});
     });
 
-    it('multiple steps can await same property', async () => {
+    t.test('multiple steps can await same property', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -662,8 +820,8 @@ describe('TestExecutor - Promise Resolution', () => {
     });
 });
 
-describe('TestExecutor - Nested Test Context (node:test integration)', () => {
-    it('executes steps with nested test context for proper indentation', async t => {
+tap.test('TestExecutor - Nested Test Context (node:test integration)', async t => {
+    t.test('executes steps with nested test context for proper indentation', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -677,14 +835,14 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {});
 
         const progress = executor.getProgress();
         assert.equal(progress.completedSteps, 2);
         assert.equal(progress.status, 'completed');
     });
 
-    it('handles nested arrays with automatic indentation', async t => {
+    t.test('handles nested arrays with automatic indentation', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const nestedSteps = [
@@ -713,14 +871,14 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {});
 
         const progress = executor.getProgress();
         assert.equal(progress.completedSteps, 4);
         assert.equal(progress.status, 'completed');
     });
 
-    it('handles deeply nested arrays with proper hierarchy', async t => {
+    t.test('handles deeply nested arrays with proper hierarchy', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const level3Steps = [
@@ -754,14 +912,14 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {});
 
         const progress = executor.getProgress();
         assert.equal(progress.completedSteps, 4);
         assert.equal(progress.status, 'completed');
     });
 
-    it('maintains parallel execution within nested groups', async t => {
+    t.test('maintains parallel execution within nested groups', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
@@ -789,7 +947,7 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
             parallelGroup,
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {});
 
         const progress = executor.getProgress();
         assert.equal(progress.completedSteps, 3);
@@ -802,7 +960,7 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
         );
     });
 
-    it('works without test context (backward compatibility)', async () => {
+    t.test('works without test context (backward compatibility)', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const nestedSteps = [
@@ -827,7 +985,7 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
         assert.equal(progress.status, 'completed');
     });
 
-    it('error reporting tracked in progress even with test context', async t => {
+    t.test('error reporting tracked in progress even with test context', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
@@ -841,7 +999,7 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {});
 
         // Verify all steps completed successfully
         const progress = executor.getProgress();
@@ -851,8 +1009,8 @@ describe('TestExecutor - Nested Test Context (node:test integration)', () => {
     });
 });
 
-describe('TestExecutor - Error Reporting with Nested Context', () => {
-    it('reports errors in nested test output and tracks in progress', async () => {
+tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
+    t.test('reports errors in nested test output and tracks in progress', async () => {
         // Run WITHOUT test context so our assertions can pass while demonstrating tracking
         const executor = new TestExecutor({concurrency: 10});
 
@@ -894,7 +1052,7 @@ describe('TestExecutor - Error Reporting with Nested Context', () => {
         );
     });
 
-    it('reports errors in nested groups with proper indentation', async () => {
+    t.test('reports errors in nested groups with proper indentation', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const problemGroup = [
@@ -951,7 +1109,7 @@ describe('TestExecutor - Error Reporting with Nested Context', () => {
         assert.equal(goodStepProgress.status, 'completed', 'Good step should complete');
     });
 
-    it('reports multiple errors in nested hierarchy', async () => {
+    t.test('reports multiple errors in nested hierarchy', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         // Create two parallel failing steps at the same level
@@ -986,7 +1144,7 @@ describe('TestExecutor - Error Reporting with Nested Context', () => {
         assert.ok(error2.error?.message.includes('Root error 2'), 'Second error message');
     });
 
-    it('continues execution after error when using test context', async () => {
+    t.test('continues execution after error when using test context', async () => {
         const executor = new TestExecutor({concurrency: 10});
         const executionLog: string[] = [];
 
@@ -1021,7 +1179,7 @@ describe('TestExecutor - Error Reporting with Nested Context', () => {
         assert.equal(progress.failedSteps, 1, 'Should have 1 failed step');
     });
 
-    it('error details are captured with source location when enabled', async () => {
+    t.test('error details are captured with source location when enabled', async () => {
         const executor = new TestExecutor({concurrency: 10, captureStackTraces: true});
 
         const steps = [

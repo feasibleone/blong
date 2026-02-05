@@ -455,6 +455,14 @@ export class TestExecutor extends EventEmitter {
 
         for (const step of steps) {
             if (Array.isArray(step)) {
+                // Check if it's an empty array (checkpoint)
+                if (step.length === 0) {
+                    // Checkpoint: wait for all parallel steps to complete before continuing
+                    await Promise.all(stepPromises);
+                    stepPromises.length = 0;
+                    continue;
+                }
+
                 // Nested array - wait for current level to complete first
                 await Promise.all(stepPromises);
                 stepPromises.length = 0;
