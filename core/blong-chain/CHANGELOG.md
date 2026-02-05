@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.0.1...blong-chain-v1.1.0) (2026-02-05)
+
+
+### Features
+
+* add checkpoint support ([#19](https://github.com/feasibleone/blong/issues/19)) ([097a7b8](https://github.com/feasibleone/blong/commit/097a7b80544b28f03f47f0ad6de186baf21004a1))
+
 ## [1.0.1](https://github.com/feasibleone/blong/compare/blong-chain-v1.0.0...blong-chain-v1.0.1) (2026-02-03)
 
 
