@@ -916,8 +916,7 @@ tap.test('Feature Showcase: Complete Integration Test', async t => {
             Math.min(taxRange[1], shippingRange[1]) - Math.max(taxRange[0], shippingRange[0]),
         );
 
-        const taxDuration = taxStep.endTime! - taxStep.startTime!;
-        const shippingDuration = shippingStep.endTime! - shippingStep.startTime!;
+        // Durations are implicitly covered by overlap calculation; remove unused variables.
 
         // Verify significant overlap between independent steps
         assert.ok(
