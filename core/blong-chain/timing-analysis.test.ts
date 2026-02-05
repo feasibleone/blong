@@ -106,7 +106,7 @@ tap.test('Timing Analysis: Parallel Execution Performance', async t => {
         },
 
         async function updateInventory(assert: typeof import('assert'), context) {
-            const order = await context.createOrder;
+            await context.createOrder;
             const inventory = await context.validateInventory;
 
             await new Promise(resolve => setTimeout(resolve, 20));
