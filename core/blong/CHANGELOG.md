@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/feasibleone/blong/compare/blong-v1.5.1...blong-v1.5.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* update dependencies ([3330815](https://github.com/feasibleone/blong/commit/3330815d11e64c79c6c14af05a75a903e0cbfac7))
+
 ## [1.5.1](https://github.com/feasibleone/blong/compare/blong-v1.5.0...blong-v1.5.1) (2026-02-05)
 
 
