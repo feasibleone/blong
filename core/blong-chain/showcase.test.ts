@@ -1080,6 +1080,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             const products = await loadProducts;
             const orders = await loadOrders;
             assert.equal(products.products.length, 2);
+            assert.ok(orders.orders.length > 0);
             await new Promise(resolve => setTimeout(resolve, 30));
             executionLog.push({
                 step: 'genProdReport',
