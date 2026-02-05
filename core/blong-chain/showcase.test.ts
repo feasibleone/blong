@@ -39,7 +39,6 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
     executor.on('test:end', () => events.push('test:end'));
 
     const executionOrder: Array<{step: string; event: string; time: number}> = [];
-    const startTime = Date.now();
 
     const steps = [
         // Independent steps - should run in parallel
