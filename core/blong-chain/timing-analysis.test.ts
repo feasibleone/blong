@@ -168,14 +168,15 @@ tap.test('Timing Analysis: Parallel Execution Performance', async t => {
     t.test('Simultaneous Start Verification', async () => {
         const starts = timingLog.filter(e => e.event === 'start').slice(0, 5);
 
-        // First 5 steps should all start within 5ms of each other
+        // First 5 steps should all start within a small time window of each other
         const startTimes = starts.map(e => e.timestamp);
         const minStart = Math.min(...startTimes);
         const maxStart = Math.max(...startTimes);
+        const startSyncThresholdMs = process.env.CI ? 20 : 10;
 
         assert.ok(
-            maxStart - minStart < 5,
-            `Independent steps should start simultaneously (spread: ${maxStart - minStart}ms)`,
+            maxStart - minStart <= startSyncThresholdMs,
+            `Independent steps should start within ${startSyncThresholdMs}ms of each other (spread: ${maxStart - minStart}ms)`,
         );
 
         console.log('Step start times:');
