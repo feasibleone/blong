@@ -286,3 +286,11 @@ Framework provides structured error handling with `IErrorFactory` pattern for de
 - **Validation:** See **blong-validation** for input/output validation
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
+
+## Architecture & Design Documents
+
+For detailed design rationale and architecture decisions, see the [docs/blong/docs/rationale/](../docs/blong/docs/rationale/) folder:
+
+- **[Goals](../docs/blong/docs/rationale/goals.md)** - Framework goals and approach
+- **[Prior Art](../docs/blong/docs/rationale/prior.md)** - Related paradigms and inspirations
+- **[Error Proxy System](../docs/blong/docs/rationale/error-proxy.md)** - Simplified error referencing implementation

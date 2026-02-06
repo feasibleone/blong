@@ -51,12 +51,12 @@ API handlers use `subjectObjectPredicate` format:
 
 ### Examples
 
-| Handler Name | Subject | Object | Predicate | Purpose |
-|-------------|---------|--------|-----------|---------|
-| `userUserAdd` | user | user | add | Create a user |
-| `userRoleEdit` | user | role | edit | Edit a role |
-| `paymentTransferPrepare` | payment | transfer | prepare | Prepare transfer |
-| `mathNumberSum` | math | number | sum | Sum numbers |
+| Handler Name             | Subject | Object   | Predicate | Purpose          |
+| ------------------------ | ------- | -------- | --------- | ---------------- |
+| `userUserAdd`            | user    | user     | add       | Create a user    |
+| `userRoleEdit`           | user    | role     | edit      | Edit a role      |
+| `paymentTransferPrepare` | payment | transfer | prepare   | Prepare transfer |
+| `mathNumberSum`          | math    | number   | sum       | Sum numbers      |
 
 ### Realm Structure Example
 
@@ -101,7 +101,10 @@ export default handler(({
     lib: {
         helperFunction    // Library function
     },
-    errors,               // Domain errors
+    errors: {             // Domain errors with simplified syntax
+        errorEntityNotFound,
+        errorInvalidInput
+    },
     config,               // Configuration
     handler: {
         adapterHandler,   // Other handlers
@@ -133,13 +136,14 @@ export default handler(({
 // realmname/orchestrator/entity/helperFunction.ts
 import {library} from '@feasibleone/blong';
 
-export default library(({errors}) =>
-    function helperFunction(input: string): string {
-        if (!input) {
-            throw errors.invalidInput();
-        }
-        return input.toUpperCase();
-    }
+export default library(
+    ({errors: {errorInvalidInput}}) =>
+        function helperFunction(input: string): string {
+            if (!input) {
+                throw errorInvalidInput();
+            }
+            return input.toUpperCase();
+        },
 );
 ```
 
@@ -150,42 +154,44 @@ The `api` parameter provides access to framework and realm functionality:
 ### Available Properties
 
 ```typescript
-handler(({
-    // Framework libraries
-    lib: {
-        error,          // Error factory
-        type,           // TypeBox (for manual validation)
-        bitsyntax,      // Binary protocol parser
-        sum,            // User-defined library function
-        rename          // Rename test arrays
+handler(
+    ({
+        // Framework libraries
+        lib: {
+            error, // Error factory
+            type, // TypeBox (for manual validation)
+            bitsyntax, // Binary protocol parser
+            sum, // User-defined library function
+            rename, // Rename test arrays
+        },
+
+        // Domain errors (defined in error layer)
+        // Simplified syntax (recommended):
+        errors: {
+            errorEntityNotFound, // Maps to 'entity.notFound'
+            errorInvalidInput, // Maps to 'invalidInput'
+            errorPermissionDenied, // Maps to 'permission.denied',
+        },
+
+        // Legacy syntax (backwards compatible):
+        // errors: {
+        //     'entity.notFound': errorEntityNotFound,
+        //     'invalidInput': errorInvalidInput,
+        //     'permission.denied': errorPermissionDenied
+        // },
+
+        // Configuration for this component
+        config: {timeout, maxRetries, apiKey},
+
+        // Logger instance
+        log,
+
+        // Other handlers (from imports)
+        handler: {sqlUserFind, httpNotificationSend, otherRealmHandler},
+    }) => {
+        // Return handler function
     },
-
-    // Domain errors (defined in error layer)
-    errors: {
-        entityNotFound,
-        invalidInput,
-        permissionDenied
-    },
-
-    // Configuration for this component
-    config: {
-        timeout,
-        maxRetries,
-        apiKey
-    },
-
-    // Logger instance
-    log,
-
-    // Other handlers (from imports)
-    handler: {
-        sqlUserFind,
-        httpNotificationSend,
-        otherRealmHandler
-    }
-}) => {
-    // Return handler function
-})
+);
 ```
 
 ## File Organization
@@ -245,7 +251,7 @@ type Handler = ({
 
 export default handler(({
     lib: {validateEmail},
-    errors,
+    errors: {errorUserInvalidEmail, errorUserExists},
     handler: {sqlUserFind, sqlUserAdd}
 }) =>
     async function userUserAdd(
@@ -254,7 +260,7 @@ export default handler(({
     ): ReturnType<Handler> {
         // Validate
         if (!validateEmail(params.email)) {
-            throw errors.invalidEmail();
+            throw errorUserInvalidEmail();
         }
 
         // Check existence
@@ -263,7 +269,7 @@ export default handler(({
             $meta
         );
         if (existing.length > 0) {
-            throw errors.userExists();
+            throw errorUserExists();
         }
 
         // Create user
@@ -283,11 +289,12 @@ export default handler(({
 // user/orchestrator/user/validateEmail.ts
 import {library} from '@feasibleone/blong';
 
-export default library(() =>
-    function validateEmail(email: string): boolean {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
+export default library(
+    () =>
+        function validateEmail(email: string): boolean {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        },
 );
 ```
 
@@ -335,22 +342,17 @@ export default handler(({errors}) =>
 // hsm/adapter/tcp/encode.ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(({lib: {bitsyntax}, config}) =>
-    function encode(message) {
-        const command = message.command.padEnd(2, ' ');
-        const data = message.data || '';
-        const payload = command + data;
+export default handler(
+    ({lib: {bitsyntax}, config}) =>
+        function encode(message) {
+            const command = message.command.padEnd(2, ' ');
+            const data = message.data || '';
+            const payload = command + data;
 
-        const header = bitsyntax.build(
-            config.headerFormat,
-            {value: payload.length}
-        );
+            const header = bitsyntax.build(config.headerFormat, {value: payload.length});
 
-        return Buffer.concat([
-            header,
-            Buffer.from(payload, 'ascii')
-        ]);
-    }
+            return Buffer.concat([header, Buffer.from(payload, 'ascii')]);
+        },
 );
 ```
 
@@ -360,17 +362,18 @@ export default handler(({lib: {bitsyntax}, config}) =>
 // api/adapter/http/send.ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(({config}) =>
-    function send(params, $meta) {
-        return {
-            ...params,
-            headers: {
-                'Authorization': `Bearer ${config.apiToken}`,
-                'Content-Type': 'application/json'
-            },
-            timestamp: new Date().toISOString()
-        };
-    }
+export default handler(
+    ({config}) =>
+        function send(params, $meta) {
+            return {
+                ...params,
+                headers: {
+                    Authorization: `Bearer ${config.apiToken}`,
+                    'Content-Type': 'application/json',
+                },
+                timestamp: new Date().toISOString(),
+            };
+        },
 );
 ```
 
@@ -379,29 +382,36 @@ export default handler(({config}) =>
 ### From Orchestrator
 
 ```typescript
-export default handler(({
-    handler: {
-        sqlUserFind,           // Database adapter
-        paymentTransferCreate, // Other orchestrator
-        httpNotificationSend   // HTTP adapter
-    }
-}) =>
-    async function userUserNotify(params, $meta) {
-        const user = await sqlUserFind({userId: params.userId}, $meta);
+export default handler(
+    ({
+        handler: {
+            sqlUserFind, // Database adapter
+            paymentTransferCreate, // Other orchestrator
+            httpNotificationSend, // HTTP adapter
+        },
+    }) =>
+        async function userUserNotify(params, $meta) {
+            const user = await sqlUserFind({userId: params.userId}, $meta);
 
-        const payment = await paymentTransferCreate({
-            userId: params.userId,
-            amount: 100
-        }, $meta);
+            const payment = await paymentTransferCreate(
+                {
+                    userId: params.userId,
+                    amount: 100,
+                },
+                $meta,
+            );
 
-        await httpNotificationSend({
-            email: user.email,
-            subject: 'Payment Created',
-            body: `Payment ${payment.id} created`
-        }, $meta);
+            await httpNotificationSend(
+                {
+                    email: user.email,
+                    subject: 'Payment Created',
+                    body: `Payment ${payment.id} created`,
+                },
+                $meta,
+            );
 
-        return {success: true};
-    }
+            return {success: true};
+        },
 );
 ```
 
@@ -417,13 +427,13 @@ async function handlerName(params, $meta) {
     // Override method
     await adapterHandler(params, {
         ...$meta,
-        method: 'specificOperationId'
+        method: 'specificOperationId',
     });
 
     // Expect specific error
     await riskyHandler(params, {
         ...$meta,
-        expect: 'expectedErrorType'
+        expect: 'expectedErrorType',
     });
 }
 ```
@@ -433,63 +443,61 @@ async function handlerName(params, $meta) {
 ### Throwing Domain Errors
 
 ```typescript
-export default handler(({errors}) =>
-    async function userUserFind(params, $meta) {
-        if (!params.userId) {
-            throw errors.invalidInput({
-                field: 'userId',
-                reason: 'required'
-            });
-        }
+export default handler(
+    ({errors}) =>
+        async function userUserFind(params, $meta) {
+            if (!params.userId) {
+                throw errors.invalidInput({
+                    field: 'userId',
+                    reason: 'required',
+                });
+            }
 
-        const user = await sqlUserFind({id: params.userId}, $meta);
+            const user = await sqlUserFind({id: params.userId}, $meta);
 
-        if (!user) {
-            throw errors.userNotFound({userId: params.userId});
-        }
+            if (!user) {
+                throw errors.userNotFound({userId: params.userId});
+            }
 
-        return user;
-    }
+            return user;
+        },
 );
 ```
 
 ### Wrapping External Errors
 
 ```typescript
-export default handler(({errors}) =>
-    async function callExternalAPI(params, $meta) {
-        try {
-            return await externalApiCall(params, $meta);
-        } catch (error) {
-            if (error.code === 'TIMEOUT') {
-                throw errors.externalTimeout({cause: error});
+export default handler(
+    ({errors}) =>
+        async function callExternalAPI(params, $meta) {
+            try {
+                return await externalApiCall(params, $meta);
+            } catch (error) {
+                if (error.code === 'TIMEOUT') {
+                    throw errors.externalTimeout({cause: error});
+                }
+                throw errors.externalError({
+                    message: error.message,
+                    cause: error,
+                });
             }
-            throw errors.externalError({
-                message: error.message,
-                cause: error
-            });
-        }
-    }
+        },
 );
 ```
 
 ## Configuration Access
 
 ```typescript
-export default handler(({config}) =>
-    async function processWithTimeout(params, $meta) {
-        const timeout = config.timeout || 5000;
+export default handler(
+    ({config}) =>
+        async function processWithTimeout(params, $meta) {
+            const timeout = config.timeout || 5000;
 
-        return Promise.race([
-            actualProcessing(params, $meta),
-            new Promise((_, reject) =>
-                setTimeout(
-                    () => reject(new Error('Timeout')),
-                    timeout
-                )
-            )
-        ]);
-    }
+            return Promise.race([
+                actualProcessing(params, $meta),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout)),
+            ]);
+        },
 );
 ```
 
@@ -520,14 +528,15 @@ Place `~.schema.ts` in handler folder:
 ### Use Types in Handler
 
 ```typescript
-export default handler(() =>
-    async function handlerName(
-        params: Parameters<Handler>[0],
-        $meta: IMeta
-    ): ReturnType<Handler> {
-        // Type-safe implementation
-        return {result: params.param1.toUpperCase()};
-    }
+export default handler(
+    () =>
+        async function handlerName(
+            params: Parameters<Handler>[0],
+            $meta: IMeta,
+        ): ReturnType<Handler> {
+            // Type-safe implementation
+            return {result: params.param1.toUpperCase()};
+        },
 );
 ```
 
@@ -550,10 +559,11 @@ All handlers are converted to async functions:
 
 ```typescript
 // Synchronous handler
-export default handler(() =>
-    function syncHandler(params) {
-        return {result: 'done'};
-    }
+export default handler(
+    () =>
+        function syncHandler(params) {
+            return {result: 'done'};
+        },
 );
 
 // Framework converts to:

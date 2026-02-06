@@ -106,7 +106,121 @@ export default library(({lib: {errors}}) => {
     }
 });
 ```
+## Referencing Errors in Handlers
 
+The framework provides two ways to reference errors in handlers via destructuring: the simplified syntax (recommended) and the legacy dot notation syntax (for backwards compatibility).
+
+### Simplified Syntax (Recommended)
+
+Use camelCase variable names with "error" prefix. The framework automatically maps these to the corresponding dot-notation error keys:
+
+```typescript
+// release/orchestrator/job/releaseJobTrigger.ts
+import {handler, IMeta} from '@feasibleone/blong';
+
+export default handler(
+    ({errors: {errorReleaseJobTrigger}}) =>
+        async function releaseJobTrigger(
+            params: unknown,
+            $meta: IMeta
+        ) {
+            // Use the error
+            throw errorReleaseJobTrigger({
+                params: {jobName: 'test-job'}
+            }, $meta);
+        }
+);
+```
+
+**Naming Convention:**
+- Error key: `'release.jobTrigger'` → Variable: `errorReleaseJobTrigger`
+- Error key: `'user.notFound'` → Variable: `errorUserNotFound`
+- Error key: `'payment.insufficientFunds'` → Variable: `errorPaymentInsufficientFunds`
+
+**Benefits:**
+- Simpler, cleaner syntax
+- No string quotes needed
+- Better IDE autocomplete
+- Case-insensitive matching (errorreleasjobtrigger works too)
+- Less typing
+
+### Legacy Dot Notation Syntax (Backwards Compatible)
+
+Use the original dot notation with quoted strings:
+
+```typescript
+export default handler(
+    ({errors: {'release.jobTrigger': errorReleaseJobTrigger}}) =>
+        async function releaseJobTrigger(params, $meta) {
+            throw errorReleaseJobTrigger({params: {jobName: 'test-job'}}, $meta);
+        }
+);
+```
+
+This syntax continues to work for backwards compatibility, but the simplified syntax is recommended for new code.
+
+### Error Detection
+
+The framework throws immediately when referencing non-existent errors, catching typos during destructuring:
+
+```typescript
+export default handler(
+    ({errors: {errorUserNotFound, errorTypoInName}}) => // ❌ Throws immediately
+        async function handler(params, $meta) {
+            // Error: Error 'errorTypoInName' not found. Available errors: user.notFound, user.exists, ...
+        }
+);
+```
+
+This ensures bugs are caught early during development rather than at runtime.
+
+### Multiple Errors
+
+Destructure multiple errors in one statement:
+
+```typescript
+// Simplified syntax
+export default handler(
+    ({errors: {errorUserNotFound, errorUserInvalidEmail, errorUserExists}}) =>
+        async function userUserAdd(params, $meta) {
+            if (!params.email) throw errorUserInvalidEmail();
+            
+            const existing = await checkUser(params.username);
+            if (existing) throw errorUserExists();
+            
+            // ... rest of logic
+        }
+);
+
+// Legacy syntax (still supported)
+export default handler(
+    ({errors: {
+        'user.notFound': errorUserNotFound,
+        'user.invalidEmail': errorUserInvalidEmail,
+        'user.exists': errorUserExists
+    }}) =>
+        async function userUserAdd(params, $meta) {
+            // ... same logic
+        }
+);
+```
+
+### Direct Access (Without Destructuring)
+
+You can also access errors directly without destructuring:
+
+```typescript
+export default handler(
+    ({errors}) =>
+        async function handler(params, $meta) {
+            // Simplified syntax
+            throw errors.errorUserNotFound();
+            
+            // Legacy syntax (still works)
+            throw errors['user.notFound']();
+        }
+);
+```
 ## Error Definition Patterns
 
 ### Simple Error (String Message)
@@ -201,11 +315,11 @@ export default library(({errors}) =>
 ```typescript
 import {handler} from '@feasibleone/blong';
 
-export default handler(({errors}) =>
+export default handler(({errors: {errorUserNotFound}}) =>
     async function userUserFind({userId}, $meta) {
         const user = await db.findUser(userId);
         if (!user) {
-            throw errors.userNotFound({
+            throw errorUserNotFound({
                 params: {userId}
             });
         }
@@ -219,13 +333,13 @@ export default handler(({errors}) =>
 ```typescript
 import {handler} from '@feasibleone/blong';
 
-export default handler(({errors}) => ({
+export default handler(({errors: {errorParkingInvalidZone}}) => ({
     async parkingPay({zone}) {
         try {
             // External API call or database operation
             return await processPayment(zone);
         } catch (cause) {
-            throw errors.parkingInvalidZone({
+            throw errorParkingInvalidZone({
                 cause,
                 params: {zone}
             });
@@ -237,7 +351,8 @@ export default handler(({errors}) => ({
 ### Multiple Parameters
 
 ```typescript
-throw errors.paymentInsufficientFunds({
+// Assuming errorPaymentInsufficientFunds is destructured from errors
+throw errorPaymentInsufficientFunds({
     params: {
         required: 100.50,
         available: 75.25,
@@ -294,9 +409,9 @@ export default {
 ### In Handlers
 
 ```typescript
-export default handler(({errors}) =>
+export default handler(({errors: {errorInvalidInput}}) =>
     async function handler(params, $meta) {
-        if (!valid) throw errors.invalidInput();
+        if (!valid) throw errorInvalidInput();
     }
 );
 ```
@@ -304,9 +419,9 @@ export default handler(({errors}) =>
 ### In Library Functions
 
 ```typescript
-export default library(({errors}) =>
+export default library(({errors: {errorValidationFailed}}) =>
     function validate(input) {
-        if (!input) throw errors.validationFailed();
+        if (!input) throw errorValidationFailed();
         return input;
     }
 );

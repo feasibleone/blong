@@ -96,6 +96,13 @@ Configuration activations:
 - `microservice` - Microservice deployment mode
 - `realm` - Single realm development focus
 
+## Additional Resources
+
+- **[Documentation](https://feasibleone.github.io/blong-docs/)** - Complete framework documentation
+- **[Design Rationale](../../docs/blong/docs/rationale/)** - Architecture decisions and design documents
+  - [Error Proxy System](../../docs/blong/docs/rationale/error-proxy.md) - Simplified error referencing
+- **[Copilot Instructions](../copilot-instructions.md)** - AI coding assistant guidelines
+
 ## Using These Skills
 
 ### For AI Agents
