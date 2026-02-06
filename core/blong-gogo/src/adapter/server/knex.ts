@@ -27,6 +27,12 @@ export default adapter<IConfig>(({utError}) => {
             await super.init(
                 {
                     type: 'knex',
+                    knex: {
+                        client: 'mysql2',
+                        connection: {
+                            host: 'localhost',
+                        },
+                    },
                 },
                 ...configs,
             );

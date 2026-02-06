@@ -86,8 +86,8 @@ export default adapter<IConfig>(({utError}) => {
                         clientSecret: this.config.keycloak.clientSecret,
                     });
                 }
-            } catch (error) {
-                throw _errors['keycloak.authFailed']();
+            } catch (cause) {
+                throw _errors['keycloak.authFailed']({cause});
             }
 
             super.connect();
