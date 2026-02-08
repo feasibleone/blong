@@ -71,7 +71,7 @@ export default adapter<IConfig>(({utError}) => {
                         json,
                     },
                 });
-                const result = await got({
+                const result = (await got({
                     url,
                     searchParams,
                     https,
@@ -84,7 +84,12 @@ export default adapter<IConfig>(({utError}) => {
                     throwHttpErrors: false,
                     followRedirect: false,
                     isStream: !!stream,
-                });
+                })) as {
+                    statusCode: number;
+                    statusMessage: string;
+                    headers: Record<string, unknown>;
+                    body: unknown;
+                };
                 this.log.debug?.({
                     prefix: '◀',
                     req: {
