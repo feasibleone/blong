@@ -414,6 +414,7 @@ export interface IBaseConfig extends TObject<{
     orchestrator: TBoolean;
     test: TBoolean;
     integration: TBoolean;
+    deployment: TBoolean;
     dev: TBoolean;
     sim: TBoolean;
     resolution: TBoolean;

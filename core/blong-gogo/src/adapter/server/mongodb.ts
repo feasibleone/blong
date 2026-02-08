@@ -133,8 +133,15 @@ export default adapter<IConfig>(({utError}) => {
                         )
                         .toArray();
                 }
-                case 'add': // add single document
-                    return this.config.context.mongodb.db().collection(table).insertOne(params);
+                case 'add': {
+                    // add single document
+                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    const {[key]: _id, ...rest} = params;
+                    return this.config.context.mongodb
+                        .db()
+                        .collection(table)
+                        .insertOne(_id !== undefined ? {_id, ...rest} : rest);
+                }
                 case 'edit': {
                     // edit single document with full replace
                     if (Array.isArray(params)) throw _errors['mongodb.invalid']();
@@ -145,12 +152,11 @@ export default adapter<IConfig>(({utError}) => {
                         .updateMany({_id}, {$set: rest});
                 }
                 case 'remove': // remove single document
-                    if (!(table + 'Id' in params))
-                        throw _errors['mongodb.missingKey']({key: table + 'Id'});
+                    if (!(key in params)) throw _errors['mongodb.missingKey']({key});
                     return this.config.context.mongodb
                         .db()
                         .collection(table)
-                        .deleteOne({_id: params[table + 'Id']});
+                        .deleteOne({_id: params[key]});
 
                 case 'merge': {
                     // edit single document with partial update

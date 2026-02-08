@@ -22,6 +22,7 @@ export default library(
                     params: {},
                     payload: undefined,
                     headers: undefined,
+                    responseType: undefined,
                 },
             ) => {
                 const {params = msg, body, baseUrl, headers, payload} = msg;
@@ -29,7 +30,7 @@ export default library(
                     url: baseUrl ? baseUrl + url : url,
                     method,
                     body,
-                    responseType: 'json',
+                    responseType: msg.responseType || 'json',
                     headers,
                     form: undefined,
                     query: undefined,

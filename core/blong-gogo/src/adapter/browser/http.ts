@@ -57,7 +57,21 @@ export default adapter<IConfig>(({utError}) => {
             {stream}: IMeta,
         ) {
             try {
-                return got({
+                this.log.debug?.({
+                    prefix: '▶',
+                    req: {
+                        method: method.toUpperCase(),
+                        url,
+                        headers:
+                            headers &&
+                            Object.entries(headers)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join('\n'),
+                        body,
+                        json,
+                    },
+                });
+                const result = await got({
                     url,
                     searchParams,
                     https,
@@ -71,6 +85,24 @@ export default adapter<IConfig>(({utError}) => {
                     followRedirect: false,
                     isStream: !!stream,
                 });
+                this.log.debug?.({
+                    prefix: '◀',
+                    req: {
+                        url,
+                        method: method.toUpperCase(),
+                    },
+                    res: {
+                        statusCode: result.statusCode,
+                        statusMessage: result.statusMessage,
+                        headers:
+                            result.headers &&
+                            `\n${Object.entries(result.headers)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join('\n')}`,
+                        body: result.body,
+                    },
+                });
+                return result;
             } catch (error) {
                 throw _errors['http.generic'](error);
             }
