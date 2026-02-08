@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.2.0...blong-docs-v1.3.0) (2026-02-08)
+
+
+### Features
+
+* implement Proxy-based error system with simplified syntax and comprehensive tests ([3ac942a](https://github.com/feasibleone/blong/commit/3ac942a2782c94bd2c338fa185e07858a4c52669))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.1.0...blong-docs-v1.2.0) (2026-02-03)
 
 

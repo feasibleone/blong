@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-v1.5.2...blong-v1.6.0) (2026-02-08)
+
+
+### Features
+
+* enhance error handling in Keycloak adapter and add MySQL configuration to Knex adapter ([2124a53](https://github.com/feasibleone/blong/commit/2124a531496291f62c337232be5488a79461db51))
+* enhance logging details and improve MongoDB adapter operations ([11eb992](https://github.com/feasibleone/blong/commit/11eb992ec31799b84c50344f98e1c6900cfef671))
+
 ## [1.5.2](https://github.com/feasibleone/blong/compare/blong-v1.5.1...blong-v1.5.2) (2026-02-05)
 
 

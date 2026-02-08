@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.1.1...blong-gogo-v1.2.0) (2026-02-08)
+
+
+### Features
+
+* enhance error handling in Keycloak adapter and add MySQL configuration to Knex adapter ([2124a53](https://github.com/feasibleone/blong/commit/2124a531496291f62c337232be5488a79461db51))
+* enhance logging details and improve MongoDB adapter operations ([11eb992](https://github.com/feasibleone/blong/commit/11eb992ec31799b84c50344f98e1c6900cfef671))
+* implement Proxy-based error system with simplified syntax and comprehensive tests ([3ac942a](https://github.com/feasibleone/blong/commit/3ac942a2782c94bd2c338fa185e07858a4c52669))
+
+
+### Bug Fixes
+
+* typings ([57141bd](https://github.com/feasibleone/blong/commit/57141bd41c21e37fc672321f039d9c33176aba2e))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.1.0...blong-gogo-v1.1.1) (2026-02-05)
 
 
