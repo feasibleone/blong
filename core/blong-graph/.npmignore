@@ -1,0 +1,6 @@
+dist
+lib
+temp
+*.log
+node_modules
+.rush

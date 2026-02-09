@@ -451,6 +451,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-graph",
+            "projectFolder": "core/blong-graph",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-kopi",
             "projectFolder": "core/blong-kopi",
             "reviewCategory": "core",

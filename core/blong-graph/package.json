@@ -1,0 +1,53 @@
+{
+    "name": "@feasibleone/blong-graph",
+    "description": "Graph visualization module for Blong framework runtime inspection",
+    "keywords": [
+        "blong",
+        "visualization",
+        "graph",
+        "monitoring"
+    ],
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "scripts": {
+        "build": "heft build --clean",
+        "test:server": "npx http-server tests/fixtures -p 3000 -c-1",
+        "test": "playwright test",
+        "ci-unit": "playwright test",
+        "ci-publish": "npm publish --access public --provenance"
+    },
+    "exports": {
+        "./server.js": "./dist/server.js",
+        "./server.ts": "./server.ts",
+        "./browser.js": "./dist/browser.js",
+        "./browser.ts": "./browser.ts",
+        "./dist/package.json": "./package.json",
+        "./package.json": "./package.json"
+    },
+    "type": "module",
+    "version": "1.0.0",
+    "dependencies": {
+        "@xyflow/react": "^12.6.6"
+    },
+    "peerDependencies": {
+        "@feasibleone/blong": "^1.0.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1"
+    },
+    "devDependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@playwright/test": "^1.50.5",
+        "@rushstack/eslint-config": "^4.0.1",
+        "@rushstack/heft-lint-plugin": "^1.1.14",
+        "@rushstack/heft-typescript-plugin": "^1.1.11",
+        "@rushstack/heft": "^1.1.11",
+        "@types/react": "^18.3.1",
+        "@types/react-dom": "^18.3.1",
+        "eslint": "~9.39.2",
+        "http-server": "^14.1.1",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "typescript": "^5.9.3"
+    }
+}
