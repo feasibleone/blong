@@ -82,6 +82,38 @@ export default class Watch extends Internal implements IWatch {
         this.#apiSchema = apiSchema;
     }
 
+    /**
+     * Validates handler name matches filename and sets name property for anonymous handlers
+     * @param item The handler item to validate
+     * @param filename The file path
+     * @param expectedName The expected handler name based on filename
+     * @returns The handler name (either explicit or derived from filename)
+     */
+    private _validateAndSetHandlerName(item: unknown, filename: string, expectedName: string): string {
+        const actualName = item['name'] && item['name'] !== 'default' ? item['name'] : null;
+        
+        // For files defining a single handler, report error on name mismatch
+        if (kind(item) === 'handler' && actualName && actualName !== expectedName) {
+            throw new Error(
+                `Handler name mismatch in '${filename}': ` +
+                `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
+                `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`
+            );
+        }
+        
+        const name = actualName || expectedName;
+        // Ensure handler name property is set for anonymous handlers
+        if (kind(item) === 'handler' && !actualName) {
+            Object.defineProperty(item, 'name', {
+                value: name,
+                configurable: true,
+                enumerable: false,
+            });
+        }
+        
+        return name;
+    }
+
     private async _generate(files: {filename: string; name: string}[], dir: string): Promise<void> {
         const [schema, names] = files.reduce(
             (prev, {filename, name}) => {
@@ -155,26 +187,7 @@ export default class Watch extends Internal implements IWatch {
             const item = (await import(filename + '?' + Date.now())).default;
             if (!item) this.log?.error?.('Error loading ' + filename);
             const expectedName = basename(filename, extname(filename));
-            const actualName = item.name && item.name !== 'default' ? item.name : null;
-            
-            // For files defining a single handler, report error on name mismatch
-            if (kind(item) === 'handler' && actualName && actualName !== expectedName) {
-                throw new Error(
-                    `Handler name mismatch in '${filename}': ` +
-                    `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
-                    `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`
-                );
-            }
-            
-            const name = actualName || expectedName;
-            // Ensure handler name property is set for anonymous handlers
-            if (kind(item) === 'handler' && !actualName) {
-                Object.defineProperty(item, 'name', {
-                    value: name,
-                    configurable: true,
-                    enumerable: false,
-                });
-            }
+            const name = this._validateAndSetHandlerName(item, filename, expectedName);
             (kind(item) === 'validation'
                 ? validations
                 : kind(item) === 'api'
@@ -225,26 +238,7 @@ export default class Watch extends Internal implements IWatch {
             if (isCode(filename)) {
                 const item = (await import(filename + '?' + Date.now())).default;
                 const expectedName = basename(filename, extname(filename)).match(prefixRE)?.[1];
-                const actualName = item.name && item.name !== 'default' ? item.name : null;
-                
-                // For files defining a single handler, report error on name mismatch
-                if (kind(item) === 'handler' && actualName && actualName !== expectedName) {
-                    throw new Error(
-                        `Handler name mismatch in '${filename}': ` +
-                        `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
-                        `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`
-                    );
-                }
-                
-                const itemName = actualName || expectedName;
-                // Ensure handler name property is set for anonymous handlers
-                if (kind(item) === 'handler' && !actualName) {
-                    Object.defineProperty(item, 'name', {
-                        value: itemName,
-                        configurable: true,
-                        enumerable: false,
-                    });
-                }
+                const itemName = this._validateAndSetHandlerName(item, filename, expectedName);
                 if (kind(item) === 'handler') {
                     this.#handlerFiles.set(filename, config);
                     return Object.defineProperty(
