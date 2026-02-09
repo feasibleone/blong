@@ -54,6 +54,14 @@
             "summary": "Run deprecation",
             "ignoreMissingScript": true,
             "enableParallelism": true
+        },
+        {
+            "commandKind": "bulk",
+            "name": "ci-ui",
+            "summary": "Run UI tests (Playwright)",
+            "ignoreMissingScript": true,
+            "allowWarningsInSuccessfulBuild": true,
+            "enableParallelism": true
         }
         // {
         //   /**

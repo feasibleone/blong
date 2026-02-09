@@ -1,0 +1,10 @@
+*.js
+*.js.map
+!playwright.config.js
+node_modules
+dist
+lib
+.rush
+rush-logs
+playwright-report
+test-results

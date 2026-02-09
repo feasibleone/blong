@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blong Graph Visualization Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            overflow: hidden;
+        }
+        #demo-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+        #graph-area {
+            flex: 1;
+            background: #f8f9fa;
+            position: relative;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        #details-panel {
+            width: 350px;
+            background: white;
+            border-left: 1px solid #ddd;
+            padding: 25px;
+            overflow-y: auto;
+            display: none;
+        }
+        #details-panel.visible {
+            display: block;
+        }
+        .node {
+            position: absolute;
+            padding: 15px 25px;
+            border-radius: 8px;
+            border: 2px solid;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            min-width: 150px;
+        }
+        .node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .node-type {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .realm {
+            border-color: #1976d2;
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+        .layer {
+            border-color: #388e3c;
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+        .handler {
+            border-color: #f57c00;
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .edge {
+            position: absolute;
+            border-top: 2px solid #999;
+            transform-origin: left center;
+        }
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .detail-item {
+            margin-bottom: 15px;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .detail-value {
+            color: #333;
+        }
+        .close-btn {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .close-btn:hover {
+            background: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div id="demo-container">
+        <div id="graph-area">
+            <div id="controls">
+                <strong>Blong Graph Visualization</strong>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                    Click nodes to inspect
+                </div>
+            </div>
+            <!-- Nodes -->
+            <div class="node realm" style="left: 50px; top: 100px;" data-id="realm-user">
+                <div class="node-type">Realm</div>
+                <div>User</div>
+            </div>
+            <div class="node layer" style="left: 50px; top: 250px;" data-id="layer-gateway">
+                <div class="node-type">Layer</div>
+                <div>Gateway</div>
+            </div>
+            <div class="node layer" style="left: 50px; top: 370px;" data-id="layer-adapter">
+                <div class="node-type">Layer</div>
+                <div>Adapter</div>
+            </div>
+            <div class="node handler" style="left: 250px; top: 250px;" data-id="handler-userGet">
+                <div class="node-type">Handler</div>
+                <div>userGet</div>
+            </div>
+            <div class="node handler" style="left: 250px; top: 370px;" data-id="handler-userAdd">
+                <div class="node-type">Handler</div>
+                <div>userAdd</div>
+            </div>
+            
+            <div class="node realm" style="left: 500px; top: 100px;" data-id="realm-transfer">
+                <div class="node-type">Realm</div>
+                <div>Transfer</div>
+            </div>
+            <div class="node layer" style="left: 500px; top: 250px;" data-id="layer-orchestrator">
+                <div class="node-type">Layer</div>
+                <div>Orchestrator</div>
+            </div>
+            <div class="node handler" style="left: 700px; top: 250px;" data-id="handler-transferExecute">
+                <div class="node-type">Handler</div>
+                <div>transferExecute</div>
+            </div>
+        </div>
+        <div id="details-panel">
+            <h2>Node Details</h2>
+            <div id="details-content"></div>
+            <button class="close-btn" onclick="closeDetails()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const nodeData = {
+            'realm-user': { type: 'Realm', name: 'User', description: 'User management realm' },
+            'layer-gateway': { type: 'Layer', name: 'Gateway', description: 'API gateway layer' },
+            'layer-adapter': { type: 'Layer', name: 'Adapter', description: 'Database adapter layer' },
+            'handler-userGet': { type: 'Handler', name: 'userGet', namespace: 'user.gateway' },
+            'handler-userAdd': { type: 'Handler', name: 'userAdd', namespace: 'user.gateway' },
+            'realm-transfer': { type: 'Realm', name: 'Transfer', description: 'Money transfer realm' },
+            'layer-orchestrator': { type: 'Layer', name: 'Orchestrator', description: 'Business logic orchestration' },
+            'handler-transferExecute': { type: 'Handler', name: 'transferExecute', namespace: 'transfer.orchestrator' }
+        };
+
+        document.querySelectorAll('.node').forEach(node => {
+            node.addEventListener('click', () => {
+                const id = node.dataset.id;
+                const data = nodeData[id];
+                const panel = document.getElementById('details-panel');
+                const content = document.getElementById('details-content');
+                
+                content.innerHTML = `
+                    <div class="detail-item">
+                        <div class="detail-label">Type:</div>
+                        <div class="detail-value">${data.type}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Name:</div>
+                        <div class="detail-value">${data.name}</div>
+                    </div>
+                    ${data.namespace ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Namespace:</div>
+                            <div class="detail-value">${data.namespace}</div>
+                        </div>
+                    ` : ''}
+                    ${data.description ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Description:</div>
+                            <div class="detail-value">${data.description}</div>
+                        </div>
+                    ` : ''}
+                `;
+                
+                panel.classList.add('visible');
+            });
+        });
+
+        function closeDetails() {
+            document.getElementById('details-panel').classList.remove('visible');
+        }
+    </script>
+</body>
+</html>
