@@ -1209,7 +1209,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
 });
 
 tap.test('TestExecutor - Unique Step Names', async t => {
-    t.test('duplicate function names get unique identifiers', async () => {
+    t.test('throws error on duplicate function names', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         // Create steps with duplicate function names
@@ -1220,75 +1220,35 @@ tap.test('TestExecutor - Unique Step Names', async t => {
             async function setupData() {
                 return {value: 'second'};
             },
-            async function setupData() {
-                return {value: 'third'};
-            },
         ];
 
-        await executor.execute(steps, {});
-
-        const progress = executor.getProgress();
-        assert.equal(progress.status, 'completed');
-        assert.equal(progress.completedSteps, 3);
-
-        // Check that all three steps are tracked with unique names
-        const stepNames = Array.from(progress.steps.keys());
-        assert.equal(stepNames.length, 3);
-        assert.ok(stepNames.includes('setupData'));
-        assert.ok(stepNames.includes('setupData_2'));
-        assert.ok(stepNames.includes('setupData_3'));
-
-        // Verify each step has different results
-        assert.equal((progress.steps.get('setupData')?.result as any)?.value, 'first');
-        assert.equal((progress.steps.get('setupData_2')?.result as any)?.value, 'second');
-        assert.equal((progress.steps.get('setupData_3')?.result as any)?.value, 'third');
+        // Should throw error about duplicate step name
+        await assert.rejects(
+            executor.execute(steps, {}),
+            /Duplicate step name detected: "setupData"/
+        );
     });
 
-    t.test('unique names work correctly with dependencies', async () => {
+    t.test('throws error on duplicate anonymous function names', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
-            async function fetchData() {
-                return {id: 1, value: 'first'};
+            async () => {
+                return {value: 1};
             },
-            async function fetchData() {
-                return {id: 2, value: 'second'};
-            },
-            async function validateData(assert, context) {
-                // Should depend on the first fetchData
-                const data1 = await context.fetchData;
-                assert.equal(data1.id, 1);
-                assert.equal(data1.value, 'first');
-                return {validated: true};
-            },
-            async function processData(assert, context) {
-                // Should be able to access fetchData_2
-                const data2 = await context.fetchData_2;
-                assert.equal(data2.id, 2);
-                assert.equal(data2.value, 'second');
-                return {processed: true};
+            async () => {
+                return {value: 2};
             },
         ];
 
-        await executor.execute(steps, {});
-
-        const progress = executor.getProgress();
-        assert.equal(progress.status, 'completed');
-        assert.equal(progress.failedSteps, 0);
-
-        // Verify dependencies are tracked correctly
-        const graph = executor.getDependencyGraph();
-        const validateEdge = graph.edges.find(e => e.from === 'validateData');
-        const processEdge = graph.edges.find(e => e.from === 'processData');
-
-        assert.ok(validateEdge);
-        assert.equal(validateEdge.to, 'fetchData');
-
-        assert.ok(processEdge);
-        assert.equal(processEdge.to, 'fetchData_2');
+        // Anonymous functions all have name "anonymous" so should throw
+        await assert.rejects(
+            executor.execute(steps, {}),
+            /Duplicate step name detected: "anonymous"/
+        );
     });
 
-    t.test('unique names preserved across nested groups', async () => {
+    t.test('allows same function name in different nested groups', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const group1 = [
@@ -1313,107 +1273,100 @@ tap.test('TestExecutor - Unique Step Names', async t => {
             group2,
         ];
 
-        await executor.execute(steps, {});
-
-        const progress = executor.getProgress();
-        const stepNames = Array.from(progress.steps.keys());
-
-        // All stepA instances should have unique names
-        assert.ok(stepNames.includes('stepA'));
-        assert.ok(stepNames.includes('stepA_2'));
-        assert.ok(stepNames.includes('stepA_3'));
-    });
-
-    t.test('anonymous functions get unique names', async () => {
-        const executor = new TestExecutor({concurrency: 10});
-
-        const steps = [
-            async () => {
-                return {value: 1};
-            },
-            async () => {
-                return {value: 2};
-            },
-            async () => {
-                return {value: 3};
-            },
-        ];
-
-        await executor.execute(steps, {});
-
-        const progress = executor.getProgress();
-        const stepNames = Array.from(progress.steps.keys());
-
-        // Anonymous functions should get unique names
-        assert.equal(stepNames.length, 3);
-        assert.ok(stepNames.includes('anonymous'));
-        assert.ok(stepNames.includes('anonymous_2'));
-        assert.ok(stepNames.includes('anonymous_3'));
-    });
-
-    t.test('error reporting uses unique step names', async () => {
-        const executor = new TestExecutor({concurrency: 10});
-
-        const steps = [
-            async function processItem() {
-                return {value: 'success'};
-            },
-            async function processItem() {
-                throw new Error('Failed in second processItem');
-            },
-            async function processItem() {
-                return {value: 'also success'};
-            },
-        ];
-
-        // Execution should reject because a step failed
+        // This should throw because all stepA functions share the same context
         await assert.rejects(
             executor.execute(steps, {}),
-            /Failed in second processItem/
+            /Duplicate step name detected: "stepA"/
         );
-
-        const progress = executor.getProgress();
-        assert.equal(progress.failedSteps, 1);
-
-        // Check that the error is associated with the correct unique name
-        const failedStep = progress.steps.get('processItem_2');
-        assert.ok(failedStep);
-        assert.equal(failedStep.status, 'failed');
-        assert.ok(failedStep.error?.message.includes('Failed in second processItem'));
-
-        // Other steps should have succeeded
-        assert.equal(progress.steps.get('processItem')?.status, 'completed');
-        assert.equal(progress.steps.get('processItem_3')?.status, 'completed');
     });
 
-    t.test('unique names reset between test executions', async () => {
+    t.test('unique names work correctly - no duplicates', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const steps = [
-            async function myStep() {
-                return {run: 1};
+            async function fetchUsers() {
+                return {id: 1, value: 'users'};
             },
-            async function myStep() {
-                return {run: 1};
+            async function fetchProducts() {
+                return {id: 2, value: 'products'};
+            },
+            async function validateData(assert, context) {
+                const users = await context.fetchUsers;
+                const products = await context.fetchProducts;
+                assert.equal(users.id, 1);
+                assert.equal(products.id, 2);
+                return {validated: true};
             },
         ];
 
-        // First execution
-        await executor.execute(steps, {testId: 'first'});
-        let progress = executor.getProgress();
-        let stepNames = Array.from(progress.steps.keys());
+        await executor.execute(steps, {});
+
+        const progress = executor.getProgress();
+        assert.equal(progress.status, 'completed');
+        assert.equal(progress.failedSteps, 0);
+        assert.equal(progress.completedSteps, 3);
+    });
+
+    t.test('error message includes step name', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function processItem() {
+                return {value: 'first'};
+            },
+            async function processItem() {
+                return {value: 'second'};
+            },
+        ];
+
+        try {
+            await executor.execute(steps, {});
+            assert.fail('Should have thrown an error');
+        } catch (error: any) {
+            assert.ok(error.message.includes('Duplicate step name detected'));
+            assert.ok(error.message.includes('processItem'));
+            assert.ok(error.message.includes('unique function name'));
+        }
+    });
+
+    t.test('duplicate detection resets between test executions', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const stepsWithDuplicate = [
+            async function myStep() {
+                return {run: 1};
+            },
+            async function myStep() {
+                return {run: 2};
+            },
+        ];
+
+        const stepsWithoutDuplicate = [
+            async function myStep() {
+                return {run: 1};
+            },
+            async function otherStep() {
+                return {run: 2};
+            },
+        ];
+
+        // First execution should fail due to duplicate
+        await assert.rejects(
+            executor.execute(stepsWithDuplicate, {testId: 'first'}),
+            /Duplicate step name detected: "myStep"/
+        );
+
+        // Second execution with different steps should succeed (tracking is reset)
+        await executor.execute(stepsWithoutDuplicate, {testId: 'second'});
         
-        assert.ok(stepNames.includes('myStep'));
-        assert.ok(stepNames.includes('myStep_2'));
+        const progress = executor.getProgress();
+        assert.equal(progress.status, 'completed');
+        assert.equal(progress.completedSteps, 2);
 
-        // Second execution - names should be reset
-        await executor.execute(steps, {testId: 'second'});
-        progress = executor.getProgress();
-        stepNames = Array.from(progress.steps.keys());
-
-        // Should have same pattern again (reset counters)
-        assert.ok(stepNames.includes('myStep'));
-        assert.ok(stepNames.includes('myStep_2'));
-        assert.equal(stepNames.length, 2);
+        // Third execution with duplicate again should fail
+        await assert.rejects(
+            executor.execute(stepsWithDuplicate, {testId: 'third'}),
+            /Duplicate step name detected: "myStep"/
+        );
     });
 });

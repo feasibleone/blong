@@ -383,8 +383,8 @@ export class TestExecutor extends EventEmitter {
     // Test framework context for nested test output
     private testContext?: import('./test-types.js').ITestFrameworkContext;
 
-    // Track step names to ensure uniqueness
-    private stepNameCounts = new Map<string, number>();
+    // Track step names to detect duplicates
+    private stepNamesUsed = new Set<string>();
 
     constructor(config: ITestExecutorConfig = {}) {
         super();
@@ -417,12 +417,23 @@ export class TestExecutor extends EventEmitter {
         this.realContext.$meta = $meta;
 
         // Clear step name tracking for new test run
-        this.stepNameCounts.clear();
+        this.stepNamesUsed.clear();
 
         // Initialize progress
         this.progress.testName = steps.name || 'test';
         this.progress.startTime = Date.now();
         this.progress.status = 'running';
+        this.progress.completedSteps = 0;
+        this.progress.failedSteps = 0;
+        this.progress.steps.clear();
+        this.progress.groups = [];
+
+        // Reset dependency graph
+        this.graph.nodes.clear();
+        this.graph.edges = [];
+
+        // Reset latency metrics
+        this.latencyMetrics.clear();
 
         // Count total steps
         this.progress.totalSteps = this._countSteps(steps);
@@ -514,10 +525,10 @@ export class TestExecutor extends EventEmitter {
         groupPath: string[],
         parentTestContext?: unknown,
     ): Promise<void> {
-        const baseName = fn.name || 'anonymous';
+        const stepName = fn.name || 'anonymous';
         
-        // Ensure unique step name
-        const stepName = this._ensureUniqueStepName(baseName);
+        // Check for duplicate step names
+        this._checkForDuplicateStepName(stepName);
 
         // Capture source location if enabled
         const sourceLocation = this.config.captureStackTraces
@@ -691,19 +702,16 @@ export class TestExecutor extends EventEmitter {
     }
 
     /**
-     * Ensures a step name is unique by appending a counter if needed
+     * Checks for duplicate step names and throws an error if found
      */
-    private _ensureUniqueStepName(baseName: string): string {
-        const count = this.stepNameCounts.get(baseName) || 0;
-        this.stepNameCounts.set(baseName, count + 1);
-        
-        if (count === 0) {
-            // First occurrence, use the base name
-            return baseName;
-        } else {
-            // Duplicate, append counter (starting from 2 for second occurrence)
-            return `${baseName}_${count + 1}`;
+    private _checkForDuplicateStepName(stepName: string): void {
+        if (this.stepNamesUsed.has(stepName)) {
+            throw new Error(
+                `Duplicate step name detected: "${stepName}". ` +
+                `Each step must have a unique function name within the same test context.`
+            );
         }
+        this.stepNamesUsed.add(stepName);
     }
 
     /**
