@@ -65,8 +65,15 @@ test.describe('BlongGraph Visualization', () => {
         const zoomInButton = page.locator('.react-flow__controls-zoomin');
         await zoomInButton.click();
 
-        // Wait for animation
-        await page.waitForTimeout(500);
+        // Wait for viewport transformation to change (animation complete)
+        await page.waitForFunction(
+            (initial) => {
+                const viewport = document.querySelector('.react-flow__viewport');
+                return viewport?.getAttribute('transform') !== initial;
+            },
+            initialViewport,
+            {timeout: 2000}
+        );
 
         // Check that viewport has changed
         const newViewport = await page.evaluate(() => {
@@ -82,8 +89,13 @@ test.describe('BlongGraph Visualization', () => {
         // For now, we'll just check that the component doesn't crash
         await page.goto('/');
 
-        // Wait for loading to complete
-        await page.waitForTimeout(2000);
+        // Wait for either graph or error/loading message to appear
+        await Promise.race([
+            page.waitForSelector('.react-flow', {timeout: 5000}),
+            page.waitForSelector('text=/Error|Loading/', {timeout: 5000}),
+        ]).catch(() => {
+            // Timeout is acceptable - we're testing that the component doesn't crash
+        });
 
         // Check that either graph or error message is shown
         const hasGraph = await page.locator('.react-flow').count() > 0;
