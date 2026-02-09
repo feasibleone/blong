@@ -2,6 +2,8 @@
 
 Graph visualization module for the Blong framework that enables runtime inspection and visualization of application structure.
 
+![Blong Graph Visualization](https://github.com/user-attachments/assets/adeea00f-190a-48a5-8ace-913c935a1a5c)
+
 ## Features
 
 - **Visual Architecture Map**: Visualize realms, layers, handlers, adapters, and orchestrators as an interactive graph
