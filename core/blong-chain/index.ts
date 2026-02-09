@@ -383,6 +383,9 @@ export class TestExecutor extends EventEmitter {
     // Test framework context for nested test output
     private testContext?: import('./test-types.js').ITestFrameworkContext;
 
+    // Track step names to detect duplicates
+    private stepNamesUsed = new Set<string>();
+
     constructor(config: ITestExecutorConfig = {}) {
         super();
 
@@ -413,10 +416,24 @@ export class TestExecutor extends EventEmitter {
         Object.keys(this.realContext).forEach(key => delete this.realContext[key]);
         this.realContext.$meta = $meta;
 
+        // Clear step name tracking for new test run
+        this.stepNamesUsed.clear();
+
         // Initialize progress
         this.progress.testName = steps.name || 'test';
         this.progress.startTime = Date.now();
         this.progress.status = 'running';
+        this.progress.completedSteps = 0;
+        this.progress.failedSteps = 0;
+        this.progress.steps.clear();
+        this.progress.groups = [];
+
+        // Reset dependency graph
+        this.graph.nodes.clear();
+        this.graph.edges = [];
+
+        // Reset latency metrics
+        this.latencyMetrics.clear();
 
         // Count total steps
         this.progress.totalSteps = this._countSteps(steps);
@@ -509,6 +526,9 @@ export class TestExecutor extends EventEmitter {
         parentTestContext?: unknown,
     ): Promise<void> {
         const stepName = fn.name || 'anonymous';
+        
+        // Check for duplicate step names
+        this._checkForDuplicateStepName(stepName);
 
         // Capture source location if enabled
         const sourceLocation = this.config.captureStackTraces
@@ -679,6 +699,19 @@ export class TestExecutor extends EventEmitter {
         }
 
         return count;
+    }
+
+    /**
+     * Checks for duplicate step names and throws an error if found
+     */
+    private _checkForDuplicateStepName(stepName: string): void {
+        if (this.stepNamesUsed.has(stepName)) {
+            throw new Error(
+                `Duplicate step name detected: "${stepName}". ` +
+                `Each step must have a unique function name within the same test context.`
+            );
+        }
+        this.stepNamesUsed.add(stepName);
     }
 
     /**
