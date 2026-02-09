@@ -12,7 +12,7 @@ describe('Handler naming', () => {
             return {send() {}};
         });
         
-        assert.strictEqual(namedHandler.name, 'myHandler', 'Named handler should preserve its name');
+        assert.strictEqual((namedHandler as Function).name, 'myHandler', 'Named handler should preserve its name');
     });
 
     it('should allow setting name on anonymous handlers', () => {
@@ -27,7 +27,7 @@ describe('Handler naming', () => {
             enumerable: false,
         });
         
-        assert.strictEqual(anonymousHandler.name, 'send', 'Handler name should be settable');
+        assert.strictEqual((anonymousHandler as Function).name, 'send', 'Handler name should be settable');
     });
 
     it('should ensure names are unique per file', () => {
@@ -38,8 +38,8 @@ describe('Handler naming', () => {
         Object.defineProperty(handler1, 'name', {value: 'send', configurable: true});
         Object.defineProperty(handler2, 'name', {value: 'receive', configurable: true});
         
-        assert.strictEqual(handler1.name, 'send');
-        assert.strictEqual(handler2.name, 'receive');
-        assert.notStrictEqual(handler1.name, handler2.name, 'Handlers should have unique names');
+        assert.strictEqual((handler1 as Function).name, 'send');
+        assert.strictEqual((handler2 as Function).name, 'receive');
+        assert.notStrictEqual((handler1 as Function).name, (handler2 as Function).name, 'Handlers should have unique names');
     });
 });
