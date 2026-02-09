@@ -383,6 +383,9 @@ export class TestExecutor extends EventEmitter {
     // Test framework context for nested test output
     private testContext?: import('./test-types.js').ITestFrameworkContext;
 
+    // Track step names to ensure uniqueness
+    private stepNameCounts = new Map<string, number>();
+
     constructor(config: ITestExecutorConfig = {}) {
         super();
 
@@ -412,6 +415,9 @@ export class TestExecutor extends EventEmitter {
         // Clear and initialize context with $meta (preserve reference for PromiseManager)
         Object.keys(this.realContext).forEach(key => delete this.realContext[key]);
         this.realContext.$meta = $meta;
+
+        // Clear step name tracking for new test run
+        this.stepNameCounts.clear();
 
         // Initialize progress
         this.progress.testName = steps.name || 'test';
@@ -508,7 +514,10 @@ export class TestExecutor extends EventEmitter {
         groupPath: string[],
         parentTestContext?: unknown,
     ): Promise<void> {
-        const stepName = fn.name || 'anonymous';
+        const baseName = fn.name || 'anonymous';
+        
+        // Ensure unique step name
+        const stepName = this._ensureUniqueStepName(baseName);
 
         // Capture source location if enabled
         const sourceLocation = this.config.captureStackTraces
@@ -679,6 +688,22 @@ export class TestExecutor extends EventEmitter {
         }
 
         return count;
+    }
+
+    /**
+     * Ensures a step name is unique by appending a counter if needed
+     */
+    private _ensureUniqueStepName(baseName: string): string {
+        const count = this.stepNameCounts.get(baseName) || 0;
+        this.stepNameCounts.set(baseName, count + 1);
+        
+        if (count === 0) {
+            // First occurrence, use the base name
+            return baseName;
+        } else {
+            // Duplicate, append counter (starting from 2 for second occurrence)
+            return `${baseName}_${count + 1}`;
+        }
     }
 
     /**
