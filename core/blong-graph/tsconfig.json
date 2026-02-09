@@ -1,7 +1,6 @@
 {
     "extends": "../blong/tsconfig.json",
     "compilerOptions": {
-        "jsx": "react-jsx",
-        "types": ["node"]
+        "jsx": "react-jsx"
     }
 }
