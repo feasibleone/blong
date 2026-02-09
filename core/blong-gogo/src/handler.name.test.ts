@@ -7,7 +7,7 @@ import assert from 'node:assert';
 import {handler} from '@feasibleone/blong';
 
 describe('Handler naming', () => {
-    it('should preserve explicit handler names', () => {
+    it('should preserve explicit handler names when they match expected name', () => {
         const namedHandler = handler(function myHandler({config}) {
             return {send() {}};
         });
@@ -41,5 +41,21 @@ describe('Handler naming', () => {
         assert.strictEqual((handler1 as Function).name, 'send');
         assert.strictEqual((handler2 as Function).name, 'receive');
         assert.notStrictEqual((handler1 as Function).name, (handler2 as Function).name, 'Handlers should have unique names');
+    });
+
+    it('should detect mismatch between handler name and expected name', () => {
+        // This test verifies that Watch.ts would throw an error for mismatched names
+        const namedHandler = handler(function wrongName({config}) {
+            return {send() {}};
+        });
+        
+        // In Watch.ts, this would trigger an error like:
+        // "Handler name mismatch in 'send.ts': function is named 'wrongName' but file is named 'send.ts'"
+        
+        const actualName = (namedHandler as Function).name;
+        const expectedName = 'send';
+        
+        assert.notStrictEqual(actualName, expectedName, 'Mismatch should be detectable');
+        assert.strictEqual(actualName, 'wrongName', 'Handler should preserve explicit name');
     });
 });

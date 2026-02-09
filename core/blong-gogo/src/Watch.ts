@@ -154,12 +154,21 @@ export default class Watch extends Internal implements IWatch {
             if (await this.#apiSchema.generateFile(filename)) continue;
             const item = (await import(filename + '?' + Date.now())).default;
             if (!item) this.log?.error?.('Error loading ' + filename);
-            const name =
-                !item.name || item.name === 'default'
-                    ? basename(filename, extname(filename))
-                    : item.name;
-            // Ensure handler name matches the determined name for uniqueness
-            if (kind(item) === 'handler' && item.name !== name) {
+            const expectedName = basename(filename, extname(filename));
+            const actualName = item.name && item.name !== 'default' ? item.name : null;
+            
+            // For files defining a single handler, report error on name mismatch
+            if (kind(item) === 'handler' && actualName && actualName !== expectedName) {
+                throw new Error(
+                    `Handler name mismatch in '${filename}': ` +
+                    `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
+                    `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`
+                );
+            }
+            
+            const name = actualName || expectedName;
+            // Ensure handler name property is set for anonymous handlers
+            if (kind(item) === 'handler' && !actualName) {
                 Object.defineProperty(item, 'name', {
                     value: name,
                     configurable: true,
@@ -215,12 +224,21 @@ export default class Watch extends Internal implements IWatch {
             const filename = join(...path);
             if (isCode(filename)) {
                 const item = (await import(filename + '?' + Date.now())).default;
-                const itemName =
-                    !item.name || item.name === 'default'
-                        ? basename(filename, extname(filename)).match(prefixRE)?.[1]
-                        : item.name;
-                // Ensure handler name matches the determined name for uniqueness
-                if (kind(item) === 'handler' && item.name !== itemName) {
+                const expectedName = basename(filename, extname(filename)).match(prefixRE)?.[1];
+                const actualName = item.name && item.name !== 'default' ? item.name : null;
+                
+                // For files defining a single handler, report error on name mismatch
+                if (kind(item) === 'handler' && actualName && actualName !== expectedName) {
+                    throw new Error(
+                        `Handler name mismatch in '${filename}': ` +
+                        `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
+                        `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`
+                    );
+                }
+                
+                const itemName = actualName || expectedName;
+                // Ensure handler name property is set for anonymous handlers
+                if (kind(item) === 'handler' && !actualName) {
                     Object.defineProperty(item, 'name', {
                         value: itemName,
                         configurable: true,
