@@ -158,6 +158,14 @@ export default class Watch extends Internal implements IWatch {
                 !item.name || item.name === 'default'
                     ? basename(filename, extname(filename))
                     : item.name;
+            // Ensure handler name matches the determined name for uniqueness
+            if (kind(item) === 'handler' && item.name !== name) {
+                Object.defineProperty(item, 'name', {
+                    value: name,
+                    configurable: true,
+                    enumerable: false,
+                });
+            }
             (kind(item) === 'validation'
                 ? validations
                 : kind(item) === 'api'
@@ -211,6 +219,14 @@ export default class Watch extends Internal implements IWatch {
                     !item.name || item.name === 'default'
                         ? basename(filename, extname(filename)).match(prefixRE)?.[1]
                         : item.name;
+                // Ensure handler name matches the determined name for uniqueness
+                if (kind(item) === 'handler' && item.name !== itemName) {
+                    Object.defineProperty(item, 'name', {
+                        value: itemName,
+                        configurable: true,
+                        enumerable: false,
+                    });
+                }
                 if (kind(item) === 'handler') {
                     this.#handlerFiles.set(filename, config);
                     return Object.defineProperty(
