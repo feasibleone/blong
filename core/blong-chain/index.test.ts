@@ -1248,7 +1248,7 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         );
     });
 
-    t.test('allows same function name in different nested groups', async () => {
+    t.test('throws error on duplicate function names across nested groups', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const group1 = [
