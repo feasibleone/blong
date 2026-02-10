@@ -1370,3 +1370,214 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         );
     });
 });
+
+tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
+    t.test('detects direct reference to non-existent step', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function setupData() {
+                return {userId: 'user-123'};
+            },
+            async function processData(assert: any, context: any) {
+                // Reference a step that doesn't exist
+                const data = await context.nonExistentStep;
+                return {processed: true};
+            },
+        ];
+
+        await assert.rejects(
+            executor.execute(steps, {}),
+            /Invalid step reference\(s\) detected.*nonExistentStep/
+        );
+    });
+
+    t.test('detects nested property reference to non-existent step', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function setupData() {
+                return {userId: 'user-123'};
+            },
+            async function processData(assert: any, context: any) {
+                // Reference a nested property of a step that doesn't exist
+                const name = await context.invalidStep.user.name;
+                return {processed: true};
+            },
+        ];
+
+        await assert.rejects(
+            executor.execute(steps, {}),
+            /Invalid step reference\(s\) detected.*invalidStep/
+        );
+    });
+
+    t.test('error message includes which step made the invalid reference', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function step1() {
+                return {data: 'step1'};
+            },
+            async function step2(assert: any, context: any) {
+                const data = await context.missingStep;
+                return {data: 'step2'};
+            },
+        ];
+
+        try {
+            await executor.execute(steps, {});
+            assert.fail('Should have thrown an error');
+        } catch (error: any) {
+            assert.ok(error.message.includes('step2'));
+            assert.ok(error.message.includes('missingStep'));
+            assert.ok(error.message.includes('context.missingStep'));
+        }
+    });
+
+    t.test('error message lists available steps', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function setupData() {
+                return {data: 'setup'};
+            },
+            async function processData() {
+                return {data: 'processed'};
+            },
+            async function verifyData(assert: any, context: any) {
+                const data = await context.invalidStep;
+                return {verified: true};
+            },
+        ];
+
+        try {
+            await executor.execute(steps, {});
+            assert.fail('Should have thrown an error');
+        } catch (error: any) {
+            assert.ok(error.message.includes('Available steps:'));
+            assert.ok(error.message.includes('setupData'));
+            assert.ok(error.message.includes('processData'));
+            assert.ok(error.message.includes('verifyData'));
+        }
+    });
+
+    t.test('detects multiple invalid references', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function step1() {
+                return {data: 'step1'};
+            },
+            async function step2(assert: any, context: any) {
+                const a = await context.missing1;
+                const b = await context.missing2;
+                return {data: 'step2'};
+            },
+        ];
+
+        try {
+            await executor.execute(steps, {});
+            assert.fail('Should have thrown an error');
+        } catch (error: any) {
+            // Should detect at least one invalid reference (first one accessed)
+            assert.ok(error.message.includes('missing1'));
+            assert.ok(error.message.includes('Invalid step reference(s) detected'));
+        }
+    });
+
+    t.test('does not flag valid step references', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function setupData() {
+                return {userId: 'user-123', name: 'Alice'};
+            },
+            async function processData(assert: any, context: any) {
+                const data = await context.setupData;
+                assert.equal(data.userId, 'user-123');
+                return {processed: true};
+            },
+            async function verifyData(assert: any, context: any) {
+                const data = await context.processData;
+                assert.equal(data.processed, true);
+                return {verified: true};
+            },
+        ];
+
+        // Should not throw an error
+        await executor.execute(steps, {});
+
+        const progress = executor.getProgress();
+        assert.equal(progress.status, 'completed');
+        assert.equal(progress.completedSteps, 3);
+        assert.equal(progress.failedSteps, 0);
+    });
+
+    t.test('does not flag nested property access of valid steps', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        const steps = [
+            async function setupUser() {
+                return {
+                    id: 'user-123',
+                    profile: {name: 'Alice', age: 30},
+                };
+            },
+            async function processUser(assert: any, context: any) {
+                const name = await context.setupUser.profile.name;
+                const age = await context.setupUser.profile.age;
+                assert.equal(name, 'Alice');
+                assert.equal(age, 30);
+                return {processed: true};
+            },
+        ];
+
+        // Should not throw an error
+        await executor.execute(steps, {});
+
+        const progress = executor.getProgress();
+        assert.equal(progress.status, 'completed');
+        assert.equal(progress.completedSteps, 2);
+    });
+
+    t.test('validation is reset between test runs', async () => {
+        const executor = new TestExecutor({concurrency: 10});
+
+        // First test run with valid references
+        const validSteps = [
+            async function step1() {
+                return {data: 'step1'};
+            },
+            async function step2(assert: any, context: any) {
+                const data = await context.step1;
+                return {data: 'step2'};
+            },
+        ];
+
+        await executor.execute(validSteps, {});
+        const progress1 = executor.getProgress();
+        assert.equal(progress1.status, 'completed');
+
+        // Second test run with invalid reference
+        const invalidSteps = [
+            async function stepA() {
+                return {data: 'stepA'};
+            },
+            async function stepB(assert: any, context: any) {
+                const data = await context.nonExistent;
+                return {data: 'stepB'};
+            },
+        ];
+
+        await assert.rejects(
+            executor.execute(invalidSteps, {}),
+            /Invalid step reference\(s\) detected/
+        );
+
+        // Third test run with valid references again
+        await executor.execute(validSteps, {});
+        const progress3 = executor.getProgress();
+        assert.equal(progress3.status, 'completed');
+    });
+});

@@ -265,6 +265,14 @@ function createContextProxy(
  */
 class DependencyTracker {
     private dependencies = new Map<string, Set<string>>();
+    private validStepNames = new Set<string>();
+
+    /**
+     * Sets the valid step names that can be referenced
+     */
+    setValidStepNames(stepNames: Set<string>): void {
+        this.validStepNames = stepNames;
+    }
 
     /**
      * Records that a step accessed a property
@@ -274,6 +282,21 @@ class DependencyTracker {
             this.dependencies.set(fromStep, new Set());
         }
         this.dependencies.get(fromStep)!.add(property);
+
+        // Validate immediately if we have valid step names
+        if (this.validStepNames.size > 0) {
+            const stepName = property.split('.')[0];
+            if (!this.validStepNames.has(stepName)) {
+                const propertyDesc = property.includes('.') 
+                    ? `context.${property}` 
+                    : `context.${property}`;
+                throw new Error(
+                    `Invalid step reference(s) detected: Step "${fromStep}" references "${propertyDesc}", ` +
+                    `but no step named "${stepName}" exists. ` +
+                    `Available steps: ${Array.from(this.validStepNames).sort().join(', ')}`
+                );
+            }
+        }
     }
 
     /**
@@ -435,8 +458,12 @@ export class TestExecutor extends EventEmitter {
         // Reset latency metrics
         this.latencyMetrics.clear();
 
-        // Count total steps
+        // Count total steps and collect step names
         this.progress.totalSteps = this._countSteps(steps);
+        const allStepNames = this._collectStepNames(steps);
+        
+        // Set valid step names for dependency validation
+        this.dependencyTracker.setValidStepNames(allStepNames);
 
         // Emit test start event
         this.emit('test:start', this.progress);
@@ -699,6 +726,26 @@ export class TestExecutor extends EventEmitter {
         }
 
         return count;
+    }
+
+    /**
+     * Collects all step names (including nested)
+     */
+    private _collectStepNames(steps: StepArray): Set<string> {
+        const stepNames = new Set<string>();
+
+        for (const step of steps) {
+            if (Array.isArray(step)) {
+                // Recursively collect from nested arrays
+                const nested = this._collectStepNames(step);
+                nested.forEach(name => stepNames.add(name));
+            } else if (typeof step === 'function') {
+                const stepName = step.name || 'anonymous';
+                stepNames.add(stepName);
+            }
+        }
+
+        return stepNames;
     }
 
     /**
