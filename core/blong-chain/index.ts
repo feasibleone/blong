@@ -287,11 +287,8 @@ class DependencyTracker {
         if (this.validStepNames.size > 0) {
             const stepName = property.split('.')[0];
             if (!this.validStepNames.has(stepName)) {
-                const propertyDesc = property.includes('.') 
-                    ? `context.${property}` 
-                    : `context.${property}`;
                 throw new Error(
-                    `Invalid step reference(s) detected: Step "${fromStep}" references "${propertyDesc}", ` +
+                    `Invalid step reference(s) detected: Step "${fromStep}" references "context.${property}", ` +
                     `but no step named "${stepName}" exists. ` +
                     `Available steps: ${Array.from(this.validStepNames).sort().join(', ')}`
                 );
