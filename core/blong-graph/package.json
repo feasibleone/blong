@@ -14,7 +14,7 @@
         "build": "heft build --clean",
         "test:server": "npx http-server tests/fixtures -p 3000 -c-1",
         "test": "playwright test",
-        "ci-ui": "playwright test"
+        "_ci-ui": "playwright test"
     },
     "exports": {
         "./server.js": "./dist/server.js",
