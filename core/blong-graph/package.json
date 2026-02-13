@@ -14,9 +14,7 @@
         "build": "heft build --clean",
         "test:server": "npx http-server tests/fixtures -p 3000 -c-1",
         "test": "playwright test",
-        "ci-unit": "echo 'Skipping Playwright tests in CI - run locally with: npm test'",
-        "ci-ui": "playwright test",
-        "ci-publish": "npm publish --access public --provenance"
+        "ci-ui": "playwright test"
     },
     "exports": {
         "./server.js": "./dist/server.js",

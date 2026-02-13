@@ -11,7 +11,7 @@
     },
     "scripts": {
         "build": "heft build --clean",
-        "ci-publish": "npm publish --access public --provenance"
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },
     "exports": {
         "./server.js": "./dist/server.js",

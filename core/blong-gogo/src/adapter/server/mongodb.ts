@@ -1,6 +1,6 @@
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import mongoUriBuilder from 'mongo-uri-builder';
-import {MongoClient} from 'mongodb';
+import {MongoClient, type Sort} from 'mongodb';
 
 export interface IConfig {
     mongodb: object;
@@ -55,7 +55,10 @@ export default adapter<IConfig>(({utError}) => {
                       order?: string;
                       limit?: number;
                       offset?: number;
+                      sort?: Sort;
                       collection?: string;
+                      where?: object;
+                      operators?: object;
                   } & Record<string, unknown>)
                 | unknown[],
             {method}: IMeta,
@@ -74,7 +77,7 @@ export default adapter<IConfig>(({utError}) => {
                 case 'get': {
                     // get single document
                     if (Array.isArray(params)) throw _errors['mongodb.invalid']();
-                    const {select = '*', [key]: _id, ...where} = params;
+                    const {select = '*', sort, [key]: _id, ...where} = params;
                     return this.config.context.mongodb
                         .db()
                         .collection(table)
@@ -91,6 +94,7 @@ export default adapter<IConfig>(({utError}) => {
                                               }),
                                               {},
                                           ),
+                                sort,
                             },
                         );
                 }
@@ -145,11 +149,11 @@ export default adapter<IConfig>(({utError}) => {
                 case 'edit': {
                     // edit single document with full replace
                     if (Array.isArray(params)) throw _errors['mongodb.invalid']();
-                    const {[key]: _id, ...rest} = params;
+                    const {[key]: _id, where, operators, ...rest} = params;
                     return this.config.context.mongodb
                         .db()
                         .collection(table)
-                        .updateMany({_id}, {$set: rest});
+                        .updateOne({_id, ...where}, {$set: rest, ...operators});
                 }
                 case 'remove': // remove single document
                     if (!(key in params)) throw _errors['mongodb.missingKey']({key});

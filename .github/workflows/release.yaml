@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  release-docker:
+  release:
     permissions:
       contents: write
       packages: write

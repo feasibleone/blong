@@ -15,6 +15,7 @@ export default realm(blong => ({
         keycloak: blong.type.Boolean(),
         s3: blong.type.Boolean(),
         slack: blong.type.Boolean(),
+        github: blong.type.Boolean(),
     }),
     children: ['./server'],
     config: {
@@ -31,6 +32,7 @@ export default realm(blong => ({
             keycloak: false,
             s3: false,
             slack: false,
+            github: false,
         },
     },
 }));

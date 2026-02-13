@@ -16,7 +16,7 @@
         "ci-unit": "npm run test;./test-examples-ci.sh",
         "ci-examples": "npm run test:examples",
         "ci-all": "npm run ci-unit && npm run ci-examples",
-        "ci-publish": "npm publish --access public --provenance"
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },
     "exports": {
         ".": "./dist/index.js"
