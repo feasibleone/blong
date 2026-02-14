@@ -78,7 +78,7 @@ disconnects, by removing it from the list of connected clients and their filters
 
 The client side is implemented as a React component, which connects to the log server
 via WebSocket and REST API. It uses the SVAR data grid
-<https://github.com/svar-widgets/react-grid>
+[https://github.com/svar-widgets/react-grid](https://github.com/svar-widgets/react-grid)
 
 On open, it fetches recent log entries via REST API and then subscribes to log
 entries in real time via WebSocket. It utilizes the ULID to tell the log server
