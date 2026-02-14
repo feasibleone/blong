@@ -778,6 +778,10 @@ export function LogViewer({
         setFilters(f => ({...f, name: e.target.value || undefined}));
     }, []);
 
+    const handleHasErrorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
+        setFilters(f => ({...f, hasError: e.target.checked || undefined}));
+    }, []);
+
     const handleTraceFilter = useCallback((traceId: string): void => {
         setFilters(f => (f.traceId === traceId ? {...f, traceId: undefined} : {...f, traceId}));
     }, []);
@@ -942,7 +946,7 @@ export function LogViewer({
         alignItems: 'center',
     };
 
-    const hasFilters = filters.level || filters.name || filters.traceId || filters.search;
+    const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError;
     const ThemeWrapper = isDark ? WillowDark : Willow;
 
     // ── Render ────────────────────────────────────────────────────────────
@@ -987,6 +991,26 @@ export function LogViewer({
                     value: filters.name ?? '',
                     onChange: handleNameChange,
                 }),
+                React.createElement(
+                    'label',
+                    {
+                        style: {
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            userSelect: 'none' as const,
+                        },
+                    },
+                    React.createElement('input', {
+                        type: 'checkbox',
+                        checked: !!filters.hasError,
+                        onChange: handleHasErrorChange,
+                    }),
+                    'Has Error',
+                ),
                 filters.traceId
                     ? React.createElement(
                           'span',

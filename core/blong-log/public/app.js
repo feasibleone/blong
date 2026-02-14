@@ -12181,6 +12181,9 @@ function LogViewer({
   const handleNameChange = (0, import_react4.useCallback)((e) => {
     setFilters((f) => ({ ...f, name: e.target.value || void 0 }));
   }, []);
+  const handleHasErrorChange = (0, import_react4.useCallback)((e) => {
+    setFilters((f) => ({ ...f, hasError: e.target.checked || void 0 }));
+  }, []);
   const handleTraceFilter = (0, import_react4.useCallback)((traceId) => {
     setFilters((f) => f.traceId === traceId ? { ...f, traceId: void 0 } : { ...f, traceId });
   }, []);
@@ -12318,7 +12321,7 @@ function LogViewer({
     color: isDark ? "#8b949e" : "#57606a",
     alignItems: "center"
   };
-  const hasFilters = filters.level || filters.name || filters.traceId || filters.search;
+  const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError;
   const ThemeWrapper = isDark ? ho : fo;
   return import_react4.default.createElement(
     ViewerContext.Provider,
@@ -12358,6 +12361,26 @@ function LogViewer({
           value: filters.name ?? "",
           onChange: handleNameChange
         }),
+        import_react4.default.createElement(
+          "label",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 8px",
+              fontSize: "12px",
+              cursor: "pointer",
+              userSelect: "none"
+            }
+          },
+          import_react4.default.createElement("input", {
+            type: "checkbox",
+            checked: !!filters.hasError,
+            onChange: handleHasErrorChange
+          }),
+          "Has Error"
+        ),
         filters.traceId ? import_react4.default.createElement(
           "span",
           {

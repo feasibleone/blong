@@ -355,6 +355,10 @@ export class LogServer {
             if (entry.traceId !== filters.traceId) return false;
         }
 
+        if (filters.hasError) {
+            if (!entry.err) return false;
+        }
+
         if (filters.search) {
             const text = JSON.stringify(entry).toLowerCase();
             if (!text.includes(filters.search.toLowerCase())) return false;
