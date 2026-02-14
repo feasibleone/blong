@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-login-v1.3.0...blong-login-v1.4.0) (2026-02-14)
+
+
+### Features
+
+* add GitHub adapter with release management capabilities and update CI publish scripts ([bf01aef](https://github.com/feasibleone/blong/commit/bf01aef3d7028edaf6770321a5542bc2651665e0))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-login-v1.2.0...blong-login-v1.3.0) (2026-02-04)
 
 

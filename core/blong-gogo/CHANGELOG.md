@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.2.0...blong-gogo-v1.3.0) (2026-02-14)
+
+
+### Features
+
+* add GitHub adapter with release management capabilities and update CI publish scripts ([bf01aef](https://github.com/feasibleone/blong/commit/bf01aef3d7028edaf6770321a5542bc2651665e0))
+
+
+### Bug Fixes
+
+* ensure handler names match filenames and report mismatches ([#23](https://github.com/feasibleone/blong/issues/23)) ([62f409f](https://github.com/feasibleone/blong/commit/62f409f36b9763e19830b54b7886d14befef9e14))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.1.1...blong-gogo-v1.2.0) (2026-02-08)
 
 
