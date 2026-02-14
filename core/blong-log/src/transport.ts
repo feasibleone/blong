@@ -33,6 +33,7 @@
 
 import {randomBytes} from 'node:crypto';
 import dgram from 'node:dgram';
+import {Transform} from 'node:stream';
 import build from 'pino-abstract-transport';
 
 export interface TransportOptions {
@@ -85,7 +86,7 @@ function splitPayload(payload: Buffer, maxPayloadSize: number): Buffer[] {
     return chunks;
 }
 
-export default async function transport(options: TransportOptions = {}): ReturnType<typeof build> {
+export default async function transport(options: TransportOptions = {}): Promise<Transform> {
     const opts = {...DEFAULT_OPTIONS, ...options};
     const socket = dgram.createSocket('udp4');
     let batch: string[] = [];
