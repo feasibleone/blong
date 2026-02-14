@@ -1,6 +1,6 @@
 ---
 name: storybook-testing-workflow
-description: Develop and validate React components using Storybook v10+ as primary development environment. Use when building components with stories-first workflow, testing user interactions without running full application, debugging component issues, ensuring accessibility, or validating visual regressions. Emphasizes play() functions for automated behavior testing and dev-time validation.
+description: Daily Storybook development workflow and testing patterns. Use when developing components in Storybook, writing play() functions, debugging interactions, running tests, or ensuring accessibility. For initial setup and configuration, see storybook-v10-setup skill.
 ---
 
 # Storybook Effective Usage & Development Workflow
@@ -8,6 +8,8 @@ description: Develop and validate React components using Storybook v10+ as prima
 ## Overview
 
 Use Storybook v10+ as a development tool for building, testing, and validating React components. This skill emphasizes using Storybook's interaction testing capabilities, proper testing workflows, and avoiding common pitfalls.
+
+**For initial setup and configuration,** see **storybook-v10-setup** skill.
 
 **Key Focus**: Move from "create stories in Storybook" to "develop and validate components IN Storybook"
 

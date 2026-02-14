@@ -1,6 +1,6 @@
 ---
 name: storybook-v10-setup
-description: Set up Storybook v10 for React/TypeScript component testing with visual regression testing, interaction tests, and CI/CD integration. Use when configuring Storybook for a new package, setting up snapshot testing, creating composition patterns for monorepos, or integrating with CI/CD pipelines. Supports Rush.js/Blong monorepo setups.
+description: Initial Storybook v10 setup and configuration for React/TypeScript projects. Use when installing Storybook for the first time, configuring addons, setting up monorepo composition, or configuring CI/CD integration. For development workflow and testing patterns, see storybook-testing-workflow skill.
 ---
 
 # Storybook v10 Component Testing
@@ -8,6 +8,8 @@ description: Set up Storybook v10 for React/TypeScript component testing with vi
 ## Overview
 
 Configure Storybook v10 for React/TypeScript component libraries with automatic screenshot and markup snapshots, following modern best practices for component testing and documentation.
+
+**For development workflow and testing patterns,** see **storybook-testing-workflow** skill.
 
 ## Key Features
 

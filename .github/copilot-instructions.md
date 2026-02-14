@@ -34,6 +34,31 @@ Handlers and library functions are organized in groups within realm layers. Grou
 - **blong-error** - Typed error definitions and error handling
 - **blong-test** - Test handler patterns with parallel execution and automatic dependencies
 
+## Choosing the Right Skill
+
+**For implementation tasks, use these skills:**
+
+| Your Task | Use This Skill |
+|-----------|----------------|
+| Creating a new business domain | **blong-realm** |
+| Adding an API endpoint | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
+| Connecting to database | **blong-adapter** (see SQL adapter patterns) |
+| Calling external API | **blong-adapter** (see HTTP adapter patterns) |
+| Implementing business logic | **blong-orchestrator** |
+| Organizing code into layers | **blong-layer** |
+| Implementing protocols | **blong-codec** |
+| Adding input validation | **blong-validation** |
+| Defining typed errors | **blong-error** |
+| Writing tests | **blong-test** |
+| Setting up Storybook | **storybook-v10-setup** |
+| Developing with Storybook | **storybook-testing-workflow** |
+| Viewing real-time logs | **blong-log** |
+
+**For understanding concepts:**
+- Layer architecture and organization: **blong-layer**
+- Protocol implementation details: **blong-codec**
+- Realm deployment patterns: **blong-realm**
+
 ## Framework Concepts
 
 ### Core Definitions

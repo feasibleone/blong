@@ -150,111 +150,36 @@ export default handler(({handler: {externalGetUser}}) =>
 );
 ```
 
-**OpenAPI Spec Requirements:**
+**OpenAPI Configuration:**
 
-- Must have `operationId` for each operation
-- Can merge multiple spec files
-- Supports inline overrides (servers, security, etc.)
+For complete OpenAPI configuration patterns including:
+- `operationId` mapping to handlers
+- `x-blong-method` custom extension for REST APIs
+- Namespace configuration and spec file merging
+- Request/response transformation patterns
 
-**Example OpenAPI Spec:**
+See the **blong-rest** skill for comprehensive coverage.
 
-```yaml
-# api/world-time.yaml
-openapi: 3.0.0
-info:
-  title: World Time API
-  version: 1.0.0
-servers:
-  - url: http://worldtimeapi.org/api
-paths:
-  /timezone/{area}/{location}:
-    get:
-      operationId: timeTimezoneGet
-      parameters:
-        - name: area
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: location
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Current time
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  abbreviation:
-                    type: string
-                  datetime:
-                    type: string
-```
+**Codec-Specific Concerns:**
 
-**x-blong-method Extension:**
-
-For gateway API definitions, use `x-blong-method` to map REST operations to handler names:
-
-```yaml
-# gateway/api/agreement.yaml
-paths:
-  /quotes/{id}:
-    get:
-      x-blong-method: QuoteGet          # Maps to agreementQuoteGet handler
-    put:
-      x-blong-method: QuoteEdit         # Maps to agreementQuoteEdit handler
-  /quotes:
-    get:
-      x-blong-method: QuoteList         # Maps to agreementQuoteList handler
-    post:
-      x-blong-method: QuoteCreate       # Maps to agreementQuoteCreate handler
-  /quotes/{id}/error:
-    put:
-      x-blong-method: QuoteError        # Maps to agreementQuoteError handler
-
-parameters:
-  id:
-    # UUID or ULID pattern
-    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-7][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$|^[0-9A-HJKMNP-TV-Z]{26}$
-
-definitions:
-  QuoteId:
-    pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-7][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$|^[0-9A-HJKMNP-TV-Z]{26}$
-```
-
-**Gateway API Configuration:**
+The OpenAPI codec focuses on protocol-level handler implementation:
 
 ```typescript
-// gateway/api/agreement.ts
-import {api} from '@feasibleone/blong';
+// Adapter encode handler - called before HTTP request
+export default ({timeTimezoneGet}) => encode(
+    async ({area, location}) => ({
+        url: `/timezone/${area}/${location}`,
+        method: 'GET',
+    })
+);
 
-export default api(() => ({
-    namespace: {
-        agreement: [
-            'https://external.api/swagger.json',  // External API spec
-            './agreement.yaml',                    // Local additions with x-blong-method
-        ],
-    },
-}));
-```
-
-The `x-blong-method` extension maps HTTP operations to handler names, enabling REST API definitions while using the framework's handler pattern internally.
-
-**Additional Operations File:**
-
-```yaml
-# api/world-time.operations.yaml
-paths:
-  /ip:
-    get:
-      operationId: timeIpGet
-      responses:
-        '200':
-          description: Time by IP
+// Adapter decode handler - called after HTTP response
+export default ({timeTimezoneGet}) => decode(
+    async (response) => ({
+        abbreviation: response.body.abbreviation,
+        datetime: response.body.datetime,
+    })
+);
 ```
 
 ### 2. JSON-RPC Codec (`codec.jsonrpc`)
