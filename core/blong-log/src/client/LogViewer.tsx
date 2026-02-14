@@ -173,6 +173,20 @@ function TraceLinkCell({
 
 function MessageCell({row}: {row: LogEntry}): React.ReactElement {
     const {searchText, theme} = useContext(ViewerContext);
+    
+    // Try to parse message as JSON
+    let messageContent: React.ReactNode = row.msg ?? '';
+    if (row.msg) {
+        try {
+            JSON.parse(row.msg);
+            // If it's valid JSON, use syntax highlighting
+            messageContent = React.createElement(SyntaxHighlight, {json: row.msg, theme});
+        } catch {
+            // Not JSON, use regular highlight with search
+            messageContent = highlightSearch(row.msg, searchText);
+        }
+    }
+    
     return React.createElement(
         'div',
         {
@@ -184,7 +198,7 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
             },
             title: row.msg ?? '',
         },
-        highlightSearch(row.msg ?? '', searchText),
+        messageContent,
         row.err
             ? React.createElement(
                   'span',
@@ -226,6 +240,68 @@ function HttpCell({row}: {row: LogEntry}): React.ReactElement {
     );
 }
 
+// ── JSON Syntax Highlighting ──────────────────────────────────────────────────
+
+/**
+ * Tokenizes JSON and wraps each token with appropriate color from theme.syntax
+ */
+function SyntaxHighlight({
+    json,
+    theme,
+}: {
+    json: string;
+    theme: ThemeConfig;
+}): React.ReactElement {
+    const tokens: React.ReactNode[] = [];
+    const syntax = theme.syntax ?? {};
+    
+    // Simple JSON tokenizer using regex
+    const pattern = /"(?:[^"\\]|\\.)*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\]:,]/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    
+    while ((match = pattern.exec(json)) !== null) {
+        // Add any whitespace before this token
+        if (match.index > lastIndex) {
+            tokens.push(json.substring(lastIndex, match.index));
+        }
+        
+        const token = match[0];
+        let color: string | undefined;
+        
+        if (token === 'true' || token === 'false') {
+            color = syntax.boolean;
+        } else if (token === 'null') {
+            color = syntax.null;
+        } else if (token[0] === '"') {
+            // Check if this is a key by looking ahead for a colon
+            const afterToken = json.substring(pattern.lastIndex).trimStart();
+            if (afterToken[0] === ':') {
+                color = syntax.key;
+            } else {
+                color = syntax.string;
+            }
+        } else if (!isNaN(Number(token)) && token !== '') {
+            color = syntax.number;
+        }
+        
+        tokens.push(
+            color
+                ? React.createElement('span', {key: lastIndex, style: {color}}, token)
+                : token,
+        );
+        
+        lastIndex = pattern.lastIndex;
+    }
+    
+    // Add any remaining text
+    if (lastIndex < json.length) {
+        tokens.push(json.substring(lastIndex));
+    }
+    
+    return React.createElement(React.Fragment, null, ...tokens);
+}
+
 // ── Entry Detail Modal ────────────────────────────────────────────────────────
 
 function EntryModal({
@@ -238,6 +314,8 @@ function EntryModal({
     onClose: () => void;
 }): React.ReactElement {
     const [wrapText, setWrapText] = useState(false);
+    const {theme} = useContext(ViewerContext);
+    const jsonString = JSON.stringify(entry, null, 2);
 
     return React.createElement(
         'div',
@@ -321,7 +399,7 @@ function EntryModal({
                         maxHeight: '65vh',
                     },
                 },
-                JSON.stringify(entry, null, 2),
+                React.createElement(SyntaxHighlight, {json: jsonString, theme}),
             ),
         ),
     );

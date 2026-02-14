@@ -11691,6 +11691,15 @@ function TraceLinkCell({
 }
 function MessageCell({ row }) {
   const { searchText, theme } = (0, import_react4.useContext)(ViewerContext);
+  let messageContent = row.msg ?? "";
+  if (row.msg) {
+    try {
+      JSON.parse(row.msg);
+      messageContent = import_react4.default.createElement(SyntaxHighlight, { json: row.msg, theme });
+    } catch {
+      messageContent = highlightSearch(row.msg, searchText);
+    }
+  }
   return import_react4.default.createElement(
     "div",
     {
@@ -11702,7 +11711,7 @@ function MessageCell({ row }) {
       },
       title: row.msg ?? ""
     },
-    highlightSearch(row.msg ?? "", searchText),
+    messageContent,
     row.err ? import_react4.default.createElement(
       "span",
       { style: { color: theme.levels?.error ?? "#ef4444", marginLeft: "8px" } },
@@ -11732,12 +11741,53 @@ function HttpCell({ row }) {
     ) : null
   );
 }
+function SyntaxHighlight({
+  json,
+  theme
+}) {
+  const tokens = [];
+  const syntax = theme.syntax ?? {};
+  const pattern = /"(?:[^"\\]|\\.)*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\]:,]/g;
+  let lastIndex = 0;
+  let match;
+  while ((match = pattern.exec(json)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(json.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    let color;
+    if (token === "true" || token === "false") {
+      color = syntax.boolean;
+    } else if (token === "null") {
+      color = syntax.null;
+    } else if (token[0] === '"') {
+      const afterToken = json.substring(pattern.lastIndex).trimStart();
+      if (afterToken[0] === ":") {
+        color = syntax.key;
+      } else {
+        color = syntax.string;
+      }
+    } else if (!isNaN(Number(token)) && token !== "") {
+      color = syntax.number;
+    }
+    tokens.push(
+      color ? import_react4.default.createElement("span", { key: lastIndex, style: { color } }, token) : token
+    );
+    lastIndex = pattern.lastIndex;
+  }
+  if (lastIndex < json.length) {
+    tokens.push(json.substring(lastIndex));
+  }
+  return import_react4.default.createElement(import_react4.default.Fragment, null, ...tokens);
+}
 function EntryModal({
   entry,
   isDark,
   onClose
 }) {
   const [wrapText, setWrapText] = (0, import_react4.useState)(false);
+  const { theme } = (0, import_react4.useContext)(ViewerContext);
+  const jsonString = JSON.stringify(entry, null, 2);
   return import_react4.default.createElement(
     "div",
     {
@@ -11820,7 +11870,7 @@ function EntryModal({
             maxHeight: "65vh"
           }
         },
-        JSON.stringify(entry, null, 2)
+        import_react4.default.createElement(SyntaxHighlight, { json: jsonString, theme })
       )
     )
   );
