@@ -316,6 +316,24 @@ function EntryModal({
     const [wrapText, setWrapText] = useState(false);
     const {theme} = useContext(ViewerContext);
     const jsonString = JSON.stringify(entry, null, 2);
+    
+    const sectionHeaderStyle: CSSProperties = {
+        fontSize: '13px',
+        fontWeight: 'bold',
+        marginTop: '16px',
+        marginBottom: '8px',
+        color: isDark ? '#c9d1d9' : '#24292f',
+    };
+    
+    const sectionStyle: CSSProperties = {
+        background: isDark ? '#0d1117' : '#f6f8fa',
+        border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
+        borderRadius: '6px',
+        padding: '12px',
+        marginBottom: '12px',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+    };
 
     return React.createElement(
         'div',
@@ -387,6 +405,206 @@ function EntryModal({
                     ),
                 ),
             ),
+            // Exception section
+            entry.err
+                ? React.createElement(
+                      'div',
+                      null,
+                      React.createElement('div', {style: sectionHeaderStyle}, 'Exception'),
+                      React.createElement(
+                          'div',
+                          {style: sectionStyle},
+                          React.createElement(
+                              'div',
+                              {
+                                  style: {
+                                      color: theme.levels?.error ?? '#ef4444',
+                                      fontWeight: 'bold',
+                                      marginBottom: '8px',
+                                  },
+                              },
+                              `${entry.err.type ?? 'Error'}: ${entry.err.message ?? 'No message'}`,
+                          ),
+                          entry.err.stack
+                              ? React.createElement(
+                                    'div',
+                                    {style: {whiteSpace: 'pre-wrap', lineHeight: '1.5'}},
+                                    entry.err.stack,
+                                )
+                              : null,
+                      ),
+                  )
+                : null,
+            // HTTP Request section
+            entry.req
+                ? React.createElement(
+                      'div',
+                      null,
+                      React.createElement('div', {style: sectionHeaderStyle}, 'HTTP Request'),
+                      React.createElement(
+                          'div',
+                          {style: sectionStyle},
+                          React.createElement(
+                              'div',
+                              {style: {fontWeight: 'bold', marginBottom: '8px'}},
+                              `${entry.req.method ?? 'GET'} ${entry.req.url ?? ''}`,
+                          ),
+                          entry.req.headers
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Headers:',
+                                    ),
+                                    React.createElement(
+                                        'table',
+                                        {style: {width: '100%', fontSize: '11px'}},
+                                        React.createElement(
+                                            'tbody',
+                                            null,
+                                            ...Object.entries(entry.req.headers).map(([key, value]) =>
+                                                React.createElement(
+                                                    'tr',
+                                                    {key},
+                                                    React.createElement(
+                                                        'td',
+                                                        {
+                                                            style: {
+                                                                padding: '2px 8px 2px 0',
+                                                                verticalAlign: 'top',
+                                                                color: isDark ? '#79c0ff' : '#0969da',
+                                                            },
+                                                        },
+                                                        key,
+                                                    ),
+                                                    React.createElement(
+                                                        'td',
+                                                        {style: {padding: '2px 0', verticalAlign: 'top'}},
+                                                        value,
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                )
+                              : null,
+                          entry.req.body
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Body:',
+                                    ),
+                                    React.createElement(
+                                        'pre',
+                                        {style: {margin: 0, whiteSpace: 'pre-wrap'}},
+                                        typeof entry.req.body === 'string'
+                                            ? entry.req.body
+                                            : React.createElement(SyntaxHighlight, {
+                                                  json: JSON.stringify(entry.req.body, null, 2),
+                                                  theme,
+                                              }),
+                                    ),
+                                )
+                              : null,
+                      ),
+                  )
+                : null,
+            // HTTP Response section
+            entry.res
+                ? React.createElement(
+                      'div',
+                      null,
+                      React.createElement('div', {style: sectionHeaderStyle}, 'HTTP Response'),
+                      React.createElement(
+                          'div',
+                          {style: sectionStyle},
+                          React.createElement(
+                              'div',
+                              {style: {fontWeight: 'bold', marginBottom: '8px'}},
+                              React.createElement(
+                                  'span',
+                                  {
+                                      style: {
+                                          color:
+                                              (entry.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444',
+                                      },
+                                  },
+                                  entry.res.statusCode ?? 200,
+                              ),
+                              entry.res.responseTime ? ` (${entry.res.responseTime}ms)` : '',
+                          ),
+                          entry.res.headers
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Headers:',
+                                    ),
+                                    React.createElement(
+                                        'table',
+                                        {style: {width: '100%', fontSize: '11px'}},
+                                        React.createElement(
+                                            'tbody',
+                                            null,
+                                            ...Object.entries(entry.res.headers).map(([key, value]) =>
+                                                React.createElement(
+                                                    'tr',
+                                                    {key},
+                                                    React.createElement(
+                                                        'td',
+                                                        {
+                                                            style: {
+                                                                padding: '2px 8px 2px 0',
+                                                                verticalAlign: 'top',
+                                                                color: isDark ? '#79c0ff' : '#0969da',
+                                                            },
+                                                        },
+                                                        key,
+                                                    ),
+                                                    React.createElement(
+                                                        'td',
+                                                        {style: {padding: '2px 0', verticalAlign: 'top'}},
+                                                        value,
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                )
+                              : null,
+                          entry.res.body
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Body:',
+                                    ),
+                                    React.createElement(
+                                        'pre',
+                                        {style: {margin: 0, whiteSpace: 'pre-wrap'}},
+                                        typeof entry.res.body === 'string'
+                                            ? entry.res.body
+                                            : React.createElement(SyntaxHighlight, {
+                                                  json: JSON.stringify(entry.res.body, null, 2),
+                                                  theme,
+                                              }),
+                                    ),
+                                )
+                              : null,
+                      ),
+                  )
+                : null,
+            // Raw JSON section
+            React.createElement('div', {style: sectionHeaderStyle}, 'Raw Entry'),
             React.createElement(
                 'pre',
                 {
@@ -397,6 +615,10 @@ function EntryModal({
                         fontSize: '12px',
                         overflow: 'auto',
                         maxHeight: '65vh',
+                        background: isDark ? '#0d1117' : '#f6f8fa',
+                        border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
+                        borderRadius: '6px',
+                        padding: '12px',
                     },
                 },
                 React.createElement(SyntaxHighlight, {json: jsonString, theme}),
