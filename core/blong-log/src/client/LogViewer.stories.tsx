@@ -7,9 +7,9 @@
 
 import React from 'react';
 
-import type {Meta, StoryObj} from '@storybook/react-vite';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import type {ClientConfig, LogEntry} from '../types.js';
+import type { ClientConfig, LogEntry } from '../types.js';
 import {
     darkThemeConfig,
     errorEntries,
@@ -436,5 +436,394 @@ export const SearchHighlightingHTTPAndErrors: Story = {
             sampleEntries[6].id,
             sampleEntries[11].id,
         ]),
+    },
+};
+
+// ── Performance Testing Stories ───────────────────────────────────────────────
+
+/**
+ * Performance test: Simulates receiving 10 messages per second from WebSocket.
+ * Sends 200 messages over 20 seconds to test real-time performance and rendering.
+ * Watch for smooth scrolling, filtering, and search while messages stream in.
+ */
+export const PerformanceTest: Story = {
+    render: () => {
+        const mockWsUrl = React.useMemo(() => `ws://storybook-mock-perf-${Math.random()}.local`, []);
+
+        React.useEffect(() => {
+            const OriginalWebSocket = (window as any).WebSocket;
+
+            class StreamingMockWebSocket {
+                url: string;
+                onopen: ((ev: Event) => void) | null = null;
+                onmessage: ((ev: MessageEvent) => void) | null = null;
+                onclose: ((ev: CloseEvent) => void) | null = null;
+                onerror: ((ev: Event) => void) | null = null;
+                readyState = 1;
+                OPEN = 1;
+                CLOSED = 3;
+                private intervalId: NodeJS.Timeout | null = null;
+                private messageCount = 0;
+                private maxMessages = 200;
+
+                constructor(url: string) {
+                    this.url = url;
+                    setTimeout(() => {
+                        if (this.onopen) {
+                            this.onopen(new Event('open'));
+                        }
+                        // Start sending messages at 10/second
+                        this.startStreaming();
+                    }, 10);
+                }
+
+                private startStreaming(): void {
+                    // Send 10 messages per second (interval of 100ms)
+                    this.intervalId = setInterval(() => {
+                        if (this.messageCount >= this.maxMessages) {
+                            this.stopStreaming();
+                            return;
+                        }
+
+                        // Generate a batch of messages
+                        const entries: LogEntry[] = [];
+                        for (let i = 0; i < 1; i++) {
+                            const timestamp = Date.now() - (this.maxMessages - this.messageCount) * 100;
+                            const levels = [
+                                {level: 30, levelName: 'info'},
+                                {level: 40, levelName: 'warn'},
+                                {level: 50, levelName: 'error'},
+                                {level: 20, levelName: 'debug'},
+                            ] as const;
+                            const services = ['payment', 'ledger', 'participant', 'agreement'];
+                            const levelInfo = levels[this.messageCount % levels.length];
+                            const service = services[this.messageCount % services.length];
+
+                            entries.push({
+                                id: `perf-${this.messageCount}`,
+                                time: timestamp,
+                                level: levelInfo.level,
+                                levelName: levelInfo.levelName,
+                                name: service,
+                                msg: `Performance test message ${this.messageCount + 1}/${this.maxMessages}`,
+                                traceId: `trace-${Math.floor(this.messageCount / 10)}`,
+                            });
+
+                            this.messageCount++;
+                        }
+
+                        if (this.onmessage && entries.length > 0) {
+                            this.onmessage(
+                                new MessageEvent('message', {
+                                    data: JSON.stringify({
+                                        type: 'entries',
+                                        entries,
+                                    }),
+                                }),
+                            );
+                        }
+                    }, 100); // 100ms = 10 messages per second
+                }
+
+                private stopStreaming(): void {
+                    if (this.intervalId) {
+                        clearInterval(this.intervalId);
+                        this.intervalId = null;
+                    }
+                }
+
+                send(_data: string): void {
+                    // Mock send
+                }
+
+                close(): void {
+                    this.stopStreaming();
+                    this.readyState = this.CLOSED;
+                    setTimeout(() => {
+                        if (this.onclose) {
+                            this.onclose(new CloseEvent('close'));
+                        }
+                    }, 10);
+                }
+            }
+
+            (window as any).WebSocket = function (url: string, ...args: any[]) {
+                if (url === mockWsUrl) {
+                    return new StreamingMockWebSocket(url);
+                }
+                return new OriginalWebSocket(url, ...args);
+            };
+
+            (window as any).WebSocket.CONNECTING = 0;
+            (window as any).WebSocket.OPEN = 1;
+            (window as any).WebSocket.CLOSING = 2;
+            (window as any).WebSocket.CLOSED = 3;
+
+            return () => {
+                (window as any).WebSocket = OriginalWebSocket;
+            };
+        }, [mockWsUrl]);
+
+        const configWithMockWs = React.useMemo(
+            () => ({
+                ...darkThemeConfig,
+                wsUrl: mockWsUrl,
+            }),
+            [mockWsUrl],
+        );
+
+        return (
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: '100%',
+                    height: '100%',
+                }}
+            >
+                <LogViewer config={configWithMockWs} />
+            </div>
+        );
+    },
+};
+
+// ── Filter Testing Stories ────────────────────────────────────────────────────
+
+/**
+ * Filter test: Verifies that filters are properly sent to server and respected.
+ * Set filters (level, service name, trace ID, has error) and watch as subsequent
+ * messages match only the filter criteria. The mock server filters new messages
+ * based on the received filter before sending them to the client.
+ */
+export const FilteredServer: Story = {
+    render: () => {
+        const mockWsUrl = React.useMemo(() => `ws://storybook-mock-filter-${Math.random()}.local`, []);
+
+        React.useEffect(() => {
+            const OriginalWebSocket = (window as any).WebSocket;
+
+            class FilteredMockWebSocket {
+                url: string;
+                onopen: ((ev: Event) => void) | null = null;
+                onmessage: ((ev: MessageEvent) => void) | null = null;
+                onclose: ((ev: CloseEvent) => void) | null = null;
+                onerror: ((ev: Event) => void) | null = null;
+                readyState = 1;
+                OPEN = 1;
+                CLOSED = 3;
+                private intervalId: NodeJS.Timeout | null = null;
+                private messageCount = 0;
+                private maxMessages = 50;
+                private filters: any = {};
+
+                constructor(url: string) {
+                    this.url = url;
+                    setTimeout(() => {
+                        if (this.onopen) {
+                            this.onopen(new Event('open'));
+                        }
+                        // Send initial unfiltered messages
+                        this.sendInitialMessages();
+                        // Start sending filtered messages periodically
+                        this.startStreaming();
+                    }, 10);
+                }
+
+                private sendInitialMessages(): void {
+                    // Send a diverse set of initial messages
+                    const initialEntries: LogEntry[] = [
+                        {
+                            id: 'init-1',
+                            time: Date.now() - 5000,
+                            level: 30,
+                            levelName: 'info',
+                            name: 'payment',
+                            msg: 'Initial payment service message',
+                            traceId: 'trace-init-1',
+                        },
+                        {
+                            id: 'init-2',
+                            time: Date.now() - 4000,
+                            level: 50,
+                            levelName: 'error',
+                            name: 'ledger',
+                            msg: 'Initial ledger error',
+                            traceId: 'trace-init-2',
+                            err: {type: 'Error', message: 'Test error'},
+                        },
+                        {
+                            id: 'init-3',
+                            time: Date.now() - 3000,
+                            level: 40,
+                            levelName: 'warn',
+                            name: 'participant',
+                            msg: 'Initial participant warning',
+                            traceId: 'trace-init-3',
+                        },
+                    ];
+
+                    if (this.onmessage) {
+                        this.onmessage(
+                            new MessageEvent('message', {
+                                data: JSON.stringify({
+                                    type: 'entries',
+                                    entries: initialEntries,
+                                }),
+                            }),
+                        );
+                    }
+                }
+
+                private matchesFilter(entry: LogEntry): boolean {
+                    // Apply server-side filtering based on received filter criteria
+                    if (this.filters.level && entry.levelName !== this.filters.level) {
+                        return false;
+                    }
+                    if (this.filters.name && entry.name !== this.filters.name) {
+                        return false;
+                    }
+                    if (this.filters.traceId && entry.traceId !== this.filters.traceId) {
+                        return false;
+                    }
+                    if (this.filters.hasError && !entry.err) {
+                        return false;
+                    }
+                    return true;
+                }
+
+                private startStreaming(): void {
+                    // Send messages every 500ms
+                    this.intervalId = setInterval(() => {
+                        if (this.messageCount >= this.maxMessages) {
+                            this.stopStreaming();
+                            return;
+                        }
+
+                        // Generate a diverse message that may or may not match filters
+                        const timestamp = Date.now();
+                        const levels = [
+                            {level: 30, levelName: 'info'},
+                            {level: 40, levelName: 'warn'},
+                            {level: 50, levelName: 'error'},
+                            {level: 20, levelName: 'debug'},
+                        ] as const;
+                        const services = ['payment', 'ledger', 'participant', 'agreement'];
+                        const levelInfo = levels[this.messageCount % levels.length];
+                        const service = services[this.messageCount % services.length];
+                        const hasError = this.messageCount % 3 === 0;
+
+                        const entry: LogEntry = {
+                            id: `stream-${this.messageCount}`,
+                            time: timestamp,
+                            level: levelInfo.level,
+                            levelName: levelInfo.levelName,
+                            name: service,
+                            msg: `Streamed ${service} message ${this.messageCount + 1} (level: ${levelInfo.levelName})`,
+                            traceId: `trace-stream-${Math.floor(this.messageCount / 5)}`,
+                        };
+
+                        if (hasError) {
+                            entry.err = {
+                                type: 'StreamError',
+                                message: `Error in message ${this.messageCount + 1}`,
+                            };
+                        }
+
+                        this.messageCount++;
+
+                        // Only send if it matches the current filter
+                        if (this.matchesFilter(entry) && this.onmessage) {
+                            this.onmessage(
+                                new MessageEvent('message', {
+                                    data: JSON.stringify({
+                                        type: 'entries',
+                                        entries: [entry],
+                                    }),
+                                }),
+                            );
+                        }
+                    }, 500);
+                }
+
+                private stopStreaming(): void {
+                    if (this.intervalId) {
+                        clearInterval(this.intervalId);
+                        this.intervalId = null;
+                    }
+                }
+
+                send(data: string): void {
+                    // Capture filter/subscribe messages
+                    try {
+                        const msg = JSON.parse(data);
+                        if (msg.type === 'subscribe') {
+                            // Update filters based on subscribe message
+                            this.filters = {
+                                level: msg.level,
+                                name: msg.name,
+                                traceId: msg.traceId,
+                                hasError: msg.hasError,
+                            };
+                            console.log('Mock server received filters:', this.filters);
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+
+                close(): void {
+                    this.stopStreaming();
+                    this.readyState = this.CLOSED;
+                    setTimeout(() => {
+                        if (this.onclose) {
+                            this.onclose(new CloseEvent('close'));
+                        }
+                    }, 10);
+                }
+            }
+
+            (window as any).WebSocket = function (url: string, ...args: any[]) {
+                if (url === mockWsUrl) {
+                    return new FilteredMockWebSocket(url);
+                }
+                return new OriginalWebSocket(url, ...args);
+            };
+
+            (window as any).WebSocket.CONNECTING = 0;
+            (window as any).WebSocket.OPEN = 1;
+            (window as any).WebSocket.CLOSING = 2;
+            (window as any).WebSocket.CLOSED = 3;
+
+            return () => {
+                (window as any).WebSocket = OriginalWebSocket;
+            };
+        }, [mockWsUrl]);
+
+        const configWithMockWs = React.useMemo(
+            () => ({
+                ...darkThemeConfig,
+                wsUrl: mockWsUrl,
+            }),
+            [mockWsUrl],
+        );
+
+        return (
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: '100%',
+                    height: '100%',
+                }}
+            >
+                <LogViewer config={configWithMockWs} />
+            </div>
+        );
     },
 };

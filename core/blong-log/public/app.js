@@ -11577,17 +11577,25 @@ var ViewerContext = (0, import_react4.createContext)({
   searchText: "",
   clientConfig: null,
   onTraceFilter: () => {
+  },
+  onToggleExpanded: () => {
   }
 });
 var ExpandedRowsContext = (0, import_react4.createContext)(null);
 function formatTimestamp(time) {
   if (!time) return "";
-  const d = new Date(time);
-  return d.toLocaleTimeString("en-US", { hour12: false, fractionalSecondDigits: 3 });
+  const timeMs = time < 1e10 ? time * 1e3 : time;
+  const d = new Date(timeMs);
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  return `${hours}:${minutes}:${seconds}.${ms}`;
 }
 function timeAgo(time) {
   if (!time) return "";
-  const diff = Date.now() - time;
+  const timeMs = time < 1e10 ? time * 1e3 : time;
+  const diff = Date.now() - timeMs;
   if (diff < 1e3) return "just now";
   if (diff < 6e4) return `${Math.floor(diff / 1e3)}s ago`;
   if (diff < 36e5) return `${Math.floor(diff / 6e4)}m ago`;
@@ -11616,19 +11624,78 @@ function highlightSearch(text, search) {
     ) : part
   );
 }
+function CopyButton({ text, isDark = true }) {
+  const [copied, setCopied] = (0, import_react4.useState)(false);
+  const handleClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2e3);
+      },
+      (err) => {
+        console.error("Failed to copy:", err);
+      }
+    );
+  };
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "button",
+    {
+      onClick: handleClick,
+      onMouseDown: (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      onMouseUp: (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      onDoubleClick: (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      style: {
+        background: isDark ? "rgba(110, 118, 129, 0.4)" : "rgba(175, 184, 193, 0.2)",
+        border: "none",
+        cursor: "pointer",
+        padding: "3px 6px",
+        fontSize: "13px",
+        color: isDark ? "#c9d1d9" : "#24292f",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "4px",
+        flexShrink: 0,
+        minWidth: "28px",
+        height: "24px"
+      },
+      title: copied ? "Copied!" : "Copy to clipboard"
+    },
+    copied ? "\u2713" : "\u{1F4CB}"
+  );
+}
 function LevelCell({ row }) {
   const { theme } = (0, import_react4.useContext)(ViewerContext);
+  const [isHovered, setIsHovered] = (0, import_react4.useState)(false);
   const name = row.levelName ?? LEVEL_NAME[row.level ?? 30] ?? "unknown";
   const colors = theme.levels ?? {};
   const color = colors[name] ?? "#6b7280";
+  const isDark = theme.mode === "dark";
   return /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       style: {
         display: "flex",
         alignItems: "center",
-        minHeight: "28px"
-      }
+        minHeight: "28px",
+        position: "relative",
+        paddingRight: isHovered ? "36px" : "0",
+        flexWrap: "nowrap",
+        overflow: "visible"
+      },
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false)
     },
     /* @__PURE__ */ import_react4.default.createElement(
       "span",
@@ -11643,15 +11710,37 @@ function LevelCell({ row }) {
           background: color,
           display: "inline-block",
           minWidth: "45px",
-          textAlign: "center"
+          textAlign: "center",
+          flexShrink: 0
         }
       },
       name
+    ),
+    isHovered && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          right: "4px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          pointerEvents: "auto"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement(
+        CopyButton,
+        {
+          text: name,
+          isDark
+        }
+      )
     )
   );
 }
 function NameCell({ row }) {
-  const { searchText } = (0, import_react4.useContext)(ViewerContext);
+  const { searchText, theme } = (0, import_react4.useContext)(ViewerContext);
+  const [isHovered, setIsHovered] = (0, import_react4.useState)(false);
+  const isDark = theme.mode === "dark";
   return /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
@@ -11662,16 +11751,41 @@ function NameCell({ row }) {
         fontSize: "12px",
         display: "flex",
         alignItems: "center",
-        minHeight: "28px"
+        minHeight: "28px",
+        position: "relative",
+        paddingRight: isHovered && row.name ? "36px" : "0"
       },
-      title: row.name ?? ""
+      title: row.name ?? "",
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false)
     },
-    highlightSearch(row.name ?? "", searchText)
+    /* @__PURE__ */ import_react4.default.createElement("span", { style: { flex: 1, overflow: "hidden", textOverflow: "ellipsis" } }, highlightSearch(row.name ?? "", searchText)),
+    isHovered && row.name && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          right: "4px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          pointerEvents: "auto"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement(
+        CopyButton,
+        {
+          text: row.name,
+          isDark
+        }
+      )
+    )
   );
 }
 function TraceLinkCell({ row }) {
-  const { clientConfig, onTraceFilter } = (0, import_react4.useContext)(ViewerContext);
+  const { clientConfig, onTraceFilter, theme } = (0, import_react4.useContext)(ViewerContext);
+  const [isHovered, setIsHovered] = (0, import_react4.useState)(false);
   if (!row.traceId) return null;
+  const isDark = theme.mode === "dark";
   const handleFilterClick = (e) => {
     e.stopPropagation();
     onTraceFilter(row.traceId);
@@ -11692,9 +11806,26 @@ function TraceLinkCell({ row }) {
         display: "flex",
         alignItems: "center",
         gap: "4px",
-        minHeight: "28px"
-      }
+        minHeight: "28px",
+        position: "relative"
+      },
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false)
     },
+    clientConfig?.traceUrlPattern && /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          cursor: "pointer",
+          color: "#58a6ff",
+          fontSize: "14px",
+          lineHeight: "1"
+        },
+        onClick: handleExternalLink,
+        title: "Open trace in external viewer"
+      },
+      "\u2197"
+    ),
     /* @__PURE__ */ import_react4.default.createElement(
       "span",
       {
@@ -11709,26 +11840,41 @@ function TraceLinkCell({ row }) {
       },
       row.traceId.substring(0, 16) + "\u2026"
     ),
-    clientConfig?.traceUrlPattern && /* @__PURE__ */ import_react4.default.createElement(
-      "span",
+    isHovered && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
       {
         style: {
-          cursor: "pointer",
-          color: "#58a6ff",
-          fontSize: "14px",
-          lineHeight: "1"
-        },
-        onClick: handleExternalLink,
-        title: "Open trace in external viewer"
+          position: "absolute",
+          right: "4px",
+          top: "50%",
+          transform: "translateY(-50%)"
+        }
       },
-      "\u2197"
+      /* @__PURE__ */ import_react4.default.createElement(
+        CopyButton,
+        {
+          text: row.traceId,
+          isDark
+        }
+      )
     )
   );
 }
 function MessageCell({ row }) {
-  const { searchText, theme } = (0, import_react4.useContext)(ViewerContext);
+  const { searchText, theme, onToggleExpanded } = (0, import_react4.useContext)(ViewerContext);
   const expandedRows = import_react4.default.useContext(ExpandedRowsContext);
   const isExpanded = expandedRows?.has(row.id) ?? false;
+  const [isHovered, setIsHovered] = (0, import_react4.useState)(false);
+  const isDark = isDarkMode(theme);
+  const handleClick = (0, import_react4.useCallback)(
+    (e) => {
+      if (e.target.closest("[data-copy-button]")) {
+        return;
+      }
+      onToggleExpanded(row.id);
+    },
+    [onToggleExpanded, row.id]
+  );
   const baseStyle = {
     overflow: "hidden",
     fontSize: "12px"
@@ -11747,170 +11893,312 @@ function MessageCell({ row }) {
     wordBreak: "break-word",
     padding: "8px 0"
   };
+  const getFullText = () => {
+    let text = row.msg ?? "";
+    if (row.err) {
+      text += `
+
+[${row.err.type ?? "Error"}: ${row.err.message ?? "No message"}]`;
+      if (row.err.stack) {
+        text += `
+${row.err.stack}`;
+      }
+    }
+    if (row.req) {
+      text += `
+
+=== HTTP Request ===
+${row.req.method ?? "GET"} ${row.req.url ?? ""}`;
+      if (row.req.headers) {
+        text += "\n\nHeaders:";
+        Object.entries(row.req.headers).forEach(([key, value]) => {
+          text += `
+${key}: ${value}`;
+        });
+      }
+      if (row.req.body) {
+        text += `
+
+Request Body:
+${JSON.stringify(row.req.body, null, 2)}`;
+      }
+    }
+    if (row.res) {
+      text += `
+
+=== HTTP Response ===
+Status: ${row.res.statusCode ?? 200}`;
+      if (row.res.responseTime) {
+        text += ` (${row.res.responseTime}ms)`;
+      }
+      if (row.res.headers) {
+        text += "\n\nHeaders:";
+        Object.entries(row.res.headers).forEach(([key, value]) => {
+          text += `
+${key}: ${value}`;
+        });
+      }
+      if (row.res.body) {
+        text += `
+
+Response Body:
+${JSON.stringify(row.res.body, null, 2)}`;
+      }
+    }
+    return text;
+  };
   const messageContent = highlightSearch(row.msg ?? "", searchText);
   if (!isExpanded) {
     return /* @__PURE__ */ import_react4.default.createElement(
       "div",
       {
-        style: singleLineStyle,
-        title: row.msg ?? ""
+        style: {
+          ...singleLineStyle,
+          position: "relative",
+          cursor: "pointer"
+        },
+        title: row.msg ?? "",
+        onClick: handleClick,
+        onMouseEnter: () => setIsHovered(true),
+        onMouseLeave: () => setIsHovered(false)
       },
-      messageContent,
-      row.err && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: theme.levels?.error ?? "#ef4444", marginLeft: "8px" } }, highlightSearch(
-        ` [${row.err.type ?? "Error"}: ${row.err.message ?? ""}]`,
-        searchText
-      ))
+      /* @__PURE__ */ import_react4.default.createElement(
+        "span",
+        {
+          style: {
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            paddingRight: isHovered ? "36px" : "0"
+          }
+        },
+        messageContent,
+        row.err && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: theme.levels?.error ?? "#ef4444", marginLeft: "8px" } }, highlightSearch(
+          ` [${row.err.type ?? "Error"}: ${row.err.message ?? ""}]`,
+          searchText
+        ))
+      ),
+      isHovered && /* @__PURE__ */ import_react4.default.createElement(
+        "div",
+        {
+          "data-copy-button": true,
+          style: {
+            position: "absolute",
+            right: "4px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            pointerEvents: "auto"
+          },
+          onMouseDown: (e) => e.stopPropagation(),
+          onMouseUp: (e) => e.stopPropagation(),
+          onClick: (e) => e.stopPropagation(),
+          onDoubleClick: (e) => e.stopPropagation()
+        },
+        /* @__PURE__ */ import_react4.default.createElement(
+          CopyButton,
+          {
+            text: getFullText(),
+            isDark
+          }
+        )
+      )
     );
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", { style: multiLineStyle }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { marginBottom: "8px" } }, messageContent), row.err && /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
-      style: {
-        marginBottom: "8px",
-        padding: "8px",
-        background: isDarkMode(theme) ? "#1c2128" : "#fff8e6",
-        borderLeft: `3px solid ${theme.levels?.error ?? "#ef4444"}`,
-        borderRadius: "4px"
-      }
+      style: { ...multiLineStyle, position: "relative", cursor: "pointer" },
+      onClick: handleClick,
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false)
     },
-    /* @__PURE__ */ import_react4.default.createElement(
+    isHovered && /* @__PURE__ */ import_react4.default.createElement(
       "div",
       {
+        "data-copy-button": true,
         style: {
-          color: theme.levels?.error ?? "#ef4444",
-          fontWeight: "bold",
-          marginBottom: "4px"
-        }
+          position: "absolute",
+          top: "8px",
+          right: "8px",
+          zIndex: 10,
+          pointerEvents: "auto"
+        },
+        onMouseDown: (e) => e.stopPropagation(),
+        onMouseUp: (e) => e.stopPropagation(),
+        onClick: (e) => e.stopPropagation(),
+        onDoubleClick: (e) => e.stopPropagation()
       },
-      highlightSearch(
-        `${row.err.type ?? "Error"}: ${row.err.message ?? "No message"}`,
-        searchText
+      /* @__PURE__ */ import_react4.default.createElement(
+        CopyButton,
+        {
+          text: getFullText(),
+          isDark
+        }
       )
     ),
-    row.err.stack && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "11px", fontFamily: "monospace", whiteSpace: "pre" } }, highlightSearch(row.err.stack, searchText))
-  ), row.req && /* @__PURE__ */ import_react4.default.createElement(
-    "div",
-    {
-      style: {
-        marginBottom: "8px",
-        padding: "8px",
-        background: isDarkMode(theme) ? "#1c2128" : "#f0f6ff",
-        borderLeft: "3px solid #1f6feb",
-        borderRadius: "4px"
-      }
-    },
-    /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontWeight: "bold", marginBottom: "4px", fontSize: "11px" } }, highlightSearch(
-      `${row.req.method ?? "GET"} ${row.req.url ?? ""}`,
-      searchText
-    )),
-    row.req.headers && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "10px", marginTop: "4px" } }, Object.entries(row.req.headers).map(([key, value]) => /* @__PURE__ */ import_react4.default.createElement("div", { key }, /* @__PURE__ */ import_react4.default.createElement(
-      "span",
-      {
-        style: {
-          color: isDarkMode(theme) ? "#79c0ff" : "#0969da"
-        }
-      },
-      key + ":"
-    ), " ", highlightSearch(String(value), searchText)))),
-    row.req.body && /* @__PURE__ */ import_react4.default.createElement(
+    /* @__PURE__ */ import_react4.default.createElement("div", { style: { marginBottom: "8px" } }, messageContent),
+    row.err && /* @__PURE__ */ import_react4.default.createElement(
       "div",
       {
         style: {
-          marginTop: "6px",
-          fontSize: "10px",
-          background: isDarkMode(theme) ? "#161b22" : "#e8f0ff",
-          padding: "6px",
-          borderRadius: "3px",
-          fontFamily: "monospace"
+          marginBottom: "8px",
+          padding: "8px",
+          background: isDarkMode(theme) ? "#1c2128" : "#fff8e6",
+          borderLeft: `3px solid ${theme.levels?.error ?? "#ef4444"}`,
+          borderRadius: "4px"
         }
       },
       /* @__PURE__ */ import_react4.default.createElement(
         "div",
         {
           style: {
-            color: isDarkMode(theme) ? "#79c0ff" : "#0969da",
-            marginBottom: "3px"
+            color: theme.levels?.error ?? "#ef4444",
+            fontWeight: "bold",
+            marginBottom: "4px"
           }
         },
-        "Request Body:"
-      ),
-      /* @__PURE__ */ import_react4.default.createElement(
-        SyntaxHighlight,
-        {
-          json: JSON.stringify(row.req.body, null, 2),
-          theme,
+        highlightSearch(
+          `${row.err.type ?? "Error"}: ${row.err.message ?? "No message"}`,
           searchText
-        }
-      )
-    )
-  ), row.res && /* @__PURE__ */ import_react4.default.createElement(
-    "div",
-    {
-      style: {
-        padding: "8px",
-        background: isDarkMode(theme) ? "#1c2128" : "#f0fff4",
-        borderLeft: `3px solid ${(row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"}`,
-        borderRadius: "4px"
-      }
-    },
-    /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontWeight: "bold", fontSize: "11px" } }, /* @__PURE__ */ import_react4.default.createElement(
-      "span",
-      {
-        style: {
-          color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
-        }
-      },
-      row.res.statusCode ?? 200
-    ), row.res.responseTime ? ` (${row.res.responseTime}ms)` : ""),
-    row.res.headers && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "10px", marginTop: "4px" } }, Object.entries(row.res.headers).map(([key, value]) => /* @__PURE__ */ import_react4.default.createElement("div", { key }, /* @__PURE__ */ import_react4.default.createElement(
-      "span",
-      {
-        style: {
-          color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
-        }
-      },
-      key + ":"
-    ), " ", highlightSearch(String(value), searchText)))),
-    row.res.body && /* @__PURE__ */ import_react4.default.createElement(
+        )
+      ),
+      row.err.stack && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "11px", fontFamily: "monospace", whiteSpace: "pre" } }, highlightSearch(row.err.stack, searchText))
+    ),
+    row.req && /* @__PURE__ */ import_react4.default.createElement(
       "div",
       {
         style: {
-          marginTop: "6px",
-          fontSize: "10px",
-          background: isDarkMode(theme) ? "#161b22" : "#e8fff0",
-          padding: "6px",
-          borderRadius: "3px",
-          fontFamily: "monospace"
+          marginBottom: "8px",
+          padding: "8px",
+          background: isDarkMode(theme) ? "#1c2128" : "#f0f6ff",
+          borderLeft: "3px solid #1f6feb",
+          borderRadius: "4px"
         }
       },
-      /* @__PURE__ */ import_react4.default.createElement(
+      /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontWeight: "bold", marginBottom: "4px", fontSize: "11px" } }, highlightSearch(
+        `${row.req.method ?? "GET"} ${row.req.url ?? ""}`,
+        searchText
+      )),
+      row.req.headers && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "10px", marginTop: "4px" } }, Object.entries(row.req.headers).map(([key, value]) => /* @__PURE__ */ import_react4.default.createElement("div", { key }, /* @__PURE__ */ import_react4.default.createElement(
+        "span",
+        {
+          style: {
+            color: isDarkMode(theme) ? "#79c0ff" : "#0969da"
+          }
+        },
+        key + ":"
+      ), " ", highlightSearch(String(value), searchText)))),
+      row.req.body && /* @__PURE__ */ import_react4.default.createElement(
         "div",
         {
           style: {
-            color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444",
-            marginBottom: "3px"
+            marginTop: "6px",
+            fontSize: "10px",
+            background: isDarkMode(theme) ? "#161b22" : "#e8f0ff",
+            padding: "6px",
+            borderRadius: "3px",
+            fontFamily: "monospace"
           }
         },
-        "Response Body:"
-      ),
-      /* @__PURE__ */ import_react4.default.createElement(
-        SyntaxHighlight,
-        {
-          json: JSON.stringify(row.res.body, null, 2),
-          theme,
-          searchText
+        /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          {
+            style: {
+              color: isDarkMode(theme) ? "#79c0ff" : "#0969da",
+              marginBottom: "3px"
+            }
+          },
+          "Request Body:"
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(
+          SyntaxHighlight,
+          {
+            json: JSON.stringify(row.req.body, null, 2),
+            theme,
+            searchText
+          }
+        )
+      )
+    ),
+    row.res && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          padding: "8px",
+          background: isDarkMode(theme) ? "#1c2128" : "#f0fff4",
+          borderLeft: `3px solid ${(row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"}`,
+          borderRadius: "4px"
         }
+      },
+      /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontWeight: "bold", fontSize: "11px" } }, /* @__PURE__ */ import_react4.default.createElement(
+        "span",
+        {
+          style: {
+            color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
+          }
+        },
+        row.res.statusCode ?? 200
+      ), row.res.responseTime ? ` (${row.res.responseTime}ms)` : ""),
+      row.res.headers && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "10px", marginTop: "4px" } }, Object.entries(row.res.headers).map(([key, value]) => /* @__PURE__ */ import_react4.default.createElement("div", { key }, /* @__PURE__ */ import_react4.default.createElement(
+        "span",
+        {
+          style: {
+            color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
+          }
+        },
+        key + ":"
+      ), " ", highlightSearch(String(value), searchText)))),
+      row.res.body && /* @__PURE__ */ import_react4.default.createElement(
+        "div",
+        {
+          style: {
+            marginTop: "6px",
+            fontSize: "10px",
+            background: isDarkMode(theme) ? "#161b22" : "#e8fff0",
+            padding: "6px",
+            borderRadius: "3px",
+            fontFamily: "monospace"
+          }
+        },
+        /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          {
+            style: {
+              color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444",
+              marginBottom: "3px"
+            }
+          },
+          "Response Body:"
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(
+          SyntaxHighlight,
+          {
+            json: JSON.stringify(row.res.body, null, 2),
+            theme,
+            searchText
+          }
+        )
       )
     )
-  ));
+  );
 }
 function isDarkMode(theme) {
   return theme.mode === "dark";
 }
 function JSONCell({ row }) {
-  const { theme, searchText } = (0, import_react4.useContext)(ViewerContext);
+  const { theme, searchText, onToggleExpanded } = (0, import_react4.useContext)(ViewerContext);
   const expandedRows = import_react4.default.useContext(ExpandedRowsContext);
   const isExpanded = expandedRows?.has(row.id) ?? false;
+  const [isHovered, setIsHovered] = (0, import_react4.useState)(false);
+  const isDark = isDarkMode(theme);
+  const handleClick = (0, import_react4.useCallback)(
+    (e) => {
+      if (e.target.closest("[data-copy-button]")) {
+        return;
+      }
+      onToggleExpanded(row.id);
+    },
+    [onToggleExpanded, row.id]
+  );
   const jsonString = JSON.stringify(row, null, 2);
   if (!isExpanded) {
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -11923,11 +12211,50 @@ function JSONCell({ row }) {
           fontSize: "12px",
           display: "flex",
           alignItems: "center",
-          minHeight: "28px"
+          minHeight: "28px",
+          position: "relative",
+          cursor: "pointer"
         },
-        title: jsonString
+        title: jsonString,
+        onClick: handleClick,
+        onMouseEnter: () => setIsHovered(true),
+        onMouseLeave: () => setIsHovered(false)
       },
-      JSON.stringify(row)
+      /* @__PURE__ */ import_react4.default.createElement(
+        "span",
+        {
+          style: {
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            paddingRight: isHovered ? "36px" : "0"
+          }
+        },
+        JSON.stringify(row)
+      ),
+      isHovered && /* @__PURE__ */ import_react4.default.createElement(
+        "div",
+        {
+          "data-copy-button": true,
+          style: {
+            position: "absolute",
+            right: "4px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            pointerEvents: "auto"
+          },
+          onMouseDown: (e) => e.stopPropagation(),
+          onMouseUp: (e) => e.stopPropagation(),
+          onClick: (e) => e.stopPropagation(),
+          onDoubleClick: (e) => e.stopPropagation()
+        },
+        /* @__PURE__ */ import_react4.default.createElement(
+          CopyButton,
+          {
+            text: jsonString,
+            isDark
+          }
+        )
+      )
     );
   }
   return /* @__PURE__ */ import_react4.default.createElement(
@@ -11938,9 +12265,38 @@ function JSONCell({ row }) {
         whiteSpace: "pre-wrap",
         wordBreak: "break-all",
         fontFamily: "monospace",
-        padding: "8px 0"
-      }
+        padding: "8px 0",
+        position: "relative",
+        cursor: "pointer"
+      },
+      onClick: handleClick,
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false)
     },
+    isHovered && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        "data-copy-button": true,
+        style: {
+          position: "absolute",
+          top: "8px",
+          right: "8px",
+          zIndex: 10,
+          pointerEvents: "auto"
+        },
+        onMouseDown: (e) => e.stopPropagation(),
+        onMouseUp: (e) => e.stopPropagation(),
+        onClick: (e) => e.stopPropagation(),
+        onDoubleClick: (e) => e.stopPropagation()
+      },
+      /* @__PURE__ */ import_react4.default.createElement(
+        CopyButton,
+        {
+          text: jsonString,
+          isDark
+        }
+      )
+    ),
     /* @__PURE__ */ import_react4.default.createElement(
       SyntaxHighlight,
       {
@@ -12015,7 +12371,7 @@ function LogViewer({
   const [filters, setFilters] = (0, import_react4.useState)({});
   const [searchText, setSearchText] = (0, import_react4.useState)(initialSearchText);
   const [expandedRows, setExpandedRows] = (0, import_react4.useState)(initialExpandedRows ?? /* @__PURE__ */ new Set());
-  const [autoScroll, setAutoScroll] = (0, import_react4.useState)(true);
+  const [autoScroll, setAutoScroll] = (0, import_react4.useState)(false);
   const [timeMode, setTimeMode] = (0, import_react4.useState)("absolute");
   const wsRef = (0, import_react4.useRef)(null);
   const gridApiRef = (0, import_react4.useRef)(null);
@@ -12193,24 +12549,62 @@ function LogViewer({
           timeMode === "absolute" ? "Time" : "Ago"
         ),
         width: timeMode === "absolute" ? 105 : 65,
-        cell: ({ row }) => /* @__PURE__ */ import_react4.default.createElement(
-          "div",
-          {
-            style: {
-              display: "flex",
-              alignItems: "center",
-              minHeight: "28px",
-              fontSize: "12px",
-              cursor: "pointer"
+        cell: ({ row }) => {
+          const [isHovered, setIsHovered] = (0, import_react4.useState)(false);
+          const timeText = timeMode === "absolute" ? formatTimestamp(row.time) : timeAgo(row.time);
+          const timeMs = row.time && row.time < 1e10 ? row.time * 1e3 : row.time;
+          const fullTimeText = timeMs ? new Date(timeMs).toISOString() : "";
+          return /* @__PURE__ */ import_react4.default.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                minHeight: "28px",
+                fontSize: "12px",
+                cursor: "pointer",
+                position: "relative",
+                paddingRight: isHovered && fullTimeText ? "36px" : "0",
+                flexWrap: "nowrap",
+                overflow: "visible"
+              },
+              onMouseDown: (e) => {
+                e.stopPropagation();
+                setTimeMode((m) => m === "absolute" ? "relative" : "absolute");
+              },
+              onMouseUp: (e) => e.stopPropagation(),
+              onClick: (e) => e.stopPropagation(),
+              onDoubleClick: (e) => e.stopPropagation(),
+              title: "Click to toggle between absolute and relative time",
+              onMouseEnter: () => setIsHovered(true),
+              onMouseLeave: () => setIsHovered(false)
             },
-            onClick: (e) => {
-              e.stopPropagation();
-              setTimeMode((m) => m === "absolute" ? "relative" : "absolute");
-            },
-            title: "Click to toggle"
-          },
-          timeMode === "absolute" ? formatTimestamp(row.time) : timeAgo(row.time)
-        )
+            /* @__PURE__ */ import_react4.default.createElement("span", { style: { flexShrink: 0 } }, timeText),
+            isHovered && fullTimeText && /* @__PURE__ */ import_react4.default.createElement(
+              "div",
+              {
+                style: {
+                  position: "absolute",
+                  right: "4px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "auto"
+                },
+                onMouseDown: (e) => e.stopPropagation(),
+                onMouseUp: (e) => e.stopPropagation(),
+                onClick: (e) => e.stopPropagation(),
+                onDoubleClick: (e) => e.stopPropagation()
+              },
+              /* @__PURE__ */ import_react4.default.createElement(
+                CopyButton,
+                {
+                  text: fullTimeText,
+                  isDark
+                }
+              )
+            )
+          );
+        }
       },
       {
         id: "level",
@@ -12250,20 +12644,6 @@ function LogViewer({
   const initGrid = (0, import_react4.useCallback)(
     (api) => {
       gridApiRef.current = api;
-      api.on("select-row", (ev) => {
-        setExpandedRows((prev) => {
-          const newSet = new Set(prev);
-          if (newSet.has(ev.id)) {
-            newSet.delete(ev.id);
-          } else {
-            newSet.add(ev.id);
-          }
-          return newSet;
-        });
-        setTimeout(() => {
-          if (api.exec) api.exec("resize");
-        }, 0);
-      });
     },
     []
     // eslint-disable-line react-hooks/exhaustive-deps
@@ -12305,9 +12685,29 @@ function LogViewer({
     },
     [handleTraceFilter]
   );
+  const handleToggleExpanded = (0, import_react4.useCallback)((rowId) => {
+    setExpandedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowId)) {
+        newSet.delete(rowId);
+      } else {
+        newSet.add(rowId);
+      }
+      return newSet;
+    });
+    setTimeout(() => {
+      if (gridApiRef.current?.exec) gridApiRef.current.exec("resize");
+    }, 0);
+  }, []);
   const contextValue = (0, import_react4.useMemo)(
-    () => ({ theme, searchText, clientConfig, onTraceFilter: handleTraceFilter }),
-    [theme, searchText, clientConfig, handleTraceFilter]
+    () => ({
+      theme,
+      searchText,
+      clientConfig,
+      onTraceFilter: handleTraceFilter,
+      onToggleExpanded: handleToggleExpanded
+    }),
+    [theme, searchText, clientConfig, handleTraceFilter, handleToggleExpanded]
   );
   const toolbarStyle = {
     display: "flex",
@@ -12400,7 +12800,9 @@ function LogViewer({
           padding: "4px 8px",
           fontSize: "12px",
           cursor: "pointer",
-          userSelect: "none"
+          userSelect: "none",
+          color: isDark ? "#c9d1d9" : "#24292f",
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
         }
       },
       /* @__PURE__ */ import_react4.default.createElement(
@@ -12450,11 +12852,9 @@ function LogViewer({
       "span",
       {
         style: {
-          padding: "1px 6px",
+          padding: "4px 8px",
           borderRadius: "3px",
-          fontSize: "11px",
-          fontWeight: "bold",
-          textTransform: "uppercase",
+          fontSize: "12px",
           background: "#1f6feb",
           color: "#fff",
           cursor: "pointer"

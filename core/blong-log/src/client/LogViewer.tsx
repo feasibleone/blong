@@ -29,6 +29,7 @@ interface ViewerContextValue {
     searchText: string;
     clientConfig: ClientConfig | null;
     onTraceFilter: (traceId: string) => void;
+    onToggleExpanded: (rowId: string) => void;
 }
 
 const ViewerContext = createContext<ViewerContextValue>({
@@ -36,6 +37,7 @@ const ViewerContext = createContext<ViewerContextValue>({
     searchText: '',
     clientConfig: null,
     onTraceFilter: () => {},
+    onToggleExpanded: () => {},
 });
 
 const ExpandedRowsContext = createContext<Set<string> | null>(null);
@@ -44,13 +46,23 @@ const ExpandedRowsContext = createContext<Set<string> | null>(null);
 
 function formatTimestamp(time: number | undefined): string {
     if (!time) return '';
-    const d = new Date(time);
-    return d.toLocaleTimeString('en-US', {hour12: false, fractionalSecondDigits: 3});
+    // Ensure timestamp is in milliseconds (Pino uses milliseconds)
+    // If the timestamp is suspiciously small (< 10000000000), assume it's in seconds
+    const timeMs = time < 10000000000 ? time * 1000 : time;
+    const d = new Date(timeMs);
+    // Use explicit time formatting to ensure consistency
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    const ms = String(d.getMilliseconds()).padStart(3, '0');
+    return `${hours}:${minutes}:${seconds}.${ms}`;
 }
 
 function timeAgo(time: number | undefined): string {
     if (!time) return '';
-    const diff = Date.now() - time;
+    // Ensure timestamp is in milliseconds
+    const timeMs = time < 10000000000 ? time * 1000 : time;
+    const diff = Date.now() - timeMs;
     if (diff < 1000) return 'just now';
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
@@ -84,13 +96,71 @@ function highlightSearch(text: string, search: string): React.ReactNode {
     );
 }
 
+// ── Copy to Clipboard Component ───────────────────────────────────────────────
+
+function CopyButton({text, isDark = true}: {text: string; isDark?: boolean}): React.ReactElement {
+    const [copied, setCopied] = useState(false);
+
+    const handleClick = (e: React.MouseEvent): void => {
+        e.stopPropagation();
+        e.preventDefault();
+        navigator.clipboard.writeText(text).then(
+            () => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            },
+            err => {
+                console.error('Failed to copy:', err);
+            },
+        );
+    };
+
+    return (
+        <button
+            onClick={handleClick}
+            onMouseDown={e => {
+                e.stopPropagation();
+                e.preventDefault();
+            }}
+            onMouseUp={e => {
+                e.stopPropagation();
+                e.preventDefault();
+            }}
+            onDoubleClick={e => {
+                e.stopPropagation();
+                e.preventDefault();
+            }}
+            style={{
+                background: isDark ? 'rgba(110, 118, 129, 0.4)' : 'rgba(175, 184, 193, 0.2)',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '3px 6px',
+                fontSize: '13px',
+                color: isDark ? '#c9d1d9' : '#24292f',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '4px',
+                flexShrink: 0,
+                minWidth: '28px',
+                height: '24px',
+            }}
+            title={copied ? 'Copied!' : 'Copy to clipboard'}
+        >
+            {copied ? '✓' : '📋'}
+        </button>
+    );
+}
+
 // ── SVAR Grid Cell Components ─────────────────────────────────────────────────
 
 function LevelCell({row}: {row: LogEntry}): React.ReactElement {
     const {theme} = useContext(ViewerContext);
+    const [isHovered, setIsHovered] = useState(false);
     const name = row.levelName ?? LEVEL_NAME[row.level ?? 30] ?? 'unknown';
     const colors = theme.levels ?? {};
     const color = (colors as Record<string, string>)[name] ?? '#6b7280';
+    const isDark = theme.mode === 'dark';
 
     return (
         <div
@@ -98,7 +168,13 @@ function LevelCell({row}: {row: LogEntry}): React.ReactElement {
                 display: 'flex',
                 alignItems: 'center',
                 minHeight: '28px',
+                position: 'relative',
+                paddingRight: isHovered ? '36px' : '0',
+                flexWrap: 'nowrap',
+                overflow: 'visible',
             }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
             <span
                 style={{
@@ -112,16 +188,36 @@ function LevelCell({row}: {row: LogEntry}): React.ReactElement {
                     display: 'inline-block',
                     minWidth: '45px',
                     textAlign: 'center',
+                    flexShrink: 0,
                 }}
             >
                 {name}
             </span>
+            {isHovered && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        right: '4px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'auto',
+                    }}
+                >
+                    <CopyButton
+                        text={name}
+                        isDark={isDark}
+                    />
+                </div>
+            )}
         </div>
     );
 }
 
 function NameCell({row}: {row: LogEntry}): React.ReactElement {
-    const {searchText} = useContext(ViewerContext);
+    const {searchText, theme} = useContext(ViewerContext);
+    const [isHovered, setIsHovered] = useState(false);
+    const isDark = theme.mode === 'dark';
+
     return (
         <div
             style={{
@@ -132,18 +228,43 @@ function NameCell({row}: {row: LogEntry}): React.ReactElement {
                 display: 'flex',
                 alignItems: 'center',
                 minHeight: '28px',
+                position: 'relative',
+                paddingRight: isHovered && row.name ? '36px' : '0',
             }}
             title={row.name ?? ''}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
-            {highlightSearch(row.name ?? '', searchText)}
+            <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                {highlightSearch(row.name ?? '', searchText)}
+            </span>
+            {isHovered && row.name && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        right: '4px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'auto',
+                    }}
+                >
+                    <CopyButton
+                        text={row.name}
+                        isDark={isDark}
+                    />
+                </div>
+            )}
         </div>
     );
 }
 
 function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
-    const {clientConfig, onTraceFilter} = useContext(ViewerContext);
+    const {clientConfig, onTraceFilter, theme} = useContext(ViewerContext);
+    const [isHovered, setIsHovered] = useState(false);
 
     if (!row.traceId) return null;
+
+    const isDark = theme.mode === 'dark';
 
     const handleFilterClick = (e: React.MouseEvent): void => {
         e.stopPropagation();
@@ -170,20 +291,11 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
                 alignItems: 'center',
                 gap: '4px',
                 minHeight: '28px',
+                position: 'relative',
             }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
-            <span
-                style={{
-                    cursor: 'pointer',
-                    color: '#58a6ff',
-                    textDecoration: 'underline',
-                    fontSize: '12px',
-                }}
-                onClick={handleFilterClick}
-                title="Click to filter by this trace ID"
-            >
-                {row.traceId.substring(0, 16) + '\u2026'}
-            </span>
             {clientConfig?.traceUrlPattern && (
                 <span
                     style={{
@@ -198,14 +310,54 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
                     ↗
                 </span>
             )}
+            <span
+                style={{
+                    cursor: 'pointer',
+                    color: '#58a6ff',
+                    textDecoration: 'underline',
+                    fontSize: '12px',
+                }}
+                onClick={handleFilterClick}
+                title="Click to filter by this trace ID"
+            >
+                {row.traceId.substring(0, 16) + '\u2026'}
+            </span>
+            {isHovered && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        right: '4px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                    }}
+                >
+                    <CopyButton
+                        text={row.traceId}
+                        isDark={isDark}
+                    />
+                </div>
+            )}
         </div>
     );
 }
 
 function MessageCell({row}: {row: LogEntry}): React.ReactElement {
-    const {searchText, theme} = useContext(ViewerContext);
+    const {searchText, theme, onToggleExpanded} = useContext(ViewerContext);
     const expandedRows = React.useContext(ExpandedRowsContext);
     const isExpanded = expandedRows?.has(row.id) ?? false;
+    const [isHovered, setIsHovered] = useState(false);
+    const isDark = isDarkMode(theme);
+
+    const handleClick = useCallback(
+        (e: React.MouseEvent) => {
+            // Only toggle if not clicking on copy button or its wrapper
+            if ((e.target as HTMLElement).closest('[data-copy-button]')) {
+                return;
+            }
+            onToggleExpanded(row.id);
+        },
+        [onToggleExpanded, row.id],
+    );
 
     const baseStyle: CSSProperties = {
         overflow: 'hidden',
@@ -228,23 +380,102 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
         padding: '8px 0',
     };
 
+    // Build full text content for copying
+    const getFullText = (): string => {
+        let text = row.msg ?? '';
+
+        if (row.err) {
+            text += `\n\n[${row.err.type ?? 'Error'}: ${row.err.message ?? 'No message'}]`;
+            if (row.err.stack) {
+                text += `\n${row.err.stack}`;
+            }
+        }
+
+        if (row.req) {
+            text += `\n\n=== HTTP Request ===\n${row.req.method ?? 'GET'} ${row.req.url ?? ''}`;
+            if (row.req.headers) {
+                text += '\n\nHeaders:';
+                Object.entries(row.req.headers).forEach(([key, value]) => {
+                    text += `\n${key}: ${value}`;
+                });
+            }
+            if (row.req.body) {
+                text += `\n\nRequest Body:\n${JSON.stringify(row.req.body, null, 2)}`;
+            }
+        }
+
+        if (row.res) {
+            text += `\n\n=== HTTP Response ===\nStatus: ${row.res.statusCode ?? 200}`;
+            if (row.res.responseTime) {
+                text += ` (${row.res.responseTime}ms)`;
+            }
+            if (row.res.headers) {
+                text += '\n\nHeaders:';
+                Object.entries(row.res.headers).forEach(([key, value]) => {
+                    text += `\n${key}: ${value}`;
+                });
+            }
+            if (row.res.body) {
+                text += `\n\nResponse Body:\n${JSON.stringify(row.res.body, null, 2)}`;
+            }
+        }
+
+        return text;
+    };
+
     // Message is always just the string, no JSON parsing
     const messageContent = highlightSearch(row.msg ?? '', searchText);
 
     if (!isExpanded) {
         return (
             <div
-                style={singleLineStyle}
+                style={{
+                    ...singleLineStyle,
+                    position: 'relative',
+                    cursor: 'pointer',
+                }}
                 title={row.msg ?? ''}
+                onClick={handleClick}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
             >
-                {messageContent}
-                {row.err && (
-                    <span style={{color: theme.levels?.error ?? '#ef4444', marginLeft: '8px'}}>
-                        {highlightSearch(
-                            ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
-                            searchText,
-                        )}
-                    </span>
+                <span
+                    style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        paddingRight: isHovered ? '36px' : '0',
+                    }}
+                >
+                    {messageContent}
+                    {row.err && (
+                        <span style={{color: theme.levels?.error ?? '#ef4444', marginLeft: '8px'}}>
+                            {highlightSearch(
+                                ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
+                                searchText,
+                            )}
+                        </span>
+                    )}
+                </span>
+                {isHovered && (
+                    <div
+                        data-copy-button
+                        style={{
+                            position: 'absolute',
+                            right: '4px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'auto',
+                        }}
+                        onMouseDown={e => e.stopPropagation()}
+                        onMouseUp={e => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
+                        onDoubleClick={e => e.stopPropagation()}
+                    >
+                        <CopyButton
+                            text={getFullText()}
+                            isDark={isDark}
+                        />
+                    </div>
                 )}
             </div>
         );
@@ -252,7 +483,33 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
 
     // Expanded view - show message with additional details
     return (
-        <div style={multiLineStyle}>
+        <div
+            style={{...multiLineStyle, position: 'relative', cursor: 'pointer'}}
+            onClick={handleClick}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {isHovered && (
+                <div
+                    data-copy-button
+                    style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        zIndex: 10,
+                        pointerEvents: 'auto',
+                    }}
+                    onMouseDown={e => e.stopPropagation()}
+                    onMouseUp={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                    onDoubleClick={e => e.stopPropagation()}
+                >
+                    <CopyButton
+                        text={getFullText()}
+                        isDark={isDark}
+                    />
+                </div>
+            )}
             {/* Message */}
             <div style={{marginBottom: '8px'}}>{messageContent}</div>
 
@@ -426,9 +683,22 @@ function isDarkMode(theme: ThemeConfig): boolean {
 }
 
 function JSONCell({row}: {row: LogEntry}): React.ReactElement {
-    const {theme, searchText} = useContext(ViewerContext);
+    const {theme, searchText, onToggleExpanded} = useContext(ViewerContext);
     const expandedRows = React.useContext(ExpandedRowsContext);
     const isExpanded = expandedRows?.has(row.id) ?? false;
+    const [isHovered, setIsHovered] = useState(false);
+    const isDark = isDarkMode(theme);
+
+    const handleClick = useCallback(
+        (e: React.MouseEvent) => {
+            // Only toggle if not clicking on copy button or its wrapper
+            if ((e.target as HTMLElement).closest('[data-copy-button]')) {
+                return;
+            }
+            onToggleExpanded(row.id);
+        },
+        [onToggleExpanded, row.id],
+    );
 
     const jsonString = JSON.stringify(row, null, 2);
 
@@ -443,10 +713,44 @@ function JSONCell({row}: {row: LogEntry}): React.ReactElement {
                     display: 'flex',
                     alignItems: 'center',
                     minHeight: '28px',
+                    position: 'relative',
+                    cursor: 'pointer',
                 }}
                 title={jsonString}
+                onClick={handleClick}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
             >
-                {JSON.stringify(row)}
+                <span
+                    style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        paddingRight: isHovered ? '36px' : '0',
+                    }}
+                >
+                    {JSON.stringify(row)}
+                </span>
+                {isHovered && (
+                    <div
+                        data-copy-button
+                        style={{
+                            position: 'absolute',
+                            right: '4px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'auto',
+                        }}
+                        onMouseDown={e => e.stopPropagation()}
+                        onMouseUp={e => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
+                        onDoubleClick={e => e.stopPropagation()}
+                    >
+                        <CopyButton
+                            text={jsonString}
+                            isDark={isDark}
+                        />
+                    </div>
+                )}
             </div>
         );
     }
@@ -460,8 +764,34 @@ function JSONCell({row}: {row: LogEntry}): React.ReactElement {
                 wordBreak: 'break-all',
                 fontFamily: 'monospace',
                 padding: '8px 0',
+                position: 'relative',
+                cursor: 'pointer',
             }}
+            onClick={handleClick}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
+            {isHovered && (
+                <div
+                    data-copy-button
+                    style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        zIndex: 10,
+                        pointerEvents: 'auto',
+                    }}
+                    onMouseDown={e => e.stopPropagation()}
+                    onMouseUp={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                    onDoubleClick={e => e.stopPropagation()}
+                >
+                    <CopyButton
+                        text={jsonString}
+                        isDark={isDark}
+                    />
+                </div>
+            )}
             <SyntaxHighlight
                 json={jsonString}
                 theme={theme}
@@ -916,7 +1246,7 @@ export function LogViewer({
     const [filters, setFilters] = useState<FilterOptions>({});
     const [searchText, setSearchText] = useState(initialSearchText);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(initialExpandedRows ?? new Set());
-    const [autoScroll, setAutoScroll] = useState(true);
+    const [autoScroll, setAutoScroll] = useState(false);
     const [timeMode, setTimeMode] = useState<'absolute' | 'relative'>('absolute');
     const wsRef = useRef<WebSocket | null>(null);
     const gridApiRef = useRef<any>(null);
@@ -1161,24 +1491,62 @@ export function LogViewer({
                     </span>
                 ),
                 width: timeMode === 'absolute' ? 105 : 65,
-                cell: ({row}: {row: LogEntry}) => (
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            minHeight: '28px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                        }}
-                        onClick={e => {
-                            e.stopPropagation();
-                            setTimeMode(m => (m === 'absolute' ? 'relative' : 'absolute'));
-                        }}
-                        title="Click to toggle"
-                    >
-                        {timeMode === 'absolute' ? formatTimestamp(row.time) : timeAgo(row.time)}
-                    </div>
-                ),
+                cell: ({row}: {row: LogEntry}) => {
+                    const [isHovered, setIsHovered] = useState(false);
+                    const timeText =
+                        timeMode === 'absolute' ? formatTimestamp(row.time) : timeAgo(row.time);
+                    // Ensure timestamp is in milliseconds for ISO string
+                    const timeMs = row.time && row.time < 10000000000 ? row.time * 1000 : row.time;
+                    const fullTimeText = timeMs ? new Date(timeMs).toISOString() : '';
+
+                    return (
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                minHeight: '28px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                paddingRight: isHovered && fullTimeText ? '36px' : '0',
+                                flexWrap: 'nowrap',
+                                overflow: 'visible',
+                            }}
+                            onMouseDown={e => {
+                                e.stopPropagation();
+                                setTimeMode(m => (m === 'absolute' ? 'relative' : 'absolute'));
+                            }}
+                            onMouseUp={e => e.stopPropagation()}
+                            onClick={e => e.stopPropagation()}
+                            onDoubleClick={e => e.stopPropagation()}
+                            title="Click to toggle between absolute and relative time"
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                        >
+                            <span style={{flexShrink: 0}}>{timeText}</span>
+                            {isHovered && fullTimeText && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        right: '4px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        pointerEvents: 'auto',
+                                    }}
+                                    onMouseDown={e => e.stopPropagation()}
+                                    onMouseUp={e => e.stopPropagation()}
+                                    onClick={e => e.stopPropagation()}
+                                    onDoubleClick={e => e.stopPropagation()}
+                                >
+                                    <CopyButton
+                                        text={fullTimeText}
+                                        isDark={isDark}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    );
+                },
             },
             {
                 id: 'level',
@@ -1221,22 +1589,7 @@ export function LogViewer({
     const initGrid = useCallback(
         (api: any) => {
             gridApiRef.current = api;
-            api.on('select-row', (ev: {id: string}) => {
-                // Toggle expanded state instead of showing modal
-                setExpandedRows(prev => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(ev.id)) {
-                        newSet.delete(ev.id);
-                    } else {
-                        newSet.add(ev.id);
-                    }
-                    return newSet;
-                });
-                // Trigger grid resize to recalculate row heights
-                setTimeout(() => {
-                    if (api.exec) api.exec('resize');
-                }, 0);
-            });
+            // Removed select-row handler - expansion is now handled by MessageCell and JSONCell clicks
         },
         [], // eslint-disable-line react-hooks/exhaustive-deps
     );
@@ -1297,11 +1650,33 @@ export function LogViewer({
         [handleTraceFilter],
     );
 
+    const handleToggleExpanded = useCallback((rowId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(rowId)) {
+                newSet.delete(rowId);
+            } else {
+                newSet.add(rowId);
+            }
+            return newSet;
+        });
+        // Trigger grid resize to recalculate row heights
+        setTimeout(() => {
+            if (gridApiRef.current?.exec) gridApiRef.current.exec('resize');
+        }, 0);
+    }, []);
+
     // ── Context value ─────────────────────────────────────────────────────
 
     const contextValue = useMemo(
-        () => ({theme, searchText, clientConfig, onTraceFilter: handleTraceFilter}),
-        [theme, searchText, clientConfig, handleTraceFilter],
+        () => ({
+            theme,
+            searchText,
+            clientConfig,
+            onTraceFilter: handleTraceFilter,
+            onToggleExpanded: handleToggleExpanded,
+        }),
+        [theme, searchText, clientConfig, handleTraceFilter, handleToggleExpanded],
     );
 
     // ── Toolbar styles ────────────────────────────────────────────────────
@@ -1314,6 +1689,7 @@ export function LogViewer({
         background: isDark ? '#161b22' : '#f6f8fa',
         alignItems: 'center',
         flexWrap: 'wrap',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
     };
 
     const inputStyle: CSSProperties = {
@@ -1424,6 +1800,7 @@ export function LogViewer({
                                 fontSize: '12px',
                                 cursor: 'pointer',
                                 userSelect: 'none' as const,
+                                color: isDark ? '#c9d1d9' : '#24292f',
                             }}
                         >
                             <input
@@ -1475,11 +1852,9 @@ export function LogViewer({
                         {filters.traceId && (
                             <span
                                 style={{
-                                    padding: '1px 6px',
+                                    padding: '4px 8px',
                                     borderRadius: '3px',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase' as const,
+                                    fontSize: '12px',
                                     background: '#1f6feb',
                                     color: '#fff',
                                     cursor: 'pointer',
