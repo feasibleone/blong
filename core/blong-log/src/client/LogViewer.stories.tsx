@@ -7,7 +7,7 @@
 
 import React, {useMemo, useState} from 'react';
 
-import type {Meta, StoryObj} from '@storybook/react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 import {Grid, Willow, WillowDark} from '@svar-ui/react-grid';
 
 import type {ClientConfig, LogEntry, ThemeConfig} from '../types.js';
