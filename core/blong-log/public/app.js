@@ -11691,6 +11691,15 @@ function TraceLinkCell({
 }
 function MessageCell({ row }) {
   const { searchText, theme } = (0, import_react4.useContext)(ViewerContext);
+  let messageContent = row.msg ?? "";
+  if (row.msg) {
+    try {
+      JSON.parse(row.msg);
+      messageContent = import_react4.default.createElement(SyntaxHighlight, { json: row.msg, theme });
+    } catch {
+      messageContent = highlightSearch(row.msg, searchText);
+    }
+  }
   return import_react4.default.createElement(
     "div",
     {
@@ -11702,7 +11711,7 @@ function MessageCell({ row }) {
       },
       title: row.msg ?? ""
     },
-    highlightSearch(row.msg ?? "", searchText),
+    messageContent,
     row.err ? import_react4.default.createElement(
       "span",
       { style: { color: theme.levels?.error ?? "#ef4444", marginLeft: "8px" } },
@@ -11732,12 +11741,69 @@ function HttpCell({ row }) {
     ) : null
   );
 }
+function SyntaxHighlight({
+  json,
+  theme
+}) {
+  const tokens = [];
+  const syntax = theme.syntax ?? {};
+  const pattern = /"(?:[^"\\]|\\.)*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\]:,]/g;
+  let lastIndex = 0;
+  let match;
+  while ((match = pattern.exec(json)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(json.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    let color;
+    if (token === "true" || token === "false") {
+      color = syntax.boolean;
+    } else if (token === "null") {
+      color = syntax.null;
+    } else if (token[0] === '"') {
+      const afterToken = json.substring(pattern.lastIndex).trimStart();
+      if (afterToken[0] === ":") {
+        color = syntax.key;
+      } else {
+        color = syntax.string;
+      }
+    } else if (!isNaN(Number(token)) && token !== "") {
+      color = syntax.number;
+    }
+    tokens.push(
+      color ? import_react4.default.createElement("span", { key: lastIndex, style: { color } }, token) : token
+    );
+    lastIndex = pattern.lastIndex;
+  }
+  if (lastIndex < json.length) {
+    tokens.push(json.substring(lastIndex));
+  }
+  return import_react4.default.createElement(import_react4.default.Fragment, null, ...tokens);
+}
 function EntryModal({
   entry,
   isDark,
   onClose
 }) {
   const [wrapText, setWrapText] = (0, import_react4.useState)(false);
+  const { theme } = (0, import_react4.useContext)(ViewerContext);
+  const jsonString = JSON.stringify(entry, null, 2);
+  const sectionHeaderStyle = {
+    fontSize: "13px",
+    fontWeight: "bold",
+    marginTop: "16px",
+    marginBottom: "8px",
+    color: isDark ? "#c9d1d9" : "#24292f"
+  };
+  const sectionStyle = {
+    background: isDark ? "#0d1117" : "#f6f8fa",
+    border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+    borderRadius: "6px",
+    padding: "12px",
+    marginBottom: "12px",
+    fontSize: "12px",
+    fontFamily: "monospace"
+  };
   return import_react4.default.createElement(
     "div",
     {
@@ -11808,6 +11874,185 @@ function EntryModal({
           )
         )
       ),
+      // Exception section
+      entry.err ? import_react4.default.createElement(
+        "div",
+        null,
+        import_react4.default.createElement("div", { style: sectionHeaderStyle }, "Exception"),
+        import_react4.default.createElement(
+          "div",
+          { style: sectionStyle },
+          import_react4.default.createElement(
+            "div",
+            {
+              style: {
+                color: theme.levels?.error ?? "#ef4444",
+                fontWeight: "bold",
+                marginBottom: "8px"
+              }
+            },
+            `${entry.err.type ?? "Error"}: ${entry.err.message ?? "No message"}`
+          ),
+          entry.err.stack ? import_react4.default.createElement(
+            "div",
+            { style: { whiteSpace: "pre-wrap", lineHeight: "1.5" } },
+            entry.err.stack
+          ) : null
+        )
+      ) : null,
+      // HTTP Request section
+      entry.req ? import_react4.default.createElement(
+        "div",
+        null,
+        import_react4.default.createElement("div", { style: sectionHeaderStyle }, "HTTP Request"),
+        import_react4.default.createElement(
+          "div",
+          { style: sectionStyle },
+          import_react4.default.createElement(
+            "div",
+            { style: { fontWeight: "bold", marginBottom: "8px" } },
+            `${entry.req.method ?? "GET"} ${entry.req.url ?? ""}`
+          ),
+          entry.req.headers ? import_react4.default.createElement(
+            "div",
+            null,
+            import_react4.default.createElement(
+              "div",
+              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
+              "Headers:"
+            ),
+            import_react4.default.createElement(
+              "table",
+              { style: { width: "100%", fontSize: "11px" } },
+              import_react4.default.createElement(
+                "tbody",
+                null,
+                ...Object.entries(entry.req.headers).map(
+                  ([key, value]) => import_react4.default.createElement(
+                    "tr",
+                    { key },
+                    import_react4.default.createElement(
+                      "td",
+                      {
+                        style: {
+                          padding: "2px 8px 2px 0",
+                          verticalAlign: "top",
+                          color: isDark ? "#79c0ff" : "#0969da"
+                        }
+                      },
+                      key
+                    ),
+                    import_react4.default.createElement(
+                      "td",
+                      { style: { padding: "2px 0", verticalAlign: "top" } },
+                      value
+                    )
+                  )
+                )
+              )
+            )
+          ) : null,
+          entry.req.body ? import_react4.default.createElement(
+            "div",
+            null,
+            import_react4.default.createElement(
+              "div",
+              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
+              "Body:"
+            ),
+            import_react4.default.createElement(
+              "pre",
+              { style: { margin: 0, whiteSpace: "pre-wrap" } },
+              typeof entry.req.body === "string" ? entry.req.body : import_react4.default.createElement(SyntaxHighlight, {
+                json: JSON.stringify(entry.req.body, null, 2),
+                theme
+              })
+            )
+          ) : null
+        )
+      ) : null,
+      // HTTP Response section
+      entry.res ? import_react4.default.createElement(
+        "div",
+        null,
+        import_react4.default.createElement("div", { style: sectionHeaderStyle }, "HTTP Response"),
+        import_react4.default.createElement(
+          "div",
+          { style: sectionStyle },
+          import_react4.default.createElement(
+            "div",
+            { style: { fontWeight: "bold", marginBottom: "8px" } },
+            import_react4.default.createElement(
+              "span",
+              {
+                style: {
+                  color: (entry.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
+                }
+              },
+              entry.res.statusCode ?? 200
+            ),
+            entry.res.responseTime ? ` (${entry.res.responseTime}ms)` : ""
+          ),
+          entry.res.headers ? import_react4.default.createElement(
+            "div",
+            null,
+            import_react4.default.createElement(
+              "div",
+              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
+              "Headers:"
+            ),
+            import_react4.default.createElement(
+              "table",
+              { style: { width: "100%", fontSize: "11px" } },
+              import_react4.default.createElement(
+                "tbody",
+                null,
+                ...Object.entries(entry.res.headers).map(
+                  ([key, value]) => import_react4.default.createElement(
+                    "tr",
+                    { key },
+                    import_react4.default.createElement(
+                      "td",
+                      {
+                        style: {
+                          padding: "2px 8px 2px 0",
+                          verticalAlign: "top",
+                          color: isDark ? "#79c0ff" : "#0969da"
+                        }
+                      },
+                      key
+                    ),
+                    import_react4.default.createElement(
+                      "td",
+                      { style: { padding: "2px 0", verticalAlign: "top" } },
+                      value
+                    )
+                  )
+                )
+              )
+            )
+          ) : null,
+          entry.res.body ? import_react4.default.createElement(
+            "div",
+            null,
+            import_react4.default.createElement(
+              "div",
+              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
+              "Body:"
+            ),
+            import_react4.default.createElement(
+              "pre",
+              { style: { margin: 0, whiteSpace: "pre-wrap" } },
+              typeof entry.res.body === "string" ? entry.res.body : import_react4.default.createElement(SyntaxHighlight, {
+                json: JSON.stringify(entry.res.body, null, 2),
+                theme
+              })
+            )
+          ) : null
+        )
+      ) : null,
+      // Raw JSON section
+      import_react4.default.createElement("div", { style: sectionHeaderStyle }, "Raw Entry"),
       import_react4.default.createElement(
         "pre",
         {
@@ -11817,10 +12062,14 @@ function EntryModal({
             fontFamily: "inherit",
             fontSize: "12px",
             overflow: "auto",
-            maxHeight: "65vh"
+            maxHeight: "65vh",
+            background: isDark ? "#0d1117" : "#f6f8fa",
+            border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+            borderRadius: "6px",
+            padding: "12px"
           }
         },
-        JSON.stringify(entry, null, 2)
+        import_react4.default.createElement(SyntaxHighlight, { json: jsonString, theme })
       )
     )
   );
@@ -11840,6 +12089,13 @@ function LogViewer({
   const gridApiRef = (0, import_react4.useRef)(null);
   const lastIdRef = (0, import_react4.useRef)("");
   const entriesRef = (0, import_react4.useRef)([]);
+  const uniqueServiceNames = (0, import_react4.useMemo)(() => {
+    const names = /* @__PURE__ */ new Set();
+    entries.forEach((e) => {
+      if (e.name) names.add(e.name);
+    });
+    return Array.from(names).sort();
+  }, [entries]);
   const theme = (0, import_react4.useMemo)(
     () => ({ ...clientConfig?.theme ?? {}, ...themeProp }),
     [clientConfig?.theme, themeProp]
@@ -11932,6 +12188,21 @@ function LogViewer({
   const handleNameChange = (0, import_react4.useCallback)((e) => {
     setFilters((f) => ({ ...f, name: e.target.value || void 0 }));
   }, []);
+  const handleHasErrorChange = (0, import_react4.useCallback)((e) => {
+    setFilters((f) => ({ ...f, hasError: e.target.checked || void 0 }));
+  }, []);
+  const handleCustomPropertyChange = (0, import_react4.useCallback)(
+    (propName, value) => {
+      setFilters((f) => ({
+        ...f,
+        properties: value ? { ...f.properties ?? {}, [propName]: value } : (() => {
+          const { [propName]: _, ...rest } = f.properties ?? {};
+          return Object.keys(rest).length > 0 ? rest : void 0;
+        })()
+      }));
+    },
+    []
+  );
   const handleTraceFilter = (0, import_react4.useCallback)((traceId) => {
     setFilters((f) => f.traceId === traceId ? { ...f, traceId: void 0 } : { ...f, traceId });
   }, []);
@@ -12069,7 +12340,7 @@ function LogViewer({
     color: isDark ? "#8b949e" : "#57606a",
     alignItems: "center"
   };
-  const hasFilters = filters.level || filters.name || filters.traceId || filters.search;
+  const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError || filters.properties && Object.keys(filters.properties).length > 0;
   const ThemeWrapper = isDark ? ho : fo;
   return import_react4.default.createElement(
     ViewerContext.Provider,
@@ -12107,8 +12378,72 @@ function LogViewer({
           style: { ...inputStyle, width: "140px" },
           placeholder: "Service name...",
           value: filters.name ?? "",
-          onChange: handleNameChange
+          onChange: handleNameChange,
+          list: "service-names-datalist"
         }),
+        // Datalist for service name autocomplete
+        import_react4.default.createElement(
+          "datalist",
+          { id: "service-names-datalist" },
+          ...uniqueServiceNames.map(
+            (name) => import_react4.default.createElement("option", { key: name, value: name })
+          )
+        ),
+        import_react4.default.createElement(
+          "label",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 8px",
+              fontSize: "12px",
+              cursor: "pointer",
+              userSelect: "none"
+            }
+          },
+          import_react4.default.createElement("input", {
+            type: "checkbox",
+            checked: !!filters.hasError,
+            onChange: handleHasErrorChange
+          }),
+          "Has Error"
+        ),
+        ...clientConfig?.properties.custom ? clientConfig.properties.custom.filter((p) => p.filterable).map(
+          (prop) => prop.values ? (
+            // Dropdown for predefined values
+            import_react4.default.createElement(
+              "select",
+              {
+                key: prop.name,
+                style: selectStyle,
+                value: filters.properties?.[prop.name] ?? "",
+                onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
+              },
+              import_react4.default.createElement(
+                "option",
+                { value: "" },
+                `All ${prop.label}`
+              ),
+              ...prop.values.map(
+                (val) => import_react4.default.createElement(
+                  "option",
+                  { key: val, value: val },
+                  val
+                )
+              )
+            )
+          ) : (
+            // Text input for free-form values
+            import_react4.default.createElement("input", {
+              key: prop.name,
+              style: { ...inputStyle, width: "140px" },
+              placeholder: `${prop.label}...`,
+              value: filters.properties?.[prop.name] ?? "",
+              onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
+            })
+          )
+        ) : [],
         filters.traceId ? import_react4.default.createElement(
           "span",
           {

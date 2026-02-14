@@ -59,6 +59,8 @@ export interface FilterOptions {
     search?: string;
     /** Filter by specific property values */
     properties?: Record<string, string>;
+    /** Filter to only entries with errors */
+    hasError?: boolean;
     /** Return entries after this ULID */
     after?: string;
     /** Maximum number of entries to return */

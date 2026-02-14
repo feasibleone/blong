@@ -7,7 +7,7 @@
 
 import React, {useMemo, useState} from 'react';
 
-import type {Meta, StoryObj} from '@storybook/react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 import {Grid, Willow, WillowDark} from '@svar-ui/react-grid';
 
 import type {ClientConfig, LogEntry, ThemeConfig} from '../types.js';
@@ -20,6 +20,14 @@ import {
     sampleEntries,
     TRACE_ID_A,
 } from './__fixtures__/data.js';
+
+// Generate deterministic IDs for story entries
+function makeId(index: number): string {
+    const hex = index.toString(16).padStart(10, '0').toUpperCase();
+    return `01ARYZ6S41${hex}${hex.substring(0, 16).padStart(16, '0')}`;
+}
+
+const BASE_TIME = new Date('2026-02-13T12:00:00.000Z').getTime();
 
 // ── Standalone wrapper that renders LogViewer grid without WebSocket ───────────
 
@@ -586,6 +594,44 @@ export const LargeDatasetLight: Story = {
     args: {
         entries: generateLargeDataset(500),
         config: lightThemeConfig,
+        connectedOverride: true,
+    },
+};
+
+/** Entries with HTTP request/response details - showcases HTTP detail view in modal */
+export const WithHTTPDetails: Story = {
+    args: {
+        entries: sampleEntries.filter(e => e.req || e.res),
+        config: darkThemeConfig,
+        connectedOverride: true,
+    },
+};
+
+/** Entries with JSON messages - showcases JSON syntax highlighting */
+export const WithJSONMessages: Story = {
+    args: {
+        entries: [
+            {
+                id: makeId(100),
+                time: BASE_TIME,
+                level: 30,
+                levelName: 'info',
+                name: 'api',
+                msg: JSON.stringify({userId: 123, action: 'login', timestamp: BASE_TIME}),
+            },
+            {
+                id: makeId(101),
+                time: BASE_TIME + 100,
+                level: 30,
+                levelName: 'info',
+                name: 'api',
+                msg: JSON.stringify({
+                    data: {nested: true, values: [1, 2, 3], flag: false},
+                    count: 42,
+                }),
+            },
+        ],
+        config: darkThemeConfig,
         connectedOverride: true,
     },
 };

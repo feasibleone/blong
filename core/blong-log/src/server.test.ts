@@ -278,4 +278,86 @@ test('LogServer', async t => {
         t.ok(config.theme);
         t.ok(config.properties);
     });
+
+    t.test('snapshot - GET /api/config', async t => {
+        const server = new LogServer({
+            udpPort: 18979,
+            httpPort: 18978,
+            host: '127.0.0.1',
+            traceUrlPattern: 'https://trace.example.com/{traceId}',
+        });
+
+        await server.start();
+
+        const res = await fetch('http://127.0.0.1:18978/api/config');
+        const config = await res.json();
+
+        // Normalize dynamic URLs for snapshot
+        config.wsUrl = config.wsUrl.replace(/127\.0\.0\.1:\d+/, '127.0.0.1:PORT');
+        config.apiUrl = config.apiUrl.replace(/127\.0\.0\.1:\d+/, '127.0.0.1:PORT');
+
+        t.matchSnapshot(config, 'GET /api/config response');
+
+        await server.stop();
+    });
+
+    t.test('snapshot - GET /api/entries with data', async t => {
+        const server = new LogServer({
+            udpPort: 18977,
+            httpPort: 18976,
+            host: '127.0.0.1',
+        });
+
+        await server.start();
+
+        // Add deterministic test data
+        server.addEntry({
+            level: 30,
+            msg: 'info message',
+            name: 'test-service',
+            time: 1700000000000,
+        });
+        server.addEntry({
+            level: 50,
+            msg: 'error occurred',
+            name: 'test-service',
+            time: 1700000001000,
+            err: {type: 'Error', message: 'something went wrong'},
+        });
+
+        const res = await fetch('http://127.0.0.1:18976/api/entries');
+        const data = await res.json();
+
+        // Remove dynamic IDs for snapshot
+        data.entries = data.entries.map((e: {id: string}) => ({...e, id: 'ULID'}));
+
+        t.matchSnapshot(data, 'GET /api/entries response shape');
+
+        await server.stop();
+    });
+
+    t.test('snapshot - GET /api/search with results', async t => {
+        const server = new LogServer({
+            udpPort: 18975,
+            httpPort: 18974,
+            host: '127.0.0.1',
+        });
+
+        await server.start();
+
+        // Add test data
+        server.addEntry({level: 30, msg: 'user login', name: 'auth', time: 1700000000000});
+        server.addEntry({level: 30, msg: 'user logout', name: 'auth', time: 1700000001000});
+        server.addEntry({level: 30, msg: 'data fetch', name: 'api', time: 1700000002000});
+
+        const res = await fetch('http://127.0.0.1:18974/api/search?search=user');
+        const data = await res.json();
+
+        // Remove dynamic IDs for snapshot
+        data.entries = data.entries.map((e: {id: string}) => ({...e, id: 'ULID'}));
+
+        t.matchSnapshot(data, 'GET /api/search filtered results');
+
+        await server.stop();
+    });
 });

@@ -177,6 +177,7 @@ Codecs enable protocol implementation on top of HTTP adapters.
 **For detailed implementation patterns, see:**
 
 - **blong-codec** - Protocol implementation (OpenAPI, JSON-RPC, MLE, TCP codecs)
+- **blong-log** - Real-time log viewer setup and monitoring
 
 ## Development Workflows
 

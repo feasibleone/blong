@@ -113,6 +113,11 @@ export class CircularBuffer {
             result = result.filter(e => e.traceId === options.traceId);
         }
 
+        // Filter by error presence
+        if (options.hasError) {
+            result = result.filter(e => !!e.err);
+        }
+
         // Filter by custom property values
         if (options.properties) {
             for (const [key, value] of Object.entries(options.properties)) {

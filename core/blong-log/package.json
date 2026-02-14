@@ -24,11 +24,8 @@
         "@rushstack/heft": "^1.1.11",
         "@rushstack/heft-lint-plugin": "^1.1.14",
         "@rushstack/heft-typescript-plugin": "^1.1.11",
-        "@storybook/addon-a11y": "^8.6.14",
-        "@storybook/addon-essentials": "^8.6.14",
-        "@storybook/react": "^8.6.14",
-        "@storybook/react-vite": "^8.6.14",
-        "@storybook/test": "^8.6.14",
+        "@storybook/addon-a11y": "^10.2.8",
+        "@storybook/react-vite": "^10.2.8",
         "@storybook/test-runner": "^0.24.2",
         "@svar-ui/react-grid": "^2.5.2",
         "jest-image-snapshot": "^6.5.1",
@@ -40,10 +37,11 @@
         "react-dom": "^18.3.1",
         "@types/react": "^18.3.4",
         "@types/react-dom": "^18.3.1",
-        "storybook": "^8.6.14",
+        "storybook": "^10.2.8",
         "tap": "^21.5.0",
         "typescript": "^5.9.3",
-        "vite": "^6.3.5"
+        "vite": "^6.3.5",
+        "@storybook/addon-docs": "^10.2.8"
     },
     "exports": {
         ".": "./src/index.ts",
@@ -60,7 +58,7 @@
         "storybook:build": "storybook build -o storybook-static",
         "storybook:test": "test-storybook",
         "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
-        "visual:update": "npm run storybook:test -- --update-snapshot"
+        "visual:update": "npm run storybook:test -- --updateSnapshot"
     },
     "type": "module",
     "version": "1.0.0"

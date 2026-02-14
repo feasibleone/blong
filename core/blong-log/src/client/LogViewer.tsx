@@ -38,6 +38,8 @@ const ViewerContext = createContext<ViewerContextValue>({
     onTraceFilter: () => {},
 });
 
+const ExpandedRowsContext = createContext<Set<string> | null>(null);
+
 // ── Utility functions ─────────────────────────────────────────────────────────
 
 function formatTimestamp(time: number | undefined): string {
@@ -173,25 +175,192 @@ function TraceLinkCell({
 
 function MessageCell({row}: {row: LogEntry}): React.ReactElement {
     const {searchText, theme} = useContext(ViewerContext);
+    const expandedRows = React.useContext(ExpandedRowsContext);
+    const isExpanded = expandedRows?.has(row.id) ?? false;
+    
+    const baseStyle: CSSProperties = {
+        overflow: 'hidden',
+        fontSize: '12px',
+        padding: '4px 0',
+    };
+    
+    const singleLineStyle: CSSProperties = {
+        ...baseStyle,
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+    };
+    
+    const multiLineStyle: CSSProperties = {
+        ...baseStyle,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+    };
+    
+    // Message is always just the string, no JSON parsing
+    const messageContent = highlightSearch(row.msg ?? '', searchText);
+    
+    if (!isExpanded) {
+        return React.createElement(
+            'div',
+            {style: singleLineStyle, title: row.msg ?? ''},
+            messageContent,
+            row.err
+                ? React.createElement(
+                      'span',
+                      {style: {color: theme.levels?.error ?? '#ef4444', marginLeft: '8px'}},
+                      ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
+                  )
+                : null,
+        );
+    }
+    
+    // Expanded view - show message with additional details
+    return React.createElement(
+        'div',
+        {style: multiLineStyle},
+        // Message
+        React.createElement('div', {style: {marginBottom: '8px'}}, messageContent),
+        // Exception details
+        row.err
+            ? React.createElement(
+                  'div',
+                  {
+                      style: {
+                          marginBottom: '8px',
+                          padding: '8px',
+                          background: isDarkMode(theme) ? '#1c2128' : '#fff8e6',
+                          borderLeft: `3px solid ${theme.levels?.error ?? '#ef4444'}`,
+                          borderRadius: '4px',
+                      },
+                  },
+                  React.createElement(
+                      'div',
+                      {
+                          style: {
+                              color: theme.levels?.error ?? '#ef4444',
+                              fontWeight: 'bold',
+                              marginBottom: '4px',
+                          },
+                      },
+                      `${row.err.type ?? 'Error'}: ${row.err.message ?? 'No message'}`,
+                  ),
+                  row.err.stack
+                      ? React.createElement(
+                            'div',
+                            {style: {fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre'}},
+                            row.err.stack,
+                        )
+                      : null,
+              )
+            : null,
+        // HTTP Request details
+        row.req
+            ? React.createElement(
+                  'div',
+                  {
+                      style: {
+                          marginBottom: '8px',
+                          padding: '8px',
+                          background: isDarkMode(theme) ? '#1c2128' : '#f0f6ff',
+                          borderLeft: '3px solid #1f6feb',
+                          borderRadius: '4px',
+                      },
+                  },
+                  React.createElement(
+                      'div',
+                      {style: {fontWeight: 'bold', marginBottom: '4px', fontSize: '11px'}},
+                      `${row.req.method ?? 'GET'} ${row.req.url ?? ''}`,
+                  ),
+                  row.req.headers
+                      ? React.createElement(
+                            'div',
+                            {style: {fontSize: '10px', marginTop: '4px'}},
+                            ...Object.entries(row.req.headers).slice(0, 3).map(([key, value]) =>
+                                React.createElement(
+                                    'div',
+                                    {key},
+                                    React.createElement(
+                                        'span',
+                                        {style: {color: isDarkMode(theme) ? '#79c0ff' : '#0969da'}},
+                                        key + ':',
+                                    ),
+                                    ' ' + value,
+                                ),
+                            ),
+                        )
+                      : null,
+              )
+            : null,
+        // HTTP Response details
+        row.res
+            ? React.createElement(
+                  'div',
+                  {
+                      style: {
+                          padding: '8px',
+                          background: isDarkMode(theme) ? '#1c2128' : '#f0fff4',
+                          borderLeft: `3px solid ${(row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444'}`,
+                          borderRadius: '4px',
+                      },
+                  },
+                  React.createElement(
+                      'div',
+                      {style: {fontWeight: 'bold', fontSize: '11px'}},
+                      React.createElement(
+                          'span',
+                          {
+                              style: {
+                                  color: (row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444',
+                              },
+                          },
+                          row.res.statusCode ?? 200,
+                      ),
+                      row.res.responseTime ? ` (${row.res.responseTime}ms)` : '',
+                  ),
+              )
+            : null,
+    );
+}
+
+function isDarkMode(theme: ThemeConfig): boolean {
+    return theme.mode === 'dark';
+}
+
+function JSONCell({row}: {row: LogEntry}): React.ReactElement {
+    const {theme} = useContext(ViewerContext);
+    const expandedRows = React.useContext(ExpandedRowsContext);
+    const isExpanded = expandedRows?.has(row.id) ?? false;
+    
+    const jsonString = JSON.stringify(row, null, 2);
+    
+    if (!isExpanded) {
+        return React.createElement(
+            'div',
+            {
+                style: {
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: '12px',
+                },
+                title: jsonString,
+            },
+            JSON.stringify(row),
+        );
+    }
+    
+    // Expanded view with syntax highlighting
     return React.createElement(
         'div',
         {
             style: {
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontSize: '12px',
+                fontSize: '11px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                fontFamily: 'monospace',
             },
-            title: row.msg ?? '',
         },
-        highlightSearch(row.msg ?? '', searchText),
-        row.err
-            ? React.createElement(
-                  'span',
-                  {style: {color: theme.levels?.error ?? '#ef4444', marginLeft: '8px'}},
-                  ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
-              )
-            : null,
+        React.createElement(SyntaxHighlight, {json: jsonString, theme}),
     );
 }
 
@@ -226,6 +395,68 @@ function HttpCell({row}: {row: LogEntry}): React.ReactElement {
     );
 }
 
+// ── JSON Syntax Highlighting ──────────────────────────────────────────────────
+
+/**
+ * Tokenizes JSON and wraps each token with appropriate color from theme.syntax
+ */
+function SyntaxHighlight({
+    json,
+    theme,
+}: {
+    json: string;
+    theme: ThemeConfig;
+}): React.ReactElement {
+    const tokens: React.ReactNode[] = [];
+    const syntax = theme.syntax ?? {};
+    
+    // Simple JSON tokenizer using regex
+    const pattern = /"(?:[^"\\]|\\.)*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\]:,]/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    
+    while ((match = pattern.exec(json)) !== null) {
+        // Add any whitespace before this token
+        if (match.index > lastIndex) {
+            tokens.push(json.substring(lastIndex, match.index));
+        }
+        
+        const token = match[0];
+        let color: string | undefined;
+        
+        if (token === 'true' || token === 'false') {
+            color = syntax.boolean;
+        } else if (token === 'null') {
+            color = syntax.null;
+        } else if (token[0] === '"') {
+            // Check if this is a key by looking ahead for a colon
+            const afterToken = json.substring(pattern.lastIndex).trimStart();
+            if (afterToken[0] === ':') {
+                color = syntax.key;
+            } else {
+                color = syntax.string;
+            }
+        } else if (!isNaN(Number(token)) && token !== '') {
+            color = syntax.number;
+        }
+        
+        tokens.push(
+            color
+                ? React.createElement('span', {key: lastIndex, style: {color}}, token)
+                : token,
+        );
+        
+        lastIndex = pattern.lastIndex;
+    }
+    
+    // Add any remaining text
+    if (lastIndex < json.length) {
+        tokens.push(json.substring(lastIndex));
+    }
+    
+    return React.createElement(React.Fragment, null, ...tokens);
+}
+
 // ── Entry Detail Modal ────────────────────────────────────────────────────────
 
 function EntryModal({
@@ -238,6 +469,26 @@ function EntryModal({
     onClose: () => void;
 }): React.ReactElement {
     const [wrapText, setWrapText] = useState(false);
+    const {theme} = useContext(ViewerContext);
+    const jsonString = JSON.stringify(entry, null, 2);
+    
+    const sectionHeaderStyle: CSSProperties = {
+        fontSize: '13px',
+        fontWeight: 'bold',
+        marginTop: '16px',
+        marginBottom: '8px',
+        color: isDark ? '#c9d1d9' : '#24292f',
+    };
+    
+    const sectionStyle: CSSProperties = {
+        background: isDark ? '#0d1117' : '#f6f8fa',
+        border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
+        borderRadius: '6px',
+        padding: '12px',
+        marginBottom: '12px',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+    };
 
     return React.createElement(
         'div',
@@ -309,6 +560,206 @@ function EntryModal({
                     ),
                 ),
             ),
+            // Exception section
+            entry.err
+                ? React.createElement(
+                      'div',
+                      null,
+                      React.createElement('div', {style: sectionHeaderStyle}, 'Exception'),
+                      React.createElement(
+                          'div',
+                          {style: sectionStyle},
+                          React.createElement(
+                              'div',
+                              {
+                                  style: {
+                                      color: theme.levels?.error ?? '#ef4444',
+                                      fontWeight: 'bold',
+                                      marginBottom: '8px',
+                                  },
+                              },
+                              `${entry.err.type ?? 'Error'}: ${entry.err.message ?? 'No message'}`,
+                          ),
+                          entry.err.stack
+                              ? React.createElement(
+                                    'div',
+                                    {style: {whiteSpace: 'pre-wrap', lineHeight: '1.5'}},
+                                    entry.err.stack,
+                                )
+                              : null,
+                      ),
+                  )
+                : null,
+            // HTTP Request section
+            entry.req
+                ? React.createElement(
+                      'div',
+                      null,
+                      React.createElement('div', {style: sectionHeaderStyle}, 'HTTP Request'),
+                      React.createElement(
+                          'div',
+                          {style: sectionStyle},
+                          React.createElement(
+                              'div',
+                              {style: {fontWeight: 'bold', marginBottom: '8px'}},
+                              `${entry.req.method ?? 'GET'} ${entry.req.url ?? ''}`,
+                          ),
+                          entry.req.headers
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Headers:',
+                                    ),
+                                    React.createElement(
+                                        'table',
+                                        {style: {width: '100%', fontSize: '11px'}},
+                                        React.createElement(
+                                            'tbody',
+                                            null,
+                                            ...Object.entries(entry.req.headers).map(([key, value]) =>
+                                                React.createElement(
+                                                    'tr',
+                                                    {key},
+                                                    React.createElement(
+                                                        'td',
+                                                        {
+                                                            style: {
+                                                                padding: '2px 8px 2px 0',
+                                                                verticalAlign: 'top',
+                                                                color: isDark ? '#79c0ff' : '#0969da',
+                                                            },
+                                                        },
+                                                        key,
+                                                    ),
+                                                    React.createElement(
+                                                        'td',
+                                                        {style: {padding: '2px 0', verticalAlign: 'top'}},
+                                                        value,
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                )
+                              : null,
+                          entry.req.body
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Body:',
+                                    ),
+                                    React.createElement(
+                                        'pre',
+                                        {style: {margin: 0, whiteSpace: 'pre-wrap'}},
+                                        typeof entry.req.body === 'string'
+                                            ? entry.req.body
+                                            : React.createElement(SyntaxHighlight, {
+                                                  json: JSON.stringify(entry.req.body, null, 2),
+                                                  theme,
+                                              }),
+                                    ),
+                                )
+                              : null,
+                      ),
+                  )
+                : null,
+            // HTTP Response section
+            entry.res
+                ? React.createElement(
+                      'div',
+                      null,
+                      React.createElement('div', {style: sectionHeaderStyle}, 'HTTP Response'),
+                      React.createElement(
+                          'div',
+                          {style: sectionStyle},
+                          React.createElement(
+                              'div',
+                              {style: {fontWeight: 'bold', marginBottom: '8px'}},
+                              React.createElement(
+                                  'span',
+                                  {
+                                      style: {
+                                          color:
+                                              (entry.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444',
+                                      },
+                                  },
+                                  entry.res.statusCode ?? 200,
+                              ),
+                              entry.res.responseTime ? ` (${entry.res.responseTime}ms)` : '',
+                          ),
+                          entry.res.headers
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Headers:',
+                                    ),
+                                    React.createElement(
+                                        'table',
+                                        {style: {width: '100%', fontSize: '11px'}},
+                                        React.createElement(
+                                            'tbody',
+                                            null,
+                                            ...Object.entries(entry.res.headers).map(([key, value]) =>
+                                                React.createElement(
+                                                    'tr',
+                                                    {key},
+                                                    React.createElement(
+                                                        'td',
+                                                        {
+                                                            style: {
+                                                                padding: '2px 8px 2px 0',
+                                                                verticalAlign: 'top',
+                                                                color: isDark ? '#79c0ff' : '#0969da',
+                                                            },
+                                                        },
+                                                        key,
+                                                    ),
+                                                    React.createElement(
+                                                        'td',
+                                                        {style: {padding: '2px 0', verticalAlign: 'top'}},
+                                                        value,
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                )
+                              : null,
+                          entry.res.body
+                              ? React.createElement(
+                                    'div',
+                                    null,
+                                    React.createElement(
+                                        'div',
+                                        {style: {fontWeight: 'bold', marginTop: '8px', marginBottom: '4px'}},
+                                        'Body:',
+                                    ),
+                                    React.createElement(
+                                        'pre',
+                                        {style: {margin: 0, whiteSpace: 'pre-wrap'}},
+                                        typeof entry.res.body === 'string'
+                                            ? entry.res.body
+                                            : React.createElement(SyntaxHighlight, {
+                                                  json: JSON.stringify(entry.res.body, null, 2),
+                                                  theme,
+                                              }),
+                                    ),
+                                )
+                              : null,
+                      ),
+                  )
+                : null,
+            // Raw JSON section
+            React.createElement('div', {style: sectionHeaderStyle}, 'Raw Entry'),
             React.createElement(
                 'pre',
                 {
@@ -319,9 +770,13 @@ function EntryModal({
                         fontSize: '12px',
                         overflow: 'auto',
                         maxHeight: '65vh',
+                        background: isDark ? '#0d1117' : '#f6f8fa',
+                        border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
+                        borderRadius: '6px',
+                        padding: '12px',
                     },
                 },
-                JSON.stringify(entry, null, 2),
+                React.createElement(SyntaxHighlight, {json: jsonString, theme}),
             ),
         ),
     );
@@ -345,12 +800,21 @@ export function LogViewer({
     const [connected, setConnected] = useState(false);
     const [filters, setFilters] = useState<FilterOptions>({});
     const [searchText, setSearchText] = useState('');
-    const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [autoScroll, setAutoScroll] = useState(true);
     const wsRef = useRef<WebSocket | null>(null);
     const gridApiRef = useRef<any>(null);
     const lastIdRef = useRef<string>('');
     const entriesRef = useRef<LogEntry[]>([]);
+
+    // Track unique service names for autocomplete
+    const uniqueServiceNames = useMemo(() => {
+        const names = new Set<string>();
+        entries.forEach(e => {
+            if (e.name) names.add(e.name);
+        });
+        return Array.from(names).sort();
+    }, [entries]);
 
     const theme = useMemo(
         () => ({...(clientConfig?.theme ?? {}), ...themeProp}),
@@ -478,6 +942,25 @@ export function LogViewer({
         setFilters(f => ({...f, name: e.target.value || undefined}));
     }, []);
 
+    const handleHasErrorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
+        setFilters(f => ({...f, hasError: e.target.checked || undefined}));
+    }, []);
+
+    const handleCustomPropertyChange = useCallback(
+        (propName: string, value: string): void => {
+            setFilters(f => ({
+                ...f,
+                properties: value
+                    ? {...(f.properties ?? {}), [propName]: value}
+                    : (() => {
+                          const {[propName]: _, ...rest} = f.properties ?? {};
+                          return Object.keys(rest).length > 0 ? rest : undefined;
+                      })(),
+            }));
+        },
+        [],
+    );
+
     const handleTraceFilter = useCallback((traceId: string): void => {
         setFilters(f => (f.traceId === traceId ? {...f, traceId: undefined} : {...f, traceId}));
     }, []);
@@ -546,15 +1029,16 @@ export function LogViewer({
             {
                 id: 'msg',
                 header: 'Message',
-                flexgrow: 1,
+                width: 400,
+                resizable: true,
                 cell: MessageCell,
             },
             {
-                id: 'http',
-                header: 'HTTP',
-                width: 200,
-                getter: (row: LogEntry) => (row.req ? `${row.req.method} ${row.req.url}` : ''),
-                cell: HttpCell,
+                id: 'json',
+                header: 'JSON',
+                width: 400,
+                resizable: true,
+                cell: JSONCell,
             },
         ],
         [],
@@ -566,8 +1050,16 @@ export function LogViewer({
         (api: any) => {
             gridApiRef.current = api;
             api.on('select-row', (ev: {id: string}) => {
-                const entry = entriesRef.current.find(e => e.id === ev.id);
-                if (entry) setSelectedEntry(entry);
+                // Toggle expanded state instead of showing modal
+                setExpandedRows(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(ev.id)) {
+                        newSet.delete(ev.id);
+                    } else {
+                        newSet.add(ev.id);
+                    }
+                    return newSet;
+                });
             });
         },
         [], // eslint-disable-line react-hooks/exhaustive-deps
@@ -642,7 +1134,13 @@ export function LogViewer({
         alignItems: 'center',
     };
 
-    const hasFilters = filters.level || filters.name || filters.traceId || filters.search;
+    const hasFilters =
+        filters.level ||
+        filters.name ||
+        filters.traceId ||
+        filters.search ||
+        filters.hasError ||
+        (filters.properties && Object.keys(filters.properties).length > 0);
     const ThemeWrapper = isDark ? WillowDark : Willow;
 
     // ── Render ────────────────────────────────────────────────────────────
@@ -651,16 +1149,19 @@ export function LogViewer({
         ViewerContext.Provider,
         {value: contextValue},
         React.createElement(
-            'div',
-            {
-                style: {
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%',
-                    background: isDark ? '#0d1117' : '#ffffff',
-                    color: isDark ? '#c9d1d9' : '#24292f',
+            ExpandedRowsContext.Provider,
+            {value: expandedRows},
+            React.createElement(
+                'div',
+                {
+                    style: {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '100%',
+                        background: isDark ? '#0d1117' : '#ffffff',
+                        color: isDark ? '#c9d1d9' : '#24292f',
+                    },
                 },
-            },
             // Dynamic styles for trace highlight
             React.createElement(
                 'style',
@@ -686,7 +1187,76 @@ export function LogViewer({
                     placeholder: 'Service name...',
                     value: filters.name ?? '',
                     onChange: handleNameChange,
+                    list: 'service-names-datalist',
                 }),
+                // Datalist for service name autocomplete
+                React.createElement(
+                    'datalist',
+                    {id: 'service-names-datalist'},
+                    ...uniqueServiceNames.map(name =>
+                        React.createElement('option', {key: name, value: name}),
+                    ),
+                ),
+                React.createElement(
+                    'label',
+                    {
+                        style: {
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            userSelect: 'none' as const,
+                        },
+                    },
+                    React.createElement('input', {
+                        type: 'checkbox',
+                        checked: !!filters.hasError,
+                        onChange: handleHasErrorChange,
+                    }),
+                    'Has Error',
+                ),
+                // Dynamic custom property filters
+                ...(clientConfig?.properties.custom
+                    ? clientConfig.properties.custom
+                          .filter(p => p.filterable)
+                          .map(prop =>
+                              prop.values
+                                  ? // Dropdown for predefined values
+                                    React.createElement(
+                                        'select',
+                                        {
+                                            key: prop.name,
+                                            style: selectStyle,
+                                            value: filters.properties?.[prop.name] ?? '',
+                                            onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+                                                handleCustomPropertyChange(prop.name, e.target.value),
+                                        },
+                                        React.createElement(
+                                            'option',
+                                            {value: ''},
+                                            `All ${prop.label}`,
+                                        ),
+                                        ...prop.values.map(val =>
+                                            React.createElement(
+                                                'option',
+                                                {key: val, value: val},
+                                                val,
+                                            ),
+                                        ),
+                                    )
+                                  : // Text input for free-form values
+                                    React.createElement('input', {
+                                        key: prop.name,
+                                        style: {...inputStyle, width: '140px'},
+                                        placeholder: `${prop.label}...`,
+                                        value: filters.properties?.[prop.name] ?? '',
+                                        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                                            handleCustomPropertyChange(prop.name, e.target.value),
+                                    }),
+                          )
+                    : []),
                 filters.traceId
                     ? React.createElement(
                           'span',
@@ -773,15 +1343,8 @@ export function LogViewer({
                     autoScroll ? '\u2b07 Auto-scroll' : '\u23f8 Paused',
                 ),
             ),
-            // Detail modal
-            selectedEntry
-                ? React.createElement(EntryModal, {
-                      entry: selectedEntry,
-                      isDark,
-                      onClose: () => setSelectedEntry(null),
-                  })
-                : null,
         ),
+    ),
     );
 }
 
