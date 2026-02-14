@@ -6,7 +6,7 @@ Blong is a TypeScript-based API-focused RAD (Rapid Application Development) fram
 
 **Monorepo Structure:** This is a Rush.js monorepo with three main areas:
 
-- `core/` - Framework packages (blong, blong-gogo, blong-kopi, blong-login, etc.)
+- `core/` - Framework packages (blong, blong-gogo, blong-kopi, blong-log, blong-login, etc.)
 - `dev/` - Development/example projects (ml, tools)
 - `docs/` - Documentation site
 
@@ -284,6 +284,7 @@ Framework provides structured error handling with `IErrorFactory` pattern for de
 - **Adding tests:** See **blong-test** for test handler patterns
 - **Error definitions:** See **blong-error** for typed error patterns
 - **Validation:** See **blong-validation** for input/output validation
+- **Real-time logging:** See **blong-log** for log viewer setup and monitoring
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
 
@@ -294,3 +295,4 @@ For detailed design rationale and architecture decisions, see the [docs/blong/do
 - **[Goals](../docs/blong/docs/rationale/goals.md)** - Framework goals and approach
 - **[Prior Art](../docs/blong/docs/rationale/prior.md)** - Related paradigms and inspirations
 - **[Error Proxy System](../docs/blong/docs/rationale/error-proxy.md)** - Simplified error referencing implementation
+- **[Real-Time Log](../docs/blong/docs/rationale/real-time-log.md)** - Real-time log viewer design and implementation
