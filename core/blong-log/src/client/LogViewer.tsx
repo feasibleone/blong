@@ -38,6 +38,8 @@ const ViewerContext = createContext<ViewerContextValue>({
     onTraceFilter: () => {},
 });
 
+const ExpandedRowsContext = createContext<Set<string> | null>(null);
+
 // ── Utility functions ─────────────────────────────────────────────────────────
 
 function formatTimestamp(time: number | undefined): string {
@@ -173,39 +175,192 @@ function TraceLinkCell({
 
 function MessageCell({row}: {row: LogEntry}): React.ReactElement {
     const {searchText, theme} = useContext(ViewerContext);
+    const expandedRows = React.useContext(ExpandedRowsContext);
+    const isExpanded = expandedRows?.has(row.id) ?? false;
     
-    // Try to parse message as JSON
-    let messageContent: React.ReactNode = row.msg ?? '';
-    if (row.msg) {
-        try {
-            JSON.parse(row.msg);
-            // If it's valid JSON, use syntax highlighting
-            messageContent = React.createElement(SyntaxHighlight, {json: row.msg, theme});
-        } catch {
-            // Not JSON, use regular highlight with search
-            messageContent = highlightSearch(row.msg, searchText);
-        }
+    const baseStyle: CSSProperties = {
+        overflow: 'hidden',
+        fontSize: '12px',
+        padding: '4px 0',
+    };
+    
+    const singleLineStyle: CSSProperties = {
+        ...baseStyle,
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+    };
+    
+    const multiLineStyle: CSSProperties = {
+        ...baseStyle,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+    };
+    
+    // Message is always just the string, no JSON parsing
+    const messageContent = highlightSearch(row.msg ?? '', searchText);
+    
+    if (!isExpanded) {
+        return React.createElement(
+            'div',
+            {style: singleLineStyle, title: row.msg ?? ''},
+            messageContent,
+            row.err
+                ? React.createElement(
+                      'span',
+                      {style: {color: theme.levels?.error ?? '#ef4444', marginLeft: '8px'}},
+                      ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
+                  )
+                : null,
+        );
     }
     
+    // Expanded view - show message with additional details
+    return React.createElement(
+        'div',
+        {style: multiLineStyle},
+        // Message
+        React.createElement('div', {style: {marginBottom: '8px'}}, messageContent),
+        // Exception details
+        row.err
+            ? React.createElement(
+                  'div',
+                  {
+                      style: {
+                          marginBottom: '8px',
+                          padding: '8px',
+                          background: isDarkMode(theme) ? '#1c2128' : '#fff8e6',
+                          borderLeft: `3px solid ${theme.levels?.error ?? '#ef4444'}`,
+                          borderRadius: '4px',
+                      },
+                  },
+                  React.createElement(
+                      'div',
+                      {
+                          style: {
+                              color: theme.levels?.error ?? '#ef4444',
+                              fontWeight: 'bold',
+                              marginBottom: '4px',
+                          },
+                      },
+                      `${row.err.type ?? 'Error'}: ${row.err.message ?? 'No message'}`,
+                  ),
+                  row.err.stack
+                      ? React.createElement(
+                            'div',
+                            {style: {fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre'}},
+                            row.err.stack,
+                        )
+                      : null,
+              )
+            : null,
+        // HTTP Request details
+        row.req
+            ? React.createElement(
+                  'div',
+                  {
+                      style: {
+                          marginBottom: '8px',
+                          padding: '8px',
+                          background: isDarkMode(theme) ? '#1c2128' : '#f0f6ff',
+                          borderLeft: '3px solid #1f6feb',
+                          borderRadius: '4px',
+                      },
+                  },
+                  React.createElement(
+                      'div',
+                      {style: {fontWeight: 'bold', marginBottom: '4px', fontSize: '11px'}},
+                      `${row.req.method ?? 'GET'} ${row.req.url ?? ''}`,
+                  ),
+                  row.req.headers
+                      ? React.createElement(
+                            'div',
+                            {style: {fontSize: '10px', marginTop: '4px'}},
+                            ...Object.entries(row.req.headers).slice(0, 3).map(([key, value]) =>
+                                React.createElement(
+                                    'div',
+                                    {key},
+                                    React.createElement(
+                                        'span',
+                                        {style: {color: isDarkMode(theme) ? '#79c0ff' : '#0969da'}},
+                                        key + ':',
+                                    ),
+                                    ' ' + value,
+                                ),
+                            ),
+                        )
+                      : null,
+              )
+            : null,
+        // HTTP Response details
+        row.res
+            ? React.createElement(
+                  'div',
+                  {
+                      style: {
+                          padding: '8px',
+                          background: isDarkMode(theme) ? '#1c2128' : '#f0fff4',
+                          borderLeft: `3px solid ${(row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444'}`,
+                          borderRadius: '4px',
+                      },
+                  },
+                  React.createElement(
+                      'div',
+                      {style: {fontWeight: 'bold', fontSize: '11px'}},
+                      React.createElement(
+                          'span',
+                          {
+                              style: {
+                                  color: (row.res.statusCode ?? 200) < 400 ? '#22c55e' : '#ef4444',
+                              },
+                          },
+                          row.res.statusCode ?? 200,
+                      ),
+                      row.res.responseTime ? ` (${row.res.responseTime}ms)` : '',
+                  ),
+              )
+            : null,
+    );
+}
+
+function isDarkMode(theme: ThemeConfig): boolean {
+    return theme.mode === 'dark';
+}
+
+function JSONCell({row}: {row: LogEntry}): React.ReactElement {
+    const {theme} = useContext(ViewerContext);
+    const expandedRows = React.useContext(ExpandedRowsContext);
+    const isExpanded = expandedRows?.has(row.id) ?? false;
+    
+    const jsonString = JSON.stringify(row, null, 2);
+    
+    if (!isExpanded) {
+        return React.createElement(
+            'div',
+            {
+                style: {
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: '12px',
+                },
+                title: jsonString,
+            },
+            JSON.stringify(row),
+        );
+    }
+    
+    // Expanded view with syntax highlighting
     return React.createElement(
         'div',
         {
             style: {
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontSize: '12px',
+                fontSize: '11px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                fontFamily: 'monospace',
             },
-            title: row.msg ?? '',
         },
-        messageContent,
-        row.err
-            ? React.createElement(
-                  'span',
-                  {style: {color: theme.levels?.error ?? '#ef4444', marginLeft: '8px'}},
-                  ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
-              )
-            : null,
+        React.createElement(SyntaxHighlight, {json: jsonString, theme}),
     );
 }
 
@@ -645,7 +800,7 @@ export function LogViewer({
     const [connected, setConnected] = useState(false);
     const [filters, setFilters] = useState<FilterOptions>({});
     const [searchText, setSearchText] = useState('');
-    const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [autoScroll, setAutoScroll] = useState(true);
     const wsRef = useRef<WebSocket | null>(null);
     const gridApiRef = useRef<any>(null);
@@ -874,15 +1029,16 @@ export function LogViewer({
             {
                 id: 'msg',
                 header: 'Message',
-                flexgrow: 1,
+                width: 400,
+                resizable: true,
                 cell: MessageCell,
             },
             {
-                id: 'http',
-                header: 'HTTP',
-                width: 200,
-                getter: (row: LogEntry) => (row.req ? `${row.req.method} ${row.req.url}` : ''),
-                cell: HttpCell,
+                id: 'json',
+                header: 'JSON',
+                width: 400,
+                resizable: true,
+                cell: JSONCell,
             },
         ],
         [],
@@ -894,8 +1050,16 @@ export function LogViewer({
         (api: any) => {
             gridApiRef.current = api;
             api.on('select-row', (ev: {id: string}) => {
-                const entry = entriesRef.current.find(e => e.id === ev.id);
-                if (entry) setSelectedEntry(entry);
+                // Toggle expanded state instead of showing modal
+                setExpandedRows(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(ev.id)) {
+                        newSet.delete(ev.id);
+                    } else {
+                        newSet.add(ev.id);
+                    }
+                    return newSet;
+                });
             });
         },
         [], // eslint-disable-line react-hooks/exhaustive-deps
@@ -985,16 +1149,19 @@ export function LogViewer({
         ViewerContext.Provider,
         {value: contextValue},
         React.createElement(
-            'div',
-            {
-                style: {
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%',
-                    background: isDark ? '#0d1117' : '#ffffff',
-                    color: isDark ? '#c9d1d9' : '#24292f',
+            ExpandedRowsContext.Provider,
+            {value: expandedRows},
+            React.createElement(
+                'div',
+                {
+                    style: {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '100%',
+                        background: isDark ? '#0d1117' : '#ffffff',
+                        color: isDark ? '#c9d1d9' : '#24292f',
+                    },
                 },
-            },
             // Dynamic styles for trace highlight
             React.createElement(
                 'style',
@@ -1176,15 +1343,8 @@ export function LogViewer({
                     autoScroll ? '\u2b07 Auto-scroll' : '\u23f8 Paused',
                 ),
             ),
-            // Detail modal
-            selectedEntry
-                ? React.createElement(EntryModal, {
-                      entry: selectedEntry,
-                      isDark,
-                      onClose: () => setSelectedEntry(null),
-                  })
-                : null,
         ),
+    ),
     );
 }
 
