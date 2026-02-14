@@ -11579,6 +11579,7 @@ var ViewerContext = (0, import_react4.createContext)({
   onTraceFilter: () => {
   }
 });
+var ExpandedRowsContext = (0, import_react4.createContext)(null);
 function formatTimestamp(time) {
   if (!time) return "";
   const d = new Date(time);
@@ -11600,7 +11601,7 @@ function highlightSearch(text, search) {
   if (!search) return text;
   const parts = text.split(new RegExp(`(${escapeRegExp(search)})`, "gi"));
   return parts.map(
-    (part, i) => part.toLowerCase() === search.toLowerCase() ? import_react4.default.createElement(
+    (part, i) => part.toLowerCase() === search.toLowerCase() ? /* @__PURE__ */ import_react4.default.createElement(
       "mark",
       {
         key: i,
@@ -11620,130 +11621,340 @@ function LevelCell({ row }) {
   const name = row.levelName ?? LEVEL_NAME[row.level ?? 30] ?? "unknown";
   const colors = theme.levels ?? {};
   const color = colors[name] ?? "#6b7280";
-  return import_react4.default.createElement(
-    "span",
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "div",
     {
       style: {
-        padding: "1px 6px",
-        borderRadius: "3px",
-        fontSize: "11px",
-        fontWeight: "bold",
-        textTransform: "uppercase",
-        color: "#fff",
-        background: color,
-        display: "inline-block",
-        minWidth: "45px",
-        textAlign: "center"
+        display: "flex",
+        alignItems: "center",
+        minHeight: "28px"
       }
     },
-    name
+    /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          padding: "1px 6px",
+          borderRadius: "3px",
+          fontSize: "11px",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          color: "#fff",
+          background: color,
+          display: "inline-block",
+          minWidth: "45px",
+          textAlign: "center"
+        }
+      },
+      name
+    )
   );
 }
 function NameCell({ row }) {
   const { searchText } = (0, import_react4.useContext)(ViewerContext);
-  return import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       style: {
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
-        fontSize: "12px"
+        fontSize: "12px",
+        display: "flex",
+        alignItems: "center",
+        minHeight: "28px"
       },
       title: row.name ?? ""
     },
     highlightSearch(row.name ?? "", searchText)
   );
 }
-function TraceLinkCell({
-  row,
-  onAction
-}) {
-  const { clientConfig } = (0, import_react4.useContext)(ViewerContext);
+function TraceLinkCell({ row }) {
+  const { clientConfig, onTraceFilter } = (0, import_react4.useContext)(ViewerContext);
   if (!row.traceId) return null;
-  const handleClick = (e) => {
+  const handleFilterClick = (e) => {
     e.stopPropagation();
-    if (e.ctrlKey || e.metaKey) {
-      if (clientConfig?.traceUrlPattern) {
-        const start = row.time ? row.time - 6e4 : Date.now() - 36e5;
-        const end = row.time ? row.time + 6e4 : Date.now();
-        const url = clientConfig.traceUrlPattern.replace("{traceId}", row.traceId).replace("{startTime}", String(start)).replace("{endTime}", String(end));
-        window.open(url, "_blank");
-      }
-    } else {
-      onAction({ action: "filter-trace", data: { traceId: row.traceId } });
+    onTraceFilter(row.traceId);
+  };
+  const handleExternalLink = (e) => {
+    e.stopPropagation();
+    if (clientConfig?.traceUrlPattern) {
+      const start = row.time ? row.time - 6e4 : Date.now() - 36e5;
+      const end = row.time ? row.time + 6e4 : Date.now();
+      const url = clientConfig.traceUrlPattern.replace("{traceId}", row.traceId).replace("{startTime}", String(start)).replace("{endTime}", String(end));
+      window.open(url, "_blank");
     }
   };
-  return import_react4.default.createElement(
-    "span",
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "div",
     {
       style: {
-        cursor: "pointer",
-        color: "#58a6ff",
-        textDecoration: "underline",
-        fontSize: "12px"
-      },
-      onClick: handleClick,
-      title: "Click to filter, Ctrl+Click to open trace view"
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        minHeight: "28px"
+      }
     },
-    row.traceId.substring(0, 16) + "\u2026"
+    /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          cursor: "pointer",
+          color: "#58a6ff",
+          textDecoration: "underline",
+          fontSize: "12px"
+        },
+        onClick: handleFilterClick,
+        title: "Click to filter by this trace ID"
+      },
+      row.traceId.substring(0, 16) + "\u2026"
+    ),
+    clientConfig?.traceUrlPattern && /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          cursor: "pointer",
+          color: "#58a6ff",
+          fontSize: "14px",
+          lineHeight: "1"
+        },
+        onClick: handleExternalLink,
+        title: "Open trace in external viewer"
+      },
+      "\u2197"
+    )
   );
 }
 function MessageCell({ row }) {
   const { searchText, theme } = (0, import_react4.useContext)(ViewerContext);
-  let messageContent = row.msg ?? "";
-  if (row.msg) {
-    try {
-      JSON.parse(row.msg);
-      messageContent = import_react4.default.createElement(SyntaxHighlight, { json: row.msg, theme });
-    } catch {
-      messageContent = highlightSearch(row.msg, searchText);
-    }
+  const expandedRows = import_react4.default.useContext(ExpandedRowsContext);
+  const isExpanded = expandedRows?.has(row.id) ?? false;
+  const baseStyle = {
+    overflow: "hidden",
+    fontSize: "12px"
+  };
+  const singleLineStyle = {
+    ...baseStyle,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    display: "flex",
+    alignItems: "center",
+    minHeight: "28px"
+  };
+  const multiLineStyle = {
+    ...baseStyle,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    padding: "8px 0"
+  };
+  const messageContent = highlightSearch(row.msg ?? "", searchText);
+  if (!isExpanded) {
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: singleLineStyle,
+        title: row.msg ?? ""
+      },
+      messageContent,
+      row.err && /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: theme.levels?.error ?? "#ef4444", marginLeft: "8px" } }, highlightSearch(
+        ` [${row.err.type ?? "Error"}: ${row.err.message ?? ""}]`,
+        searchText
+      ))
+    );
   }
-  return import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", { style: multiLineStyle }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { marginBottom: "8px" } }, messageContent), row.err && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       style: {
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        fontSize: "12px"
-      },
-      title: row.msg ?? ""
+        marginBottom: "8px",
+        padding: "8px",
+        background: isDarkMode(theme) ? "#1c2128" : "#fff8e6",
+        borderLeft: `3px solid ${theme.levels?.error ?? "#ef4444"}`,
+        borderRadius: "4px"
+      }
     },
-    messageContent,
-    row.err ? import_react4.default.createElement(
-      "span",
-      { style: { color: theme.levels?.error ?? "#ef4444", marginLeft: "8px" } },
-      ` [${row.err.type ?? "Error"}: ${row.err.message ?? ""}]`
-    ) : null
-  );
-}
-function HttpCell({ row }) {
-  const statusColor = row.res ? (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444" : void 0;
-  return import_react4.default.createElement(
+    /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          color: theme.levels?.error ?? "#ef4444",
+          fontWeight: "bold",
+          marginBottom: "4px"
+        }
+      },
+      highlightSearch(
+        `${row.err.type ?? "Error"}: ${row.err.message ?? "No message"}`,
+        searchText
+      )
+    ),
+    row.err.stack && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "11px", fontFamily: "monospace", whiteSpace: "pre" } }, highlightSearch(row.err.stack, searchText))
+  ), row.req && /* @__PURE__ */ import_react4.default.createElement(
     "div",
-    { style: { display: "flex", gap: "8px", fontSize: "12px" } },
-    row.req ? import_react4.default.createElement(
+    {
+      style: {
+        marginBottom: "8px",
+        padding: "8px",
+        background: isDarkMode(theme) ? "#1c2128" : "#f0f6ff",
+        borderLeft: "3px solid #1f6feb",
+        borderRadius: "4px"
+      }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontWeight: "bold", marginBottom: "4px", fontSize: "11px" } }, highlightSearch(
+      `${row.req.method ?? "GET"} ${row.req.url ?? ""}`,
+      searchText
+    )),
+    row.req.headers && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "10px", marginTop: "4px" } }, Object.entries(row.req.headers).map(([key, value]) => /* @__PURE__ */ import_react4.default.createElement("div", { key }, /* @__PURE__ */ import_react4.default.createElement(
       "span",
-      { title: JSON.stringify(row.req, null, 2) },
-      `${row.req.method ?? "GET"} ${row.req.url ?? ""}`
-    ) : null,
-    row.res ? import_react4.default.createElement(
-      "span",
-      { title: JSON.stringify(row.res, null, 2) },
-      import_react4.default.createElement(
-        "span",
-        { style: { color: statusColor, fontWeight: "bold" } },
-        String(row.res.statusCode ?? "")
+      {
+        style: {
+          color: isDarkMode(theme) ? "#79c0ff" : "#0969da"
+        }
+      },
+      key + ":"
+    ), " ", highlightSearch(String(value), searchText)))),
+    row.req.body && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          marginTop: "6px",
+          fontSize: "10px",
+          background: isDarkMode(theme) ? "#161b22" : "#e8f0ff",
+          padding: "6px",
+          borderRadius: "3px",
+          fontFamily: "monospace"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement(
+        "div",
+        {
+          style: {
+            color: isDarkMode(theme) ? "#79c0ff" : "#0969da",
+            marginBottom: "3px"
+          }
+        },
+        "Request Body:"
       ),
-      row.res.responseTime ? ` ${row.res.responseTime}ms` : ""
-    ) : null
+      /* @__PURE__ */ import_react4.default.createElement(
+        SyntaxHighlight,
+        {
+          json: JSON.stringify(row.req.body, null, 2),
+          theme,
+          searchText
+        }
+      )
+    )
+  ), row.res && /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      style: {
+        padding: "8px",
+        background: isDarkMode(theme) ? "#1c2128" : "#f0fff4",
+        borderLeft: `3px solid ${(row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"}`,
+        borderRadius: "4px"
+      }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontWeight: "bold", fontSize: "11px" } }, /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
+        }
+      },
+      row.res.statusCode ?? 200
+    ), row.res.responseTime ? ` (${row.res.responseTime}ms)` : ""),
+    row.res.headers && /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: "10px", marginTop: "4px" } }, Object.entries(row.res.headers).map(([key, value]) => /* @__PURE__ */ import_react4.default.createElement("div", { key }, /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
+        }
+      },
+      key + ":"
+    ), " ", highlightSearch(String(value), searchText)))),
+    row.res.body && /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          marginTop: "6px",
+          fontSize: "10px",
+          background: isDarkMode(theme) ? "#161b22" : "#e8fff0",
+          padding: "6px",
+          borderRadius: "3px",
+          fontFamily: "monospace"
+        }
+      },
+      /* @__PURE__ */ import_react4.default.createElement(
+        "div",
+        {
+          style: {
+            color: (row.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444",
+            marginBottom: "3px"
+          }
+        },
+        "Response Body:"
+      ),
+      /* @__PURE__ */ import_react4.default.createElement(
+        SyntaxHighlight,
+        {
+          json: JSON.stringify(row.res.body, null, 2),
+          theme,
+          searchText
+        }
+      )
+    )
+  ));
+}
+function isDarkMode(theme) {
+  return theme.mode === "dark";
+}
+function JSONCell({ row }) {
+  const { theme, searchText } = (0, import_react4.useContext)(ViewerContext);
+  const expandedRows = import_react4.default.useContext(ExpandedRowsContext);
+  const isExpanded = expandedRows?.has(row.id) ?? false;
+  const jsonString = JSON.stringify(row, null, 2);
+  if (!isExpanded) {
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      {
+        style: {
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          fontSize: "12px",
+          display: "flex",
+          alignItems: "center",
+          minHeight: "28px"
+        },
+        title: jsonString
+      },
+      JSON.stringify(row)
+    );
+  }
+  return /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      style: {
+        fontSize: "11px",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-all",
+        fontFamily: "monospace",
+        padding: "8px 0"
+      }
+    },
+    /* @__PURE__ */ import_react4.default.createElement(
+      SyntaxHighlight,
+      {
+        json: jsonString,
+        theme,
+        searchText
+      }
+    )
   );
 }
 function SyntaxHighlight({
   json,
-  theme
+  theme,
+  searchText = ""
 }) {
   const tokens = [];
   const syntax = theme.syntax ?? {};
@@ -11752,7 +11963,8 @@ function SyntaxHighlight({
   let match;
   while ((match = pattern.exec(json)) !== null) {
     if (match.index > lastIndex) {
-      tokens.push(json.substring(lastIndex, match.index));
+      const whitespace = json.substring(lastIndex, match.index);
+      tokens.push(searchText ? highlightSearch(whitespace, searchText) : whitespace);
     }
     const token = match[0];
     let color;
@@ -11769,326 +11981,47 @@ function SyntaxHighlight({
       }
     } else if (!isNaN(Number(token)) && token !== "") {
       color = syntax.number;
+    } else if (/[{}[\]:,]/.test(token)) {
+      color = syntax.punctuation;
     }
+    const tokenContent = searchText ? highlightSearch(token, searchText) : token;
     tokens.push(
-      color ? import_react4.default.createElement("span", { key: lastIndex, style: { color } }, token) : token
+      color ? /* @__PURE__ */ import_react4.default.createElement(
+        "span",
+        {
+          key: lastIndex,
+          style: { color }
+        },
+        tokenContent
+      ) : tokenContent
     );
     lastIndex = pattern.lastIndex;
   }
   if (lastIndex < json.length) {
-    tokens.push(json.substring(lastIndex));
+    const remaining = json.substring(lastIndex);
+    tokens.push(searchText ? highlightSearch(remaining, searchText) : remaining);
   }
-  return import_react4.default.createElement(import_react4.default.Fragment, null, ...tokens);
-}
-function EntryModal({
-  entry,
-  isDark,
-  onClose
-}) {
-  const [wrapText, setWrapText] = (0, import_react4.useState)(false);
-  const { theme } = (0, import_react4.useContext)(ViewerContext);
-  const jsonString = JSON.stringify(entry, null, 2);
-  const sectionHeaderStyle = {
-    fontSize: "13px",
-    fontWeight: "bold",
-    marginTop: "16px",
-    marginBottom: "8px",
-    color: isDark ? "#c9d1d9" : "#24292f"
-  };
-  const sectionStyle = {
-    background: isDark ? "#0d1117" : "#f6f8fa",
-    border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
-    borderRadius: "6px",
-    padding: "12px",
-    marginBottom: "12px",
-    fontSize: "12px",
-    fontFamily: "monospace"
-  };
-  return import_react4.default.createElement(
-    "div",
-    {
-      style: {
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 100
-      },
-      onClick: onClose
-    },
-    import_react4.default.createElement(
-      "div",
-      {
-        style: {
-          background: isDark ? "#161b22" : "#ffffff",
-          border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
-          borderRadius: "8px",
-          padding: "16px",
-          maxWidth: "80vw",
-          maxHeight: "80vh",
-          overflow: "auto",
-          minWidth: "600px"
-        },
-        onClick: (e) => e.stopPropagation()
-      },
-      import_react4.default.createElement(
-        "div",
-        { style: { display: "flex", justifyContent: "space-between", marginBottom: "12px" } },
-        import_react4.default.createElement(
-          "h3",
-          { style: { fontSize: "14px", fontWeight: "bold" } },
-          "Log Entry Details"
-        ),
-        import_react4.default.createElement(
-          "div",
-          { style: { display: "flex", gap: "8px", alignItems: "center" } },
-          import_react4.default.createElement(
-            "label",
-            { style: { fontSize: "12px", cursor: "pointer" } },
-            import_react4.default.createElement("input", {
-              type: "checkbox",
-              checked: wrapText,
-              onChange: () => setWrapText((w) => !w),
-              style: { marginRight: "4px" }
-            }),
-            "Wrap text"
-          ),
-          import_react4.default.createElement(
-            "button",
-            {
-              onClick: onClose,
-              style: {
-                background: "none",
-                border: "none",
-                color: "inherit",
-                cursor: "pointer",
-                fontSize: "18px"
-              }
-            },
-            "\xD7"
-          )
-        )
-      ),
-      // Exception section
-      entry.err ? import_react4.default.createElement(
-        "div",
-        null,
-        import_react4.default.createElement("div", { style: sectionHeaderStyle }, "Exception"),
-        import_react4.default.createElement(
-          "div",
-          { style: sectionStyle },
-          import_react4.default.createElement(
-            "div",
-            {
-              style: {
-                color: theme.levels?.error ?? "#ef4444",
-                fontWeight: "bold",
-                marginBottom: "8px"
-              }
-            },
-            `${entry.err.type ?? "Error"}: ${entry.err.message ?? "No message"}`
-          ),
-          entry.err.stack ? import_react4.default.createElement(
-            "div",
-            { style: { whiteSpace: "pre-wrap", lineHeight: "1.5" } },
-            entry.err.stack
-          ) : null
-        )
-      ) : null,
-      // HTTP Request section
-      entry.req ? import_react4.default.createElement(
-        "div",
-        null,
-        import_react4.default.createElement("div", { style: sectionHeaderStyle }, "HTTP Request"),
-        import_react4.default.createElement(
-          "div",
-          { style: sectionStyle },
-          import_react4.default.createElement(
-            "div",
-            { style: { fontWeight: "bold", marginBottom: "8px" } },
-            `${entry.req.method ?? "GET"} ${entry.req.url ?? ""}`
-          ),
-          entry.req.headers ? import_react4.default.createElement(
-            "div",
-            null,
-            import_react4.default.createElement(
-              "div",
-              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
-              "Headers:"
-            ),
-            import_react4.default.createElement(
-              "table",
-              { style: { width: "100%", fontSize: "11px" } },
-              import_react4.default.createElement(
-                "tbody",
-                null,
-                ...Object.entries(entry.req.headers).map(
-                  ([key, value]) => import_react4.default.createElement(
-                    "tr",
-                    { key },
-                    import_react4.default.createElement(
-                      "td",
-                      {
-                        style: {
-                          padding: "2px 8px 2px 0",
-                          verticalAlign: "top",
-                          color: isDark ? "#79c0ff" : "#0969da"
-                        }
-                      },
-                      key
-                    ),
-                    import_react4.default.createElement(
-                      "td",
-                      { style: { padding: "2px 0", verticalAlign: "top" } },
-                      value
-                    )
-                  )
-                )
-              )
-            )
-          ) : null,
-          entry.req.body ? import_react4.default.createElement(
-            "div",
-            null,
-            import_react4.default.createElement(
-              "div",
-              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
-              "Body:"
-            ),
-            import_react4.default.createElement(
-              "pre",
-              { style: { margin: 0, whiteSpace: "pre-wrap" } },
-              typeof entry.req.body === "string" ? entry.req.body : import_react4.default.createElement(SyntaxHighlight, {
-                json: JSON.stringify(entry.req.body, null, 2),
-                theme
-              })
-            )
-          ) : null
-        )
-      ) : null,
-      // HTTP Response section
-      entry.res ? import_react4.default.createElement(
-        "div",
-        null,
-        import_react4.default.createElement("div", { style: sectionHeaderStyle }, "HTTP Response"),
-        import_react4.default.createElement(
-          "div",
-          { style: sectionStyle },
-          import_react4.default.createElement(
-            "div",
-            { style: { fontWeight: "bold", marginBottom: "8px" } },
-            import_react4.default.createElement(
-              "span",
-              {
-                style: {
-                  color: (entry.res.statusCode ?? 200) < 400 ? "#22c55e" : "#ef4444"
-                }
-              },
-              entry.res.statusCode ?? 200
-            ),
-            entry.res.responseTime ? ` (${entry.res.responseTime}ms)` : ""
-          ),
-          entry.res.headers ? import_react4.default.createElement(
-            "div",
-            null,
-            import_react4.default.createElement(
-              "div",
-              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
-              "Headers:"
-            ),
-            import_react4.default.createElement(
-              "table",
-              { style: { width: "100%", fontSize: "11px" } },
-              import_react4.default.createElement(
-                "tbody",
-                null,
-                ...Object.entries(entry.res.headers).map(
-                  ([key, value]) => import_react4.default.createElement(
-                    "tr",
-                    { key },
-                    import_react4.default.createElement(
-                      "td",
-                      {
-                        style: {
-                          padding: "2px 8px 2px 0",
-                          verticalAlign: "top",
-                          color: isDark ? "#79c0ff" : "#0969da"
-                        }
-                      },
-                      key
-                    ),
-                    import_react4.default.createElement(
-                      "td",
-                      { style: { padding: "2px 0", verticalAlign: "top" } },
-                      value
-                    )
-                  )
-                )
-              )
-            )
-          ) : null,
-          entry.res.body ? import_react4.default.createElement(
-            "div",
-            null,
-            import_react4.default.createElement(
-              "div",
-              { style: { fontWeight: "bold", marginTop: "8px", marginBottom: "4px" } },
-              "Body:"
-            ),
-            import_react4.default.createElement(
-              "pre",
-              { style: { margin: 0, whiteSpace: "pre-wrap" } },
-              typeof entry.res.body === "string" ? entry.res.body : import_react4.default.createElement(SyntaxHighlight, {
-                json: JSON.stringify(entry.res.body, null, 2),
-                theme
-              })
-            )
-          ) : null
-        )
-      ) : null,
-      // Raw JSON section
-      import_react4.default.createElement("div", { style: sectionHeaderStyle }, "Raw Entry"),
-      import_react4.default.createElement(
-        "pre",
-        {
-          style: {
-            whiteSpace: wrapText ? "pre-wrap" : "pre",
-            wordBreak: wrapText ? "break-all" : void 0,
-            fontFamily: "inherit",
-            fontSize: "12px",
-            overflow: "auto",
-            maxHeight: "65vh",
-            background: isDark ? "#0d1117" : "#f6f8fa",
-            border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
-            borderRadius: "6px",
-            padding: "12px"
-          }
-        },
-        import_react4.default.createElement(SyntaxHighlight, { json: jsonString, theme })
-      )
-    )
-  );
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, tokens);
 }
 function LogViewer({
   config: configProp,
-  theme: themeProp
+  theme: themeProp,
+  initialSearchText = "",
+  initialExpandedRows
 }) {
   const [entries, setEntries] = (0, import_react4.useState)([]);
   const [clientConfig, setClientConfig] = (0, import_react4.useState)(null);
   const [connected, setConnected] = (0, import_react4.useState)(false);
   const [filters, setFilters] = (0, import_react4.useState)({});
-  const [searchText, setSearchText] = (0, import_react4.useState)("");
-  const [selectedEntry, setSelectedEntry] = (0, import_react4.useState)(null);
+  const [searchText, setSearchText] = (0, import_react4.useState)(initialSearchText);
+  const [expandedRows, setExpandedRows] = (0, import_react4.useState)(initialExpandedRows ?? /* @__PURE__ */ new Set());
   const [autoScroll, setAutoScroll] = (0, import_react4.useState)(true);
+  const [timeMode, setTimeMode] = (0, import_react4.useState)("absolute");
   const wsRef = (0, import_react4.useRef)(null);
   const gridApiRef = (0, import_react4.useRef)(null);
   const lastIdRef = (0, import_react4.useRef)("");
   const entriesRef = (0, import_react4.useRef)([]);
+  const filtersRef = (0, import_react4.useRef)({});
   const uniqueServiceNames = (0, import_react4.useMemo)(() => {
     const names = /* @__PURE__ */ new Set();
     entries.forEach((e) => {
@@ -12102,6 +12035,7 @@ function LogViewer({
   );
   const isDark = theme.mode === "dark";
   entriesRef.current = entries;
+  filtersRef.current = filters;
   (0, import_react4.useEffect)(() => {
     if (typeof configProp === "object" && configProp) {
       setClientConfig(configProp);
@@ -12119,7 +12053,7 @@ function LogViewer({
       ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         setConnected(true);
-        const msg = { type: "subscribe", filters };
+        const msg = { type: "subscribe", filters: filtersRef.current };
         ws.send(JSON.stringify(msg));
       };
       ws.onmessage = (event) => {
@@ -12171,7 +12105,6 @@ function LogViewer({
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const msg = { type: "subscribe", filters };
       wsRef.current.send(JSON.stringify(msg));
-      setEntries([]);
     }
   }, [filters]);
   (0, import_react4.useEffect)(() => {
@@ -12191,18 +12124,15 @@ function LogViewer({
   const handleHasErrorChange = (0, import_react4.useCallback)((e) => {
     setFilters((f) => ({ ...f, hasError: e.target.checked || void 0 }));
   }, []);
-  const handleCustomPropertyChange = (0, import_react4.useCallback)(
-    (propName, value) => {
-      setFilters((f) => ({
-        ...f,
-        properties: value ? { ...f.properties ?? {}, [propName]: value } : (() => {
-          const { [propName]: _, ...rest } = f.properties ?? {};
-          return Object.keys(rest).length > 0 ? rest : void 0;
-        })()
-      }));
-    },
-    []
-  );
+  const handleCustomPropertyChange = (0, import_react4.useCallback)((propName, value) => {
+    setFilters((f) => ({
+      ...f,
+      properties: value ? { ...f.properties ?? {}, [propName]: value } : (() => {
+        const { [propName]: _, ...rest } = f.properties ?? {};
+        return Object.keys(rest).length > 0 ? rest : void 0;
+      })()
+    }));
+  }, []);
   const handleTraceFilter = (0, import_react4.useCallback)((traceId) => {
     setFilters((f) => f.traceId === traceId ? { ...f, traceId: void 0 } : { ...f, traceId });
   }, []);
@@ -12222,24 +12152,65 @@ function LogViewer({
     setSearchText("");
   }, []);
   const displayEntries = (0, import_react4.useMemo)(() => {
-    if (!searchText) return entries;
-    const search = searchText.toLowerCase();
-    return entries.filter((e) => JSON.stringify(e).toLowerCase().includes(search));
-  }, [entries, searchText]);
+    let result = entries;
+    if (filters.traceId) {
+      result = result.filter((e) => e.traceId === filters.traceId);
+    }
+    if (filters.level) {
+      const minLevel = Object.entries({
+        trace: 10,
+        debug: 20,
+        info: 30,
+        warn: 40,
+        error: 50,
+        fatal: 60
+      }).find(([name]) => name === filters.level)?.[1] ?? 30;
+      result = result.filter((e) => (e.level ?? 30) >= minLevel);
+    }
+    if (filters.name) {
+      result = result.filter((e) => e.name === filters.name);
+    }
+    if (filters.hasError) {
+      result = result.filter((e) => e.err || (e.level ?? 0) >= 50);
+    }
+    if (searchText) {
+      const search = searchText.toLowerCase();
+      result = result.filter((e) => JSON.stringify(e).toLowerCase().includes(search));
+    }
+    return result;
+  }, [entries, searchText, filters]);
   const columns = (0, import_react4.useMemo)(
     () => [
       {
         id: "time",
-        header: "Time",
-        width: 105,
-        template: (_v, row) => formatTimestamp(row.time)
-      },
-      {
-        id: "timeAgo",
-        header: "Ago",
-        width: 65,
-        getter: (row) => row.time,
-        template: (v2) => timeAgo(v2)
+        header: /* @__PURE__ */ import_react4.default.createElement(
+          "span",
+          {
+            style: { cursor: "pointer", userSelect: "none" },
+            onClick: () => setTimeMode((m) => m === "absolute" ? "relative" : "absolute"),
+            title: "Click to toggle between absolute and relative time"
+          },
+          timeMode === "absolute" ? "Time" : "Ago"
+        ),
+        width: timeMode === "absolute" ? 105 : 65,
+        cell: ({ row }) => /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              minHeight: "28px",
+              fontSize: "12px",
+              cursor: "pointer"
+            },
+            onClick: (e) => {
+              e.stopPropagation();
+              setTimeMode((m) => m === "absolute" ? "relative" : "absolute");
+            },
+            title: "Click to toggle"
+          },
+          timeMode === "absolute" ? formatTimestamp(row.time) : timeAgo(row.time)
+        )
       },
       {
         id: "level",
@@ -12262,29 +12233,63 @@ function LogViewer({
       {
         id: "msg",
         header: "Message",
-        flexgrow: 1,
+        width: 400,
+        resizable: true,
         cell: MessageCell
       },
       {
-        id: "http",
-        header: "HTTP",
-        width: 200,
-        getter: (row) => row.req ? `${row.req.method} ${row.req.url}` : "",
-        cell: HttpCell
+        id: "json",
+        header: "JSON",
+        width: 400,
+        resizable: true,
+        cell: JSONCell
       }
     ],
-    []
+    [timeMode]
   );
   const initGrid = (0, import_react4.useCallback)(
     (api) => {
       gridApiRef.current = api;
       api.on("select-row", (ev) => {
-        const entry = entriesRef.current.find((e) => e.id === ev.id);
-        if (entry) setSelectedEntry(entry);
+        setExpandedRows((prev) => {
+          const newSet = new Set(prev);
+          if (newSet.has(ev.id)) {
+            newSet.delete(ev.id);
+          } else {
+            newSet.add(ev.id);
+          }
+          return newSet;
+        });
+        setTimeout(() => {
+          if (api.exec) api.exec("resize");
+        }, 0);
       });
     },
     []
     // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const getRowHeight = (0, import_react4.useCallback)(
+    (row) => {
+      if (expandedRows.has(row.id)) {
+        let height = 0;
+        if (row.msg) {
+          const lines = Math.ceil((row.msg.length || 80) / 80);
+          height += Math.max(lines * 20, 40);
+        }
+        if (row.err) {
+          height += 100;
+          if (row.err.stack) {
+            const stackLines = (row.err.stack.match(/\n/g) || []).length;
+            height += Math.min(stackLines * 16, 200);
+          }
+        }
+        if (row.req) height += 80;
+        if (row.res) height += 60;
+        return Math.max(height, 100);
+      }
+      return 28;
+    },
+    [expandedRows]
   );
   const rowStyle = (0, import_react4.useCallback)(
     (row) => {
@@ -12342,203 +12347,185 @@ function LogViewer({
   };
   const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError || filters.properties && Object.keys(filters.properties).length > 0;
   const ThemeWrapper = isDark ? ho : fo;
-  return import_react4.default.createElement(
-    ViewerContext.Provider,
-    { value: contextValue },
-    import_react4.default.createElement(
-      "div",
+  return /* @__PURE__ */ import_react4.default.createElement(ViewerContext.Provider, { value: contextValue }, /* @__PURE__ */ import_react4.default.createElement(ExpandedRowsContext.Provider, { value: expandedRows }, /* @__PURE__ */ import_react4.default.createElement(
+    "div",
+    {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: isDark ? "#0d1117" : "#ffffff",
+        color: isDark ? "#c9d1d9" : "#24292f"
+      }
+    },
+    /* @__PURE__ */ import_react4.default.createElement("style", null, ".blong-log-trace-highlight:not(.selected) .cell { background: " + (isDark ? "#1c2128" : "#ddf4ff") + " !important; }", ".wx-theme { height: 100%; display: flex; flex-direction: column; }", ".wx-grid { flex: 1; min-height: 0; }"),
+    /* @__PURE__ */ import_react4.default.createElement("div", { style: toolbarStyle }, /* @__PURE__ */ import_react4.default.createElement(
+      "select",
+      {
+        style: selectStyle,
+        value: filters.level ?? "",
+        onChange: handleLevelChange
+      },
+      /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "All Levels"),
+      ["trace", "debug", "info", "warn", "error", "fatal"].map((l2) => /* @__PURE__ */ import_react4.default.createElement(
+        "option",
+        {
+          key: l2,
+          value: l2
+        },
+        l2.toUpperCase()
+      ))
+    ), /* @__PURE__ */ import_react4.default.createElement(
+      "input",
+      {
+        style: { ...inputStyle, width: "140px" },
+        placeholder: "Service name...",
+        value: filters.name ?? "",
+        onChange: handleNameChange,
+        list: "service-names-datalist"
+      }
+    ), /* @__PURE__ */ import_react4.default.createElement("datalist", { id: "service-names-datalist" }, uniqueServiceNames.map((name) => /* @__PURE__ */ import_react4.default.createElement(
+      "option",
+      {
+        key: name,
+        value: name
+      }
+    ))), /* @__PURE__ */ import_react4.default.createElement(
+      "label",
       {
         style: {
           display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          background: isDark ? "#0d1117" : "#ffffff",
-          color: isDark ? "#c9d1d9" : "#24292f"
+          alignItems: "center",
+          gap: "4px",
+          padding: "4px 8px",
+          fontSize: "12px",
+          cursor: "pointer",
+          userSelect: "none"
         }
       },
-      // Dynamic styles for trace highlight
-      import_react4.default.createElement(
-        "style",
-        null,
-        ".blong-log-trace-highlight:not(.selected) .cell { background: " + (isDark ? "#1c2128" : "#ddf4ff") + " !important; }"
+      /* @__PURE__ */ import_react4.default.createElement(
+        "input",
+        {
+          type: "checkbox",
+          checked: !!filters.hasError,
+          onChange: handleHasErrorChange
+        }
       ),
-      // Toolbar
-      import_react4.default.createElement(
-        "div",
-        { style: toolbarStyle },
-        import_react4.default.createElement(
+      "Has Error"
+    ), clientConfig?.properties.custom?.filter((p) => p.filterable).map(
+      (prop) => prop.values ? (
+        // Dropdown for predefined values
+        /* @__PURE__ */ import_react4.default.createElement(
           "select",
-          { style: selectStyle, value: filters.level ?? "", onChange: handleLevelChange },
-          import_react4.default.createElement("option", { value: "" }, "All Levels"),
-          ...["trace", "debug", "info", "warn", "error", "fatal"].map(
-            (l2) => import_react4.default.createElement("option", { key: l2, value: l2 }, l2.toUpperCase())
-          )
-        ),
-        import_react4.default.createElement("input", {
-          style: { ...inputStyle, width: "140px" },
-          placeholder: "Service name...",
-          value: filters.name ?? "",
-          onChange: handleNameChange,
-          list: "service-names-datalist"
-        }),
-        // Datalist for service name autocomplete
-        import_react4.default.createElement(
-          "datalist",
-          { id: "service-names-datalist" },
-          ...uniqueServiceNames.map(
-            (name) => import_react4.default.createElement("option", { key: name, value: name })
-          )
-        ),
-        import_react4.default.createElement(
-          "label",
           {
-            style: {
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "4px 8px",
-              fontSize: "12px",
-              cursor: "pointer",
-              userSelect: "none"
-            }
+            key: prop.name,
+            style: selectStyle,
+            value: filters.properties?.[prop.name] ?? "",
+            onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
           },
-          import_react4.default.createElement("input", {
-            type: "checkbox",
-            checked: !!filters.hasError,
-            onChange: handleHasErrorChange
-          }),
-          "Has Error"
-        ),
-        ...clientConfig?.properties.custom ? clientConfig.properties.custom.filter((p) => p.filterable).map(
-          (prop) => prop.values ? (
-            // Dropdown for predefined values
-            import_react4.default.createElement(
-              "select",
-              {
-                key: prop.name,
-                style: selectStyle,
-                value: filters.properties?.[prop.name] ?? "",
-                onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
-              },
-              import_react4.default.createElement(
-                "option",
-                { value: "" },
-                `All ${prop.label}`
-              ),
-              ...prop.values.map(
-                (val) => import_react4.default.createElement(
-                  "option",
-                  { key: val, value: val },
-                  val
-                )
-              )
-            )
-          ) : (
-            // Text input for free-form values
-            import_react4.default.createElement("input", {
-              key: prop.name,
-              style: { ...inputStyle, width: "140px" },
-              placeholder: `${prop.label}...`,
-              value: filters.properties?.[prop.name] ?? "",
-              onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
-            })
-          )
-        ) : [],
-        filters.traceId ? import_react4.default.createElement(
-          "span",
-          {
-            style: {
-              padding: "1px 6px",
-              borderRadius: "3px",
-              fontSize: "11px",
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              background: "#1f6feb",
-              color: "#fff",
-              cursor: "pointer"
+          /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, `All ${prop.label}`),
+          prop.values.map((val) => /* @__PURE__ */ import_react4.default.createElement(
+            "option",
+            {
+              key: val,
+              value: val
             },
-            onClick: () => handleTraceFilter(filters.traceId),
-            title: "Click to remove trace filter"
-          },
-          "Trace: " + filters.traceId.substring(0, 12) + "\u2026 \xD7"
-        ) : null,
-        import_react4.default.createElement("input", {
-          style: { ...inputStyle, flex: 1, minWidth: "200px" },
-          placeholder: "Search logs... (Enter to apply)",
-          value: searchText,
-          onChange: handleSearchChange,
-          onKeyDown: handleSearchSubmit
-        }),
-        hasFilters ? import_react4.default.createElement(
-          "button",
-          {
-            style: {
-              ...inputStyle,
-              cursor: "pointer",
-              border: "1px solid #da3633",
-              color: "#da3633"
-            },
-            onClick: clearFilters
-          },
-          "Clear"
-        ) : null
-      ),
-      // SVAR Grid
-      import_react4.default.createElement(
-        "div",
-        { style: { flex: 1, overflow: "hidden" } },
-        import_react4.default.createElement(
-          ThemeWrapper,
-          null,
-          import_react4.default.createElement(lo, {
-            data: displayEntries,
-            columns,
-            select: true,
-            rowStyle,
-            init: initGrid,
-            onFilterTrace: handleFilterTrace,
-            sizes: { rowHeight: 28 }
-          })
+            val
+          ))
         )
-      ),
-      // Status bar
-      import_react4.default.createElement(
-        "div",
-        { style: statusBarStyle },
-        import_react4.default.createElement("span", {
-          style: {
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            display: "inline-block",
-            background: connected ? "#22c55e" : "#ef4444"
+      ) : (
+        // Text input for free-form values
+        /* @__PURE__ */ import_react4.default.createElement(
+          "input",
+          {
+            key: prop.name,
+            style: { ...inputStyle, width: "140px" },
+            placeholder: `${prop.label}...`,
+            value: filters.properties?.[prop.name] ?? "",
+            onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
           }
-        }),
-        import_react4.default.createElement("span", null, connected ? "Connected" : "Disconnected"),
-        import_react4.default.createElement("span", null, displayEntries.length + " entries"),
-        import_react4.default.createElement(
-          "span",
-          {
-            style: { cursor: "pointer" },
-            onClick: () => setAutoScroll((a) => !a),
-            title: "Toggle auto-scroll"
-          },
-          autoScroll ? "\u2B07 Auto-scroll" : "\u23F8 Paused"
         )
-      ),
-      // Detail modal
-      selectedEntry ? import_react4.default.createElement(EntryModal, {
-        entry: selectedEntry,
-        isDark,
-        onClose: () => setSelectedEntry(null)
-      }) : null
-    )
-  );
+      )
+    ), filters.traceId && /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          padding: "1px 6px",
+          borderRadius: "3px",
+          fontSize: "11px",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          background: "#1f6feb",
+          color: "#fff",
+          cursor: "pointer"
+        },
+        onClick: () => handleTraceFilter(filters.traceId),
+        title: "Click to remove trace filter"
+      },
+      "Trace: " + filters.traceId.substring(0, 12) + "\u2026 \xD7"
+    ), /* @__PURE__ */ import_react4.default.createElement(
+      "input",
+      {
+        style: { ...inputStyle, flex: 1, minWidth: "200px" },
+        placeholder: "Search logs... (Enter to apply)",
+        value: searchText,
+        onChange: handleSearchChange,
+        onKeyDown: handleSearchSubmit
+      }
+    ), hasFilters && /* @__PURE__ */ import_react4.default.createElement(
+      "button",
+      {
+        style: {
+          ...inputStyle,
+          cursor: "pointer",
+          border: "1px solid #da3633",
+          color: "#da3633"
+        },
+        onClick: clearFilters
+      },
+      "Clear"
+    )),
+    /* @__PURE__ */ import_react4.default.createElement("div", { style: { flex: 1, overflow: "hidden" } }, /* @__PURE__ */ import_react4.default.createElement(ThemeWrapper, null, /* @__PURE__ */ import_react4.default.createElement(
+      lo,
+      {
+        ...{
+          data: displayEntries,
+          columns,
+          select: true,
+          rowStyle,
+          rowHeight: getRowHeight,
+          autoRowHeight: true,
+          init: initGrid,
+          onFilterTrace: handleFilterTrace
+        }
+      }
+    ))),
+    /* @__PURE__ */ import_react4.default.createElement("div", { style: statusBarStyle }, /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: {
+          width: "8px",
+          height: "8px",
+          borderRadius: "50%",
+          display: "inline-block",
+          background: connected ? "#22c55e" : "#ef4444"
+        }
+      }
+    ), /* @__PURE__ */ import_react4.default.createElement("span", null, connected ? "Connected" : "Disconnected"), /* @__PURE__ */ import_react4.default.createElement("span", null, displayEntries.length + " entries"), /* @__PURE__ */ import_react4.default.createElement(
+      "span",
+      {
+        style: { cursor: "pointer" },
+        onClick: () => setAutoScroll((a) => !a),
+        title: "Toggle auto-scroll"
+      },
+      autoScroll ? "\u2B07 Auto-scroll" : "\u23F8 Paused"
+    ))
+  )));
 }
 
 // src/client/app.tsx
 var root = (0, import_client.createRoot)(document.getElementById("root"));
-root.render(import_react5.default.createElement(LogViewer));
+root.render(/* @__PURE__ */ import_react5.default.createElement(LogViewer, null));
 /*! Bundled license information:
 
 react/cjs/react.production.min.js:

@@ -133,6 +133,7 @@ export interface ThemeConfig {
         boolean?: string;
         null?: string;
         key?: string;
+        punctuation?: string;
     };
 }
 

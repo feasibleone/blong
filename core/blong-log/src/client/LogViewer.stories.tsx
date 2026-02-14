@@ -1,498 +1,149 @@
 /**
  * Storybook stories for the LogViewer component.
  *
- * These stories render the LogViewer with mock data (no WebSocket connection)
- * to test visual appearance across themes, data volumes, and UI states.
+ * These stories render the real LogViewer component with mocked WebSocket data.
+ * The MockedLogViewer wrapper provides static data to the actual component.
  */
 
-import React, {useMemo, useState} from 'react';
+import React from 'react';
 
 import type {Meta, StoryObj} from '@storybook/react-vite';
-import {Grid, Willow, WillowDark} from '@svar-ui/react-grid';
 
-import type {ClientConfig, LogEntry, ThemeConfig} from '../types.js';
-import {LEVEL_NAME} from '../types.js';
+import type {ClientConfig, LogEntry} from '../types.js';
 import {
     darkThemeConfig,
     errorEntries,
     generateLargeDataset,
+    httpDetailedEntries,
     lightThemeConfig,
     sampleEntries,
     TRACE_ID_A,
 } from './__fixtures__/data.js';
+import LogViewer from './LogViewer.js';
 
-// Generate deterministic IDs for story entries
-function makeId(index: number): string {
-    const hex = index.toString(16).padStart(10, '0').toUpperCase();
-    return `01ARYZ6S41${hex}${hex.substring(0, 16).padStart(16, '0')}`;
-}
-
-const BASE_TIME = new Date('2026-02-13T12:00:00.000Z').getTime();
-
-// ── Standalone wrapper that renders LogViewer grid without WebSocket ───────────
+// ── Mock WebSocket for Storybook ──────────────────────────────────────────────
 
 /**
- * A self-contained version of the LogViewer grid area for stories.
- * It takes entries and config directly — no WebSocket needed.
+ * Wrapper that provides the real LogViewer with mocked WebSocket data.
+ * This allows us to test the actual component with static data in Storybook,
+ * including all filtering and search widgets.
  */
-function StoryViewer({
-    entries,
+function MockedLogViewer({
     config,
-    theme: themeProp,
-    connectedOverride = false,
-    filterLevel,
-    filterName,
-    filterTraceId,
-    searchText: initialSearch = '',
+    initialEntries = [],
+    initialSearchText,
+    initialExpandedRows,
 }: {
-    entries: LogEntry[];
     config: ClientConfig;
-    theme?: ThemeConfig;
-    connectedOverride?: boolean;
-    filterLevel?: string;
-    filterName?: string;
-    filterTraceId?: string;
-    searchText?: string;
-}) {
-    const theme = useMemo(() => ({...config.theme, ...themeProp}), [config.theme, themeProp]);
-    const isDark = theme.mode === 'dark';
-    const [searchText, setSearchText] = useState(initialSearch);
-    const [filterState, setFilterState] = useState({
-        level: filterLevel,
-        name: filterName,
-        traceId: filterTraceId,
-    });
-    const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null);
+    initialEntries?: LogEntry[];
+    initialSearchText?: string;
+    initialExpandedRows?: Set<string>;
+}): React.ReactElement {
+    const mockWsUrl = React.useMemo(() => `ws://storybook-mock-${Math.random()}.local`, []);
 
-    const ThemeWrapper = isDark ? WillowDark : Willow;
+    React.useEffect(() => {
+        // Store original WebSocket
+        const OriginalWebSocket = (window as any).WebSocket;
 
-    // Client-side filtering
-    const displayEntries = useMemo(() => {
-        let filtered = entries;
-        if (filterState.level) {
-            const levelMap: Record<string, number> = {
-                trace: 10,
-                debug: 20,
-                info: 30,
-                warn: 40,
-                error: 50,
-                fatal: 60,
-            };
-            const minLevel = levelMap[filterState.level] ?? 0;
-            filtered = filtered.filter(e => (e.level ?? 0) >= minLevel);
-        }
-        if (filterState.name) {
-            const name = filterState.name.toLowerCase();
-            filtered = filtered.filter(e => (e.name ?? '').toLowerCase().includes(name));
-        }
-        if (filterState.traceId) {
-            filtered = filtered.filter(e => e.traceId === filterState.traceId);
-        }
-        if (searchText) {
-            const s = searchText.toLowerCase();
-            filtered = filtered.filter(e => JSON.stringify(e).toLowerCase().includes(s));
-        }
-        return filtered;
-    }, [entries, filterState, searchText]);
+        // Create mock WebSocket class
+        class MockWebSocket {
+            url: string;
+            onopen: ((ev: Event) => void) | null = null;
+            onmessage: ((ev: MessageEvent) => void) | null = null;
+            onclose: ((ev: CloseEvent) => void) | null = null;
+            onerror: ((ev: Event) => void) | null = null;
+            readyState = 1; // OPEN
+            OPEN = 1;
+            CLOSED = 3;
 
-    const columns = useMemo(
-        () => [
-            {
-                id: 'time',
-                header: 'Time',
-                width: 105,
-                template: (_v: unknown, row: LogEntry) => {
-                    if (!row.time) return '';
-                    return new Date(row.time).toLocaleTimeString('en-US', {
-                        hour12: false,
-                        fractionalSecondDigits: 3,
-                    });
-                },
-            },
-            {
-                id: 'level',
-                header: 'Level',
-                width: 75,
-                cell: function LevelCell({row}: {row: LogEntry}) {
-                    const name = row.levelName ?? LEVEL_NAME[row.level ?? 30] ?? 'unknown';
-                    const colors = theme.levels ?? {};
-                    const color = (colors as Record<string, string>)[name] ?? '#6b7280';
-                    return React.createElement(
-                        'span',
-                        {
-                            style: {
-                                padding: '1px 6px',
-                                borderRadius: '3px',
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase' as const,
-                                color: '#fff',
-                                background: color,
-                                display: 'inline-block',
-                                minWidth: '45px',
-                                textAlign: 'center' as const,
-                            },
-                        },
-                        name,
-                    );
-                },
-            },
-            {
-                id: 'name',
-                header: 'Service',
-                width: 130,
-                template: (_v: unknown, row: LogEntry) => row.name ?? '',
-            },
-            {
-                id: 'traceId',
-                header: 'Trace ID',
-                width: 155,
-                template: (_v: unknown, row: LogEntry) =>
-                    row.traceId ? row.traceId.substring(0, 16) + '\u2026' : '',
-            },
-            {
-                id: 'msg',
-                header: 'Message',
-                flexgrow: 1,
-                cell: function MsgCell({row}: {row: LogEntry}) {
-                    return React.createElement(
-                        'div',
-                        {
-                            style: {
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                fontSize: '12px',
-                            },
-                            title: row.msg ?? '',
-                        },
-                        row.msg ?? '',
-                        row.err
-                            ? React.createElement(
-                                  'span',
-                                  {
-                                      style: {
-                                          color: theme.levels?.error ?? '#ef4444',
-                                          marginLeft: '8px',
-                                      },
-                                  },
-                                  ` [${row.err.type ?? 'Error'}: ${row.err.message ?? ''}]`,
-                              )
-                            : null,
-                    );
-                },
-            },
-            {
-                id: 'http',
-                header: 'HTTP',
-                width: 200,
-                getter: (row: LogEntry) => (row.req ? `${row.req.method} ${row.req.url}` : ''),
-                cell: function HttpCell({row}: {row: LogEntry}) {
-                    const statusColor = row.res
-                        ? (row.res.statusCode ?? 200) < 400
-                            ? '#22c55e'
-                            : '#ef4444'
-                        : undefined;
-                    return React.createElement(
-                        'div',
-                        {style: {display: 'flex', gap: '8px', fontSize: '12px'}},
-                        row.req
-                            ? React.createElement(
-                                  'span',
-                                  null,
-                                  `${row.req.method ?? 'GET'} ${row.req.url ?? ''}`,
-                              )
-                            : null,
-                        row.res
-                            ? React.createElement(
-                                  'span',
-                                  null,
-                                  React.createElement(
-                                      'span',
-                                      {style: {color: statusColor, fontWeight: 'bold'}},
-                                      String(row.res.statusCode ?? ''),
-                                  ),
-                                  row.res.responseTime ? ` ${row.res.responseTime}ms` : '',
-                              )
-                            : null,
-                    );
-                },
-            },
-        ],
-        [theme],
+            constructor(url: string) {
+                this.url = url;
+                // Simulate async connection
+                setTimeout(() => {
+                    if (this.onopen) {
+                        this.onopen(new Event('open'));
+                    }
+                    // Send initial entries after connection opens
+                    if (this.onmessage && initialEntries.length > 0) {
+                        this.onmessage(
+                            new MessageEvent('message', {
+                                data: JSON.stringify({
+                                    type: 'entries',
+                                    entries: initialEntries,
+                                }),
+                            }),
+                        );
+                    }
+                }, 10);
+            }
+
+            send(_data: string): void {
+                // Mock send - accept subscribe messages but do nothing
+            }
+
+            close(): void {
+                this.readyState = this.CLOSED;
+                setTimeout(() => {
+                    if (this.onclose) {
+                        this.onclose(new CloseEvent('close'));
+                    }
+                }, 10);
+            }
+        }
+
+        // Replace WebSocket for our mock URL only
+        (window as any).WebSocket = function (url: string, ...args: any[]) {
+            if (url === mockWsUrl) {
+                return new MockWebSocket(url);
+            }
+            return new OriginalWebSocket(url, ...args);
+        };
+        // Copy static properties
+        (window as any).WebSocket.CONNECTING = 0;
+        (window as any).WebSocket.OPEN = 1;
+        (window as any).WebSocket.CLOSING = 2;
+        (window as any).WebSocket.CLOSED = 3;
+
+        // Cleanup: restore original WebSocket
+        return () => {
+            (window as any).WebSocket = OriginalWebSocket;
+        };
+    }, [mockWsUrl, initialEntries]);
+
+    const configWithMockWs = React.useMemo(
+        () => ({
+            ...config,
+            wsUrl: mockWsUrl,
+        }),
+        [config, mockWsUrl],
     );
 
-    const initGrid = React.useCallback(
-        (api: any) => {
-            api.on('select-row', (ev: {id: string}) => {
-                const entry = entries.find(e => e.id === ev.id);
-                if (entry) setSelectedEntry(entry);
-            });
-        },
-        [entries],
-    );
-
-    const rowStyle = React.useCallback(
-        (row: LogEntry) => {
-            if (filterState.traceId && row.traceId === filterState.traceId)
-                return 'blong-log-trace-highlight';
-            return '';
-        },
-        [filterState.traceId],
-    );
-
-    const inputStyle = {
-        padding: '4px 8px',
-        border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
-        borderRadius: '4px',
-        background: isDark ? '#0d1117' : '#ffffff',
-        color: isDark ? '#c9d1d9' : '#24292f',
-        fontSize: '12px',
-        outline: 'none',
-    };
-
-    const selectStyle = {
-        padding: '4px 8px',
-        border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
-        borderRadius: '4px',
-        background: isDark ? '#0d1117' : '#ffffff',
-        color: isDark ? '#c9d1d9' : '#24292f',
-        fontSize: '12px',
-    };
-
-    return React.createElement(
-        'div',
-        {
-            style: {
-                display: 'flex',
-                flexDirection: 'column' as const,
-                height: '100vh',
-                background: isDark ? '#0d1117' : '#ffffff',
-                color: isDark ? '#c9d1d9' : '#24292f',
-                fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
-                fontSize: '13px',
-            },
-        },
-        React.createElement(
-            'style',
-            null,
-            '.blong-log-trace-highlight:not(.selected) .cell { background: ' +
-                (isDark ? '#1c2128' : '#ddf4ff') +
-                ' !important; }',
-        ),
-        // Toolbar
-        React.createElement(
-            'div',
-            {
-                style: {
-                    display: 'flex',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    borderBottom: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
-                    background: isDark ? '#161b22' : '#f6f8fa',
-                    alignItems: 'center',
-                    flexWrap: 'wrap' as const,
-                },
-            },
-            React.createElement(
-                'select',
-                {
-                    style: selectStyle,
-                    value: filterState.level ?? '',
-                    onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
-                        setFilterState(f => ({...f, level: e.target.value || undefined})),
-                },
-                React.createElement('option', {value: ''}, 'All Levels'),
-                ...['trace', 'debug', 'info', 'warn', 'error', 'fatal'].map(l =>
-                    React.createElement('option', {key: l, value: l}, l.toUpperCase()),
-                ),
-            ),
-            React.createElement('input', {
-                style: {...inputStyle, width: '140px'},
-                placeholder: 'Service name...',
-                value: filterState.name ?? '',
-                onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFilterState(f => ({...f, name: e.target.value || undefined})),
-            }),
-            filterState.traceId
-                ? React.createElement(
-                      'span',
-                      {
-                          style: {
-                              padding: '1px 6px',
-                              borderRadius: '3px',
-                              fontSize: '11px',
-                              fontWeight: 'bold',
-                              textTransform: 'uppercase' as const,
-                              background: '#1f6feb',
-                              color: '#fff',
-                              cursor: 'pointer',
-                          },
-                          onClick: () => setFilterState(f => ({...f, traceId: undefined})),
-                      },
-                      'Trace: ' + filterState.traceId.substring(0, 12) + '\u2026 \u00d7',
-                  )
-                : null,
-            React.createElement('input', {
-                style: {...inputStyle, flex: 1, minWidth: '200px'},
-                placeholder: 'Search logs...',
-                value: searchText,
-                onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSearchText(e.target.value),
-            }),
-            filterState.level || filterState.name || filterState.traceId || searchText
-                ? React.createElement(
-                      'button',
-                      {
-                          style: {
-                              ...inputStyle,
-                              cursor: 'pointer',
-                              border: '1px solid #da3633',
-                              color: '#da3633',
-                          },
-                          onClick: () => {
-                              setFilterState({
-                                  level: undefined,
-                                  name: undefined,
-                                  traceId: undefined,
-                              });
-                              setSearchText('');
-                          },
-                      },
-                      'Clear',
-                  )
-                : null,
-        ),
-        // Grid
-        React.createElement(
-            'div',
-            {style: {flex: 1, overflow: 'hidden'}},
-            React.createElement(
-                ThemeWrapper,
-                null,
-                React.createElement(Grid, {
-                    data: displayEntries,
-                    columns,
-                    select: true,
-                    rowStyle,
-                    init: initGrid,
-                    sizes: {rowHeight: 28},
-                } as any),
-            ),
-        ),
-        // Status bar
-        React.createElement(
-            'div',
-            {
-                style: {
-                    display: 'flex',
-                    gap: '12px',
-                    padding: '4px 12px',
-                    borderTop: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
-                    background: isDark ? '#161b22' : '#f6f8fa',
-                    fontSize: '11px',
-                    color: isDark ? '#8b949e' : '#57606a',
-                    alignItems: 'center',
-                },
-            },
-            React.createElement('span', {
-                style: {
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    display: 'inline-block',
-                    background: connectedOverride ? '#22c55e' : '#ef4444',
-                },
-            }),
-            React.createElement('span', null, connectedOverride ? 'Connected' : 'Disconnected'),
-            React.createElement('span', null, `${displayEntries.length} entries`),
-        ),
-        // Modal
-        selectedEntry
-            ? React.createElement(
-                  'div',
-                  {
-                      style: {
-                          position: 'fixed' as const,
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'rgba(0,0,0,0.5)',
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          zIndex: 100,
-                      },
-                      onClick: () => setSelectedEntry(null),
-                  },
-                  React.createElement(
-                      'div',
-                      {
-                          style: {
-                              background: isDark ? '#161b22' : '#ffffff',
-                              border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
-                              borderRadius: '8px',
-                              padding: '16px',
-                              maxWidth: '80vw',
-                              maxHeight: '80vh',
-                              overflow: 'auto',
-                              minWidth: '600px',
-                          },
-                          onClick: (e: React.MouseEvent) => e.stopPropagation(),
-                      },
-                      React.createElement(
-                          'div',
-                          {
-                              style: {
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  marginBottom: '12px',
-                              },
-                          },
-                          React.createElement(
-                              'h3',
-                              {style: {fontSize: '14px', fontWeight: 'bold'}},
-                              'Log Entry Details',
-                          ),
-                          React.createElement(
-                              'button',
-                              {
-                                  onClick: () => setSelectedEntry(null),
-                                  style: {
-                                      background: 'none',
-                                      border: 'none',
-                                      color: 'inherit',
-                                      cursor: 'pointer',
-                                      fontSize: '18px',
-                                  },
-                              },
-                              '\u00d7',
-                          ),
-                      ),
-                      React.createElement(
-                          'pre',
-                          {
-                              style: {
-                                  whiteSpace: 'pre-wrap',
-                                  fontFamily: 'inherit',
-                                  fontSize: '12px',
-                                  overflow: 'auto',
-                                  maxHeight: '65vh',
-                              },
-                          },
-                          JSON.stringify(selectedEntry, null, 2),
-                      ),
-                  ),
-              )
-            : null,
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100%',
+                height: '100%',
+            }}
+        >
+            <LogViewer
+                config={configWithMockWs}
+                initialSearchText={initialSearchText}
+                initialExpandedRows={initialExpandedRows}
+            />
+        </div>
     );
 }
 
 // ── Meta ──────────────────────────────────────────────────────────────────────
 
-const meta: Meta<typeof StoryViewer> = {
+const meta: Meta<typeof MockedLogViewer> = {
     title: 'LogViewer',
-    component: StoryViewer,
+    component: MockedLogViewer,
     parameters: {
         layout: 'fullscreen',
     },
@@ -500,138 +151,290 @@ const meta: Meta<typeof StoryViewer> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof StoryViewer>;
+type Story = StoryObj<typeof MockedLogViewer>;
 
 // ── Stories ───────────────────────────────────────────────────────────────────
 
-/** Default dark theme with a mix of log levels, HTTP info and errors */
+/**
+ * Default dark theme with a mix of log levels, HTTP info and errors.
+ * Shows all filtering and search widgets in action.
+ */
 export const DarkTheme: Story = {
     args: {
-        entries: sampleEntries,
         config: darkThemeConfig,
-        connectedOverride: true,
+        initialEntries: sampleEntries,
     },
 };
 
-/** Light theme variant */
+/**
+ * Light theme variant with full filtering UI.
+ */
 export const LightTheme: Story = {
     args: {
-        entries: sampleEntries,
         config: lightThemeConfig,
-        connectedOverride: true,
+        initialEntries: sampleEntries,
     },
 };
 
-/** Viewer in disconnected state with no entries */
+/**
+ * Viewer in disconnected state with no entries.
+ * Tests empty state UI.
+ */
 export const Empty: Story = {
     args: {
-        entries: [],
         config: darkThemeConfig,
-        connectedOverride: false,
+        initialEntries: [],
     },
 };
 
-/** Only error-level entries displayed */
+/**
+ * Only error-level entries displayed.
+ * Use level filter dropdown to switch between levels.
+ */
 export const ErrorsOnly: Story = {
     args: {
-        entries: errorEntries,
         config: darkThemeConfig,
-        connectedOverride: true,
+        initialEntries: errorEntries,
     },
 };
 
-/** Entries filtered to a single distributed trace */
-export const TraceFiltered: Story = {
-    args: {
-        entries: sampleEntries,
-        config: darkThemeConfig,
-        connectedOverride: true,
-        filterTraceId: TRACE_ID_A,
-    },
-};
-
-/** Pre-filtered by service name */
-export const ServiceFiltered: Story = {
-    args: {
-        entries: sampleEntries,
-        config: darkThemeConfig,
-        connectedOverride: true,
-        filterName: 'payment',
-    },
-};
-
-/** Pre-filtered by minimum level */
-export const LevelFiltered: Story = {
-    args: {
-        entries: sampleEntries,
-        config: darkThemeConfig,
-        connectedOverride: true,
-        filterLevel: 'warn',
-    },
-};
-
-/** Search text pre-applied */
-export const WithSearch: Story = {
-    args: {
-        entries: sampleEntries,
-        config: darkThemeConfig,
-        connectedOverride: true,
-        searchText: 'transfer',
-    },
-};
-
-/** 500 entries to verify grid performance at scale */
+/**
+ * Large dataset with 500 entries to verify grid performance.
+ * Tests scrolling and filtering with many entries.
+ */
 export const LargeDataset: Story = {
     args: {
-        entries: generateLargeDataset(500),
         config: darkThemeConfig,
-        connectedOverride: true,
+        initialEntries: generateLargeDataset(500),
     },
 };
 
-/** Large dataset in light theme */
+/**
+ * Large dataset in light theme.
+ */
 export const LargeDatasetLight: Story = {
     args: {
-        entries: generateLargeDataset(500),
         config: lightThemeConfig,
-        connectedOverride: true,
+        initialEntries: generateLargeDataset(500),
     },
 };
 
-/** Entries with HTTP request/response details - showcases HTTP detail view in modal */
+/**
+ * Entries with HTTP request/response details.
+ * Click on entries to see expanded view with HTTP details.
+ */
 export const WithHTTPDetails: Story = {
     args: {
-        entries: sampleEntries.filter(e => e.req || e.res),
         config: darkThemeConfig,
-        connectedOverride: true,
+        initialEntries: sampleEntries.filter(e => e.req || e.res),
     },
 };
 
-/** Entries with JSON messages - showcases JSON syntax highlighting */
-export const WithJSONMessages: Story = {
+/**
+ * Mixed entries showcasing:
+ * - Level filtering dropdown
+ * - Service name filtering with autocomplete
+ * - Search text input (type and press Enter)
+ * - Trace ID filtering (click trace ID to filter)
+ * - Has Error checkbox filter
+ * - Clear button to reset all filters
+ */
+export const AllFiltersShowcase: Story = {
     args: {
-        entries: [
-            {
-                id: makeId(100),
-                time: BASE_TIME,
-                level: 30,
-                levelName: 'info',
-                name: 'api',
-                msg: JSON.stringify({userId: 123, action: 'login', timestamp: BASE_TIME}),
-            },
-            {
-                id: makeId(101),
-                time: BASE_TIME + 100,
-                level: 30,
-                levelName: 'info',
-                name: 'api',
-                msg: JSON.stringify({
-                    data: {nested: true, values: [1, 2, 3], flag: false},
-                    count: 42,
-                }),
-            },
-        ],
         config: darkThemeConfig,
-        connectedOverride: true,
+        initialEntries: sampleEntries,
+    },
+};
+
+/**
+ * Entries from a single service to show service filter.
+ * Try typing in the service name filter.
+ */
+export const SingleService: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: sampleEntries.filter(e => e.name === 'payment'),
+    },
+};
+
+/**
+ * Entries with the same trace ID to demonstrate trace filtering.
+ * Click on a trace ID link to filter by that trace.
+ */
+export const SingleTrace: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: sampleEntries.filter(e => e.traceId === TRACE_ID_A),
+    },
+};
+
+// ── Expanded State Stories ────────────────────────────────────────────────────
+
+/**
+ * Demonstrates expanded view with HTTP request/response details.
+ * Rows are automatically expanded to show full HTTP information including
+ * request method, URL, headers, response status, and timing.
+ */
+export const ExpandedHTTPDetails: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: sampleEntries.filter(e => e.req || e.res).slice(0, 4),
+        initialExpandedRows: new Set(
+            sampleEntries
+                .filter(e => e.req || e.res)
+                .slice(0, 4)
+                .map(e => e.id),
+        ),
+    },
+};
+
+/**
+ * Demonstrates expanded view with exception/error details.
+ * Shows full error messages, error types, and stack traces when available.
+ * Highlights how errors are displayed with color-coded borders and formatting.
+ */
+export const ExpandedExceptionDetails: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [
+            sampleEntries[4], // Transfer error with TransferError
+            sampleEntries[6], // Fatal error with stack trace
+            sampleEntries[11], // Auth error with JWTError
+        ],
+        initialExpandedRows: new Set([
+            sampleEntries[4].id,
+            sampleEntries[6].id,
+            sampleEntries[11].id,
+        ]),
+    },
+};
+
+/**
+ * Demonstrates expanded view with mixed content: HTTP, errors, and regular messages.
+ * Shows how different content types are rendered together in expanded mode.
+ */
+export const ExpandedMixedContent: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [
+            sampleEntries[2], // Info with HTTP success
+            sampleEntries[4], // Error with HTTP and exception
+            sampleEntries[10], // Warn with slow HTTP response
+        ],
+        initialExpandedRows: new Set([
+            sampleEntries[2].id,
+            sampleEntries[4].id,
+            sampleEntries[10].id,
+        ]),
+    },
+};
+
+// ── HTTP Headers and Body Stories ─────────────────────────────────────────────
+
+/**
+ * Demonstrates full HTTP request/response rendering with headers and body.
+ * Shows how request headers, request body (JSON), response headers, and
+ * response body are displayed in expanded mode with syntax highlighting.
+ */
+export const HTTPFullDetails: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: httpDetailedEntries,
+        initialExpandedRows: new Set(httpDetailedEntries.map(e => e.id)),
+    },
+};
+
+/**
+ * Demonstrates successful HTTP request with detailed headers and JSON body.
+ * Shows colored syntax highlighting for request and response JSON payloads.
+ */
+export const HTTPSuccessWithBody: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [httpDetailedEntries[0]], // Successful transfer
+        initialExpandedRows: new Set([httpDetailedEntries[0].id]),
+    },
+};
+
+/**
+ * Demonstrates failed HTTP request with error body and validation details.
+ * Shows how error responses are displayed with red borders and error payloads.
+ */
+export const HTTPErrorWithBody: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [httpDetailedEntries[1]], // Failed participant registration
+        initialExpandedRows: new Set([httpDetailedEntries[1].id]),
+    },
+};
+
+/**
+ * Demonstrates HTTP GET request with response headers including caching and rate limits.
+ * Shows common HTTP headers like ETag, Cache-Control, and X-Rate-Limit headers.
+ */
+export const HTTPWithCacheHeaders: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [httpDetailedEntries[2]], // Ledger account query
+        initialExpandedRows: new Set([httpDetailedEntries[2].id]),
+    },
+};
+
+// ── Search Highlighting Stories ───────────────────────────────────────────────
+
+/**
+ * Demonstrates search highlighting in single-line (collapsed) mode.
+ * Shows how search terms are highlighted with yellow background in messages,
+ * service names, and other text fields while rows remain collapsed.
+ */
+export const SearchHighlightingSingleLine: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: sampleEntries,
+        initialSearchText: 'transfer',
+    },
+};
+
+/**
+ * Demonstrates search highlighting in expanded mode.
+ * Shows how search terms are highlighted throughout expanded content including
+ * error messages, HTTP URLs, and multi-line text.
+ */
+export const SearchHighlightingExpanded: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [
+            sampleEntries[2], // Contains "POST" and "create"
+            sampleEntries[4], // Contains "Transfer" and "payment"
+            sampleEntries[9], // Contains "Agreement" and "create"
+        ],
+        initialSearchText: 'create',
+        initialExpandedRows: new Set([
+            sampleEntries[2].id,
+            sampleEntries[4].id,
+            sampleEntries[9].id,
+        ]),
+    },
+};
+
+/**
+ * Demonstrates search highlighting with HTTP and error content.
+ * Shows how search works across HTTP request/response details and error messages
+ * when rows are expanded.
+ */
+export const SearchHighlightingHTTPAndErrors: Story = {
+    args: {
+        config: darkThemeConfig,
+        initialEntries: [
+            sampleEntries[4], // Error with "payment" and "Transfer"
+            sampleEntries[6], // Fatal with "connection" and "pool"
+            sampleEntries[11], // Error with "token" and "signature"
+        ],
+        initialSearchText: 'Error',
+        initialExpandedRows: new Set([
+            sampleEntries[4].id,
+            sampleEntries[6].id,
+            sampleEntries[11].id,
+        ]),
     },
 };

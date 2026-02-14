@@ -150,6 +150,123 @@ export const errorEntries = sampleEntries.filter(e => (e.level ?? 0) >= 50);
 /** Entries filtered to a single trace */
 export const traceEntries = sampleEntries.filter(e => e.traceId === TRACE_ID_A);
 
+/** Entries with detailed HTTP headers and body for showcase */
+export const httpDetailedEntries: LogEntry[] = [
+    {
+        id: makeId(200),
+        time: BASE_TIME + 1000,
+        level: 30,
+        levelName: 'info',
+        name: 'payment',
+        msg: 'Transfer prepared successfully',
+        traceId: TRACE_ID_A,
+        req: {
+            method: 'POST',
+            url: '/rpc/payment/transfer/prepare',
+            hostname: 'api.example.com',
+            headers: {
+                'content-type': 'application/json',
+                authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                'x-trace-id': TRACE_ID_A,
+                'user-agent': 'blong-client/1.0.0',
+                accept: 'application/json',
+            },
+            body: {
+                payerFsp: 'dfsp1',
+                payeeFsp: 'dfsp2',
+                amount: {currency: 'USD', amount: '100.00'},
+                transactionType: 'TRANSFER',
+            },
+        },
+        res: {
+            statusCode: 200,
+            responseTime: 156,
+            headers: {
+                'content-type': 'application/json',
+                'x-request-id': 'req-12345',
+                'cache-control': 'no-cache',
+            },
+            body: {
+                transferId: 'txn-a1b2c3d4',
+                state: 'RESERVED',
+                expiresAt: '2026-02-14T12:35:00Z',
+            },
+        },
+    },
+    {
+        id: makeId(201),
+        time: BASE_TIME + 1100,
+        level: 50,
+        levelName: 'error',
+        name: 'participant',
+        msg: 'Participant registration failed',
+        traceId: TRACE_ID_B,
+        err: {type: 'ValidationError', message: 'Invalid MSISDN format'},
+        req: {
+            method: 'POST',
+            url: '/rpc/participant/participant/add',
+            hostname: 'api.example.com',
+            headers: {
+                'content-type': 'application/json',
+                authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                'x-trace-id': TRACE_ID_B,
+            },
+            body: {
+                partyIdType: 'MSISDN',
+                partyIdentifier: '123456',
+                fspId: 'dfsp1',
+            },
+        },
+        res: {
+            statusCode: 400,
+            responseTime: 23,
+            headers: {
+                'content-type': 'application/json',
+                'x-request-id': 'req-67890',
+            },
+            body: {
+                error: 'VALIDATION_ERROR',
+                message: 'MSISDN must start with country code (+)',
+                field: 'partyIdentifier',
+            },
+        },
+    },
+    {
+        id: makeId(202),
+        time: BASE_TIME + 1200,
+        level: 30,
+        levelName: 'info',
+        name: 'ledger',
+        msg: 'Account balance retrieved',
+        req: {
+            method: 'GET',
+            url: '/rpc/ledger/account/get?accountId=acc-12345',
+            hostname: 'api.example.com',
+            headers: {
+                authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                accept: 'application/json',
+                'if-none-match': 'W/"1234567890"',
+            },
+        },
+        res: {
+            statusCode: 200,
+            responseTime: 45,
+            headers: {
+                'content-type': 'application/json',
+                etag: 'W/"1234567890"',
+                'cache-control': 'max-age=60',
+                'x-rate-limit-remaining': '95',
+            },
+            body: {
+                accountId: 'acc-12345',
+                balance: {currency: 'USD', amount: '1250.50'},
+                status: 'ACTIVE',
+                lastModified: '2026-02-14T12:30:00Z',
+            },
+        },
+    },
+];
+
 /** Large dataset for performance testing */
 export function generateLargeDataset(count: number): LogEntry[] {
     const services = [
@@ -218,6 +335,14 @@ export const darkThemeConfig: ClientConfig = {
             error: '#f85149',
             fatal: '#da3633',
         },
+        syntax: {
+            string: '#7ee787',
+            number: '#ffa657',
+            boolean: '#ff7b72',
+            null: '#8b949e',
+            key: '#79c0ff',
+            punctuation: '#c9d1d9',
+        },
     },
 };
 
@@ -232,6 +357,14 @@ export const lightThemeConfig: ClientConfig = {
             warn: '#9a6700',
             error: '#cf222e',
             fatal: '#a40e26',
+        },
+        syntax: {
+            string: '#0a3069',
+            number: '#953800',
+            boolean: '#cf222e',
+            null: '#6e7781',
+            key: '#8250df',
+            punctuation: '#57606a',
         },
     },
 };
