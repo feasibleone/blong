@@ -12716,7 +12716,8 @@ function LogViewer({
     borderBottom: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
     background: isDark ? "#161b22" : "#f6f8fa",
     alignItems: "center",
-    flexWrap: "wrap"
+    flexWrap: "wrap",
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
   };
   const inputStyle = {
     padding: "4px 8px",
@@ -12801,8 +12802,7 @@ function LogViewer({
           fontSize: "12px",
           cursor: "pointer",
           userSelect: "none",
-          color: isDark ? "#c9d1d9" : "#24292f",
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif'
+          color: isDark ? "#c9d1d9" : "#24292f"
         }
       },
       /* @__PURE__ */ import_react4.default.createElement(

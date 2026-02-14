@@ -34,7 +34,7 @@ see the log of your application in the browser, which provides the following fun
   - **Service name** - Displays service name with free text filter and autocomplete
   - **Trace ID** - Rendered as clickable link with two actions:
     - Left-click: Opens trace view in new browser tab using configurable URL pattern
-      with {traceId} and {timeRange} placeholders
+      with `{traceId}` and `{timeRange}` placeholders
     - Filter icon: Filters log entries to show only this trace ID
   - **Message** - Single-line preview with search highlighting, expands to show:
     - Full message content with proper line breaks
@@ -103,7 +103,7 @@ The client side is implemented as a React component using:
   using event.stopPropagation() to prevent row expansion on click
 - **Timestamp toggle**: State-based switching between absolute (ISO format) and relative (time ago)
 - **Row expansion**: Context-based tracking of expanded rows with toggle on click
-- **Trace URL generation**: Template-based URL construction with {traceId} and {timeRange} placeholders
+- **Trace URL generation**: Template-based URL construction with `{traceId}` and `{timeRange}` placeholders
 
 **Connection Management**:
 
@@ -142,7 +142,7 @@ Configurable property names for UI recognition:
 
 **Trace View Integration**:
 
-- URL pattern with {traceId} and {timeRange} placeholders
+- URL pattern with `{traceId}` and `{timeRange}` placeholders
 - Example: `https://tracing.example.com/trace/{traceId}?start={timeRange.start}&end={timeRange.end}`
 - Allows integration with any distributed tracing system
 
