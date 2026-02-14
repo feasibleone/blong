@@ -17,7 +17,6 @@ test('UdpReceiver', async t => {
 
         // Start receiver and get actual port
         await receiver.start();
-        // @ts-expect-error accessing private for testing
         const port = receiver['#socket']?.address?.()?.port;
 
         // The receiver binds to port 0 so we need to get the actual port

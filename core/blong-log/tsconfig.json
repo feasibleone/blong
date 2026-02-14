@@ -12,7 +12,8 @@
         "noEmit": true,
         "outDir": "dist",
         "target": "ES2022",
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "skipLibCheck": true
     },
     "exclude": ["node_modules", "dist", "public"]
 }
