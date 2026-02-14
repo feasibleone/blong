@@ -12184,6 +12184,18 @@ function LogViewer({
   const handleHasErrorChange = (0, import_react4.useCallback)((e) => {
     setFilters((f) => ({ ...f, hasError: e.target.checked || void 0 }));
   }, []);
+  const handleCustomPropertyChange = (0, import_react4.useCallback)(
+    (propName, value) => {
+      setFilters((f) => ({
+        ...f,
+        properties: value ? { ...f.properties ?? {}, [propName]: value } : (() => {
+          const { [propName]: _, ...rest } = f.properties ?? {};
+          return Object.keys(rest).length > 0 ? rest : void 0;
+        })()
+      }));
+    },
+    []
+  );
   const handleTraceFilter = (0, import_react4.useCallback)((traceId) => {
     setFilters((f) => f.traceId === traceId ? { ...f, traceId: void 0 } : { ...f, traceId });
   }, []);
@@ -12321,7 +12333,7 @@ function LogViewer({
     color: isDark ? "#8b949e" : "#57606a",
     alignItems: "center"
   };
-  const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError;
+  const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError || filters.properties && Object.keys(filters.properties).length > 0;
   const ThemeWrapper = isDark ? ho : fo;
   return import_react4.default.createElement(
     ViewerContext.Provider,
@@ -12381,6 +12393,41 @@ function LogViewer({
           }),
           "Has Error"
         ),
+        ...clientConfig?.properties.custom ? clientConfig.properties.custom.filter((p) => p.filterable).map(
+          (prop) => prop.values ? (
+            // Dropdown for predefined values
+            import_react4.default.createElement(
+              "select",
+              {
+                key: prop.name,
+                style: selectStyle,
+                value: filters.properties?.[prop.name] ?? "",
+                onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
+              },
+              import_react4.default.createElement(
+                "option",
+                { value: "" },
+                `All ${prop.label}`
+              ),
+              ...prop.values.map(
+                (val) => import_react4.default.createElement(
+                  "option",
+                  { key: val, value: val },
+                  val
+                )
+              )
+            )
+          ) : (
+            // Text input for free-form values
+            import_react4.default.createElement("input", {
+              key: prop.name,
+              style: { ...inputStyle, width: "140px" },
+              placeholder: `${prop.label}...`,
+              value: filters.properties?.[prop.name] ?? "",
+              onChange: (e) => handleCustomPropertyChange(prop.name, e.target.value)
+            })
+          )
+        ) : [],
         filters.traceId ? import_react4.default.createElement(
           "span",
           {

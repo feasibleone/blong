@@ -782,6 +782,21 @@ export function LogViewer({
         setFilters(f => ({...f, hasError: e.target.checked || undefined}));
     }, []);
 
+    const handleCustomPropertyChange = useCallback(
+        (propName: string, value: string): void => {
+            setFilters(f => ({
+                ...f,
+                properties: value
+                    ? {...(f.properties ?? {}), [propName]: value}
+                    : (() => {
+                          const {[propName]: _, ...rest} = f.properties ?? {};
+                          return Object.keys(rest).length > 0 ? rest : undefined;
+                      })(),
+            }));
+        },
+        [],
+    );
+
     const handleTraceFilter = useCallback((traceId: string): void => {
         setFilters(f => (f.traceId === traceId ? {...f, traceId: undefined} : {...f, traceId}));
     }, []);
@@ -946,7 +961,13 @@ export function LogViewer({
         alignItems: 'center',
     };
 
-    const hasFilters = filters.level || filters.name || filters.traceId || filters.search || filters.hasError;
+    const hasFilters =
+        filters.level ||
+        filters.name ||
+        filters.traceId ||
+        filters.search ||
+        filters.hasError ||
+        (filters.properties && Object.keys(filters.properties).length > 0);
     const ThemeWrapper = isDark ? WillowDark : Willow;
 
     // ── Render ────────────────────────────────────────────────────────────
@@ -1011,6 +1032,46 @@ export function LogViewer({
                     }),
                     'Has Error',
                 ),
+                // Dynamic custom property filters
+                ...(clientConfig?.properties.custom
+                    ? clientConfig.properties.custom
+                          .filter(p => p.filterable)
+                          .map(prop =>
+                              prop.values
+                                  ? // Dropdown for predefined values
+                                    React.createElement(
+                                        'select',
+                                        {
+                                            key: prop.name,
+                                            style: selectStyle,
+                                            value: filters.properties?.[prop.name] ?? '',
+                                            onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+                                                handleCustomPropertyChange(prop.name, e.target.value),
+                                        },
+                                        React.createElement(
+                                            'option',
+                                            {value: ''},
+                                            `All ${prop.label}`,
+                                        ),
+                                        ...prop.values.map(val =>
+                                            React.createElement(
+                                                'option',
+                                                {key: val, value: val},
+                                                val,
+                                            ),
+                                        ),
+                                    )
+                                  : // Text input for free-form values
+                                    React.createElement('input', {
+                                        key: prop.name,
+                                        style: {...inputStyle, width: '140px'},
+                                        placeholder: `${prop.label}...`,
+                                        value: filters.properties?.[prop.name] ?? '',
+                                        onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                                            handleCustomPropertyChange(prop.name, e.target.value),
+                                    }),
+                          )
+                    : []),
                 filters.traceId
                     ? React.createElement(
                           'span',
