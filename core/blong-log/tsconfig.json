@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "rootDir": ".",
+        "allowJs": true,
+        "checkJs": false,
+        "moduleResolution": "bundler",
+        "esModuleInterop": true,
+        "module": "preserve",
+        "sourceMap": true,
+        "jsx": "react",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "outDir": "dist",
+        "target": "ES2022",
+        "resolveJsonModule": true
+    },
+    "exclude": ["node_modules", "dist", "public"]
+}

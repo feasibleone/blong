@@ -463,6 +463,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-log",
+            "projectFolder": "core/blong-log",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-login",
             "projectFolder": "core/blong-login",
             "reviewCategory": "core",

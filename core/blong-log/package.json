@@ -1,0 +1,67 @@
+{
+    "name": "@feasibleone/blong-log",
+    "description": "Real-time log viewer for the Blong framework",
+    "keywords": [
+        "blong",
+        "log",
+        "real-time",
+        "pino",
+        "transport"
+    ],
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@sinclair/typebox": "^0.33.7",
+        "pino": "^10.2.1",
+        "pino-abstract-transport": "^3.0.0",
+        "ulidx": "^2.4.1",
+        "ws": "^8.18.0"
+    },
+    "devDependencies": {
+        "@rushstack/eslint-config": "^4.0.1",
+        "@rushstack/heft": "^1.1.11",
+        "@rushstack/heft-lint-plugin": "^1.1.14",
+        "@rushstack/heft-typescript-plugin": "^1.1.11",
+        "@storybook/addon-a11y": "^8.6.14",
+        "@storybook/addon-essentials": "^8.6.14",
+        "@storybook/react": "^8.6.14",
+        "@storybook/react-vite": "^8.6.14",
+        "@storybook/test": "^8.6.14",
+        "@storybook/test-runner": "^0.24.2",
+        "@svar-ui/react-grid": "^2.5.2",
+        "jest-image-snapshot": "^6.5.1",
+        "@types/node": "^24",
+        "@types/ws": "^8.18.0",
+        "esbuild": "^0.27.1",
+        "playwright": "^1.58.2",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "@types/react": "^18.3.4",
+        "@types/react-dom": "^18.3.1",
+        "storybook": "^8.6.14",
+        "tap": "^21.5.0",
+        "typescript": "^5.9.3",
+        "vite": "^6.3.5"
+    },
+    "exports": {
+        ".": "./src/index.ts",
+        "./transport": "./src/transport.ts",
+        "./server": "./src/server.ts"
+    },
+    "bin": {
+        "blong-log": "./src/cli.ts"
+    },
+    "scripts": {
+        "build": "heft build --clean && node build-client.js",
+        "test": "tap src/**/*.test.ts",
+        "storybook": "storybook dev -p 6006",
+        "storybook:build": "storybook build -o storybook-static",
+        "storybook:test": "test-storybook",
+        "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
+        "visual:update": "npm run storybook:test -- --update-snapshot"
+    },
+    "type": "module",
+    "version": "1.0.0"
+}

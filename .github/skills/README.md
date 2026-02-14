@@ -23,6 +23,10 @@ A collection of Agent Skills for implementing components in the Blong TypeScript
 - **[blong-test](./test/)** - Write automated tests with parallel execution and automatic dependencies
 - **[blong-validation](./validation/)** - Define input/output validation and generate OpenAPI docs
 
+### Development Tools
+
+- **[blong-log](./log/)** - Real-time log viewer with UDP transport, WebSocket streaming, and browser UI
+
 ## Quick Reference
 
 | Task | Skill |
@@ -37,6 +41,7 @@ A collection of Agent Skills for implementing components in the Blong TypeScript
 | Define typed errors | [blong-error](./error/) |
 | Write automated tests | [blong-test](./test/) |
 | Add parameter validation | [blong-validation](./validation/) |
+| Monitor logs in real time | [blong-log](./log/) |
 
 ## Framework Overview
 
