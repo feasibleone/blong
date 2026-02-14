@@ -652,6 +652,15 @@ export function LogViewer({
     const lastIdRef = useRef<string>('');
     const entriesRef = useRef<LogEntry[]>([]);
 
+    // Track unique service names for autocomplete
+    const uniqueServiceNames = useMemo(() => {
+        const names = new Set<string>();
+        entries.forEach(e => {
+            if (e.name) names.add(e.name);
+        });
+        return Array.from(names).sort();
+    }, [entries]);
+
     const theme = useMemo(
         () => ({...(clientConfig?.theme ?? {}), ...themeProp}),
         [clientConfig?.theme, themeProp],
@@ -1011,7 +1020,16 @@ export function LogViewer({
                     placeholder: 'Service name...',
                     value: filters.name ?? '',
                     onChange: handleNameChange,
+                    list: 'service-names-datalist',
                 }),
+                // Datalist for service name autocomplete
+                React.createElement(
+                    'datalist',
+                    {id: 'service-names-datalist'},
+                    ...uniqueServiceNames.map(name =>
+                        React.createElement('option', {key: name, value: name}),
+                    ),
+                ),
                 React.createElement(
                     'label',
                     {

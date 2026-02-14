@@ -12089,6 +12089,13 @@ function LogViewer({
   const gridApiRef = (0, import_react4.useRef)(null);
   const lastIdRef = (0, import_react4.useRef)("");
   const entriesRef = (0, import_react4.useRef)([]);
+  const uniqueServiceNames = (0, import_react4.useMemo)(() => {
+    const names = /* @__PURE__ */ new Set();
+    entries.forEach((e) => {
+      if (e.name) names.add(e.name);
+    });
+    return Array.from(names).sort();
+  }, [entries]);
   const theme = (0, import_react4.useMemo)(
     () => ({ ...clientConfig?.theme ?? {}, ...themeProp }),
     [clientConfig?.theme, themeProp]
@@ -12371,8 +12378,17 @@ function LogViewer({
           style: { ...inputStyle, width: "140px" },
           placeholder: "Service name...",
           value: filters.name ?? "",
-          onChange: handleNameChange
+          onChange: handleNameChange,
+          list: "service-names-datalist"
         }),
+        // Datalist for service name autocomplete
+        import_react4.default.createElement(
+          "datalist",
+          { id: "service-names-datalist" },
+          ...uniqueServiceNames.map(
+            (name) => import_react4.default.createElement("option", { key: name, value: name })
+          )
+        ),
         import_react4.default.createElement(
           "label",
           {
