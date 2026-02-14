@@ -598,15 +598,6 @@ export const LargeDatasetLight: Story = {
     },
 };
 
-/** Entries with errors only - showcases exception filtering and formatted exception view */
-export const ErrorsOnly: Story = {
-    args: {
-        entries: errorEntries,
-        config: darkThemeConfig,
-        connectedOverride: true,
-    },
-};
-
 /** Entries with HTTP request/response details - showcases HTTP detail view in modal */
 export const WithHTTPDetails: Story = {
     args: {
