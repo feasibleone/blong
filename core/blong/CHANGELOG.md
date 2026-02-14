@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-v1.6.0...blong-v1.7.0) (2026-02-14)
+
+
+### Features
+
+* add GitHub adapter with release management capabilities and update CI publish scripts ([bf01aef](https://github.com/feasibleone/blong/commit/bf01aef3d7028edaf6770321a5542bc2651665e0))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-v1.5.2...blong-v1.6.0) (2026-02-08)
 
 
