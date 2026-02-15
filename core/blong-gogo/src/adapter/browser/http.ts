@@ -58,15 +58,10 @@ export default adapter<IConfig>(({utError}) => {
         ) {
             try {
                 this.log.debug?.({
-                    prefix: '▶',
                     req: {
                         method: method.toUpperCase(),
                         url,
-                        headers:
-                            headers &&
-                            Object.entries(headers)
-                                .map(([key, value]) => `${key}: ${value}`)
-                                .join('\n'),
+                        headers,
                         body,
                         json,
                     },
@@ -91,7 +86,6 @@ export default adapter<IConfig>(({utError}) => {
                     body: unknown;
                 };
                 this.log.debug?.({
-                    prefix: '◀',
                     req: {
                         url,
                         method: method.toUpperCase(),
@@ -99,11 +93,7 @@ export default adapter<IConfig>(({utError}) => {
                     res: {
                         statusCode: result.statusCode,
                         statusMessage: result.statusMessage,
-                        headers:
-                            result.headers &&
-                            `\n${Object.entries(result.headers)
-                                .map(([key, value]) => `${key}: ${value}`)
-                                .join('\n')}`,
+                        headers: result.headers,
                         body: result.body,
                     },
                 });

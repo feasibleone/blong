@@ -1,42 +1,27 @@
 import {Internal, type ILog} from '@feasibleone/blong';
 import {pino, type Logger, type LoggerOptions} from 'pino';
 
+// echo -e "\u001B]8;;https://google.com\u001B\\Кликни тук\u001B]8;;\e\\"
 export default class Log extends Internal implements ILog {
     #logger: Logger;
     #config: LoggerOptions = {
         level: 'info',
         transport: {
-            target: 'pino-pretty',
+            target: './pino-pretty.ts',
             options: {
                 singleLine: true,
                 colorizeObjects: true,
-                messageFormat: [
-                    'context',
-                    'prefix',
-                    'req.method',
-                    'req.hostname',
-                    'req.url',
-                    'res.statusCode',
-                    'req.headers',
-                    'res.headers',
-                    '$meta.mtid',
-                    '$meta.method',
-                    'msg',
-                ]
-                    .map(item => `{if ${item}}{${item}} {end}`)
-                    .join(''),
                 ignore: [
                     'context',
                     'prefix',
                     'pid',
                     'hostname',
-                    '$meta',
-                    'res.statusCode',
-                    'req.headers',
-                    'res.headers',
-                    'req.method',
-                    'req.hostname',
-                    'req.url',
+                    '$meta.mtid',
+                    '$meta.method',
+                    'req',
+                    'res',
+                    'config',
+                    'configBase',
                 ].join(','),
             },
         },
