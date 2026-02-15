@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.1...blong-gogo-v1.3.2) (2026-02-15)
+
+
+### Bug Fixes
+
+* update pino to version 10.3.1 and refactor logging configuration ([c2cd894](https://github.com/feasibleone/blong/commit/c2cd894b03737df1f6d341f3d1d8f85176236ddc))
+
 ## [1.3.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.0...blong-gogo-v1.3.1) (2026-02-15)
 
 

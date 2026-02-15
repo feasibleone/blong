@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/feasibleone/blong/compare/blong-v1.7.1...blong-v1.7.2) (2026-02-15)
+
+
+### Bug Fixes
+
+* update pino to version 10.3.1 and refactor logging configuration ([c2cd894](https://github.com/feasibleone/blong/commit/c2cd894b03737df1f6d341f3d1d8f85176236ddc))
+
 ## [1.7.1](https://github.com/feasibleone/blong/compare/blong-v1.7.0...blong-v1.7.1) (2026-02-15)
 
 
