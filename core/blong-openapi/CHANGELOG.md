@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/feasibleone/blong/compare/blong-openapi-v1.0.3...blong-openapi-v1.0.4) (2026-02-15)
+
+
+### Bug Fixes
+
+* update glob to version 13.0.3 and change log level to info ([b2f8197](https://github.com/feasibleone/blong/commit/b2f8197d8557f14eee7826a2b62045d65bbfd94f))
+
 ## [1.0.3](https://github.com/feasibleone/blong/compare/blong-openapi-v1.0.2...blong-openapi-v1.0.3) (2026-02-15)
 
 
