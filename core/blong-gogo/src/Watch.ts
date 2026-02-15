@@ -89,18 +89,22 @@ export default class Watch extends Internal implements IWatch {
      * @param expectedName The expected handler name based on filename
      * @returns The handler name (either explicit or derived from filename)
      */
-    private _validateAndSetHandlerName(item: unknown, filename: string, expectedName: string): string {
+    private _validateAndSetHandlerName(
+        item: unknown,
+        filename: string,
+        expectedName: string,
+    ): string {
         const actualName = item['name'] && item['name'] !== 'default' ? item['name'] : null;
-        
+
         // For files defining a single handler, report error on name mismatch
         if (kind(item) === 'handler' && actualName && actualName !== expectedName) {
             throw new Error(
                 `Handler name mismatch in '${filename}': ` +
-                `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
-                `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`
+                    `function is named '${actualName}' but file is named '${expectedName}.ts'. ` +
+                    `Either rename the function to '${expectedName}' or rename the file to '${actualName}.ts'.`,
             );
         }
-        
+
         const name = actualName || expectedName;
         // Ensure handler name property is set for anonymous handlers
         if (kind(item) === 'handler' && !actualName) {
@@ -110,7 +114,7 @@ export default class Watch extends Internal implements IWatch {
                 enumerable: false,
             });
         }
-        
+
         return name;
     }
 
@@ -184,7 +188,9 @@ export default class Watch extends Internal implements IWatch {
             )
                 await this._generate(handlerFilenames, dir);
             if (await this.#apiSchema.generateFile(filename)) continue;
-            const item = (await import(filename + '?' + Date.now())).default;
+            const item = (
+                await import(this.#config.enabled ? filename + '?' + Date.now() : filename)
+            ).default;
             if (!item) this.log?.error?.('Error loading ' + filename);
             const expectedName = basename(filename, extname(filename));
             const name = this._validateAndSetHandlerName(item, filename, expectedName);
@@ -236,7 +242,9 @@ export default class Watch extends Internal implements IWatch {
         } else if (isFile) {
             const filename = join(...path);
             if (isCode(filename)) {
-                const item = (await import(filename + '?' + Date.now())).default;
+                const item = (
+                    await import(this.#config.enabled ? filename + '?' + Date.now() : filename)
+                ).default;
                 const expectedName = basename(filename, extname(filename)).match(prefixRE)?.[1];
                 const itemName = this._validateAndSetHandlerName(item, filename, expectedName);
                 if (kind(item) === 'handler') {

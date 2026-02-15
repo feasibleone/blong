@@ -1,7 +1,16 @@
 {
     "name": "@feasibleone/blong-openapi",
     "scripts": {
-        "build": "heft build --clean"
+        "build": "heft build --clean",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
+    },
+    "exports": {
+        "./server.js": "./dist/server.js",
+        "./server.ts": "./server.ts",
+        "./browser.js": "./dist/browser.js",
+        "./browser.ts": "./browser.ts",
+        "./dist/package.json": "./package.json",
+        "./package.json": "./package.json"
     },
     "type": "module",
     "version": "1.0.0",

@@ -485,9 +485,14 @@ export type GatewaySchema = (
 
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
 export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.PathItemObject;
-
+export type ThenableProxy = Promise<unknown> & {[key: string]: ThenableProxy};
 export type ChainStep =
-    | ((assert: typeof Assert, context: {$meta: IMeta}) => Promise<object>)
+    | ((
+          assert: typeof Assert,
+          context: {
+              $meta: IMeta;
+          } & Record<string, Promise<unknown[]> & ThenableProxy>,
+      ) => Promise<object>)
     | object;
 
 export interface ILib {

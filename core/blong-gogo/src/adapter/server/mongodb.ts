@@ -82,7 +82,7 @@ export default adapter<IConfig>(({utError}) => {
                         .db()
                         .collection(table)
                         .findOne(
-                            {_id, ...where},
+                            {...(_id && {_id}), ...where},
                             {
                                 projection:
                                     select === '*'
