@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/feasibleone/blong/compare/blong-openapi-v1.0.2...blong-openapi-v1.0.3) (2026-02-15)
+
+
+### Bug Fixes
+
+* add package.json to tsconfig include paths ([f04ce45](https://github.com/feasibleone/blong/commit/f04ce45eac322ce70edee4b595b63cddbd323b50))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-openapi-v1.0.1...blong-openapi-v1.0.2) (2026-02-15)
 
 
