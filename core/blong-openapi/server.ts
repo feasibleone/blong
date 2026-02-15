@@ -9,7 +9,7 @@ export default realm(blong => ({
     config: {
         default: {
             openapi: {
-                logLevel: 'trace',
+                logLevel: 'info',
             },
         },
         dev: {},
