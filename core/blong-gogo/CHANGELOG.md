@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.2...blong-gogo-v1.3.3) (2026-02-15)
+
+
+### Bug Fixes
+
+* update glob to version 13.0.3 and change log level to info ([b2f8197](https://github.com/feasibleone/blong/commit/b2f8197d8557f14eee7826a2b62045d65bbfd94f))
+
 ## [1.3.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.1...blong-gogo-v1.3.2) (2026-02-15)
 
 
