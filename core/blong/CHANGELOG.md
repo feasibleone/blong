@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/feasibleone/blong/compare/blong-v1.7.0...blong-v1.7.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* watch and types ([19f82db](https://github.com/feasibleone/blong/commit/19f82db37f38d6f769551b24c6b205b978753ece))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-v1.6.0...blong-v1.7.0) (2026-02-14)
 
 
