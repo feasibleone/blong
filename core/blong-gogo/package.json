@@ -68,5 +68,5 @@
         "build": "heft build --clean"
     },
     "type": "module",
-    "version": "1.3.3"
+    "version": "1.3.4"
 }

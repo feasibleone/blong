@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.3...blong-gogo-v1.3.4) (2026-02-16)
+
+
+### Bug Fixes
+
+* enhance URL handling and response type management in HTTP adapter ([7e29eff](https://github.com/feasibleone/blong/commit/7e29effdb8241652fc6bd373fd70d1713fdfd5ff))
+
 ## [1.3.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.2...blong-gogo-v1.3.3) (2026-02-15)
 
 
