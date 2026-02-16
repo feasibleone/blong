@@ -41,7 +41,9 @@ export default adapter<IConfig>(({utError}) => {
             {
                 path,
                 query: searchParams,
-                url = new URL(path, this.config.url),
+                host,
+                port,
+                url = new URL(path, this.config.url || 'http://localhost'),
                 responseType,
                 method,
                 headers,
@@ -49,19 +51,23 @@ export default adapter<IConfig>(({utError}) => {
                 form,
                 json,
             }: {
-                path: string;
-                query: string;
-                url: URL;
-                responseType: Options['responseType'];
-                method: Options['method'];
-                headers: Options['headers'];
-                body: Options['body'];
-                form: Options['form'];
-                json: Options['json'];
+                path?: string;
+                query?: string;
+                host?: string;
+                port?: number;
+                url?: URL;
+                responseType?: Options['responseType'];
+                method?: Options['method'];
+                headers?: Options['headers'];
+                body?: Options['body'];
+                form?: Options['form'];
+                json?: Options['json'];
             },
             {stream}: IMeta,
         ) {
             try {
+                if (host) url.hostname = host;
+                if (port) url.port = String(port);
                 return got({
                     url,
                     searchParams,

@@ -3,7 +3,11 @@ import {library} from '@feasibleone/blong';
 import loadApi from '../../../loadApi.ts';
 
 const httpVerbs: string[] = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
-
+const responseTypes = {
+    'application/json': 'json',
+    'text/plain': 'text',
+    'text/html': 'text',
+};
 export default library(
     ({lib: {request}}) =>
         async function load(config: object, pattern: RegExp | string, source: string) {
@@ -28,8 +32,10 @@ export default library(
                                     if (!test(name)) return;
                                     const formatProps = {
                                         method,
+                                        path,
                                         url: '',
                                         requestBody: undefined,
+                                        responseType: undefined,
                                         schemas: []
                                             .concat(methods.parameters)
                                             .concat(def.parameters)
@@ -82,6 +88,23 @@ export default library(
                                             break;
                                         }
                                     }
+                                    // get unique response types
+                                    const responseTypeSet = new Set();
+                                    Object.values(def.responses || {}).forEach(response => {
+                                        if (response.content) {
+                                            Object.entries(response.content).forEach(
+                                                ([type, content]: [string, {schema?: unknown}]) =>
+                                                    content.schema &&
+                                                    responseTypes[type] &&
+                                                    responseTypeSet.add(responseTypes[type]),
+                                            );
+                                        }
+                                    });
+                                    if (responseTypeSet.size === 1)
+                                        formatProps.responseType = responseTypeSet
+                                            .values()
+                                            .next().value;
+                                    else formatProps.responseType = 'json';
                                     handlers[name] = request(formatProps);
                                 },
                             ),

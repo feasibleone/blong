@@ -40,7 +40,7 @@ export default class Remote extends Internal implements IRemote {
 
     public constructor(
         config: {logLevel?: Parameters<ILog['logger']>[0]},
-        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal}
+        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal},
     ) {
         super({log});
         config = this.merge(this.#config, config);
@@ -53,7 +53,7 @@ export default class Remote extends Internal implements IRemote {
             case 'warn': {
                 this.#requireMeta = method =>
                     this.log?.[this.#config.requireMeta.toString()]?.(
-                        this.#errors['remote.noMeta']({params: {method}})
+                        this.#errors['remote.noMeta']({params: {method}}),
                     );
                 break;
             }
@@ -98,7 +98,7 @@ export default class Remote extends Internal implements IRemote {
 
         const startRetry = (
             fn,
-            {timeout, retry}: {timeout?: number; retry?: number}
+            {timeout, retry}: {timeout?: number; retry?: number},
         ): Promise<unknown> => {
             return new Promise((resolve, reject) => {
                 const attempt = (): void =>
@@ -147,7 +147,7 @@ export default class Remote extends Internal implements IRemote {
             returnMeta?: boolean;
             timeout?: number;
             cache?: IMeta['cache'];
-        }
+        },
     ): RemoteMethod {
         let fn = null;
         let unpack = true;
@@ -199,7 +199,7 @@ export default class Remote extends Internal implements IRemote {
                                 methodType,
                                 methodName,
                             },
-                        })
+                        }),
                     );
                 }
             }
@@ -207,7 +207,8 @@ export default class Remote extends Internal implements IRemote {
                 let $metaBefore, $metaAfter;
                 if (methodName) {
                     $applyMeta.opcode = this._getOpcode(methodName);
-                    $applyMeta.mtid = 'request';
+                    if (!['request', 'notification'].includes($applyMeta.mtid))
+                        $applyMeta.mtid = 'request';
                     $applyMeta.method = methodName;
                     if (cache) {
                         const before =
@@ -263,7 +264,7 @@ export default class Remote extends Internal implements IRemote {
                                         methodType,
                                         methodName,
                                     },
-                                })
+                                }),
                             );
                         }
                         if (typeof cache.key === 'function') {
@@ -315,7 +316,7 @@ export default class Remote extends Internal implements IRemote {
                             methodType,
                             methodName,
                         },
-                    })
+                    }),
                 );
             }
         };
@@ -383,7 +384,7 @@ export default class Remote extends Internal implements IRemote {
 
     protected sanitize(
         params: unknown,
-        {httpRequest, mtid, method, forward, language, cache}: IMeta
+        {httpRequest, mtid, method, forward, language, cache}: IMeta,
     ): {params: unknown; meta: object} {
         if (Array.isArray(params) && params.length) {
             const paramsArray = [...params];

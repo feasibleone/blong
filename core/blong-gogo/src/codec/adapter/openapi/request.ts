@@ -10,10 +10,14 @@ export default library(
             url,
             method,
             schemas,
+            path,
+            responseType,
         }: {
             url: string;
             method: string;
             schemas: OpenAPIV2.ParameterObject[];
+            path: string;
+            responseType: string;
         }) {
             return (
                 msg = {
@@ -27,10 +31,10 @@ export default library(
             ) => {
                 const {params = msg, body, baseUrl, headers, payload} = msg;
                 const result = {
-                    url: baseUrl ? baseUrl + url : url,
+                    url: baseUrl ? baseUrl + path : url,
                     method,
                     body,
-                    responseType: msg.responseType || 'json',
+                    responseType: msg.responseType || responseType,
                     headers,
                     form: undefined,
                     query: undefined,
