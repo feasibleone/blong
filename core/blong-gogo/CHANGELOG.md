@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.4...blong-gogo-v1.3.5) (2026-02-17)
+
+
+### Bug Fixes
+
+* enhance type definitions ([2e683f0](https://github.com/feasibleone/blong/commit/2e683f0371950dff9fb6b62d9a202fed54ead434))
+
 ## [1.3.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.3...blong-gogo-v1.3.4) (2026-02-16)
 
 
