@@ -14,6 +14,7 @@ import {
     type TArray,
     type TBoolean,
     type TFunction,
+    type TNever,
     type TObject,
     type TSchema,
     type TString,
@@ -413,16 +414,21 @@ export interface IBaseConfig extends TObject<{
     adapter: TBoolean;
     orchestrator: TBoolean;
     test: TBoolean;
-    integration: TBoolean;
-    deployment: TBoolean;
-    dev: TBoolean;
+    error: TBoolean;
+    gateway: TBoolean | TObject;
     sim: TBoolean;
     resolution: TBoolean;
 }> {
     additionalProperties: false;
 }
+export interface IActivationConfig<T> {
+    integration?: T;
+    deployment?: T;
+    microservice?: T;
+    dev?: T;
+}
 
-export interface IModuleConfig<T extends TObject = TObject> {
+export interface IModuleConfig<T extends TSchema = TNever> {
     pkg?: {
         name: string;
         version: string;
@@ -430,8 +436,7 @@ export interface IModuleConfig<T extends TObject = TObject> {
     url: string;
     config: {
         default: Partial<Static<IBaseConfig> & Static<T>>;
-        [name: string]: Partial<Static<IBaseConfig> & Static<T>>;
-    };
+    } & IActivationConfig<Partial<Static<T> & Static<IBaseConfig>>>;
     validation: T;
     children: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
 }
@@ -594,7 +599,7 @@ export type ModuleApi = {
     ) => ModuleApi;
 };
 
-export type SolutionFactory<T extends TObject = TObject> = (definition: {
+export type SolutionFactory<T extends TSchema = TNever> = (definition: {
     type: JavaScriptTypeBuilder;
 }) => IModuleConfig<T> | Promise<IModuleConfig<T>>;
 

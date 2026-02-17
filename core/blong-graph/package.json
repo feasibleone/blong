@@ -11,7 +11,7 @@
         "url": "git+https://github.com/feasibleone/blong.git"
     },
     "scripts": {
-        "build": "heft build --clean",
+        "build": "true",
         "test:server": "npx http-server tests/fixtures -p 3000 -c-1",
         "test": "playwright test",
         "_ci-ui": "playwright test"

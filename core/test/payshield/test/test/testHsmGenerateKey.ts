@@ -1,4 +1,4 @@
-import {handler} from '@feasibleone/blong/types';
+import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {group}, handler: {testLoginTokenCreate, hsmGenerateKey}}) => ({

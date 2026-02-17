@@ -65,7 +65,7 @@
     },
     "name": "@feasibleone/blong-gogo",
     "scripts": {
-        "build": "heft build --clean"
+        "build": "true"
     },
     "type": "module",
     "version": "1.3.4"

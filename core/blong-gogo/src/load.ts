@@ -9,7 +9,7 @@ import {
     type IRegistry,
     type SolutionFactory,
 } from '@feasibleone/blong';
-import {Type} from '@sinclair/typebox';
+import {Type, type TSchema} from '@sinclair/typebox';
 import {readdir} from 'fs/promises';
 import {createRequire} from 'node:module';
 import {basename, dirname, join} from 'path';
@@ -35,7 +35,10 @@ interface IConstructor {
     new (config?: object, api?: object): object;
 }
 
-function activeConfigs(mod: IModuleConfig, configNames: string[]): (boolean | object)[] {
+function activeConfigs<T extends TSchema>(
+    mod: IModuleConfig<T>,
+    configNames: string[],
+): (boolean | object)[] {
     return ['default']
         .concat(configNames)
         .map(name => mod.config?.[name])
@@ -54,8 +57,8 @@ async function loadConfig(config: string | object): Promise<object> {
         : config;
 }
 
-export default async function loadRealm(
-    def: SolutionFactory,
+export default async function loadRealm<T extends TSchema>(
+    def: SolutionFactory<T>,
     name: string,
     parentConfig: object | string,
     configNames: string[],

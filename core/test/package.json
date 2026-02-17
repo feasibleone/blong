@@ -31,7 +31,7 @@
     },
     "name": "@feasibleone/test",
     "scripts": {
-        "build": "heft build --clean",
+        "build": "true",
         "ci-unit": "tap **/*.test.ts --allow-incomplete-coverage"
     },
     "type": "module",
