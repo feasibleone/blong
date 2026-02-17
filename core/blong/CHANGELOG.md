@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.3](https://github.com/feasibleone/blong/compare/blong-v1.7.2...blong-v1.7.3) (2026-02-17)
+
+
+### Bug Fixes
+
+* enhance type definitions ([2e683f0](https://github.com/feasibleone/blong/commit/2e683f0371950dff9fb6b62d9a202fed54ead434))
+
 ## [1.7.2](https://github.com/feasibleone/blong/compare/blong-v1.7.1...blong-v1.7.2) (2026-02-15)
 
 

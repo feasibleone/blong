@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-kopi-v1.1.0...blong-kopi-v1.1.1) (2026-02-17)
+
+
+### Bug Fixes
+
+* enhance type definitions ([2e683f0](https://github.com/feasibleone/blong/commit/2e683f0371950dff9fb6b62d9a202fed54ead434))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.0.0...blong-kopi-v1.1.0) (2026-02-04)
 
 
