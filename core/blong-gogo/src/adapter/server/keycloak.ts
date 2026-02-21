@@ -1,5 +1,6 @@
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import KcAdminClient from '@keycloak/keycloak-admin-client';
+import got from 'got';
 
 export interface IConfig {
     keycloak: {
@@ -37,6 +38,7 @@ let _errors: Errors<typeof errorMap>;
 
 export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
+    let _authenticated = false;
 
     return {
         async init(...configs: object[]) {
@@ -60,43 +62,53 @@ export default adapter<IConfig>(({utError}) => {
             }) as any;
 
             this.config.context = {kcAdminClient};
+            _authenticated = false;
 
+            super.connect();
+            return super.start();
+        },
+        async authenticate({
+            grantType = this.config.keycloak.grantType || 'password',
+            clientId = this.config.keycloak.clientId || 'admin-cli',
+            clientSecret = this.config.keycloak.clientSecret,
+            username = this.config.keycloak.username,
+            password = this.config.keycloak.password,
+            totp = this.config.keycloak.totp,
+        }) {
+            if (_authenticated) return;
             // Authenticate with Keycloak
             try {
-                const grantType = this.config.keycloak.grantType || 'password';
-
                 if (grantType === 'password') {
-                    if (!this.config.keycloak.username || !this.config.keycloak.password) {
+                    if (!username || !password) {
                         throw _errors['keycloak.missingKey']({key: 'username or password'});
                     }
-                    await kcAdminClient.auth({
-                        grantType: 'password',
-                        clientId: this.config.keycloak.clientId || 'admin-cli',
-                        username: this.config.keycloak.username,
-                        password: this.config.keycloak.password,
-                        totp: this.config.keycloak.totp,
+                    await this.config.context.kcAdminClient.auth({
+                        grantType,
+                        clientId,
+                        username,
+                        password,
+                        totp,
                     });
                 } else if (grantType === 'client_credentials') {
                     if (!this.config.keycloak.clientId || !this.config.keycloak.clientSecret) {
                         throw _errors['keycloak.missingKey']({key: 'clientId or clientSecret'});
                     }
-                    await kcAdminClient.auth({
-                        grantType: 'client_credentials',
-                        clientId: this.config.keycloak.clientId,
-                        clientSecret: this.config.keycloak.clientSecret,
+                    await this.config.context.kcAdminClient.auth({
+                        grantType,
+                        clientId,
+                        clientSecret,
                     });
                 }
+                _authenticated = true;
             } catch (cause) {
                 throw _errors['keycloak.authFailed']({cause});
             }
-
-            super.connect();
-            return super.start();
         },
         async stop(...params: unknown[]) {
             let result;
             try {
                 // No specific cleanup needed for Keycloak admin client
+                _authenticated = false;
             } finally {
                 this.config.context = null;
                 result = await super.stop(...params);
@@ -148,9 +160,12 @@ export default adapter<IConfig>(({utError}) => {
                 (!Array.isArray(params) && params.realm) ||
                 this.config.keycloak.realmName ||
                 'master';
-
+            await (
+                this as {authenticate: (args: unknown, options: unknown) => Promise<void>}
+            ).authenticate({}, arguments[1]);
             const client = this.config.context.kcAdminClient;
             client.setConfig({realmName: targetRealm});
+            const config = this.config;
 
             const adapter = {
                 async handleUserOperations(
@@ -676,6 +691,36 @@ export default adapter<IConfig>(({utError}) => {
                             throw _errors['keycloak.invalid']();
                     }
                 },
+                async handleTokenOperations(
+                    operation: string,
+                    params: unknown[] | Record<string, unknown>,
+                ): Promise<unknown> {
+                    const handleParams = Array.isArray(params) ? {} : params;
+
+                    switch (operation) {
+                        case 'create': {
+                            const {realm, clientId, clientSecret, grantType} = handleParams;
+                            if (!realm) throw _errors['keycloak.missingKey']({key: 'realm'});
+                            return (
+                                await got.post({
+                                    url: new URL(
+                                        `/realms/${realm}/protocol/openid-connect/token`,
+                                        config.keycloak.baseUrl,
+                                    ),
+                                    form: {
+                                        client_id: clientId,
+                                        client_secret: clientSecret,
+                                        grant_type: grantType,
+                                    },
+                                    responseType: 'json',
+                                })
+                            ).body;
+                        }
+
+                        default:
+                            throw _errors['keycloak.invalid']();
+                    }
+                },
             };
 
             try {
@@ -695,6 +740,9 @@ export default adapter<IConfig>(({utError}) => {
                     case 'realm':
                     case 'realms':
                         return await adapter.handleRealmOperations(operation, params, client);
+                    case 'token':
+                        return await adapter.handleTokenOperations(operation, params);
+
                     default:
                         throw _errors['keycloak.invalid']();
                 }
