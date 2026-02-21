@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.5...blong-gogo-v1.4.0) (2026-02-21)
+
+
+### Features
+
+* add support for custom resources in Kubernetes API adapter ([e32e0c9](https://github.com/feasibleone/blong/commit/e32e0c95c544ed72c6e075ed7e2924c10212fe4f))
+* enhance Keycloak adapter with token handling and authentication improvements ([4cbcb51](https://github.com/feasibleone/blong/commit/4cbcb51590c761a46eca9ebd61322a6fccc74d1a))
+* update handler to include remote parameter for improved functionality ([dedcb53](https://github.com/feasibleone/blong/commit/dedcb53f7993db7d6d5c0a7db516f290352d53cc))
+
 ## [1.3.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.4...blong-gogo-v1.3.5) (2026-02-17)
 
 
