@@ -11,5 +11,5 @@ jobs:
       contents: read
       packages: write
       security-events: write
-      pull-requests: read
+      pull-requests: write
     uses: infitx-org/actions/.github/workflows/rush.yaml@main
