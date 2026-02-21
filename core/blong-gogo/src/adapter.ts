@@ -248,7 +248,7 @@ export default async function adapter<T, C>(
         },
     };
 
-    const result = handlers({utError});
+    const result = handlers({utError, remote});
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
