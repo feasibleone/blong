@@ -24,6 +24,7 @@ export interface IConfig {
         appsV1Api: k8s.AppsV1Api;
         networkingV1Api: k8s.NetworkingV1Api;
         rbacV1Api: k8s.RbacAuthorizationV1Api;
+        customObjectsApi: k8s.CustomObjectsApi;
         watcher: k8s.Watch;
     };
 }
@@ -107,6 +108,7 @@ export default adapter<IConfig>(({utError}) => {
                 appsV1Api: kc.makeApiClient(k8s.AppsV1Api),
                 networkingV1Api: kc.makeApiClient(k8s.NetworkingV1Api),
                 rbacV1Api: kc.makeApiClient(k8s.RbacAuthorizationV1Api),
+                customObjectsApi: kc.makeApiClient(k8s.CustomObjectsApi),
                 watcher: new k8s.Watch(kc),
             };
 
@@ -245,7 +247,66 @@ export default adapter<IConfig>(({utError}) => {
 
             const resourceType = getResourceType(_resourceType);
 
-            const api = getApiForResource(_resourceType);
+            // Check if this is a custom resource request (resourceType will be 'custom')
+            const isCustomResource = resourceType === 'custom' && !Array.isArray(params);
+
+            // Validate custom resource params
+            if (isCustomResource) {
+                if (!params.group || !params.version || !params.plural) {
+                    throw _errors['k8s.missingKey']({
+                        key: 'group, version, and plural for custom resources',
+                    });
+                }
+            }
+
+            // Select API and build method name based on resource type
+            const api = isCustomResource
+                ? this.config.context.customObjectsApi
+                : getApiForResource(_resourceType);
+            const isNamespaced = isCustomResource
+                ? !Array.isArray(params) && params.namespaced !== false
+                : !!namespace;
+
+            // Helper to build method name
+            const getMethodName = (verb: string): string => {
+                if (isCustomResource) {
+                    return `${verb}${isNamespaced ? 'Namespaced' : 'Cluster'}CustomObject`;
+                }
+                const prefix = isNamespaced ? 'Namespaced' : '';
+                const resource = resourceType.charAt(0).toUpperCase() + resourceType.slice(1);
+                return `${verb}${prefix}${resource}`;
+            };
+
+            // Helper to build options for API calls
+            const buildOptions = (
+                baseOptions: Record<string, unknown> = {},
+            ): Record<string, unknown> => {
+                if (isCustomResource && !Array.isArray(params)) {
+                    const opts: Record<string, unknown> = {
+                        group: params.group,
+                        version: params.version,
+                        plural: params.plural,
+                        ...baseOptions,
+                    };
+                    if (isNamespaced) opts.namespace = namespace;
+                    return opts;
+                }
+                const opts = {...baseOptions};
+                if (isNamespaced) opts.namespace = namespace;
+                return opts;
+            };
+
+            // Helper to call API methods with error handling
+            const callApi = async (
+                verb: string,
+                options: Record<string, unknown> = {},
+            ): Promise<unknown> => {
+                const methodName = getMethodName(verb);
+                if (typeof api[methodName] === 'function') {
+                    return await api[methodName](buildOptions(options));
+                }
+                throw _errors['k8s.invalid']();
+            };
 
             try {
                 switch (operation) {
@@ -255,13 +316,7 @@ export default adapter<IConfig>(({utError}) => {
                         const {name} = params;
                         if (!name) throw _errors['k8s.missingKey']({key: 'name'});
 
-                        const methodName = `read${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            return await api[methodName]({name, namespace});
-                        }
-                        throw _errors['k8s.invalid']();
+                        return await callApi(isCustomResource ? 'get' : 'read', {name});
                     }
                     case 'list':
                     case 'find': {
@@ -274,20 +329,12 @@ export default adapter<IConfig>(({utError}) => {
                             continue: continueToken,
                         } = params;
 
-                        const methodName = `list${namespace ? 'Namespaced' : ''}${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            const options: Record<string, unknown> = {};
-                            if (namespace) options.namespace = namespace;
-                            if (labelSelector) options.labelSelector = labelSelector;
-                            if (fieldSelector) options.fieldSelector = fieldSelector;
-                            if (limit) options.limit = limit;
-                            if (continueToken) options.continue = continueToken;
-
-                            return await api[methodName](options);
-                        }
-                        throw _errors['k8s.invalid']();
+                        return await callApi('list', {
+                            ...(labelSelector && {labelSelector}),
+                            ...(fieldSelector && {fieldSelector}),
+                            ...(limit && {limit}),
+                            ...(continueToken && {continue: continueToken}),
+                        });
                     }
                     case 'create':
                     case 'add': {
@@ -298,16 +345,7 @@ export default adapter<IConfig>(({utError}) => {
                         if (!resourceBody)
                             throw _errors['k8s.missingKey']({key: 'manifest or body'});
 
-                        const methodName = `create${namespace ? 'Namespaced' : ''}${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            const options = namespace
-                                ? {namespace, body: resourceBody}
-                                : {body: resourceBody};
-                            return await api[methodName](options);
-                        }
-                        throw _errors['k8s.invalid']();
+                        return await callApi('create', {body: resourceBody});
                     }
                     case 'update':
                     case 'replace': {
@@ -319,16 +357,7 @@ export default adapter<IConfig>(({utError}) => {
                         if (!resourceBody)
                             throw _errors['k8s.missingKey']({key: 'manifest or body'});
 
-                        const methodName = `replace${namespace ? 'Namespaced' : ''}${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            const options = namespace
-                                ? {name, namespace, body: resourceBody}
-                                : {name, body: resourceBody};
-                            return await api[methodName](options);
-                        }
-                        throw _errors['k8s.invalid']();
+                        return await callApi('replace', {name, body: resourceBody});
                     }
                     case 'patch': {
                         // Patch resource
@@ -337,35 +366,17 @@ export default adapter<IConfig>(({utError}) => {
                         if (!name) throw _errors['k8s.missingKey']({key: 'name'});
                         if (!body) throw _errors['k8s.missingKey']({key: 'body'});
 
-                        const methodName = `patch${namespace ? 'Namespaced' : ''}${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            const options = namespace
-                                ? {
-                                      name,
-                                      namespace,
-                                      body,
-                                      options: {
-                                          headers: {
-                                              'Content-Type':
-                                                  'application/strategic-merge-patch+json',
-                                          },
-                                      },
-                                  }
-                                : {
-                                      name,
-                                      body,
-                                      options: {
-                                          headers: {
-                                              'Content-Type':
-                                                  'application/strategic-merge-patch+json',
-                                          },
-                                      },
-                                  };
-                            return await api[methodName](options);
-                        }
-                        throw _errors['k8s.invalid']();
+                        return await callApi('patch', {
+                            name,
+                            body,
+                            ...(!isCustomResource && {
+                                options: {
+                                    headers: {
+                                        'Content-Type': 'application/strategic-merge-patch+json',
+                                    },
+                                },
+                            }),
+                        });
                     }
                     case 'delete':
                     case 'remove': {
@@ -374,14 +385,7 @@ export default adapter<IConfig>(({utError}) => {
                         const {name} = params;
                         if (!name) throw _errors['k8s.missingKey']({key: 'name'});
 
-                        const methodName = `delete${namespace ? 'Namespaced' : ''}${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            const options = namespace ? {name, namespace} : {name};
-                            return await api[methodName](options);
-                        }
-                        throw _errors['k8s.invalid']();
+                        return await callApi('delete', {name});
                     }
                     case 'apply': {
                         // Apply resource (create or update)
@@ -396,32 +400,20 @@ export default adapter<IConfig>(({utError}) => {
 
                         try {
                             // Try to get existing resource
-                            const getMethodName = `read${resourceType
-                                .charAt(0)
-                                .toUpperCase()}${resourceType.slice(1)}`;
-                            await api[getMethodName]({name, namespace});
-
+                            await callApi(isCustomResource ? 'get' : 'read', {name});
                             // Resource exists, update it
-                            const updateMethodName = `replace${
-                                namespace ? 'Namespaced' : ''
-                            }${resourceType.charAt(0).toUpperCase()}${resourceType.slice(1)}`;
-                            const options = namespace
-                                ? {name, namespace, body: resourceBody}
-                                : {name, body: resourceBody};
-                            return await api[updateMethodName](options);
+                            return await callApi('replace', {name, body: resourceBody});
                         } catch (error) {
                             // Resource doesn't exist, create it
-                            const createMethodName = `create${
-                                namespace ? 'Namespaced' : ''
-                            }${resourceType.charAt(0).toUpperCase()}${resourceType.slice(1)}`;
-                            const options = namespace
-                                ? {namespace, body: resourceBody}
-                                : {body: resourceBody};
-                            return await api[createMethodName](options);
+                            return await callApi('create', {body: resourceBody});
                         }
                     }
                     case 'scale': {
-                        // Scale deployment/replicaset
+                        // Scale deployment/replicaset (not supported for custom resources)
+                        if (isCustomResource) {
+                            throw _errors['k8s.invalid']();
+                        }
+
                         if (Array.isArray(params)) throw _errors['k8s.invalid']();
                         const {name, replicas} = params;
                         if (!name) throw _errors['k8s.missingKey']({key: 'name'});
@@ -458,86 +450,86 @@ export default adapter<IConfig>(({utError}) => {
                     case 'watch': {
                         if (Array.isArray(params)) throw _errors['k8s.invalid']();
                         const {labelSelector, fieldSelector, timeout = 30000} = params;
-                        const methodName = `list${namespace ? 'Namespaced' : ''}${resourceType
-                            .charAt(0)
-                            .toUpperCase()}${resourceType.slice(1)}`;
-                        if (typeof api[methodName] === 'function') {
-                            const options: Record<string, unknown> = {};
-                            if (namespace) options.namespace = namespace;
-                            if (labelSelector) options.labelSelector = labelSelector;
-                            if (fieldSelector) options.fieldSelector = fieldSelector;
 
-                            const existing = await api[methodName](options);
-                            const resourceVersion = existing.metadata?.resourceVersion;
+                        // Get existing resources using list
+                        const existing = await callApi('list', {
+                            ...(labelSelector && {labelSelector}),
+                            ...(fieldSelector && {fieldSelector}),
+                        });
+                        const resourceVersion = (
+                            existing as {metadata?: {resourceVersion?: string}}
+                        ).metadata?.resourceVersion;
 
-                            let timer: NodeJS.Timeout | null;
-                            const clearTimer = (): void => {
-                                if (timer) {
-                                    clearTimeout(timer);
-                                    timer = null;
-                                }
-                            };
-                            const events: Promise<{type: string; object: unknown}>[] = [];
-                            let eventResolve: (value: {type: string; object: unknown}) => void,
-                                eventReject: (reason?: unknown) => void;
-                            const createEventPromise = (): void => {
-                                events.push(
-                                    new Promise<{type: string; object: unknown}>(
-                                        (resolve, reject) => {
-                                            eventResolve = value => {
-                                                createEventPromise();
-                                                resolve(value);
-                                            };
-                                            eventReject = reject;
-                                        },
-                                    ),
-                                );
-                            };
-                            createEventPromise();
-
-                            const watch = await this.config.context.watcher.watch(
-                                `/api/v1/namespaces/${namespace}/${_resourceType.toLowerCase()}`,
-                                {fieldSelector, resourceVersion, labelSelector},
-                                (type, object) => {
-                                    this.log.debug?.({object}, `Event: ${type}`);
-                                    if (type === 'ERROR') {
-                                        eventReject(
-                                            new Error(object.message || 'Watch error event'),
-                                        );
-                                    } else eventResolve({type, object});
-                                },
-                                error => {
-                                    if (watch?.signal && !watch.signal.reason) return;
-                                    eventReject(new Error(watch?.signal?.reason || error.message));
-                                },
-                            );
-                            let aborted = false;
-                            const abortOnce = (reason?: unknown): void => {
-                                clearTimer();
-                                if (!aborted) {
-                                    aborted = true;
-                                    watch?.abort(reason);
-                                }
-                            };
-                            timer = setTimeout(
-                                () =>
-                                    abortOnce(
-                                        `Timeout watching ${namespace}/${resourceType.toLowerCase()}/${fieldSelector || ''} ${labelSelector || ''} after ${timeout}ms`,
-                                    ),
-                                timeout,
-                            );
-                            return {
-                                events: (async function* watchEvents() {
-                                    try {
-                                        while (true) yield await events.shift();
-                                    } finally {
-                                        abortOnce(false);
-                                    }
-                                })(),
-                                existing,
-                            };
+                        // Build watch path
+                        let watchPath: string;
+                        if (isCustomResource && !Array.isArray(params)) {
+                            const {group, version, plural} = params;
+                            watchPath = isNamespaced
+                                ? `/apis/${group}/${version}/namespaces/${namespace}/${plural}`
+                                : `/apis/${group}/${version}/${plural}`;
+                        } else {
+                            watchPath = `/api/v1/namespaces/${namespace}/${_resourceType.toLowerCase()}`;
                         }
-                        throw _errors['k8s.invalid']();
+
+                        let timer: NodeJS.Timeout | null;
+                        const clearTimer = (): void => {
+                            if (timer) {
+                                clearTimeout(timer);
+                                timer = null;
+                            }
+                        };
+                        const events: Promise<{type: string; object: unknown}>[] = [];
+                        let eventResolve: (value: {type: string; object: unknown}) => void,
+                            eventReject: (reason?: unknown) => void;
+                        const createEventPromise = (): void => {
+                            events.push(
+                                new Promise<{type: string; object: unknown}>((resolve, reject) => {
+                                    eventResolve = value => {
+                                        createEventPromise();
+                                        resolve(value);
+                                    };
+                                    eventReject = reject;
+                                }),
+                            );
+                        };
+                        createEventPromise();
+
+                        const watch = await this.config.context.watcher.watch(
+                            watchPath,
+                            {fieldSelector, resourceVersion, labelSelector},
+                            (type, object) => {
+                                this.log.debug?.({object}, `Event: ${type}`);
+                                if (type === 'ERROR') {
+                                    eventReject(new Error(object.message || 'Watch error event'));
+                                } else eventResolve({type, object});
+                            },
+                            error => {
+                                if (watch?.signal && !watch.signal.reason) return;
+                                eventReject(new Error(watch?.signal?.reason || error.message));
+                            },
+                        );
+                        let aborted = false;
+                        const abortOnce = (reason?: unknown): void => {
+                            clearTimer();
+                            if (!aborted) {
+                                aborted = true;
+                                watch?.abort(reason);
+                            }
+                        };
+                        timer = setTimeout(
+                            () => abortOnce(`Timeout watching ${watchPath} after ${timeout}ms`),
+                            timeout,
+                        );
+                        return {
+                            events: (async function* watchEvents() {
+                                try {
+                                    while (true) yield await events.shift();
+                                } finally {
+                                    abortOnce(false);
+                                }
+                            })(),
+                            existing,
+                        };
                     }
                 }
             } catch (error: unknown) {
