@@ -20,14 +20,15 @@ Create a more flexible, self-contained layer definition system that:
 2. **Auto-associates layers with server or browser** - Based on layer name/type
 3. **Decentralizes configuration** - Each layer defines its own config and validation
 4. **Enables flexible folder structure** - Framework auto-discovers realm via package.json
-5. **Maintains backward compatibility** - Existing realms continue to work
+5. **Provides clear migration path** - Comprehensive migration guide and tooling
 
 ### Success Criteria
 - [ ] Layers can be defined without server.ts/browser.ts parent files
 - [ ] Layer type (server/browser) is automatically determined
 - [ ] Each layer defines its own configuration and validation
 - [ ] Framework discovers realm by traversing up to find package.json
-- [ ] Existing server.ts/browser.ts approach continues to work (backward compatibility)
+- [ ] Clear migration guide with step-by-step instructions
+- [ ] Migration tooling to automate conversion
 - [ ] Documentation updated with new patterns
 - [ ] Skills updated to reflect new approach
 
@@ -99,24 +100,26 @@ Handler groups (folders with handlers)
 
 ### Major Technical Decisions
 
-#### Decision 1: Backward Compatibility Strategy
-**Choice:** Support both patterns simultaneously with gradual migration path
+#### Decision 1: Breaking Change with Migration Support
+**Choice:** Implement breaking change with comprehensive migration guide and tooling
 
 **Rationale:**
-- Minimizes breaking changes for existing codebases
-- Allows teams to migrate incrementally
-- Reduces risk of regression
+- Cleaner implementation without dual-mode complexity
+- Faster development cycle (no backward compatibility layer)
+- Forces consistent pattern across all projects
+- Simpler codebase to maintain long-term
 
 **Trade-offs:**
-- More complex load logic during transition period
-- Need to maintain two code paths temporarily
-- Documentation must cover both approaches
+- Requires migration effort from all users
+- Breaking change in major version
+- Need excellent migration tooling and documentation
 
-**Migration Path:**
-1. New pattern works alongside old pattern
-2. Framework detects which pattern is used
-3. Old pattern deprecated in future version
-4. Old pattern removed in major version bump
+**Migration Support:**
+1. Automated migration tool to convert server.ts/browser.ts to self-contained layers
+2. Step-by-step migration guide with examples
+3. Pre-migration validation tool to check compatibility
+4. Comprehensive documentation of all changes
+5. Migration support period with active help
 
 #### Decision 2: Layer Type Determination
 **Choice:** Infer from layer name with explicit override option
@@ -164,12 +167,13 @@ export default layer(() => ({
 - Fall back to explicit configuration if ambiguous
 
 #### Decision 4: Configuration Composition
-**Choice:** Layer-level config with optional parent overrides
+**Choice:** Layer-level config only (no parent overrides)
 
 **Rationale:**
 - Co-locates config with layer code
-- Maintains flexibility for cross-cutting concerns
-- Enables environment-specific overrides
+- Simpler mental model - one source of truth per layer
+- Enables environment-specific overrides at layer level
+- Cross-cutting concerns handled via shared configuration utilities
 
 **Pattern:**
 ```typescript
@@ -341,17 +345,16 @@ interface ILayerInfo {
 
 #### Task 1.4: Update Load System
 - **Complexity:** Large
-- **Description:** Modify load.ts to support both old and new patterns
+- **Description:** Modify load.ts to support only the new self-contained pattern
 - **Files:**
   - `core/blong-gogo/src/load.ts` - Major refactoring
   - `core/blong-gogo/src/loadLayer.ts` - New file for layer loading
 - **Dependencies:** Tasks 1.1, 1.2, 1.3
 - **Acceptance Criteria:**
-  - [ ] Detects which pattern (old/new) is being used
   - [ ] Loads layers using new self-contained pattern
-  - [ ] Maintains backward compatibility with server.ts/browser.ts
-  - [ ] Handles mixed usage (some layers new, some old)
-  - [ ] Integration tests for both patterns
+  - [ ] Removes support for server.ts/browser.ts pattern
+  - [ ] Clean, simplified loading logic
+  - [ ] Integration tests for new pattern only
 
 ### Phase 2: Core Functionality (Week 3-4)
 
@@ -400,7 +403,7 @@ interface ILayerInfo {
 
 #### Task 2.4: Update Realm.ts Integration
 - **Complexity:** Medium
-- **Description:** Modify Realm.ts to work with new layer structure
+- **Description:** Modify Realm.ts to work with new layer structure only
 - **Files:**
   - `core/blong-gogo/src/Realm.ts` - Refactoring
 - **Dependencies:** Tasks 2.1, 2.2, 2.3
@@ -408,20 +411,22 @@ interface ILayerInfo {
   - [ ] Realm can be created without server.ts/browser.ts
   - [ ] Realm discovers its layers automatically
   - [ ] Realm initialization follows dependency order
-  - [ ] Backward compatible with explicit children
   - [ ] Integration tests for realm initialization
 
-#### Task 2.5: Create Migration Helpers
-- **Complexity:** Small
-- **Description:** Build tools to help migrate from old to new pattern
+#### Task 2.5: Create Migration Tool
+- **Complexity:** Medium
+- **Description:** Build comprehensive migration tool
 - **Files:**
   - `core/blong-gogo/bin/migrate-layers.ts` - CLI tool
+  - `core/blong-gogo/bin/validate-migration.ts` - Pre-migration validator
 - **Dependencies:** Phase 1 complete
 - **Acceptance Criteria:**
   - [ ] Analyzes existing server.ts/browser.ts
   - [ ] Generates new layer configuration files
   - [ ] Preserves all existing config
-  - [ ] Provides migration report
+  - [ ] Creates backup of original files
+  - [ ] Validates migration success
+  - [ ] Provides detailed migration report
   - [ ] Documentation on how to use tool
 
 ### Phase 3: Polish & Deploy (Week 5-6)
@@ -435,7 +440,6 @@ interface ILayerInfo {
 - **Dependencies:** Phase 2 complete
 - **Acceptance Criteria:**
   - [ ] Test realm using only new pattern
-  - [ ] Test realm using mixed old/new patterns
   - [ ] Test all layer types (adapter, orchestrator, gateway, etc.)
   - [ ] Test error conditions and edge cases
   - [ ] Performance tests for discovery and loading
@@ -455,26 +459,27 @@ interface ILayerInfo {
   - [ ] Suggestions for common mistakes
   - [ ] Debug logging for discovery process
 
-#### Task 3.3: Update Documentation
-- **Complexity:** Medium
-- **Description:** Document new layer pattern and migration guide
+#### Task 3.3: Create Migration Guide
+- **Complexity:** Large
+- **Description:** Comprehensive migration documentation
 - **Files:**
-  - `docs/blong/docs/concepts/layer.md` - Major update
+  - `docs/blong/docs/migration/v2-layer-migration.md` - New migration guide
+  - `docs/blong/docs/concepts/layer.md` - Update with new pattern
   - `docs/blong/docs/concepts/realm.md` - Update
-  - `docs/blong/docs/patterns/layer-migration.md` - New migration guide
   - `docs/blong/docs/patterns/self-contained-layers.md` - New pattern guide
 - **Dependencies:** Tasks 3.1, 3.2
 - **Acceptance Criteria:**
-  - [ ] Clear explanation of new pattern
-  - [ ] Side-by-side comparison with old pattern
-  - [ ] Step-by-step migration guide
-  - [ ] Examples for each layer type
-  - [ ] Troubleshooting section
-  - [ ] Updated decision tree for when to use each pattern
+  - [ ] Step-by-step migration instructions
+  - [ ] Before/after code examples for each layer type
+  - [ ] Common migration pitfalls and solutions
+  - [ ] Migration tool usage guide
+  - [ ] FAQ section
+  - [ ] Troubleshooting guide
+  - [ ] Clear breaking changes documentation
 
 #### Task 3.4: Update Skills
 - **Complexity:** Medium
-- **Description:** Update agent skills to reflect new patterns
+- **Description:** Update agent skills to reflect new patterns only
 - **Files:**
   - `.github/skills/layer/SKILL.md` - Major update
   - `.github/skills/realm/SKILL.md` - Update
@@ -483,8 +488,8 @@ interface ILayerInfo {
   - `.github/copilot-instructions.md` - Update with new patterns
 - **Dependencies:** Task 3.3
 - **Acceptance Criteria:**
-  - [ ] Skills show new pattern as primary
-  - [ ] Old pattern shown as legacy option
+  - [ ] Skills show only new pattern
+  - [ ] Remove all references to server.ts/browser.ts pattern
   - [ ] Clear examples of self-contained layers
   - [ ] Updated code snippets
   - [ ] Cross-references updated
@@ -537,11 +542,11 @@ interface ILayerInfo {
   - **Mitigation:** Aggressive caching and watch mode optimization
 
 ### Constraints
-- **Time:** 6 weeks for full implementation (can be phased)
-- **Backward Compatibility:** Must maintain old pattern indefinitely
-- **Performance:** No more than 10% startup time increase
-- **API Stability:** New APIs should be stable from v1.0
-- **Breaking Changes:** None allowed until next major version
+- **Time:** 4-5 weeks for full implementation (simpler without backward compatibility)
+- **Breaking Change:** Major version bump required (v2.0)
+- **Performance:** Must match or exceed current performance
+- **API Stability:** New APIs should be stable from v2.0
+- **Migration Support:** Excellent tooling and documentation required
 
 ### Risks
 
@@ -554,23 +559,26 @@ interface ILayerInfo {
   - Lazy load where possible
   - Keep discovery algorithm simple
 
-#### Risk 2: Backward Compatibility Issues
+#### Risk 2: Migration Complexity
+- **Probability:** High
+- **Impact:** High
+- **Mitigation:**
+  - Excellent automated migration tool
+  - Pre-migration validation to identify issues
+  - Comprehensive migration guide with examples
+  - Beta testing with real projects
+  - Migration support period with active help
+  - Rollback documentation if needed
+
+#### Risk 3: User Adoption Resistance
 - **Probability:** Medium
 - **Impact:** High
 - **Mitigation:**
-  - Comprehensive test suite for old pattern
-  - Beta testing with existing projects
-  - Clear migration guide and tools
-  - Support both patterns for at least 2 major versions
-
-#### Risk 3: Confusing Migration Path
-- **Probability:** Medium
-- **Impact:** Medium
-- **Mitigation:**
-  - Clear, step-by-step documentation
-  - Automated migration tool
-  - Examples for common scenarios
-  - Office hours / support for early adopters
+  - Clear communication of benefits
+  - Excellent migration tooling to minimize effort
+  - Examples showing improvements
+  - Support channels for questions
+  - Phased rollout to identify issues early
 
 #### Risk 4: Edge Cases in Discovery
 - **Probability:** High
@@ -592,11 +600,11 @@ interface ILayerInfo {
 
 ## Not Included (Future Enhancements)
 
-### Version 1.x (This Plan)
+### Version 2.0 (This Plan)
 - Self-contained layer definition
 - Auto-discovery of layers
 - Flexible folder structure
-- Backward compatibility with server.ts/browser.ts
+- Breaking change with migration support
 
 ### Future Versions (Not in Scope)
 
@@ -638,46 +646,74 @@ interface ILayerInfo {
 
 ## Migration Strategy
 
-### For Existing Projects
+### Migration Approach
 
-#### Option 1: Gradual Migration (Recommended)
-1. **Keep existing server.ts/browser.ts** functioning
-2. **Migrate one layer at a time** to new pattern
-3. **Test each migration** before moving to next layer
-4. **Complete migration** when all layers converted
+**All existing projects must migrate** to the new pattern when upgrading to v2.0. The migration is mandatory but well-supported with tooling and documentation.
 
-#### Option 2: Big Bang Migration
-1. **Use migration tool** to convert all at once
-2. **Extensive testing** required
-3. **Higher risk** but faster completion
+#### Pre-Migration Steps
+1. **Backup your code** - Commit all changes to version control
+2. **Run validation tool** - Check compatibility and identify issues
+3. **Review migration guide** - Understand what will change
+4. **Plan migration timing** - Choose appropriate time for upgrade
 
-#### Option 3: Hybrid Approach
-1. **Keep critical layers** in old pattern
-2. **New layers** use new pattern
-3. **Migrate when convenient** layer by layer
+#### Automated Migration Process
+1. **Run migration tool** - `blong migrate-layers ./realmname`
+   - Analyzes server.ts/browser.ts configuration
+   - Generates self-contained layer files
+   - Creates backups of original files
+   - Validates all config is preserved
+   
+2. **Review generated files** - Check layer definitions
+   - Verify configuration accuracy
+   - Ensure all layers discovered
+   - Check namespace and import mappings
+
+3. **Test thoroughly** - Validate functionality
+   - Run existing test suite
+   - Manual testing of key workflows
+   - Check logs for errors
+
+4. **Remove old files** - Clean up after successful migration
+   - Delete server.ts/browser.ts backups
+   - Update any documentation references
+
+#### Manual Migration (if needed)
+For complex cases or custom requirements:
+1. Create self-contained layer definitions manually
+2. Move config from server.ts to each layer
+3. Add validation schemas to each layer
+4. Remove server.ts/browser.ts files
+5. Test and validate
 
 ### For New Projects
 
-- **Default to new pattern** for all layers
-- **Use examples** from documentation
-- **Follow best practices** from updated skills
-- **Avoid server.ts/browser.ts** unless specific need
+- **Use only new pattern** - No server.ts/browser.ts
+- **Follow examples** from documentation
+- **Self-contained layers** from the start
+- **Use migration guide** as reference for patterns
 
 ## Success Metrics
 
 ### Technical Metrics
-- [ ] 100% backward compatibility maintained
-- [ ] No performance regression (within 10%)
-- [ ] All existing tests pass
+- [ ] Clean implementation without backward compatibility layer
+- [ ] Performance matches or exceeds current (within 5%)
+- [ ] All new tests pass
 - [ ] New test coverage >80%
 - [ ] Discovery time <100ms for typical realm
 
+### Migration Metrics
+- [ ] Migration tool success rate >95%
+- [ ] Average migration time <30 minutes per realm
+- [ ] At least 3 test realms successfully migrated
+- [ ] Clear error messages for migration issues
+- [ ] Rollback process documented and tested
+
 ### Adoption Metrics
 - [ ] At least 3 example realms using new pattern
-- [ ] Documentation complete and reviewed
-- [ ] Migration tool successfully migrates test realm
+- [ ] Comprehensive migration guide published
 - [ ] Zero P0 bugs in first month after release
-- [ ] Positive feedback from early adopters
+- [ ] Positive feedback from beta testers
+- [ ] Active support channels established
 
 ### Quality Metrics
 - [ ] Clear error messages for common issues
@@ -692,27 +728,30 @@ interface ILayerInfo {
 - Define APIs and interfaces
 - Implement discovery logic
 - Create type inference
-- Update load system
+- Update load system (remove old pattern support)
 
 ### Week 3-4: Core Functionality  
 - Auto-discovery scanner
 - Configuration composition
 - Dependency resolution
 - Realm integration
-- Migration helpers
+- Migration tool development
 
-### Week 5-6: Polish & Deploy
+### Week 4-5: Polish & Deploy
 - Comprehensive testing
 - Error handling improvements
+- Migration guide creation
 - Documentation updates
 - Skills updates
 - Example realms
 - Performance optimization
 
+### Total: 4-5 weeks (faster without backward compatibility)
+
 ### Post-Release
-- Monitor adoption and feedback
+- Monitor migrations and feedback
 - Address issues promptly
-- Iterate on documentation
+- Iterate on migration guide
 - Consider future enhancements
 
 ## Open Questions

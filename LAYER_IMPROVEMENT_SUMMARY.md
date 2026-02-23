@@ -137,31 +137,10 @@ export default adapter(() => ({
 }));
 ```
 
-### Configuration (Proposed - Decentralized)
+### Configuration (Proposed - No server.ts Needed)
 ```typescript
-// server.ts - OPTIONAL now, or minimal
-// Framework auto-discovers layers
-export default server(blong => ({
-    url: import.meta.url,
-    // No need to list children - auto-discovered
-    // No need to define validation - each layer has own
-    // Optional: Can override layer configs if needed
-    config: {
-        default: {},
-        // Cross-cutting overrides only
-        prod: {
-            allLayers: {
-                logLevel: 'error'  // Override all layers
-            }
-        }
-    }
-}));
-```
-
-### Or Skip server.ts Entirely
-```typescript
-// No server.ts needed!
-// Framework discovers:
+// No server.ts file!
+// Framework auto-discovers layers:
 // - adapter/db.ts (automatically server-side)
 // - orchestrator/dispatch.ts (automatically server-side)
 // - gateway/api/ (automatically server-side)
@@ -294,42 +273,45 @@ Realm name: From package.json "name" field
 
 ## Migration Path
 
-### Option 1: Keep Both Patterns (Backward Compatible)
-```
-realmname/
-├── server.ts              # Old pattern - still works
-├── adapter/
-│   ├── db.ts             # Old style
-│   └── http.ts           # New style (self-contained)
-└── orchestrator/
-    └── dispatch.ts        # New style (self-contained)
+**⚠️ Breaking Change in v2.0:** All projects must migrate to the new pattern.
 
-Framework: "I see server.ts, I'll respect it but also load self-contained layers"
-```
-
-### Option 2: Full Migration
+### Automated Migration (Recommended)
 ```bash
 # Use migration tool
 $ blong migrate-layers ./realmname
 
-# Analyzes server.ts
+# Analyzes server.ts/browser.ts
 # Extracts config for each layer
 # Creates self-contained layer files
-# Optionally removes server.ts
+# Removes server.ts/browser.ts (creates backups)
 
 ✓ Migrated adapter/db.ts
 ✓ Migrated adapter/http.ts
 ✓ Migrated orchestrator/dispatch.ts
-✓ Ready to remove server.ts (test first!)
+✓ Created backups: server.ts.backup
+✓ Migration complete!
+
+# Test your application
+$ npm test
+$ npm start
+
+# If successful, remove backups
+$ rm *.backup
 ```
 
-### Option 3: Gradual Migration
-```
-Week 1: Migrate adapter layers
-Week 2: Migrate orchestrator layers  
-Week 3: Migrate gateway layers
-Week 4: Test, then remove server.ts
-```
+### Manual Migration
+
+See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for:
+- Step-by-step instructions
+- Before/after examples
+- Troubleshooting guide
+- Common scenarios
+
+### Migration Timeline
+
+**v1.x Support:** 6 months after v2.0 release  
+**Migration Tool:** Available with v2.0  
+**Support:** Active help during transition period
 
 ## Configuration Merge Priority
 
@@ -340,8 +322,7 @@ When same property defined in multiple places:
 2. Environment variable        BLONG_DB_HOST=localhost
 3. Environment config (dev)    config.dev.db.host
 4. Layer default config        layer's config.default.db.host
-5. Parent override             server.ts override (backward compat)
-6. Framework default           Built-in sensible defaults
+5. Framework default           Built-in sensible defaults
 
 Highest priority wins ↑
 ```
@@ -426,39 +407,39 @@ export default adapter((blong) => ({
 ## Timeline
 
 - **Week 1-2:** Foundation (APIs, discovery, type inference)
-- **Week 3-4:** Core functionality (scanning, config, dependencies)
-- **Week 5-6:** Polish (testing, docs, examples, optimization)
+- **Week 3-4:** Core functionality (scanning, config, dependencies, migration tool)
+- **Week 4-5:** Polish (testing, migration guide, docs, optimization)
 
-**Total:** 6 weeks for full implementation
+**Total:** 4-5 weeks for full implementation (faster without backward compatibility)
 
-**Backward Compatibility:** Maintained indefinitely
+**Version:** 2.0 (Breaking Change)
 
 ## Key Decisions
 
-1. **Both patterns work simultaneously** - Zero breaking changes
+1. **Breaking change with migration support** - Clean implementation
 2. **Type inference from layer name** - Less boilerplate
 3. **package.json marks realm boundary** - Clear, standard
 4. **Co-located configuration** - Better developer experience
-5. **Migration tool provided** - Easy adoption
+5. **Excellent migration tool provided** - Smooth transition
 
 ## Questions?
 
-See [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md) for:
-- Detailed technical specifications
-- API definitions
-- Risk mitigation strategies
-- Complete task breakdown
-- Open questions and decisions
+See documentation:
+- [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) - How to migrate your code
+- [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md) - Technical specs
+- [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) - Visual guides
 
 ## Next Steps
 
 1. ✅ Review implementation plan
-2. ⏳ Stakeholder approval
+2. ⏳ Stakeholder approval  
 3. ⏳ Begin Phase 1 development
 4. ⏳ Create proof-of-concept
 5. ⏳ Beta testing with real projects
-6. ⏳ Production release
+6. ⏳ Production release (v2.0)
+7. ⏳ Migration support period
 
 ---
 
 *Last Updated: 2026-02-23*
+*Version: 2.0 Breaking Change*
