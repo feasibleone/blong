@@ -35,13 +35,26 @@ This directory contains a comprehensive implementation plan for improving the Bl
 - Detailed problem statement and goals
 - Technical approach and architecture
 - Major technical decisions and trade-offs
-- Phase-by-phase implementation plan (6 weeks)
+- Phase-by-phase implementation plan (4-5 weeks)
 - Risk assessment and mitigation
 - API definitions and data structures
 - Migration strategy
 - Success metrics
 
-### 4. [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md)
+### 4. [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
+**Audience:** All users migrating to v2.0  
+**Purpose:** Step-by-step migration instructions  
+**Time to Read:** 30 minutes
+
+**Contains:**
+- Pre-migration checklist
+- Automated migration tool usage
+- Manual migration steps
+- Common scenarios and examples
+- Troubleshooting guide
+- Validation checklist
+
+### 5. [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md)
 **Audience:** Architects, Visual learners  
 **Purpose:** Visual representation of changes  
 **Time to Read:** 20 minutes
@@ -96,7 +109,7 @@ Enable self-contained layers that:
 - Are auto-discovered by the framework
 - Self-declare their type (server/browser)
 - Allow flexible folder organization
-- Maintain 100% backward compatibility
+- **Breaking change with excellent migration support**
 
 ### Key Benefits
 - ✅ Config co-located with implementation
@@ -105,17 +118,18 @@ Enable self-contained layers that:
 - ✅ Better for team collaboration
 - ✅ Simpler to reuse across projects
 - ✅ More flexible organization
+- ✅ Cleaner implementation without backward compatibility layer
 
 ### Timeline
 - **Phase 1 (Weeks 1-2):** Foundation - APIs, discovery, type inference
-- **Phase 2 (Weeks 3-4):** Core functionality - scanning, config, dependencies
-- **Phase 3 (Weeks 5-6):** Polish - testing, docs, optimization
-- **Total:** 6 weeks for production-ready implementation
+- **Phase 2 (Weeks 3-4):** Core functionality - scanning, config, migration tool
+- **Phase 3 (Weeks 4-5):** Polish - testing, migration guide, docs, optimization
+- **Total:** 4-5 weeks for v2.0 release (faster without backward compatibility)
 
 ### Risk Level
-- **Low to Medium** - Backward compatibility maintained
-- **Migration:** Optional and can be gradual
-- **Rollback:** Easy - both patterns work simultaneously
+- **Medium** - Breaking change requires migration
+- **Migration:** Required for v2.0, but well-supported with tooling
+- **Mitigation:** Comprehensive migration guide and automated tool
 
 ## 📋 Review Status
 
@@ -182,9 +196,10 @@ See [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPRO
 | **Discovery** | Explicit children array | Auto-discovery |
 | **Type Declaration** | External (by parent) | Self-declared or inferred |
 | **Folder Structure** | Rigid | Flexible |
-| **Migration Needed** | N/A | Optional, with tooling |
-| **Backward Compat** | N/A | 100% maintained |
+| **Migration Needed** | N/A | **Required for v2.0** |
+| **Backward Compat** | N/A | **Breaking change** |
 | **Dev Experience** | Scattered concerns | Co-located concerns |
+| **Version** | v1.x | **v2.0** |
 
 ## ⏭️ Next Steps
 
@@ -194,6 +209,7 @@ See [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPRO
 4. **Approve:** Green light to proceed (or not)
 5. **Execute:** Begin Phase 1 implementation
 6. **Monitor:** Weekly check-ins during implementation
+7. **Migrate:** Support users during migration period
 
 ---
 
@@ -201,13 +217,15 @@ See [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPRO
 
 - **Start Review:** [REVIEW_GUIDE.md](./REVIEW_GUIDE.md)
 - **Quick Overview:** [LAYER_IMPROVEMENT_SUMMARY.md](./LAYER_IMPROVEMENT_SUMMARY.md)
+- **Migration Guide:** [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
 - **Full Plan:** [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md)
 - **Visual Guide:** [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md)
 
 ---
 
-**Document Set Version:** 1.0  
+**Document Set Version:** 2.0  
 **Created:** 2026-02-23  
+**Updated:** 2026-02-23 (Breaking change approach)  
 **Status:** Ready for Review  
 **Expected Approval:** Week 1  
 **Implementation Start:** Week 2 (pending approval)

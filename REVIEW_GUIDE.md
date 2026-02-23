@@ -85,13 +85,13 @@ For architecture and flow comprehension:
 [Add your feedback here]
 ```
 
-#### 3. Backward Compatibility Strategy?
-**Question:** Support both patterns indefinitely?
+#### 3. Migration Support Quality?
+**Question:** How comprehensive should migration support be?
 
 **Options:**
-- ✅ Yes, support both forever
-- ⚠️ Deprecate old pattern in version X.X
-- 📅 Remove old pattern in version X.X
+- 🔥 Critical - Excellent tooling and docs required
+- ⭐ Important - Basic tool and guide sufficient
+- 💤 Low priority - Manual migration acceptable
 
 **Your Decision:** _____________
 
@@ -103,22 +103,22 @@ For architecture and flow comprehension:
 ### Can Decide Later
 
 #### 4. Migration Tool Priority?
-**Question:** How important is the automated migration tool?
+**Question:** When should migration tool be ready?
 
 **Options:**
-- 🔥 Critical - must be in Phase 2
-- ⭐ Important - nice to have
-- 💤 Low priority - manual migration OK
+- 🔥 Critical - must be in Phase 2 (with implementation)
+- ⭐ Important - can deliver shortly after v2.0
+- 💤 Lower priority - focus on docs first
 
 **Your Decision:** _____________
 
 #### 5. Performance Requirements?
-**Question:** What's acceptable performance impact?
+**Question:** What's acceptable performance target?
 
 **Options:**
 - 🚀 Must be faster than current
-- ✅ Within 10% of current (plan default)
-- 😐 Within 20% is acceptable
+- ✅ Match current performance (plan default)
+- 😐 Within 10% acceptable
 
 **Your Decision:** _____________
 
@@ -127,8 +127,9 @@ For architecture and flow comprehension:
 ### For Product Owners
 - [ ] Read the Summary document
 - [ ] Understand the business value
-- [ ] Review timeline and phases
-- [ ] Approve or request changes
+- [ ] Review timeline and phases (4-5 weeks)
+- [ ] Approve breaking change approach
+- [ ] Review migration support plan
 - [ ] Sign off on decision points
 
 ### For Tech Leads
@@ -137,7 +138,8 @@ For architecture and flow comprehension:
 - [ ] Evaluate risks and mitigations
 - [ ] Review proposed APIs
 - [ ] Check testing strategy
-- [ ] Validate performance expectations
+- [ ] Validate migration tool requirements
+- [ ] Assess team capacity for migration support
 
 ### For Architects
 - [ ] Review architecture diagrams
@@ -146,38 +148,41 @@ For architecture and flow comprehension:
 - [ ] Assess scalability
 - [ ] Review discovery algorithm
 - [ ] Validate configuration merge strategy
+- [ ] Approve breaking change approach
 
 ### For DevOps/SRE
 - [ ] Review deployment considerations
-- [ ] Check monitoring/observability
+- [ ] Plan for v2.0 rollout
 - [ ] Assess operational impact
 - [ ] Review error handling
 - [ ] Validate performance metrics
+- [ ] Plan migration timing
 
 ## 🤔 Common Questions
 
 ### Q: Will this break existing code?
-**A:** No. The plan explicitly maintains backward compatibility. Existing `server.ts`/`browser.ts` files will continue to work. The new pattern is additive.
+**A:** Yes. This is a **breaking change** in v2.0. All projects must migrate to the new pattern. However, excellent migration tooling and comprehensive documentation make the transition smooth.
 
 ### Q: Do we have to migrate existing projects?
-**A:** No. Migration is optional. New projects can use the new pattern, existing projects can stay as-is or migrate gradually.
+**A:** Yes, when upgrading to v2.0. v1.x will be supported for 6 months after v2.0 release, giving time to plan migration.
 
 ### Q: What's the benefit for developers?
 **A:** 
 - Config co-located with implementation (easier to understand)
 - No need to maintain central catalog (less overhead)
 - More flexible folder organization (better for teams)
+- Cleaner, simpler codebase without backward compatibility layer
 - Easier to reuse layers across projects
 
 ### Q: How long does migration take for a typical realm?
 **A:**
+- **Automated tool:** 15-30 minutes including testing
 - **Manual migration:** 1-2 hours for average realm
-- **Automated tool:** 5-10 minutes + testing time
-- **Gradual approach:** Migrate one layer per week
+- **Total per project:** Depends on number of realms
 
 ### Q: What if we want to revert?
 **A:** 
-- Keep both patterns working means you can always go back
+- Stay on v1.x until ready to migrate
 - Migration tool creates backups
 - No breaking changes means safe to try
 
