@@ -120,7 +120,7 @@
 
 ## Proposed Architecture (After Changes)
 
-### Loading Sequence (New)
+### Loading Sequence (New - With Conditional Activation)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -137,38 +137,53 @@
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Found Layers (Auto-discovered)                     │
+│         Load Activation Config ONLY (Lightweight)               │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │ adapter/db.ts         (server-side, inferred)            │  │
-│  │ adapter/http.ts       (server-side, inferred)            │  │
-│  │ orchestrator/dispatch.ts (server-side, inferred)         │  │
-│  │ gateway/api.ts        (server-side, inferred)            │  │
-│  │ backend/api.ts        (browser-side, inferred)           │  │
+│  │ adapter/db.ts → activation: {dev: true, prod: true}      │  │
+│  │ adapter/http.ts → activation: true                       │  │
+│  │ orchestrator/dispatch.ts → activation: {microservice: false}│
+│  │ gateway/api.ts → activation: {dev: true, prod: true}     │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  Note: No imports yet, just activation config!                 │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│         Evaluate Activation (Current env: 'dev')                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ ✓ adapter/db.ts         (dev: true) → ACTIVE            │  │
+│  │ ✓ adapter/http.ts       (always true) → ACTIVE          │  │
+│  │ ✗ orchestrator/dispatch (microservice: false) → SKIP    │  │
+│  │ ✓ gateway/api.ts        (dev: true) → ACTIVE            │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Load Each Layer (Parallel Safe)                    │
+│         Import ONLY Activated Layers (Full Code)                │
 │                                                                 │
 │   adapter/db.ts ─────────►  ┌──────────────────────┐           │
 │                             │ adapter(() => ({      │           │
-│                             │   validation: {...},  │ Self-     │
-│                             │   config: {           │ Contained │
+│                             │   activation: {...},  │           │
+│                             │   validation: {...},  │ NOW       │
+│                             │   config: {           │ LOADED    │
 │                             │     default: {...},   │           │
 │                             │     dev: {...}        │           │
 │                             │   }                   │           │
 │                             │ }))                   │           │
 │                             └──────────────────────┘           │
 │                                                                 │
-│   adapter/http.ts ────────► (same pattern)                     │
-│   orchestrator/dispatch.ts ► (same pattern)                    │
+│   adapter/http.ts ────────► (loaded)                           │
+│   orchestrator/dispatch.ts  (NOT LOADED - inactive)            │
+│   gateway/api.ts ──────────► (loaded)                          │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Dependency Resolution                              │
-│  • Analyze imports: [] from each layer                         │
+│              Dependency Resolution (Active Only)                │
+│  • Analyze imports: [] from active layers only                 │
+│  • Check dependencies are activated                            │
 │  • Build dependency graph                                      │
 │  • Topological sort                                            │
 │  • Detect circular dependencies                                │
@@ -176,35 +191,47 @@
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Merge Configurations (Per Layer)                   │
-│  For each layer:                                               │
+│              Merge Configurations (Per Active Layer)            │
+│  For each ACTIVE layer:                                        │
 │  1. Layer's default config                                     │
 │  2. Layer's environment config (dev/prod/test)                 │
-│  3. Parent overrides (optional, backward compat)               │
-│  4. CLI parameters                                             │
-│  5. Environment variables                                      │
+│  3. CLI parameters                                             │
+│  4. Environment variables                                      │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              Initialize Realm                                   │
 │  • Create Realm instance                                       │
-│  • Initialize layers in dependency order                       │
+│  • Initialize ACTIVE layers in dependency order                │
+│  • Load children (conditionally based on parent activation)    │
 │  • Register with framework registry                            │
 └─────────────────────────────────────────────────────────────────┘
+
+Key Performance Optimization:
+• Activation check is lightweight (no imports)
+• Inactive layers are never imported/loaded
+• Children of inactive layers are skipped
+• Maintains current conditional loading behavior
 ```
 
-### Data Flow (Proposed)
+### Data Flow (Proposed - With Activation)
 
 ```
-SELF-CONTAINED LAYERS - Each layer owns its config
+SELF-CONTAINED LAYERS WITH ACTIVATION
 
 adapter/db.ts
 ┌──────────────────────────┐
-│ export default adapter   │  ◄── SELF-CONTAINED
-│                          │      • Own validation
-│ validation: {            │      • Own config
-│   host: String,          │      • Own children
+│ export default adapter   │  ◄── SELF-CONTAINED + ACTIVATED
+│                          │      
+│ activation: {            │  ◄── LOADED FIRST (lightweight)
+│   dev: true,             │      No imports, just evaluation
+│   prod: true,            │
+│   microservice: true     │
+│ }                        │
+│                          │
+│ validation: {            │  ◄── LOADED ONLY IF ACTIVE
+│   host: String,          │      Full imports happen here
 │   port: Number           │
 │ }                        │
 │                          │
@@ -226,10 +253,16 @@ adapter/db.ts
 
 orchestrator/dispatch.ts
 ┌──────────────────────────┐
-│ export default           │  ◄── SELF-CONTAINED
-│   orchestrator           │      • Own validation
-│                          │      • Own config
-│ validation: {            │      • Own children
+│ export default           │  ◄── SELF-CONTAINED + ACTIVATED
+│   orchestrator           │
+│                          │
+│ activation: {            │  ◄── Can disable per environment
+│   dev: true,             │
+│   microservice: false,   │  ← NOT loaded in microservice!
+│   prod: true             │
+│ }                        │
+│                          │
+│ validation: {            │  ◄── Skipped if inactive
 │   namespace: Array,      │
 │   imports: Array         │
 │ }                        │
@@ -242,8 +275,12 @@ orchestrator/dispatch.ts
 │ }                        │
 └──────────────────────────┘
 
-No central catalog needed!
-Framework discovers all layers automatically.
+Key Benefits:
+• No central catalog needed
+• Framework discovers all layers automatically
+• Conditional loading preserved (performance)
+• Each layer controls its own activation
+• Children inherit parent activation status
 ```
 
 ### Solution Visualization
