@@ -102,13 +102,21 @@ realmname/
         └── dispatch.ts
 ```
 
-### Layer Definition (Proposed - Self-Contained)
+### Layer Definition (Proposed - Self-Contained with Activation)
 ```typescript
-// adapter/db.ts - self-contained, defines own config
+// adapter/db.ts - self-contained, defines own config and activation
 export default adapter(() => ({
     extends: 'adapter.sql',
     
-    // Co-located validation
+    // Activation config - loaded FIRST (lightweight)
+    activation: {
+        dev: true,
+        prod: true,
+        microservice: true,  // Active in microservice mode
+        test: false          // Not loaded in test
+    },
+    
+    // Co-located validation (only loaded if activated)
     validation: blong.type.Object({
         host: blong.type.String(),
         port: blong.type.Number(),
@@ -116,7 +124,7 @@ export default adapter(() => ({
         logLevel: blong.type.Optional(blong.type.String())
     }),
     
-    // Co-located configuration
+    // Co-located configuration (only loaded if activated)
     config: {
         default: {
             namespace: ['user'],
@@ -140,21 +148,22 @@ export default adapter(() => ({
 ### Configuration (Proposed - No server.ts Needed)
 ```typescript
 // No server.ts file!
-// Framework auto-discovers layers:
-// - adapter/db.ts (automatically server-side)
-// - orchestrator/dispatch.ts (automatically server-side)
-// - gateway/api/ (automatically server-side)
-// Based on layer type
+// Framework auto-discovers layers and loads them conditionally:
+// - Scans for adapter/db.ts, orchestrator/dispatch.ts, etc.
+// - Loads activation config first (lightweight)
+// - Only imports layers that are activated for current environment
+// - Children of inactive layers are not loaded
 ```
 
 ### Benefits
 1. ✅ Config co-located with layer code
 2. ✅ No need to maintain central catalog
 3. ✅ Layer type automatically determined
-4. ✅ Flexible folder organization
-5. ✅ Easy to reuse layers (just copy folder)
-6. ✅ Better for team collaboration
-7. ✅ Clearer ownership and boundaries
+4. ✅ Conditional activation preserved (performance optimization)
+5. ✅ Flexible folder organization
+6. ✅ Easy to reuse layers (just copy folder)
+7. ✅ Better for team collaboration
+8. ✅ Clearer ownership and boundaries
 
 ## Side-by-Side Comparison
 

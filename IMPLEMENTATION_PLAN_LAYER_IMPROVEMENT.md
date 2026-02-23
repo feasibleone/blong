@@ -199,6 +199,49 @@ export default adapter(() => ({
 }));
 ```
 
+#### Decision 5: Conditional Layer Activation
+**Choice:** Preserve config-based activation with lazy loading
+
+**Rationale:**
+- Maintains current activation pattern where layers are conditionally loaded
+- Enables different layer configurations per environment (dev, microservice, etc.)
+- Improves performance by only loading active layers
+- Self-contained layers declare their own activation requirements
+
+**Trade-offs:**
+- Requires two-phase loading: activation config first, then layer code
+- Need mechanism to declare activation config without loading full layer
+- Must handle circular dependencies in activation checks
+
+**Implementation:**
+```typescript
+// Layer declares lightweight activation config
+export default adapter(() => ({
+    // Activation config - loaded first, minimal
+    activation: {
+        // Simple boolean or function returning boolean
+        enabled: true, // or (env) => env === 'dev'
+        // Or per-environment activation
+        dev: true,
+        prod: false,
+        microservice: true
+    },
+    
+    // Full config - only loaded if layer is activated
+    validation: blong.type.Object({...}),
+    config: {
+        default: {...}
+    }
+}));
+```
+
+**Loading Sequence:**
+1. Framework discovers all layer files via scanning
+2. Loads only activation config (lightweight, no imports)
+3. Evaluates activation for current environment
+4. Only imports/loads code for activated layers
+5. Loads children of activated layers conditionally
+
 ### Important APIs and Data Structures
 
 #### New Layer API
@@ -213,6 +256,18 @@ interface ILayerConfig<T extends TSchema> {
     // Optional: Layer kind/role (inferred from function name)
     kind?: 'adapter' | 'orchestrator' | 'gateway' | 'error' | 'test' | 'component' | 'backend';
     
+    // Optional: Activation configuration (loaded first, before full layer)
+    activation?: {
+        // Simple boolean for all environments
+        enabled?: boolean;
+        // Or per-environment activation
+        dev?: boolean;
+        prod?: boolean;
+        test?: boolean;
+        microservice?: boolean;
+        [env: string]: boolean;
+    } | boolean | ((env: string) => boolean);
+    
     // Required: Validation schema for this layer's config
     validation: T;
     
@@ -225,7 +280,7 @@ interface ILayerConfig<T extends TSchema> {
         [key: string]: Partial<Static<T>>;
     };
     
-    // Optional: Handler groups to load
+    // Optional: Handler groups to load (also conditionally loaded)
     children?: string[];
     
     // Optional: Dependencies on other layers
@@ -267,7 +322,7 @@ interface ILayerInfo {
 
 ### System Interactions
 
-#### Load Sequence (New Pattern)
+#### Load Sequence (New Pattern with Conditional Activation)
 ```
 1. Framework scans for layer definition files
    ├─ Checks for adapter.ts, orchestrator.ts, gateway.ts, etc.
@@ -275,19 +330,30 @@ interface ILayerInfo {
    └─ Checks for layer folders with index.ts
 
 2. For each discovered layer:
-   ├─ Load layer configuration
+   ├─ Load ONLY activation config (lightweight, no imports)
    ├─ Determine layer type (server/browser)
-   ├─ Validate configuration schema
+   ├─ Evaluate activation for current environment
    └─ Find realm via package.json traversal
 
-3. Group layers by realm:
-   ├─ Create realm structure
-   ├─ Merge configurations per environment
-   └─ Resolve dependencies between layers
+3. Filter to activated layers only:
+   ├─ Check activation config against current environment
+   ├─ Exclude inactive layers from loading
+   └─ Track which layers are active for dependency resolution
 
-4. Initialize layers:
+4. Load activated layers:
+   ├─ Import full layer modules only if activated
+   ├─ Load configuration and validation
+   ├─ Create realm structure
+   └─ Merge configurations per environment
+
+5. Resolve dependencies:
+   ├─ Check dependencies are activated
+   ├─ Topological sort of active layers
+   └─ Error if dependency is not activated
+
+6. Initialize layers:
    ├─ Initialize in dependency order
-   ├─ Load handler groups
+   ├─ Load handler groups (conditionally)
    └─ Register with framework registry
 ```
 
@@ -343,18 +409,35 @@ interface ILayerInfo {
   - [ ] Provides sensible defaults
   - [ ] Unit tests for all layer types
 
-#### Task 1.4: Update Load System
+#### Task 1.4: Implement Activation Config System
+- **Complexity:** Medium
+- **Description:** Create system for lightweight activation config loading
+- **Files:**
+  - `core/blong-gogo/src/activationConfig.ts` - New file
+  - `core/blong-gogo/src/load.ts` - Integration point
+- **Dependencies:** Tasks 1.1, 1.2
+- **Acceptance Criteria:**
+  - [ ] Loads activation config without importing full layer
+  - [ ] Supports boolean, object, and function activation patterns
+  - [ ] Evaluates activation for current environment
+  - [ ] Minimal performance overhead
+  - [ ] Unit tests for activation evaluation
+
+#### Task 1.5: Update Load System
 - **Complexity:** Large
-- **Description:** Modify load.ts to support only the new self-contained pattern
+- **Description:** Modify load.ts to support conditional layer loading
 - **Files:**
   - `core/blong-gogo/src/load.ts` - Major refactoring
   - `core/blong-gogo/src/loadLayer.ts` - New file for layer loading
-- **Dependencies:** Tasks 1.1, 1.2, 1.3
+- **Dependencies:** Tasks 1.1, 1.2, 1.3, 1.4
 - **Acceptance Criteria:**
+  - [ ] Loads activation config first, then layer code
+  - [ ] Only imports activated layers
   - [ ] Loads layers using new self-contained pattern
   - [ ] Removes support for server.ts/browser.ts pattern
   - [ ] Clean, simplified loading logic
   - [ ] Integration tests for new pattern only
+  - [ ] Tests for activation filtering
 
 ### Phase 2: Core Functionality (Week 3-4)
 
@@ -399,7 +482,9 @@ interface ILayerInfo {
   - [ ] Topologically sorts layers
   - [ ] Detects circular dependencies
   - [ ] Reports clear error for unmet dependencies
+  - [ ] Validates dependencies are activated
   - [ ] Unit tests with various dependency graphs
+  - [ ] Unit tests for inactive dependency scenarios
 
 #### Task 2.4: Update Realm.ts Integration
 - **Complexity:** Medium
@@ -411,7 +496,9 @@ interface ILayerInfo {
   - [ ] Realm can be created without server.ts/browser.ts
   - [ ] Realm discovers its layers automatically
   - [ ] Realm initialization follows dependency order
+  - [ ] Only loads activated layers
   - [ ] Integration tests for realm initialization
+  - [ ] Integration tests for conditional activation
 
 #### Task 2.5: Create Migration Tool
 - **Complexity:** Medium
@@ -422,27 +509,53 @@ interface ILayerInfo {
 - **Dependencies:** Phase 1 complete
 - **Acceptance Criteria:**
   - [ ] Analyzes existing server.ts/browser.ts
-  - [ ] Generates new layer configuration files
+  - [ ] Extracts activation config from environment configs
+  - [ ] Generates new layer configuration files with activation
   - [ ] Preserves all existing config
   - [ ] Creates backup of original files
   - [ ] Validates migration success
   - [ ] Provides detailed migration report
   - [ ] Documentation on how to use tool
 
-### Phase 3: Polish & Deploy (Week 5-6)
+#### Task 2.6: Update blong-kopi Template
+- **Complexity:** Small
+- **Description:** Update realm scaffolding template to use new pattern
+- **Files:**
+  - `core/blong-kopi/adapter/` - Update adapter templates
+  - `core/blong-kopi/orchestrator/` - Update orchestrator templates
+  - `core/blong-kopi/gateway/` - Update gateway templates
+  - `core/blong-kopi/error/` - Update error templates
+  - `core/blong-kopi/server.ts` - Remove (no longer needed)
+  - `core/blong-kopi/browser.ts` - Remove (no longer needed)
+- **Dependencies:** Tasks 1.1, 1.4
+- **Acceptance Criteria:**
+  - [ ] Templates use self-contained layer pattern
+  - [ ] Templates include activation config
+  - [ ] Templates show activation patterns for common scenarios
+  - [ ] Remove server.ts/browser.ts from templates
+  - [ ] Update kopi documentation
+  - [ ] Test template generation works correctly
+
+### Phase 3: Polish & Deploy (Week 4-5)
 
 #### Task 3.1: Comprehensive Testing
 - **Complexity:** Large
-- **Description:** End-to-end testing of new pattern
+- **Description:** End-to-end testing of new pattern with activation
 - **Files:**
   - `core/test/layer-autodiscovery/` - New test realm
   - `core/blong-gogo/src/*.test.ts` - Additional unit tests
+  - `core/blong-gogo/src/activation.test.ts` - Activation tests
 - **Dependencies:** Phase 2 complete
 - **Acceptance Criteria:**
   - [ ] Test realm using only new pattern
   - [ ] Test all layer types (adapter, orchestrator, gateway, etc.)
+  - [ ] Test conditional activation per environment
+  - [ ] Test inactive layers are not loaded/imported
+  - [ ] Test dependency resolution with inactive layers
+  - [ ] Test activation config evaluation (boolean, object, function)
   - [ ] Test error conditions and edge cases
   - [ ] Performance tests for discovery and loading
+  - [ ] Performance tests show no regression from activation checks
   - [ ] All tests pass in CI/CD
 
 #### Task 3.2: Error Handling & Diagnostics

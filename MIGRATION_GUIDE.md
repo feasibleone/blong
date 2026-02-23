@@ -264,7 +264,58 @@ export default adapter((blong) => ({
 }));
 ```
 
-### Step 3: Repeat for Each Layer
+### Step 3.5: Add Activation Config (Important!)
+
+If your server.ts has environment-specific activation (e.g., microservice mode), add activation config:
+
+```typescript
+// OLD: server.ts with conditional activation
+config: {
+    microservice: {
+        error: true,
+        adapter: true,
+        orchestrator: false,  // Not active in microservice mode
+        gateway: true
+    }
+}
+
+// NEW: adapter/db.ts with activation config
+export default adapter((blong) => ({
+    extends: 'adapter.sql',
+    
+    // Add activation config - this is loaded FIRST (lightweight)
+    activation: {
+        dev: true,           // Active in dev
+        prod: true,          // Active in prod
+        microservice: true,  // Active in microservice mode
+        test: false          // Not active in test
+    },
+    
+    // Rest of config only loaded if layer is activated
+    validation: blong.type.Object({...}),
+    config: {...}
+}));
+
+// Or use simple boolean for always-active layers
+export default adapter((blong) => ({
+    activation: true,  // Always active
+    // ... rest of config
+}));
+
+// Or use function for complex logic
+export default adapter((blong) => ({
+    activation: (env) => env === 'dev' || env === 'prod',
+    // ... rest of config
+}));
+```
+
+**Important Notes:**
+- Activation config is lightweight and loaded before full layer import
+- Only activated layers are imported/loaded (performance optimization)
+- Child handlers are also conditionally loaded based on parent activation
+- Migration tool will extract activation patterns from your server.ts
+
+### Step 4: Repeat for Each Layer
 
 ```typescript
 // NEW: adapter/http.ts
