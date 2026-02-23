@@ -1,0 +1,464 @@
+# Layer Improvement Summary
+
+## Quick Overview
+
+This document provides a high-level summary of the proposed changes to make layers self-contained in the Blong framework.
+
+## Current State (Before)
+
+### Folder Structure
+```
+realmname/
+├── server.ts                 # Required - defines all config and children
+├── browser.ts               # Required - defines all config and children  
+├── package.json
+├── adapter/
+│   ├── db.ts                # Just extends base adapter
+│   └── http.ts              # Just extends base adapter
+├── orchestrator/
+│   └── dispatch.ts          # Just extends base orchestrator
+└── gateway/
+    └── api/
+        └── user.yaml
+```
+
+### Layer Definition (Current)
+```typescript
+// adapter/db.ts - minimal, no config
+export default adapter(() => ({
+    extends: 'adapter.sql'
+}));
+```
+
+### Configuration (Current - Centralized in server.ts)
+```typescript
+// server.ts - defines EVERYTHING
+export default server(blong => ({
+    url: import.meta.url,
+    validation: blong.type.Object({
+        db: blong.type.Object({
+            host: blong.type.String(),
+            port: blong.type.Number()
+        }),
+        http: blong.type.Object({...}),
+        dispatch: blong.type.Object({...})
+    }),
+    children: [
+        './adapter',      // Must explicitly list
+        './orchestrator',
+        './gateway'
+    ],
+    config: {
+        default: {
+            db: {
+                namespace: ['user'],
+                imports: ['realmname.user']
+            },
+            http: {
+                url: 'http://api.external.com'
+            },
+            dispatch: {
+                namespace: ['user'],
+                imports: ['realmname.user']
+            }
+        },
+        dev: {
+            db: {host: 'localhost', port: 5432},
+            http: {logLevel: 'trace'}
+        }
+    }
+}));
+```
+
+### Problems
+1. ❌ Config separated from layer implementation
+2. ❌ Must maintain server.ts/browser.ts as layer catalog
+3. ❌ Can't tell if layer is server/browser from the layer itself
+4. ❌ Rigid folder structure (layers must be direct children)
+5. ❌ Difficult to reuse layers across realms
+
+## Proposed State (After)
+
+### Folder Structure (More Flexible)
+```
+realmname/
+├── package.json            # Realm boundary marker
+├── adapter/
+│   ├── db.ts              # Self-contained with config
+│   └── http.ts            # Self-contained with config
+├── orchestrator/
+│   └── dispatch.ts        # Self-contained with config
+└── gateway/
+    └── api/
+        └── user.yaml
+
+# OR nested structure (also works)
+realmname/
+├── package.json
+└── backend/
+    ├── adapter/
+    │   └── db.ts
+    └── orchestrator/
+        └── dispatch.ts
+```
+
+### Layer Definition (Proposed - Self-Contained)
+```typescript
+// adapter/db.ts - self-contained, defines own config
+export default adapter(() => ({
+    extends: 'adapter.sql',
+    
+    // Co-located validation
+    validation: blong.type.Object({
+        host: blong.type.String(),
+        port: blong.type.Number(),
+        database: blong.type.String(),
+        logLevel: blong.type.Optional(blong.type.String())
+    }),
+    
+    // Co-located configuration
+    config: {
+        default: {
+            namespace: ['user'],
+            imports: ['realmname.user'],
+            port: 5432
+        },
+        dev: {
+            host: 'localhost',
+            database: 'realmname_dev',
+            logLevel: 'trace'
+        },
+        prod: {
+            host: process.env.DB_HOST,
+            database: 'realmname_prod',
+            logLevel: 'warn'
+        }
+    }
+}));
+```
+
+### Configuration (Proposed - Decentralized)
+```typescript
+// server.ts - OPTIONAL now, or minimal
+// Framework auto-discovers layers
+export default server(blong => ({
+    url: import.meta.url,
+    // No need to list children - auto-discovered
+    // No need to define validation - each layer has own
+    // Optional: Can override layer configs if needed
+    config: {
+        default: {},
+        // Cross-cutting overrides only
+        prod: {
+            allLayers: {
+                logLevel: 'error'  // Override all layers
+            }
+        }
+    }
+}));
+```
+
+### Or Skip server.ts Entirely
+```typescript
+// No server.ts needed!
+// Framework discovers:
+// - adapter/db.ts (automatically server-side)
+// - orchestrator/dispatch.ts (automatically server-side)
+// - gateway/api/ (automatically server-side)
+// Based on layer type
+```
+
+### Benefits
+1. ✅ Config co-located with layer code
+2. ✅ No need to maintain central catalog
+3. ✅ Layer type automatically determined
+4. ✅ Flexible folder organization
+5. ✅ Easy to reuse layers (just copy folder)
+6. ✅ Better for team collaboration
+7. ✅ Clearer ownership and boundaries
+
+## Side-by-Side Comparison
+
+### Adding a New Adapter
+
+#### Before (Current)
+```typescript
+// 1. Create adapter/newadapter.ts
+export default adapter(() => ({
+    extends: 'adapter.http'
+}));
+
+// 2. Update server.ts validation
+validation: blong.type.Object({
+    // ... existing validations
+    newadapter: blong.type.Object({
+        url: blong.type.String(),
+        timeout: blong.type.Number()
+    })
+})
+
+// 3. Update server.ts children
+children: [
+    './adapter',    // Already there, but need to know
+    './orchestrator',
+    './gateway'
+]
+
+// 4. Update server.ts config
+config: {
+    default: {
+        newadapter: {
+            url: 'http://api.example.com',
+            timeout: 5000
+        }
+    }
+}
+
+// Result: Touch 2 files, edit 3 places in server.ts
+```
+
+#### After (Proposed)
+```typescript
+// 1. Create adapter/newadapter.ts
+export default adapter(() => ({
+    extends: 'adapter.http',
+    
+    validation: blong.type.Object({
+        url: blong.type.String(),
+        timeout: blong.type.Number()
+    }),
+    
+    config: {
+        default: {
+            url: 'http://api.example.com',
+            timeout: 5000
+        }
+    }
+}));
+
+// 2. Done! Framework auto-discovers it
+
+// Result: Touch 1 file, everything co-located
+```
+
+## Layer Type Auto-Detection
+
+### Server-Side Layers (Automatic)
+- `adapter` - External system integration
+- `orchestrator` - Business logic coordination
+- `gateway` - API gateway
+- `error` - Error definitions
+- `test` - Test automation
+- `eft` - Electronic funds transfer
+
+### Browser-Side Layers (Automatic)
+- `backend` - Browser adapter to server
+- `component` - UI components
+- `browser` - Server-side browser asset serving
+
+### Custom Layers (Explicit)
+```typescript
+// If layer name doesn't match well-known types
+export default layer(() => ({
+    type: 'server',  // or 'browser'
+    kind: 'myCustomLayer',
+    // ... rest of config
+}));
+```
+
+## Realm Discovery
+
+### How Framework Finds Realm
+
+```
+Current directory: realmname/adapter/db.ts
+
+↑ Look for package.json
+↑ Found: realmname/adapter/package.json (not a realm)
+↑ Look for package.json
+↑ Found: realmname/package.json ✓
+
+Realm boundary: realmname/
+Realm name: From package.json "name" field
+```
+
+### Package.json Marker (Optional)
+```json
+{
+  "name": "@company/realmname",
+  "version": "1.0.0",
+  "realm": true,           // Optional marker
+  "type": "module"
+}
+```
+
+## Migration Path
+
+### Option 1: Keep Both Patterns (Backward Compatible)
+```
+realmname/
+├── server.ts              # Old pattern - still works
+├── adapter/
+│   ├── db.ts             # Old style
+│   └── http.ts           # New style (self-contained)
+└── orchestrator/
+    └── dispatch.ts        # New style (self-contained)
+
+Framework: "I see server.ts, I'll respect it but also load self-contained layers"
+```
+
+### Option 2: Full Migration
+```bash
+# Use migration tool
+$ blong migrate-layers ./realmname
+
+# Analyzes server.ts
+# Extracts config for each layer
+# Creates self-contained layer files
+# Optionally removes server.ts
+
+✓ Migrated adapter/db.ts
+✓ Migrated adapter/http.ts
+✓ Migrated orchestrator/dispatch.ts
+✓ Ready to remove server.ts (test first!)
+```
+
+### Option 3: Gradual Migration
+```
+Week 1: Migrate adapter layers
+Week 2: Migrate orchestrator layers  
+Week 3: Migrate gateway layers
+Week 4: Test, then remove server.ts
+```
+
+## Configuration Merge Priority
+
+When same property defined in multiple places:
+
+```
+1. CLI parameter               --config.db.host=localhost
+2. Environment variable        BLONG_DB_HOST=localhost
+3. Environment config (dev)    config.dev.db.host
+4. Layer default config        layer's config.default.db.host
+5. Parent override             server.ts override (backward compat)
+6. Framework default           Built-in sensible defaults
+
+Highest priority wins ↑
+```
+
+## Example: Complete Self-Contained Layer
+
+```typescript
+// adapter/database.ts - Everything in one place
+import {adapter} from '@feasibleone/blong';
+
+export default adapter((blong) => ({
+    // Base functionality
+    extends: 'adapter.sql',
+    
+    // What this layer needs configured
+    validation: blong.type.Object({
+        host: blong.type.String(),
+        port: blong.type.Number(),
+        database: blong.type.String(),
+        username: blong.type.String(),
+        password: blong.type.String(),
+        pool: blong.type.Optional(blong.type.Object({
+            min: blong.type.Number(),
+            max: blong.type.Number()
+        })),
+        logLevel: blong.type.Optional(blong.type.String())
+    }),
+    
+    // Configuration per environment
+    config: {
+        // Always active
+        default: {
+            namespace: ['user', 'role', 'permission'],
+            imports: ['realmname.user', 'realmname.role'],
+            port: 5432,
+            pool: {
+                min: 2,
+                max: 10
+            }
+        },
+        
+        // Development overrides
+        dev: {
+            host: 'localhost',
+            database: 'realmname_dev',
+            username: 'dev_user',
+            password: 'dev_pass',
+            logLevel: 'trace'
+        },
+        
+        // Production configuration
+        prod: {
+            host: process.env.DB_HOST,
+            database: process.env.DB_NAME,
+            username: process.env.DB_USER,
+            password: process.env.DB_PASS,
+            logLevel: 'warn',
+            pool: {
+                min: 5,
+                max: 50
+            }
+        },
+        
+        // Testing configuration
+        test: {
+            host: 'localhost',
+            database: 'realmname_test',
+            username: 'test_user',
+            password: 'test_pass',
+            logLevel: 'silent'
+        }
+    },
+    
+    // Optional: Handler groups to load
+    children: [
+        './database/user',      // Handler group
+        './database/role'
+    ]
+}));
+```
+
+## Timeline
+
+- **Week 1-2:** Foundation (APIs, discovery, type inference)
+- **Week 3-4:** Core functionality (scanning, config, dependencies)
+- **Week 5-6:** Polish (testing, docs, examples, optimization)
+
+**Total:** 6 weeks for full implementation
+
+**Backward Compatibility:** Maintained indefinitely
+
+## Key Decisions
+
+1. **Both patterns work simultaneously** - Zero breaking changes
+2. **Type inference from layer name** - Less boilerplate
+3. **package.json marks realm boundary** - Clear, standard
+4. **Co-located configuration** - Better developer experience
+5. **Migration tool provided** - Easy adoption
+
+## Questions?
+
+See [IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md](./IMPLEMENTATION_PLAN_LAYER_IMPROVEMENT.md) for:
+- Detailed technical specifications
+- API definitions
+- Risk mitigation strategies
+- Complete task breakdown
+- Open questions and decisions
+
+## Next Steps
+
+1. ✅ Review implementation plan
+2. ⏳ Stakeholder approval
+3. ⏳ Begin Phase 1 development
+4. ⏳ Create proof-of-concept
+5. ⏳ Beta testing with real projects
+6. ⏳ Production release
+
+---
+
+*Last Updated: 2026-02-23*
