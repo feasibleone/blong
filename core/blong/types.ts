@@ -667,6 +667,8 @@ export const server = <T extends TObject>(definition: SolutionFactory<T>): Solut
     Object.defineProperty(definition, Kind, {value: 'server'});
 export const browser = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'browser'});
+export const layer = (activation: Record<string, boolean | object>): Record<string, boolean | object> =>
+    Object.defineProperty(activation, Kind, {value: 'layer'});
 export function adapter<T, C = AdapterContext>(definition: IAdapterFactory<T, C>): IAdapterFactory<T, C>;
 export function adapter<T = Record<string, unknown>, C = AdapterContext>(definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>): IAdapterFactory<T, C>;
 export function adapter<T, C = AdapterContext>(

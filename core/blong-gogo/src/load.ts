@@ -10,6 +10,7 @@ import {
     type SolutionFactory,
 } from '@feasibleone/blong';
 import {Type, type TSchema} from '@sinclair/typebox';
+import {existsSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {createRequire} from 'node:module';
 import {basename, dirname, join} from 'path';
@@ -20,6 +21,52 @@ import type {Dirent} from 'fs';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
+
+const LAYER_FILE = 'layer' as const;
+
+/** Well-known layer folder names and their default activation per kind */
+const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
+    error:        {server: {default: true}},
+    adapter:      {server: {default: true}, browser: {default: true}},
+    orchestrator: {server: {default: true}},
+    gateway:      {server: {default: true}},
+    sim:          {server: {integration: true}},
+    test:         {server: {test: true}, browser: {integration: true}},
+};
+
+/**
+ * Discover layer folders in a realm directory that are not already listed as children.
+ * Returns a map of folderName -> activation config.
+ */
+async function discoverLayerFolders(
+    base: string,
+    kind_: 'server' | 'browser',
+    explicitChildren: Set<string>,
+    configNames: string[],
+): Promise<Map<string, object>> {
+    const result = new Map<string, object>();
+    let entries: Dirent[];
+    try {
+        entries = await readdir(base, {withFileTypes: true}) as Dirent[];
+    } catch {
+        return result;
+    }
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const name = entry.name.toString();
+        if (explicitChildren.has(name)) continue;
+        const layerFile = join(base, name, `${LAYER_FILE}.${kind_}.ts`);
+        if (existsSync(layerFile)) {
+            // Read activation from layer.server.ts / layer.browser.ts
+            const mod = await import(layerFile).catch(() => null);
+            const activation = mod?.default ?? {default: true};
+            result.set(name, activation);
+        } else if (name in WELL_KNOWN_LAYERS && WELL_KNOWN_LAYERS[name][kind_]) {
+            result.set(name, WELL_KNOWN_LAYERS[name][kind_]);
+        }
+    }
+    return result;
+}
 
 const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
@@ -178,15 +225,30 @@ export default async function loadRealm<T extends TSchema>(
     let logger: ILogger;
     if (typeof parentConfig === 'string' && mergedConfig.watch)
         mergedConfig.watch.configs = mergedConfig.configs;
+
+    // Auto-discover layer folders not already listed in mod.children
+    const base = mergedConfig.url.startsWith('file://')
+        ? dirname(mergedConfig.url.slice(7))
+        : mergedConfig.url;
+    mergedConfig.base = base;
+    const extraChildren: string[] = [];
+    if (base && ['solution', 'server', 'browser'].includes(defKind)) {
+        const kind_ = defKind === 'browser' ? 'browser' : 'server';
+        const explicitChildren = new Set(
+            (mod.children ?? []).filter(c => typeof c === 'string').map(c => basename(c as string)),
+        );
+        const discoveredFolders = await discoverLayerFolders(base, kind_, explicitChildren, configNames);
+        for (const [folderName, activation] of discoveredFolders) {
+            if (!(folderName in mergedConfig)) merge(mergedConfig, {[folderName]: activation});
+            extraChildren.push(`./${folderName}`);
+        }
+    }
+
     let realm: IRealm;
-    for (let item of items.concat(mod.children)) {
+    for (let item of items.concat(mod.children).concat(extraChildren)) {
         const itemName = typeof item === 'string' ? basename(item) : item.name;
         const config = mergedConfig[itemName];
         logger?.debug?.(`Loading ${defKind}/${itemName}`);
-        const base = mergedConfig.url.startsWith('file://')
-            ? dirname(mergedConfig.url.slice(7))
-            : mergedConfig.url;
-        mergedConfig.base = base;
         if (config) {
             if (typeof item === 'string') {
                 switch (defKind) {

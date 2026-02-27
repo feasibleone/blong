@@ -42,20 +42,48 @@ Layers are named groups of handlers that organize code by functional concern wit
 
 ```
 realmname/
-├── server.ts                 # Minimal realm entry point (activation only)
-├── error/                    # Error layer
+├── server.ts                 # Optional — only for realm-level config/validation
+├── error/
+│   ├── layer.server.ts      # Declares activation: {microservice: true}
 │   └── error.ts             # Error definitions
-├── adapter/                  # Adapter layer
+├── adapter/
+│   ├── layer.server.ts      # Declares activation: {microservice: true, dev: true}
 │   ├── db.ts                # Self-contained database adapter (with config)
 │   ├── http.ts              # Self-contained HTTP adapter (with config)
 │   └── db/                  # Handler group: realmname.db
 │       ├── userUserAdd.ts
 │       └── userUserFind.ts
-├── orchestrator/             # Orchestrator layer
+├── orchestrator/
+│   ├── layer.server.ts      # Declares activation
 │   └── dispatch.ts          # Self-contained orchestrator (with config)
 └── gateway/
+    ├── layer.server.ts
     └── api/
         └── user.yaml
+```
+
+## layer.server.ts / layer.browser.ts
+
+Every layer folder declares its activation in a `layer.server.ts` (server) or `layer.browser.ts` (browser) file. This eliminates the need for an explicit `children` array or activation config in the parent `server.ts`.
+
+```typescript
+// adapter/layer.server.ts
+import {layer} from '@feasibleone/blong';
+
+export default layer({
+    microservice: true,  // active in microservice deployment
+    dev: true,           // active in development
+    test: true,          // active during automated tests
+});
+```
+
+```typescript
+// test/layer.browser.ts
+import {layer} from '@feasibleone/blong';
+
+export default layer({
+    integration: true,   // browser test layer only active during integration
+});
 ```
 
 ## Self-Contained Layer Pattern
@@ -119,23 +147,22 @@ export default orchestrator(blong => ({
 }));
 ```
 
-### Realm Entry Point (Minimal)
+### Realm Entry Point (Only When Needed)
+
+`server.ts` is optional. It is only needed when there is realm-level config or validation shared across layers.
 
 ```typescript
-// server.ts - minimal, only controls activation
+// server.ts — only when realm-level config is needed
 import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),  // No per-adapter config needed
-    children: ['./error', './adapter', './orchestrator', './gateway'],
+    validation: blong.type.Object({
+        myService: blong.type.Object({ url: blong.type.String() }),
+    }),
     config: {
-        default: {},
-        microservice: {
-            error: true,
-            adapter: true,
-            orchestrator: true,
-            gateway: true,
+        default: {
+            myService: { url: 'http://localhost:8080' },
         },
     },
 }));

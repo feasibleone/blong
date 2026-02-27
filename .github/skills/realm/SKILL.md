@@ -9,7 +9,7 @@ description: Create business domain boundaries in Blong framework. Realms separa
 
 A realm is a business domain boundary in the Blong framework. Realms separate business logic into independent, modular units that can be developed independently and deployed together (monolith) or separately (microservices).
 
-**Key Pattern:** The `server.ts` is minimal — it only controls layer activation. Each layer (adapter, orchestrator, etc.) defines its own configuration co-located with its implementation.
+**Key Pattern:** Layer folders declare their own activation via `layer.server.ts` / `layer.browser.ts` — no explicit `children` or activation config needed in `server.ts`.
 
 ## Purpose
 
@@ -22,84 +22,92 @@ A realm is a business domain boundary in the Blong framework. Realms separate bu
 
 ```
 realmname/
-├── server.ts           # Minimal realm entry point (activation only)
-├── browser.ts          # Client-side entry (optional)
+├── server.ts           # Optional realm entry point (only for realm-level config/validation)
 ├── package.json        # Package definition (if separate package)
-├── adapter/            # External system integrations (each self-contained)
-├── orchestrator/       # Business process coordination (each self-contained)
-├── gateway/            # API layer
-├── error/              # Domain error definitions
-└── test/               # Test automation
-    └── test/           # Test handlers namespace
+├── adapter/
+│   ├── layer.server.ts # Declares activation per environment
+│   └── db.ts           # Self-contained adapter
+├── orchestrator/
+│   ├── layer.server.ts
+│   └── dispatch.ts     # Self-contained orchestrator
+├── gateway/
+│   └── layer.server.ts
+├── error/
+│   └── layer.server.ts
+└── test/
+    └── layer.browser.ts # Browser-side activation
 ```
 
-## Implementation Pattern
+## layer.server.ts / layer.browser.ts
 
-### Minimal Realm (server.ts)
-
-The `server.ts` only controls WHICH layers are activated for each environment. Layer-specific configuration belongs in the layer files themselves.
+Each layer folder declares its own activation using a `layer.server.ts` (server-side) or `layer.browser.ts` (browser-side) file. This replaces activation config in the parent `server.ts`.
 
 ```typescript
-// realmname/server.ts
+// adapter/layer.server.ts
+import {layer} from '@feasibleone/blong';
+
+export default layer({
+    microservice: true,   // active in microservice deployment
+    dev: true,            // active in development
+});
+```
+
+```typescript
+// test/layer.browser.ts
+import {layer} from '@feasibleone/blong';
+
+export default layer({
+    integration: true,   // active only for integration tests
+});
+```
+
+### Well-known Folder Defaults
+
+If no `layer.server.ts` exists, these folder names use default activation:
+
+| Folder | Server default | Browser default |
+|--------|---------------|-----------------|
+| `error` | always active | — |
+| `adapter` | always active | always active |
+| `orchestrator` | always active | — |
+| `gateway` | always active | — |
+| `sim` | `integration` only | — |
+| `test` | `test` only | `integration` only |
+
+## Minimal server.ts (Only When Needed)
+
+`server.ts` is **only needed** when the realm has:
+- Realm-level validation schema
+- Realm-level default config (e.g. keys, URLs shared across layers)
+
+```typescript
+// realmname/server.ts — only when realm-level config is needed
 import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
-    // Required: URL of the realm module
     url: import.meta.url,
 
-    // Minimal validation - no per-layer config needed here
-    validation: blong.type.Object({}),
+    // Realm-level validation (for config like JWT keys, URLs)
+    validation: blong.type.Object({
+        myService: blong.type.Object({
+            url: blong.type.String(),
+        }),
+    }),
 
-    // Required: Child layers to load
-    children: [
-        './error',        // Error definitions (load first)
-        './adapter',      // Adapters for external systems
-        './orchestrator', // Business logic orchestration
-        './gateway',      // API gateway layer
-        './test'          // Test automation
-    ],
-
-    // Controls WHICH layers are active per environment
+    // Realm-level defaults shared across layers
     config: {
-        default: {},
-
-        // Automated testing
-        test: {
-            error: true,
-            adapter: true,
-            orchestrator: true,
-            gateway: true,
-            test: true
+        default: {
+            myService: {
+                url: 'http://localhost:8080',
+            },
         },
-
-        // Microservice deployment mode
-        microservice: {
-            error: true,
-            adapter: true,
-            orchestrator: true,
-            gateway: true
-        },
-
-        // Single realm focus (dev mode)
-        realm: {
-            adapter: true,
-            orchestrator: true
-        },
-
-        // Development with full stack
-        dev: {
-            error: true,
-            adapter: true,
-            orchestrator: true,
-            gateway: true
-        }
-    }
+    },
 }));
 ```
 
 ### Layer Files Define Their Own Config
 
-Each layer (adapter, orchestrator) defines its own configuration:
+Each adapter/orchestrator defines its own configuration:
 
 ```typescript
 // adapter/db.ts - configuration lives here, not in server.ts
@@ -134,25 +142,6 @@ export default orchestrator(blong => ({
             validations: [/^$subject\.\w+\.validation$/],
         },
     },
-}));
-```
-
-### Browser Entry (browser.ts)
-
-```typescript
-// realmname/browser.ts
-import {realm} from '@feasibleone/blong';
-
-export default realm(blong => ({
-    url: import.meta.url,
-    validation: blong.type.Object({}),
-    children: ['./backend', './component'],
-    config: {
-        default: {},
-        integration: {
-            test: true
-        }
-    }
 }));
 ```
 
@@ -210,6 +199,8 @@ The framework auto-discovers `.ts` files in each child folder. If a `server.ts` 
 
 ### Async Imports (for external packages)
 
+When including external realm packages, use async imports in the APPLICATION-level `server.ts` / `browser.ts`:
+
 ```typescript
 children: [
     async () => import('@feasibleone/blong-login/server.js'),
@@ -219,19 +210,15 @@ children: [
 
 ## Best Practices
 
-1. **Minimal server.ts:** Only activation config in server.ts — all layer config belongs in the layer
-2. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
-3. **Error First:** Load error definitions before other layers
-4. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file
-5. **Layer Order:** Load in order: error → adapter → orchestrator → gateway → test
-6. **Import URL:** Always use `import.meta.url` for the url property
-7. **Deployment Modes:** Define both `test` and `microservice` configurations
+1. **Use `layer.server.ts`:** Put activation config in each layer folder, not in a parent `server.ts`
+2. **Omit `server.ts`** for standard realms — the framework auto-discovers well-known layer folders
+3. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
+4. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file using the `adapter(blong => ...)` pattern
+5. **Keep server.ts** only when realm-level validation schema or shared default config is needed
 
 ## Examples from Codebase
 
-See `core/test/demo/server.ts` for a complete example with:
-
-- Multiple layers with self-contained configs
-- Environment-specific overrides
-- Microservice deployment config
+See `core/test/demo/` for a complete example without server.ts:
+- `adapter/layer.server.ts`, `orchestrator/layer.server.ts`, etc. declare activation
+- Each adapter/orchestrator file is self-contained with its own config
 
