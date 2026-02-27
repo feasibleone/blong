@@ -197,14 +197,16 @@ config: {
 
 Children can be loaded as:
 
-### Local Paths
+### Local Paths (with auto-discovery)
 
 ```typescript
 children: [
-    './adapter',      // Local folder
-    './orchestrator'
+    './adapter',      // Scans adapter/ folder for self-contained layer files
+    './orchestrator'  // No server.ts needed in these folders
 ]
 ```
+
+The framework auto-discovers `.ts` files in each child folder. If a `server.ts` exists in the child folder, it is used as the realm entry point instead (for nested realms like sub-domains).
 
 ### Async Imports (for external packages)
 

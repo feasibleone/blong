@@ -191,10 +191,11 @@ export default async function loadRealm<T extends TSchema>(
             if (typeof item === 'string') {
                 switch (defKind) {
                     case 'server':
-                    case 'browser':
-                        const fileName = item.startsWith('.')
-                            ? join(base, item, `${defKind}.ts`)
-                            : item;
+                    case 'browser': {
+                        const folderPath = item;
+                        const fileName = folderPath.startsWith('.')
+                            ? join(base, folderPath, `${defKind}.ts`)
+                            : folderPath;
                         item = async () => {
                             try {
                                 const mod = await import(fileName);
@@ -203,18 +204,36 @@ export default async function loadRealm<T extends TSchema>(
                                 if (
                                     !['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(
                                         error.code,
-                                    ) ||
-                                    !mergedConfig?.kopi?.realm
+                                    )
                                 )
                                     throw error;
-
-                                const {createRealm} = await import('./kopi.ts');
-                                await createRealm(import.meta.resolve(fileName), logger);
-                                const mod = await import(fileName);
-                                return mod.default ?? mod;
+                                if (mergedConfig?.kopi?.realm) {
+                                    const {createRealm} = await import('./kopi.ts');
+                                    await createRealm(import.meta.resolve(fileName), logger);
+                                    const mod = await import(fileName);
+                                    return mod.default ?? mod;
+                                }
+                                // No server.ts - scan folder for self-contained layer files
+                                if (!folderPath.startsWith('.')) return null;
+                                const entries = await scan(base, folderPath).catch(() => []);
+                                return (
+                                    await Promise.all(
+                                        entries.map(dirEntry =>
+                                            api.watch?.load(
+                                                mergedConfig,
+                                                dirEntry.isDirectory(),
+                                                dirEntry.isFile(),
+                                                base,
+                                                folderPath,
+                                                dirEntry.name.toString(),
+                                            ),
+                                        ),
+                                    )
+                                ).filter(Boolean);
                             }
                         };
                         break;
+                    }
                     default:
                         const loaded = [];
                         for (const dirEntry of await scan(base, item))
