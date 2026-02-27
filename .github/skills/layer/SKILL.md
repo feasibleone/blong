@@ -40,51 +40,67 @@ Layers are named groups of handlers that organize code by functional concern wit
 
 ### Typical Realm with Layers
 
+Well-known layer folders are auto-discovered — no `layer.server.ts` needed:
+
 ```
 realmname/
-├── server.ts                 # Optional — only for realm-level config/validation
-├── error/
-│   ├── layer.server.ts      # Declares activation: {microservice: true}
-│   └── error.ts             # Error definitions
-├── adapter/
-│   ├── layer.server.ts      # Declares activation: {microservice: true, dev: true}
-│   ├── db.ts                # Self-contained database adapter (with config)
-│   ├── http.ts              # Self-contained HTTP adapter (with config)
-│   └── db/                  # Handler group: realmname.db
+├── server.ts            # Optional — only for realm-level config/validation
+├── error/               # Auto-activated (well-known name)
+│   └── error.ts
+├── adapter/             # Auto-activated (well-known name)
+│   ├── db.ts            # Self-contained database adapter (with config)
+│   ├── http.ts          # Self-contained HTTP adapter (with config)
+│   └── db/              # Handler group: realmname.db
 │       ├── userUserAdd.ts
 │       └── userUserFind.ts
-├── orchestrator/
-│   ├── layer.server.ts      # Declares activation
-│   └── dispatch.ts          # Self-contained orchestrator (with config)
-└── gateway/
-    ├── layer.server.ts
+├── orchestrator/        # Auto-activated (well-known name)
+│   └── dispatch.ts      # Self-contained orchestrator (with config)
+└── gateway/             # Auto-activated (well-known name)
     └── api/
         └── user.yaml
 ```
 
+Custom (non-well-known) layer folders need a `layer.server.ts` or `layer.browser.ts`:
+
+```
+realmname/
+└── myCustomLayer/
+    └── layer.server.ts  # Required: declares activation for non-well-known folder
+```
+
 ## layer.server.ts / layer.browser.ts
 
-Every layer folder declares its activation in a `layer.server.ts` (server) or `layer.browser.ts` (browser) file. This eliminates the need for an explicit `children` array or activation config in the parent `server.ts`.
+For folders with non-standard names, add a `layer.server.ts` or `layer.browser.ts` to declare activation. This eliminates the need for an explicit `children` array or activation config in the parent `server.ts`.
 
 ```typescript
-// adapter/layer.server.ts
+// myCustomLayer/layer.server.ts
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    microservice: true,  // active in microservice deployment
-    dev: true,           // active in development
-    test: true,          // active during automated tests
+    default: true,       // active in all environments
+    microservice: true,  // additionally active in microservice deployment
 });
 ```
 
 ```typescript
-// test/layer.browser.ts
+// myBrowserLayer/layer.browser.ts
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    integration: true,   // browser test layer only active during integration
+    integration: true,   // only active during integration testing
 });
 ```
+
+### Well-Known Layer Default Activations
+
+| Folder         | Server default        | Browser default       |
+|----------------|-----------------------|-----------------------|
+| `error`        | `{default: true}`     | —                     |
+| `adapter`      | `{default: true}`     | `{default: true}`     |
+| `orchestrator` | `{default: true}`     | —                     |
+| `gateway`      | `{default: true}`     | —                     |
+| `sim`          | `{integration: true}` | —                     |
+| `test`         | `{test: true}`        | `{integration: true}` |
 
 ## Self-Contained Layer Pattern
 

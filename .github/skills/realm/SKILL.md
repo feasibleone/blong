@@ -9,7 +9,7 @@ description: Create business domain boundaries in Blong framework. Realms separa
 
 A realm is a business domain boundary in the Blong framework. Realms separate business logic into independent, modular units that can be developed independently and deployed together (monolith) or separately (microservices).
 
-**Key Pattern:** Layer folders declare their own activation via `layer.server.ts` / `layer.browser.ts` — no explicit `children` or activation config needed in `server.ts`.
+**Key Pattern:** Well-known layer folders (`error`, `adapter`, `orchestrator`, `gateway`, `sim`, `test`) are auto-discovered — no `layer.server.ts` needed. Custom folder names can add a `layer.server.ts` / `layer.browser.ts` to declare activation.
 
 ## Purpose
 
@@ -22,38 +22,41 @@ A realm is a business domain boundary in the Blong framework. Realms separate bu
 
 ```
 realmname/
-├── server.ts           # Optional realm entry point (only for realm-level config/validation)
+├── server.ts           # Optional — only for realm-level config/validation
 ├── package.json        # Package definition (if separate package)
-├── adapter/
-│   ├── layer.server.ts # Declares activation per environment
+├── adapter/            # Auto-discovered (well-known name)
 │   └── db.ts           # Self-contained adapter
-├── orchestrator/
-│   ├── layer.server.ts
+├── orchestrator/       # Auto-discovered (well-known name)
 │   └── dispatch.ts     # Self-contained orchestrator
-├── gateway/
-│   └── layer.server.ts
-├── error/
-│   └── layer.server.ts
-└── test/
-    └── layer.browser.ts # Browser-side activation
+├── gateway/            # Auto-discovered (well-known name)
+├── error/              # Auto-discovered (well-known name)
+└── test/               # Auto-discovered (well-known name)
+```
+
+Custom layer folders need a `layer.server.ts`:
+
+```
+realmname/
+└── myCustomLayer/
+    └── layer.server.ts  # Required: declares activation for non-well-known folder
 ```
 
 ## layer.server.ts / layer.browser.ts
 
-Each layer folder declares its own activation using a `layer.server.ts` (server-side) or `layer.browser.ts` (browser-side) file. This replaces activation config in the parent `server.ts`.
+Only needed for non-well-known folder names. Declares activation per environment.
 
 ```typescript
-// adapter/layer.server.ts
+// myCustomLayer/layer.server.ts
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    microservice: true,   // active in microservice deployment
-    dev: true,            // active in development
+    default: true,        // active in all environments
+    microservice: true,   // additionally active in microservice deployment
 });
 ```
 
 ```typescript
-// test/layer.browser.ts
+// myBrowserLayer/layer.browser.ts
 import {layer} from '@feasibleone/blong';
 
 export default layer({
@@ -63,7 +66,7 @@ export default layer({
 
 ### Well-known Folder Defaults
 
-If no `layer.server.ts` exists, these folder names use default activation:
+Well-known folders are automatically activated without any `layer.*.ts` file:
 
 | Folder | Server default | Browser default |
 |--------|---------------|-----------------|
@@ -210,15 +213,16 @@ children: [
 
 ## Best Practices
 
-1. **Use `layer.server.ts`:** Put activation config in each layer folder, not in a parent `server.ts`
-2. **Omit `server.ts`** for standard realms — the framework auto-discovers well-known layer folders
-3. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
-4. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file using the `adapter(blong => ...)` pattern
-5. **Keep server.ts** only when realm-level validation schema or shared default config is needed
+1. **Well-known folders are zero-config:** `error`, `adapter`, `orchestrator`, `gateway`, `sim`, `test` are auto-discovered with sensible defaults — no `layer.server.ts` needed
+2. **Use `layer.server.ts` only for custom folders:** Non-well-known layer names must declare activation
+3. **Omit `server.ts`** for standard realms — the framework auto-discovers well-known layer folders
+4. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
+5. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file using the `adapter(blong => ...)` pattern
+6. **Keep server.ts** only when realm-level validation schema or shared default config is needed
 
 ## Examples from Codebase
 
 See `core/test/demo/` for a complete example without server.ts:
-- `adapter/layer.server.ts`, `orchestrator/layer.server.ts`, etc. declare activation
+- No `layer.server.ts` files — auto-discovered via well-known folder names
 - Each adapter/orchestrator file is self-contained with its own config
 
