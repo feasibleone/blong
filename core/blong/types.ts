@@ -298,7 +298,6 @@ export interface ILayerConfig<T = Record<string, unknown>> {
 }
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
-    config?: Config<T, C> | false | ILayerConfig<T>['config'];
     layerConfig?: ILayerConfig<T>;
     (api: IApi): IAdapter<T, C>;
 }
@@ -669,40 +668,20 @@ export const browser = <T extends TObject>(definition: SolutionFactory<T>): Solu
     Object.defineProperty(definition, Kind, {value: 'browser'});
 export const layer = (activation: Record<string, boolean | object>): Record<string, boolean | object> =>
     Object.defineProperty(activation, Kind, {value: 'layer'});
-export function adapter<T, C = AdapterContext>(definition: IAdapterFactory<T, C>): IAdapterFactory<T, C>;
-export function adapter<T = Record<string, unknown>, C = AdapterContext>(definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>): IAdapterFactory<T, C>;
-export function adapter<T, C = AdapterContext>(
-    definition: IAdapterFactory<T, C> | ((blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>),
-): IAdapterFactory<T, C> {
-    const factory = Object.defineProperty(definition, Kind, {value: 'adapter'}) as IAdapterFactory<T, C>;
-    if (typeof definition === 'function') {
-        try {
-            const staticDef = (definition as (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>)({type: Type});
-            if (staticDef && typeof staticDef === 'object' && (staticDef.config?.default !== undefined || staticDef.validation !== undefined))
-                factory.layerConfig = staticDef as ILayerConfig<T>;
-        } catch {
-            // Old pattern uses full IHandlerProxy - ignore extraction failure
-        }
-    }
+export const adapter = <T = Record<string, unknown>, C = AdapterContext>(
+    definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>,
+): IAdapterFactory<T, C> => {
+    const factory = Object.defineProperty(definition, Kind, {value: 'adapter'}) as unknown as IAdapterFactory<T, C>;
+    factory.layerConfig = definition({type: Type}) as ILayerConfig<T>;
     return factory;
-}
-export function orchestrator<T, C = AdapterContext>(definition: IAdapterFactory<T, C>): IAdapterFactory<T, C>;
-export function orchestrator<T = Record<string, unknown>, C = AdapterContext>(definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>): IAdapterFactory<T, C>;
-export function orchestrator<T, C = AdapterContext>(
-    definition: IAdapterFactory<T, C> | ((blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>),
-): IAdapterFactory<T, C> {
-    const factory = Object.defineProperty(definition, Kind, {value: 'orchestrator'}) as IAdapterFactory<T, C>;
-    if (typeof definition === 'function') {
-        try {
-            const staticDef = (definition as (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>)({type: Type});
-            if (staticDef && typeof staticDef === 'object' && (staticDef.config?.default !== undefined || staticDef.validation !== undefined))
-                factory.layerConfig = staticDef as ILayerConfig<T>;
-        } catch {
-            // Old pattern uses full IHandlerProxy - ignore extraction failure
-        }
-    }
+};
+export const orchestrator = <T = Record<string, unknown>, C = AdapterContext>(
+    definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>,
+): IAdapterFactory<T, C> => {
+    const factory = Object.defineProperty(definition, Kind, {value: 'orchestrator'}) as unknown as IAdapterFactory<T, C>;
+    factory.layerConfig = definition({type: Type}) as ILayerConfig<T>;
     return factory;
-}
+};
 export const kind = <T>(
     what: T,
 ):
