@@ -31,11 +31,6 @@ export default realm(blong => ({
                 }),
             }),
         }),
-        loginDispatch: blong.type.Object({
-            namespace: blong.type.String(),
-            imports: blong.type.Array(blong.type.String()),
-            validations: blong.type.Array(blong.type.String()),
-        }),
     }),
     children: ['./orchestrator', './gateway'],
     config: {
@@ -67,11 +62,6 @@ export default realm(blong => ({
                         alg: 'EdDSA',
                     },
                 },
-            },
-            loginDispatch: {
-                namespace: 'login',
-                imports: ['login.login'],
-                validations: ['login.login.validation'],
             },
         },
         dev: {},

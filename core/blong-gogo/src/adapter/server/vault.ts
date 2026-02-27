@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type IApi, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import vault from 'node-vault';
 
 export interface IConfig {
@@ -75,7 +75,7 @@ async function authenticateVault(this: {config: IConfig}): Promise<void> {
     }
 }
 
-export default adapter<IConfig>(({utError}) => {
+export default adapter<IConfig>(({utError}: IApi) => {
     _errors ||= utError.register(errorMap);
 
     return {

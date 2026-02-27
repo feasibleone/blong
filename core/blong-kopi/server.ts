@@ -2,23 +2,10 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({
-        db: blong.type.Object({}),
-    }),
+    validation: blong.type.Object({}),
     children: ['./error', './adapter', './orchestrator', './gateway'],
     config: {
-        default: {
-            db: {
-                namespace: 'db/$subject',
-                imports: '$subject.db',
-            },
-            $subjectDispatch: {
-                destination: 'db',
-                namespace: ['$subject'],
-                imports: [/^$subject\./],
-                validations: [/^$subject\.\w+\.validation$/],
-            },
-        },
+        default: {},
         dev: {},
         microservice: {
             error: true,

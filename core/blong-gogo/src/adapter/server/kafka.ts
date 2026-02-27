@@ -1,4 +1,4 @@
-import {adapter} from '@feasibleone/blong';
+import {adapter, type IApi} from '@feasibleone/blong';
 import Kafka from 'node-rdkafka';
 import {Duplex} from 'stream';
 
@@ -20,7 +20,7 @@ export interface IConfig {
     };
 }
 
-export default adapter<IConfig>(api => {
+export default adapter<IConfig>((api: IApi) => {
     let stream: Duplex = null;
 
     return {

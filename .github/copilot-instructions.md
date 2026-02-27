@@ -103,29 +103,43 @@ Handlers and library functions are organized in groups within realm layers. Grou
 Services use functional configuration with the framework's builder pattern:
 
 ```typescript
-// server.ts
+// server.ts - minimal, controls layer activation only
 export default server(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({
-        /* config schema */
-    }),
+    validation: blong.type.Object({}),  // No per-layer config needed
     children: ['./submodule', async () => import('@pkg/module')],
-    config: {default: {}, microservice: {}, dev: {}, integration: {}},
+    config: {default: {}, microservice: {adapter: true, orchestrator: true}, dev: {}},
 }));
 
-// realm.ts (for sub-services)
+// realm.ts (for sub-services) - minimal
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({
-        /* realm config schema */
-    }),
+    validation: blong.type.Object({}),
     children: ['./orchestrator', './adapter', './gateway'],
     config: {
+        default: {},
+        microservice: {adapter: true, orchestrator: true, gateway: true},
+    },
+}));
+
+// adapter/db.ts - self-contained with co-located config
+export default adapter(blong => ({
+    extends: 'adapter.knex',
+    config: {
         default: {
-            mathDispatch: {
-                namespace: 'number',
-                imports: 'math.number', // References math/orchestrator/number/ folder
-            },
+            namespace: 'math',
+            imports: 'math.number', // References math/adapter/db/ folder
+        },
+    },
+}));
+
+// orchestrator/dispatch.ts - self-contained with co-located config
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+    config: {
+        default: {
+            namespace: 'number',
+            imports: 'math.number', // References math/orchestrator/number/ folder
         },
     },
 }));

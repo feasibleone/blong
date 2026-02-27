@@ -115,10 +115,11 @@ export default validationHandlers({
 ### Step 3: Configure Validation
 
 ```typescript
-// In realmname/server.ts
-config: {
-    default: {
-        orchestratorDispatch: {
+// In orchestrator/dispatch.ts - co-located config
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+    config: {
+        default: {
             namespace: ['entity'],
             imports: ['realmname.entity'],
             // Reference validation explicitly:
@@ -127,7 +128,7 @@ config: {
             validations: [/^realmname\.\w+\.validation$/]
         }
     }
-}
+}));
 ```
 
 **Regex Validation Patterns:**

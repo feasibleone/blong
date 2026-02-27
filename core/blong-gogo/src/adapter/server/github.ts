@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type IApi, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import {Octokit} from '@octokit/rest';
 
 export interface IConfig {
@@ -25,7 +25,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError}) => {
+export default adapter<IConfig>(({utError}: IApi) => {
     _errors ||= utError.register(errorMap);
 
     return {

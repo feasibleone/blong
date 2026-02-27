@@ -59,18 +59,12 @@ The most common orchestrator type. Enables calling attached handlers using confi
 // realmname/orchestrator/dispatch.ts
 import {orchestrator} from '@feasibleone/blong';
 
-export default orchestrator(() => ({
-    extends: 'orchestrator.dispatch'
-}));
-```
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
 
-**Configuration:**
-
-```typescript
-// In realmname/server.ts
-config: {
-    default: {
-        dispatch: {
+    // Co-located configuration (no need to add to server.ts)
+    config: {
+        default: {
             namespace: ['entity1', 'entity2'],        // Namespaces to expose
             imports: ['realmname.entity1', 'realmname.entity2'],  // Handler groups
             validations: ['realmname.entity1.validation'],        // Validation groups
@@ -78,7 +72,7 @@ config: {
             logLevel: 'info'
         }
     }
-}
+}));
 ```
 
 ### 2. Schedule Orchestrator
@@ -98,17 +92,11 @@ Invokes functionality based on predefined schedules using cron patterns.
 // realmname/orchestrator/schedule.ts
 import {orchestrator} from '@feasibleone/blong';
 
-export default orchestrator(() => ({
-    extends: 'orchestrator.schedule'
-}));
-```
+export default orchestrator(blong => ({
+    extends: 'orchestrator.schedule',
 
-**Configuration:**
-
-```typescript
-config: {
-    default: {
-        schedule: {
+    config: {
+        default: {
             namespace: ['batch'],
             imports: ['realmname.batch'],
             schedule: {
@@ -369,26 +357,26 @@ export default handler(({
 
 ## Multiple Orchestrators Per Realm
 
-When a realm has multiple concerns, create separate orchestrators:
+When a realm has multiple concerns, create separate orchestrators — each co-locates its own config:
 
 ```typescript
-// realmname/server.ts
-config: {
-    default: {
-        userDispatch: {
-            namespace: ['user'],
-            imports: ['realmname.user']
-        },
-        roleDispatch: {
-            namespace: ['role'],
-            imports: ['realmname.role']
-        },
-        permissionDispatch: {
-            namespace: ['permission'],
-            imports: ['realmname.permission']
-        }
-    }
-}
+// orchestrator/userDispatch.ts
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+    config: {default: {namespace: ['user'], imports: ['realmname.user']}}
+}));
+
+// orchestrator/roleDispatch.ts
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+    config: {default: {namespace: ['role'], imports: ['realmname.role']}}
+}));
+
+// orchestrator/permissionDispatch.ts
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+    config: {default: {namespace: ['permission'], imports: ['realmname.permission']}}
+}));
 ```
 
 ```

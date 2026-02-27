@@ -1,5 +1,12 @@
 import {orchestrator} from '@feasibleone/blong';
 
-export default orchestrator(() => ({
+export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
+    config: {
+        default: {
+            namespace: ['subject', 'clock'],
+            imports: ['demo.subject', 'demo.clock'],
+            validations: ['demo.subject.validation'],
+        },
+    },
 }));

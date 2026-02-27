@@ -69,39 +69,29 @@ adapter/
 // realmname/adapter/http.ts
 import {adapter} from '@feasibleone/blong';
 
-export default adapter(() => ({
-    extends: 'adapter.http'
-}));
-```
+export default adapter(blong => ({
+    extends: 'adapter.http',
 
-**Configuration:**
+    validation: blong.type.Object({
+        url: blong.type.String(),
+        namespace: blong.type.Optional(blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())])),
+        imports: blong.type.Optional(blong.type.Array(blong.type.String())),
+        logLevel: blong.type.Optional(blong.type.String()),
+    }),
 
-```typescript
-// In realmname/server.ts
-config: {
-    default: {
-        http: {
-            url: 'https://api.example.com',      // Base URL
-            namespace: ['external'],              // API namespace
-            imports: ['codec.openapi'],           // HTTP codec
-            logLevel: 'info'
-        }
-    },
-    dev: {
-        http: {
+    config: {
+        default: {
+            url: 'https://api.example.com',
+            namespace: ['external'],
+            imports: ['codec.openapi'],
+            logLevel: 'info',
+        },
+        dev: {
             url: 'http://localhost:8080',
             logLevel: 'trace',
-            'codec.openapi': {
-                namespace: {
-                    external: [
-                        './api/swagger.yaml',    // Local OpenAPI spec
-                        './api/operations.yaml'  // Additional operations
-                    ]
-                }
-            }
-        }
-    }
-}
+        },
+    },
+}));
 ```
 
 **Configuration Properties:**
@@ -132,17 +122,11 @@ tls:                              # TLS configuration
 // realmname/adapter/tcp.ts
 import {adapter} from '@feasibleone/blong';
 
-export default adapter(() => ({
-    extends: 'adapter.tcp'
-}));
-```
+export default adapter(blong => ({
+    extends: 'adapter.tcp',
 
-**Configuration:**
-
-```typescript
-config: {
-    default: {
-        tcp: {
+    config: {
+        default: {
             host: 'hsm.example.com',
             port: 1500,
             namespace: ['hsm'],
@@ -150,14 +134,11 @@ config: {
             format: {
                 size: '16/integer'               // Message size header format
             },
-            'realmname.hsm': {
-                headerFormat: '6/string-left-zero'
-            },
             idleSend: 10000,                     // Echo interval (ms)
             maxReceiveBuffer: 4096               // Max message size
-        }
-    }
-}
+        },
+    },
+}));
 ```
 
 **Configuration Properties:**
@@ -196,29 +177,23 @@ tls:                             # TLS configuration
 // realmname/adapter/db.ts
 import {adapter} from '@feasibleone/blong';
 
-export default adapter(() => ({
-    extends: 'adapter.knex'
-}));
-```
+export default adapter(blong => ({
+    extends: 'adapter.knex',
 
-**Configuration:**
-
-```typescript
-config: {
-    default: {
-        db: {
+    config: {
+        default: {
             namespace: ['sql'],
             imports: ['realmname.db'],
-            client: 'pg',                        // Database client
+            client: 'pg',
             connection: {
                 host: 'localhost',
                 user: 'dbuser',
                 password: 'dbpass',
                 database: 'mydb'
             }
-        }
-    }
-}
+        },
+    },
+}));
 ```
 
 ### 4. Webhook Adapter

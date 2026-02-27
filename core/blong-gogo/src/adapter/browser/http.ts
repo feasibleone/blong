@@ -1,4 +1,4 @@
-import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong';
+import type {Errors, IApi, IErrorMap, IMeta} from '@feasibleone/blong';
 import {adapter} from '@feasibleone/blong';
 import got, {type HttpsOptions, type Options} from 'got';
 
@@ -19,7 +19,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError}) => {
+export default adapter<IConfig>(({utError}: IApi) => {
     _errors ||= utError.register(errorMap);
 
     let https: HttpsOptions;

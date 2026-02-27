@@ -84,6 +84,7 @@ export default async function loadRealm<T extends TSchema>(
         kopi: undefined,
         watch: undefined,
         configs: undefined,
+        configNames: [] as string[],
     };
     const loadedConfigs = [];
     let items = [];
@@ -173,6 +174,7 @@ export default async function loadRealm<T extends TSchema>(
     loadedConfigs.push(...activeConfigs(mod, configNames));
     loadedConfigs.push(await loadConfig(parentConfig));
     merge(mergedConfig, ...loadedConfigs.filter(Boolean));
+    mergedConfig.configNames = configNames;
     let logger: ILogger;
     if (typeof parentConfig === 'string' && mergedConfig.watch)
         mergedConfig.watch.configs = mergedConfig.configs;

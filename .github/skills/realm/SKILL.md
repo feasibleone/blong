@@ -9,6 +9,8 @@ description: Create business domain boundaries in Blong framework. Realms separa
 
 A realm is a business domain boundary in the Blong framework. Realms separate business logic into independent, modular units that can be developed independently and deployed together (monolith) or separately (microservices).
 
+**Key Pattern:** The `server.ts` is minimal — it only controls layer activation. Each layer (adapter, orchestrator, etc.) defines its own configuration co-located with its implementation.
+
 ## Purpose
 
 - **Modular Development:** Focus on specific business functionality
@@ -20,11 +22,11 @@ A realm is a business domain boundary in the Blong framework. Realms separate bu
 
 ```
 realmname/
-├── server.ts           # Realm entry point (required)
+├── server.ts           # Minimal realm entry point (activation only)
 ├── browser.ts          # Client-side entry (optional)
 ├── package.json        # Package definition (if separate package)
-├── adapter/            # External system integrations
-├── orchestrator/       # Business process coordination
+├── adapter/            # External system integrations (each self-contained)
+├── orchestrator/       # Business process coordination (each self-contained)
 ├── gateway/            # API layer
 ├── error/              # Domain error definitions
 └── test/               # Test automation
@@ -33,7 +35,9 @@ realmname/
 
 ## Implementation Pattern
 
-### Basic Realm (server.ts)
+### Minimal Realm (server.ts)
+
+The `server.ts` only controls WHICH layers are activated for each environment. Layer-specific configuration belongs in the layer files themselves.
 
 ```typescript
 // realmname/server.ts
@@ -43,14 +47,10 @@ export default realm(blong => ({
     // Required: URL of the realm module
     url: import.meta.url,
 
-    // Required: Validation schema for realm configuration
-    validation: blong.type.Object({
-        // Define config properties for this realm
-        adaptername: blong.type.Optional(blong.type.Object({})),
-        orchestratorname: blong.type.Optional(blong.type.Object({}))
-    }),
+    // Minimal validation - no per-layer config needed here
+    validation: blong.type.Object({}),
 
-    // Required: Child layers/modules to load
+    // Required: Child layers to load
     children: [
         './error',        // Error definitions (load first)
         './adapter',      // Adapters for external systems
@@ -59,36 +59,9 @@ export default realm(blong => ({
         './test'          // Test automation
     ],
 
-    // Required: Configuration for different environments/modes
+    // Controls WHICH layers are active per environment
     config: {
-        // Base configuration (always active)
-        default: {
-            // Configure orchestrators
-            orchestratorDispatch: {
-                namespace: ['entity1', 'entity2'],
-                imports: ['realmname.entity1', 'realmname.entity2']
-            },
-            // Configure adapters
-            adaptername: {
-                namespace: ['external'],
-                imports: ['codec.openapi']
-            }
-        },
-
-        // Development environment
-        dev: {
-            adaptername: {
-                logLevel: 'trace',
-                url: 'http://localhost:8080'
-            }
-        },
-
-        // Production environment
-        prod: {
-            adaptername: {
-                logLevel: 'warn'
-            }
-        },
+        default: {},
 
         // Automated testing
         test: {
@@ -111,8 +84,56 @@ export default realm(blong => ({
         realm: {
             adapter: true,
             orchestrator: true
+        },
+
+        // Development with full stack
+        dev: {
+            error: true,
+            adapter: true,
+            orchestrator: true,
+            gateway: true
         }
     }
+}));
+```
+
+### Layer Files Define Their Own Config
+
+Each layer (adapter, orchestrator) defines its own configuration:
+
+```typescript
+// adapter/db.ts - configuration lives here, not in server.ts
+import {adapter} from '@feasibleone/blong';
+
+export default adapter(blong => ({
+    extends: 'adapter.knex',
+    validation: blong.type.Object({
+        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+    }),
+    config: {
+        default: {
+            namespace: 'db/$subject',
+            imports: '$subject.db',
+        },
+    },
+}));
+```
+
+```typescript
+// orchestrator/dispatch.ts - configuration lives here, not in server.ts
+import {orchestrator} from '@feasibleone/blong';
+
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+    config: {
+        default: {
+            destination: 'db',
+            namespace: ['$subject'],
+            imports: [/^$subject\./],
+            validations: [/^$subject\.\w+\.validation$/],
+        },
+    },
 }));
 ```
 
@@ -124,16 +145,12 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({
-        backend: blong.type.Optional(blong.type.Object({}))
-    }),
+    validation: blong.type.Object({}),
     children: ['./backend', './component'],
     config: {
-        default: {
-            backend: {
-                namespace: ['realmname'],
-                imports: ['codec.jsonrpc', 'codec.mle']
-            }
+        default: {},
+        integration: {
+            test: true
         }
     }
 }));
@@ -154,7 +171,7 @@ export default realm(blong => ({
 
 ### Layer Activation
 
-Set layer names to `true` to activate them:
+Set layer names to `true` to activate them in server.ts:
 
 ```typescript
 config: {
@@ -168,21 +185,13 @@ config: {
 }
 ```
 
-### Component Configuration
+### Config Priority (highest to lowest)
 
-Configure adapters and orchestrators by name:
-
-```typescript
-config: {
-    default: {
-        httpAdapter: {
-            url: 'http://example.com',
-            namespace: ['external'],
-            imports: ['codec.openapi']
-        }
-    }
-}
-```
+1. CLI parameters (`--config.db.host=localhost`)
+2. Environment variables (`BLONG_DB_HOST`)
+3. Environment-specific layer config (layer's `config.dev`)
+4. Layer's default config (layer's `config.default`)
+5. Framework defaults
 
 ## Loading Children
 
@@ -206,102 +215,21 @@ children: [
 ]
 ```
 
-### Mixed
-
-```typescript
-children: [
-    './local-layer',
-    async () => import('@external/package/server.js')
-]
-```
-
-## Common Patterns
-
-### Minimal Realm
-
-```typescript
-export default realm(blong => ({
-    url: import.meta.url,
-    validation: blong.type.Object({}),
-    children: ['./orchestrator'],
-    config: {
-        default: {},
-        test: {orchestrator: true}
-    }
-}));
-```
-
-### Realm with External API Integration
-
-```typescript
-export default realm(blong => ({
-    url: import.meta.url,
-    validation: blong.type.Object({
-        http: blong.type.Object({})
-    }),
-    children: ['./adapter', './orchestrator'],
-    config: {
-        default: {
-            http: {
-                namespace: ['external'],
-                imports: ['codec.openapi']
-            },
-            dispatch: {
-                namespace: ['entity'],
-                imports: ['realmname.entity']
-            }
-        },
-        dev: {
-            http: {
-                'codec.openapi': {
-                    namespace: {
-                        external: ['./api/swagger.yaml']
-                    }
-                }
-            }
-        }
-    }
-}));
-```
-
-### Multi-Orchestrator Realm
-
-```typescript
-export default realm(blong => ({
-    url: import.meta.url,
-    validation: blong.type.Object({}),
-    children: ['./orchestrator'],
-    config: {
-        default: {
-            entityDispatch: {
-                namespace: ['entity'],
-                imports: ['realmname.entity']
-            },
-            workflowDispatch: {
-                namespace: ['workflow'],
-                imports: ['realmname.workflow']
-            }
-        }
-    }
-}));
-```
-
 ## Best Practices
 
-1. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
-2. **Error First:** Load error definitions before other layers
-3. **Minimal Config:** Keep default config minimal, use environment-specific overrides
-4. **Clear Namespaces:** Use descriptive namespace names matching business entities
-5. **Validation Schema:** Define complete validation schema for type safety
-6. **Layer Order:** Load in order: error → adapter → orchestrator → gateway → test
-7. **Import URL:** Always use `import.meta.url` for the url property
-8. **Deployment Modes:** Define both `test` and `microservice` configurations
+1. **Minimal server.ts:** Only activation config in server.ts — all layer config belongs in the layer
+2. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
+3. **Error First:** Load error definitions before other layers
+4. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file
+5. **Layer Order:** Load in order: error → adapter → orchestrator → gateway → test
+6. **Import URL:** Always use `import.meta.url` for the url property
+7. **Deployment Modes:** Define both `test` and `microservice` configurations
 
 ## Examples from Codebase
 
 See `core/test/demo/server.ts` for a complete example with:
 
-- OpenAPI codec configuration
-- Multiple namespaces
+- Multiple layers with self-contained configs
 - Environment-specific overrides
 - Microservice deployment config
+

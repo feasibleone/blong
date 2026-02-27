@@ -554,7 +554,7 @@ export default handler(({
 Tests are executed by the framework when the test layer is activated:
 
 ```typescript
-// In realm configuration
+// In server.ts - activation config (layer config stays in each layer file)
 config: {
     test: {
         error: true,

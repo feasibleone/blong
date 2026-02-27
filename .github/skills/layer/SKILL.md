@@ -9,16 +9,19 @@ description: Organize handlers into named functional groups within a Blong realm
 
 Layers are named groups of handlers that organize code by functional concern within a realm. They enable clear separation of responsibilities and support the framework's modular architecture.
 
+**Key Pattern:** Layers are self-contained — each layer file defines its own configuration and validation, co-located with its implementation. No need to maintain configuration in a central `server.ts`.
+
 ## Purpose
 
 - **Separation of Concerns:** Group related functionality together
+- **Co-located Config:** Each layer owns its configuration and validation
 - **Code Organization:** Clear folder structure for handlers
 - **Deployment Control:** Layers can be activated/deactivated per environment
 - **Team Coordination:** Different teams can work on different layers
 
 ## Recommended Layer Names
 
-### Server-Side Layers
+### Server-Side Layers (auto-detected)
 
 - **`gateway`** - API gateway: routes, validation, documentation (minimal business logic)
 - **`adapter`** - External system communication: SQL, HTTP, FTP, mail protocols
@@ -27,7 +30,7 @@ Layers are named groups of handlers that organize code by functional concern wit
 - **`test`** - Test automation (dev/build only)
 - **`eft`** - Electronic Funds Transfer (high TPS OLTP requirements)
 
-### Browser-Side Layers
+### Browser-Side Layers (auto-detected)
 
 - **`backend`** - Browser adapter talking to server
 - **`component`** - React UI components
@@ -39,31 +42,103 @@ Layers are named groups of handlers that organize code by functional concern wit
 
 ```
 realmname/
-├── server.ts                 # Realm entry point
+├── server.ts                 # Minimal realm entry point (activation only)
 ├── error/                    # Error layer
 │   └── error.ts             # Error definitions
 ├── adapter/                  # Adapter layer
-│   ├── db.ts                # Database adapter
-│   ├── http.ts              # HTTP adapter
+│   ├── db.ts                # Self-contained database adapter (with config)
+│   ├── http.ts              # Self-contained HTTP adapter (with config)
 │   └── db/                  # Handler group: realmname.db
 │       ├── userUserAdd.ts
 │       └── userUserFind.ts
 ├── orchestrator/             # Orchestrator layer
-│   ├── dispatch.ts          # Orchestrator entry
-│   ├── user/                # Handler group: realmname.user
-│   │   ├── userUserAdd.ts
-│   │   ├── userUserEdit.ts
-│   │   └── validateUser.ts  # Library function
-│   └── role/                # Handler group: realmname.role
-│       ├── userRoleAdd.ts
-│       └── userRoleFind.ts
-├── gateway/                  # Gateway layer
-│   └── api/
-│       └── user.yaml        # OpenAPI specs
-└── test/                     # Test layer
-    └── test/                 # Handler group: test.test
-        ├── testUserAdd.ts
-        └── testUserRole.ts
+│   └── dispatch.ts          # Self-contained orchestrator (with config)
+└── gateway/
+    └── api/
+        └── user.yaml
+```
+
+## Self-Contained Layer Pattern
+
+### Adapter Layer Definition
+
+```typescript
+// adapter/db.ts - self-contained with config and validation
+import {adapter} from '@feasibleone/blong';
+
+export default adapter(blong => ({
+    extends: 'adapter.knex',
+
+    // Layer's own validation schema
+    validation: blong.type.Object({
+        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        logLevel: blong.type.Optional(blong.type.String()),
+    }),
+
+    // Layer's own configuration per environment
+    config: {
+        default: {
+            namespace: 'db/$subject',
+            imports: '$subject.db',
+        },
+        dev: {
+            logLevel: 'trace',
+        },
+        prod: {
+            logLevel: 'warn',
+        },
+    },
+}));
+```
+
+### Orchestrator Layer Definition
+
+```typescript
+// orchestrator/dispatch.ts - self-contained with config and validation
+import {orchestrator} from '@feasibleone/blong';
+
+export default orchestrator(blong => ({
+    extends: 'orchestrator.dispatch',
+
+    validation: blong.type.Object({
+        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String()), blong.type.Array(blong.type.RegExp())]),
+        validations: blong.type.Optional(blong.type.Array(blong.type.Union([blong.type.String(), blong.type.RegExp()]))),
+        destination: blong.type.Optional(blong.type.String()),
+    }),
+
+    config: {
+        default: {
+            destination: 'db',
+            namespace: ['$subject'],
+            imports: [/^$subject\./],
+            validations: [/^$subject\.\w+\.validation$/],
+        },
+    },
+}));
+```
+
+### Realm Entry Point (Minimal)
+
+```typescript
+// server.ts - minimal, only controls activation
+import {realm} from '@feasibleone/blong';
+
+export default realm(blong => ({
+    url: import.meta.url,
+    validation: blong.type.Object({}),  // No per-adapter config needed
+    children: ['./error', './adapter', './orchestrator', './gateway'],
+    config: {
+        default: {},
+        microservice: {
+            error: true,
+            adapter: true,
+            orchestrator: true,
+            gateway: true,
+        },
+    },
+}));
 ```
 
 ## Handler Group Pattern
@@ -80,17 +155,19 @@ Example:
 
 ### Referencing Groups
 
-Groups are referenced in the `imports` property:
+Groups are referenced in the `imports` property of the adapter/orchestrator:
 
 ```typescript
-config: {
-    default: {
-        userDispatch: {
-            namespace: ['user'],
-            imports: ['user.user', 'user.role']
-        }
-    }
-}
+// adapter/db.ts - imports declared inline
+export default adapter(blong => ({
+    extends: 'adapter.knex',
+    config: {
+        default: {
+            namespace: ['user', 'role'],
+            imports: ['user.user', 'user.role'],  // handler groups loaded
+        },
+    },
+}));
 ```
 
 ## Implementation Patterns
@@ -111,8 +188,8 @@ export default {
 
 ```
 adapter/
-├── db.ts              # Database adapter definition
-├── http.ts            # HTTP adapter definition
+├── db.ts              # Self-contained database adapter
+├── http.ts            # Self-contained HTTP adapter
 ├── db/                # Handler group for db operations
 │   ├── userAdd.ts
 │   └── userFind.ts
@@ -125,7 +202,7 @@ adapter/
 
 ```
 orchestrator/
-├── dispatch.ts        # Orchestrator definition
+├── dispatch.ts        # Self-contained orchestrator definition
 ├── entity1/           # Handler group: realmname.entity1
 │   ├── ~.schema.ts   # Auto-generated validation
 │   ├── helper.ts     # Library function
@@ -165,7 +242,7 @@ test/
 
 ## Layer Activation
 
-### In Realm Configuration
+### In Realm Configuration (server.ts)
 
 ```typescript
 export default realm(blong => ({
@@ -222,35 +299,41 @@ File name = handler name:
 - Handler: `mathNumberSum` → File: `mathNumberSum.ts`
 - Library: `validateEmail` → File: `validateEmail.ts`
 
-## Configuration Per Layer
+## Adding a New Adapter
 
-### Adapter Configuration
+### Before (Old Pattern) - Touch 2 files
 
 ```typescript
-config: {
-    default: {
-        adaptername: {
-            namespace: ['external'],
-            imports: ['realmname.handlers'],
-            logLevel: 'info'
-        }
-    }
-}
+// 1. Create adapter/newadapter.ts
+export default adapter(() => ({
+    extends: 'adapter.http'
+}));
+
+// 2. Update server.ts validation + config + children
+// (3 edits in server.ts)
 ```
 
-### Orchestrator Configuration
+### After (New Pattern) - Touch 1 file
 
 ```typescript
-config: {
-    default: {
-        orchestratorname: {
-            namespace: ['entity'],
-            imports: ['realmname.entity'],
-            validations: ['realmname.entity.validation'],
-            destination: 'db'  // fallback when no handler exists
+// 1. Create adapter/newadapter.ts - everything co-located
+export default adapter(blong => ({
+    extends: 'adapter.http',
+
+    validation: blong.type.Object({
+        url: blong.type.String(),
+        timeout: blong.type.Number()
+    }),
+
+    config: {
+        default: {
+            url: 'http://api.example.com',
+            timeout: 5000
         }
     }
-}
+}));
+
+// 2. Done! Framework uses the layer's own config.
 ```
 
 ## Multi-Layer Example
@@ -259,18 +342,17 @@ config: {
 
 ```
 payment/
-├── server.ts
-├── browser.ts
+├── server.ts           # Minimal - activation only
 ├── error/
 │   └── error.ts
 ├── adapter/
-│   ├── db.ts
-│   ├── fspiop.ts
+│   ├── db.ts           # Self-contained: config + validation inside
+│   ├── fspiop.ts       # Self-contained: config + validation inside
 │   └── db/
 │       ├── paymentCreate.ts
 │       └── paymentFind.ts
 ├── orchestrator/
-│   ├── paymentDispatch.ts
+│   ├── dispatch.ts     # Self-contained: config + validation inside
 │   ├── transfer/
 │   │   ├── ~.schema.ts
 │   │   ├── calculateFees.ts
@@ -289,67 +371,17 @@ payment/
         └── testQuote.ts
 ```
 
-### Configuration
-
-```typescript
-export default realm(blong => ({
-    url: import.meta.url,
-    validation: blong.type.Object({
-        db: blong.type.Object({}),
-        fspiop: blong.type.Object({})
-    }),
-    children: [
-        './error',
-        './adapter',
-        './orchestrator',
-        './gateway',
-        './test'
-    ],
-    config: {
-        default: {
-            db: {
-                namespace: ['sql'],
-                imports: ['payment.db']
-            },
-            fspiop: {
-                namespace: ['fspiop'],
-                imports: ['codec.openapi']
-            },
-            paymentDispatch: {
-                namespace: ['transfer', 'quote'],
-                imports: ['payment.transfer', 'payment.quote'],
-                validations: ['payment.transfer.validation'],
-                destination: 'sql'
-            }
-        },
-        test: {
-            error: true,
-            adapter: true,
-            orchestrator: true,
-            gateway: true,
-            test: true
-        },
-        microservice: {
-            error: true,
-            adapter: true,
-            orchestrator: true,
-            gateway: true
-        }
-    }
-}));
-```
-
 ## Best Practices
 
-1. **Clear Separation:** Keep business logic in orchestrator, not gateway
-2. **Consistent Naming:** Use lowercase single words for layer names
-3. **Group by Entity:** Organize handlers by business entity within layers
-4. **Library Functions:** Extract reusable code into library functions
-5. **Error Definitions:** Always define errors in error layer first
-6. **Test Coverage:** Create test layer with comprehensive test handlers
-7. **One File Per Handler:** Follow the one handler per file pattern
-8. **Validation:** Use `~.schema.ts` for automatic validation generation
-9. **Deployment Flexibility:** Configure layer activation for different modes
+1. **Co-locate Config:** Put layer configuration in the layer file, not in server.ts
+2. **Clear Separation:** Keep business logic in orchestrator, not gateway
+3. **Consistent Naming:** Use lowercase single words for layer names
+4. **Group by Entity:** Organize handlers by business entity within layers
+5. **Library Functions:** Extract reusable code into library functions
+6. **Error Definitions:** Always define errors in error layer first
+7. **Test Coverage:** Create test layer with comprehensive test handlers
+8. **One File Per Handler:** Follow the one handler per file pattern
+9. **Validation:** Use `~.schema.ts` for automatic validation generation
 10. **Import Order:** Load layers in order: error → adapter → orchestrator → gateway → test
 
 ## Examples from Codebase
@@ -357,3 +389,4 @@ export default realm(blong => ({
 - **Complete realm:** `core/test/demo/`
 - **Payment realm:** `ml/payment/`
 - **Agreement realm:** `ml/agreement/`
+

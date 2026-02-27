@@ -1,7 +1,7 @@
-import {orchestrator} from '@feasibleone/blong';
+import {orchestrator, type IApi} from '@feasibleone/blong';
 
 export default orchestrator<{api?: {namespace: Record<string, string | string[]>}}>(
-    ({remote, registry}) => ({
+    ({remote, registry}: IApi) => ({
         async init(...configs: object[]) {
             await super.init(
                 {

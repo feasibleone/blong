@@ -69,16 +69,15 @@ config: {
 **Configuration:**
 
 ```typescript
-// In realmname/server.ts
-config: {
-    default: {
-        http: {
+// In adapter/http.ts - co-located config
+export default adapter(blong => ({
+    extends: 'adapter.http',
+    config: {
+        default: {
             namespace: ['external'],
             imports: ['codec.openapi']
-        }
-    },
-    dev: {
-        http: {
+        },
+        dev: {
             'codec.openapi': {
                 namespace: {
                     // Namespace name: array of spec sources
@@ -116,7 +115,7 @@ config: {
             }
         }
     }
-}
+}));
 ```
 
 **x-blong Extension:**

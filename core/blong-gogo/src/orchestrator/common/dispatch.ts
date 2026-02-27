@@ -1,6 +1,6 @@
-import {orchestrator, type IMeta} from '@feasibleone/blong';
+import {orchestrator, type IApi, type IMeta} from '@feasibleone/blong';
 
-export default orchestrator<{destination?: string}>(({remote}) => ({
+export default orchestrator<{destination?: string}>(({remote}: IApi) => ({
     async init(...configs: object[]) {
         await super.init({type: 'dispatch'}, ...configs);
     },
