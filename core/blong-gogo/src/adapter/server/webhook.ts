@@ -1,4 +1,4 @@
-import {adapter, type IApi, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import got, {type HttpsOptions, type Options} from 'got';
 import {Duplex, Readable, Writable} from 'stream';
 
@@ -20,7 +20,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError, local, registry}: IApi) => {
+export default adapter<IConfig>(({utError, local, registry}) => {
     _errors ||= utError.register(errorMap);
     let stream: Duplex = null;
     let https: HttpsOptions;

@@ -209,7 +209,7 @@ export interface IApi {
     utLog: {
         createLog: ILog['logger'];
     };
-    handlers?: (api: {utError: IError}) => {
+    handlers?: (api: {utError: IError; remote: IRemote}) => {
         extends?:
             | string
             | ((api: {
@@ -234,6 +234,7 @@ export interface IErrorMap {
 
 export interface IAdapter<T, C> {
     config?: Config<T, C>;
+    activation?: IActivationConfig<Partial<Config<T, C>>>;
     configBase?: string;
     log?: ILogger;
     errors?: Errors<IErrorMap>;
@@ -288,17 +289,8 @@ export interface IAdapter<T, C> {
     ) => void;
 }
 
-export interface ILayerConfig<T = Record<string, unknown>> {
-    extends?: string | object;
-    validation?: TSchema;
-    config?: {
-        default?: Partial<T>;
-        [envName: string]: Partial<T> | undefined;
-    };
-}
-
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
-    layerConfig?: ILayerConfig<T>;
+    config?: Config<T, C> | false;
     (api: IApi): IAdapter<T, C>;
 }
 
@@ -431,6 +423,7 @@ export interface IBaseConfig extends TObject<{
     additionalProperties: false;
 }
 export interface IActivationConfig<T> {
+    default: T;
     integration?: T;
     deployment?: T;
     microservice?: T;
@@ -666,22 +659,15 @@ export const server = <T extends TObject>(definition: SolutionFactory<T>): Solut
     Object.defineProperty(definition, Kind, {value: 'server'});
 export const browser = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'browser'});
-export const layer = (activation: Record<string, boolean | object>): Record<string, boolean | object> =>
-    Object.defineProperty(activation, Kind, {value: 'layer'});
-export const adapter = <T = Record<string, unknown>, C = AdapterContext>(
-    definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>,
-): IAdapterFactory<T, C> => {
-    const factory = Object.defineProperty(definition, Kind, {value: 'adapter'}) as unknown as IAdapterFactory<T, C>;
-    factory.layerConfig = definition({type: Type}) as ILayerConfig<T>;
-    return factory;
-};
-export const orchestrator = <T = Record<string, unknown>, C = AdapterContext>(
-    definition: (blong: {type: JavaScriptTypeBuilder}) => ILayerConfig<T>,
-): IAdapterFactory<T, C> => {
-    const factory = Object.defineProperty(definition, Kind, {value: 'orchestrator'}) as unknown as IAdapterFactory<T, C>;
-    factory.layerConfig = definition({type: Type}) as ILayerConfig<T>;
-    return factory;
-};
+export const layer = (
+    activation: Record<string, boolean | object>,
+): Record<string, boolean | object> => Object.defineProperty(activation, Kind, {value: 'layer'});
+export const adapter = <T, C = AdapterContext>(
+    definition: IAdapterFactory<T, C>,
+): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'adapter'});
+export const orchestrator = <T, C = AdapterContext>(
+    definition: IAdapterFactory<T, C>,
+): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'orchestrator'});
 export const kind = <T>(
     what: T,
 ):

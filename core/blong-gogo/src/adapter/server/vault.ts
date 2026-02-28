@@ -1,4 +1,4 @@
-import {adapter, type IApi, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import vault from 'node-vault';
 
 export interface IConfig {
@@ -75,7 +75,7 @@ async function authenticateVault(this: {config: IConfig}): Promise<void> {
     }
 }
 
-export default adapter<IConfig>(({utError}: IApi) => {
+export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
@@ -84,7 +84,7 @@ export default adapter<IConfig>(({utError}: IApi) => {
                 {
                     type: 'vault',
                 },
-                ...configs
+                ...configs,
             );
         },
         async start() {
@@ -134,7 +134,7 @@ export default adapter<IConfig>(({utError}: IApi) => {
                       metadata?: Record<string, unknown>;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta
+            {method}: IMeta,
         ) {
             const [, resource, operation] = method.split('.');
             let secretPath = resource;

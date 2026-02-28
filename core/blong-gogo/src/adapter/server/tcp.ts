@@ -1,4 +1,4 @@
-import {adapter, type IApi, type ITypedError} from '@feasibleone/blong';
+import {adapter, type ITypedError} from '@feasibleone/blong';
 import {Socket} from 'net';
 import createReconnect from 'reconnect-core';
 import bitSyntax from 'ut-bitsyntax';
@@ -26,7 +26,7 @@ export interface IConfig {
     };
 }
 
-export default adapter<IConfig>((api: IApi) => {
+export default adapter<IConfig>(api => {
     let conCount = 0;
     const streams = [];
 

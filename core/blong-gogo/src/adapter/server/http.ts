@@ -1,5 +1,5 @@
 import type {IMeta} from '@feasibleone/blong';
-import {adapter, type IApi, type Errors, type IErrorMap} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap} from '@feasibleone/blong';
 import got, {type HttpsOptions, type Options} from 'got';
 
 import tls from '../../tls.ts';
@@ -19,7 +19,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError}: IApi) => {
+export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     let https: HttpsOptions;

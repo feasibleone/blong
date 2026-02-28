@@ -1,4 +1,4 @@
-import {adapter, type IApi, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
 import {IncomingWebhook} from '@slack/webhook';
 
 export interface IConfig {
@@ -18,7 +18,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError}: IApi) => {
+export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
