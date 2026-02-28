@@ -77,8 +77,8 @@ For folders with non-standard names, add a `layer.server.ts` or `layer.browser.t
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true,       // active in all environments
-    microservice: true,  // additionally active in microservice deployment
+    default: true, // active in all environments
+    microservice: true, // additionally active in microservice deployment
 });
 ```
 
@@ -87,20 +87,23 @@ export default layer({
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    integration: true,   // only active during integration testing
+    integration: true, // only active during integration testing
 });
 ```
 
 ### Well-Known Layer Default Activations
 
 | Folder         | Server default        | Browser default       |
-|----------------|-----------------------|-----------------------|
+| -------------- | --------------------- | --------------------- |
 | `error`        | `{default: true}`     | —                     |
-| `adapter`      | `{default: true}`     | `{default: true}`     |
+| `sim`          | `{integration: true}` | -                     |
+| `adapter`      | `{default: true}`     | -                     |
 | `orchestrator` | `{default: true}`     | —                     |
 | `gateway`      | `{default: true}`     | —                     |
-| `sim`          | `{integration: true}` | —                     |
-| `test`         | `{test: true}`        | `{integration: true}` |
+| `browser`      | `{default: true}`     | —                     |
+| `backend`      |                       | `{default: true}`     |
+| `component`    |                       | `{default: true}`     |
+| `test`         |                       | `{integration: true}` |
 
 ## Self-Contained Layer Pattern
 
@@ -147,8 +150,14 @@ export default orchestrator(blong => ({
 
     validation: blong.type.Object({
         namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
-        imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String()), blong.type.Array(blong.type.RegExp())]),
-        validations: blong.type.Optional(blong.type.Array(blong.type.Union([blong.type.String(), blong.type.RegExp()]))),
+        imports: blong.type.Union([
+            blong.type.String(),
+            blong.type.Array(blong.type.String()),
+            blong.type.Array(blong.type.RegExp()),
+        ]),
+        validations: blong.type.Optional(
+            blong.type.Array(blong.type.Union([blong.type.String(), blong.type.RegExp()])),
+        ),
         destination: blong.type.Optional(blong.type.String()),
     }),
 
@@ -174,11 +183,11 @@ import {realm} from '@feasibleone/blong';
 export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({
-        myService: blong.type.Object({ url: blong.type.String() }),
+        myService: blong.type.Object({url: blong.type.String()}),
     }),
     activation: {
         default: {
-            myService: { url: 'http://localhost:8080' },
+            myService: {url: 'http://localhost:8080'},
         },
     },
 }));
@@ -207,7 +216,7 @@ export default adapter(blong => ({
     activation: {
         default: {
             namespace: ['user', 'role'],
-            imports: ['user.user', 'user.role'],  // handler groups loaded
+            imports: ['user.user', 'user.role'], // handler groups loaded
         },
     },
 }));
@@ -223,7 +232,7 @@ export default {
     userNotFound: 'User not found',
     userExists: 'User already exists',
     invalidEmail: 'Invalid email format',
-    permissionDenied: 'Permission denied'
+    permissionDenied: 'Permission denied',
 };
 ```
 
@@ -296,7 +305,7 @@ export default realm(blong => ({
             adapter: true,
             orchestrator: true,
             gateway: true,
-            test: true
+            test: true,
         },
 
         // Activate for microservice deployment
@@ -304,13 +313,13 @@ export default realm(blong => ({
             error: true,
             adapter: true,
             orchestrator: true,
-            gateway: true
+            gateway: true,
         },
 
         // Activate for single realm dev focus
         realm: {
             adapter: true,
-            orchestrator: true
+            orchestrator: true,
         },
 
         // Development with full stack
@@ -318,9 +327,9 @@ export default realm(blong => ({
             error: true,
             adapter: true,
             orchestrator: true,
-            gateway: true
-        }
-    }
+            gateway: true,
+        },
+    },
 }));
 ```
 
@@ -329,7 +338,7 @@ export default realm(blong => ({
 ### Benefits
 
 1. **Fast Discovery:** Use `ctrl+p` in VS Code to find handlers quickly
-   - Example: `ctrl+p uua` finds `userUserAdd.ts`
+    - Example: `ctrl+p uua` finds `userUserAdd.ts`
 2. **Easier Code Review:** Smaller files, less nesting
 3. **Better Isolation:** Clear boundaries between handlers
 4. **Git-Friendly:** Smaller diffs, fewer conflicts
@@ -349,7 +358,7 @@ File name = handler name:
 ```typescript
 // 1. Create adapter/newadapter.ts
 export default adapter(() => ({
-    extends: 'adapter.http'
+    extends: 'adapter.http',
 }));
 
 // 2. Update server.ts validation + config + children
@@ -365,15 +374,15 @@ export default adapter(blong => ({
 
     validation: blong.type.Object({
         url: blong.type.String(),
-        timeout: blong.type.Number()
+        timeout: blong.type.Number(),
     }),
 
     activation: {
         default: {
             url: 'http://api.example.com',
-            timeout: 5000
-        }
-    }
+            timeout: 5000,
+        },
+    },
 }));
 
 // 2. Done! Framework uses the layer's own config.
@@ -432,4 +441,3 @@ payment/
 - **Complete realm:** `core/test/demo/`
 - **Payment realm:** `ml/payment/`
 - **Agreement realm:** `ml/agreement/`
-

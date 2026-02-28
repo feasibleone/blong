@@ -62,7 +62,7 @@ const reserved: string[] = [
 export default async function adapter<T, C>(
     {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry, type}: IApi,
     configBase: string,
-    activationNames?: string[],
+    activationNames: string[] = [],
 ): Promise<ReturnType<IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
 

@@ -1,7 +1,6 @@
 import {
     Internal,
     kind,
-    realm as realmKind,
     type IApiSchema,
     type IErrorFactory,
     type ILog,
@@ -31,9 +30,9 @@ const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     sim: {server: {integration: true}},
     adapter: {server: {default: true}},
     orchestrator: {server: {default: true}},
-    backend: {browser: {default: true}},
     gateway: {server: {default: true}},
-    browser: {browser: {default: true}},
+    browser: {server: {default: true}},
+    backend: {browser: {default: true}},
     component: {browser: {default: true}},
     test: {browser: {integration: true}},
 };
@@ -295,10 +294,6 @@ export default async function loadRealm<T extends TSchema>(
                                         return mod.default ?? mod;
                                     }
                                 }
-
-                                return realmKind(() => ({
-                                    url: 'file://' + fileName,
-                                }));
                             }
                         };
                         break;
