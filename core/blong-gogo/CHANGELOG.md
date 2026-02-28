@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.4.0...blong-gogo-v1.5.0) (2026-02-28)
+
+
+### Features
+
+* self-contained layers ([9b80e3a](https://github.com/feasibleone/blong/commit/9b80e3a1bfd1b6843ece5dba80b619444ec93c84))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.3.5...blong-gogo-v1.4.0) (2026-02-21)
 
 
