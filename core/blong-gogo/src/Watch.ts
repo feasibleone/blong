@@ -32,7 +32,8 @@ export interface IWatch {
 }
 
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
-const isLayerActivation = (filename: string): boolean => /^layer\.(server|browser)\.[mc]?[tj]sx?$/i.test(filename);
+const isLayerActivation = (filename: string): boolean =>
+    /^layer\.(server|browser)\.[mc]?[tj]sx?$/i.test(filename);
 const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
         a < b ? -1 : a > b ? 1 : 0,
@@ -178,7 +179,9 @@ export default class Watch extends Internal implements IWatch {
         let latest = 0;
         const handlerFiles = (await scan(dir))
             .sort()
-            .filter(entry => entry.isFile() && isCode(entry.name) && !isLayerActivation(entry.name));
+            .filter(
+                entry => entry.isFile() && isCode(entry.name) && !isLayerActivation(entry.name),
+            );
         await this.#apiSchema.generateDir(dir, handlerFiles);
         for (const handlerEntry of handlerFiles) {
             const filename = join(dir, handlerEntry.name);

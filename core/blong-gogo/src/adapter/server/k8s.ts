@@ -47,13 +47,10 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'k8s',
-                },
-                ...configs,
-            );
+        activation: {
+            default: {
+                type: 'k8s',
+            },
         },
         async start() {
             const kc = new k8s.KubeConfig();

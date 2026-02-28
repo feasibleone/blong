@@ -1,8 +1,10 @@
 import {orchestrator, type IMeta} from '@feasibleone/blong';
 
 export default orchestrator<{destination?: string}>(({remote}) => ({
-    async init(...configs: object[]) {
-        await super.init({type: 'dispatch'}, ...configs);
+    activation: {
+        default: {
+            type: 'dispatch',
+        },
     },
     start() {
         super.connect();

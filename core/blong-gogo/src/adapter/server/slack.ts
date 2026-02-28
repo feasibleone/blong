@@ -3,7 +3,7 @@ import {IncomingWebhook} from '@slack/webhook';
 
 export interface IConfig {
     slack: {
-        webhookUrl: string;
+        webhookUrl?: string;
     };
 }
 
@@ -22,14 +22,11 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'slack',
-                    slack: {},
-                },
-                ...configs,
-            );
+        activation: {
+            default: {
+                type: 'slack',
+                slack: {},
+            },
         },
         start() {
             this.config.context = {

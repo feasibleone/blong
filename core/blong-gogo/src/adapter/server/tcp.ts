@@ -90,29 +90,26 @@ export default adapter<IConfig>(api => {
     let codec;
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    logLevel: 'debug',
-                    type: 'tcp',
-                    host: '127.0.0.1',
-                    port: null,
-                    listen: false,
-                    tls: null,
-                    localPort: null,
-                    socketTimeOut: 60000 * 10,
-                    maxConnections: 1000,
-                    connectionDropPolicy: 'oldest',
-                    format: {
-                        size: null,
-                        codec: null,
-                        id: null,
-                        sizeAdjust: 0,
-                        prefix: '',
-                    },
+        activation: {
+            default: {
+                logLevel: 'debug',
+                type: 'tcp',
+                host: '127.0.0.1',
+                port: null,
+                listen: false,
+                tls: null,
+                localPort: null,
+                socketTimeOut: 60000 * 10,
+                maxConnections: 1000,
+                connectionDropPolicy: 'oldest',
+                format: {
+                    size: null,
+                    codec: null,
+                    id: null,
+                    sizeAdjust: 0,
+                    prefix: '',
                 },
-                ...configs,
-            );
+            },
         },
         async start() {
             const result = await super.start();

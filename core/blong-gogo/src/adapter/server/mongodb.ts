@@ -21,13 +21,10 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'mongodb',
-                },
-                ...configs,
-            );
+        activation: {
+            default: {
+                type: 'mongodb',
+            },
         },
         async start() {
             this.config.context = {

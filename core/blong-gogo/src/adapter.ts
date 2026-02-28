@@ -60,8 +60,9 @@ const reserved: string[] = [
 ];
 
 export default async function adapter<T, C>(
-    {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry}: IApi,
+    {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry, type}: IApi,
     configBase: string,
+    activationNames?: string[],
 ): Promise<ReturnType<IAdapterFactory>> {
     _errors ||= utError.register(errorMap);
 
@@ -80,8 +81,25 @@ export default async function adapter<T, C>(
         config: {} as Config<T, C>,
         configBase,
         log: null,
+        activeConfig() {
+            return merge([
+                {},
+                ...['default', ...activationNames]
+                    .map(name => {
+                        const result = [];
+                        let current = this;
+                        while (current) {
+                            const config = current.activation?.[name];
+                            if (config) result.push(config);
+                            current = Object.getPrototypeOf(current);
+                        }
+                        return result.reverse();
+                    })
+                    .flat(),
+            ]);
+        },
         async init(...configs: object[]) {
-            base.config = merge({}, ...configs);
+            base.config = merge(this.activeConfig(), ...configs);
             base.log = utLog?.createLog(this.config.logLevel || 'info', {
                 ...this.config.log,
                 name: this.config.id,
@@ -248,7 +266,7 @@ export default async function adapter<T, C>(
         },
     };
 
-    const result = handlers({utError, remote});
+    const result = handlers({utError, remote, type});
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'

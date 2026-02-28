@@ -2,8 +2,8 @@ import {orchestrator} from '@feasibleone/blong';
 
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {
-        dev: {
+    activation: {
+        default: {
             namespace: 'parking',
             imports: 'parking.parking',
         },

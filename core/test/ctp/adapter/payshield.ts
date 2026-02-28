@@ -1,8 +1,8 @@
-import { adapter } from '@feasibleone/blong';
+import {adapter} from '@feasibleone/blong';
 
 export default adapter(blong => ({
     extends: 'adapter.tcp',
-    config: {
+    activation: {
         default: {
             namespace: 'payshield',
             host: 'localhost',

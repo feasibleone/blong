@@ -3,7 +3,7 @@
 /* eslint-disable @rushstack/typedef-var */
 
 import {validationHandlers} from '@feasibleone/blong';
-import {Static, Type} from '@sinclair/typebox';
+import {type Static, Type} from '@sinclair/typebox';
 
 type $subject$ObjectPredicate = Static<typeof $subject$ObjectPredicate>;
 const $subject$ObjectPredicate = Type.Function(
@@ -11,8 +11,8 @@ const $subject$ObjectPredicate = Type.Function(
     Type.Promise(
         Type.Object({
             $objectId: Type.String(),
-        })
-    )
+        }),
+    ),
 );
 
 export default validationHandlers({
@@ -23,7 +23,7 @@ declare module '@feasibleone/blong' {
     interface IRemoteHandler {
         $subject$ObjectPredicate<T = ReturnType<$subject$ObjectPredicate>>(
             params: Parameters<$subject$ObjectPredicate>[0],
-            $meta: IMeta
+            $meta: IMeta,
         ): T;
     }
 }

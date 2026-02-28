@@ -24,18 +24,15 @@ export default adapter<IConfig>(api => {
     let stream: Duplex = null;
 
     return {
-        async init(...configs: object[]) {
-            const connection: KafkaConfig = {
-                'client.id': 'blong',
-                'security.protocol': 'sasl_plaintext',
-                'sasl.mechanism': 'SCRAM-SHA-256',
-            };
-            await super.init(
-                {
-                    connection,
+        activation: {
+            default: {
+                type: 'kafka',
+                connection: {
+                    'client.id': 'blong',
+                    'security.protocol': 'sasl_plaintext',
+                    'sasl.mechanism': 'SCRAM-SHA-256',
                 },
-                ...configs,
-            );
+            },
         },
 
         async start() {

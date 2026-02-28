@@ -106,7 +106,7 @@ export type Config<T, C> = {
     maxReceiveBuffer: number;
     logLevel: Parameters<ILog['logger']>[0];
     namespace: string | string[];
-    imports: string | string[];
+    imports: string | RegExp | (string | RegExp)[];
 } & T;
 
 export type RemoteMethod = (...params: unknown[]) => Promise<unknown>;
@@ -178,6 +178,7 @@ export interface IRegistry {
 
 export interface IApi {
     id?: string;
+    type: JavaScriptTypeBuilder;
     adapter: (
         id: string,
     ) => (api: {
@@ -209,7 +210,7 @@ export interface IApi {
     utLog: {
         createLog: ILog['logger'];
     };
-    handlers?: (api: {utError: IError; remote: IRemote}) => {
+    handlers?: (api: {utError: IError; remote: IRemote; type: JavaScriptTypeBuilder}) => {
         extends?:
             | string
             | ((api: {
@@ -233,6 +234,7 @@ export interface IErrorMap {
 }
 
 export interface IAdapter<T, C> {
+    validation?: TSchema;
     config?: Config<T, C>;
     activation?: IActivationConfig<Partial<Config<T, C>>>;
     configBase?: string;
@@ -240,7 +242,11 @@ export interface IAdapter<T, C> {
     errors?: Errors<IErrorMap>;
     imported?: ReturnType<IAdapterFactory<T, C>>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
-    init?: (this: ReturnType<IAdapterFactory<T, C>>, ...config: Partial<Config<T, C>>[]) => void;
+    activeConfig?: (this: ReturnType<IAdapterFactory<T, C>>) => Partial<Config<T, C>>;
+    init?: (
+        this: ReturnType<IAdapterFactory<T, C>>,
+        ...config: Partial<Config<T, C>>[]
+    ) => Promise<void>;
     start?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
     ready?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
     stop?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
@@ -436,11 +442,11 @@ export interface IModuleConfig<T extends TSchema = TNever> {
         version: string;
     };
     url: string;
-    config: {
+    config?: {
         default: Partial<Static<IBaseConfig> & Static<T>>;
     } & IActivationConfig<Partial<Static<T> & Static<IBaseConfig>>>;
-    validation: T;
-    children: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
+    validation?: T;
+    children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
 }
 
 export interface ILogger {

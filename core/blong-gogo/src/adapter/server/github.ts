@@ -29,14 +29,11 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'github',
-                    github: {},
-                },
-                ...configs,
-            );
+        activation: {
+            default: {
+                type: 'github',
+                github: {},
+            },
         },
         start() {
             this.config.context = {

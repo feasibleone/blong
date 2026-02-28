@@ -20,9 +20,10 @@ export interface IConfig {
             secretAccessKey: string;
         };
         forcePathStyle?: boolean;
+        requestStreamBufferSize?: number;
     };
     bucket?: {
-        Bucket: string;
+        Bucket?: string;
     };
     url?: string;
     context: {
@@ -46,17 +47,14 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 's3',
-                    s3: {
-                        requestStreamBufferSize: 64 * 1024,
-                    },
-                    bucket: {},
+        activation: {
+            default: {
+                type: 's3',
+                s3: {
+                    requestStreamBufferSize: 64 * 1024,
                 },
-                ...configs,
-            );
+                bucket: {},
+            },
         },
         async start() {
             this.config.context = {s3: new S3Client(this.config.s3)};

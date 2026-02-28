@@ -2,7 +2,7 @@ import {adapter, type IMeta} from '@feasibleone/blong';
 
 export default adapter(blong => ({
     extends: 'adapter.tcp',
-    config: {
+    activation: {
         default: {
             port: 1600,
             maxReceiveBuffer: 4096,

@@ -8,7 +8,6 @@ import {
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.ts';
-import {composeLayerConfig} from './configComposer.ts';
 import {methodId} from './lib.ts';
 import type {IPort} from './Port.ts';
 
@@ -74,11 +73,6 @@ export default function layerProxy(
                                         };
                                         where.port.config = moduleConfig?.[name];
                                     } else if (['adapter', 'orchestrator'].includes(kind(what))) {
-                                        const composedConfig = composeLayerConfig(
-                                            what.layerConfig,
-                                            moduleConfig?.[name],
-                                            moduleConfig.configNames ?? [],
-                                        );
                                         where.port = async ({
                                             id,
                                             ...portApi
@@ -90,17 +84,16 @@ export default function layerProxy(
                                                     handlers: what,
                                                 },
                                                 moduleConfig.base,
+                                                moduleConfig.configNames,
                                             );
                                             await port.init({
-                                                ...(typeof composedConfig === 'object' ? composedConfig : {}),
+                                                ...moduleConfig?.[name],
                                                 id,
                                                 pkg: moduleConfig.pkg,
                                             });
                                             return port;
                                         };
-                                        where.port.config = typeof composedConfig === 'boolean'
-                                            ? composedConfig
-                                            : composedConfig ?? moduleConfig?.[name];
+                                        where.port.config = moduleConfig?.[name];
                                     }
                                 });
                                 if (others.length)

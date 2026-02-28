@@ -64,7 +64,7 @@ export default options =>
                             : ''
                     }`,
                 res &&
-                    `◀ ${req ? `${colors.magenta(req.method)} ${colors.yellow(req.url)} ` : ''}${colors.red(res.statusCode)}${
+                    `◀ ${req ? `${colors.magenta(req.method)} ${colors.yellow(req.url)} ` : ''}${colors.blueBright(res.statusCode)}${
                         res.headers
                             ? `\n${Object.entries(res.headers)
                                   .map(

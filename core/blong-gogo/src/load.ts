@@ -1,6 +1,7 @@
 import {
     Internal,
     kind,
+    realm as realmKind,
     type IApiSchema,
     type IErrorFactory,
     type ILog,
@@ -26,12 +27,15 @@ const LAYER_FILE = 'layer' as const;
 
 /** Well-known layer folder names and their default activation per kind */
 const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
-    error:        {server: {default: true}},
-    adapter:      {server: {default: true}, browser: {default: true}},
+    error: {server: {default: true}},
+    sim: {server: {integration: true}},
+    adapter: {server: {default: true}},
     orchestrator: {server: {default: true}},
-    gateway:      {server: {default: true}},
-    sim:          {server: {integration: true}},
-    test:         {server: {test: true}, browser: {integration: true}},
+    backend: {browser: {default: true}},
+    gateway: {server: {default: true}},
+    browser: {browser: {default: true}},
+    component: {browser: {default: true}},
+    test: {browser: {integration: true}},
 };
 
 /**
@@ -47,7 +51,7 @@ async function discoverLayerFolders(
     const result = new Map<string, object>();
     let entries: Dirent[];
     try {
-        entries = await readdir(base, {withFileTypes: true}) as Dirent[];
+        entries = (await readdir(base, {withFileTypes: true})) as Dirent[];
     } catch {
         return result;
     }
@@ -117,8 +121,13 @@ export default async function loadRealm<T extends TSchema>(
         log?: ILog;
         registry?: IRegistry;
     },
+    rootKind?: 'server' | 'browser',
 ): Promise<IRegistry> {
     const defKind = kind(def);
+    if (!rootKind) {
+        if (defKind === 'server' || defKind === 'browser') rootKind = defKind;
+        else throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
+    }
     const mod = await def({type: Type});
     if (!('pkg' in mod)) mod.pkg = createRequire(mod.url)('./package.json');
     const mergedConfig = {
@@ -232,12 +241,16 @@ export default async function loadRealm<T extends TSchema>(
         : mergedConfig.url;
     mergedConfig.base = base;
     const extraChildren: string[] = [];
-    if (base && ['solution', 'server', 'browser'].includes(defKind)) {
-        const kind_ = defKind === 'browser' ? 'browser' : 'server';
+    if (base) {
         const explicitChildren = new Set(
             (mod.children ?? []).filter(c => typeof c === 'string').map(c => basename(c as string)),
         );
-        const discoveredFolders = await discoverLayerFolders(base, kind_, explicitChildren, configNames);
+        const discoveredFolders = await discoverLayerFolders(
+            base,
+            rootKind,
+            explicitChildren,
+            configNames,
+        );
         for (const [folderName, activation] of discoveredFolders) {
             if (!(folderName in mergedConfig)) merge(mergedConfig, {[folderName]: activation});
             extraChildren.push(`./${folderName}`);
@@ -245,7 +258,7 @@ export default async function loadRealm<T extends TSchema>(
     }
 
     let realm: IRealm;
-    for (let item of items.concat(mod.children).concat(extraChildren)) {
+    for (let item of items.concat(mod.children ?? []).concat(extraChildren)) {
         const itemName = typeof item === 'string' ? basename(item) : item.name;
         const config = mergedConfig[itemName];
         logger?.debug?.(`Loading ${defKind}/${itemName}`);
@@ -269,29 +282,23 @@ export default async function loadRealm<T extends TSchema>(
                                     )
                                 )
                                     throw error;
+
                                 if (mergedConfig?.kopi?.realm) {
-                                    const {createRealm} = await import('./kopi.ts');
-                                    await createRealm(import.meta.resolve(fileName), logger);
-                                    const mod = await import(fileName);
-                                    return mod.default ?? mod;
+                                    let destUrl = import.meta.resolve(fileName);
+                                    destUrl = destUrl.startsWith('file://')
+                                        ? dirname(destUrl.slice(7))
+                                        : destUrl;
+                                    if (!existsSync(join(destUrl, 'package.json'))) {
+                                        const {createRealm} = await import('./kopi.ts');
+                                        await createRealm(destUrl, logger);
+                                        const mod = await import(fileName);
+                                        return mod.default ?? mod;
+                                    }
                                 }
-                                // No server.ts - scan folder for self-contained layer files
-                                if (!folderPath.startsWith('.')) return null;
-                                const entries = await scan(base, folderPath).catch(() => []);
-                                return (
-                                    await Promise.all(
-                                        entries.map(dirEntry =>
-                                            api.watch?.load(
-                                                mergedConfig,
-                                                dirEntry.isDirectory(),
-                                                dirEntry.isFile(),
-                                                base,
-                                                folderPath,
-                                                dirEntry.name.toString(),
-                                            ),
-                                        ),
-                                    )
-                                ).filter(Boolean);
+
+                                return realmKind(() => ({
+                                    url: 'file://' + fileName,
+                                }));
                             }
                         };
                         break;
@@ -326,7 +333,7 @@ export default async function loadRealm<T extends TSchema>(
                     realm ||= new RealmImpl(mergedConfig, api);
                     realm.addModule(
                         itemName,
-                        await loadRealm(fn, itemName, config, configNames, api),
+                        await loadRealm(fn, itemName, config, configNames, api, rootKind),
                     );
                 } else if (typeof fn === 'function') {
                     realm ||= new RealmImpl(mergedConfig, api);
