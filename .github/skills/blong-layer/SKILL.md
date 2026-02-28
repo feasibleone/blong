@@ -298,7 +298,7 @@ test/
 
 ```typescript
 export default realm(blong => ({
-    activation: {
+    config: {
         // Activate for automated testing
         test: {
             error: true,
