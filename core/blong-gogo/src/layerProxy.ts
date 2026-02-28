@@ -15,7 +15,7 @@ export default function layerProxy(
     errors: IErrorFactory,
     apiSchema: IApiSchema,
     port: () => void,
-    moduleConfig: {pkg: IModuleConfig['pkg']; base: string},
+    moduleConfig: {pkg: IModuleConfig['pkg']; base: string; configNames?: string[]},
 ): {result: unknown} {
     return new Proxy(
         {
@@ -84,6 +84,7 @@ export default function layerProxy(
                                                     handlers: what,
                                                 },
                                                 moduleConfig.base,
+                                                moduleConfig.configNames,
                                             );
                                             await port.init({
                                                 ...moduleConfig?.[name],

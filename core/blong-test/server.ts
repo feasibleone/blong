@@ -6,7 +6,6 @@ export default realm(blong => ({
         error: blong.type.Boolean(),
         adapter: blong.type.Boolean(),
         backend: blong.type.Boolean(),
-        test: blong.type.Object({}),
     }),
     children: ['./adapter'],
     config: {
@@ -14,10 +13,6 @@ export default realm(blong => ({
             error: true,
             adapter: true,
             backend: false,
-            testDispatch: {
-                namespace: ['test'],
-                imports: [/\.test$/],
-            },
         },
         dev: {},
     },

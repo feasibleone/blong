@@ -1,6 +1,6 @@
 import type {IErrorFactory, IMeta, ITypedError} from '@feasibleone/blong';
 
-const typeRegex: RegExp = /^[a-z]\w*(\.!?\w+)*$/;
+const typeRegex: RegExp = /^[$a-z]\w*(\.!?\w+)*$/;
 const paramsRegex: RegExp = /\{([^}]*)\}/g;
 
 const interpolate = (string: string, params = {}): string => {

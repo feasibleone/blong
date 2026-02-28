@@ -24,8 +24,13 @@ export default adapter<IConfig>(({utError}) => {
 
     let https: HttpsOptions;
     return {
+        activation: {
+            default: {
+                type: 'http',
+            },
+        },
         async init(...configs: object[]) {
-            await super.init({type: 'http'}, ...configs);
+            await super.init(...configs);
             https = tls(this.config, true);
         },
         start() {

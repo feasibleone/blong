@@ -4,12 +4,12 @@ import {basename, dirname, join} from 'path';
 
 export async function createRealm(
     destUrl: string,
-    logger?: {warn?: (message: string) => void}
+    logger?: {warn?: (message: string) => void},
 ): Promise<string[]> {
     const result = [];
     const url = import.meta.resolve('@feasibleone/blong-kopi/package.json');
     const cwd = url.startsWith('file://') ? dirname(url.slice(7)) : url;
-    destUrl = destUrl.startsWith('file://') ? dirname(destUrl.slice(7)) : url;
+    destUrl = destUrl.startsWith('file://') ? dirname(destUrl.slice(7)) : destUrl;
     const subject = basename(destUrl);
     const replace = (str: string): string =>
         str.replaceAll('$subject', subject).replaceAll('$Subject', subject.toUpperCase());
@@ -24,14 +24,14 @@ export async function createRealm(
             writeFileSync(
                 dest,
                 "import unchanged from '@feasibleone/blong';\r" +
-                    replace(readFileSync(source, 'utf8'))
+                    replace(readFileSync(source, 'utf8')),
             );
             result.push(dest);
         }
     }
     writeFileSync(
         join(destUrl, 'package.json'),
-        readFileSync(join(cwd, 'package.json'), 'utf8').replace('@feasibleone/blong-kopi', subject)
+        readFileSync(join(cwd, 'package.json'), 'utf8').replace('@feasibleone/blong-kopi', subject),
     );
     return result;
 }

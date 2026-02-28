@@ -26,14 +26,14 @@ export default adapter<IConfig>(({utError, local, registry}) => {
     let https: HttpsOptions;
 
     return {
+        activation: {
+            default: {
+                type: 'webhook',
+                url: 'http://localhost:8080',
+            },
+        },
         async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'webhook',
-                    url: 'http://localhost:8080',
-                },
-                ...configs,
-            );
+            await super.init(...configs);
             https = tls(this.config, true);
             if (this.config['codec.openapi'])
                 await registry.loadApi(

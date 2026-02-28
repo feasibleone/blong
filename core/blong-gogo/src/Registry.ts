@@ -109,6 +109,7 @@ export default class Registry extends Internal implements IRegistry {
         }
         const api: Parameters<IAdapterFactory>[0] = {
             id,
+            type: Type,
             adapter: id => this.ports.get(id),
             utError: {
                 register: this.#error.register.bind(this.#error),

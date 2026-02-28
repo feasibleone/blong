@@ -41,7 +41,7 @@ Implemented as `encode`/`decode` handler pairs:
 Codecs are configured within adapter configuration:
 
 ```typescript
-config: {
+activation: {
     default: {
         adaptername: {
             namespace: ['prefix'],
@@ -69,16 +69,15 @@ config: {
 **Configuration:**
 
 ```typescript
-// In realmname/server.ts
-config: {
-    default: {
-        http: {
+// In adapter/http.ts - co-located config
+export default adapter(blong => ({
+    extends: 'adapter.http',
+    activation: {
+        default: {
             namespace: ['external'],
             imports: ['codec.openapi']
-        }
-    },
-    dev: {
-        http: {
+        },
+        dev: {
             'codec.openapi': {
                 namespace: {
                     // Namespace name: array of spec sources
@@ -116,7 +115,7 @@ config: {
             }
         }
     }
-}
+}));
 ```
 
 **x-blong Extension:**
@@ -196,7 +195,7 @@ export default ({timeTimezoneGet}) => decode(
 
 ```typescript
 // Browser-side configuration
-config: {
+activation: {
     default: {
         backend: {
             namespace: ['user', 'payment'],
@@ -240,7 +239,7 @@ export default handler(({handler: {userUserAdd}}) =>
 **Configuration:**
 
 ```typescript
-config: {
+activation: {
     default: {
         backend: {
             namespace: ['user'],
@@ -282,7 +281,7 @@ Server Handler
 **Configuration:**
 
 ```typescript
-config: {
+activation: {
     default: {
         tcp: {
             host: 'hsm.example.com',
@@ -437,7 +436,7 @@ export default handler(({errors}) =>
 **Configuration:**
 
 ```typescript
-config: {
+activation: {
     default: {
         http: {
             imports: ['realmname.custom'],
@@ -494,7 +493,7 @@ export default handler(({lib: {bitsyntax}}) =>
 Multiple codecs can be layered:
 
 ```typescript
-config: {
+activation: {
     default: {
         http: {
             imports: [

@@ -41,13 +41,10 @@ export default adapter<IConfig>(({utError}) => {
     let _authenticated = false;
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'keycloak',
-                },
-                ...configs,
-            );
+        activation: {
+            default: {
+                type: 'keycloak',
+            },
         },
         async start() {
             const kcAdminClient = new KcAdminClient({

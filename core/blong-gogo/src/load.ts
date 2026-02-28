@@ -10,6 +10,7 @@ import {
     type SolutionFactory,
 } from '@feasibleone/blong';
 import {Type, type TSchema} from '@sinclair/typebox';
+import {existsSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {createRequire} from 'node:module';
 import {basename, dirname, join} from 'path';
@@ -20,6 +21,55 @@ import type {Dirent} from 'fs';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
+
+const LAYER_FILE = 'layer' as const;
+
+/** Well-known layer folder names and their default activation per kind */
+const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
+    error: {server: {default: true}},
+    sim: {server: {integration: true}},
+    adapter: {server: {default: true}},
+    orchestrator: {server: {default: true}},
+    gateway: {server: {default: true}},
+    browser: {server: {default: true}},
+    backend: {browser: {default: true}},
+    component: {browser: {default: true}},
+    test: {browser: {integration: true}},
+};
+
+/**
+ * Discover layer folders in a realm directory that are not already listed as children.
+ * Returns a map of folderName -> activation config.
+ */
+async function discoverLayerFolders(
+    base: string,
+    kind_: 'server' | 'browser',
+    explicitChildren: Set<string>,
+    configNames: string[],
+): Promise<Map<string, object>> {
+    const result = new Map<string, object>();
+    let entries: Dirent[];
+    try {
+        entries = (await readdir(base, {withFileTypes: true})) as Dirent[];
+    } catch {
+        return result;
+    }
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const name = entry.name.toString();
+        if (explicitChildren.has(name)) continue;
+        const layerFile = join(base, name, `${LAYER_FILE}.${kind_}.ts`);
+        if (existsSync(layerFile)) {
+            // Read activation from layer.server.ts / layer.browser.ts
+            const mod = await import(layerFile).catch(() => null);
+            const activation = mod?.default ?? {default: true};
+            result.set(name, activation);
+        } else if (name in WELL_KNOWN_LAYERS && WELL_KNOWN_LAYERS[name][kind_]) {
+            result.set(name, WELL_KNOWN_LAYERS[name][kind_]);
+        }
+    }
+    return result;
+}
 
 const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
@@ -70,8 +120,13 @@ export default async function loadRealm<T extends TSchema>(
         log?: ILog;
         registry?: IRegistry;
     },
+    rootKind?: 'server' | 'browser',
 ): Promise<IRegistry> {
     const defKind = kind(def);
+    if (!rootKind) {
+        if (defKind === 'server' || defKind === 'browser') rootKind = defKind;
+        else throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
+    }
     const mod = await def({type: Type});
     if (!('pkg' in mod)) mod.pkg = createRequire(mod.url)('./package.json');
     const mergedConfig = {
@@ -84,6 +139,7 @@ export default async function loadRealm<T extends TSchema>(
         kopi: undefined,
         watch: undefined,
         configs: undefined,
+        configNames: [] as string[],
     };
     const loadedConfigs = [];
     let items = [];
@@ -173,26 +229,47 @@ export default async function loadRealm<T extends TSchema>(
     loadedConfigs.push(...activeConfigs(mod, configNames));
     loadedConfigs.push(await loadConfig(parentConfig));
     merge(mergedConfig, ...loadedConfigs.filter(Boolean));
+    mergedConfig.configNames = configNames;
     let logger: ILogger;
     if (typeof parentConfig === 'string' && mergedConfig.watch)
         mergedConfig.watch.configs = mergedConfig.configs;
+
+    // Auto-discover layer folders not already listed in mod.children
+    const base = mergedConfig.url.startsWith('file://')
+        ? dirname(mergedConfig.url.slice(7))
+        : mergedConfig.url;
+    mergedConfig.base = base;
+    const extraChildren: string[] = [];
+    if (base) {
+        const explicitChildren = new Set(
+            (mod.children ?? []).filter(c => typeof c === 'string').map(c => basename(c as string)),
+        );
+        const discoveredFolders = await discoverLayerFolders(
+            base,
+            rootKind,
+            explicitChildren,
+            configNames,
+        );
+        for (const [folderName, activation] of discoveredFolders) {
+            if (!(folderName in mergedConfig)) merge(mergedConfig, {[folderName]: activation});
+            extraChildren.push(`./${folderName}`);
+        }
+    }
+
     let realm: IRealm;
-    for (let item of items.concat(mod.children)) {
+    for (let item of items.concat(mod.children ?? []).concat(extraChildren)) {
         const itemName = typeof item === 'string' ? basename(item) : item.name;
         const config = mergedConfig[itemName];
         logger?.debug?.(`Loading ${defKind}/${itemName}`);
-        const base = mergedConfig.url.startsWith('file://')
-            ? dirname(mergedConfig.url.slice(7))
-            : mergedConfig.url;
-        mergedConfig.base = base;
         if (config) {
             if (typeof item === 'string') {
                 switch (defKind) {
                     case 'server':
-                    case 'browser':
-                        const fileName = item.startsWith('.')
-                            ? join(base, item, `${defKind}.ts`)
-                            : item;
+                    case 'browser': {
+                        const folderPath = item;
+                        const fileName = folderPath.startsWith('.')
+                            ? join(base, folderPath, `${defKind}.ts`)
+                            : folderPath;
                         item = async () => {
                             try {
                                 const mod = await import(fileName);
@@ -201,18 +278,26 @@ export default async function loadRealm<T extends TSchema>(
                                 if (
                                     !['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(
                                         error.code,
-                                    ) ||
-                                    !mergedConfig?.kopi?.realm
+                                    )
                                 )
                                     throw error;
 
-                                const {createRealm} = await import('./kopi.ts');
-                                await createRealm(import.meta.resolve(fileName), logger);
-                                const mod = await import(fileName);
-                                return mod.default ?? mod;
+                                if (mergedConfig?.kopi?.realm) {
+                                    let destUrl = import.meta.resolve(fileName);
+                                    destUrl = destUrl.startsWith('file://')
+                                        ? dirname(destUrl.slice(7))
+                                        : destUrl;
+                                    if (!existsSync(join(destUrl, 'package.json'))) {
+                                        const {createRealm} = await import('./kopi.ts');
+                                        await createRealm(destUrl, logger);
+                                        const mod = await import(fileName);
+                                        return mod.default ?? mod;
+                                    }
+                                }
                             }
                         };
                         break;
+                    }
                     default:
                         const loaded = [];
                         for (const dirEntry of await scan(base, item))
@@ -243,7 +328,7 @@ export default async function loadRealm<T extends TSchema>(
                     realm ||= new RealmImpl(mergedConfig, api);
                     realm.addModule(
                         itemName,
-                        await loadRealm(fn, itemName, config, configNames, api),
+                        await loadRealm(fn, itemName, config, configNames, api, rootKind),
                     );
                 } else if (typeof fn === 'function') {
                     realm ||= new RealmImpl(mergedConfig, api);

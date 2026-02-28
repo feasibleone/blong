@@ -79,13 +79,10 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'vault',
-                },
-                ...configs
-            );
+        activation: {
+            default: {
+                type: 'vault',
+            },
         },
         async start() {
             const vaultOptions = {
@@ -134,7 +131,7 @@ export default adapter<IConfig>(({utError}) => {
                       metadata?: Record<string, unknown>;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta
+            {method}: IMeta,
         ) {
             const [, resource, operation] = method.split('.');
             let secretPath = resource;

@@ -106,7 +106,7 @@ export type Config<T, C> = {
     maxReceiveBuffer: number;
     logLevel: Parameters<ILog['logger']>[0];
     namespace: string | string[];
-    imports: string | string[];
+    imports: string | RegExp | (string | RegExp)[];
 } & T;
 
 export type RemoteMethod = (...params: unknown[]) => Promise<unknown>;
@@ -178,6 +178,7 @@ export interface IRegistry {
 
 export interface IApi {
     id?: string;
+    type: JavaScriptTypeBuilder;
     adapter: (
         id: string,
     ) => (api: {
@@ -209,7 +210,7 @@ export interface IApi {
     utLog: {
         createLog: ILog['logger'];
     };
-    handlers?: (api: {utError: IError}) => {
+    handlers?: (api: {utError: IError; remote: IRemote; type: JavaScriptTypeBuilder}) => {
         extends?:
             | string
             | ((api: {
@@ -233,13 +234,19 @@ export interface IErrorMap {
 }
 
 export interface IAdapter<T, C> {
+    validation?: TSchema;
     config?: Config<T, C>;
+    activation?: IActivationConfig<Partial<Config<T, C>>>;
     configBase?: string;
     log?: ILogger;
     errors?: Errors<IErrorMap>;
     imported?: ReturnType<IAdapterFactory<T, C>>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
-    init?: (this: ReturnType<IAdapterFactory<T, C>>, ...config: Partial<Config<T, C>>[]) => void;
+    activeConfig?: (this: ReturnType<IAdapterFactory<T, C>>) => Partial<Config<T, C>>;
+    init?: (
+        this: ReturnType<IAdapterFactory<T, C>>,
+        ...config: Partial<Config<T, C>>[]
+    ) => Promise<void>;
     start?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
     ready?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
     stop?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
@@ -422,6 +429,7 @@ export interface IBaseConfig extends TObject<{
     additionalProperties: false;
 }
 export interface IActivationConfig<T> {
+    default: T;
     integration?: T;
     deployment?: T;
     microservice?: T;
@@ -434,11 +442,11 @@ export interface IModuleConfig<T extends TSchema = TNever> {
         version: string;
     };
     url: string;
-    config: {
+    config?: {
         default: Partial<Static<IBaseConfig> & Static<T>>;
     } & IActivationConfig<Partial<Static<T> & Static<IBaseConfig>>>;
-    validation: T;
-    children: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
+    validation?: T;
+    children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
 }
 
 export interface ILogger {
@@ -657,6 +665,9 @@ export const server = <T extends TObject>(definition: SolutionFactory<T>): Solut
     Object.defineProperty(definition, Kind, {value: 'server'});
 export const browser = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
     Object.defineProperty(definition, Kind, {value: 'browser'});
+export const layer = (
+    activation: Record<string, boolean | object>,
+): Record<string, boolean | object> => Object.defineProperty(activation, Kind, {value: 'layer'});
 export const adapter = <T, C = AdapterContext>(
     definition: IAdapterFactory<T, C>,
 ): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'adapter'});

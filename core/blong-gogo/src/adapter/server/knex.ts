@@ -23,19 +23,16 @@ export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
     return {
-        async init(...configs: object[]) {
-            await super.init(
-                {
-                    type: 'knex',
-                    knex: {
-                        client: 'mysql2',
-                        connection: {
-                            host: 'localhost',
-                        },
+        activation: {
+            default: {
+                type: 'knex',
+                knex: {
+                    client: 'mysql2',
+                    connection: {
+                        host: 'localhost',
                     },
                 },
-                ...configs,
-            );
+            },
         },
         start() {
             this.config.context = {queryBuilder: Knex(this.config.knex) as any};
