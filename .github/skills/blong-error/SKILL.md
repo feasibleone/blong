@@ -102,7 +102,9 @@ import {library} from '@feasibleone/blong';
 export default library(({lib: {errors}}) => {
     // Use errors from library
     if (!pattern) {
-        throw errors['protocol.parser.request']({params: {command: name}});
+        throw errors['protocol.parser.request']({
+            params: {command: name}
+        });
     }
 });
 ```

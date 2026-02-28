@@ -684,8 +684,8 @@ config: {
 
 ## Integration with Other Skills
 
-- **[codec](../codec/)** - OpenAPI codec implementation details
-- **[adapter](../adapter/)** - HTTP adapter configuration
-- **[handler](../handler/)** - Handler implementation patterns
-- **[validation](../validation/)** - Automatic validation from OpenAPI specs
-- **[gateway](../layer/)** - Gateway layer organization
+- **[blong-codec](../blong-codec/)** - OpenAPI codec implementation details
+- **[blong-adapter](../blong-adapter/)** - HTTP adapter configuration
+- **[blong-handler](../blong-handler/)** - Handler implementation patterns
+- **[blong-validation](../blong-validation/)** - Automatic validation from OpenAPI specs
+- **[blong-gateway](../blong-layer/)** - Gateway layer organization

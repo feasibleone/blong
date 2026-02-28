@@ -122,7 +122,7 @@ export default adapter(blong => ({
         namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
         imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
     }),
-    config: {
+    activation: {
         default: {
             namespace: 'db/$subject',
             imports: '$subject.db',
@@ -137,7 +137,7 @@ import {orchestrator} from '@feasibleone/blong';
 
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {
+    activation: {
         default: {
             destination: 'db',
             namespace: ['$subject'],

@@ -118,7 +118,7 @@ export default validationHandlers({
 // In orchestrator/dispatch.ts - co-located config
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {
+    activation: {
         default: {
             namespace: ['entity'],
             imports: ['realmname.entity'],

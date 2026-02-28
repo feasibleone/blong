@@ -121,7 +121,7 @@ export default adapter(blong => ({
     }),
 
     // Layer's own configuration per environment
-    config: {
+    activation: {
         default: {
             namespace: 'db/$subject',
             imports: '$subject.db',
@@ -152,7 +152,7 @@ export default orchestrator(blong => ({
         destination: blong.type.Optional(blong.type.String()),
     }),
 
-    config: {
+    activation: {
         default: {
             destination: 'db',
             namespace: ['$subject'],
@@ -176,7 +176,7 @@ export default realm(blong => ({
     validation: blong.type.Object({
         myService: blong.type.Object({ url: blong.type.String() }),
     }),
-    config: {
+    activation: {
         default: {
             myService: { url: 'http://localhost:8080' },
         },
@@ -204,7 +204,7 @@ Groups are referenced in the `imports` property of the adapter/orchestrator:
 // adapter/db.ts - imports declared inline
 export default adapter(blong => ({
     extends: 'adapter.knex',
-    config: {
+    activation: {
         default: {
             namespace: ['user', 'role'],
             imports: ['user.user', 'user.role'],  // handler groups loaded
@@ -289,7 +289,7 @@ test/
 
 ```typescript
 export default realm(blong => ({
-    config: {
+    activation: {
         // Activate for automated testing
         test: {
             error: true,
@@ -368,7 +368,7 @@ export default adapter(blong => ({
         timeout: blong.type.Number()
     }),
 
-    config: {
+    activation: {
         default: {
             url: 'http://api.example.com',
             timeout: 5000

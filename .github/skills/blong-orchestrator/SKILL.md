@@ -63,7 +63,7 @@ export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
 
     // Co-located configuration (no need to add to server.ts)
-    config: {
+    activation: {
         default: {
             namespace: ['entity1', 'entity2'],        // Namespaces to expose
             imports: ['realmname.entity1', 'realmname.entity2'],  // Handler groups
@@ -95,7 +95,7 @@ import {orchestrator} from '@feasibleone/blong';
 export default orchestrator(blong => ({
     extends: 'orchestrator.schedule',
 
-    config: {
+    activation: {
         default: {
             namespace: ['batch'],
             imports: ['realmname.batch'],
@@ -363,19 +363,19 @@ When a realm has multiple concerns, create separate orchestrators — each co-lo
 // orchestrator/userDispatch.ts
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {default: {namespace: ['user'], imports: ['realmname.user']}}
+    activation: {default: {namespace: ['user'], imports: ['realmname.user']}}
 }));
 
 // orchestrator/roleDispatch.ts
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {default: {namespace: ['role'], imports: ['realmname.role']}}
+    activation: {default: {namespace: ['role'], imports: ['realmname.role']}}
 }));
 
 // orchestrator/permissionDispatch.ts
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {default: {namespace: ['permission'], imports: ['realmname.permission']}}
+    activation: {default: {namespace: ['permission'], imports: ['realmname.permission']}}
 }));
 ```
 
