@@ -247,7 +247,7 @@ export default adapter((blong) => ({
     }),
     
     // Move config from server.ts
-    config: {
+    activation: {
         default: {
             host: 'localhost',
             port: 5432,
@@ -330,7 +330,7 @@ export default adapter((blong) => ({
         logLevel: blong.type.Optional(blong.type.String())
     }),
     
-    config: {
+    activation: {
         default: {
             url: 'http://api.external.com',
             namespace: ['external']
@@ -357,7 +357,7 @@ export default orchestrator((blong) => ({
         imports: blong.type.Array(blong.type.String())
     }),
     
-    config: {
+    activation: {
         default: {
             namespace: ['user'],
             imports: ['realmname.user']

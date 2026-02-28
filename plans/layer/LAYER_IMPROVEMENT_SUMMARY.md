@@ -107,15 +107,7 @@ realmname/
 // adapter/db.ts - self-contained, defines own config and activation
 export default adapter(() => ({
     extends: 'adapter.sql',
-    
-    // Activation config - loaded FIRST (lightweight)
-    activation: {
-        dev: true,
-        prod: true,
-        microservice: true,  // Active in microservice mode
-        test: false          // Not loaded in test
-    },
-    
+        
     // Co-located validation (only loaded if activated)
     validation: blong.type.Object({
         host: blong.type.String(),
@@ -124,8 +116,7 @@ export default adapter(() => ({
         logLevel: blong.type.Optional(blong.type.String())
     }),
     
-    // Co-located configuration (only loaded if activated)
-    config: {
+    activation: {
         default: {
             namespace: ['user'],
             imports: ['realmname.user'],
@@ -216,7 +207,7 @@ export default adapter(() => ({
         timeout: blong.type.Number()
     }),
     
-    config: {
+    activation: {
         default: {
             url: 'http://api.example.com',
             timeout: 5000
@@ -361,7 +352,7 @@ export default adapter((blong) => ({
     }),
     
     // Configuration per environment
-    config: {
+    activation: {
         // Always active
         default: {
             namespace: ['user', 'role', 'permission'],

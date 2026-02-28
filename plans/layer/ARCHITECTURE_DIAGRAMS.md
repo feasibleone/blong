@@ -165,9 +165,8 @@
 │                                                                 │
 │   adapter/db.ts ─────────►  ┌──────────────────────┐           │
 │                             │ adapter(() => ({      │           │
-│                             │   activation: {...},  │           │
 │                             │   validation: {...},  │ NOW       │
-│                             │   config: {           │ LOADED    │
+│                             │   activation: {       │ LOADED    │
 │                             │     default: {...},   │           │
 │                             │     dev: {...}        │           │
 │                             │   }                   │           │
@@ -301,7 +300,7 @@ Key Benefits:
 │   │     port: Number                          │               │
 │   │   },                                       │               │
 │   │                                            │  Configuration │
-│   │   config: {                               │               │
+│   │   activation: {                               │               │
 │   │     default: {                            │               │
 │   │       host: 'localhost',                  │               │
 │   │       port: 5432                          │               │

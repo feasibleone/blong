@@ -38,23 +38,24 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 **For implementation tasks, use these skills:**
 
-| Your Task | Use This Skill |
-|-----------|----------------|
-| Creating a new business domain | **blong-realm** |
-| Adding an API endpoint | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
-| Connecting to database | **blong-adapter** (see SQL adapter patterns) |
-| Calling external API | **blong-adapter** (see HTTP adapter patterns) |
-| Implementing business logic | **blong-orchestrator** |
-| Organizing code into layers | **blong-layer** |
-| Implementing protocols | **blong-codec** |
-| Adding input validation | **blong-validation** |
-| Defining typed errors | **blong-error** |
-| Writing tests | **blong-test** |
-| Setting up Storybook | **storybook-v10-setup** |
-| Developing with Storybook | **storybook-testing-workflow** |
-| Viewing real-time logs | **blong-log** |
+| Your Task                      | Use This Skill                                        |
+| ------------------------------ | ----------------------------------------------------- |
+| Creating a new business domain | **blong-realm**                                       |
+| Adding an API endpoint         | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
+| Connecting to database         | **blong-adapter** (see SQL adapter patterns)          |
+| Calling external API           | **blong-adapter** (see HTTP adapter patterns)         |
+| Implementing business logic    | **blong-orchestrator**                                |
+| Organizing code into layers    | **blong-layer**                                       |
+| Implementing protocols         | **blong-codec**                                       |
+| Adding input validation        | **blong-validation**                                  |
+| Defining typed errors          | **blong-error**                                       |
+| Writing tests                  | **blong-test**                                        |
+| Setting up Storybook           | **storybook-v10-setup**                               |
+| Developing with Storybook      | **storybook-testing-workflow**                        |
+| Viewing real-time logs         | **blong-log**                                         |
 
 **For understanding concepts:**
+
 - Layer architecture and organization: **blong-layer**
 - Protocol implementation details: **blong-codec**
 - Realm deployment patterns: **blong-realm**
@@ -106,7 +107,7 @@ Services use functional configuration with the framework's builder pattern:
 // server.ts - minimal, controls layer activation only
 export default server(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),  // No per-layer config needed
+    validation: blong.type.Object({}), // No per-layer config needed
     children: ['./submodule', async () => import('@pkg/module')],
     config: {default: {}, microservice: {adapter: true, orchestrator: true}, dev: {}},
 }));
@@ -125,7 +126,7 @@ export default realm(blong => ({
 // adapter/db.ts - self-contained with co-located config
 export default adapter(blong => ({
     extends: 'adapter.knex',
-    config: {
+    activation: {
         default: {
             namespace: 'math',
             imports: 'math.number', // References math/adapter/db/ folder
@@ -136,7 +137,7 @@ export default adapter(blong => ({
 // orchestrator/dispatch.ts - self-contained with co-located config
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    config: {
+    activation: {
         default: {
             namespace: 'number',
             imports: 'math.number', // References math/orchestrator/number/ folder

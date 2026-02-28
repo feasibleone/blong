@@ -79,7 +79,7 @@ export default adapter(blong => ({
         logLevel: blong.type.Optional(blong.type.String()),
     }),
 
-    config: {
+    activation: {
         default: {
             url: 'https://api.example.com',
             namespace: ['external'],
@@ -125,7 +125,7 @@ import {adapter} from '@feasibleone/blong';
 export default adapter(blong => ({
     extends: 'adapter.tcp',
 
-    config: {
+    activation: {
         default: {
             host: 'hsm.example.com',
             port: 1500,
@@ -180,7 +180,7 @@ import {adapter} from '@feasibleone/blong';
 export default adapter(blong => ({
     extends: 'adapter.knex',
 
-    config: {
+    activation: {
         default: {
             namespace: ['sql'],
             imports: ['realmname.db'],
@@ -237,7 +237,7 @@ export default adapter<object>(api => ({
 **Configuration:**
 
 ```typescript
-config: {
+activation: {
     default: {
         kv: {
             namespace: 'kv',
@@ -269,7 +269,7 @@ export default adapter<object>(api => ({
 **Configuration:**
 
 ```typescript
-config: {
+activation: {
     default: {
         k8s: {
             namespace: 'k8s',
@@ -301,7 +301,7 @@ export default adapter<object>(api => ({
 **Configuration:**
 
 ```typescript
-config: {
+activation: {
     default: {
         storage: {
             namespace: 'storage',
@@ -533,7 +533,7 @@ export default handler(({errors}) =>
 Multiple handlers with the same name can be stacked:
 
 ```typescript
-config: {
+activation: {
     default: {
         http: {
             imports: [

@@ -183,7 +183,7 @@ export default adapter(() => ({
         url: blong.type.String(),
         timeout: blong.type.Number()
     }),
-    config: {
+    activation: {
         default: {
             timeout: 5000
         },
@@ -229,9 +229,6 @@ export default adapter(() => ({
     
     // Full config - only loaded if layer is activated
     validation: blong.type.Object({...}),
-    config: {
-        default: {...}
-    }
 }));
 ```
 
