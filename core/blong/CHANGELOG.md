@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-v1.7.3...blong-v1.8.0) (2026-02-28)
+
+
+### Features
+
+* self-contained layers ([9b80e3a](https://github.com/feasibleone/blong/commit/9b80e3a1bfd1b6843ece5dba80b619444ec93c84))
+
 ## [1.7.3](https://github.com/feasibleone/blong/compare/blong-v1.7.2...blong-v1.7.3) (2026-02-17)
 
 
