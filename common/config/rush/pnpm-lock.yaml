@@ -468,6 +468,9 @@ importers:
 
   ../../core/blong-login:
     dependencies:
+      '@types/ut-function.cbc':
+        specifier: file:./types/ut-function.cbc
+        version: file:../../core/blong-login/types/ut-function.cbc
       jose:
         specifier: ^5.7.0
         version: 5.10.0
@@ -4536,6 +4539,9 @@ packages:
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+
+  '@types/ut-function.cbc@file:../../core/blong-login/types/ut-function.cbc':
+    resolution: {directory: ../../core/blong-login/types/ut-function.cbc, type: directory}
 
   '@types/ut-function.merge@file:../../core/blong/types/ut-function.merge':
     resolution: {directory: ../../core/blong/types/ut-function.merge, type: directory}
@@ -17157,6 +17163,8 @@ snapshots:
   '@types/unist@2.0.11': {}
 
   '@types/unist@3.0.3': {}
+
+  '@types/ut-function.cbc@file:../../core/blong-login/types/ut-function.cbc': {}
 
   '@types/ut-function.merge@file:../../core/blong/types/ut-function.merge': {}
 
