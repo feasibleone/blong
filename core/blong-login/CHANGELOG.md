@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-login-v1.5.0...blong-login-v1.6.0) (2026-03-01)
+
+
+### Features
+
+* upgrade typebox ([6631428](https://github.com/feasibleone/blong/commit/6631428be08fda73571c3e4c623893fad668c25d))
+
+
+### Bug Fixes
+
+* correct path for ut-function.cbc type definitions in package.json ([394804e](https://github.com/feasibleone/blong/commit/394804e95bd150a8611f585aada665607d51674c))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/blong-login-v1.4.0...blong-login-v1.5.0) (2026-02-28)
 
 

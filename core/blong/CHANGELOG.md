@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-v1.8.0...blong-v1.9.0) (2026-03-01)
+
+
+### Features
+
+* upgrade typebox ([6631428](https://github.com/feasibleone/blong/commit/6631428be08fda73571c3e4c623893fad668c25d))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-v1.7.3...blong-v1.8.0) (2026-02-28)
 
 

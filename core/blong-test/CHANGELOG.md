@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-test-v1.5.0...blong-test-v1.6.0) (2026-03-01)
+
+
+### Features
+
+* upgrade typebox ([6631428](https://github.com/feasibleone/blong/commit/6631428be08fda73571c3e4c623893fad668c25d))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/blong-test-v1.4.0...blong-test-v1.5.0) (2026-02-28)
 
 
