@@ -24,7 +24,8 @@
     "type": "module",
     "version": "1.5.0",
     "dependencies": {
-        "@sinclair/typebox": "^0.33.7",
+        "typebox": "^1.1.5",
+        "@types/ut-function.cbc": "file:../types/ut-function.cbc",
         "ut-function.cbc": "^1.1.6",
         "jose": "^5.7.0"
     },

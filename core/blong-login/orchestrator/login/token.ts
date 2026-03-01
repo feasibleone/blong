@@ -6,7 +6,7 @@ export default library<{
         access: JWK;
         id: JWK;
     };
-    expire: Record<string, string>;
+    expire: Record<string, number>;
 }>(
     async ({
         config: {
@@ -40,7 +40,10 @@ export default library<{
                 mlsk,
                 refresh,
                 ...rest
-            }: Record<string, unknown>) {
+            }: {refresh?: number; mlek?: object | 'header'; mlsk: object | 'header'} & Record<
+                string,
+                unknown
+            >) {
                 if (!refresh || refresh > expire.refresh) refresh = expire.refresh;
                 refresh = expire.never || refresh;
                 const access = expire.never || (expire.access > refresh ? refresh : expire.access);

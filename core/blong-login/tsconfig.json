@@ -12,7 +12,8 @@
         "target": "ES2022",
         "declaration": true,
         "declarationMap": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "strict": true
     },
     "ts-node": {
         "esm": true,

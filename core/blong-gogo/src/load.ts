@@ -9,11 +9,11 @@ import {
     type IRegistry,
     type SolutionFactory,
 } from '@feasibleone/blong';
-import {Type, type TSchema} from '@sinclair/typebox';
 import {existsSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {createRequire} from 'node:module';
 import {basename, dirname, join} from 'path';
+import {Type, type TSchema} from 'typebox';
 import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 

@@ -4,7 +4,7 @@ export default handler(
     () =>
         function loginOidcGetConfiguration(
             params: unknown,
-            {httpRequest: {url: urlRequest, headers}}: IMeta,
+            {httpRequest: {url: urlRequest, headers} = {url: '', headers: {}}}: IMeta,
         ) {
             const url = new URL(urlRequest);
             if (headers['x-forwarded-host']) {

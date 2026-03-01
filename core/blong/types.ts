@@ -7,9 +7,11 @@ import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 //     RbacAuthorizationV1Api,
 //     Watch,
 // } from '@kubernetes/client-node';
+import type {IncomingWebhook} from '@slack/webhook';
+import type {MongoClient} from 'mongodb';
+import type Assert from 'node:assert';
 import {
     Type,
-    type JavaScriptTypeBuilder,
     type Static,
     type TArray,
     type TBoolean,
@@ -18,10 +20,7 @@ import {
     type TObject,
     type TSchema,
     type TString,
-} from '@sinclair/typebox';
-import type {IncomingWebhook} from '@slack/webhook';
-import type {MongoClient} from 'mongodb';
-import type Assert from 'node:assert';
+} from 'typebox';
 // import type {client} from 'node-vault';
 import type {Dirent} from 'node:fs';
 import type {Duplex} from 'node:stream';
@@ -111,7 +110,7 @@ export type Config<T, C> = {
 
 export type RemoteMethod = (...params: unknown[]) => Promise<unknown>;
 export interface IRemote {
-    remote: (methodName, options?) => RemoteMethod;
+    remote: (methodName: string, options?: object) => RemoteMethod;
     dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
     start: () => Promise<void>;
     stop: () => Promise<void>;
@@ -178,7 +177,7 @@ export interface IRegistry {
 
 export interface IApi {
     id?: string;
-    type: JavaScriptTypeBuilder;
+    type: typeof Type;
     adapter: (
         id: string,
     ) => (api: {
@@ -204,13 +203,16 @@ export interface IApi {
         dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
         methodId: (name: string) => string;
         getPath: (name: string) => string;
-        importMethod: (methodName, options?) => (...params: unknown[]) => Promise<unknown>;
+        importMethod: (
+            methodName: string,
+            options?: object,
+        ) => (...params: unknown[]) => Promise<unknown>;
         attachHandlers: (target: object, patterns: unknown, adapter?: boolean) => unknown;
     };
     utLog: {
         createLog: ILog['logger'];
     };
-    handlers?: (api: {utError: IError; remote: IRemote; type: JavaScriptTypeBuilder}) => {
+    handlers?: (api: {utError: IError; remote: IRemote; type: typeof Type}) => {
         extends?:
             | string
             | ((api: {
@@ -321,8 +323,8 @@ export interface IMeta {
     };
     httpRequest?: {
         url: URL | string;
-        state: object;
-        headers: object;
+        state?: object;
+        headers: Record<string, string>;
     };
     auth?: {
         mlek?: object | 'header';
@@ -442,9 +444,7 @@ export interface IModuleConfig<T extends TSchema = TNever> {
         version: string;
     };
     url: string;
-    config?: {
-        default: Partial<Static<IBaseConfig> & Static<T>>;
-    } & IActivationConfig<Partial<Static<T> & Static<IBaseConfig>>>;
+    config?: IActivationConfig<Partial<Static<T>> & Partial<Static<IBaseConfig>>>;
     validation?: T;
     children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
 }
@@ -509,7 +509,7 @@ export type ChainStep =
     | object;
 
 export interface ILib {
-    type: JavaScriptTypeBuilder;
+    type: typeof Type;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
     group: (name: string) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
@@ -524,7 +524,7 @@ export interface ILib {
 
 export type ValidationFn = () => GatewaySchema;
 export interface IValidationProxy {
-    type: JavaScriptTypeBuilder;
+    type: typeof Type;
     handler: {
         [name: string]: ValidationFn;
     };
@@ -607,20 +607,20 @@ export type ModuleApi = {
     ) => ModuleApi;
 };
 
-export type SolutionFactory<T extends TSchema = TNever> = (definition: {
-    type: JavaScriptTypeBuilder;
-}) => IModuleConfig<T> | Promise<IModuleConfig<T>>;
+export interface SolutionFactory<T extends TSchema = TNever> {
+    (definition: {type: typeof Type}): IModuleConfig<T> | Promise<IModuleConfig<T>>;
+}
 
 const Kind: symbol = Symbol.for('blong:kind');
 
 export abstract class Internal {
-    #log: ILog;
+    #log?: ILog;
     protected log?: ReturnType<ILog['logger']>;
     public constructor(api?: {log: ILog}) {
         this.#log = api?.log;
     }
-    protected merge: ILib['merge'] = (...args) => {
-        const result = merge(...args);
+    protected merge: ILib['merge'] = (...args: Parameters<ILib['merge']>) => {
+        const result = merge<{logLevel?: Level}>(...args);
         if (result.logLevel && this.#log)
             this.log = this.#log.logger(result.logLevel, {name: this.constructor.name});
         return result;
@@ -640,7 +640,7 @@ export const api = (api: ApiDefinition): ApiDefinition =>
     Object.defineProperty(api, Kind, {value: 'api'});
 
 export const validationHandlers: (
-    handlers: Record<string, TFunction>,
+    handlers: Record<string, TFunction<[TObject<{}>]>>,
 ) => ValidationDefinition = handlers =>
     validation(() =>
         Object.fromEntries(
@@ -650,7 +650,7 @@ export const validationHandlers: (
                     () => ({
                         params: Type.Parameters(handler).items[0],
                         result: Type.Awaited(Type.ReturnType(handler)),
-                        description: handler.description,
+                        description: 'description' in handler ? handler.description : undefined,
                     }),
                     'name',
                     {value: name},
@@ -674,9 +674,7 @@ export const adapter = <T, C = AdapterContext>(
 export const orchestrator = <T, C = AdapterContext>(
     definition: IAdapterFactory<T, C>,
 ): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'orchestrator'});
-export const kind = <T>(
-    what: T,
-):
+export type Kinds =
     | 'lib'
     | 'validation'
     | 'api'
@@ -685,7 +683,8 @@ export const kind = <T>(
     | 'browser'
     | 'adapter'
     | 'orchestrator'
-    | 'handler' => what[Kind];
+    | 'handler';
+export const kind = (what: {[Kind]: Kinds | undefined}): Kinds | undefined => what[Kind];
 
 export default {
     handler,

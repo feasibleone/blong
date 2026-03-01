@@ -78,7 +78,7 @@ Place `~.schema.ts` file in the handler folder:
 /* eslint-disable @rushstack/typedef-var */
 
 import { validationHandlers } from '@feasibleone/blong'
-import { Type, Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 type realmEntityAction = Static<typeof realmEntityAction>
 const realmEntityAction = Type.Function(

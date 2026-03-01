@@ -15,7 +15,7 @@
         "@keycloak/keycloak-admin-client": "^26.5.2",
         "@kubernetes/client-node": "^1.4.0",
         "@octokit/rest": "^21.0.2",
-        "@sinclair/typebox": "^0.33.7",
+        "typebox": "^1.1.5",
         "@sinclair/typebox-codegen": "^0.10.4",
         "@slack/webhook": "^7.0.6",
         "ajv-formats": "^3.0.1",

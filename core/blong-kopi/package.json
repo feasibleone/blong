@@ -1,7 +1,7 @@
 {
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
-        "@sinclair/typebox": "^0.33.7",
+        "typebox": "^1.1.5",
         "jose": "^5.7.0"
     },
     "devDependencies": {

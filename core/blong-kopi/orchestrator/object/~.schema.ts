@@ -3,7 +3,7 @@
 /* eslint-disable @rushstack/typedef-var */
 
 import {validationHandlers} from '@feasibleone/blong';
-import {type Static, Type} from '@sinclair/typebox';
+import {type Static, Type} from 'typebox';
 
 type $subject$ObjectPredicate = Static<typeof $subject$ObjectPredicate>;
 const $subject$ObjectPredicate = Type.Function(

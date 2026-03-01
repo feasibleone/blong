@@ -13,7 +13,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
-        "@sinclair/typebox": "^0.33.7",
+        "typebox": "^1.1.5",
         "pino": "^10.3.1",
         "pino-abstract-transport": "^3.0.0",
         "ulidx": "^2.4.1",

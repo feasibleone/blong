@@ -12,8 +12,8 @@ import type {
     IRpcServer,
 } from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
-import {Type} from '@sinclair/typebox';
 import PQueue from 'p-queue';
+import {Type} from 'typebox';
 import {monotonicFactory} from 'ulidx';
 import merge from 'ut-function.merge';
 import {v4 as uuid4, v7 as uuid7} from 'uuid';

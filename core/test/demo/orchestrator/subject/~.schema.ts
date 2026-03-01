@@ -3,7 +3,7 @@
 /* eslint-disable @rushstack/typedef-var */
 
 import {validationHandlers} from '@feasibleone/blong';
-import {Type, type Static} from '@sinclair/typebox';
+import {Type, type Static} from 'typebox';
 
 type subjectAge = Static<typeof subjectAge>;
 const subjectAge = Type.Function(

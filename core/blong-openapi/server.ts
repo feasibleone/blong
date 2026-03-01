@@ -7,11 +7,7 @@ export default realm(blong => ({
     }),
     children: ['./orchestrator'],
     config: {
-        default: {
-            openapi: {
-                logLevel: 'info',
-            },
-        },
+        default: {},
         dev: {},
         microservice: {
             orchestrator: true,

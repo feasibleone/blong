@@ -5,7 +5,7 @@
         "@feasibleone/blong-test": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-openapi": "workspace:^1.0.0",
-        "@sinclair/typebox": "^0.33.7",
+        "typebox": "^1.1.5",
         "jose": "^5.7.0",
         "ut-bitsyntax": "^6.2.7",
         "ut-codec-payshield": "^7.3.0",

@@ -12,15 +12,15 @@ importers:
 
   ../../core/blong:
     dependencies:
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.22
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
       ut-function.merge:
         specifier: ^1.5.6
         version: 1.5.6
@@ -55,6 +55,9 @@ importers:
       '@types/request':
         specifier: ^2.48.13
         version: 2.48.13
+      '@types/ut-function.merge':
+        specifier: file:./types/ut-function.merge
+        version: file:../../core/blong/types/ut-function.merge
       bson:
         specifier: ^7.2.0
         version: 7.2.0
@@ -155,9 +158,6 @@ importers:
       '@octokit/rest':
         specifier: ^21.0.2
         version: 21.1.1
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.22
       '@sinclair/typebox-codegen':
         specifier: ^0.10.4
         version: 0.10.5
@@ -230,6 +230,9 @@ importers:
       reconnect-core:
         specifier: ^1.3.0
         version: 1.3.0
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
       ulidx:
         specifier: ^2.4.1
         version: 2.4.1
@@ -334,12 +337,12 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.22
       jose:
         specifier: ^5.7.0
         version: 5.10.0
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
     devDependencies:
       '@rushstack/eslint-config':
         specifier: ^4.0.1
@@ -380,15 +383,15 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.22
       pino:
         specifier: ^10.3.1
         version: 10.3.1
       pino-abstract-transport:
         specifier: ^3.0.0
         version: 3.0.0
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
       ulidx:
         specifier: ^2.4.1
         version: 2.4.1
@@ -465,12 +468,12 @@ importers:
 
   ../../core/blong-login:
     dependencies:
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.22
       jose:
         specifier: ^5.7.0
         version: 5.10.0
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
       ut-function.cbc:
         specifier: ^1.1.6
         version: 1.1.6
@@ -572,12 +575,12 @@ importers:
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
         version: link:../blong-test
-      '@sinclair/typebox':
-        specifier: ^0.33.7
-        version: 0.33.22
       jose:
         specifier: ^5.7.0
         version: 5.10.0
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
       ut-bitsyntax:
         specifier: ^6.2.7
         version: 6.2.7
@@ -4533,6 +4536,9 @@ packages:
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+
+  '@types/ut-function.merge@file:../../core/blong/types/ut-function.merge':
+    resolution: {directory: ../../core/blong/types/ut-function.merge, type: directory}
 
   '@types/vscode@1.108.1':
     resolution: {integrity: sha512-DerV0BbSzt87TbrqmZ7lRDIYaMiqvP8tmJTzW2p49ZBVtGUnGAu2RGQd1Wv4XMzEVUpaHbsemVM5nfuQJj7H6w==}
@@ -10862,6 +10868,9 @@ packages:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
     engines: {node: '>= 0.6'}
 
+  typebox@1.1.5:
+    resolution: {integrity: sha512-TBdiM4mSppvWdmRDK5PoocxrMOqGIU9TxmS9zdHH+k8S/+2SIaNlPfMlx3f6hISxma14t2yX7SRySg7+TYYT9w==}
+
   typed-array-buffer@1.0.3:
     resolution: {integrity: sha512-nAYYwfY3qnzX30IkA6AQZjVbtK6duGontcQm1WSG1MD94YLqK0515GNApXkoxKOWMusVssAHWLh9SeaoefYFGw==}
     engines: {node: '>= 0.4'}
@@ -17148,6 +17157,8 @@ snapshots:
   '@types/unist@2.0.11': {}
 
   '@types/unist@3.0.3': {}
+
+  '@types/ut-function.merge@file:../../core/blong/types/ut-function.merge': {}
 
   '@types/vscode@1.108.1': {}
 
@@ -24875,6 +24886,8 @@ snapshots:
     dependencies:
       media-typer: 0.3.0
       mime-types: 2.1.35
+
+  typebox@1.1.5: {}
 
   typed-array-buffer@1.0.3:
     dependencies:

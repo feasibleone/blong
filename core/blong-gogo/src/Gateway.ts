@@ -9,10 +9,10 @@ import type {
     IMeta,
 } from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
-import {Type, type TSchema} from '@sinclair/typebox';
 import fastify, {type FastifyRequest, type RouteOptions} from 'fastify';
 import os from 'os';
 import type {LevelWithSilent} from 'pino';
+import {Type, type TSchema} from 'typebox';
 import {after} from 'ut-function.timing';
 import {v4} from 'uuid';
 
