@@ -46,5 +46,5 @@
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },
     "type": "module",
-    "version": "1.9.1"
+    "version": "1.9.2"
 }

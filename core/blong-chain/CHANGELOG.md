@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.1...blong-chain-v1.2.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* update rushstack dependencies across multiple packages to latest versions ([1d9f043](https://github.com/feasibleone/blong/commit/1d9f043899593b55cafc99bef319791ba7b55ace))
+
 ## [1.2.1](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.0...blong-chain-v1.2.1) (2026-03-02)
 
 
