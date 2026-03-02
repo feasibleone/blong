@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/feasibleone/blong/compare/test-v1.3.1...test-v1.3.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* update rushstack dependencies across multiple packages to latest versions ([1d9f043](https://github.com/feasibleone/blong/commit/1d9f043899593b55cafc99bef319791ba7b55ace))
+
 ## [1.3.1](https://github.com/feasibleone/blong/compare/test-v1.3.0...test-v1.3.1) (2026-03-02)
 
 
