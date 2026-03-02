@@ -299,10 +299,7 @@ export function generateLargeDataset(count: number): LogEntry[] {
         level: levels[i % levels.length],
         levelName: levelNames[i % levelNames.length],
         name: services[i % services.length],
-        msg: messages[i % messages.length].replace(
-            '${ms}',
-            String(Math.floor(Math.random() * 500)),
-        ),
+        msg: messages[i % messages.length].replace('${ms}', String(Math.floor(500 + i))),
         traceId: i % 5 === 0 ? TRACE_ID_A : i % 7 === 0 ? TRACE_ID_B : undefined,
         ...(i % 4 === 0
             ? {

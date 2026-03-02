@@ -7,9 +7,9 @@
 
 import React from 'react';
 
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 
-import type { ClientConfig, LogEntry } from '../types.js';
+import type {ClientConfig, LogEntry} from '../types.js';
 import {
     darkThemeConfig,
     errorEntries,
@@ -21,6 +21,7 @@ import {
 } from './__fixtures__/data.js';
 import LogViewer from './LogViewer.js';
 
+const BASE_TIME = new Date('2026-03-02T21:31:10.000Z').getTime();
 // ── Mock WebSocket for Storybook ──────────────────────────────────────────────
 
 /**
@@ -448,7 +449,10 @@ export const SearchHighlightingHTTPAndErrors: Story = {
  */
 export const PerformanceTest: Story = {
     render: () => {
-        const mockWsUrl = React.useMemo(() => `ws://storybook-mock-perf-${Math.random()}.local`, []);
+        const mockWsUrl = React.useMemo(
+            () => `ws://storybook-mock-perf-${Math.random()}.local`,
+            [],
+        );
 
         React.useEffect(() => {
             const OriginalWebSocket = (window as any).WebSocket;
@@ -488,7 +492,8 @@ export const PerformanceTest: Story = {
                         // Generate a batch of messages
                         const entries: LogEntry[] = [];
                         for (let i = 0; i < 1; i++) {
-                            const timestamp = Date.now() - (this.maxMessages - this.messageCount) * 100;
+                            const timestamp =
+                                BASE_TIME - (this.maxMessages - this.messageCount) * 100;
                             const levels = [
                                 {level: 30, levelName: 'info'},
                                 {level: 40, levelName: 'warn'},
@@ -600,7 +605,10 @@ export const PerformanceTest: Story = {
  */
 export const FilteredServer: Story = {
     render: () => {
-        const mockWsUrl = React.useMemo(() => `ws://storybook-mock-filter-${Math.random()}.local`, []);
+        const mockWsUrl = React.useMemo(
+            () => `ws://storybook-mock-filter-${Math.random()}.local`,
+            [],
+        );
 
         React.useEffect(() => {
             const OriginalWebSocket = (window as any).WebSocket;
@@ -637,7 +645,7 @@ export const FilteredServer: Story = {
                     const initialEntries: LogEntry[] = [
                         {
                             id: 'init-1',
-                            time: Date.now() - 5000,
+                            time: BASE_TIME - 5000,
                             level: 30,
                             levelName: 'info',
                             name: 'payment',
@@ -646,7 +654,7 @@ export const FilteredServer: Story = {
                         },
                         {
                             id: 'init-2',
-                            time: Date.now() - 4000,
+                            time: BASE_TIME - 4000,
                             level: 50,
                             levelName: 'error',
                             name: 'ledger',
@@ -656,7 +664,7 @@ export const FilteredServer: Story = {
                         },
                         {
                             id: 'init-3',
-                            time: Date.now() - 3000,
+                            time: BASE_TIME - 3000,
                             level: 40,
                             levelName: 'warn',
                             name: 'participant',
@@ -703,7 +711,7 @@ export const FilteredServer: Story = {
                         }
 
                         // Generate a diverse message that may or may not match filters
-                        const timestamp = Date.now();
+                        const timestamp = BASE_TIME;
                         const levels = [
                             {level: 30, levelName: 'info'},
                             {level: 40, levelName: 'warn'},
