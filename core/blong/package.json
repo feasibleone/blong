@@ -38,7 +38,7 @@
         "typescript": "^5.9.3"
     },
     "exports": {
-        ".": "./dist/types.js",
+        ".": "./types.ts",
         "./types": "./types.ts"
     },
     "scripts": {

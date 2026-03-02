@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 MD041 -->
 <div align="center">
 
-[![Build Status](https://github.com/feasibleone/blong/actions/workflows/build.yaml/badge.svg)](https://github.com/feasibleone/blong/actions/workflows/build.yaml)
+[![Build Status](https://github.com/feasibleone/blong/actions/workflows/release.yaml/badge.svg)](https://github.com/feasibleone/blong/actions/workflows/release.yaml)
 [![npm downloads](https://img.shields.io/npm/dm/@feasibleone/blong.svg)](https://www.npmjs.com/package/@feasibleone/blong)
 [![GitHub stars](https://img.shields.io/github/stars/feasibleone/blong.svg?style=social&label=Star)](https://github.com/feasibleone/blong)
 
