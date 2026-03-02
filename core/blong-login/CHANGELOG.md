@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/feasibleone/blong/compare/blong-login-v1.6.1...blong-login-v1.6.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* move TypeScript declaration file for ut-function.cbc to devDependencies ([13bf023](https://github.com/feasibleone/blong/commit/13bf0234a1ad8ced5d4657d3ff2fc19284b01424))
+
 ## [1.6.1](https://github.com/feasibleone/blong/compare/blong-login-v1.6.0...blong-login-v1.6.1) (2026-03-02)
 
 
