@@ -16,8 +16,10 @@
     },
     "exports": {
         "./server.js": "./dist/server.js",
+        "./server.d.ts": "./dist/server.d.ts",
         "./server.ts": "./server.ts",
         "./browser.js": "./dist/browser.js",
+        "./browser.d.ts": "./dist/browser.d.ts",
         "./browser.ts": "./browser.ts",
         "./dist/package.json": "./package.json",
         "./package.json": "./package.json"
