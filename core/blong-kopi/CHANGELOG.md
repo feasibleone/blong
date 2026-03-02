@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.3.0...blong-kopi-v1.4.0) (2026-03-02)
+
+
+### Features
+
+* add Chromatic integration and new CI commands for testing ([31e4a66](https://github.com/feasibleone/blong/commit/31e4a66ba2ffab92603a2a9a5dd2f2c0d7c2756b))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.2.0...blong-kopi-v1.3.0) (2026-03-01)
 
 

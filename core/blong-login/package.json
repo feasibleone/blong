@@ -24,7 +24,7 @@
         "./package.json": "./package.json"
     },
     "type": "module",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "dependencies": {
         "typebox": "^1.1.5",
         "@types/ut-function.cbc": "file:./types/ut-function.cbc",
