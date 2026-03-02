@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.3](https://github.com/feasibleone/blong/compare/blong-test-v1.6.2...blong-test-v1.6.3) (2026-03-02)
+
+
+### Bug Fixes
+
+* dependencies ([985e389](https://github.com/feasibleone/blong/commit/985e389e982a9f3937a5a192131a9cde12d01c3c))
+
 ## [1.6.2](https://github.com/feasibleone/blong/compare/blong-test-v1.6.1...blong-test-v1.6.2) (2026-03-02)
 
 

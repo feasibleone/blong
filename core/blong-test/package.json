@@ -25,7 +25,7 @@
         "./package.json": "./package.json"
     },
     "type": "module",
-    "version": "1.6.2",
+    "version": "1.6.3",
     "dependencies": {},
     "peerDependencies": {
         "@feasibleone/blong": "^1.0.0"
