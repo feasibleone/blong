@@ -31,6 +31,7 @@
         "jest-image-snapshot": "^6.5.1",
         "@types/node": "^24",
         "@types/ws": "^8.18.0",
+        "chromatic": "^15.2.0",
         "esbuild": "^0.27.1",
         "playwright": "^1.58.2",
         "react": "^18.3.1",
@@ -55,10 +56,11 @@
         "build": "heft build --clean && node build-client.js",
         "test": "tap src/**/*.test.ts",
         "storybook": "storybook dev -p 6006",
-        "storybook:build": "storybook build -o storybook-static",
+        "build-storybook": "storybook build -o storybook-static",
         "storybook:test": "test-storybook",
         "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
-        "visual:update": "npm run storybook:test -- --updateSnapshot"
+        "visual:update": "npm run storybook:test -- --updateSnapshot",
+        "ci-chromatic": "chromatic"
     },
     "type": "module",
     "version": "1.0.0"

@@ -28,6 +28,22 @@
         },
         {
             "commandKind": "bulk",
+            "name": "ci-chromatic",
+            "summary": "Run Chromatic",
+            "ignoreMissingScript": true,
+            "allowWarningsInSuccessfulBuild": true,
+            "enableParallelism": true
+        },
+        {
+            "commandKind": "bulk",
+            "name": "ci-integration",
+            "summary": "Run integration tests",
+            "ignoreMissingScript": true,
+            "allowWarningsInSuccessfulBuild": true,
+            "enableParallelism": true
+        },
+        {
+            "commandKind": "bulk",
             "name": "ci-coverage",
             "summary": "Run code coverage",
             "allowWarningsInSuccessfulBuild": true,
