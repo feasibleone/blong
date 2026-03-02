@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-login-v1.6.0...blong-login-v1.6.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* add TypeScript declaration files to package exports for login, openapi, and test packages ([e939d69](https://github.com/feasibleone/blong/commit/e939d69598702548855e9cf2b95d0d1197a4f295))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-login-v1.5.0...blong-login-v1.6.0) (2026-03-01)
 
 
