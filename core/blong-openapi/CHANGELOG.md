@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-openapi-v1.0.4...blong-openapi-v1.1.0) (2026-03-01)
+
+
+### Features
+
+* upgrade typebox ([6631428](https://github.com/feasibleone/blong/commit/6631428be08fda73571c3e4c623893fad668c25d))
+
 ## [1.0.4](https://github.com/feasibleone/blong/compare/blong-openapi-v1.0.3...blong-openapi-v1.0.4) (2026-02-15)
 
 

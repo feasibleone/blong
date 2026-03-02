@@ -16,7 +16,7 @@
         "url": "git+https://github.com/feasibleone/blong.git"
     },
     "type": "module",
-    "version": "1.0.4",
+    "version": "1.1.0",
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0"
     },
