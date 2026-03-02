@@ -6,6 +6,7 @@
         "core/blong-chain": {},
         "core/blong-kopi": {},
         "core/blong-login": {},
+        "core/blong-log": {},
         "core/blong-openapi": {},
         "core/blong-test": {},
         "core/test": {},
