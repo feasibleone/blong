@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/feasibleone/blong/compare/blong-openapi-v1.1.1...blong-openapi-v1.1.2) (2026-03-02)
+
+
+### Bug Fixes
+
+* add TypeScript declaration and declarationMap options to tsconfig for openapi and test packages ([8ee261d](https://github.com/feasibleone/blong/commit/8ee261d7995f3dc9e679cf5cb2383482ebdbd299))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-openapi-v1.1.0...blong-openapi-v1.1.1) (2026-03-02)
 
 
