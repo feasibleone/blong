@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/feasibleone/blong/compare/blong-kopi-v1.4.0...blong-kopi-v1.4.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* dependencies ([985e389](https://github.com/feasibleone/blong/commit/985e389e982a9f3937a5a192131a9cde12d01c3c))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.3.0...blong-kopi-v1.4.0) (2026-03-02)
 
 
