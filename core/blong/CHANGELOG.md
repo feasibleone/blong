@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/feasibleone/blong/compare/blong-v1.9.2...blong-v1.9.3) (2026-03-03)
+
+
+### Bug Fixes
+
+* types ([b38e139](https://github.com/feasibleone/blong/commit/b38e139d9c02e42613fef274394ac047515a42a5))
+
 ## [1.9.2](https://github.com/feasibleone/blong/compare/blong-v1.9.1...blong-v1.9.2) (2026-03-02)
 
 

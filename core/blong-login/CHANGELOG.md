@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.4](https://github.com/feasibleone/blong/compare/blong-login-v1.6.3...blong-login-v1.6.4) (2026-03-03)
+
+
+### Bug Fixes
+
+* types ([b38e139](https://github.com/feasibleone/blong/commit/b38e139d9c02e42613fef274394ac047515a42a5))
+
 ## [1.6.3](https://github.com/feasibleone/blong/compare/blong-login-v1.6.2...blong-login-v1.6.3) (2026-03-02)
 
 
