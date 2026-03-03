@@ -14,7 +14,7 @@
         "@feasibleone/blong-kopi": "workspace:^1.0.0",
         "@keycloak/keycloak-admin-client": "^26.5.4",
         "@kubernetes/client-node": "^1.4.0",
-        "@octokit/rest": "^21.0.2",
+        "@octokit/rest": "^22.0.1",
         "typebox": "^1.1.5",
         "@sinclair/typebox-codegen": "^0.10.4",
         "@slack/webhook": "^7.0.7",
