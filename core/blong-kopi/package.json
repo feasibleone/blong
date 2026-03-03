@@ -20,7 +20,7 @@
     "name": "@feasibleone/blong-kopi",
     "private": true,
     "scripts": {
-        "build": "true"
+        "build": "heft build --clean"
     },
     "type": "module",
     "version": "1.4.2"

@@ -548,15 +548,11 @@ export type ApiDefinition = (blong: IValidationProxy) => {
 
 export type PortHandler<T, C> = <R>(
     this: ReturnType<IAdapterFactory<T, C>>,
-    params: unknown,
+    params: {},
     $meta: IMeta,
     context?: IContext,
 ) => Promise<R> | R;
-export type PortHandlerBound = <T>(
-    params: unknown,
-    $meta: IMeta,
-    context?: IContext,
-) => Promise<T> | T;
+export type PortHandlerBound = <T>(params: {}, $meta: IMeta, context?: IContext) => Promise<T> | T;
 export type LibFn = <T>(...params: unknown[]) => T;
 export interface IRemoteHandler {
     [name: string]: PortHandlerBound;

@@ -12,11 +12,14 @@ export default handler(
             $subject$ObjectRemove,
         },
     }) => ({
-        test$Object: ({name = '$subject'}, $meta) =>
+        test$Object: ({name = '$subject'}: {name: string}, $meta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 async function $object(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                    const {$objectId} = await $subject$ObjectAdd({name: '$object'}, $meta);
+                    const {$objectId} = await $subject$ObjectAdd<{$objectId: string}>(
+                        {name: '$object'},
+                        $meta,
+                    );
                     assert.ok($objectId, '$object add');
                     assert.ok(
                         await $subject$ObjectEdit({$objectId, name: 'new name'}, $meta),

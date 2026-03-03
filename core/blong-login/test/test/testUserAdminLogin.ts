@@ -1,7 +1,7 @@
 import {handler} from '@feasibleone/blong';
 
 export default handler(({lib: {group}}) => ({
-    testUserAdminLogin: ({name = 'login'}) =>
+    testUserAdminLogin: ({name = 'login'}: {name: string}) =>
         group(name)([
             function createAdmin() {
                 return {username: 'sa', password: '123'};
