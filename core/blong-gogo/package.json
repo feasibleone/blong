@@ -63,6 +63,9 @@
     "exports": {
         ".": "./src/load.ts"
     },
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
     "name": "@feasibleone/blong-gogo",
     "scripts": {
         "build": "true",
