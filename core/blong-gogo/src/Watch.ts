@@ -39,8 +39,6 @@ const scan = async (...path: string[]): Promise<Dirent[]> =>
         a < b ? -1 : a > b ? 1 : 0,
     );
 
-const emit: EventEmitter = new EventEmitter();
-
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
 interface IConfig {
@@ -67,6 +65,7 @@ export default class Watch extends Internal implements IWatch {
     #port: () => unknown;
     #error: IErrorFactory;
     #apiSchema: IApiSchema;
+    #emit: EventEmitter = new EventEmitter();
 
     public constructor(
         config: IConfig,
@@ -325,7 +324,7 @@ export default class Watch extends Internal implements IWatch {
                     await port.start();
                     await port.ready();
                     await registry.connected();
-                    emit.emit('test');
+                    this.#emit.emit('test');
                 } else if (this.#config.configs.includes(filename)) {
                     writeFileSync(join(dirname(import.meta.url.slice(7)), 'watch.log.ts'), '');
                 } else {
@@ -358,7 +357,7 @@ export default class Watch extends Internal implements IWatch {
                         }
                     }
                     await registry.connected();
-                    emit.emit('test');
+                    this.#emit.emit('test');
                 }
             } catch (error) {
                 this.log?.error?.(error);
@@ -375,7 +374,7 @@ export default class Watch extends Internal implements IWatch {
                 .map(folder => relative('.', folder)),
         });
         if (this.#config.test) {
-            emit.on('test', async (done, test) => {
+            this.#emit.on('test', async (done, test) => {
                 try {
                     const chain = await (await import('./chain.ts')).default(test);
 
@@ -398,7 +397,7 @@ export default class Watch extends Internal implements IWatch {
 
     public async test(framework: unknown): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            emit.emit('test', error => (error ? reject(error) : resolve()), framework);
+            this.#emit.emit('test', error => (error ? reject(error) : resolve()), framework);
         });
     }
 

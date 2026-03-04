@@ -334,7 +334,7 @@ export default class Registry extends Internal implements IRegistry {
     }
 
     public async test(framework: unknown): Promise<void> {
-        await this.#watch.test(framework);
+        return await this.#watch.test(framework);
     }
 
     public async stop(): Promise<void> {
