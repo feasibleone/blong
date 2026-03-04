@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.4...blong-gogo-v1.6.5) (2026-03-04)
+
+
+### Bug Fixes
+
+* publish ([2fd8373](https://github.com/feasibleone/blong/commit/2fd8373198b2c9390411ce50260b65b0df7a9e20))
+
 ## [1.6.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.3...blong-gogo-v1.6.4) (2026-03-04)
 
 
