@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.6](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.5...blong-gogo-v1.6.6) (2026-03-04)
+
+
+### Bug Fixes
+
+* refactor event emitter usage in Watch class ([fa82762](https://github.com/feasibleone/blong/commit/fa82762fe36adc7f9b4d57c03e78b9fd0d281dfc))
+
 ## [1.6.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.4...blong-gogo-v1.6.5) (2026-03-04)
 
 

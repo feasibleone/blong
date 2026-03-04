@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.6](https://github.com/feasibleone/blong/compare/blong-v1.9.5...blong-v1.9.6) (2026-03-04)
+
+
+### Bug Fixes
+
+* refactor event emitter usage in Watch class ([fa82762](https://github.com/feasibleone/blong/commit/fa82762fe36adc7f9b4d57c03e78b9fd0d281dfc))
+
 ## [1.9.5](https://github.com/feasibleone/blong/compare/blong-v1.9.4...blong-v1.9.5) (2026-03-03)
 
 
