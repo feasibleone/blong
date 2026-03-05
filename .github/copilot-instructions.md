@@ -33,26 +33,30 @@ Handlers and library functions are organized in groups within realm layers. Grou
 - **blong-handler** - Handler and library function patterns, semantic triple naming
 - **blong-error** - Typed error definitions and error handling
 - **blong-test** - Test handler patterns with parallel execution and automatic dependencies
+- **blong-mock-test** - Server-side integration testing with mock handlers
+- **blong-eip** - Enterprise Integration Pattern handlers (routing, filtering, aggregation, etc.)
 
 ## Choosing the Right Skill
 
 **For implementation tasks, use these skills:**
 
-| Your Task                      | Use This Skill                                        |
-| ------------------------------ | ----------------------------------------------------- |
-| Creating a new business domain | **blong-realm**                                       |
-| Adding an API endpoint         | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
-| Connecting to database         | **blong-adapter** (see SQL adapter patterns)          |
-| Calling external API           | **blong-adapter** (see HTTP adapter patterns)         |
-| Implementing business logic    | **blong-orchestrator**                                |
-| Organizing code into layers    | **blong-layer**                                       |
-| Implementing protocols         | **blong-codec**                                       |
-| Adding input validation        | **blong-validation**                                  |
-| Defining typed errors          | **blong-error**                                       |
-| Writing tests                  | **blong-test**                                        |
-| Setting up Storybook           | **storybook-v10-setup**                               |
-| Developing with Storybook      | **storybook-testing-workflow**                        |
-| Viewing real-time logs         | **blong-log**                                         |
+| Your Task                                    | Use This Skill                                        |
+| -------------------------------------------- | ----------------------------------------------------- |
+| Creating a new business domain               | **blong-realm**                                       |
+| Adding an API endpoint                       | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
+| Connecting to database                       | **blong-adapter** (see SQL adapter patterns)          |
+| Calling external API                         | **blong-adapter** (see HTTP adapter patterns)         |
+| Implementing business logic                  | **blong-orchestrator**                                |
+| Organizing code into layers                  | **blong-layer**                                       |
+| Implementing protocols                       | **blong-codec**                                       |
+| Adding input validation                      | **blong-validation**                                  |
+| Defining typed errors                        | **blong-error**                                       |
+| Writing tests                                | **blong-test**                                        |
+| Testing with mock handlers (server-side)     | **blong-mock-test**                                   |
+| Implementing EIP integration patterns        | **blong-eip**                                         |
+| Setting up Storybook                         | **storybook-v10-setup**                               |
+| Developing with Storybook                    | **storybook-testing-workflow**                        |
+| Viewing real-time logs                       | **blong-log**                                         |
 
 **For understanding concepts:**
 
@@ -323,6 +327,8 @@ Framework provides structured error handling with `IErrorFactory` pattern for de
 - **Database integration:** See **blong-adapter** for database adapter patterns
 - **External API:** See **blong-adapter** for webhook and HTTP adapters
 - **Adding tests:** See **blong-test** for test handler patterns
+- **Testing with mocks:** See **blong-mock-test** for server-side testing with mock handlers
+- **EIP patterns:** See **blong-eip** for message routing, filtering, aggregation, and transformation
 - **Error definitions:** See **blong-error** for typed error patterns
 - **Validation:** See **blong-validation** for input/output validation
 - **Real-time logging:** See **blong-log** for log viewer setup and monitoring

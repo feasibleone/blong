@@ -1,0 +1,29 @@
+{
+    "dependencies": {
+        "@feasibleone/blong": "^1.9.0",
+        "typebox": "^1.1.5",
+        "jose": "^5.7.0"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-login": "^1.0.7",
+        "@feasibleone/blong-test": "^1.0.6",
+        "@rushstack/eslint-config": "^4.0.1",
+        "@rushstack/heft-lint-plugin": "^1.1.10",
+        "@rushstack/heft-typescript-plugin": "^1.1.7",
+        "@rushstack/heft": "^1.1.7",
+        "@swc/core": "^1.7.14",
+        "@types/node": "^24",
+        "eslint": "~9.39.2",
+        "react-dom": "^18.3.1",
+        "react": "^18.3.1",
+        "tap": "^21.5.0",
+        "typescript": "^5.9.3"
+    },
+    "name": "@feasibleone/blong-eip",
+    "private": true,
+    "scripts": {
+        "build": "heft build --clean"
+    },
+    "type": "module",
+    "version": "1.0.0"
+}
