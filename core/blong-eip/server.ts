@@ -3,8 +3,12 @@ import {server} from '@feasibleone/blong';
 export default server(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}),
+    children: ['./eip'],
     config: {
         default: {},
+        dev: {
+            eip: {},
+        },
         integration: {
             remote: {canSkipSocket: true},
             watch: {

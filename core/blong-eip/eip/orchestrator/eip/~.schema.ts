@@ -14,11 +14,9 @@ const eipMessageReturn = Type.Function(
 );
 
 type eipMessagePipes = Static<typeof eipMessagePipes>;
-const eipMessagePipes = Type.Function(
-    [Type.Unknown()],
-    Type.Promise(Type.Unknown()),
-    {description: 'Pipes and Filters: passes message through handler A then handler B'},
-);
+const eipMessagePipes = Type.Function([Type.Object({})], Type.Promise(Type.Unknown()), {
+    description: 'Pipes and Filters: passes message through handler A then handler B',
+});
 
 type eipMessageRoute = Static<typeof eipMessageRoute>;
 const eipMessageRoute = Type.Function(
@@ -37,7 +35,7 @@ const eipMessageDynamic = Type.Function(
 type eipMessageFilter = Static<typeof eipMessageFilter>;
 const eipMessageFilter = Type.Function(
     [Type.Object({condition: Type.Boolean()})],
-    Type.Promise(Type.Union([Type.Unknown(), Type.Undefined()])),
+    Type.Promise(Type.Unknown()),
     {description: 'Message Filter: passes message only if condition is true'},
 );
 
@@ -56,16 +54,14 @@ const eipMessageSplit = Type.Function(
 );
 
 type eipMessageAggregate = Static<typeof eipMessageAggregate>;
-const eipMessageAggregate = Type.Function(
-    [Type.Unknown()],
-    Type.Promise(Type.Union([Type.Unknown(), Type.Undefined()])),
-    {description: 'Aggregator: collects messages until batch size (3), then stores'},
-);
+const eipMessageAggregate = Type.Function([Type.Object({})], Type.Promise(Type.Unknown()), {
+    description: 'Aggregator: collects messages until batch size (3), then stores',
+});
 
 type eipMessageSort = Static<typeof eipMessageSort>;
 const eipMessageSort = Type.Function(
     [Type.Object({order: Type.Number()})],
-    Type.Promise(Type.Union([Type.Array(Type.Unknown()), Type.Undefined()])),
+    Type.Promise(Type.Array(Type.Unknown())),
     {description: 'Resequencer: collects messages until batch size (3), sorts by order'},
 );
 
@@ -84,18 +80,14 @@ const eipMessageScatter = Type.Function(
 );
 
 type eipMessageWrap = Static<typeof eipMessageWrap>;
-const eipMessageWrap = Type.Function(
-    [Type.Unknown()],
-    Type.Promise(Type.Unknown()),
-    {description: 'Envelope Wrapper: wraps params in base64 payload, calls mockItemProcess'},
-);
+const eipMessageWrap = Type.Function([Type.Object({})], Type.Promise(Type.Unknown()), {
+    description: 'Envelope Wrapper: wraps params in base64 payload, calls mockItemProcess',
+});
 
 type eipMessageEnrich = Static<typeof eipMessageEnrich>;
-const eipMessageEnrich = Type.Function(
-    [Type.Unknown()],
-    Type.Promise(Type.Unknown()),
-    {description: 'Content Enricher: fetches enrichment data and augments params before processing'},
-);
+const eipMessageEnrich = Type.Function([Type.Object({})], Type.Promise(Type.Unknown()), {
+    description: 'Content Enricher: fetches enrichment data and augments params before processing',
+});
 
 type eipMessageSimplify = Static<typeof eipMessageSimplify>;
 const eipMessageSimplify = Type.Function(
@@ -105,11 +97,9 @@ const eipMessageSimplify = Type.Function(
 );
 
 type eipMessageClaim = Static<typeof eipMessageClaim>;
-const eipMessageClaim = Type.Function(
-    [Type.Unknown()],
-    Type.Promise(Type.Unknown()),
-    {description: 'Claim Check: stores data and retrieves it by ID'},
-);
+const eipMessageClaim = Type.Function([Type.Object({})], Type.Promise(Type.Unknown()), {
+    description: 'Claim Check: stores data and retrieves it by ID',
+});
 
 type eipMessageNormalize = Static<typeof eipMessageNormalize>;
 const eipMessageNormalize = Type.Function(
@@ -201,17 +191,6 @@ declare module '@feasibleone/blong' {
         ): T;
         eipMessageNormalize<T = ReturnType<eipMessageNormalize>>(
             params: Parameters<eipMessageNormalize>[0],
-            $meta: IMeta,
-        ): T;
-        // Mock handler signatures
-        mockPipeA<T = Promise<unknown>>(params: unknown, $meta: IMeta): T;
-        mockPipeB<T = Promise<unknown>>(params: unknown, $meta: IMeta): T;
-        mockPipeC<T = Promise<unknown>>(params: unknown, $meta: IMeta): T;
-        mockItemProcess<T = Promise<unknown>>(item: unknown, $meta: IMeta): T;
-        mockDataEnrich<T = Promise<{enrichment: string}>>(params: unknown, $meta: IMeta): T;
-        mockDataSave<T = Promise<{id: string}>>(data: unknown, $meta: IMeta): T;
-        mockDataGet<T = Promise<{id: string; payload: unknown}>>(
-            params: {id: string},
             $meta: IMeta,
         ): T;
     }

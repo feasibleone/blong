@@ -12,7 +12,7 @@ export default orchestrator(blong => ({
         default: {},
         integration: {
             namespace: ['test'],
-            imports: ['eip.eip', 'eip.sim', 'eip.test'],
+            imports: ['eip.test'],
         },
     },
 }));

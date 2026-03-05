@@ -11,8 +11,8 @@ export default orchestrator(blong => ({
     activation: {
         default: {},
         integration: {
-            namespace: ['test'],
-            imports: ['eip.eip', 'eip.sim', 'eip.test'],
+            namespace: ['mock'],
+            imports: ['eip.mock'],
         },
     },
 }));
