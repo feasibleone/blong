@@ -160,8 +160,6 @@ module.exports = {
         expect(screenshot).toMatchImageSnapshot({
             customSnapshotsDir: path.join(__dirname, '..', 'src', 'client', '__image_snapshots__'),
             customSnapshotIdentifier: context.id,
-            failureThreshold: 0.01,
-            failureThresholdType: 'percent',
         });
     },
 };
