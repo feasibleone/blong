@@ -488,6 +488,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-eip",
+            "projectFolder": "core/blong-eip",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/test",
             "projectFolder": "core/test",
             "reviewCategory": "core",
