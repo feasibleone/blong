@@ -90,11 +90,7 @@ export default class Watch extends Internal implements IWatch {
      * @param expectedName The expected handler name based on filename
      * @returns The handler name (either explicit or derived from filename)
      */
-    private _validateAndSetHandlerName(
-        item: unknown,
-        filename: string,
-        expectedName: string,
-    ): string {
+    private _validateAndSetHandlerName(item: {}, filename: string, expectedName: string): string {
         const actualName = item['name'] && item['name'] !== 'default' ? item['name'] : null;
 
         // For files defining a single handler, report error on name mismatch
