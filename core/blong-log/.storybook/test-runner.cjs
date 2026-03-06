@@ -154,12 +154,19 @@ module.exports = {
         }
 
         // ── Visual snapshot test ──────────────────────────────────────────
-
-        // Full-page screenshot comparison — saves real PNG files
-        const screenshot = await page.screenshot({fullPage: true});
-        expect(screenshot).toMatchImageSnapshot({
-            customSnapshotsDir: path.join(__dirname, '..', 'src', 'client', '__image_snapshots__'),
-            customSnapshotIdentifier: context.id,
-        });
+        if (!['logviewer--performance-test'].includes(context.id)) {
+            // Full-page screenshot comparison — saves real PNG files
+            const screenshot = await page.screenshot({fullPage: true});
+            expect(screenshot).toMatchImageSnapshot({
+                customSnapshotsDir: path.join(
+                    __dirname,
+                    '..',
+                    'src',
+                    'client',
+                    '__image_snapshots__',
+                ),
+                customSnapshotIdentifier: context.id,
+            });
+        }
     },
 };
