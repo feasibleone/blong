@@ -18,7 +18,6 @@
         "typescript": "^5.9.3"
     },
     "name": "@feasibleone/blong-kopi",
-    "private": true,
     "scripts": {
         "build": "heft build --clean",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
