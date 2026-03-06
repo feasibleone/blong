@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.3.1...blong-docs-v1.4.0) (2026-03-06)
+
+
+### Features
+
+* blong-eip – EIP pattern handlers, server-side mock testing, docs & skills ([#57](https://github.com/feasibleone/blong/issues/57)) ([9914ddc](https://github.com/feasibleone/blong/commit/9914ddc76e6e8b38660ee5e722bc03cf56cf2d06))
+
 ## [1.3.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.3.0...blong-docs-v1.3.1) (2026-02-14)
 
 

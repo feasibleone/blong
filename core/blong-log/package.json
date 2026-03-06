@@ -63,5 +63,5 @@
         "ci-chromatic": "chromatic --exit-zero-on-changes"
     },
     "type": "module",
-    "version": "1.0.1"
+    "version": "1.0.2"
 }

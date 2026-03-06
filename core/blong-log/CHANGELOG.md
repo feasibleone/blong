@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.2](https://github.com/feasibleone/blong/compare/blong-log-v1.0.1...blong-log-v1.0.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* exclude performance test from visual snapshot comparison ([c29757f](https://github.com/feasibleone/blong/commit/c29757fe26559f359029d9a76b2e3f71ea893d85))
+* remove failure thresholds from image snapshot tests and update related images ([e2a1a2d](https://github.com/feasibleone/blong/commit/e2a1a2d42ec73a4b5ad46dc9119e78bb0766f401))
+* update dependencies and add .npmignore for blong-kopi ([c6f578d](https://github.com/feasibleone/blong/commit/c6f578de9f5989b2b8b0f062d3430a3208b37d98))
+
 ## [1.0.1](https://github.com/feasibleone/blong/compare/blong-log-v1.0.0...blong-log-v1.0.1) (2026-03-02)
 
 

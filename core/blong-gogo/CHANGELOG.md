@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.7](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.6...blong-gogo-v1.6.7) (2026-03-06)
+
+
+### Bug Fixes
+
+* update dependencies and add .npmignore for blong-kopi ([c6f578d](https://github.com/feasibleone/blong/commit/c6f578de9f5989b2b8b0f062d3430a3208b37d98))
+
 ## [1.6.6](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.5...blong-gogo-v1.6.6) (2026-03-04)
 
 
