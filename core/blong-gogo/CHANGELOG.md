@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.7...blong-gogo-v1.7.0) (2026-03-06)
+
+
+### Features
+
+* update package.json for blong-gogo and blong ([0bf8331](https://github.com/feasibleone/blong/commit/0bf83314fd91cb9c96062286d1957e9c960ae374))
+
 ## [1.6.7](https://github.com/feasibleone/blong/compare/blong-gogo-v1.6.6...blong-gogo-v1.6.7) (2026-03-06)
 
 
