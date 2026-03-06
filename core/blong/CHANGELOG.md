@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-v1.9.6...blong-v1.10.0) (2026-03-06)
+
+
+### Features
+
+* update package.json for blong-gogo and blong ([0bf8331](https://github.com/feasibleone/blong/commit/0bf83314fd91cb9c96062286d1957e9c960ae374))
+
 ## [1.9.6](https://github.com/feasibleone/blong/compare/blong-v1.9.5...blong-v1.9.6) (2026-03-04)
 
 
