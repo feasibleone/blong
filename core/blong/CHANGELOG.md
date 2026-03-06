@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/feasibleone/blong/compare/blong-v1.10.0...blong-v1.10.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* update fastify version to 5.8.1 and adjust exports path in package.json ([b2a7078](https://github.com/feasibleone/blong/commit/b2a7078db1d5eafd36f8a64ce98a30210e0a80be))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-v1.9.6...blong-v1.10.0) (2026-03-06)
 
 
