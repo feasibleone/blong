@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5](https://github.com/feasibleone/blong/compare/blong-kopi-v1.4.4...blong-kopi-v1.4.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* remove private flag from package.json for blong-kopi ([ce95a10](https://github.com/feasibleone/blong/commit/ce95a10e6b001076cdb91a278b913a4fb2cd8251))
+
 ## [1.4.4](https://github.com/feasibleone/blong/compare/blong-kopi-v1.4.3...blong-kopi-v1.4.4) (2026-03-06)
 
 
