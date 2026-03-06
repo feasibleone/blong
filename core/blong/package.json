@@ -16,7 +16,7 @@
         "ut-function.merge": "^1.5.6"
     },
     "devDependencies": {
-        "@aws-sdk/client-s3": "^3.1002.0",
+        "@aws-sdk/client-s3": "^3.1003.0",
         "@keycloak/keycloak-admin-client": "^26.5.4",
         "@kubernetes/client-node": "^1.4.0",
         "@rushstack/eslint-config": "^4.6.4",
@@ -38,7 +38,7 @@
         "typescript": "^5.9.3"
     },
     "exports": {
-        ".": "./dist/types.js",
+        ".": "./types.ts",
         "./types": "./types.ts"
     },
     "scripts": {
