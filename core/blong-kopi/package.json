@@ -20,7 +20,11 @@
     "name": "@feasibleone/blong-kopi",
     "private": true,
     "scripts": {
-        "build": "heft build --clean"
+        "build": "heft build --clean",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
+    },
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
     },
     "type": "module",
     "version": "1.4.3"

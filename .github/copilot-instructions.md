@@ -40,23 +40,23 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 **For implementation tasks, use these skills:**
 
-| Your Task                                    | Use This Skill                                        |
-| -------------------------------------------- | ----------------------------------------------------- |
-| Creating a new business domain               | **blong-realm**                                       |
-| Adding an API endpoint                       | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
-| Connecting to database                       | **blong-adapter** (see SQL adapter patterns)          |
-| Calling external API                         | **blong-adapter** (see HTTP adapter patterns)         |
-| Implementing business logic                  | **blong-orchestrator**                                |
-| Organizing code into layers                  | **blong-layer**                                       |
-| Implementing protocols                       | **blong-codec**                                       |
-| Adding input validation                      | **blong-validation**                                  |
-| Defining typed errors                        | **blong-error**                                       |
-| Writing tests                                | **blong-test**                                        |
-| Testing with mock handlers (server-side)     | **blong-mock-test**                                   |
-| Implementing EIP integration patterns        | **blong-eip**                                         |
-| Setting up Storybook                         | **storybook-v10-setup**                               |
-| Developing with Storybook                    | **storybook-testing-workflow**                        |
-| Viewing real-time logs                       | **blong-log**                                         |
+| Your Task                                | Use This Skill                                        |
+| ---------------------------------------- | ----------------------------------------------------- |
+| Creating a new business domain           | **blong-realm**                                       |
+| Adding an API endpoint                   | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
+| Connecting to database                   | **blong-adapter** (see SQL adapter patterns)          |
+| Calling external API                     | **blong-adapter** (see HTTP adapter patterns)         |
+| Implementing business logic              | **blong-orchestrator**                                |
+| Organizing code into layers              | **blong-layer**                                       |
+| Implementing protocols                   | **blong-codec**                                       |
+| Adding input validation                  | **blong-validation**                                  |
+| Defining typed errors                    | **blong-error**                                       |
+| Writing tests                            | **blong-test**                                        |
+| Testing with mock handlers (server-side) | **blong-mock-test**                                   |
+| Implementing EIP integration patterns    | **blong-eip**                                         |
+| Setting up Storybook                     | **storybook-v10-setup**                               |
+| Developing with Storybook                | **storybook-testing-workflow**                        |
+| Viewing real-time logs                   | **blong-log**                                         |
 
 **For understanding concepts:**
 
@@ -264,7 +264,7 @@ Configuration merges from multiple sources: source code, config files, environme
 
 ### Type System
 
-- Uses `@sinclair/typebox` for runtime schema validation
+- Uses `typebox` for runtime schema validation
 - Framework provides `blong.type.*` builders for schema definition
 - OpenAPI integration via `openapi-types` package
 
@@ -284,7 +284,7 @@ Configuration merges from multiple sources: source code, config files, environme
 
 ## Key Dependencies
 
-- **@sinclair/typebox** - Runtime type validation and schema
+- **typebox** - Runtime type validation and schema
 - **fastify** - Fast, low overhead web framework for Node.js
 - **pino** - Very low overhead structured logging
 - **@rushstack/heft** - Build system and toolchain
