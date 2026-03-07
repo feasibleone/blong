@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.7.2...blong-gogo-v1.7.3) (2026-03-07)
+
+
+### Bug Fixes
+
+* bin script ([e26c9ee](https://github.com/feasibleone/blong/commit/e26c9eef1785b594c3afddddb7d4b8d57be93ae2))
+
 ## [1.7.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.7.1...blong-gogo-v1.7.2) (2026-03-07)
 
 
