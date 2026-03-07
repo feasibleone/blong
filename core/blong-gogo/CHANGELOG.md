@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.7.1...blong-gogo-v1.7.2) (2026-03-07)
+
+
+### Bug Fixes
+
+* update fastify version to 5.8.2 in package.json and pnpm-lock.yaml ([95662c8](https://github.com/feasibleone/blong/commit/95662c8cebb05b1ede63b41a037b3b609a4378ff))
+
 ## [1.7.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.7.0...blong-gogo-v1.7.1) (2026-03-06)
 
 
