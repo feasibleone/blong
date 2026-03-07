@@ -1,5 +1,6 @@
 {
     "name": "@feasibleone/blong-chain",
+    "version": "1.2.2",
     "description": "Parallel testing with automatic dependencies",
     "keywords": [
         "blong",
@@ -9,20 +10,19 @@
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },
-    "scripts": {
-        "build": "heft build --clean",
-        "test": "tap *.test.ts",
-        "test:examples": "node --test dist/examples/*.test.js",
-        "ci-unit": "npm run test;./test-examples-ci.sh",
-        "ci-examples": "npm run test:examples",
-        "ci-all": "npm run ci-unit && npm run ci-examples",
-        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
-    },
+    "type": "module",
     "exports": {
         ".": "./dist/index.js"
     },
-    "type": "module",
-    "version": "1.2.2",
+    "scripts": {
+        "build": "heft build --clean",
+        "ci-all": "npm run ci-unit && npm run ci-examples",
+        "ci-examples": "npm run test:examples",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
+        "ci-unit": "npm run test;./test-examples-ci.sh",
+        "test": "tap *.test.ts",
+        "test:examples": "node --test dist/examples/*.test.js"
+    },
     "dependencies": {
         "p-queue": "^9.1.0"
     },

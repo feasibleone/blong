@@ -1,4 +1,12 @@
 {
+    "name": "@feasibleone/blong-eip",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "true",
+        "ci-unit": "tap index.test.ts --allow-incomplete-coverage"
+    },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
@@ -14,13 +22,5 @@
         "eslint": "~9.39.2",
         "tap": "^21.6.2",
         "typescript": "^5.9.3"
-    },
-    "name": "@feasibleone/blong-eip",
-    "private": true,
-    "scripts": {
-        "build": "true",
-        "ci-unit": "tap index.test.ts --allow-incomplete-coverage"
-    },
-    "type": "module",
-    "version": "1.0.0"
+    }
 }

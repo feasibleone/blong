@@ -1,25 +1,34 @@
 {
     "name": "rest-fs",
     "displayName": "REST Filesystem",
-    "description": "A filesystem provider backed by REST API",
     "version": "1.3.0",
+    "description": "A filesystem provider backed by REST API",
+    "categories": [
+        "Other"
+    ],
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },
     "license": "BlueOak-1.0.0",
     "publisher": "undertree",
-    "engines": {
-        "vscode": "^1.107.0"
-    },
-    "categories": [
-        "Other"
-    ],
-    "activationEvents": [
-        "onFileSystem:restfs",
-        "onFileSystemAccess:restfs",
-        "onUri"
-    ],
     "main": "./dist/extension.js",
+    "scripts": {
+        "build": "npm run compile",
+        "check-types": "tsc --noEmit",
+        "ci-lint": "npm run lint",
+        "ci-unit": "xvfb-run -a npm run test",
+        "compile": "npm run check-types && npm run lint && node esbuild.js",
+        "compile-tests": "tsc -p . --outDir out",
+        "lint": "eslint src",
+        "package": "npm run check-types && npm run lint && node esbuild.js --production",
+        "pretest": "npm run compile-tests && npm run compile && npm run lint",
+        "test": "vscode-test",
+        "vscode:prepublish": "npm run package",
+        "watch": "npm-run-all -p watch:*",
+        "watch:esbuild": "node esbuild.js --watch",
+        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+        "watch-tests": "tsc -p . -w --outDir out"
+    },
     "contributes": {
         "commands": [
             {
@@ -33,29 +42,6 @@
             {
                 "command": "restfs.configure",
                 "title": "REST FS: Configure API Endpoint"
-            }
-        ],
-        "taskDefinitions": [
-            {
-                "type": "restfs-shell",
-                "required": [
-                    "workspace",
-                    "command"
-                ],
-                "properties": {
-                    "workspace": {
-                        "type": "string",
-                        "description": "Name of the REST FS workspace to execute the shell command in"
-                    },
-                    "command": {
-                        "type": "string",
-                        "description": "Shell command to execute on the REST backend"
-                    },
-                    "cwd": {
-                        "type": "string",
-                        "description": "Optional working directory for the shell command"
-                    }
-                }
             }
         ],
         "configuration": {
@@ -84,39 +70,53 @@
                     "default": {}
                 }
             }
-        }
+        },
+        "taskDefinitions": [
+            {
+                "type": "restfs-shell",
+                "required": [
+                    "workspace",
+                    "command"
+                ],
+                "properties": {
+                    "workspace": {
+                        "type": "string",
+                        "description": "Name of the REST FS workspace to execute the shell command in"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to execute on the REST backend"
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "Optional working directory for the shell command"
+                    }
+                }
+            }
+        ]
     },
-    "scripts": {
-        "vscode:prepublish": "npm run package",
-        "compile": "npm run check-types && npm run lint && node esbuild.js",
-        "watch": "npm-run-all -p watch:*",
-        "watch:esbuild": "node esbuild.js --watch",
-        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-        "package": "npm run check-types && npm run lint && node esbuild.js --production",
-        "compile-tests": "tsc -p . --outDir out",
-        "watch-tests": "tsc -p . -w --outDir out",
-        "pretest": "npm run compile-tests && npm run compile && npm run lint",
-        "check-types": "tsc --noEmit",
-        "lint": "eslint src",
-        "test": "vscode-test",
-        "build": "npm run compile",
-        "ci-unit": "xvfb-run -a npm run test",
-        "ci-lint": "npm run lint"
-    },
+    "activationEvents": [
+        "onFileSystem:restfs",
+        "onFileSystemAccess:restfs",
+        "onUri"
+    ],
     "dependencies": {
         "ws": "^8.18.0"
     },
     "devDependencies": {
-        "@types/vscode": "^1.107.0",
         "@types/mocha": "^10.0.10",
         "@types/node": "^24",
+        "@types/vscode": "^1.107.0",
         "@types/ws": "^8.18.0",
-        "typescript-eslint": "^8.48.1",
-        "eslint": "~9.39.2",
+        "@vscode/test-cli": "^0.0.12",
+        "@vscode/test-electron": "^2.5.2",
         "esbuild": "^0.27.1",
+        "eslint": "~9.39.2",
         "npm-run-all": "^4.1.5",
         "typescript": "^5.9.3",
-        "@vscode/test-cli": "^0.0.12",
-        "@vscode/test-electron": "^2.5.2"
+        "typescript-eslint": "^8.48.1"
+    },
+    "engines": {
+        "vscode": "^1.107.0"
     }
 }

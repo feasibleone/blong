@@ -1,11 +1,24 @@
 {
     "name": "@feasibleone/blong-docs",
+    "version": "1.4.0",
+    "private": true,
     "description": "API and DRY focused RAD framework https://feasibleone.github.io/blong-docs",
     "keywords": [
         "blong",
         "rad",
         "framework"
     ],
+    "scripts": {
+        "build": "docusaurus build",
+        "clear": "docusaurus clear",
+        "deploy": "docusaurus deploy",
+        "docusaurus": "docusaurus",
+        "serve": "docusaurus serve",
+        "start": "docusaurus start --no-open",
+        "swizzle": "docusaurus swizzle",
+        "write-heading-ids": "docusaurus write-heading-ids",
+        "write-translations": "docusaurus write-translations"
+    },
     "browserslist": {
         "development": [
             "last 3 chrome version",
@@ -37,18 +50,5 @@
     },
     "engines": {
         "node": ">=18.0"
-    },
-    "private": true,
-    "scripts": {
-        "build": "docusaurus build",
-        "clear": "docusaurus clear",
-        "deploy": "docusaurus deploy",
-        "docusaurus": "docusaurus",
-        "serve": "docusaurus serve",
-        "start": "docusaurus start --no-open",
-        "swizzle": "docusaurus swizzle",
-        "write-heading-ids": "docusaurus write-heading-ids",
-        "write-translations": "docusaurus write-translations"
-    },
-    "version": "1.4.0"
+    }
 }

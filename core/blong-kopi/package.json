@@ -1,8 +1,18 @@
 {
+    "name": "@feasibleone/blong-kopi",
+    "version": "1.4.5",
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "type": "module",
+    "scripts": {
+        "build": "heft build --clean",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
+    },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
-        "typebox": "^1.1.5",
-        "jose": "^5.7.0"
+        "jose": "^5.7.0",
+        "typebox": "^1.1.5"
     },
     "devDependencies": {
         "@rushstack/eslint-config": "^4.6.4",
@@ -16,15 +26,5 @@
         "react-dom": "^18.3.1",
         "tap": "^21.6.2",
         "typescript": "^5.9.3"
-    },
-    "name": "@feasibleone/blong-kopi",
-    "scripts": {
-        "build": "heft build --clean",
-        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
-    },
-    "repository": {
-        "url": "git+https://github.com/feasibleone/blong.git"
-    },
-    "type": "module",
-    "version": "1.4.5"
+    }
 }
