@@ -1,13 +1,16 @@
-import {realm} from '@feasibleone/blong';
+import {server} from '@feasibleone/blong';
 
-export default realm(blong => ({
+export default server(blong => ({
     url: import.meta.url,
+    validation: blong.type.Object({}),
+    children: ['./nscfg'],
     config: {
-        override: {
-            namespace: {
-                cfg: {
-                    source: 'namespace-override',
-                },
+        default: {},
+        integration: {
+            nscfg: {},
+            remote: {canSkipSocket: true},
+            watch: {
+                test: ['test.cfg.get'],
             },
         },
     },
