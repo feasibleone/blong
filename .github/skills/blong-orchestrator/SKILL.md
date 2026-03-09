@@ -1,29 +1,13 @@
 ---
 name: blong-orchestrator
-description: Implement business logic coordination in Blong, decoupled from integration protocols. Orchestrators coordinate between adapters, define API namespaces, and become Kubernetes services. Use for business workflows, multi-adapter coordination, saga patterns, or when implementing sequence diagrams.
+description: Implement business logic coordination in Blong, decoupled from integration protocols. Orchestrators coordinate between adapters, define API namespaces, and become Kubernetes services. Use this skill whenever implementing business workflows, coordinating multiple adapter calls, adding business rules, defining new namespaces, or translating sequence diagrams to code — even without the word 'orchestrator'.
 ---
 
 # Implementing an Orchestrator
 
 ## Overview
 
-Orchestrators provide an intermediate point in the architecture where business logic is implemented, decoupled from integration protocols and APIs. They coordinate work between adapters and define API namespaces.
-
-## Purpose
-
-- **Business Logic:** Implement business processes and workflows
-- **Protocol Independence:** Decouple business logic from integration details
-- **Service Discovery:** Define namespaces that become Kubernetes services
-- **Coordination:** Orchestrate calls between adapters and other orchestrators
-- **Distributed Transactions:** Enable saga/orchestration patterns for microservices
-
-## When to Use
-
-- Implementing business process workflows (sequence diagrams)
-- Coordinating multiple adapter calls
-- Implementing business rules and validations
-- Creating reusable business operations
-- Each orchestrator typically handles one namespace
+Orchestrators implement business logic decoupled from protocols. They coordinate between adapters, define namespaces (which become Kubernetes services in microservice mode), and implement patterns like sagas for distributed transactions.
 
 ## File Structure
 

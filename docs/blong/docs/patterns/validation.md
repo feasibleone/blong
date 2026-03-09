@@ -1,10 +1,13 @@
 # Validation
 
-Validation definitions are used for:
+Validations are used to describe the [internal API](../concepts/api.md#internal-api).
+
+Validation definitions are also utilized for:
 
 - preparing the API documentation
 - validation of parameters
 - constructing responses
+- TypeScript types for the API
 
 Validations can be automatically derived from types defined
 for the handler parameters and result, or can be manually specified.
@@ -14,7 +17,7 @@ for the handler parameters and result, or can be manually specified.
 For automatic definitions the following is required:
 
 - Put a file named `~.schema.ts` in the folder where the handlers are defined.
-    This file is automatically updated when its date is older than another
+  This file is automatically updated when its date is older than another
   file within the folder, where a type named `Handler` is defined.
 - Define the type `Handler` for each handler that will use automatic
   validations. Here is an example how it must be defined:

@@ -33,9 +33,9 @@ to some common integration tasks. They have the following purpose:
   empty for a pre-configured period. It can be used to trigger processing of
   some pending operations that happen during the idle time of the adapter.
 
-## API based handlers
+## Internal API handlers
 
-The API based handlers usually implement some business functionality.
+The internal API handlers usually implement some business functionality.
 They use namespaces to prefix the names of the API methods. The framework
 works best when the naming convention for the methods uses a
 [semantic triple](https://en.wikipedia.org/wiki/Semantic_triple)

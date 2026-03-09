@@ -10,10 +10,13 @@ Blong is a TypeScript-based API-focused RAD (Rapid Application Development) fram
 - `dev/` - Development/example projects (ml, tools)
 - `docs/` - Documentation site
 
-**Realm-Based Modular Architecture:** Business logic is separated into independent realms (domains) that can be deployed together or separately. Each realm follows a layered architecture.
+**Suite-Based Modular Architecture:** The top-level organizational unit is a **suite**. Suites group related realms and provide entry points for different platforms (server, browser, desktop). Business logic is separated into independent **realms** (domains) within suites. Each realm follows a layered architecture.
+
+Hierarchy: **suites → realms → layers**
 
 **For detailed implementation patterns, see:**
 
+- **blong-suite** - Creating and configuring suites, multi-platform entry points, and test runner setup
 - **blong-realm** - Creating business domain boundaries and realm configuration
 - **blong-layer** - Organizing handlers into functional groups (gateway, adapter, orchestrator, error, test)
 
@@ -42,6 +45,7 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 | Your Task                                | Use This Skill                                        |
 | ---------------------------------------- | ----------------------------------------------------- |
+| Creating a new top-level solution        | **blong-suite**                                       |
 | Creating a new business domain           | **blong-realm**                                       |
 | Adding an API endpoint                   | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
 | Connecting to database                   | **blong-adapter** (see SQL adapter patterns)          |
@@ -60,6 +64,7 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 **For understanding concepts:**
 
+- Suite structure and test entry points: **blong-suite**
 - Layer architecture and organization: **blong-layer**
 - Protocol implementation details: **blong-codec**
 - Realm deployment patterns: **blong-realm**
@@ -68,7 +73,9 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 ### Core Definitions
 
-**Modular Architecture:** Solutions combine functionality from multiple realms while maintaining maximum isolation between them.
+**Suite:** The top-level organizational unit in the framework. A suite groups related realms and defines multi-platform entry points (`server.ts`, `browser.ts`, `index.ts`). Suites take deployment architecture decisions and glue reusable realms together. They are launched using the `blong` CLI.
+
+**Modular Architecture:** Solutions combine functionality from multiple realms within a suite while maintaining maximum isolation between them.
 
 **Business Logic Separation:**
 
@@ -76,11 +83,19 @@ Handlers and library functions are organized in groups within realm layers. Grou
 - **Data integrity logic:** Ensures atomic, correct data persistence (often in database stored procedures)
 - **Integration logic:** Handles external system communication (in adapters)
 
-**Platform Support:** Primary focus on server/Node.js, with same concepts applicable to:
+**Platform Support:** Suites define entry points per platform:
 
+- `server` - Server-side solution running in Kubernetes pods
 - `browser` - Browser-based applications
 - `desktop` - Desktop applications
 - `mobile` - Mobile applications
+
+**Interaction Origins:** The framework distinguishes interactions by origin:
+
+- **Application front ends** - Administration, management, and user-facing browser/desktop/mobile apps
+- **Edge devices** - ATM, POS, IoT devices
+- **Third-party systems** - Core banking, payment systems, external APIs
+- **Automated processes** - Scheduled tasks, event-driven processes
 
 ### Deployment Flexibility
 
@@ -103,12 +118,50 @@ Handlers and library functions are organized in groups within realm layers. Grou
 
 ## Key Patterns
 
-### Service Definition Pattern
+### Suite Pattern
 
-Services use functional configuration with the framework's builder pattern:
+Suites are the top-level entry points for the solution. A suite includes reusable realms from packages and local custom realms:
 
 ```typescript
-// server.ts - minimal, controls layer activation only
+// server.ts - suite server-side entry point
+import {server} from '@feasibleone/blong';
+
+export default server(blong => ({
+    url: import.meta.url,
+    children: [
+        async function reusableRealm() {
+            return import('reusable-realm/server.js');
+        },
+        './custom-realm-1',
+    ],
+    config: {
+        default: {},
+        microservice: {},
+        dev: {},
+        integration: {watch: {test: ['test.subject']}},
+    },
+}));
+
+// index.ts - API test entry point (server + browser, tests from browser side)
+export default async load => {
+    const realms = await Promise.all([
+        load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
+        load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
+    ]);
+    for (const realm of realms) await realm.start();
+    await realms[1].test(); // run tests from the browser side
+    if (process.env.CI) for (const realm of realms) await realm.stop();
+};
+```
+
+**For full suite patterns, see: blong-suite**
+
+### Service Definition Pattern
+
+Realms and layers use functional configuration with the framework's builder pattern:
+
+```typescript
+// server.ts - minimal realm, controls layer activation only
 export default server(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({}), // No per-layer config needed
@@ -161,8 +214,20 @@ Handlers are functions called by adapters and orchestrators. They follow a seman
 **Handler Types:**
 
 - **Internal handlers:** Framework-defined for protocol tasks (`send`, `receive`, `encode`, `decode`, `exec`, `ready`, `idleSend`, `idleReceive`, `drainSend`)
-- **API handlers:** Business functionality using semantic triples (e.g., `userUserAdd`, `mathNumberSum`)
+- **Internal API handlers:** Business functionality using semantic triples (e.g., `userUserAdd`, `mathNumberSum`)
 - **Library functions:** Reusable logic shared between handlers
+
+**Internal API Naming Conventions:**
+
+- `get` - gets a single entity by unique identifier
+- `find` - returns a list with filtering and pagination
+- `add` - creates a single entity
+- `edit` - modifies a single entity
+- `remove` - deletes a single entity
+- `merge` - creates or modifies depending on existence
+- `insert` / `update` / `delete` - bulk operations
+
+**Property naming:** prefer two-word names to avoid ambiguity (e.g. `userName` not `name`, `customerId` not `id`, `emailAddress` not `email`).
 
 **File Organization:** One handler per file using semantic triple as filename (e.g., `userUserAdd.ts`, `mathNumberSum.ts`)
 
@@ -214,6 +279,15 @@ Gateway (API Gateway) is the public-facing interface exposing functionality as J
 - **blong-rest** - REST API implementation using OpenAPI/Swagger (server & client)
 - **blong-validation** - API validation and documentation generation
 
+### RPC Pattern
+
+The framework uses JSON-RPC 2.0 for two distinct APIs:
+
+- **External API** – exposed at `POST /rpc/<subject>/<object>/<predicate>` with `Authorization: Bearer <token>`. Errors returned as JSON-RPC error objects with typed `type`, `message`, `print`, `validation`, `params` fields (`cause` and `stack` only in debug mode).
+- **Internal API** – used for inter-microservice communication at `POST http://microservice-name/ports/<subject>/request`. Params are `[...arguments, metadata]`; errors are returned in the result with `mtid: 'error'` (never as JSON-RPC errors). Notifications use `/ports/<subject>/publish`.
+
+**For detailed patterns, see: blong-rest** (external) and **blong-codec** (internal transport).
+
 ### Codec Pattern
 
 Codecs enable protocol implementation on top of HTTP adapters.
@@ -234,7 +308,8 @@ Codecs enable protocol implementation on top of HTTP adapters.
 ### Testing
 
 - **Unit tests:** Use `tap` framework (see package.json devDependencies)
-- **API tests:** Use `jest-cucumber` with Gherkin features (see `tools/api-test/`)
+- **API tests:** Defined in `index.ts` — loads both server and browser platforms, runs tests from browser side (fastest, simulates most common interaction)
+- **Internal API tests:** Defined in `internal.test.ts` — loads only server, uses `tap` for coverage
 - **HTTP testing:** Use `.http` files for manual/scripted API testing
 
 ### Configuration Environments
@@ -312,7 +387,7 @@ Uses `@feasibleone/blong-login` for JWT-based authentication with token creation
 
 ### Error Handling
 
-Framework provides structured error handling with `IErrorFactory` pattern for defining typed domain errors.
+Framework provides structured error handling with `IErrorFactory` pattern for defining typed domain errors. Error objects contain: `type`, `message`, `print`, `validation` (for validation errors), `params`, `req`, `res`, `stack`, `cause` (nested error). `stack` and `cause` are only included in debug mode.
 
 **For detailed patterns, see:**
 
@@ -322,6 +397,7 @@ Framework provides structured error handling with `IErrorFactory` pattern for de
 
 **For detailed implementation guides, see the blong skills:**
 
+- **Creating a new suite:** See **blong-suite** for suite creation, multi-platform entry points, and tests
 - **Adding a new service:** See **blong-realm** for realm creation patterns
 - **Adding API endpoint:** See **blong-rest** (REST) or **blong-handler** (JSON-RPC)
 - **Database integration:** See **blong-adapter** for database adapter patterns

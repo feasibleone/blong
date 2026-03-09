@@ -1,6 +1,6 @@
 ---
 name: blong-mock-test
-description: Write server-side integration tests using mock handlers in Blong. Mock handlers in test/mock/ simulate external systems (databases, services). mockDispatch and testDispatch orchestrators in the test layer wire the mocks and tests together. Use when testing business handlers without real infrastructure, replacing adapters with deterministic mocks.
+description: Write server-side integration tests using mock handlers in Blong. Mock handlers in test/mock/ simulate external systems (databases, services). mockDispatch and testDispatch orchestrators in the test layer wire the mocks and tests together. Make sure to use this skill whenever the user wants to test without real infrastructure, mentions mocking adapters or external services, or needs server-side integration testing with deterministic mock data.
 ---
 
 # Server-Side Testing with Mocks

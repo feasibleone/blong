@@ -1,6 +1,6 @@
 ---
 name: blong-realm
-description: Create business domain boundaries in Blong framework. Realms separate business logic into independent, modular units that can be deployed as monolith or microservices. Use when creating a new business domain, configuring deployment modes, or organizing related functionality.
+description: Create business domain boundaries in Blong framework. Realms separate business logic into independent, modular units that can be deployed as monolith or microservices. Make sure to use this skill whenever creating a new business domain or service in Blong — even if the user says 'add a new module', 'create a new service', or 'set up a new package'.
 ---
 
 # Implementing a Realm

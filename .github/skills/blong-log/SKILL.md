@@ -1,21 +1,11 @@
 ---
 name: blong-log
-description: Access real-time application logs via REST API. Use this skill when you need to monitor application behavior, debug issues, verify that implemented features work correctly, search for errors, or trace requests across services. Provides filtering by level, service name, trace ID, and free text search.
+description: Access real-time application logs via REST API. The log server runs at `http://127.0.0.1:9998` by default. Provides filtering by level, service name, trace ID, and free text search. Use this skill whenever monitoring application behavior, debugging issues, verifying feature behavior, searching for errors, or tracing requests across services — proactively check logs after making code changes, even if logs aren't explicitly mentioned.
 ---
 
 # Monitoring Real-Time Logs
 
-## When to Use
-
-Use this skill whenever you need to:
-
-- **Check for errors** after making code changes or starting a service
-- **Verify behavior** by watching log output while testing a feature
-- **Debug failures** by searching logs for error messages or stack traces
-- **Trace a request** across services using a trace ID
-- **Monitor a specific service** by filtering logs to its name
-
-The log server runs at `http://127.0.0.1:9998` by default. All queries are via REST API using `curl`.
+The log server runs at `http://127.0.0.1:9998`. All queries use `curl` against the REST API.
 
 ## Quick Reference
 

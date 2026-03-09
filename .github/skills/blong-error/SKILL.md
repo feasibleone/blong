@@ -1,6 +1,6 @@
 ---
 name: blong-error
-description: Define and throw typed errors in Blong framework. Errors are defined in the error layer or inline, with support for parameterized messages, HTTP status codes, and error wrapping. Use when defining domain-specific errors, implementing validation, or handling error conditions with proper error types.
+description: Define and throw typed errors in Blong framework. Errors are defined in the error layer or inline, with support for parameterized messages, HTTP status codes, and error wrapping. Make sure to use this skill whenever defining, throwing, or handling errors in Blong — including error.ts files, validation failures, domain-specific exceptions, or any 'throw' that needs a typed error.
 ---
 
 # Implementing Error Management
@@ -406,44 +406,6 @@ export default {
 };
 ```
 
-## Error Access Patterns
-
-### In Handlers
-
-```typescript
-export default handler(({errors: {errorInvalidInput}}) =>
-    async function handler(params, $meta) {
-        if (!valid) throw errorInvalidInput();
-    }
-);
-```
-
-### In Library Functions
-
-```typescript
-export default library(({errors: {errorValidationFailed}}) =>
-    function validate(input) {
-        if (!input) throw errorValidationFailed();
-        return input;
-    }
-);
-```
-
-### In Inline Definitions
-
-```typescript
-export default handler(({lib: {error}}) => {
-    const errors = error({
-        'custom.error': 'Custom error message'
-    });
-    return {
-        handler() {
-            throw errors['custom.error']();
-        }
-    };
-});
-```
-
 ## File Structure
 
 ### Recommended Structure
@@ -493,49 +455,6 @@ export default {
 };
 ```
 
-## Testing Errors
-
-### Test Expected Errors
-
-```typescript
-// realmname/test/test/testValidation.ts
-import {handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
-
-export default handler(({
-    lib: {group},
-    handler: {subjectNumberSum}
-}) => ({
-    testErrorHandling: ({name = 'error handling'}, $meta) =>
-        group(name)([
-            async function testNegativeNumber(assert, {$meta}) {
-                await assert.rejects(
-                    subjectNumberSum([-1], {
-                        ...$meta,
-                        expect: 'subjectSum'  // Expected error type
-                    }) as Promise<unknown>,
-                    {type: 'subjectSum'},
-                    'Should reject negative numbers'
-                );
-            }
-        ])
-}));
-```
-
-### Test Error Parameters
-
-```typescript
-async function testUserNotFound(assert, {$meta}) {
-    try {
-        await userUserFind({userId: 999}, $meta);
-        assert.fail('Should have thrown error');
-    } catch (error) {
-        assert.equal(error.type, 'userNotFound');
-        assert.equal(error.params.userId, 999);
-    }
-}
-```
-
 ## Best Practices
 
 1. **Use Error Layer:** Define errors in `error/error.ts` for realm-wide access
@@ -549,63 +468,6 @@ async function testUserNotFound(assert, {$meta}) {
 9. **Document Error Codes:** Add comments for protocol-specific errors
 10. **Test Error Paths:** Write tests for error conditions
 
-## Common Patterns
-
-### Validation Errors
-
-```typescript
-export default {
-    'validation.required': 'Field {field} is required',
-    'validation.invalid': 'Field {field} has invalid value',
-    'validation.tooShort': 'Field {field} must be at least {min} characters',
-    'validation.tooLong': 'Field {field} must be at most {max} characters',
-    'validation.pattern': 'Field {field} must match pattern {pattern}',
-};
-```
-
-### Database Errors
-
-```typescript
-export default {
-    'db.notFound': 'Record not found: {table}.{id}',
-    'db.duplicate': 'Duplicate entry for {field}: {value}',
-    'db.constraint': 'Constraint violation: {constraint}',
-    'db.connection': 'Database connection failed',
-};
-```
-
-### External API Errors
-
-```typescript
-export default {
-    'api.timeout': 'API request timed out after {timeout}ms',
-    'api.unauthorized': {
-        message: 'API authentication failed',
-        statusCode: 401
-    },
-    'api.rateLimit': {
-        message: 'API rate limit exceeded',
-        statusCode: 429
-    },
-    'api.unavailable': {
-        message: 'External service unavailable',
-        statusCode: 503
-    }
-};
-```
-
-### Business Logic Errors
-
-```typescript
-export default {
-    'payment.insufficientFunds': 'Insufficient funds: required {required}, available {available}',
-    'payment.invalidAmount': 'Payment amount must be positive',
-    'payment.limitExceeded': 'Transaction limit exceeded: {amount} > {limit}',
-    'transfer.sameAccount': 'Cannot transfer to same account',
-    'transfer.accountClosed': 'Account {accountId} is closed',
-};
-```
-
 ## Examples from Codebase
 
 - **Simple errors:** `core/test/demo/error/error.ts`
@@ -614,13 +476,3 @@ export default {
 - **Inline errors:** `core/test/parking/orchestrator/parking.ts`
 - **Error throwing:** `core/test/demo/orchestrator/subject/sum.ts`
 - **Error testing:** `core/test/demo/test/test/testNumberSum.ts`
-
-## Integration with Framework
-
-Errors integrate with:
-
-- **Gateway Layer:** Automatic HTTP status code mapping
-- **Validation:** Failed validation throws typed errors
-- **$meta.expect:** Test expected error types
-- **Logging:** Errors logged with full context
-- **Monitoring:** Error types tracked for observability

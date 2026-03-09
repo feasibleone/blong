@@ -1,6 +1,6 @@
 ---
 name: blong-layer
-description: Organize handlers into named functional groups within a Blong realm. Layers include gateway (API), adapter (external systems), orchestrator (business logic), error (domain errors), and test (automation). Use when organizing code by functional concern, defining handler groups, or controlling deployment activation.
+description: Organize handlers into named functional groups within a Blong realm. Layers include gateway (API), adapter (external systems), orchestrator (business logic), error (domain errors), and test (automation). Make sure to use this skill whenever creating a new layer in a realm, setting up the folder structure for handlers, or configuring which layers activate in which environment — even if the user just says 'organize this' or 'add a new layer'.
 ---
 
 # Implementing a Layer
