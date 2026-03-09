@@ -15,6 +15,7 @@ import {readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {EventEmitter} from 'node:events';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
+import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
 import './watch.log.ts';
@@ -34,6 +35,7 @@ export interface IWatch {
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
 const isLayerActivation = (filename: string): boolean =>
     /^layer\.(server|browser)\.[mc]?[tj]sx?$/i.test(filename);
+const isConfig = (filename: string): boolean => /^config\.[mc]?[tj]sx?$/i.test(filename);
 const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
         a < b ? -1 : a > b ? 1 : 0,
@@ -172,10 +174,41 @@ export default class Watch extends Internal implements IWatch {
         const libs = [];
         const handlerFilenames = [];
         let latest = 0;
-        const handlerFiles = (await scan(dir))
+        const allFiles = await scan(dir);
+        const configFile = allFiles.find(entry => entry.isFile() && isConfig(entry.name));
+        if (configFile) {
+            const configFilePath = join(dir, configFile.name);
+            const loaded = (
+                await import(
+                    this.#config.enabled ? configFilePath + '?' + Date.now() : configFilePath
+                )
+            ).default;
+            const folderName = basename(dir);
+            const mutableConfig = config as Record<string, unknown>;
+            const configNames = (mutableConfig.configNames as string[]) ?? [];
+            const folderConfig =
+                loaded &&
+                typeof loaded === 'object' &&
+                typeof loaded.default === 'object' &&
+                loaded.default !== null
+                    ? merge(
+                          {},
+                          ...['default', ...configNames]
+                              .map(name => loaded[name])
+                              .filter(Boolean),
+                      )
+                    : loaded ?? {};
+            const namespaceOverride = mutableConfig?.namespace?.[folderName] ?? {};
+            mutableConfig[folderName] = merge({}, folderConfig, namespaceOverride);
+        }
+        const handlerFiles = allFiles
             .sort()
             .filter(
-                entry => entry.isFile() && isCode(entry.name) && !isLayerActivation(entry.name),
+                entry =>
+                    entry.isFile() &&
+                    isCode(entry.name) &&
+                    !isLayerActivation(entry.name) &&
+                    !isConfig(entry.name),
             );
         await this.#apiSchema.generateDir(dir, handlerFiles);
         for (const handlerEntry of handlerFiles) {

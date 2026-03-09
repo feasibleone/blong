@@ -336,6 +336,9 @@ export default handler(
 
 ## Configuration Access
 
+Handlers can access configuration provided either through the framework's merged config or from a
+co-located `config.ts` file in the handler folder.
+
 ```typescript
 export default handler(
     ({config}) =>
@@ -349,6 +352,74 @@ export default handler(
         },
 );
 ```
+
+## Folder-Level Configuration (config.ts)
+
+Place a `config.ts` file in any handler folder to define configuration for all handlers in that
+folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.) using the same
+pattern as `server.ts`, keeping environment-specific values co-located with the handlers that use
+them.
+
+```
+realmname/
+└── orchestrator/
+    └── payment/
+        ├── config.ts            ← default config for payment handlers
+        ├── paymentTransferSend.ts
+        └── paymentTransferReceive.ts
+```
+
+```typescript
+// realmname/orchestrator/payment/config.ts
+export default {
+    default: {
+        timeout: 30000,
+        retryCount: 3,
+        endpoint: 'https://api.payment.example.com',
+    },
+    dev: {
+        endpoint: 'https://api.dev.payment.example.com',
+    },
+};
+```
+
+Handlers in the same folder receive this config automatically:
+
+```typescript
+// realmname/orchestrator/payment/paymentTransferSend.ts
+export default handler(
+    ({config}: {config: {timeout: number; retryCount: number; endpoint: string}}) =>
+        async function paymentTransferSend(params, $meta) {
+            // config.timeout, config.retryCount, config.endpoint are available
+        },
+);
+```
+
+### Overriding Folder Config via Realm
+
+The realm's `server.ts` can override folder config values using the `namespace` config property.
+Use this for values that cannot live in source code (e.g. production secrets, deployment-specific URLs):
+
+```typescript
+// realmname/server.ts
+import {realm} from '@feasibleone/blong';
+
+export default realm(blong => ({
+    url: import.meta.url,
+    config: {
+        prod: {
+            namespace: {
+                payment: {
+                    // Override with production-specific values not stored in source
+                    endpoint: 'https://api.prod.payment.example.com',
+                },
+            },
+        },
+    },
+}));
+```
+
+**Priority order:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
 
 ## Automatic Validation
 
@@ -401,6 +472,7 @@ export default handler(
 8. **Minimal Dependencies:** Import only what you need from api
 9. **Documentation:** Use JSDoc descriptions in types
 10. **Test Coverage:** Write test handlers for all business handlers
+11. **Co-locate Config:** Use `config.ts` in handler folders for folder-level defaults instead of putting config in `server.ts`
 
 ## Handler Conversion
 
@@ -428,3 +500,4 @@ async function syncHandler(params) {
 - **Adapter handler:** `core/test/demo/adapter/http.ts`
 - **TCP codec:** `core/test/payshield/adapter/tcp/encode.ts`
 - **Multiple handlers:** `ml/payment/orchestrator/transfer/`
+- **Folder config:** `core/test/nscfg/orchestrator/cfg/config.ts`

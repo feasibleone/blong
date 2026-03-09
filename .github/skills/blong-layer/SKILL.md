@@ -222,6 +222,58 @@ export default adapter(blong => ({
 }));
 ```
 
+### Folder-Level Default Configuration (config.ts)
+
+Each handler group folder can contain a `config.ts` file that defines configuration for all
+handlers in that folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.)
+using the same pattern as `server.ts`, making the group self-contained with environment-specific
+values co-located with the handlers that use them:
+
+```
+orchestrator/
+├── dispatch.ts
+└── payment/           # Handler group
+    ├── config.ts      ← default config for this group
+    ├── ~.schema.ts
+    └── paymentTransferSend.ts
+```
+
+```typescript
+// orchestrator/payment/config.ts
+export default {
+    default: {
+        timeout: 30000,
+        retryCount: 3,
+        endpoint: 'https://api.payment.example.com',
+    },
+    dev: {
+        endpoint: 'https://api.dev.payment.example.com',
+    },
+};
+```
+
+The realm's `server.ts` can override specific values using the `namespace` property nested in the
+realm config. Use this for deployment-specific values (e.g. secrets or production URLs) that cannot
+live in source code:
+
+```typescript
+// server.ts — override specific values from orchestrator/payment/config.ts
+import {realm} from '@feasibleone/blong';
+
+export default realm(blong => ({
+    url: import.meta.url,
+    config: {
+        prod: {
+            namespace: {
+                payment: {endpoint: 'https://api.prod.payment.example.com'},
+            },
+        },
+    },
+}));
+```
+
+**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
+
 ## Implementation Patterns
 
 ### Error Layer
