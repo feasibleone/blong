@@ -184,8 +184,20 @@ export default class Watch extends Internal implements IWatch {
                 )
             ).default;
             const folderName = basename(dir);
-            const folderConfig = loaded ?? {};
             const mutableConfig = config as Record<string, unknown>;
+            const configNames = (mutableConfig.configNames as string[]) ?? [];
+            const folderConfig =
+                loaded &&
+                typeof loaded === 'object' &&
+                typeof loaded.default === 'object' &&
+                loaded.default !== null
+                    ? merge(
+                          {},
+                          ...['default', ...configNames]
+                              .map(name => loaded[name])
+                              .filter(Boolean),
+                      )
+                    : loaded ?? {};
             const namespaceOverride = mutableConfig?.namespace?.[folderName] ?? {};
             mutableConfig[folderName] = merge({}, folderConfig, namespaceOverride);
         }

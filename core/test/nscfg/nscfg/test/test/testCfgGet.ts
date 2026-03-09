@@ -5,15 +5,15 @@ export default handler(
     ({lib: {group}, handler: {cfgGet}}) => ({
         testCfgGet: ({name = 'namespace config'}: {name?: string}, $meta: IMeta) =>
             group(name)([
-                async function configTsDefaultsMerged(
+                async function configTsActivationApplied(
                     assert: typeof Assert,
                     {$meta}: {$meta: IMeta},
                 ) {
                     const result = (await cfgGet({}, $meta)) as {source: string; extra: string};
                     assert.equal(
                         result.extra,
-                        'extra-from-folder',
-                        'extra key from config.ts should be present',
+                        'integration-extra',
+                        'integration activation in config.ts should override default extra',
                     );
                 },
                 async function namespaceOverrideApplied(

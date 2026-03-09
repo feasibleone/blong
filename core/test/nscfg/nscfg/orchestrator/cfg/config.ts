@@ -1,4 +1,9 @@
 export default {
-    source: 'folder-config',
-    extra: 'extra-from-folder',
+    default: {
+        source: 'folder-config',
+        extra: 'extra-from-folder',
+    },
+    integration: {
+        extra: 'integration-extra',
+    },
 };
