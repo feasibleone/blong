@@ -253,9 +253,9 @@ that explain their usage:
 
 ## Folder-Level Configuration (config.ts)
 
-A `config.ts` file can be placed in any handler folder to define default configuration for all
-handlers in that folder. This makes the group self-contained, eliminating the need to put
-per-namespace configuration in `server.ts`.
+A `config.ts` file can be placed in any handler folder to define configuration for all handlers in
+that folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.), keeping
+environment-specific values co-located with the handlers that use them.
 
 ```
 example/
@@ -269,13 +269,19 @@ example/
 ```ts
 // example/orchestrator/math/config.ts
 export default {
-    precision: 4,
+    default: {
+        precision: 4,
+    },
+    dev: {
+        precision: 8,
+    },
 };
 ```
 
 Handlers in the folder receive this config automatically via their `config` parameter.
 
-To override values per environment, use the `namespace` property in the realm's `server.ts`:
+To override values from outside the folder (e.g. for deployment-specific secrets or URLs that
+cannot live in source code), use the `namespace` property in the realm's `server.ts`:
 
 ```ts
 // example/server.ts — override math handler config
@@ -287,7 +293,7 @@ export default realm(() => ({
         prod: {
             namespace: {
                 math: {
-                    precision: 8, // override the default from config.ts
+                    precision: 8, // override with deployment-specific value
                 },
             },
         },
@@ -295,4 +301,4 @@ export default realm(() => ({
 }));
 ```
 
-**Priority:** Realm `namespace` override > folder `config.ts` defaults
+**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`

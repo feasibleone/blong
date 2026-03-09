@@ -224,9 +224,10 @@ export default adapter(blong => ({
 
 ### Folder-Level Default Configuration (config.ts)
 
-Each handler group folder can contain a `config.ts` file that defines the default configuration for
-all handlers in that folder. This keeps configuration co-located with the handlers that use it,
-making the group self-contained:
+Each handler group folder can contain a `config.ts` file that defines configuration for all
+handlers in that folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.)
+using the same pattern as `server.ts`, making the group self-contained with environment-specific
+values co-located with the handlers that use them:
 
 ```
 orchestrator/
@@ -240,14 +241,20 @@ orchestrator/
 ```typescript
 // orchestrator/payment/config.ts
 export default {
-    timeout: 30000,
-    retryCount: 3,
-    endpoint: 'https://api.payment.example.com',
+    default: {
+        timeout: 30000,
+        retryCount: 3,
+        endpoint: 'https://api.payment.example.com',
+    },
+    dev: {
+        endpoint: 'https://api.dev.payment.example.com',
+    },
 };
 ```
 
 The realm's `server.ts` can override specific values using the `namespace` property nested in the
-realm config. This approach ensures the override is clearly separated from the defaults:
+realm config. Use this for deployment-specific values (e.g. secrets or production URLs) that cannot
+live in source code:
 
 ```typescript
 // server.ts — override specific values from orchestrator/payment/config.ts
@@ -265,7 +272,7 @@ export default realm(blong => ({
 }));
 ```
 
-**Priority:** Realm `namespace` override > folder `config.ts` defaults
+**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
 
 ## Implementation Patterns
 

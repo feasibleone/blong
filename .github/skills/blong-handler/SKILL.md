@@ -506,9 +506,10 @@ export default handler(
 
 ## Folder-Level Configuration (config.ts)
 
-Place a `config.ts` file in any handler folder to define the default configuration for all handlers
-in that folder. This keeps configuration co-located with the handlers that use it and eliminates the
-need to put per-namespace configuration in `server.ts` or `browser.ts`.
+Place a `config.ts` file in any handler folder to define configuration for all handlers in that
+folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.) using the same
+pattern as `server.ts`, keeping environment-specific values co-located with the handlers that use
+them.
 
 ```
 realmname/
@@ -522,9 +523,14 @@ realmname/
 ```typescript
 // realmname/orchestrator/payment/config.ts
 export default {
-    timeout: 30000,
-    retryCount: 3,
-    endpoint: 'https://api.payment.example.com',
+    default: {
+        timeout: 30000,
+        retryCount: 3,
+        endpoint: 'https://api.payment.example.com',
+    },
+    dev: {
+        endpoint: 'https://api.dev.payment.example.com',
+    },
 };
 ```
 
@@ -542,7 +548,8 @@ export default handler(
 
 ### Overriding Folder Config via Realm
 
-The realm's `server.ts` can override folder defaults using the `namespace` config property:
+The realm's `server.ts` can override folder config values using the `namespace` config property.
+Use this for values that cannot live in source code (e.g. production secrets, deployment-specific URLs):
 
 ```typescript
 // realmname/server.ts
@@ -551,18 +558,11 @@ import {realm} from '@feasibleone/blong';
 export default realm(blong => ({
     url: import.meta.url,
     config: {
-        default: {
+        prod: {
             namespace: {
                 payment: {
-                    // Override specific values from config.ts
+                    // Override with production-specific values not stored in source
                     endpoint: 'https://api.prod.payment.example.com',
-                },
-            },
-        },
-        dev: {
-            namespace: {
-                payment: {
-                    endpoint: 'https://api.dev.payment.example.com',
                 },
             },
         },
@@ -570,7 +570,7 @@ export default realm(blong => ({
 }));
 ```
 
-**Priority order:** Realm `namespace` override > folder `config.ts` defaults
+**Priority order:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
 
 ## Automatic Validation
 
