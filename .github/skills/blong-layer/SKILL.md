@@ -222,6 +222,51 @@ export default adapter(blong => ({
 }));
 ```
 
+### Folder-Level Default Configuration (config.ts)
+
+Each handler group folder can contain a `config.ts` file that defines the default configuration for
+all handlers in that folder. This keeps configuration co-located with the handlers that use it,
+making the group self-contained:
+
+```
+orchestrator/
+├── dispatch.ts
+└── payment/           # Handler group
+    ├── config.ts      ← default config for this group
+    ├── ~.schema.ts
+    └── paymentTransferSend.ts
+```
+
+```typescript
+// orchestrator/payment/config.ts
+export default {
+    timeout: 30000,
+    retryCount: 3,
+    endpoint: 'https://api.payment.example.com',
+};
+```
+
+The realm's `server.ts` can override specific values using the `namespace` property nested in the
+realm config. This approach ensures the override is clearly separated from the defaults:
+
+```typescript
+// server.ts — override specific values from orchestrator/payment/config.ts
+import {realm} from '@feasibleone/blong';
+
+export default realm(blong => ({
+    url: import.meta.url,
+    config: {
+        prod: {
+            namespace: {
+                payment: {endpoint: 'https://api.prod.payment.example.com'},
+            },
+        },
+    },
+}));
+```
+
+**Priority:** Realm `namespace` override > folder `config.ts` defaults
+
 ## Implementation Patterns
 
 ### Error Layer
