@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/test-v1.3.2...test-v1.4.0) (2026-03-10)
+
+
+### Features
+
+* allow config override during start, improve types ([58c3840](https://github.com/feasibleone/blong/commit/58c3840b1543ce2d963c0bbdcb1a0712feface7c))
+* support activation-based config in handler folder config.ts ([#64](https://github.com/feasibleone/blong/issues/64)) ([78e13ba](https://github.com/feasibleone/blong/commit/78e13baa0c85b05c8f31c8efa374f035e0009704))
+
 ## [1.3.2](https://github.com/feasibleone/blong/compare/test-v1.3.1...test-v1.3.2) (2026-03-02)
 
 

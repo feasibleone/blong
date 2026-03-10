@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.4.5...blong-kopi-v1.5.0) (2026-03-10)
+
+
+### Features
+
+* allow config override during start, improve types ([58c3840](https://github.com/feasibleone/blong/commit/58c3840b1543ce2d963c0bbdcb1a0712feface7c))
+
 ## [1.4.5](https://github.com/feasibleone/blong/compare/blong-kopi-v1.4.4...blong-kopi-v1.4.5) (2026-03-06)
 
 
