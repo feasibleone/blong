@@ -123,15 +123,23 @@ export default class RpcServer extends Internal implements IRpcServer {
         methods.forEach(fn => this._unregister(namespace, fn));
     }
 
-    public async start(): Promise<void> {
+    public async start(): Promise<IRpcServer> {
         this.#routes.forEach(route => this.#server.route(route));
         await this.#server.listen({
             port: this.#config.port,
             host: this.#config.host,
         });
+        return this;
     }
 
-    public async stop(): Promise<void> {
+    public async stop(): Promise<IRpcServer> {
         await this.#server.close();
+        return this;
+    }
+
+    public info(): object {
+        return {
+            address: this.#server.server.address(),
+        };
     }
 }

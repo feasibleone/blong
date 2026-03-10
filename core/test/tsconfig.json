@@ -11,7 +11,8 @@
         "noEmit": true,
         "outDir": "dist",
         "target": "ES2022",
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "strict": true
     },
     "ts-node": {
         "esm": true,

@@ -1,7 +1,7 @@
 import {handler, type IMeta} from '@feasibleone/blong';
 
 export default handler(({lib: {group}, handler: {loginTokenCreate}}) => ({
-    testLoginTokenCreate: ({name = 'login token'}) =>
+    testLoginTokenCreate: ({name = 'login token'}: {name?: string}) =>
         group(name)([
             function login(assert: unknown, {$meta}: {$meta: IMeta}) {
                 console.log('create login token');

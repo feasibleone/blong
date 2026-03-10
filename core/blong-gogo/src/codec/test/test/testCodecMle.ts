@@ -4,7 +4,7 @@ import type Assert from 'node:assert';
 const DAY = 24 * 60 * 60 * 1000;
 export default handler(
     ({lib: {group}, handler: {testLoginTokenCreate, subjectAge, subjectTime}}) => ({
-        testCodecMle: ({name = 'Message Level Encryption'}, $meta) =>
+        testCodecMle: ({name = 'Message Level Encryption'}: {name?: string}, $meta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 async function mle(assert: typeof Assert, {$meta}: {$meta: IMeta}) {

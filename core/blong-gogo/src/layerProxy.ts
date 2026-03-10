@@ -55,17 +55,23 @@ export default function layerProxy(
                                 );
                                 ports.forEach(what => {
                                     if (what.prototype instanceof port) {
-                                        where.port = async ({
-                                            id,
-                                            ...portApi
-                                        }: Parameters<IAdapterFactory>[0] & {id: string}) => {
+                                        where.port = async (
+                                            {
+                                                id,
+                                                ...portApi
+                                            }: Parameters<IAdapterFactory>[0] & {id: string},
+                                            configOverride: object,
+                                        ) => {
+                                            const config = {
+                                                ...moduleConfig?.[name],
+                                                id,
+                                                pkg: moduleConfig.pkg,
+                                            };
                                             const port = new (what as IPort)({
                                                 ...portApi,
-                                                config: {
-                                                    ...moduleConfig?.[name],
-                                                    id,
-                                                    pkg: moduleConfig.pkg,
-                                                },
+                                                config: configOverride
+                                                    ? merge({}, config, configOverride)
+                                                    : config,
                                                 configBase: moduleConfig.base,
                                             });
                                             await port.init();
@@ -73,10 +79,13 @@ export default function layerProxy(
                                         };
                                         where.port.config = moduleConfig?.[name];
                                     } else if (['adapter', 'orchestrator'].includes(kind(what))) {
-                                        where.port = async ({
-                                            id,
-                                            ...portApi
-                                        }: Parameters<IAdapterFactory>[0] & {id: string}) => {
+                                        where.port = async (
+                                            {
+                                                id,
+                                                ...portApi
+                                            }: Parameters<IAdapterFactory>[0] & {id: string},
+                                            configOverride: object,
+                                        ) => {
                                             if (!id) return what(portApi);
                                             const port = await createPort(
                                                 {
@@ -86,11 +95,16 @@ export default function layerProxy(
                                                 moduleConfig.base,
                                                 moduleConfig.configNames,
                                             );
-                                            await port.init({
+                                            const config = {
                                                 ...moduleConfig?.[name],
                                                 id,
                                                 pkg: moduleConfig.pkg,
-                                            });
+                                            };
+                                            await port.init(
+                                                configOverride
+                                                    ? merge({}, config, configOverride)
+                                                    : config,
+                                            );
                                             return port;
                                         };
                                         where.port.config = moduleConfig?.[name];

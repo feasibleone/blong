@@ -1,4 +1,5 @@
 import type {
+    ApiSchema,
     Errors,
     GatewaySchema,
     IErrorFactory,
@@ -68,7 +69,7 @@ interface IConfig extends IConfigMLE {
 
 function operationParams(
     operation: GatewaySchema['operation'],
-    bodySchema: TSchema,
+    bodySchema: ApiSchema,
     request: GatewayRequest,
 ): unknown {
     const result =
@@ -108,10 +109,14 @@ function operationParams(
             return result;
         }, {}) ?? {};
     if (
+        bodySchema &&
+        'type' in bodySchema &&
         bodySchema?.type === 'object' &&
-        (bodySchema.properties || bodySchema?.additionalProperties)
+        (bodySchema.properties ||
+            ('additionalProperties' in bodySchema && bodySchema?.additionalProperties))
     ) {
-        if (bodySchema.additionalProperties) Object.assign(result, request.body);
+        if ('additionalProperties' in bodySchema && bodySchema.additionalProperties)
+            Object.assign(result, request.body);
         else if (bodySchema.properties)
             Object.entries(bodySchema.properties).forEach(([name, value]) => {
                 if (name in (request.body as {})) result[snakeToCamel(name)] = request.body[name];
@@ -450,7 +455,7 @@ export default class Gateway extends Internal implements IGateway {
         });
     }
 
-    public async start(): Promise<void> {
+    public async start(): Promise<IGateway> {
         const old = this.#server;
         try {
             this.#server = fastify({
@@ -501,11 +506,13 @@ export default class Gateway extends Internal implements IGateway {
             port: this.#config.port,
             host: this.#config.host,
         });
+        return this;
     }
 
-    public async stop(): Promise<void> {
+    public async stop(): Promise<IGateway> {
         await this.#server?.close();
         this.#server = null;
+        return this;
     }
 
     protected async restart(): Promise<void> {

@@ -21,7 +21,7 @@ import layerProxy from './layerProxy.ts';
 import './watch.log.ts';
 
 export interface IWatch {
-    start: (realm: IRegistry, remote: IRemote) => Promise<void>;
+    start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
     test: (tester: unknown) => Promise<void>;
     stop: () => Promise<void>;
     load: <T extends {result: unknown}>(
@@ -193,11 +193,9 @@ export default class Watch extends Internal implements IWatch {
                 loaded.default !== null
                     ? merge(
                           {},
-                          ...['default', ...configNames]
-                              .map(name => loaded[name])
-                              .filter(Boolean),
+                          ...['default', ...configNames].map(name => loaded[name]).filter(Boolean),
                       )
-                    : loaded ?? {};
+                    : (loaded ?? {});
             const namespaceOverride = mutableConfig?.namespace?.[folderName] ?? {};
             mutableConfig[folderName] = merge({}, folderConfig, namespaceOverride);
         }
@@ -311,7 +309,7 @@ export default class Watch extends Internal implements IWatch {
         }
     }
 
-    private _watch(registry: IRegistry): void {
+    private _watch(registry: IRegistry, configOverride: object): void {
         const fsWatcher = chokidar.watch(
             Array.from(this.#handlerFolders.keys())
                 .map(folder => [
@@ -350,7 +348,7 @@ export default class Watch extends Internal implements IWatch {
                     registry.ports.set(layerConfig.name + '.' + id, item.port);
                     const port = await registry.createPort(layerConfig.name + '.' + id);
                     if (!port) return;
-                    await port.start();
+                    await port.start(configOverride);
                     await port.ready();
                     await registry.connected();
                     this.#emit.emit('test');
@@ -394,7 +392,11 @@ export default class Watch extends Internal implements IWatch {
         });
     }
 
-    public async start(registry: IRegistry, remote: IRemote): Promise<void> {
+    public async start(
+        registry: IRegistry,
+        remote: IRemote,
+        configOverride: object,
+    ): Promise<void> {
         this.log?.debug?.({
             $meta: {mtid: 'event', method: 'watch.start'},
             dir: Array.from(this.#handlerFolders.keys())
@@ -419,7 +421,7 @@ export default class Watch extends Internal implements IWatch {
                 done?.();
             });
         }
-        if (this.#config.enabled) this._watch(registry);
+        if (this.#config.enabled) this._watch(registry, configOverride);
 
         await registry.connected();
     }

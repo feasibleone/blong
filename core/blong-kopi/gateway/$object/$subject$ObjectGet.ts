@@ -5,7 +5,7 @@ export default validation(
         function $subject$ObjectGet() {
             return {
                 params: type.Object({$objectId: type.String()}),
-                result: type.Any(),
+                result: type.Unknown(),
             };
-        }
+        },
 );

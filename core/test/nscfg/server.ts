@@ -5,7 +5,14 @@ export default server(blong => ({
     validation: blong.type.Object({}),
     children: ['./nscfg'],
     config: {
-        default: {},
+        default: {
+            rpcServer: {
+                port: 0,
+            },
+            gateway: {
+                port: 0,
+            },
+        },
         integration: {
             nscfg: {},
             remote: {canSkipSocket: true},

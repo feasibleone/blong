@@ -396,4 +396,11 @@ export default class Remote extends Internal implements IRemote {
             meta: {mtid, method, url: httpRequest?.url, language, forward, cache},
         };
     }
+
+    public async stop(): Promise<IRemote> {
+        return this;
+    }
+    public async start(): Promise<IRemote> {
+        return this;
+    }
 }

@@ -5,7 +5,14 @@ export default server(blong => ({
     validation: blong.type.Object({}),
     children: ['./eip'],
     config: {
-        default: {},
+        default: {
+            rpcServer: {
+                port: 0,
+            },
+            gateway: {
+                port: 0,
+            },
+        },
         dev: {
             eip: {},
         },

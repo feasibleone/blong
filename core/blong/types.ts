@@ -17,9 +17,11 @@ import {
     type TBoolean,
     type TFunction,
     type TNever,
+    type TNumber,
     type TObject,
     type TSchema,
     type TString,
+    type TUnknown,
 } from 'typebox';
 // import type {client} from 'node-vault';
 import type {Dirent} from 'node:fs';
@@ -112,15 +114,15 @@ export type RemoteMethod = (...params: unknown[]) => Promise<unknown>;
 export interface IRemote {
     remote: (methodName: string, options?: object) => RemoteMethod;
     dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
+    start: () => Promise<IRemote>;
+    stop: () => Promise<IRemote>;
 }
 
 export interface IRpcServer {
     register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
     unregister: (methods: string[], namespace: string, reply: boolean) => void;
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
+    start: () => Promise<IRpcServer>;
+    stop: () => Promise<IRpcServer>;
 }
 
 export interface ILocal {
@@ -143,8 +145,8 @@ export interface IGateway {
         validations: Record<string, GatewaySchema>,
         pkg: {name: string; version: string},
     ) => void;
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
+    start: () => Promise<IGateway>;
+    stop: () => Promise<IGateway>;
 }
 
 export type Handlers = ((params: {
@@ -157,9 +159,9 @@ export type Handlers = ((params: {
 }) => void)[];
 
 export interface IRegistry {
-    start: () => Promise<void>;
+    start: (configOverride?: object) => Promise<IRegistry>;
     test: (tester?: unknown) => Promise<void>;
-    stop: () => Promise<void>;
+    stop: () => Promise<IRegistry>;
     ports: Map<string, IAdapterFactory>;
     methods: Map<string, Handlers>;
     modules: Map<string | symbol, IRegistry[]>;
@@ -249,7 +251,7 @@ export interface IAdapter<T, C> {
         this: ReturnType<IAdapterFactory<T, C>>,
         ...config: Partial<Config<T, C>>[]
     ) => Promise<void>;
-    start?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
+    start?: (this: ReturnType<IAdapterFactory<T, C>>, configOverride: object) => Promise<object>;
     ready?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
     stop?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
     connected?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<boolean>;
@@ -324,7 +326,7 @@ export interface IMeta {
     httpRequest?: {
         url: URL | string;
         state?: object;
-        headers: Record<string, string>;
+        headers: Record<string, string | string[]>;
     };
     auth?: {
         mlek?: object | 'header';
@@ -464,19 +466,23 @@ export interface IStep {
 }
 export type Sequence = (boolean | string | IStep)[];
 
+export type ApiSchema = TObject | TArray | TBoolean | TString | TNumber | TUnknown;
+
 export type GatewaySchema = (
     | {
-          params: TSchema;
-          result: TSchema;
+          params: ApiSchema;
+          result: ApiSchema;
       }
     | {
-          body: TSchema;
-          response: TSchema;
+          body: {
+              schema: ApiSchema;
+          };
+          response: ApiSchema;
       }
     | {
           method: 'GET' | 'POST' | 'PUT' | 'DELETE';
           path?: string;
-          response?: TSchema;
+          response?: ApiSchema;
       }
     | {
           auth: false | 'basic' | 'login';
@@ -608,6 +614,7 @@ export interface SolutionFactory<T extends TSchema = TNever> {
 }
 
 const Kind: symbol = Symbol.for('blong:kind');
+export type Kind = typeof Kind;
 
 export abstract class Internal {
     #log?: ILog;
@@ -621,8 +628,12 @@ export abstract class Internal {
             this.log = this.#log.logger(result.logLevel, {name: this.constructor.name});
         return result;
     };
-    public async stop(): Promise<void> {}
-    public async start(...params: unknown[]): Promise<void> {}
+    public async stop(): Promise<unknown> {
+        return this;
+    }
+    public async start(...params: unknown[]): Promise<unknown> {
+        return this;
+    }
 }
 
 export const handler = <T = Record<string, unknown>, C = AdapterContext>(

@@ -303,21 +303,23 @@ export default class Registry extends Internal implements IRegistry {
         return {local, literals};
     }
 
-    public async init(): Promise<void> {
+    public async init(): Promise<IRegistry> {
         for (const [id, {source, def}] of Object.entries(this.#config.api || {}))
             await this.loadApi(id, def, source);
+        return this;
     }
 
-    public async start(): Promise<void> {
+    public async start(configOverride?: object): Promise<IRegistry> {
         for (const id of Array.from(this.ports.keys())) await this.createPort(id);
-        for (const port of this.#ports.values()) await port.start();
+        for (const port of this.#ports.values()) await port.start(configOverride);
         for (const port of this.#ports.values()) await port.ready();
         this.#gateway?.route(await this._validations(), {name: '', version: ''});
         await this.#resolution?.start();
         await this.#rpcServer?.start();
         await this.#remote?.start();
         await this.#gateway?.start();
-        await this.#watch?.start(this, this.#remote);
+        await this.#watch?.start(this, this.#remote, configOverride);
+        return this;
         // console.dir(this.ports.entries());
         // console.dir(this.#validations);
         // console.dir(created);
@@ -337,13 +339,14 @@ export default class Registry extends Internal implements IRegistry {
         return await this.#watch.test(framework);
     }
 
-    public async stop(): Promise<void> {
+    public async stop(): Promise<IRegistry> {
         await this.#watch?.stop();
         await this.#gateway?.stop();
         await this.#remote?.stop();
         await this.#rpcServer?.stop();
         await this.#resolution?.stop();
         for (const port of this.#ports.values()) await port.stop();
+        return this;
     }
 
     public async loadApi(

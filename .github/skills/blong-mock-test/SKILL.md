@@ -8,7 +8,7 @@ description: Write server-side integration tests using mock handlers in Blong. M
 ## Overview
 
 When business handlers call external systems (a database, a downstream service, an HSM), you
-replace those systems with lightweight mock handlers that live in the `test` layer.  All code
+replace those systems with lightweight mock handlers that live in the `test` layer. All code
 stays in-process – no running infrastructure is required.
 
 The pattern uses two orchestrators in the `test` layer:
@@ -165,24 +165,19 @@ They live in `test/test/` and follow the [blong-test](../test) pattern.
 import {type IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
-export default handler(
-    ({lib: {group}, handler: {eipMessageClaim}}) => ({
-        testEipClaim: ({name = 'claim check'}: {name?: string}, $meta: IMeta) =>
-            group(name)([
-                async function claimCheck(
-                    assert: typeof Assert,
-                    {$meta}: {$meta: IMeta},
-                ) {
-                    const result = (await eipMessageClaim(
-                        {large: 'payload', sensitive: true},
-                        $meta,
-                    )) as Record<string, unknown>;
-                    assert.equal(result.id, 'mock-id', 'claim ID returned');
-                    assert.equal(result.payload, 'stored-payload', 'stored payload retrieved');
-                },
-            ]),
-    }),
-);
+export default handler(({lib: {group}, handler: {eipMessageClaim}}) => ({
+    testEipClaim: ({name = 'claim check'}: {name?: string}, $meta: IMeta) =>
+        group(name)([
+            async function claimCheck(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = (await eipMessageClaim(
+                    {large: 'payload', sensitive: true},
+                    $meta,
+                )) as Record<string, unknown>;
+                assert.equal(result.id, 'mock-id', 'claim ID returned');
+                assert.equal(result.payload, 'stored-payload', 'stored payload retrieved');
+            },
+        ]),
+}));
 ```
 
 ## Step 5 – Activate the test layer
@@ -211,8 +206,8 @@ export default realm(blong => ({
 
 ## Step 6 – Enable in-process calls in the root server
 
-In the root `server.ts` (loaded by the test runner), set `remote.canSkipSocket: true`
-and list the test entry-points in `watch.test`:
+In the root `server.ts` (loaded by the test runner), set `remote.canSkipSocket: true`,
+set the servers to listen on random ports and list the test entry-points in `watch.test`:
 
 ```ts
 // server.ts (root)
@@ -223,11 +218,18 @@ export default server(blong => ({
     validation: blong.type.Object({}),
     children: ['./realmname'],
     config: {
-        default: {},
+        default: {
+            rpcServer: {
+                port: 0,
+            },
+            gateway: {
+                port: 0,
+            },
+        },
         integration: {
             remote: {canSkipSocket: true},
             watch: {
-                test: ['test.eip.claim'],    // called by realm.test()
+                test: ['test.eip.claim'], // called by realm.test()
             },
         },
     },
@@ -247,7 +249,10 @@ import tap from 'tap';
 import server from './server.ts';
 
 const realm = await load(server, 'realmname', 'realmname', [
-    'microservice', 'dev', 'test', 'integration',
+    'microservice',
+    'dev',
+    'test',
+    'integration',
 ]);
 await realm.start();
 await tap.test('my realm', async test => {
@@ -264,7 +269,7 @@ Business handlers receive a `handler` proxy:
 export default handler(
     ({handler: {mockDataSave, mockDataGet}}) =>
         async function eipMessageClaim(params: unknown, $meta: IMeta) {
-            const {id} = await mockDataSave(params, $meta);  // resolved via "mock" namespace
+            const {id} = await mockDataSave(params, $meta); // resolved via "mock" namespace
             return mockDataGet({id}, $meta);
         },
 );
@@ -272,7 +277,7 @@ export default handler(
 
 In production, `eipDispatch` imports the handler group from a real SQL adapter.
 In integration tests, `mockDispatch` registers `mockDataSave` / `mockDataGet` under the `mock`
-namespace and the same `handler` proxy resolves them in-process.  No code in the business
+namespace and the same `handler` proxy resolves them in-process. No code in the business
 handler changes between environments.
 
 ## Mock handler patterns
@@ -282,7 +287,10 @@ handler changes between environments.
 ```ts
 export default handler(
     () =>
-        async function mockExternalService(params: unknown, $meta: IMeta): Promise<{status: string}> {
+        async function mockExternalService(
+            params: unknown,
+            $meta: IMeta,
+        ): Promise<{status: string}> {
             return {status: 'ok'};
         },
 );
@@ -291,38 +299,34 @@ export default handler(
 ### Stateful mock (in-memory store)
 
 ```ts
-export default handler(
-    () => {
-        const store = new Map<string, unknown>();
-        return async function mockDataSave(data: unknown, $meta: IMeta): Promise<{id: string}> {
-            const id = String(Date.now());
-            store.set(id, data);
-            return {id};
-        };
-    },
-);
+export default handler(() => {
+    const store = new Map<string, unknown>();
+    return async function mockDataSave(data: unknown, $meta: IMeta): Promise<{id: string}> {
+        const id = String(Date.now());
+        store.set(id, data);
+        return {id};
+    };
+});
 ```
 
 ### Conditional mock (simulate errors)
 
 ```ts
-export default handler(
-    ({errors}) => {
-        const _errors = errors({'notFound': 'Item not found: {id}'});
-        return async function mockDataGet({id}: {id: string}, $meta: IMeta): Promise<unknown> {
-            if (id === 'missing') throw _errors.notFound({params: {id}});
-            return {id, payload: 'data'};
-        };
-    },
-);
+export default handler(({errors}) => {
+    const _errors = errors({notFound: 'Item not found: {id}'});
+    return async function mockDataGet({id}: {id: string}, $meta: IMeta): Promise<unknown> {
+        if (id === 'missing') throw _errors.notFound({params: {id}});
+        return {id, payload: 'data'};
+    };
+});
 ```
 
 ## Directory naming conventions
 
-| Folder | Namespace | Handler prefix | Purpose |
-|--------|-----------|---------------|---------|
-| `test/mock/` | `mock` | `mock` | Simulate external dependencies |
-| `test/test/` | `test` | `test` | Test scenarios & assertions |
+| Folder       | Namespace | Handler prefix | Purpose                        |
+| ------------ | --------- | -------------- | ------------------------------ |
+| `test/mock/` | `mock`    | `mock`         | Simulate external dependencies |
+| `test/test/` | `test`    | `test`         | Test scenarios & assertions    |
 
 ## Complete example
 

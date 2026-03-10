@@ -5,8 +5,8 @@ import {spare} from 'ut-function.timing';
 import Remote from './Remote.ts';
 
 export interface IGatewayClient {
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
+    start: () => Promise<IGatewayClient>;
+    stop: () => Promise<IGatewayClient>;
 }
 
 interface IError extends Error {

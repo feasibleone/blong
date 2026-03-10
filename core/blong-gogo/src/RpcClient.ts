@@ -212,8 +212,4 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
             return stream ? [sendRequest()] : sendRequest();
         };
     }
-
-    public async stop(): Promise<void> {}
-
-    public async start(): Promise<void> {}
 }

@@ -7,6 +7,8 @@ import {
     type ILogger,
     type IModuleConfig,
     type IRegistry,
+    type Kind,
+    type Kinds,
     type SolutionFactory,
 } from '@feasibleone/blong';
 import {existsSync} from 'fs';
@@ -108,7 +110,7 @@ async function loadConfig(config: string | object): Promise<object> {
 }
 
 export default async function loadRealm<T extends TSchema>(
-    def: SolutionFactory<T>,
+    def: SolutionFactory<T> & {[symbol: Kind]: Kinds},
     name: string,
     parentConfig: object | string,
     configNames: string[],
