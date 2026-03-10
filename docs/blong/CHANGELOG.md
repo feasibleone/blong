@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.4.0...blong-docs-v1.5.0) (2026-03-10)
+
+
+### Features
+
+* support activation-based config in handler folder config.ts ([#64](https://github.com/feasibleone/blong/issues/64)) ([78e13ba](https://github.com/feasibleone/blong/commit/78e13baa0c85b05c8f31c8efa374f035e0009704))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.3.1...blong-docs-v1.4.0) (2026-03-06)
 
 

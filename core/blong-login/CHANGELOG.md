@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.5](https://github.com/feasibleone/blong/compare/blong-login-v1.6.4...blong-login-v1.6.5) (2026-03-10)
+
+
+### Bug Fixes
+
+* improve handling of x-forwarded headers in loginOidcGetConfiguration ([c7bb019](https://github.com/feasibleone/blong/commit/c7bb0196f660ab4fbc0db6ae4ff9d5199762470c))
+
 ## [1.6.4](https://github.com/feasibleone/blong/compare/blong-login-v1.6.3...blong-login-v1.6.4) (2026-03-03)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/blong-v1.10.1...blong-v1.11.0) (2026-03-10)
+
+
+### Features
+
+* allow config override during start, improve types ([58c3840](https://github.com/feasibleone/blong/commit/58c3840b1543ce2d963c0bbdcb1a0712feface7c))
+
 ## [1.10.1](https://github.com/feasibleone/blong/compare/blong-v1.10.0...blong-v1.10.1) (2026-03-06)
 
 
