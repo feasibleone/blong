@@ -9,8 +9,15 @@ export default handler(
             const url = new URL(urlRequest);
             if (headers['x-forwarded-host']) {
                 url.port = ''; // WTF WHATWG!
-                url.host = headers['x-forwarded-host'];
-                if (headers['x-forwarded-proto']) url.protocol = headers['x-forwarded-proto'];
+                url.host =
+                    typeof headers['x-forwarded-host'] === 'string'
+                        ? headers['x-forwarded-host']
+                        : headers['x-forwarded-host'][0];
+                if (headers['x-forwarded-proto'])
+                    url.protocol =
+                        typeof headers['x-forwarded-proto'] === 'string'
+                            ? headers['x-forwarded-proto']
+                            : headers['x-forwarded-proto'][0];
             }
             return {
                 issuer: 'ut-login',
