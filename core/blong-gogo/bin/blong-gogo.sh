@@ -9,5 +9,5 @@ else
 fi
 blong_gogo=$(npm ls -g @feasibleone/blong-gogo --parseable)
 mv -f "$blong_gogo" ./
-cp -r blong-gogo/bin/blong.sh "$blong_gogo"/bin/
+cp -r blong-gogo/bin/blong-gogo.sh "$blong_gogo"/bin/
 ./blong-gogo/bin/blong.ts

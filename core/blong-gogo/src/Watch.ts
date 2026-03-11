@@ -142,7 +142,9 @@ export default class Watch extends Internal implements IWatch {
             /* eslint-disable @rushstack/typedef-var */
 
             import {validationHandlers} from '@feasibleone/blong';
-            ${TypeScriptToTypeBox.Generate(schema.sort().join('\n')).trim()}
+            import { Type, type Static } from 'typebox';
+
+            ${TypeScriptToTypeBox.Generate(schema.sort().join('\n'), {useTypeBoxImport: false}).trim()}
 
             export default validationHandlers({
                 ${names.sort().join(',\n')}
