@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.8.0...blong-gogo-v1.8.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* schema generation and bin script ([df2ffa9](https://github.com/feasibleone/blong/commit/df2ffa9e1128d248f2a9c749b0559ea9fad09a26))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.7.3...blong-gogo-v1.8.0) (2026-03-10)
 
 
