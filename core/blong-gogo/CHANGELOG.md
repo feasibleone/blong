@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.9.2...blong-gogo-v1.9.3) (2026-03-13)
+
+
+### Bug Fixes
+
+* correct package name in Dockerfile deployment command ([7024e03](https://github.com/feasibleone/blong/commit/7024e032d09d7ea48bec0c1aa07e342cde1b935f))
+
 ## [1.9.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.9.1...blong-gogo-v1.9.2) (2026-03-13)
 
 
