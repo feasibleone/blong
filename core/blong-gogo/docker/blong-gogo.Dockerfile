@@ -7,7 +7,7 @@ WORKDIR /opt/app
 COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
 RUN node common/scripts/install-run-rush.js install
 COPY --parents core/**/* ./
-RUN node common/scripts/install-run-rush.js deploy -p @feasible-one/blong-gogo
+RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo
 
 # Final release image
 FROM node:${NODE_VERSION_BUILD} as release
