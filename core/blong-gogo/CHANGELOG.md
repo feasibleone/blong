@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.8.1...blong-gogo-v1.9.0) (2026-03-13)
+
+
+### Features
+
+* add Dockerfile for blong-gogo and update deployment configuration ([56be8f4](https://github.com/feasibleone/blong/commit/56be8f4b15ebb32ca4912aec19366fd94f2c7702))
+
 ## [1.8.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.8.0...blong-gogo-v1.8.1) (2026-03-11)
 
 
