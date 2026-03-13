@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.9.0...blong-gogo-v1.9.1) (2026-03-13)
+
+
+### Bug Fixes
+
+* include additional package.json files in Dockerfile for build process ([40ea66e](https://github.com/feasibleone/blong/commit/40ea66e3a6780a90b8909fa4598e1a278cd69a96))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.8.1...blong-gogo-v1.9.0) (2026-03-13)
 
 
