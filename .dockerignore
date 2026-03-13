@@ -1,0 +1,17 @@
+### gitignore
+logs/
+coverage/
+.*rc
+allure-*
+.allure
+*-result.json
+*.crt
+test.sh
+
+###
+**/CHANGELOG.md
+.github/
+.vscode/
+node_modules
+common/temp/
+common/deploy/
