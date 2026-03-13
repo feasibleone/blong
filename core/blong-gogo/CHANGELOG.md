@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.9.1...blong-gogo-v1.9.2) (2026-03-13)
+
+
+### Bug Fixes
+
+* simplify Dockerfile build process by removing redundant rebuild step ([d4b087e](https://github.com/feasibleone/blong/commit/d4b087eb434ab06680fd3c3351b24098a5a55901))
+
 ## [1.9.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.9.0...blong-gogo-v1.9.1) (2026-03-13)
 
 
