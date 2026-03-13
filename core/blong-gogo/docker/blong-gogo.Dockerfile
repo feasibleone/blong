@@ -4,9 +4,8 @@ ARG NODE_VERSION=24.14.0-slim
 # Build application dependencies
 FROM node:${NODE_VERSION_BUILD} AS builder
 WORKDIR /opt/app
-COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**/package.json ./
-RUN node common/scripts/install-run-rush.js install && \
-    node common/scripts/install-run-rush.js rebuild --verbose
+COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
+RUN node common/scripts/install-run-rush.js install
 COPY --parents core/**/* ./
 RUN node common/scripts/install-run-rush.js deploy -p @feasible-one/blong-gogo
 
