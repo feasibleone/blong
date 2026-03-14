@@ -18,4 +18,3 @@ USER node
 
 EXPOSE 8080
 ENTRYPOINT [ "node" , "--watch", "./bin/blong.ts" ]
-
