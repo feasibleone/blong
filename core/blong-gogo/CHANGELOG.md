@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.0...blong-gogo-v1.10.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* enable link creation in deploy configuration and update Dockerfile for link creation ([2f1ce92](https://github.com/feasibleone/blong/commit/2f1ce9266b8069676ba3d467fe3d9b0a82446fb6))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.9.4...blong-gogo-v1.10.0) (2026-03-14)
 
 
