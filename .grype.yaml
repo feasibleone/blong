@@ -1,0 +1,19 @@
+ignore:
+    - vulnerability: CVE-2023-45853
+    - vulnerability: CVE-2023-5841
+    - vulnerability: CVE-2023-5841
+    - vulnerability: CVE-2023-6879
+    - vulnerability: CVE-2025-7458
+    - vulnerability: CVE-2026-25897
+    - vulnerability: CVE-2026-25898
+    - vulnerability: CVE-2026-25968
+    - vulnerability: CVE-2026-25971
+    - vulnerability: CVE-2026-25983
+    - vulnerability: CVE-2026-25986
+    - vulnerability: CVE-2026-26284
+    - vulnerability: GHSA-fjxv-7rqg-78g4
+
+# Set output format defaults
+output:
+    - 'table'
+    - 'json'
