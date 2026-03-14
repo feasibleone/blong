@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.1...blong-gogo-v1.10.2) (2026-03-14)
+
+
+### Bug Fixes
+
+* add .grype.yaml for vulnerability management configuration ([ecc6c20](https://github.com/feasibleone/blong/commit/ecc6c200e1fd1876ee6ff71a25d1a7a881370af7))
+
 ## [1.10.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.0...blong-gogo-v1.10.1) (2026-03-14)
 
 
