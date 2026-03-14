@@ -12,9 +12,9 @@ RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo &&
 
 # Final release image
 FROM node:${NODE_VERSION_BUILD} AS release
-COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/app/common/deploy /opt
-WORKDIR /opt/app/blong-gogo
+COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/app/common/deploy /opt/blong
+WORKDIR /opt/app
 USER node
 
 EXPOSE 8080
-ENTRYPOINT [ "node" , "--watch", "./bin/blong.ts" ]
+ENTRYPOINT [ "node" , "--watch", "/opt/blong/core/blong-gogo/bin/blong.ts" ]
