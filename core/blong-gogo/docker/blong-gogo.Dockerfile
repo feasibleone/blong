@@ -7,14 +7,14 @@ WORKDIR /opt/app
 COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
 RUN node common/scripts/install-run-rush.js install
 COPY --parents core/**/* ./
-RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo
+RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
+    node common/deploy/create-links.js create
 
 # Final release image
-FROM node:${NODE_VERSION_BUILD} as release
+FROM node:${NODE_VERSION_BUILD} AS release
 COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/app/common/deploy /opt
 WORKDIR /opt/app/blong-gogo
 USER node
 
 EXPOSE 8080
 ENTRYPOINT [ "node" , "--watch", "./bin/blong.ts" ]
-
