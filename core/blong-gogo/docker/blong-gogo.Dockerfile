@@ -8,12 +8,14 @@ COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**
 RUN node common/scripts/install-run-rush.js install
 COPY --parents core/**/* ./
 RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
-    node common/deploy/create-links.js create
+    cd common/deploy && \
+    node create-links.js create \
+    rm create-links.js
 
 # Final release image
 FROM node:${NODE_VERSION_BUILD} AS release
 COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/app/common/deploy /opt/blong
-WORKDIR /opt/app
+WORKDIR /opt/deploy
 USER node
 
 EXPOSE 8080
