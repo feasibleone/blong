@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.4...blong-gogo-v1.10.5) (2026-03-14)
+
+
+### Bug Fixes
+
+* update Dockerfile to correct working directory and link creation process ([cf65989](https://github.com/feasibleone/blong/commit/cf65989cc03a5c1633cd2548e06d86a8757d4682))
+
 ## [1.10.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.3...blong-gogo-v1.10.4) (2026-03-14)
 
 
