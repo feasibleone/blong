@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.3...blong-gogo-v1.10.4) (2026-03-14)
+
+
+### Bug Fixes
+
+* update Dockerfile paths for deployment and entrypoint ([e7113e9](https://github.com/feasibleone/blong/commit/e7113e95a7d1e44e8ce135cc6e663165a096671c))
+
 ## [1.10.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.2...blong-gogo-v1.10.3) (2026-03-14)
 
 
