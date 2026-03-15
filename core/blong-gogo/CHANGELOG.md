@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.11.1...blong-gogo-v1.11.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* update Dockerfile to correct working directory and entrypoint path ([eed8be1](https://github.com/feasibleone/blong/commit/eed8be10d26d30ef037cc900984793da8f85b3b1))
+
 ## [1.11.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.11.0...blong-gogo-v1.11.1) (2026-03-15)
 
 
