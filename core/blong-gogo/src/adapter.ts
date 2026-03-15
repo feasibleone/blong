@@ -6,7 +6,7 @@ import type {
     IErrorMap,
     IMeta,
     ITypedError,
-} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
 import type net from 'node:net';
 import PQueue from 'p-queue';
 import merge from 'ut-function.merge';

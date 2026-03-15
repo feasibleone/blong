@@ -4,7 +4,7 @@ import {
     type IApiSchema,
     type IErrorFactory,
     type IModuleConfig,
-} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.ts';

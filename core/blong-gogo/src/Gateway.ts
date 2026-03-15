@@ -8,8 +8,8 @@ import type {
     ILocal,
     ILog,
     IMeta,
-} from '@feasibleone/blong';
-import {Internal} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
+import {Internal} from '@feasibleone/blong/types';
 import fastify, {type FastifyRequest, type RouteOptions} from 'fastify';
 import os from 'os';
 import type {LevelWithSilent} from 'pino';

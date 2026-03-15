@@ -1,7 +1,7 @@
 import basic from '@fastify/basic-auth';
 import bearer from '@fastify/bearer-auth';
 import cookie from '@fastify/cookie';
-import {type Errors} from '@feasibleone/blong';
+import {type Errors} from '@feasibleone/blong/types';
 import type {FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest} from 'fastify';
 import fp from 'fastify-plugin';
 import {LRUCache} from 'lru-cache';

@@ -10,7 +10,7 @@ import {
     type Kind,
     type Kinds,
     type SolutionFactory,
-} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
 import {existsSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {createRequire} from 'node:module';

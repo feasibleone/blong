@@ -4,8 +4,8 @@ import type {
     ILog,
     PathItemObject,
     SchemaObject,
-} from '@feasibleone/blong';
-import {Internal} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
+import {Internal} from '@feasibleone/blong/types';
 import {createReadStream, statSync, writeFileSync, type Dirent} from 'node:fs';
 import path, {basename, dirname, extname} from 'node:path';
 

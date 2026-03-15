@@ -10,8 +10,8 @@ import type {
     IRegistry,
     IRemote,
     IRpcServer,
-} from '@feasibleone/blong';
-import {Internal} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
+import {Internal} from '@feasibleone/blong/types';
 import PQueue from 'p-queue';
 import {Type} from 'typebox';
 import {monotonicFactory} from 'ulidx';
