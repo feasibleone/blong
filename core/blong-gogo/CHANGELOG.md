@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.11.0...blong-gogo-v1.11.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* correct command chaining in Dockerfile for link creation ([2ef3992](https://github.com/feasibleone/blong/commit/2ef3992ce5760fc93cae684dfb993156de7e3b32))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.10.5...blong-gogo-v1.11.0) (2026-03-14)
 
 
