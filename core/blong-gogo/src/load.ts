@@ -1,3 +1,4 @@
+import load from '@feasibleone/blong-config';
 import {
     Internal,
     kind,
@@ -16,7 +17,6 @@ import {readdir} from 'fs/promises';
 import {createRequire} from 'node:module';
 import {basename, dirname, join} from 'path';
 import {Type, type TSchema} from 'typebox';
-import {load} from 'ut-config';
 import merge from 'ut-function.merge';
 
 import type {Dirent} from 'fs';
@@ -100,9 +100,8 @@ function activeConfigs<T extends TSchema>(
 async function loadConfig(config: string | object): Promise<object> {
     return typeof config === 'string'
         ? load({
-              resolve: import.meta.resolve,
               config: {
-                  implementation: config,
+                  suite: config,
               },
           })
         : config;
