@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-v1.11.0...blong-v1.12.0) (2026-03-15)
+
+
+### Features
+
+* improve api loading ([2008fa3](https://github.com/feasibleone/blong/commit/2008fa38272252682f259e22632f10e8c33d64f5))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-v1.10.1...blong-v1.11.0) (2026-03-10)
 
 
