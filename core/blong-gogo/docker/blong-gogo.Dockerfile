@@ -9,7 +9,7 @@ RUN node common/scripts/install-run-rush.js install
 COPY --parents core/**/* ./
 RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
     cd common/deploy && \
-    node create-links.js create \
+    node create-links.js create && \
     rm create-links.js
 
 # Final release image
