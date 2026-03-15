@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/feasibleone/blong/compare/blong-v1.12.0...blong-v1.12.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* missing types.ts ([9903425](https://github.com/feasibleone/blong/commit/9903425a4f54e8f9c935b00b2e30e26ddcb11483))
+
 ## [1.12.0](https://github.com/feasibleone/blong/compare/blong-v1.11.0...blong-v1.12.0) (2026-03-15)
 
 
