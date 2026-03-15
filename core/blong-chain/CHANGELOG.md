@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.2...blong-chain-v1.2.3) (2026-03-15)
+
+
+### Bug Fixes
+
+* remove unused exports field from package.json ([a846ac0](https://github.com/feasibleone/blong/commit/a846ac0bb283cabeead1eee05e9e5a47ac3961af))
+
 ## [1.2.2](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.1...blong-chain-v1.2.2) (2026-03-02)
 
 
