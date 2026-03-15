@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.11.2...blong-gogo-v1.12.0) (2026-03-15)
+
+
+### Features
+
+* improve api loading ([2008fa3](https://github.com/feasibleone/blong/commit/2008fa38272252682f259e22632f10e8c33d64f5))
+
+
+### Bug Fixes
+
+* imports ([c179b6d](https://github.com/feasibleone/blong/commit/c179b6d2d0709f548560e13a99dc2e62facad645))
+
 ## [1.11.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.11.1...blong-gogo-v1.11.2) (2026-03-15)
 
 
