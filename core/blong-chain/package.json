@@ -11,9 +11,6 @@
         "url": "git+https://github.com/feasibleone/blong.git"
     },
     "type": "module",
-    "exports": {
-        ".": "./dist/index.js"
-    },
     "scripts": {
         "build": "heft build --clean",
         "ci-all": "npm run ci-unit && npm run ci-examples",

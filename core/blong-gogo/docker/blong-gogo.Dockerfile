@@ -21,4 +21,3 @@ USER node
 
 EXPOSE 8080
 ENTRYPOINT [ "node" , "--watch", "/opt/blong/common/deploy/core/blong-gogo/bin/blong.ts" ]
-
