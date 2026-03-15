@@ -3,7 +3,7 @@ ARG NODE_VERSION=24.14.0-slim
 
 # Build application dependencies
 FROM node:${NODE_VERSION_BUILD} AS builder
-WORKDIR /opt/app
+WORKDIR /opt/blong
 COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
 RUN node common/scripts/install-run-rush.js install
 COPY --parents core/**/* ./
@@ -14,9 +14,10 @@ RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo &&
 
 # Final release image
 FROM node:${NODE_VERSION_BUILD} AS release
-COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/app/common/deploy /opt/blong
+COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/blong/common/deploy /opt/blong/common/deploy
+RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong
 WORKDIR /opt/deploy
 USER node
 
 EXPOSE 8080
-ENTRYPOINT [ "node" , "--watch", "/opt/blong/core/blong-gogo/bin/blong.ts" ]
+ENTRYPOINT [ "node" , "--watch", "/opt/blong/common/deploy/core/blong-gogo/bin/blong.ts" ]
