@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong/types';
 import type Assert from 'node:assert';
 
 const DAY = 24 * 60 * 60 * 1000;

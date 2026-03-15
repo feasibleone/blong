@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong/types';
 
 export default handler(({lib: {group}, handler: {loginTokenCreate}}) => ({
     testLoginTokenCreate: ({name = 'login token'}: {name?: string}) =>

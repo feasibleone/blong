@@ -1,4 +1,4 @@
-import {Internal, type IAdapterFactory} from '@feasibleone/blong';
+import {Internal, type IAdapterFactory} from '@feasibleone/blong/types';
 import {Port as UtPort} from 'ut-port';
 
 export interface IPort {

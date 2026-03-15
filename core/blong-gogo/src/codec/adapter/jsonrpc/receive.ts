@@ -1,4 +1,4 @@
-import {handler, type ITypedError} from '@feasibleone/blong';
+import {handler, type ITypedError} from '@feasibleone/blong/types';
 import {type Response} from 'got';
 
 export default handler(({errors}) => ({

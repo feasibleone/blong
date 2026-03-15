@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import * as k8s from '@kubernetes/client-node';
 
 export interface IConfig {

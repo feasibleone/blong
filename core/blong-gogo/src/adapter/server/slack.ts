@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import {IncomingWebhook} from '@slack/webhook';
 
 export interface IConfig {

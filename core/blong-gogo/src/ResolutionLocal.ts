@@ -1,4 +1,4 @@
-import {Internal} from '@feasibleone/blong';
+import {Internal} from '@feasibleone/blong/types';
 
 import type {IResolution} from './Resolution.ts';
 

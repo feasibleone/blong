@@ -1,4 +1,4 @@
-import type {IMeta} from '@feasibleone/blong';
+import type {IMeta} from '@feasibleone/blong/types';
 import hrtime from 'browser-process-hrtime';
 
 type HRTime = ReturnType<typeof hrtime>;
@@ -19,7 +19,7 @@ class Timeout {
 
     protected clean(): void {
         Array.from(this.#calls).forEach((end: {checkTimeout: (time: HRTime) => void}) =>
-            end.checkTimeout(now())
+            end.checkTimeout(now()),
         );
     }
 
@@ -27,7 +27,7 @@ class Timeout {
         onTimeout: (error: Error) => void,
         timeout: number,
         createTimeoutError: () => Error,
-        set?: Set<IEnd>
+        set?: Set<IEnd>,
     ): IEnd {
         this.#interval = this.#interval || setInterval(this.clean.bind(this), 500);
         const end: IEnd = (error?: Error) => {
@@ -54,7 +54,7 @@ class Timeout {
         fn: (params: unknown) => Promise<unknown>,
         $meta: IMeta,
         error: () => Error,
-        set: Set<IEnd>
+        set: Set<IEnd>,
     ): Promise<unknown> {
         if (Array.isArray($meta && $meta.timeout)) {
             return new Promise((resolve, reject) => {
@@ -70,7 +70,7 @@ class Timeout {
                     },
                     $meta.timeout,
                     error,
-                    set
+                    set,
                 );
                 Promise.resolve(params)
                     .then(fn)

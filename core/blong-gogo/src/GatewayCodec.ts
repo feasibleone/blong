@@ -1,4 +1,4 @@
-import type {IMeta} from '@feasibleone/blong';
+import type {IMeta} from '@feasibleone/blong/types';
 import got, {type HTTPAlias, type Headers} from 'got';
 import type {JWTPayload} from 'jose';
 import busGateway from 'ut-bus/gateway.js';

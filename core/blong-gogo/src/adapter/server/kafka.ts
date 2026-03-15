@@ -1,4 +1,4 @@
-import {adapter} from '@feasibleone/blong';
+import {adapter} from '@feasibleone/blong/types';
 import Kafka from 'node-rdkafka';
 import {Duplex} from 'stream';
 

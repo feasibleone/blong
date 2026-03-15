@@ -1,4 +1,4 @@
-import {adapter, type ITypedError} from '@feasibleone/blong';
+import {adapter, type ITypedError} from '@feasibleone/blong/types';
 import {Socket} from 'net';
 import createReconnect from 'reconnect-core';
 import bitSyntax from 'ut-bitsyntax';

@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong/types';
 
 import {methodId} from '../../../lib.ts';
 

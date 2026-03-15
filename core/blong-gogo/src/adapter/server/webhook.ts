@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import got, {type HttpsOptions, type Options} from 'got';
 import {Duplex, Readable, Writable} from 'stream';
 

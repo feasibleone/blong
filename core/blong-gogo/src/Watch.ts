@@ -7,7 +7,7 @@ import {
     type IModuleConfig,
     type IRegistry,
     type IRemote,
-} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
 import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
 import chokidar, {type FSWatcher} from 'chokidar';
 import type {Dirent} from 'fs';

@@ -1,4 +1,4 @@
-import type {IAdapterFactory, ILog, IRegistry} from '@feasibleone/blong';
+import type {IAdapterFactory, ILog, IRegistry} from '@feasibleone/blong/types';
 
 export interface IRealm {
     addModule: (name: string | symbol, mod: IRegistry) => void;
@@ -21,7 +21,7 @@ export default class RealmImpl implements IRealm {
             name: string;
             pkg: {name: string; version: string};
         },
-        {log, registry}: {log?: ILog; registry?: IRegistry}
+        {log, registry}: {log?: ILog; registry?: IRegistry},
     ) {
         this.#config = config;
         this.#registry = registry;

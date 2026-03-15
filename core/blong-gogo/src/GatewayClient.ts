@@ -1,4 +1,4 @@
-import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta} from '@feasibleone/blong';
+import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta} from '@feasibleone/blong/types';
 import ky from 'ky';
 import {spare} from 'ut-function.timing';
 

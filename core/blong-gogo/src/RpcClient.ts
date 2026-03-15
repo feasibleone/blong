@@ -6,7 +6,7 @@ import type {
     ILog,
     IMeta,
     IRemote,
-} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
 import got, {type HttpsOptions} from 'got';
 import timing from 'ut-function.timing';
 

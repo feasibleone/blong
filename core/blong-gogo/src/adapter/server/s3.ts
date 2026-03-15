@@ -7,7 +7,7 @@ import {
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3';
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import {createReadStream, statSync} from 'fs';
 import {Readable} from 'stream';
 

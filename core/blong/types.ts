@@ -133,7 +133,7 @@ export interface ILocal {
 
 export interface IApiSchema {
     schema(
-        def: {namespace: Record<string, string | string[]>},
+        def: {namespace?: Record<string, string | string[]> | string[]; url?: string},
         source: string,
     ): Promise<Record<string, GatewaySchema>>;
     generateFile(file: string): Promise<boolean>;
@@ -545,12 +545,16 @@ export type ValidationDefinition = (
     blong: IValidationProxy,
 ) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
 
-export type ApiDefinition = (blong: IValidationProxy) => {
-    namespace: Record<
-        string,
-        string | (string | Partial<OpenAPI.Document & {'x-blong-namespace': string}>)[]
-    >;
-};
+export type ApiDefinition = (blong: IValidationProxy) =>
+    | {
+          namespace: Record<
+              string,
+              string | (string | Partial<OpenAPI.Document & {'x-blong-namespace': string}>)[]
+          >;
+      }
+    | {
+          url: string;
+      };
 
 export type PortHandler<T, C> = <R>(
     this: ReturnType<IAdapterFactory<T, C>>,

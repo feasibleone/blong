@@ -1,4 +1,4 @@
-import {library} from '@feasibleone/blong';
+import {library} from '@feasibleone/blong/types';
 
 import loadApi from '../../../loadApi.ts';
 

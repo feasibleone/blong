@@ -1,4 +1,4 @@
-import {orchestrator} from '@feasibleone/blong';
+import {orchestrator} from '@feasibleone/blong/types';
 
 export default orchestrator<{api?: {namespace: Record<string, string | string[]>}}>(
     ({remote, registry}) => ({

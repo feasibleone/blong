@@ -1,5 +1,5 @@
-import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong';
-import {adapter} from '@feasibleone/blong';
+import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong/types';
+import {adapter} from '@feasibleone/blong/types';
 import got, {type HttpsOptions, type Options} from 'got';
 
 import tls from '../../tls.ts';

@@ -28,6 +28,9 @@ const LAYER_FILE = 'layer' as const;
 
 /** Well-known layer folder names and their default activation per kind */
 const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
+    init: {server: {default: true}, browser: {default: true}},
+    'server/init': {server: {default: true}},
+    'browser/init': {browser: {default: true}},
     error: {server: {default: true}},
     sim: {server: {integration: true}},
     adapter: {server: {default: true}},
@@ -37,6 +40,8 @@ const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     backend: {browser: {default: true}},
     component: {browser: {default: true}},
     test: {browser: {integration: true}},
+    'server/test': {server: {integration: true}},
+    'browser/test': {browser: {integration: true}},
 };
 
 /**
@@ -48,26 +53,20 @@ async function discoverLayerFolders(
     kind_: 'server' | 'browser',
     explicitChildren: Set<string>,
     configNames: string[],
-): Promise<Map<string, object>> {
-    const result = new Map<string, object>();
-    let entries: Dirent[];
-    try {
-        entries = (await readdir(base, {withFileTypes: true})) as Dirent[];
-    } catch {
-        return result;
-    }
-    for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const name = entry.name.toString();
+): Promise<[string, object][]> {
+    const result: [string, object][] = [];
+    for (const name of Object.keys(WELL_KNOWN_LAYERS)) {
         if (explicitChildren.has(name)) continue;
+        const layerFolder = join(base, name);
+        if (!existsSync(layerFolder)) continue;
         const layerFile = join(base, name, `${LAYER_FILE}.${kind_}.ts`);
         if (existsSync(layerFile)) {
             // Read activation from layer.server.ts / layer.browser.ts
             const mod = await import(layerFile).catch(() => null);
             const activation = mod?.default ?? {default: true};
-            result.set(name, activation);
+            result.push([name, activation]);
         } else if (name in WELL_KNOWN_LAYERS && WELL_KNOWN_LAYERS[name][kind_]) {
-            result.set(name, WELL_KNOWN_LAYERS[name][kind_]);
+            result.push([name, WELL_KNOWN_LAYERS[name][kind_]]);
         }
     }
     return result;
@@ -253,7 +252,8 @@ export default async function loadRealm<T extends TSchema>(
             configNames,
         );
         for (const [folderName, activation] of discoveredFolders) {
-            if (!(folderName in mergedConfig)) merge(mergedConfig, {[folderName]: activation});
+            if (!(folderName in mergedConfig))
+                merge(mergedConfig, {[basename(folderName)]: activation});
             extraChildren.push(`./${folderName}`);
         }
     }

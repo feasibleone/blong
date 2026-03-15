@@ -1,4 +1,4 @@
-import type {IAdapterFactory, IMeta, ITypedError} from '@feasibleone/blong';
+import type {IAdapterFactory, IMeta, ITypedError} from '@feasibleone/blong/types';
 import type net from 'node:net';
 import {v4} from 'uuid';
 

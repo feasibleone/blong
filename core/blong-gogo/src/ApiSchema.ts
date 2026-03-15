@@ -7,10 +7,12 @@ import type {
 } from '@feasibleone/blong';
 import {Internal} from '@feasibleone/blong';
 import {createReadStream, statSync, writeFileSync, type Dirent} from 'node:fs';
-import path, {basename, extname} from 'node:path';
+import path, {basename, dirname, extname} from 'node:path';
 
+import {join} from 'path';
 import {identifier} from './lib.ts';
 import loadApi from './loadApi.ts';
+import scan from './scan.ts';
 
 interface IConfig {
     logLevel?: Parameters<ILog['logger']>[0];
@@ -24,6 +26,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
     };
 
     #loaded: Record<string, GatewaySchema> = {};
+    #namespace: Record<string, Record<string, GatewaySchema>> = {};
     #generateFile: Set<string> = new Set();
     #generateDir: Record<
         string,
@@ -43,16 +46,46 @@ export default class ApiSchema extends Internal implements IApiSchema {
     }
 
     public async schema(
-        def: {
-            namespace: Record<string, string | string[]>;
+        {
+            namespace,
+            url,
+        }: {
+            namespace?: Record<string, string | string[]> | string[];
+            url?: string;
         },
         source: string,
     ): Promise<Record<string, GatewaySchema>> {
         const result: Record<string, GatewaySchema> = {};
+        if (url) {
+            const dir = dirname(url.startsWith('file://') ? url.slice(7) : url);
+            const files = await scan(dir);
+            namespace = namespace || {};
+            for (const file of files) {
+                if (
+                    file.isFile() &&
+                    (file.name.endsWith('.yaml') ||
+                        file.name.endsWith('.yml') ||
+                        file.name.endsWith('.json'))
+                ) {
+                    const [name] = basename(file.name).split('.');
+                    namespace[name] ||= [];
+                    namespace[name].push(join(dir, file.name));
+                }
+            }
+        }
+        if (Array.isArray(namespace))
+            return namespace.reduce(
+                (acc, name) => ({
+                    ...acc,
+                    ...this.#namespace[name],
+                }),
+                {},
+            );
 
-        for (const [name, locations] of Object.entries(def.namespace)) {
+        for (const [name, locations] of Object.entries(namespace)) {
             const bundle = await loadApi(locations, source);
             const {namespace = name, destination} = bundle['x-blong'] ?? {};
+            this.#namespace[namespace] ||= {};
             Object.entries(bundle.paths).forEach(([path, methods]: [string, PathItemObject]) => {
                 ['get', 'post', 'put', 'delete'].forEach(
                     (httpMethod: 'get' | 'post' | 'put' | 'delete') => {
@@ -62,9 +95,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
                             operation.parameters as {in?: string; schema: unknown}[]
                         )?.find?.(param => param?.in === 'body')?.schema;
                         const method = this.method(operation);
-                        this.#loaded[`${namespace}${method}`.toLowerCase()] = result[
-                            `${namespace}.${method}`.toLowerCase()
-                        ] = {
+                        const definition: GatewaySchema = {
                             rpc: false,
                             auth: false,
                             ...(bodyParam && {
@@ -88,6 +119,10 @@ export default class ApiSchema extends Internal implements IApiSchema {
                             operation,
                             path: path.replaceAll('{', ':').replaceAll('}', ''),
                         };
+                        this.#loaded[`${namespace}${method}`.toLowerCase()] = definition;
+                        this.#namespace[namespace][`${namespace}.${method}`.toLowerCase()] =
+                            definition;
+                        result[`${namespace}.${method}`.toLowerCase()] = definition;
                     },
                 );
             });
@@ -110,7 +145,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
                 writeFileSync(
                     filename,
                     `import unchanged from '@feasibleone/blong';
-import {type IMeta, handler} from '@feasibleone/blong';
+import {type IMeta, handler} from '@feasibleone/blong/types';
 
 // #region API
 type Handler = (params: {

@@ -1,4 +1,4 @@
-import type {IErrorFactory, IMeta, ITypedError} from '@feasibleone/blong';
+import type {IErrorFactory, IMeta, ITypedError} from '@feasibleone/blong/types';
 
 const typeRegex: RegExp = /^[$a-z]\w*(\.!?\w+)*$/;
 const paramsRegex: RegExp = /\{([^}]*)\}/g;

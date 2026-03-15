@@ -1,4 +1,4 @@
-import {Internal, type Errors, type IErrorFactory, type IErrorMap} from '@feasibleone/blong';
+import {Internal, type Errors, type IErrorFactory, type IErrorMap} from '@feasibleone/blong/types';
 import hrtime from 'browser-process-hrtime';
 import {hostname} from 'os';
 import multicastResolver from 'ut-bus/resolver.ts';

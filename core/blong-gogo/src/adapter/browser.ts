@@ -1,4 +1,4 @@
-import {realm} from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong/types';
 
 export default realm(blong => ({
     url: import.meta.url,

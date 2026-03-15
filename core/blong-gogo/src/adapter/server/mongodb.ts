@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong';
+import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import mongoUriBuilder from 'mongo-uri-builder';
 import {MongoClient, type Sort} from 'mongodb';
 

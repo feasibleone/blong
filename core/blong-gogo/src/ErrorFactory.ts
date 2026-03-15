@@ -1,5 +1,5 @@
-import type {IErrorFactory, ILog, IMeta, ITypedError} from '@feasibleone/blong';
-import {Internal} from '@feasibleone/blong';
+import type {IErrorFactory, ILog, IMeta, ITypedError} from '@feasibleone/blong/types';
+import {Internal} from '@feasibleone/blong/types';
 
 import Errors from './error.ts';
 

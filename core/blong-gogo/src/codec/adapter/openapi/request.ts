@@ -1,4 +1,4 @@
-import {library} from '@feasibleone/blong';
+import {library} from '@feasibleone/blong/types';
 import {type OpenAPIV2} from 'openapi-types';
 import interpolate from 'ut-function.interpolate';
 

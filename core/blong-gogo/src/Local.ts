@@ -1,4 +1,4 @@
-import {type ILocal, Internal} from '@feasibleone/blong';
+import {type ILocal, Internal} from '@feasibleone/blong/types';
 
 export default class Local extends Internal implements ILocal {
     #mapLocal: object = {};

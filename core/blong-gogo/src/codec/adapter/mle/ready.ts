@@ -1,4 +1,4 @@
-import {handler} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong/types';
 import {type Response} from 'got';
 import {exportJWK, generateKeyPair} from 'jose';
 import joseFactory from 'ut-bus/jose.js';

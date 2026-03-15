@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong/types';
 import timing from 'ut-function.timing';
 
 export default handler(({config}) => {
@@ -7,7 +7,7 @@ export default handler(({config}) => {
         send(
             msg: {$http: {method?: string; headers?: unknown; path?: unknown}},
             $meta: IMeta,
-            context: unknown
+            context: unknown,
         ) {
             const params = (msg && !(msg instanceof Array) && Object.assign({}, msg)) || msg;
             const $http = params?.$http;

@@ -1,5 +1,5 @@
 // import { DaprServer, CommunicationProtocolEnum } from '@dapr/dapr';
-import {Internal, type ILog, type IRpcServer} from '@feasibleone/blong';
+import {Internal, type ILog, type IRpcServer} from '@feasibleone/blong/types';
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
 import type {IResolution} from './Resolution.ts';

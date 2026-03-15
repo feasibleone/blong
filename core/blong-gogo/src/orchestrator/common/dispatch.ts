@@ -1,4 +1,4 @@
-import {orchestrator, type IMeta} from '@feasibleone/blong';
+import {orchestrator, type IMeta} from '@feasibleone/blong/types';
 
 export default orchestrator<{destination?: string}>(({remote}) => ({
     activation: {

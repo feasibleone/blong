@@ -8,8 +8,8 @@ import type {
     IRemote,
     ITypedError,
     RemoteMethod,
-} from '@feasibleone/blong';
-import {Internal} from '@feasibleone/blong';
+} from '@feasibleone/blong/types';
+import {Internal} from '@feasibleone/blong/types';
 import hrtime from 'browser-process-hrtime';
 
 const errorMap: IErrorMap = {

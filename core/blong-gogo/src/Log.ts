@@ -1,4 +1,4 @@
-import {Internal, type ILog} from '@feasibleone/blong';
+import {Internal, type ILog} from '@feasibleone/blong/types';
 import {pino, type Logger, type LoggerOptions} from 'pino';
 
 // echo -e "\u001B]8;;https://google.com\u001B\\Кликни тук\u001B]8;;\e\\"
