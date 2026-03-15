@@ -7,8 +7,7 @@
         ".": "./index.ts"
     },
     "scripts": {
-        "build": "true",
-        "ci-unit": "tap index.test.ts --allow-incomplete-coverage"
+        "build": "true"
     },
     "dependencies": {
         "minimist": "^1.2.8",
