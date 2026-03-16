@@ -125,6 +125,9 @@ importers:
       strip-json-comments:
         specifier: 5.0.3
         version: 5.0.3
+      ut-function.cbc:
+        specifier: ^1.1.6
+        version: 1.1.6
       ut-function.merge:
         specifier: ^1.5.6
         version: 1.5.6

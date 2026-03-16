@@ -1,6 +1,7 @@
 import minimist from 'minimist';
 import rc from 'rc';
 import stripJsonComments from 'strip-json-comments';
+import cbc from 'ut-function.cbc';
 import merge from 'ut-function.merge';
 import template from 'ut-function.template';
 import yaml from 'yaml';
@@ -92,8 +93,7 @@ function load({
         ? merge(configs, mergeOptions)
         : template(merge(configs, mergeOptions), {
               ...context,
-              ...(process.env.BLONG_MASTER_KEY &&
-                  require('ut-function.cbc')(process.env.BLONG_MASTER_KEY)),
+              ...(process.env.BLONG_MASTER_KEY && cbc(process.env.BLONG_MASTER_KEY)),
           });
 }
 

@@ -30,3 +30,6 @@
 # ---------------------------------------------------------------------------
 # DO NOT MODIFY ABOVE THIS LINE!  Add any project-specific overrides below.
 # ---------------------------------------------------------------------------
+!index.ts
+!index.d.ts
+!test-types.ts
