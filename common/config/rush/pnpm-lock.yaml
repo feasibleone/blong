@@ -334,9 +334,6 @@ importers:
       ut-bus:
         specifier: ^7.65.2
         version: 7.66.4(openapi-types@12.1.3)
-      ut-config:
-        specifier: ^7.10.0
-        version: 7.10.0
       ut-dns-discovery:
         specifier: ^6.2.3
         version: 6.2.3
@@ -7413,9 +7410,6 @@ packages:
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
-  ini@1.3.6:
-    resolution: {integrity: sha512-IZUoxEjNjubzrmvzZU4lKP7OnYmX72XRl3sqkfJhBKweKi5rnGi5+IUdlj/H1M+Ip5JQ1WzaDMOBRY90Ajc5jg==}
-
   ini@1.3.8:
     resolution: {integrity: sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==}
 
@@ -11233,9 +11227,6 @@ packages:
   ut-codec-payshield@7.3.0:
     resolution: {integrity: sha512-zR9fuqgGZtLEbC64hP+/njx3LQdqLLoVd6PGvsI+uDbjGPAcxPrD8bKqrxFyq+WKmgdocZaG/5pRGqZKsPt2xw==}
 
-  ut-config@7.10.0:
-    resolution: {integrity: sha512-ixj1tpru3hpXyRnRjj3tiis751jCRqzudCtt7x8BHEoEH3IFXiZg635QVdtdmwbB8vDrkDPFGTLw9NDwMjtl6A==}
-
   ut-dispatch-db@1.5.0:
     resolution: {integrity: sha512-HZ2Nt9eF3GjqXr+yeA///CwEZH7vHN9zdlsavY2pTZAY+ysNKsAJGdu+s7vDhzCFJZDofXCOmL+sT9FH9mMsPQ==}
     peerDependencies:
@@ -11244,9 +11235,6 @@ packages:
   ut-dns-discovery@6.2.3:
     resolution: {integrity: sha512-IJoqpdkNJNmKc2+vRHfF5wTh/AXDZaxDUCb4JoUy+cdTQ3DGKdYmeiVeFE+IDlP7D8Qdj7Gf+0f7emhMdvPCUw==}
     hasBin: true
-
-  ut-form-jsonschema@7.1.7:
-    resolution: {integrity: sha512-2XTzZoBTL8CrId2XGjY7y/LXKObsMViONaUH5MFV5wxvM1n3wLncFC8yevlcnNWW9nXHrHRxUic0dJQs8g/1jw==}
 
   ut-function.capture-hapi@1.1.3:
     resolution: {integrity: sha512-p4CxHMaVHrjxJNA3jvc5xCO6hvp/Xae9pHGPn89+2kMiI3j8eP60Mmwe70KKDuP1GiXLP/8n5zxoMGa8Zc9dgw==}
@@ -20555,8 +20543,6 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  ini@1.3.6: {}
-
   ini@1.3.8: {}
 
   ini@2.0.0: {}
@@ -25361,20 +25347,6 @@ snapshots:
       lodash.merge: 4.6.2
       ut-bitsyntax: 6.2.7
 
-  ut-config@7.10.0:
-    dependencies:
-      ajv: 8.6.3
-      ajv-formats: 2.1.1
-      ini: 1.3.6
-      minimist: 1.2.6
-      rc: 1.2.8
-      strip-json-comments: 2.0.1
-      ut-form-jsonschema: 7.1.7
-      ut-function.cbc: 1.1.6
-      ut-function.merge: 1.5.6
-      ut-function.template: 1.7.6
-      yaml: 1.10.0
-
   ut-dispatch-db@1.5.0(ut-port-script@7.2.1):
     dependencies:
       ut-port-script: 7.2.1
@@ -25391,12 +25363,6 @@ snapshots:
       pump: 3.0.3
       speedometer: 1.1.0
       unordered-set: 1.1.0
-
-  ut-form-jsonschema@7.1.7:
-    dependencies:
-      '@hapi/hapi': 20.2.1
-      '@hapi/inert': 6.0.5
-      uuid: 8.3.2
 
   ut-function.capture-hapi@1.1.3:
     dependencies:

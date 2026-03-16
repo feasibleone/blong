@@ -61,7 +61,6 @@
         "ulidx": "^2.4.1",
         "ut-bitsyntax": "^6.2.7",
         "ut-bus": "^7.65.2",
-        "ut-config": "^7.10.0",
         "ut-dns-discovery": "^6.2.3",
         "ut-function.interpolate": "1.1.3",
         "ut-function.merge": "^1.5.6",
