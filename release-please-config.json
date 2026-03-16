@@ -4,6 +4,7 @@
         "core/blong": {},
         "core/blong-gogo": {},
         "core/blong-chain": {},
+        "core/blong-config": {},
         "core/blong-kopi": {},
         "core/blong-login": {},
         "core/blong-log": {},
