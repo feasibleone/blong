@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/blong-chain-v1.3.0...blong-chain-v1.3.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* add ut-function.cbc dependency and update usage in config loading ([44914cc](https://github.com/feasibleone/blong/commit/44914cc7b95a795460fa7c543718241a59899189))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.3...blong-chain-v1.3.0) (2026-03-16)
 
 
