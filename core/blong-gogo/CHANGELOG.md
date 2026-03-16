@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.12.2...blong-gogo-v1.13.0) (2026-03-16)
+
+
+### Features
+
+* add blong-config package with configuration loading and parsing functionality ([cc31b0a](https://github.com/feasibleone/blong/commit/cc31b0a062fe3261204ba9433901765415aad4f8))
+
 ## [1.12.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.12.1...blong-gogo-v1.12.2) (2026-03-15)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.3...blong-chain-v1.3.0) (2026-03-16)
+
+
+### Features
+
+* add blong-config package with configuration loading and parsing functionality ([cc31b0a](https://github.com/feasibleone/blong/commit/cc31b0a062fe3261204ba9433901765415aad4f8))
+
 ## [1.2.3](https://github.com/feasibleone/blong/compare/blong-chain-v1.2.2...blong-chain-v1.2.3) (2026-03-15)
 
 
