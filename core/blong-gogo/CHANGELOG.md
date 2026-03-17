@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.1...blong-gogo-v1.13.2) (2026-03-17)
+
+
+### Bug Fixes
+
+* remove ut-config dependency from package.json ([02fea32](https://github.com/feasibleone/blong/commit/02fea3272ad034662f43ce8b40d146f48ed2b3fd))
+* update jose dependency to version 6.2.1 and adjust related configurations ([111b597](https://github.com/feasibleone/blong/commit/111b597d48eec66f9d79358b21ffcfc386d64e55))
+
 ## [1.13.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.0...blong-gogo-v1.13.1) (2026-03-16)
 
 

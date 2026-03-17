@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/feasibleone/blong/compare/test-v1.4.0...test-v1.4.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* update jose dependency to version 6.2.1 and adjust related configurations ([111b597](https://github.com/feasibleone/blong/commit/111b597d48eec66f9d79358b21ffcfc386d64e55))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/test-v1.3.2...test-v1.4.0) (2026-03-10)
 
 

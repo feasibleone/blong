@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-login",
-    "version": "1.6.5",
+    "version": "1.6.6",
     "description": "Login and authentication utilities for the Blong framework",
     "keywords": [
         "blong",
