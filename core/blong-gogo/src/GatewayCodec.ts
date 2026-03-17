@@ -1,9 +1,9 @@
 import type {IMeta} from '@feasibleone/blong/types';
 import got, {type HTTPAlias, type Headers} from 'got';
 import type {JWTPayload} from 'jose';
-import busGateway from 'ut-bus/gateway.js';
-import jose from 'ut-bus/jose.js';
-import oidc from 'ut-bus/oidc.js';
+import busGateway from './busGateway.ts';
+import jose from './jose.ts';
+import oidc from './oidc.ts';
 
 import type {IResolution} from './Resolution.ts';
 import tls from './tls.ts';
@@ -45,7 +45,7 @@ export interface IConfig {
     port?: string;
     service?: string;
     openId?: unknown;
-    utLogin?: unknown;
+    blongLogin?: unknown;
 }
 
 type Sender = (a: unknown, b: unknown) => Promise<unknown>;
@@ -153,7 +153,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
             session,
             tls: this.#tlsClient,
             issuers: config.openId || {
-                ...(config.utLogin !== false && {'ut-login': {audience: 'ut-bus'}}),
+                ...(config.blongLogin !== false && {'blong-login': {audience: 'blong'}}),
             },
         });
 

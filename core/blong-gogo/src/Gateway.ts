@@ -144,7 +144,7 @@ export default class Gateway extends Internal implements IGateway {
         errorFields: [],
         jwt: {
             cache: {},
-            audience: 'ut-bus',
+            audience: 'blong',
         },
     };
 
@@ -353,7 +353,7 @@ export default class Gateway extends Internal implements IGateway {
                         value.auth === false
                             ? {}
                             : {
-                                  'ut-login': ['api'],
+                                  'blong-login': ['api'],
                               },
                     ],
                     tags: [method.split('.')[0] + ' ' + pkg.name + '@' + pkg.version],

@@ -20,7 +20,7 @@ export default handler(
                             : headers['x-forwarded-proto'][0];
             }
             return {
-                issuer: 'ut-login',
+                issuer: 'blong-login',
                 // eslint-disable-next-line @typescript-eslint/naming-convention
                 id_token_signing_alg_values_supported: ['RS256'],
                 // eslint-disable-next-line @typescript-eslint/naming-convention

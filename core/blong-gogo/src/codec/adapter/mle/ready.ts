@@ -1,7 +1,7 @@
 import {handler} from '@feasibleone/blong/types';
 import {type Response} from 'got';
 import {exportJWK, generateKeyPair} from 'jose';
-import joseFactory from 'ut-bus/jose.js';
+import joseFactory from '../../../jose.ts';
 
 const isBrowser: boolean = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 

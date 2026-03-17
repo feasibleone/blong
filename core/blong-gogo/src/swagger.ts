@@ -5,7 +5,7 @@ import fp from 'fastify-plugin';
 
 export default fp<{version: string}>(async function swaggerPlugin(
     fastify: FastifyInstance,
-    {version}: FastifyPluginOptions
+    {version}: FastifyPluginOptions,
 ) {
     await fastify.register(swagger, {
         openapi: {
@@ -15,7 +15,7 @@ export default fp<{version: string}>(async function swaggerPlugin(
             },
             components: {
                 securitySchemes: {
-                    'ut-login': {
+                    'blong-login': {
                         flows: {
                             authorizationCode: {
                                 authorizationUrl: '/rpc/login/form',

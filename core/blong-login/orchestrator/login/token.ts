@@ -63,8 +63,8 @@ export default library<{
                         .setProtectedHeader({alg, kid})
                         .setIssuedAt()
                         .setSubject(String(actorId))
-                        .setIssuer('ut-login')
-                        .setAudience('ut-bus')
+                        .setIssuer('blong-login')
+                        .setAudience('blong')
                         .setExpirationTime(access + 's')
                         .sign(keyAccessToken),
                     expires_in: access,
