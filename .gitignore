@@ -108,7 +108,7 @@ test-results.*xml
 todo.md
 .node_repl_history
 .tern*
-.ut_*
+.blong_*
 dev
 dist
 .scannerwork

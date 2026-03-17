@@ -1,5 +1,6 @@
 {
     "name": "@feasibleone/blong-login",
+    "version": "1.6.5",
     "description": "Login and authentication utilities for the Blong framework",
     "keywords": [
         "blong",
@@ -9,10 +10,7 @@
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
     },
-    "scripts": {
-        "build": "heft build --clean",
-        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
-    },
+    "type": "module",
     "exports": {
         "./server.js": "./dist/server.js",
         "./server.d.ts": "./dist/server.d.ts",
@@ -23,15 +21,14 @@
         "./dist/package.json": "./package.json",
         "./package.json": "./package.json"
     },
-    "type": "module",
-    "version": "1.6.5",
-    "dependencies": {
-        "typebox": "^1.1.5",
-        "ut-function.cbc": "^1.1.6",
-        "jose": "^5.7.0"
+    "scripts": {
+        "build": "heft build --clean",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },
-    "peerDependencies": {
-        "@feasibleone/blong": "^1.0.0"
+    "dependencies": {
+        "jose": "^6.2.1",
+        "typebox": "^1.1.5",
+        "ut-function.cbc": "^1.1.6"
     },
     "devDependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
@@ -42,5 +39,8 @@
         "@types/ut-function.cbc": "file:./types/ut-function.cbc",
         "eslint": "~9.39.2",
         "typescript": "^5.9.3"
+    },
+    "peerDependencies": {
+        "@feasibleone/blong": "^1.0.0"
     }
 }

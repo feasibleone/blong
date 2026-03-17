@@ -1,12 +1,18 @@
 {
+    "name": "@feasibleone/test",
+    "version": "1.4.0",
+    "type": "module",
+    "scripts": {
+        "build": "true",
+        "ci-unit": "tap **/*.test.ts --allow-incomplete-coverage"
+    },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
-        "@feasibleone/blong-test": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-openapi": "workspace:^1.0.0",
+        "@feasibleone/blong-test": "workspace:^1.0.0",
         "typebox": "^1.1.5",
-        "jose": "^5.7.0",
         "ut-bitsyntax": "^6.2.7",
         "ut-codec-payshield": "^7.3.0",
         "ut-dispatch-db": "^1.5.0",
@@ -28,12 +34,5 @@
         "react-dom": "^18.3.1",
         "tap": "^21.6.2",
         "typescript": "^5.9.3"
-    },
-    "name": "@feasibleone/test",
-    "scripts": {
-        "build": "true",
-        "ci-unit": "tap **/*.test.ts --allow-incomplete-coverage"
-    },
-    "type": "module",
-    "version": "1.4.0"
+    }
 }
