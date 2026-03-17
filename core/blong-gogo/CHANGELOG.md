@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.2...blong-gogo-v1.13.3) (2026-03-17)
+
+
+### Bug Fixes
+
+* reduce dependencies ([e1798f5](https://github.com/feasibleone/blong/commit/e1798f590a2e2c6d9de99477cfe09c282433dcbc))
+
 ## [1.13.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.1...blong-gogo-v1.13.2) (2026-03-17)
 
 

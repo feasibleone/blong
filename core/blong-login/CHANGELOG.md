@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.7](https://github.com/feasibleone/blong/compare/blong-login-v1.6.6...blong-login-v1.6.7) (2026-03-17)
+
+
+### Bug Fixes
+
+* reduce dependencies ([e1798f5](https://github.com/feasibleone/blong/commit/e1798f590a2e2c6d9de99477cfe09c282433dcbc))
+
 ## [1.6.6](https://github.com/feasibleone/blong/compare/blong-login-v1.6.5...blong-login-v1.6.6) (2026-03-17)
 
 
