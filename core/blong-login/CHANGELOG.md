@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.6](https://github.com/feasibleone/blong/compare/blong-login-v1.6.5...blong-login-v1.6.6) (2026-03-17)
+
+
+### Bug Fixes
+
+* update jose dependency to version 6.2.1 and adjust related configurations ([111b597](https://github.com/feasibleone/blong/commit/111b597d48eec66f9d79358b21ffcfc386d64e55))
+
 ## [1.6.5](https://github.com/feasibleone/blong/compare/blong-login-v1.6.4...blong-login-v1.6.5) (2026-03-10)
 
 
