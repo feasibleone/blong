@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.7](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.6...blong-gogo-v1.13.7) (2026-03-18)
+
+
+### Bug Fixes
+
+* include additional package.json references in Dockerfile ([46b0571](https://github.com/feasibleone/blong/commit/46b05713b7bb31b2db5c9d8a45f1272ecd2be718))
+
 ## [1.13.6](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.5...blong-gogo-v1.13.6) (2026-03-18)
 
 
