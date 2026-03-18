@@ -3,6 +3,12 @@ ARG NODE_VERSION=24.14.0-slim
 
 # Build application dependencies
 FROM node:${NODE_VERSION_BUILD} AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsasl2-dev \
+    libzstd-dev \
+    liblz4-dev \
+    libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt/blong
 COPY --parents rush.json common core/**/package.json docs/**/package.json ext/**/package.json core/**/bin ./
 RUN node common/scripts/install-run-rush.js install --to @feasibleone/blong-gogo
@@ -16,8 +22,9 @@ RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo &&
 FROM node:${NODE_VERSION} AS release
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4 \
-    libsasl2-2 \
     libssl3 \
+    libsasl2-2 \
+    libsasl2-modules \
     libzstd1 \
     liblz4-1 \
     zlib1g \
