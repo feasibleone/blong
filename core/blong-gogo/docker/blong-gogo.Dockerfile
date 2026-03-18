@@ -5,7 +5,7 @@ ARG NODE_VERSION=24.14.0-slim
 FROM node:${NODE_VERSION_BUILD} AS builder
 WORKDIR /opt/blong
 COPY --parents rush.json common core/**/package.json core/**/bin ./
-RUN node common/scripts/install-run-rush.js install
+RUN node common/scripts/install-run-rush.js install --to @feasibleone/blong-gogo
 COPY --parents core/**/* ./
 RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo && \
     cd common/deploy && \
