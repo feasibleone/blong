@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --watch
+#!/usr/bin/env -S node
 
 import minimist from 'minimist';
 import {resolve} from 'node:path';

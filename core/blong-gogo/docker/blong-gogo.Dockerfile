@@ -15,10 +15,10 @@ RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo &&
 # Final release image
 FROM node:${NODE_VERSION_BUILD} AS release
 COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/blong/common/deploy /opt/blong/common/deploy
-RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong
+RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong && \
+    ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong-dev.ts /usr/local/bin/blong-dev
 WORKDIR /opt/deploy
 USER node
 
 EXPOSE 8080
 ENTRYPOINT [ "node" , "--watch", "/opt/blong/common/deploy/core/blong-gogo/bin/blong.ts" ]
-
