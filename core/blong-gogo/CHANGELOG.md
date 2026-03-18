@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.8](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.7...blong-gogo-v1.13.8) (2026-03-18)
+
+
+### Bug Fixes
+
+* update Dockerfile to include missing dependencies for builder and release stages ([bc93b00](https://github.com/feasibleone/blong/commit/bc93b00421745191a1e79e4a4f0bc832ed0fbd3a))
+* update Dockerfile to install additional dependencies for release image ([f4861fe](https://github.com/feasibleone/blong/commit/f4861fe2446198399a43454d3b2be2d4f9115f64))
+
 ## [1.13.7](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.6...blong-gogo-v1.13.7) (2026-03-18)
 
 
