@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.6](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.5...blong-gogo-v1.13.6) (2026-03-18)
+
+
+### Bug Fixes
+
+* specify target package in install command in Dockerfile ([dbf69b0](https://github.com/feasibleone/blong/commit/dbf69b097177bac3319799ba8215d2dd60079170))
+
 ## [1.13.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.4...blong-gogo-v1.13.5) (2026-03-18)
 
 
