@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.5](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.4...blong-gogo-v1.13.5) (2026-03-18)
+
+
+### Bug Fixes
+
+* update Dockerfile to remove unnecessary package.json references and adjust node version for release ([9578411](https://github.com/feasibleone/blong/commit/9578411fee04bfd7178059998886b06de2e7d80a))
+
 ## [1.13.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.3...blong-gogo-v1.13.4) (2026-03-18)
 
 
