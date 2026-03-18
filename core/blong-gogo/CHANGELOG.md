@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.4](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.3...blong-gogo-v1.13.4) (2026-03-18)
+
+
+### Bug Fixes
+
+* remove --watch flag from blong script and update Dockerfile symlinks ([3f55ac1](https://github.com/feasibleone/blong/commit/3f55ac197b47e805771a7da4ac26c4d4c6466117))
+
 ## [1.13.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.2...blong-gogo-v1.13.3) (2026-03-17)
 
 
