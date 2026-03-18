@@ -14,10 +14,10 @@ const openapiServer = server(blong => ({
 type Load = (...params: unknown[]) => Promise<{start: () => Promise<unknown>}>;
 
 const openapi = async (load: Load, config: unknown): Promise<void> => {
-    const realms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
+    const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
         load(openapiServer, 'impl', config, ['microservice', 'integration', 'dev']),
     ]);
-    for (const realm of realms) await realm.start();
+    for (const platform of platforms) await platform.start();
 };
 
 export default async (load: Load): Promise<void> =>

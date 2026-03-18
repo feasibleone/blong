@@ -3,9 +3,9 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const realm = await load(server, 'nscfg', 'nscfg', ['integration']);
-await realm.start();
+const platform = await load(server, 'nscfg', 'nscfg', ['integration']);
+await platform.start();
 await tap.test('namespace config', async test => {
-    await realm.test(test);
+    await platform.test(test);
 });
-await realm.stop();
+await platform.stop();

@@ -3,9 +3,9 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const realm = await load(server, 'eip', 'eip', ['microservice', 'dev', 'test', 'integration']);
-await realm.start();
+const platform = await load(server, 'eip', 'eip', ['microservice', 'integration', 'dev']);
+await platform.start();
 await tap.test('blong eip', async test => {
-    await realm.test(test);
+    await platform.test(test);
 });
-await realm.stop();
+await platform.stop();

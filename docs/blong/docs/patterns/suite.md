@@ -198,14 +198,14 @@ type Load = (
 }>;
 
 export default async (load: Load): Promise<void> => {
-    const realms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
+    const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
         load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
         load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
     ]);
-    for (const realm of realms) await realm.start();
-    await realms[1].test(); // run tests from the browser side
+    for (const platform of platforms) await platform.start();
+    await platforms[1].test(); // run tests from the browser side
     await new Promise(resolve => setTimeout(resolve, 2000));
-    if (process.env.CI) for (const realm of realms) await realm.stop();
+    if (process.env.CI) for (const platform of platforms) await platform.stop();
 };
 ```
 
@@ -225,17 +225,17 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const realm = await load(
+const platform = await load(
     server,
     'suite-name',
     'suite-name',
     ['microservice', 'dev', 'test', 'integration']
 );
-await realm.start();
+await platform.start();
 await tap.test('internal api', async test => {
-    await realm.test(test);
+    await platform.test(test);
 });
-await realm.stop();
+await platform.stop();
 ```
 
 ## UI tests

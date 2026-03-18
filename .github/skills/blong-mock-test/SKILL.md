@@ -248,17 +248,16 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const realm = await load(server, 'realmname', 'realmname', [
+const platform = await load(server, 'suite-name', 'suite-name', [
     'microservice',
-    'dev',
-    'test',
     'integration',
+    'dev',
 ]);
-await realm.start();
-await tap.test('my realm', async test => {
-    await realm.test(test);
+await platform.start();
+await tap.test('my suite', async test => {
+    await platform.test(test);
 });
-await realm.stop();
+await platform.stop();
 ```
 
 ## How mock handlers are resolved

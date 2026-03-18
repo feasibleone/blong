@@ -2,10 +2,10 @@ import browser from './browser.ts';
 import server from './server.ts';
 
 export default async (load): Promise<void> => {
-    const realms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
+    const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
         load(server, 'impl', 'impl', ['microservice', 'integration', 'dev']),
         load(browser, 'impl', 'impl', ['microservice', 'integration', 'dev']),
     ]);
-    for (const realm of realms) await realm.start();
-    realms[1].test();
+    for (const platform of platforms) await platform.start();
+    platforms[1].test();
 };

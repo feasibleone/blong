@@ -144,13 +144,13 @@ export default server(blong => ({
 
 // index.ts - API test entry point (server + browser, tests from browser side)
 export default async load => {
-    const realms = await Promise.all([
+    const platforms = await Promise.all([
         load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
         load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
     ]);
-    for (const realm of realms) await realm.start();
-    await realms[1].test(); // run tests from the browser side
-    if (process.env.CI) for (const realm of realms) await realm.stop();
+    for (const platform of platforms) await platform.start();
+    await platforms[1].test(); // run tests from the browser side
+    if (process.env.CI) for (const platform of platforms) await platform.stop();
 };
 ```
 

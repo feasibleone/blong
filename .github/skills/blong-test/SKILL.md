@@ -7,7 +7,136 @@ description: Write automated tests for Blong handlers using parallel test execut
 
 ## Overview
 
-Test handlers follow the same patterns as business handlers but are organized in the `test/test` folder. They return arrays of test steps that are executed in **parallel by default** by the framework's test runner, with automatic dependency detection via thenable proxies.
+Test handlers follow the same patterns as business handlers but are organized in the `server/test/test` and
+`browser/test/test` folders. They return arrays of test steps that are executed in **parallel by default**
+by the framework's test runner, with automatic dependency detection via thenable proxies.
+
+## Test approaches
+
+### Public API testing
+
+To avoid testing for every front end (mobile/browser/edge), the most frequently used approach is
+to initiate the tests from an orchestrator, which is very close to the one running in the browser front end.
+The orchestrator is configured for the namespace `test` and id `testDispatch`. The adapter is the HTTP adapter,
+has id `backend` and is pointed to the server's public API gateway.
+
+Both of these come as a reusable realm in the
+`@feasibleone/blong-test` package, so you can just include in the children array of the suite's server.ts and
+browser.ts:
+
+```ts
+// server.ts
+import {server} from '@feasibleone/blong';
+
+export default server(blong => ({
+    url: import.meta.url,
+    children: [
+        async function testServer() {
+            return import('@feasibleone/blong-test/server.js');
+        },
+        // other realms...
+    ],
+}));
+```
+
+```ts
+// browser.ts
+import {browser} from '@feasibleone/blong';
+
+export default browser(blong => ({
+    url: import.meta.url,
+    children: [
+        async function testBrowser() {
+            return import('@feasibleone/blong-test/browser.js');
+        },
+        // other realms...
+    ],
+}));
+```
+
+This approach requires the loading of two platforms - server and browser, where the browser is simulated
+at the server side. The usual pattern to achieve this is with the following in `index.ts` of the suite:
+
+```ts
+// index.ts
+import browser from './browser.ts';
+import server from './server.ts';
+
+type Load = (
+    def: object, // the server or browser definition as factory function
+    suiteName: string, // the suite name
+    parentConfig: string | object, // configuration overrides for the suite
+    activations: string[], // config activations to apply for the test
+) => Promise<{
+    start: () => Promise<unknown>;
+    test: () => Promise<unknown>;
+    stop: () => Promise<unknown>;
+}>;
+
+export default async (load: Load): Promise<void> => {
+    const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
+        load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
+        load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
+    ]);
+    for (const platform of platforms) await platform.start();
+    await platforms[1].test();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (process.env.CI) for (const platform of platforms) await platform.stop();
+};
+```
+
+### Internal API testing
+
+Sometimes it only makes sense to initiate the tests from the server side, calling directly the internal API.
+In this case the `testDispatch` orchestrator, which handles the `test` namespace is included and activated
+in the test layer in one of the realms.
+
+In this case it is enough to load only the server platform in the `index.ts` of the suite and trigger the tests
+via the server platform:
+
+```ts
+// index.ts
+import server from './server.ts';
+
+type Load = (...params: unknown[]) => Promise<{
+    start: () => Promise<unknown>;
+    test: () => Promise<unknown>;
+}>;
+
+export default async (load: Load): Promise<void> => {
+    const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
+        load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
+    ]);
+    for (const platform of platforms) await platform.start();
+    await platforms[0].test();
+    if (process.env.CI) for (const platform of platforms) await platform.stop();
+};
+```
+
+An example of this test approach is available in the [blong-eip](../../../core/blong-eip) package.
+
+### Mocking backend calls
+
+In some cases when the back end system is not available or not needed, it can easily be replaced with a mock.
+In such cases we replace the adapters, which usually talk to the back end with a mock orchestrator
+`mockDispatch`, and configure it to handle the namespaces of these adapters. As per the Blong's
+concepts, these adapters implement the internal API with the usual naming patterns, so it is simple
+enough to implement the mock handlers with the same method names and register them in the
+`mockDispatch` orchestrator. The full instructions for this approach are in the `blong-test-mock` skill.
+
+### Simulating back ends
+
+In case we want the tests to cover the back end adapters, but the back end system is not available, we can simulate
+it with a mock server. This is similar to the previous approach, but instead of replacing the adapters with a mock
+orchestrator, we replace the back end system with a mock server that implements the same API. Blong includes
+patterns for easy mocking of back ends based on OpenAPI specifications and also ones based on low level TCP protocols.
+
+### Using test back ends
+
+Some back ends can be provisioned automatically for testing purposes in kubernetes, and can be used in the tests
+instead of the real back end. Blong includes patterns for easy configuration of test back ends in Kubernetes and
+their integration in the tests. In these cases a `kustomization.yaml` file and the relevant resources are included
+in the suite with the configuration of the test back ends.
 
 ## Purpose
 
@@ -44,51 +173,46 @@ realmname/
 import {IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
-export default handler(({
-    lib: {group},
-    handler: {
-        realmEntityAction  // Handler to test
-    }
-}) => ({
-    testExample: ({name = 'example'}, $meta) =>
-        group(name)([
-            async function testCase(
-                assert: typeof Assert,
-                {$meta}: {$meta: IMeta}
-            ) {
-                const result = await realmEntityAction({
-                    param: 'value'
-                }, $meta);
+export default handler(
+    ({
+        lib: {group},
+        handler: {
+            realmEntityAction, // Handler to test
+        },
+    }) => ({
+        testExample: ({name = 'example'}, $meta) =>
+            group(name)([
+                async function testCase(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                    const result = await realmEntityAction(
+                        {
+                            param: 'value',
+                        },
+                        $meta,
+                    );
 
-                assert.equal(result.output, 'expected', 'Verify output');
-            }
-        ])
-}));
+                    assert.equal(result.output, 'expected', 'Verify output');
+                },
+            ]),
+    }),
+);
 ```
 
 ### Test with Multiple Steps
 
 ```typescript
-export default handler(({
-    lib: {group},
-    handler: {
-        userUserAdd,
-        userUserFind,
-        userUserDelete
-    }
-}) => ({
+export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, userUserDelete}}) => ({
     testUserLifecycle: ({name = 'user lifecycle'}, $meta) =>
         group(name)([
             // Step 1: Create user
-            async function createUser(
-                assert: typeof Assert,
-                {$meta}: {$meta: IMeta}
-            ) {
-                const result = await userUserAdd({
-                    username: 'testuser',
-                    email: 'test@example.com',
-                    role: 'user'
-                }, $meta);
+            async function createUser(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = await userUserAdd(
+                    {
+                        username: 'testuser',
+                        email: 'test@example.com',
+                        role: 'user',
+                    },
+                    $meta,
+                );
 
                 assert.ok(result.userId, 'User ID returned');
                 assert.equal(result.username, 'testuser', 'Username matches');
@@ -100,7 +224,7 @@ export default handler(({
             // Step 2: Find user (uses context from step 1)
             async function findUser(
                 assert: typeof Assert,
-                {$meta, userId}: {$meta: IMeta; userId: number}
+                {$meta, userId}: {$meta: IMeta; userId: number},
             ) {
                 const result = await userUserFind({userId}, $meta);
 
@@ -113,21 +237,24 @@ export default handler(({
             // Step 3: Delete user
             async function deleteUser(
                 assert: typeof Assert,
-                {$meta, userId}: {$meta: IMeta; userId: number}
+                {$meta, userId}: {$meta: IMeta; userId: number},
             ) {
                 await userUserDelete({userId}, $meta);
 
                 // Verify deletion
                 await assert.rejects(
-                    userUserFind({userId}, {
-                        ...$meta,
-                        expect: 'userNotFound'
-                    }) as Promise<unknown>,
+                    userUserFind(
+                        {userId},
+                        {
+                            ...$meta,
+                            expect: 'userNotFound',
+                        },
+                    ) as Promise<unknown>,
                     {type: 'userNotFound'},
-                    'User not found after deletion'
+                    'User not found after deletion',
                 );
-            }
-        ])
+            },
+        ]),
 }));
 ```
 
@@ -137,26 +264,27 @@ export default handler(({
 
 ```typescript
 testExample: ({name = 'default name'}, $meta) =>
-    group(name)([/* steps */])
+    group(name)([
+        /* steps */
+    ]);
 ```
 
 ### Custom Parameters
 
 ```typescript
-testExample: ({
-    name = 'example',
-    username = 'testuser',
-    amount = 100
-}, $meta) =>
+testExample: ({name = 'example', username = 'testuser', amount = 100}, $meta) =>
     group(name)([
         async function test(assert, {$meta}) {
-            const result = await handler({
-                username,
-                amount
-            }, $meta);
+            const result = await handler(
+                {
+                    username,
+                    amount,
+                },
+                $meta,
+            );
             assert.ok(result);
-        }
-    ])
+        },
+    ]);
 ```
 
 ## Context Passing & Parallel Execution
@@ -179,25 +307,25 @@ group(name)([
 
     // Pattern 1: Direct context access
     async function pattern1(assert, context) {
-        const result = await context.createUser;  // Wait for createUser
+        const result = await context.createUser; // Wait for createUser
         assert.ok(result.userId);
     },
 
     // Pattern 2: Destructure then await
     async function pattern2(assert, {createUser}) {
-        const result = await createUser;  // Wait for createUser
+        const result = await createUser; // Wait for createUser
         assert.ok(result.userId);
     },
 
     // Pattern 3: Access nested properties
     async function pattern3(assert, {createUser}) {
-        const name = await createUser.profile.name;  // Wait and extract property
+        const name = await createUser.profile.name; // Wait and extract property
         assert.equal(name, 'Test');
     },
 
     // Pattern 4: Nested destructuring
     async function pattern4(assert, {createUser: {profile}}) {
-        const age = await profile.age;  // Wait and extract nested property
+        const age = await profile.age; // Wait and extract nested property
         assert.equal(age, 30);
     },
 
@@ -206,8 +334,8 @@ group(name)([
         // No dependencies - runs immediately in parallel
         const data = await otherHandler({}, $meta);
         assert.ok(data);
-    }
-])
+    },
+]);
 ```
 
 **Context Rules:**
@@ -232,23 +360,21 @@ assert.strictEqual(actual, expected, 'message');
 
 // Truthiness
 assert.ok(value, 'message');
-assert(value, 'message');  // Same as ok
+assert(value, 'message'); // Same as ok
 
 // Type checks
 assert.strictEqual(typeof value, 'string');
 
 // Rejection (for errors)
-await assert.rejects(
-    promise,
-    {type: 'errorType'},
-    'message'
-);
+await assert.rejects(promise, {type: 'errorType'}, 'message');
 
 // Throws
 assert.throws(
-    () => { throw new Error(); },
+    () => {
+        throw new Error();
+    },
     Error,
-    'message'
+    'message',
 );
 ```
 
@@ -257,14 +383,17 @@ assert.throws(
 ```typescript
 async function testError(assert, {$meta}) {
     await assert.rejects(
-        userUserAdd({
-            username: 'duplicate'
-        }, {
-            ...$meta,
-            expect: 'userExists'  // Expected error type
-        }) as Promise<unknown>,
+        userUserAdd(
+            {
+                username: 'duplicate',
+            },
+            {
+                ...$meta,
+                expect: 'userExists', // Expected error type
+            },
+        ) as Promise<unknown>,
         {type: 'userExists'},
-        'Should reject duplicate user'
+        'Should reject duplicate user',
     );
 }
 ```
@@ -274,30 +403,28 @@ async function testError(assert, {$meta}) {
 Call other test handlers to share setup:
 
 ```typescript
-export default handler(({
-    lib: {group},
-    handler: {
-        testLoginTokenCreate,    // Reusable login test
-        testUserAdminLogin,      // Reusable admin login
-        subjectNumberSum
-    }
-}) => ({
-    testNumberSum: ({name = 'number sum'}, $meta) =>
-        group(name)([
-            // Reuse authentication tests
-            testLoginTokenCreate({}, $meta),
-            testUserAdminLogin({}, $meta),
+export default handler(
+    ({
+        lib: {group},
+        handler: {
+            testLoginTokenCreate, // Reusable login test
+            testUserAdminLogin, // Reusable admin login
+            subjectNumberSum,
+        },
+    }) => ({
+        testNumberSum: ({name = 'number sum'}, $meta) =>
+            group(name)([
+                // Reuse authentication tests
+                testLoginTokenCreate({}, $meta),
+                testUserAdminLogin({}, $meta),
 
-            // Actual test
-            async function sum(assert, {$meta}) {
-                assert.equal(
-                    await subjectNumberSum([1, 2, 3, 4], $meta),
-                    10,
-                    'Sum array'
-                );
-            }
-        ])
-}));
+                // Actual test
+                async function sum(assert, {$meta}) {
+                    assert.equal(await subjectNumberSum([1, 2, 3, 4], $meta), 10, 'Sum array');
+                },
+            ]),
+    }),
+);
 ```
 
 **Test Composition Pattern:**
@@ -309,33 +436,25 @@ The `group` library function allows test arrays to be composed and reused:
 export default handler(
     ({
         lib: {group},
-        handler: {
-            testLoginTokenCreate,
-            ledgerParticipantGet,
-            ledgerParticipantAdd
-        },
+        handler: {testLoginTokenCreate, ledgerParticipantGet, ledgerParticipantAdd},
     }) => ({
         testParticipant: ({name = 'ledger'}, $meta) =>
             group(name)([
-                testLoginTokenCreate({}, $meta),  // Reuse login setup
-                async function participant(
-                        assert: typeof Assert,
-                        {$meta}: {$meta: IMeta}
-                    ) {
-                        assert.equal(
-                            (await ledgerParticipantGet({participantId: '1'}, $meta))
-                                .participantId,
-                            1,
-                            'participant get'
-                        );
-                        assert.deepEqual(
-                            await ledgerParticipantAdd({}, $meta),
-                            {participantId: '123'},
-                            'participant add'
-                        );
-                    },
-                ]),
-    })
+                testLoginTokenCreate({}, $meta), // Reuse login setup
+                async function participant(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                    assert.equal(
+                        (await ledgerParticipantGet({participantId: '1'}, $meta)).participantId,
+                        1,
+                        'participant get',
+                    );
+                    assert.deepEqual(
+                        await ledgerParticipantAdd({}, $meta),
+                        {participantId: '123'},
+                        'participant add',
+                    );
+                },
+            ]),
+    }),
 );
 ```
 
@@ -369,8 +488,8 @@ group(name)([
     async function validateUser(assert, {fetchUserData}) {
         const user = await fetchUserData;
         assert.ok(user.validated);
-    }
-])
+    },
+]);
 ```
 
 ### Sequential Execution (Nested Arrays)
@@ -388,18 +507,18 @@ group(name)([
         },
         async function testCase2(assert, context) {
             // Test 2 - runs in parallel with testCase1
-        }
+        },
     ],
 
     // This nested array waits for above array to complete
     [
         async function testCase3(assert, context) {
             // Test 3
-        }
+        },
     ],
 
-    testTeardown({}, $meta)
-])
+    testTeardown({}, $meta),
+]);
 ```
 
 ### Using group() for Test Organization
@@ -416,8 +535,8 @@ export default handler(({lib: {group}}) => ({
             async function validate(assert, {setup}) {
                 const data = await setup;
                 assert.equal(data.data, 'test');
-            }
-        ])
+            },
+        ]),
 }));
 ```
 
