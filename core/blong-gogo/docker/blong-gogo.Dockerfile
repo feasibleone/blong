@@ -14,6 +14,15 @@ RUN node common/scripts/install-run-rush.js deploy -p @feasibleone/blong-gogo &&
 
 # Final release image
 FROM node:${NODE_VERSION} AS release
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcurl4 \
+    libsasl2-2 \
+    libssl3 \
+    libzstd1 \
+    liblz4-1 \
+    zlib1g \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/blong/common/deploy /opt/blong/common/deploy
 RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong && \
     ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong-dev.ts /usr/local/bin/blong-dev
