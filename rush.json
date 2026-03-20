@@ -500,6 +500,18 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-sim-tcp",
+            "projectFolder": "core/blong-sim-tcp",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-sim-api",
+            "projectFolder": "core/blong-sim-api",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/test",
             "projectFolder": "core/test",
             "reviewCategory": "core",

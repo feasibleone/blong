@@ -7,10 +7,13 @@ import log from '../log.ts';
  * TCP adapter for Payshield HSM communication.
  *
  * Uses the built-in adapter.tcp with the ut-codec-payshield codec for
- * Payshield protocol serialization/deserialization.
+ * Payshield protocol serialization/deserialization. This replaces the
+ * older ut-port-tcp class-extension approach.
  *
- * Replaces the older ut-port-tcp class-extension approach with the
- * declarative adapter.tcp configuration.
+ * The codec handles message framing (headerFormat) and payload encoding.
+ * Handler imports from the payshield.tcp group are applied on top:
+ * - echoRequestSend: prepares idle send echo requests
+ * - idleSendEventReceive: handles idle send events
  */
 export default adapter(blong => ({
     extends: 'adapter.tcp',

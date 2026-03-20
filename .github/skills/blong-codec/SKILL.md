@@ -75,29 +75,30 @@ export default adapter(blong => ({
     activation: {
         default: {
             namespace: ['external'],
-            imports: ['codec.openapi']
+            imports: ['codec.openapi'],
         },
         dev: {
             'codec.openapi': {
                 namespace: {
                     // Namespace name: array of spec sources
                     time: [
-                        './api/world-time.yaml',           // Local file
+                        './api/world-time.yaml', // Local file
                         './api/world-time.operations.yaml', // Additional ops
-                        {                                   // Inline overrides
-                            servers: [{
-                                url: 'http://localhost:8080/rest/mocktime'
-                            }]
-                        }
+                        {
+                            // Inline overrides
+                            servers: [
+                                {
+                                    url: 'http://localhost:8080/rest/mocktime',
+                                },
+                            ],
+                        },
                     ],
                     k8s: [
-                        'https://k8s.io/api/apps.json',   // Remote URL
+                        'https://k8s.io/api/apps.json', // Remote URL
                         'https://k8s.io/api/discovery.json',
-                        'https://k8s.io/api/version.json'
+                        'https://k8s.io/api/version.json',
                     ],
-                    github: [
-                        './api/github.json'
-                    ],
+                    github: ['./api/github.json'],
                     // Custom x-blong configuration for incoming webhooks
                     dfsp: [
                         'https://api.example.com/swagger.json',
@@ -106,15 +107,15 @@ export default adapter(blong => ({
                             host: 'localhost:8080',
                             basePath: '/rest/endpoint',
                             'x-blong': {
-                                destination: 'webhookAdapter',  // Adapter name
-                                namespace: 'incoming'           // Handler namespace
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-    }
+                                destination: 'webhookAdapter', // Adapter name
+                                namespace: 'incoming', // Handler namespace
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+    },
 }));
 ```
 
@@ -135,23 +136,28 @@ The framework supports a custom `x-blong` extension for configuring webhook dest
 
 ```typescript
 // Call using operationId from OpenAPI spec
-export default handler(({handler: {externalGetUser}}) =>
-    async function userUserFetch(params, $meta) {
-        // externalGetUser corresponds to operationId in spec
-        const user = await externalGetUser({
-            userId: params.id
-        }, {
-            ...$meta,
-            method: 'externalGetUser'  // operationId
-        });
-        return user;
-    }
+export default handler(
+    ({handler: {externalGetUser}}) =>
+        async function userUserFetch(params, $meta) {
+            // externalGetUser corresponds to operationId in spec
+            const user = await externalGetUser(
+                {
+                    userId: params.id,
+                },
+                {
+                    ...$meta,
+                    method: 'externalGetUser', // operationId
+                },
+            );
+            return user;
+        },
 );
 ```
 
 **OpenAPI Configuration:**
 
 For complete OpenAPI configuration patterns including:
+
 - `operationId` mapping to handlers
 - `x-blong-method` custom extension for REST APIs
 - Namespace configuration and spec file merging
@@ -165,20 +171,18 @@ The OpenAPI codec focuses on protocol-level handler implementation:
 
 ```typescript
 // Adapter encode handler - called before HTTP request
-export default ({timeTimezoneGet}) => encode(
-    async ({area, location}) => ({
+export default ({timeTimezoneGet}) =>
+    encode(async ({area, location}) => ({
         url: `/timezone/${area}/${location}`,
         method: 'GET',
-    })
-);
+    }));
 
 // Adapter decode handler - called after HTTP response
-export default ({timeTimezoneGet}) => decode(
-    async (response) => ({
+export default ({timeTimezoneGet}) =>
+    decode(async response => ({
         abbreviation: response.body.abbreviation,
         datetime: response.body.datetime,
-    })
-);
+    }));
 ```
 
 ### 2. JSON-RPC Codec (`codec.jsonrpc`)
@@ -209,15 +213,19 @@ activation: {
 
 ```typescript
 // Browser handler calling server
-export default handler(({handler: {userUserAdd}}) =>
-    async function createUser(params, $meta) {
-        // Automatically calls /rpc/user/user/add
-        const result = await userUserAdd({
-            username: params.username,
-            email: params.email
-        }, $meta);
-        return result;
-    }
+export default handler(
+    ({handler: {userUserAdd}}) =>
+        async function createUser(params, $meta) {
+            // Automatically calls /rpc/user/user/add
+            const result = await userUserAdd(
+                {
+                    username: params.username,
+                    email: params.email,
+                },
+                $meta,
+            );
+            return result;
+        },
 );
 ```
 
@@ -305,23 +313,18 @@ activation: {
 // realmname/adapter/tcp/encode.ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(({lib: {bitsyntax}, config}) =>
-    function encode(message) {
-        const command = message.command.padEnd(2, ' ');
-        const data = message.data || '';
-        const payload = command + data;
+export default handler(
+    ({lib: {bitsyntax}, config}) =>
+        function encode(message) {
+            const command = message.command.padEnd(2, ' ');
+            const data = message.data || '';
+            const payload = command + data;
 
-        // Build header with message length
-        const header = bitsyntax.build(
-            config.headerFormat,
-            {value: payload.length}
-        );
+            // Build header with message length
+            const header = bitsyntax.build(config.headerFormat, {value: payload.length});
 
-        return Buffer.concat([
-            header,
-            Buffer.from(payload, 'ascii')
-        ]);
-    }
+            return Buffer.concat([header, Buffer.from(payload, 'ascii')]);
+        },
 );
 ```
 
@@ -331,23 +334,21 @@ export default handler(({lib: {bitsyntax}, config}) =>
 // realmname/adapter/tcp/decode.ts
 import {handler} from '@feasibleone/blong';
 
-export default handler(({lib: {bitsyntax}, config}) =>
-    function decode(buffer) {
-        const header = bitsyntax.parse(
-            buffer.slice(0, 6),
-            config.headerFormat
-        );
+export default handler(
+    ({lib: {bitsyntax}, config}) =>
+        function decode(buffer) {
+            const header = bitsyntax.parse(buffer.slice(0, 6), config.headerFormat);
 
-        const payload = buffer.slice(6).toString('ascii');
-        const command = payload.slice(0, 2);
-        const data = payload.slice(2);
+            const payload = buffer.slice(6).toString('ascii');
+            const command = payload.slice(0, 2);
+            const data = payload.slice(2);
 
-        return {
-            command,
-            data,
-            length: header.value
-        };
-    }
+            return {
+                command,
+                data,
+                length: header.value,
+            };
+        },
 );
 ```
 
@@ -357,33 +358,32 @@ export default handler(({lib: {bitsyntax}, config}) =>
 
 ```typescript
 // encode.ts
-export default handler(({lib: {bitsyntax}}) =>
-    function encode(message) {
-        // Build: 1 byte type, 2 byte length, variable data
-        return bitsyntax.build(
-            'type:8/integer, length:16/integer, data/binary',
-            {
+export default handler(
+    ({lib: {bitsyntax}}) =>
+        function encode(message) {
+            // Build: 1 byte type, 2 byte length, variable data
+            return bitsyntax.build('type:8/integer, length:16/integer, data/binary', {
                 type: message.type,
                 length: message.data.length,
-                data: Buffer.from(message.data)
-            }
-        );
-    }
+                data: Buffer.from(message.data),
+            });
+        },
 );
 
 // decode.ts
-export default handler(({lib: {bitsyntax}}) =>
-    function decode(buffer) {
-        const parsed = bitsyntax.parse(
-            buffer,
-            'type:8/integer, length:16/integer, data/binary'
-        );
+export default handler(
+    ({lib: {bitsyntax}}) =>
+        function decode(buffer) {
+            const parsed = bitsyntax.parse(
+                buffer,
+                'type:8/integer, length:16/integer, data/binary',
+            );
 
-        return {
-            type: parsed.type,
-            data: parsed.data.toString()
-        };
-    }
+            return {
+                type: parsed.type,
+                data: parsed.data.toString(),
+            };
+        },
 );
 ```
 
@@ -409,7 +409,7 @@ export default handler(({handler: {encode, decode}}) => ({
         async function roundTrip(assert) {
             const original = {
                 command: 'TX',
-                data: 'test payload'
+                data: 'test payload',
             };
 
             const encoded = encode(original);
@@ -417,14 +417,14 @@ export default handler(({handler: {encode, decode}}) => ({
 
             const decoded = decode(encoded);
             assert.deepEqual(decoded, original);
-        }
-    ]
+        },
+    ],
 }));
 ```
 
 ## Examples from Codebase
 
-- **OpenAPI:** `core/test/demo/server.ts` (codec.openapi configuration)
-- **Payshield:** `core/test/payshield/adapter/tcp/`
+- **OpenAPI:** `core/blong-sim-api/time/sim/openapi/adapter.ts` (mock server config)
+- **Payshield:** `core/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative adapter.tcp)
 - **JSON-RPC:** `core/test/demo/browser.ts`
 - **Custom protocol:** `core/test/ctp/adapter/payshield/`

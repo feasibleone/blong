@@ -7,5 +7,6 @@ export default async (load): Promise<void> => {
         load(browser, 'impl', 'impl', ['microservice', 'integration', 'dev']),
     ]);
     for (const platform of platforms) await platform.start();
-    platforms[1].test();
+    await platforms[1].test();
+    if (process.env.CI) for (const platform of platforms) await platform.stop();
 };

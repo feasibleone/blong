@@ -1,0 +1,42 @@
+/**
+ * Log transformation configuration for Payshield.
+ * These fields are masked in logs to prevent sensitive data leakage.
+ */
+export default {
+    transform: {
+        account: 'hide',
+        macMessage: 'hide',
+        cardNumber: 'hide',
+        pinBlock: 'hide',
+        sourcePinBlock: 'hide',
+        destinationPinBlock: 'hide',
+        sourcePan: 'hide',
+        destinationPan: 'hide',
+        sourceOffset: 'hide',
+        pinValidationData: 'hide',
+        offset: 'hide',
+        privateKey: 'hide',
+        messageData: 'hide',
+        panSeqNo: 'hide',
+        ivac: 'hide',
+        arqc: 'hide',
+        unpredictableNumber: 'hide',
+        transactionData: 'hide',
+        rest: 'hide',
+        macData: 'hide',
+        pin: 'hide',
+        pvk: 'hide',
+        cvk: 'hide',
+        mkac: 'hide',
+        zpk: 'hide',
+        zmk: 'hide',
+        bdk: 'hide',
+        sourceKey: 'hide',
+        destinationKey: 'hide',
+        dukptMasterKey: 'hide',
+        keyZmk: 'hide',
+        keyZmkTmk: 'hide',
+        ksn: 'hide',
+        key: 'hide',
+    },
+};

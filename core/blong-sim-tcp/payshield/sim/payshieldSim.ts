@@ -6,11 +6,14 @@ import log from '../log.ts';
 /**
  * TCP simulation adapter for Payshield HSM.
  *
- * Listens for TCP connections and simulates a Payshield HSM device by responding
- * to requests using the payshield.sim handler group.
+ * This adapter simulates a Payshield HSM device by listening for TCP connections
+ * on the configured port. It uses the same ut-codec-payshield codec for
+ * protocol compatibility as the real adapter.
  *
- * Uses the declarative adapter.tcp approach (replaces the older ut-port-tcp class
- * extension). The listen: true flag makes this a TCP server instead of a client.
+ * The sim layer is auto-activated in integration mode (WELL_KNOWN_LAYERS.sim).
+ * Handlers in the payshield.sim group are imported to respond to requests.
+ *
+ * Key difference from the tcp adapter: listen: true makes this a server.
  */
 export default adapter(blong => ({
     extends: 'adapter.tcp',

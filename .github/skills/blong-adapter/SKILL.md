@@ -74,7 +74,9 @@ export default adapter(blong => ({
 
     validation: blong.type.Object({
         url: blong.type.String(),
-        namespace: blong.type.Optional(blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())])),
+        namespace: blong.type.Optional(
+            blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
+        ),
         imports: blong.type.Optional(blong.type.Array(blong.type.String())),
         logLevel: blong.type.Optional(blong.type.String()),
     }),
@@ -97,14 +99,14 @@ export default adapter(blong => ({
 **Configuration Properties:**
 
 ```yaml
-url: https://api.example.com     # Base URL for requests
-namespace: [external]             # Prefixes for calling adapter
-imports: [codec.openapi]          # Codecs to use
-logLevel: info                    # Log level
-tls:                              # TLS configuration
-  ca: /path/to/ca.crt
-  cert: /path/to/client.crt
-  key: /path/to/client.key
+url: https://api.example.com # Base URL for requests
+namespace: [external] # Prefixes for calling adapter
+imports: [codec.openapi] # Codecs to use
+logLevel: info # Log level
+tls: # TLS configuration
+    ca: /path/to/ca.crt
+    cert: /path/to/client.crt
+    key: /path/to/client.key
 ```
 
 ### 2. TCP Adapter
@@ -132,10 +134,10 @@ export default adapter(blong => ({
             namespace: ['hsm'],
             imports: ['realmname.hsm'],
             format: {
-                size: '16/integer'               // Message size header format
+                size: '16/integer', // Message size header format
             },
-            idleSend: 10000,                     // Echo interval (ms)
-            maxReceiveBuffer: 4096               // Max message size
+            idleSend: 10000, // Echo interval (ms)
+            maxReceiveBuffer: 4096, // Max message size
         },
     },
 }));
@@ -144,23 +146,23 @@ export default adapter(blong => ({
 **Configuration Properties:**
 
 ```yaml
-host: hsm.example.com            # Host to connect to
-port: 1500                       # Port number
-listen: false                    # Set true to listen for connections
-localPort: 9000                  # Port to listen on
-socketTimeOut: 30000             # Inactivity timeout (ms)
-maxConnections: 10               # Max concurrent connections
-connectionDropPolicy: oldest     # Which connections to drop
+host: hsm.example.com # Host to connect to
+port: 1500 # Port number
+listen: false # Set true to listen for connections
+localPort: 9000 # Port to listen on
+socketTimeOut: 30000 # Inactivity timeout (ms)
+maxConnections: 10 # Max concurrent connections
+connectionDropPolicy: oldest # Which connections to drop
 format:
-  size: 16/integer               # Size header format
-imports: [realmname.codec]       # Codec handlers
-idleSend: 10000                  # Echo interval (ms)
-idleReceive: 30000               # Expect message within (ms)
-maxReceiveBuffer: 4096           # Max single message size
-tls:                             # TLS configuration
-  ca: /path/to/ca.crt
-  cert: /path/to/server.crt
-  key: /path/to/server.key
+    size: 16/integer # Size header format
+imports: [realmname.codec] # Codec handlers
+idleSend: 10000 # Echo interval (ms)
+idleReceive: 30000 # Expect message within (ms)
+maxReceiveBuffer: 4096 # Max single message size
+tls: # TLS configuration
+    ca: /path/to/ca.crt
+    cert: /path/to/server.crt
+    key: /path/to/server.key
 ```
 
 ### 3. Database Adapter (Knex)
@@ -189,8 +191,8 @@ export default adapter(blong => ({
                 host: 'localhost',
                 user: 'dbuser',
                 password: 'dbpass',
-                database: 'mydb'
-            }
+                database: 'mydb',
+            },
         },
     },
 }));
@@ -211,7 +213,7 @@ export default adapter(blong => ({
 import {adapter} from '@feasibleone/blong';
 
 export default adapter(() => ({
-    extends: 'adapter.webhook'
+    extends: 'adapter.webhook',
 }));
 ```
 
@@ -388,21 +390,22 @@ Each handler in the stack transforms the data sequentially.
 ## Error Handling
 
 ```typescript
-export default handler(({errors}) =>
-    async function httpCallExternal(params, $meta) {
-        try {
-            const response = await $meta.connection.get('/api/data');
-            return response.data;
-        } catch (error) {
-            if (error.statusCode === 404) {
-                throw errors.resourceNotFound();
+export default handler(
+    ({errors}) =>
+        async function httpCallExternal(params, $meta) {
+            try {
+                const response = await $meta.connection.get('/api/data');
+                return response.data;
+            } catch (error) {
+                if (error.statusCode === 404) {
+                    throw errors.resourceNotFound();
+                }
+                if (error.statusCode === 503) {
+                    throw errors.serviceUnavailable();
+                }
+                throw errors.externalAPIError({cause: error});
             }
-            if (error.statusCode === 503) {
-                throw errors.serviceUnavailable();
-            }
-            throw errors.externalAPIError({cause: error});
-        }
-    }
+        },
 );
 ```
 
@@ -413,18 +416,19 @@ export default handler(({errors}) =>
 import {adapter} from '@feasibleone/blong';
 
 export default adapter(() => ({
-    extends: 'adapter.mock'
+    extends: 'adapter.mock',
 }));
 
 // realmname/adapter/mock/userAdd.ts
-export default handler(() =>
-    async function userAdd(params) {
-        // Return mock data
-        return {
-            userId: 123,
-            username: params.username
-        };
-    }
+export default handler(
+    () =>
+        async function userAdd(params) {
+            // Return mock data
+            return {
+                userId: 123,
+                username: params.username,
+            };
+        },
 );
 ```
 
@@ -452,6 +456,7 @@ export default handler(() =>
 ## Examples from Codebase
 
 - **HTTP adapter:** `core/test/demo/adapter/http.ts`
-- **TCP/Payshield:** `core/test/payshield/adapter/tcp.ts`
+- **TCP/Payshield:** `core/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative `adapter.tcp`)
+- **TCP simulation (listen: true):** `core/blong-sim-tcp/payshield/sim/payshieldSim.ts`
 - **Database:** `core/test/db/adapter/sql.ts`
 - **Mock adapter:** `core/test/demo/adapter/mock.ts`

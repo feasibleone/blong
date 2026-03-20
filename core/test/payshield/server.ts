@@ -10,33 +10,11 @@ export default realm(blong => ({
     config: {
         default: {
             tcp: {
-                idleSend: 10000,
-                maxReceiveBuffer: 4096,
-                format: {
-                    size: '16/integer',
-                    headerFormat: '6/string-left-zero',
-                },
                 host: 'localhost',
                 port: 1601,
-                namespace: ['payshieldport'],
-                imports: ['payshield.tcp'],
-                listen: false,
             },
             payshieldSim: {
                 port: 1601,
-                maxReceiveBuffer: 4096,
-                format: {
-                    size: '16/integer',
-                    headerFormat: '6/string-left-zero',
-                    messageFormat: {
-                        generateKey: {
-                            requestPattern:
-                                'mode:1/string, keyType:3/string, keySchemeLmk:1/string',
-                        },
-                    },
-                },
-                namespace: ['payshieldsim'],
-                listen: true,
             },
         },
         dev: {

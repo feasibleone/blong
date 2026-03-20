@@ -2,9 +2,7 @@ import {server} from '@feasibleone/blong';
 
 export default server(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({
-        mock: blong.type.Object({}),
-    }),
+    validation: blong.type.Object({}),
     children: [
         async function login() {
             return import('@feasibleone/blong-login/server.ts');
@@ -14,16 +12,13 @@ export default server(blong => ({
         },
         './ctp',
         './parking',
-        './payshield',
         './demo',
         './db',
-        './mock',
     ],
     config: {
         default: {},
         microservice: {},
         integration: {
-            mock: {},
             openapi: {},
         },
         dev: {
@@ -53,7 +48,6 @@ export default server(blong => ({
                 },
             },
             demo: {},
-            payshield: {},
             ctp: {},
         },
     },

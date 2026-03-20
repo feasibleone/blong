@@ -278,3 +278,39 @@ The framework recognizes four interaction origins that suites should be designed
 - **Automated processes** — scheduled tasks, event-driven processes
 
 The most common interaction for API tests is application front ends via the browser platform.
+
+## Running Suites and Realms with `blong`
+
+The `blong` CLI auto-detects the context based on files in the current directory:
+
+```bash
+# Run from any suite or realm folder — no arguments needed
+cd core/blong-sim-tcp  &&  blong
+cd core/blong-sim-api  &&  blong
+cd core/blong-eip      &&  blong
+
+# Or provide a specific file
+blong index.ts
+blong path/to/custom-runner.ts
+```
+
+**Auto-detection logic:**
+
+| Files present              | Behavior                                                   |
+| -------------------------- | ---------------------------------------------------------- |
+| `index.ts`                 | Loads it directly (custom runner — suite or realm)         |
+| `server.ts` + `browser.ts` | Public API testing: load both platforms, test from browser |
+| `server.ts` only           | Internal API testing: load server platform, test directly  |
+| None of the above          | Error — not a valid suite or realm folder                  |
+
+For suites that only have `server.ts` (e.g., `blong-sim-tcp`, `blong-eip`), running `blong` from
+the folder automatically starts the server, runs tests, and (in CI mode) stops the suite:
+
+```bash
+# In CI: runs tests and exits when done (process.env.CI is set)
+CI=true blong
+```
+
+This makes it easy to test individual realms during development without needing a full suite setup.
+When a realm has an `index.ts`, it is loaded directly — useful when the realm depends on other realms
+and needs custom initialization.

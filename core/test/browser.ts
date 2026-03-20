@@ -7,7 +7,6 @@ export default browser(blong => ({
             parking: blong.type.Object({}),
             login: blong.type.Object({}),
             demo: blong.type.Object({}),
-            payshield: blong.type.Object({}),
             ctp: blong.type.Object({}),
             testClient: blong.type.Object({
                 backend: blong.type.Object({
@@ -24,7 +23,6 @@ export default browser(blong => ({
         async function login() {
             return import('@feasibleone/blong-login/browser.ts');
         },
-        './payshield',
         './ctp',
         './parking',
         './demo',
@@ -39,23 +37,16 @@ export default browser(blong => ({
             parking: {},
             login: {},
             demo: {},
-            payshield: {},
             ctp: {},
         },
         integration: {
             testClient: {
                 backend: {
-                    namespace: ['subject', 'hsm', 'parking', 'payshield', 'login'],
+                    namespace: ['subject', 'parking', 'login'],
                 },
             },
             watch: {
-                test: [
-                    'test.codec.mle',
-                    'test.number.sum',
-                    'test.dispatch.loop',
-                    'test.hsm.generateKey',
-                    'test.tcp.loop',
-                ],
+                test: ['test.codec.mle', 'test.number.sum', 'test.dispatch.loop', 'test.tcp.loop'],
             },
         },
     },

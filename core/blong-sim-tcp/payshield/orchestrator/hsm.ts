@@ -3,8 +3,9 @@ import {orchestrator} from '@feasibleone/blong';
 /**
  * HSM orchestrator: dispatches HSM operations to the payshield.hsm handler group.
  *
- * Uses the declarative orchestrator.dispatch approach (replaces the older
- * ut-port-script class extension).
+ * Exposes the 'hsm' namespace which is called by gateway and test handlers.
+ * The payshield.hsm group contains library functions (generateKey, etc.) that
+ * transform business parameters into Payshield protocol calls via the TCP adapter.
  */
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',

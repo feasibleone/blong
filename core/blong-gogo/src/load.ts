@@ -1,7 +1,9 @@
 import load from '@feasibleone/blong-config';
 import {
     Internal,
+    browser as browserFactory,
     kind,
+    server as serverFactory,
     type IApiSchema,
     type IErrorFactory,
     type ILog,
@@ -12,17 +14,19 @@ import {
     type Kinds,
     type SolutionFactory,
 } from '@feasibleone/blong/types';
-import {existsSync} from 'fs';
-import {readdir} from 'fs/promises';
-import {createRequire} from 'node:module';
-import {basename, dirname, join} from 'path';
-import {Type, type TSchema} from 'typebox';
-import merge from 'ut-function.merge';
+import { existsSync } from 'fs';
+import { readdir } from 'fs/promises';
+import { createRequire } from 'node:module';
+import { basename, dirname, extname, join } from 'path';
 
-import type {Dirent} from 'fs';
+import { Type, type TSchema } from 'typebox';
+import merge from 'ut-function.merge';
+import { methodParts } from './lib.ts';
+
+import type { Dirent } from 'fs';
 import layerProxy from './layerProxy.ts';
-import RealmImpl, {type IRealm} from './Realm.ts';
-import type {IWatch} from './Watch.ts';
+import RealmImpl, { type IRealm } from './Realm.ts';
+import type { IWatch } from './Watch.ts';
 
 const LAYER_FILE = 'layer' as const;
 
@@ -70,6 +74,50 @@ async function discoverLayerFolders(
         }
     }
     return result;
+}
+
+/**
+ * Discover test method names from a realm's test/test/ folder.
+ * Imports each handler file with a null proxy to extract method names.
+ */
+async function discoverRealmTestMethods(base: string): Promise<string[]> {
+    const testDir = join(base, 'test', 'test');
+    if (!existsSync(testDir)) return [];
+    const nullFn: unknown = new Proxy(function () {
+        return nullFn;
+    } as unknown as object, {
+        get(_, key) {
+            if (typeof key === 'symbol') return undefined;
+            return nullFn;
+        },
+        apply() {
+            return nullFn;
+        },
+    });
+    const files = (await readdir(testDir, {withFileTypes: true})).filter(
+        f => f.isFile() && /\.(ts|mts|js|mjs)$/i.test(f.name) && !f.name.startsWith('~'),
+    );
+    const methods: string[] = [];
+    for (const file of files) {
+        const filePath = join(testDir, file.name);
+        try {
+            const mod = await import(filePath);
+            const fn = mod?.default;
+            if (typeof fn === 'function') {
+                const result = fn({lib: nullFn, handler: nullFn, errors: nullFn, config: {}, remote: nullFn, local: nullFn});
+                if (result && typeof result === 'object' && !Array.isArray(result)) {
+                    for (const key of Object.keys(result)) methods.push(methodParts(key));
+                } else {
+                    methods.push(methodParts(basename(file.name, extname(file.name))));
+                }
+            } else {
+                methods.push(methodParts(basename(file.name, extname(file.name))));
+            }
+        } catch {
+            methods.push(methodParts(basename(file.name, extname(file.name))));
+        }
+    }
+    return methods;
 }
 
 const scan = async (...path: string[]): Promise<Dirent[]> =>
@@ -125,7 +173,65 @@ export default async function loadRealm<T extends TSchema>(
     const defKind = kind(def);
     if (!rootKind) {
         if (defKind === 'server' || defKind === 'browser') rootKind = defKind;
-        else throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
+        else if (defKind === 'solution') {
+            // Realm passed directly as root — wrap in a minimal suite for isolated testing
+            const realmMod = await def({type: Type});
+            const realmUrl = realmMod.url as string;
+            const realmFilePath = realmUrl.startsWith('file://') ? realmUrl.slice(7) : realmUrl;
+            const realmBase = dirname(realmFilePath);
+            const realmFileName = basename(realmFilePath);
+            const realmName = basename(realmBase);
+            let pkg: {name: string; version: string};
+            try {
+                pkg = createRequire(realmUrl)('./package.json') as {name: string; version: string};
+            } catch {
+                pkg = {name: realmName, version: '0.0.0'};
+            }
+            const testMethods = await discoverRealmTestMethods(realmBase);
+            const realmChild = Object.defineProperty(
+                async function () {
+                    return {default: def};
+                },
+                'name',
+                {value: realmName, configurable: true},
+            );
+            if (realmFileName.startsWith('browser')) {
+                // Browser realm — wrap in a minimal browser suite
+                const wrapper = browserFactory((() => ({
+                    url: '',
+                    pkg,
+                    children: [realmChild],
+                    config: {
+                        default: {remote: {canSkipSocket: true}, [realmName]: {}},
+                        integration: {watch: {test: testMethods}},
+                    },
+                })) as () => any);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return loadRealm(wrapper as any, name, parentConfig, configNames);
+            } else {
+                // Server realm — single platform if no browser.ts alongside, else two-platform server half
+                const hasBrowser = existsSync(join(realmBase, 'browser.ts'));
+                const wrapper = serverFactory((() => ({
+                    url: '',
+                    pkg,
+                    children: [realmChild],
+                    config: {
+                        default: {
+                            rpcServer: {port: 0},
+                            gateway: {port: hasBrowser ? 8080 : 0},
+                            [realmName]: {},
+                        },
+                        integration: hasBrowser
+                            ? {default: {}} // browser side handles watch.test and canSkipSocket
+                            : {default: {}, remote: {canSkipSocket: true}, watch: {test: testMethods}},
+                    },
+                })) as () => any);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return loadRealm(wrapper as any, name, parentConfig, configNames);
+            }
+        } else {
+            throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
+        }
     }
     const mod = await def({type: Type});
     if (!('pkg' in mod)) mod.pkg = createRequire(mod.url)('./package.json');
