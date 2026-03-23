@@ -42,7 +42,7 @@ export default browser(blong => ({
         integration: {
             testClient: {
                 backend: {
-                    namespace: ['subject', 'parking', 'login'],
+                    namespace: ['subject', 'parking', 'login', 'payshield'],
                 },
             },
             watch: {

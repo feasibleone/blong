@@ -33,21 +33,10 @@ const subjectHello = Type.Function(
 type subjectNumberSum = Static<typeof subjectNumberSum>;
 const subjectNumberSum = Type.Function([Type.Array(Type.Number())], Type.Promise(Type.Number()));
 
-type subjectTime = Static<typeof subjectTime>;
-const subjectTime = Type.Function(
-    [Type.Unknown()],
-    Type.Promise(
-        Type.Object({
-            abbreviation: Type.String(),
-        }),
-    ),
-);
-
 export default validationHandlers({
     subjectAge,
     subjectHello,
     subjectNumberSum,
-    subjectTime,
 });
 
 declare module '@feasibleone/blong' {
@@ -59,10 +48,6 @@ declare module '@feasibleone/blong' {
         ): T;
         subjectNumberSum<T = ReturnType<subjectNumberSum>>(
             params: Parameters<subjectNumberSum>[0],
-            $meta: IMeta,
-        ): T;
-        subjectTime<T = ReturnType<subjectTime>>(
-            params: Parameters<subjectTime>[0],
             $meta: IMeta,
         ): T;
     }

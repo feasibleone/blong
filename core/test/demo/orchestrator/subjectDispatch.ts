@@ -4,8 +4,8 @@ export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {
-            namespace: ['subject', 'clock'],
-            imports: ['demo.subject', 'demo.clock'],
+            namespace: ['subject'],
+            imports: ['demo.subject'],
             validations: ['demo.subject.validation'],
         },
     },

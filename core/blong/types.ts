@@ -547,10 +547,12 @@ export type ValidationDefinition = (
 
 export type ApiDefinition = (blong: IValidationProxy) =>
     | {
-          namespace: Record<
-              string,
-              string | (string | Partial<OpenAPI.Document & {'x-blong-namespace': string}>)[]
-          >;
+          namespace:
+              | string[]
+              | Record<
+                    string,
+                    string | (string | Partial<OpenAPI.Document & {'x-blong-namespace': string}>)[]
+                >;
       }
     | {
           url: string;

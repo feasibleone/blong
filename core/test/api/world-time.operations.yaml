@@ -1,5 +1,0 @@
-
-paths:
-    /timezone/{area}/{location}:
-        get:
-            x-blong-method: get
