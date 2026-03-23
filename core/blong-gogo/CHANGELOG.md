@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.14.0...blong-gogo-v1.14.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* types and remove duplicated code ([cb5eb2b](https://github.com/feasibleone/blong/commit/cb5eb2bc7898cee6256317667a39d95e05186316))
+
 ## [1.14.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.13.8...blong-gogo-v1.14.0) (2026-03-20)
 
 
