@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/feasibleone/blong/compare/blong-v1.12.1...blong-v1.12.2) (2026-03-23)
+
+
+### Bug Fixes
+
+* types and remove duplicated code ([cb5eb2b](https://github.com/feasibleone/blong/commit/cb5eb2bc7898cee6256317667a39d95e05186316))
+
 ## [1.12.1](https://github.com/feasibleone/blong/compare/blong-v1.12.0...blong-v1.12.1) (2026-03-15)
 
 
