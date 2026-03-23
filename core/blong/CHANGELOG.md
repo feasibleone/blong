@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.3](https://github.com/feasibleone/blong/compare/blong-v1.12.2...blong-v1.12.3) (2026-03-23)
+
+
+### Bug Fixes
+
+* update node-vault dependency to version 0.10.10 in blong and blong-gogo packages ([108532c](https://github.com/feasibleone/blong/commit/108532cea49dcf745d581394b0efab62c4337c4e))
+
 ## [1.12.2](https://github.com/feasibleone/blong/compare/blong-v1.12.1...blong-v1.12.2) (2026-03-23)
 
 
