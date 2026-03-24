@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.4](https://github.com/feasibleone/blong/compare/blong-v1.12.3...blong-v1.12.4) (2026-03-24)
+
+
+### Bug Fixes
+
+* type generation ([425c3ca](https://github.com/feasibleone/blong/commit/425c3cac5863253c39138a3245be876f0e0a74dd))
+
 ## [1.12.3](https://github.com/feasibleone/blong/compare/blong-v1.12.2...blong-v1.12.3) (2026-03-23)
 
 
