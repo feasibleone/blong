@@ -1,7 +1,7 @@
 import {handler} from '@feasibleone/blong';
 
 export default handler(({handler: {subjectNumberSum, subjectHello}, lib: {sum}}) => ({
-    async subjectObjectSend(params: number[], $meta: unknown) {
+    async subjectObjectSend(params: number[], $meta) {
         await subjectNumberSum(params, $meta);
         return super.send(params, $meta);
     },

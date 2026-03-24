@@ -47,8 +47,8 @@ importers:
         specifier: ^1.3.1
         version: 1.3.1(@rushstack/heft@1.2.6(@types/node@24.10.9))(@types/node@24.10.9)
       '@slack/types':
-        specifier: ^2.20.0
-        version: 2.20.0
+        specifier: ^2.20.1
+        version: 2.20.1
       '@slack/webhook':
         specifier: ^7.0.7
         version: 7.0.7
@@ -3617,8 +3617,8 @@ packages:
   '@sinonjs/fake-timers@13.0.5':
     resolution: {integrity: sha512-36/hTbH2uaWuGVERyC6da9YwGWnzUZXuPro/F2LfsdOsLnCojz/iSH8MxUt/FD2S5XBSVPhmArFUXcpCQ2Hkiw==}
 
-  '@slack/types@2.20.0':
-    resolution: {integrity: sha512-PVF6P6nxzDMrzPC8fSCsnwaI+kF8YfEpxf3MqXmdyjyWTYsZQURpkK7WWUWvP5QpH55pB7zyYL9Qem/xSgc5VA==}
+  '@slack/types@2.20.1':
+    resolution: {integrity: sha512-eWX2mdt1ktpn8+40iiMc404uGrih+2fxiky3zBcPjtXKj6HLRdYlmhrPkJi7JTJm8dpXR6BWVWEDBXtaWMKD6A==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
 
   '@slack/webhook@7.0.7':
@@ -15430,11 +15430,11 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
-  '@slack/types@2.20.0': {}
+  '@slack/types@2.20.1': {}
 
   '@slack/webhook@7.0.7':
     dependencies:
-      '@slack/types': 2.20.0
+      '@slack/types': 2.20.1
       '@types/node': 24.10.9
       axios: 1.13.6(debug@4.4.3)
     transitivePeerDependencies:

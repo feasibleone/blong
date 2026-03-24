@@ -569,13 +569,15 @@ export type LibFn = <T>(...params: unknown[]) => T;
 export interface IRemoteHandler {
     [name: string]: PortHandlerBound;
 }
+export interface ISchema {}
 export interface IHandlerProxy<T> {
     config: T;
     handler: {
         [name: `error${string}`]: (
             message?: string | {params?: object; cause?: Error},
         ) => ITypedError;
-    } & IRemoteHandler;
+    } & ISchema &
+        IRemoteHandler;
     lib: ILib & {
         [name: string]: LibFn;
     };
@@ -653,7 +655,7 @@ export const api = (api: ApiDefinition): ApiDefinition =>
     Object.defineProperty(api, Kind, {value: 'api'});
 
 export const validationHandlers: (
-    handlers: Record<string, TFunction<[TObject<{}>]>>,
+    handlers: Record<string, TFunction<[ApiSchema]>>,
 ) => ValidationDefinition = handlers =>
     validation(() =>
         Object.fromEntries(

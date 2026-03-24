@@ -1,6 +1,6 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
-type Handler = (params: {}) => Promise<{
+type Handler = (params: {$objectId: string}) => Promise<{
     $objectId: string;
 }>;
 

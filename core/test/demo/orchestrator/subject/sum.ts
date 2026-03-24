@@ -7,5 +7,5 @@ export default library(
                 if (cur < 0) throw errors.subjectSum();
                 return prev + cur;
             }, 0);
-        }
+        },
 );

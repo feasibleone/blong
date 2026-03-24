@@ -151,11 +151,11 @@ export default class Watch extends Internal implements IWatch {
             });
 
             declare module '@feasibleone/blong' {
-                interface IRemoteHandler {
+                interface ISchema {
                     ${names
                         .map(
                             name =>
-                                `${name}<T=ReturnType<${name}>>(params: Parameters<${name}>[0], $meta: IMeta): T;`,
+                                `${name}(params: Parameters<${name}>[0], $meta: IMeta): ReturnType<${name}>;`,
                         )
                         .join('\n')}
                 }
