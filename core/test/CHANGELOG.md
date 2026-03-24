@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/feasibleone/blong/compare/test-v1.5.1...test-v1.5.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* type generation ([425c3ca](https://github.com/feasibleone/blong/commit/425c3cac5863253c39138a3245be876f0e0a74dd))
+
 ## [1.5.1](https://github.com/feasibleone/blong/compare/test-v1.5.0...test-v1.5.1) (2026-03-23)
 
 

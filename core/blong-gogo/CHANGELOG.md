@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.14.2...blong-gogo-v1.14.3) (2026-03-24)
+
+
+### Bug Fixes
+
+* type generation ([425c3ca](https://github.com/feasibleone/blong/commit/425c3cac5863253c39138a3245be876f0e0a74dd))
+
 ## [1.14.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.14.1...blong-gogo-v1.14.2) (2026-03-23)
 
 
