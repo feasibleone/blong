@@ -10,6 +10,9 @@
         "core/blong-log": {},
         "core/blong-openapi": {},
         "core/blong-test": {},
+        "core/blong-int-sql": {},
+        "core/blong-sim-api": {},
+        "core/blong-sim-tcp": {},
         "core/test": {},
         "docs/blong": {},
         "ext/rest-fs": {}
