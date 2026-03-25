@@ -22,14 +22,5 @@ export default adapter<{
             namespace: 'sql',
             imports: ['mysql.sql'],
         },
-        dev: {
-            knex: {
-                connection: {
-                    database: 'blong',
-                    user: 'test',
-                    password: 'password',
-                },
-            },
-        },
     },
 }));
