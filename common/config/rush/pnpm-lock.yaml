@@ -418,6 +418,49 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  ../../core/blong-int-sql:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gogo
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.5
+      ut-codec-payshield:
+        specifier: ^7.3.0
+        version: 7.3.0
+    devDependencies:
+      '@rushstack/eslint-config':
+        specifier: ^4.6.4
+        version: 4.6.4(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.6(@types/node@24.10.9)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.6(@rushstack/heft@1.2.6(@types/node@24.10.9))(@types/node@24.10.9)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.1(@rushstack/heft@1.2.6(@types/node@24.10.9))(@types/node@24.10.9)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.10
+      '@types/node':
+        specifier: ^24
+        version: 24.10.9
+      eslint:
+        specifier: ~9.39.2
+        version: 9.39.2(jiti@1.21.7)
+      tap:
+        specifier: ^21.6.2
+        version: 21.6.2(@swc/core@1.15.10)(@types/node@24.10.9)(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   ../../core/blong-kopi:
     dependencies:
       '@feasibleone/blong':

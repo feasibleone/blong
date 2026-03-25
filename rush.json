@@ -500,6 +500,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-int-sql",
+            "projectFolder": "core/blong-int-sql",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-sim-tcp",
             "projectFolder": "core/blong-sim-tcp",
             "reviewCategory": "core",
