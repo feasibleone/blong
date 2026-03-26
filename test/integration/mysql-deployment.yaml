@@ -43,13 +43,13 @@ spec:
       initContainers:
       - name: volume-permissions
         image: busybox
-        command: ["sh", "-c", "chown -R 999:999 /var/lib/mysql"]
+        command: ["sh", "-c", "chown -R 27:27 /var/lib/mysql"]
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
       containers:
       - name: mysql
-        image: mysql/mysql-server:latest
+        image: mysql/mysql-server:8.0.32
         ports:
         - containerPort: 3306
           name: mysql
