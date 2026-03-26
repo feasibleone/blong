@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.5.0...blong-docs-v1.6.0) (2026-03-26)
+
+
+### Features
+
+* add skills for test entry points and integration testing with Kubernetes backends ([59987b3](https://github.com/feasibleone/blong/commit/59987b33d6c0aa4b42260b52b123fddba1ad76bd))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.4.0...blong-docs-v1.5.0) (2026-03-10)
 
 
