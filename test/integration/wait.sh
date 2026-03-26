@@ -1,4 +1,5 @@
 #!/bin/bash
+set -
 
 # wait for up to 1 minute for all deployments in the blong-integration namespace to be ready
 timeout=60

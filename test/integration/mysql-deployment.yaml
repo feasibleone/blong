@@ -40,6 +40,13 @@ spec:
       labels:
         app: mysql
     spec:
+      initContainers:
+      - name: volume-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /var/lib/mysql"]
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
       containers:
       - name: mysql
         image: mysql/mysql-server:latest
