@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# wait for up to 1 minute for all deployments in the wanples-integration namespace to be ready
+# wait for up to 1 minute for all deployments in the blong-integration namespace to be ready
 timeout=60
 interval=1
 elapsed=0
 
 while [ $elapsed -lt $timeout ]; do
-  if kubectl -n wanples-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' | grep -q "False"; then
+  if kubectl -n blong-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' | grep -q "False"; then
     echo "Waiting for all deployments to be ready..."
     sleep $interval
     elapsed=$((elapsed + interval))
@@ -15,4 +15,6 @@ while [ $elapsed -lt $timeout ]; do
   fi
 done
 
+kubectl logs deployment/mysql --namespace blong-integration
 tap index.test.ts --allow-incomplete-coverage
+kubectl logs deployment/mysql --namespace blong-integration
