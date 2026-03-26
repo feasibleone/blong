@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "build": "true",
-        "ci-integration": "../../test/integration/wait.sh"
+        "ci-integration": "../../test/integration/wait.sh && tap index.test.ts --allow-incomplete-coverage"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

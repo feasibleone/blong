@@ -238,6 +238,8 @@ await tap.test('internal api', async test => {
 await platform.stop();
 ```
 
+A complete working example is in the [blong-eip](https://github.com/feasibleone/blong/tree/main/core/blong-eip) package.
+
 ### Integration tests with K8s test back ends
 
 When testing adapters against a real back end that is unavailable in developer environments, the

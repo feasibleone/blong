@@ -36,6 +36,9 @@ Handlers and library functions are organized in groups within realm layers. Grou
 - **blong-handler** - Handler and library function patterns, semantic triple naming
 - **blong-error** - Typed error definitions and error handling
 - **blong-test** - Test handler patterns with parallel execution and automatic dependencies
+- **blong-test-api** - Test entry point setup (index.ts, platform loading, public vs internal API)
+- **blong-test-sim** - Simulating HTTP/TCP backends locally for integration tests
+- **blong-test-int** - CI integration tests with real backends in Kubernetes
 - **blong-mock-test** - Server-side integration testing with mock handlers
 - **blong-eip** - Enterprise Integration Pattern handlers (routing, filtering, aggregation, etc.)
 
@@ -56,6 +59,9 @@ Handlers and library functions are organized in groups within realm layers. Grou
 | Adding input validation                  | **blong-validation**                                  |
 | Defining typed errors                    | **blong-error**                                       |
 | Writing tests                            | **blong-test**                                        |
+| Setting up test entry point (index.ts)   | **blong-test-api**                                    |
+| Simulating HTTP/TCP backends locally     | **blong-test-sim**                                    |
+| CI integration tests with K8s backends   | **blong-test-int**                                    |
 | Testing with mock handlers (server-side) | **blong-mock-test**                                   |
 | Implementing EIP integration patterns    | **blong-eip**                                         |
 | Setting up Storybook                     | **storybook-v10-setup**                               |
@@ -403,6 +409,9 @@ Framework provides structured error handling with `IErrorFactory` pattern for de
 - **Database integration:** See **blong-adapter** for database adapter patterns
 - **External API:** See **blong-adapter** for webhook and HTTP adapters
 - **Adding tests:** See **blong-test** for test handler patterns
+- **Setting up the test entry point:** See **blong-test-api** for `index.ts` wiring and platform loading
+- **Simulating backends:** See **blong-test-sim** for local HTTP/TCP backend simulation
+- **CI integration tests:** See **blong-test-int** for Kubernetes-based real backend tests
 - **Testing with mocks:** See **blong-mock-test** for server-side testing with mock handlers
 - **EIP patterns:** See **blong-eip** for message routing, filtering, aggregation, and transformation
 - **Error definitions:** See **blong-error** for typed error patterns

@@ -16,6 +16,4 @@ while [ $elapsed -lt $timeout ]; do
   fi
 done
 
-kubectl logs deployment/mysql --namespace blong-integration
-tap index.test.ts --allow-incomplete-coverage
-kubectl logs deployment/mysql --namespace blong-integration
+# kubectl logs deployment/mysql --namespace blong-integration
