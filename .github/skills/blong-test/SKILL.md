@@ -279,14 +279,14 @@ export default adapter(blong => ({
     activation: {
         default: {
             namespace: ['payshieldsim'],
-            imports: ['payshield.sim'],     // Handler group in sim/payshieldsim/
+            imports: ['payshield.sim'], // Handler group in sim/payshieldsim/
             maxReceiveBuffer: 4096,
             format: {
-                codec,                       // Same codec as the client adapter
+                codec, // Same codec as the client adapter
                 maskedKeys: Object.keys(log.transform),
                 headerFormat: '6/string-left-zero',
             },
-            listen: true,                   // Acts as TCP server
+            listen: true, // Acts as TCP server
         },
     },
 }));
@@ -337,7 +337,7 @@ export default adapter(blong => ({
                 maskedKeys: Object.keys(log.transform),
                 headerFormat: '6/string-left-zero',
             },
-            listen: false,       // Connects to the HSM (or sim in integration mode)
+            listen: false, // Connects to the HSM (or sim in integration mode)
         },
     },
 }));
@@ -361,10 +361,43 @@ A complete working example is in the [`core/blong-sim-tcp`](../../../core/blong-
 
 ### Using test back ends
 
-Some back ends can be provisioned automatically for testing purposes in kubernetes, and can be used in the tests
-instead of the real back end. Blong includes patterns for easy configuration of test back ends in Kubernetes and
-their integration in the tests. In these cases a `kustomization.yaml` file and the relevant resources are included
-in the suite with the configuration of the test back ends.
+Some back ends can be provisioned automatically for testing purposes in Kubernetes and can be used in the tests
+instead of the real back end. This approach exercises the actual adapter and protocol rather than a mock, and
+is used when the real back end is unavailable in the CI environment.
+
+**How it works:**
+
+1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and Kubernetes resource
+   manifests that provision the test back end (e.g., a MySQL deployment)
+2. In CI, the GitHub Actions `integration` job creates a k3d cluster and deploys the services via
+   `kubectl apply -k test/integration/`
+3. The Rush `ci-integration` bulk command runs each package's `ci-integration` script against the live K8s back end
+4. Each package's `ci-integration` script waits for the K8s deployment to become ready, then runs the integration
+   tests using `tap` directly against the `index.test.ts` file
+5. The realm activates the test layer only under the `integration` config activation
+
+**File structure:**
+
+```
+<repo-root>/
+└── test/
+    └── integration/            # Kubernetes resources for test back ends
+        ├── kustomization.yaml  # Kustomize entry point
+        ├── deployment.yaml     # Back end service, namespace, PVC, ConfigMap, etc.
+        └── wait.sh             # Wait for deployments ready, then run tests
+
+<suite>/
+├── package.json               # "ci-integration": "../../test/integration/wait.sh"
+├── index.test.ts              # tap-wrapped server-only test runner for CI
+└── <realm>/
+    ├── server.ts              # Realm with integration-activated test layer
+    └── test/
+        ├── testDispatch.ts    # Activated in integration mode
+        └── test/
+            └── testSubjectQuery.ts  # Test handler calling the adapter
+```
+
+A complete working example is in the [`core/blong-int-sql`](../../../core/blong-int-sql) package.
 
 ## Purpose
 

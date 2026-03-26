@@ -238,6 +238,123 @@ await tap.test('internal api', async test => {
 await platform.stop();
 ```
 
+### Integration tests with K8s test back ends
+
+When testing adapters against a real back end that is unavailable in developer environments, the
+back end can be provisioned automatically in a temporary Kubernetes cluster during CI.
+
+**How it works:**
+
+1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and Kubernetes
+   resource manifests (Deployments, Services, ConfigMaps, PVCs) that provision the test back end.
+2. In CI the GitHub Actions `integration` job creates a k3d cluster and deploys the services:
+
+   ```
+   kubectl apply -k test/integration/
+   ```
+
+3. The Rush `ci-integration` bulk command then runs each package's `ci-integration` npm script.
+4. The `ci-integration` script is typically a `wait.sh` shell script that:
+   - Waits for all deployments in the test namespace to become `Available`
+   - Runs `tap index.test.ts --allow-incomplete-coverage`
+   - Optionally captures back-end logs for debugging
+5. `index.test.ts` is the tap-wrapped entry point that loads only the server platform with the
+   `integration` activation and calls `platform.test(test)`.
+
+**`test/integration/` folder structure:**
+
+```
+test/
+└── integration/
+    ├── kustomization.yaml     # Kustomize entry point
+    ├── mysql-deployment.yaml  # Back end resources (Namespace, Deployment, Service, …)
+    └── wait.sh                # Wait for readiness + run tap tests
+```
+
+**`test/integration/kustomization.yaml`:**
+
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: blong-integration
+resources:
+  - mysql-deployment.yaml
+```
+
+**`test/integration/wait.sh`:**
+
+```bash
+#!/bin/bash
+
+timeout=60
+interval=1
+elapsed=0
+
+while [ $elapsed -lt $timeout ]; do
+  if kubectl -n blong-integration get deployments \
+      -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' \
+      | grep -q "False"; then
+    echo "Waiting for all deployments to be ready..."
+    sleep $interval
+    elapsed=$((elapsed + interval))
+  else
+    break
+  fi
+done
+
+tap index.test.ts --allow-incomplete-coverage
+```
+
+**`index.test.ts`** — tap entry point for the integration run:
+
+```ts
+import load from '@feasibleone/blong-gogo';
+import tap from 'tap';
+
+import server from './server.ts';
+
+const platform = await load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']);
+await platform.start();
+await tap.test('suite integration tests', async test => {
+    await platform.test(test);
+});
+await platform.stop();
+```
+
+**`package.json`** — hooks the wait script into the Rush `ci-integration` command:
+
+```json
+{
+    "scripts": {
+        "ci-integration": "../../test/integration/wait.sh"
+    }
+}
+```
+
+**Realm configuration** — the test layer is only activated under `integration`:
+
+```ts
+config: {
+    default: {},
+    microservice: {adapter: true},
+    integration: {test: true},
+}
+```
+
+**Suite `server.ts`** — declare which test handlers to run via the `watch.test` list:
+
+```ts
+config: {
+    integration: {
+        watch: {
+            test: ['test.realm.query'],
+        },
+    },
+},
+```
+
+A complete working example is in the [`core/blong-int-sql`](../../../../core/blong-int-sql) package.
+
 ## UI tests
 
 These tests run the full browser app and simulate user interactions with the UI.
@@ -247,3 +364,9 @@ This is not yet implemented, as the front end framework is not yet ready, but th
 run the tests from the browser side, using a test runner like Playwright.
 
 ## Edge device tests
+
+These tests simulate interactions from edge devices such as ATMs, POS terminals, or IoT devices.
+They initiate requests at the TCP/binary protocol level rather than at the HTTP API level.
+
+This is not yet documented. For protocol-level simulation patterns see the
+[blong-sim-tcp](../../../../core/blong-sim-tcp) package and the `blong-codec` skill.
