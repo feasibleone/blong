@@ -353,7 +353,8 @@ config: {
 },
 ```
 
-A complete working example is in the [`core/blong-int-sql`](../../../../core/blong-int-sql) package.
+A complete working example is in the [blong-int-sql](https://github.com/feasibleone/blong/tree/main/core/blong-int-sql)
+package.
 
 ## UI tests
 
@@ -369,4 +370,4 @@ These tests simulate interactions from edge devices such as ATMs, POS terminals,
 They initiate requests at the TCP/binary protocol level rather than at the HTTP API level.
 
 This is not yet documented. For protocol-level simulation patterns see the
-[blong-sim-tcp](../../../../core/blong-sim-tcp) package and the `blong-codec` skill.
+[blong-sim-tcp](https://github.com/feasibleone/blong/tree/main/core/blong-sim-tcp) package and the `blong-codec` skill.
