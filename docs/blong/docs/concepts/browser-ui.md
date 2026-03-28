@@ -23,8 +23,6 @@ tighter integration with the framework's type system.
 
 For the design rationale see
 [Metadata-Driven UI](../rationale/metadata-driven-ui.md).
-For the implementation plan see
-[Browser UI Implementation Plan](../../../../plans/ui-BLONG_UI_IMPLEMENTATION_PLAN.md).
 
 ## Layers in the Browser
 
@@ -159,6 +157,7 @@ Period.properties = ['period', 'unit'];
 ```
 
 Custom widgets:
+
 - Receive `Input`, `Label` and `ErrorLabel` internal components as props,
   allowing reuse of built-in widget rendering
 - Declare which properties they manage via a static `.properties` array
@@ -193,6 +192,7 @@ A **card** is a named group of fields (widgets). Each card defines:
 - **`permission`** — the permission string required to render this card.
 
 Cards are the primary composition unit. They are defined either:
+
 - **In the schema** via `x-blong-cards` extension, or
 - **In the component handler** as a cards configuration object.
 
@@ -200,11 +200,13 @@ Cards are the primary composition unit. They are defined either:
 
 A **layout** configures how cards are arranged on a page for a specific
 mode. Layout names follow the convention `{mode}{TypeName}`:
+
 - `editDefault`, `createDefault` — standard edit/create layouts
 - `editFoo`, `createBar` — type-dependent layouts (when `typeField` is
   set, the entity type selects the layout)
 
 Each layout can be:
+
 - **A simple array** of card names (or nested arrays for side-by-side
   cards)
 - **A tabbed structure** with `items` (following PrimeReact's MenuModel
@@ -212,6 +214,7 @@ Each layout can be:
   navigation style
 
 Layout properties:
+
 - **`orientation`** — tab index position (`'left'` or `'top'`)
 - **`items`** — array of tab items, each with `label`, `icon` and
   `widgets` (card name array)
@@ -228,6 +231,7 @@ layout configuration.
 ### Runtime Model
 
 At runtime, the framework resolves the active layout by:
+
 1. Looking up `layouts[mode + capitalised(layoutName)]`
 2. Falling back to `layouts['edit' + capitalised(layoutName)]` if not
    found
@@ -312,6 +316,7 @@ startup:
 | `portal.customization.edit` | Save customisation with `componentId` and `componentConfig` |
 
 In Blong, these map to handler methods:
+
 - `ui.customization.get({componentId})` → returns `{component: {componentConfig}}`
 - `ui.customization.edit({component: {componentId, componentConfig}})` → persists the config
 
@@ -328,6 +333,7 @@ interface Customisation {
 ```
 
 These are merged with the defaults at runtime via `useCustomization`:
+
 - `mergedSchema = merge({}, schema, customisation.schema)`
 - `mergedCards = merge({}, cards, customisation.card)`
 - `mergedLayouts = merge({}, layouts, customisation.layout)`
@@ -393,6 +399,7 @@ A detail card displays or edits the selected row from a table:
 
 Pre-populates a table with static reference data (e.g. weekdays) and
 joins it with the data array. Configured via:
+
 - `pivot.examples` — the static data rows
 - `pivot.join` — property mapping between static data and array items
 
@@ -400,6 +407,7 @@ joins it with the data array. Configured via:
 
 Pre-populates a table with data from a dropdown list and joins it with
 the data array. Configured via:
+
 - `pivot.dropdown` — the dropdown list name
 - `pivot.join` — maps `value`/`label` from the list to array properties
 
@@ -451,6 +459,7 @@ Each menu item is created from a component handler reference using
 handler's `title` and `permission` to build the menu entry.
 
 Component handler definitions return:
+
 ```typescript
 {
   title: 'Entity list',           // Default menu/tab title
@@ -572,7 +581,7 @@ Playwright tests run against the full Blong server + browser stack:
 - **Trace on failure**: Failed tests are retried with Playwright tracing
   enabled. Traces include timeline, network requests, browser console
   and DOM snapshots. Trace files can be inspected at
-  https://trace.playwright.dev.
+  <https://trace.playwright.dev>.
 - **Test generator**: `npx playwright codegen <url>` records user
   interactions and generates test scripts as a starting point.
 
