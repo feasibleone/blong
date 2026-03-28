@@ -52,7 +52,7 @@ export function FileUploadField({
     className = '',
 }: FileUploadFieldProps): React.ReactElement {
     const {register, formState: {errors}, setValue} = useFormContext();
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
 
     const error = errors[name];
 
@@ -74,18 +74,23 @@ export function FileUploadField({
         [required, maxSize, label],
     );
 
+    const {ref: registerRef, ...fieldProps} = register(name, {validate});
+
     return React.createElement(
         'div',
         {className: `blong-field blong-file-upload ${className}`},
         React.createElement('label', {htmlFor: name}, label),
         React.createElement('input', {
-            ...register(name, {validate}),
+            ...fieldProps,
             type: 'file',
             id: name,
             accept,
             multiple,
             disabled,
-            ref: inputRef,
+            ref: (element: HTMLInputElement | null) => {
+                inputRef.current = element;
+                registerRef(element);
+            },
         }),
         error &&
             React.createElement(

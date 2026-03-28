@@ -4,7 +4,7 @@
  * Manages the active PrimeReact theme (light/dark mode, design tokens).
  */
 
-import {createContext, useCallback, useContext, useState} from 'react';
+import {createContext, useCallback, useContext, useEffect, useState} from 'react';
 
 /** Theme mode. */
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -44,11 +44,20 @@ export function useTheme(): ThemeContextValue {
  */
 export function useThemeProvider(initial: ThemeMode = 'system'): ThemeContextValue {
     const [mode, setModeState] = useState<ThemeMode>(initial);
-
-    const systemDark =
+    const [systemDark, setSystemDark] = useState(() =>
         typeof window !== 'undefined'
             ? window.matchMedia('(prefers-color-scheme: dark)').matches
-            : false;
+            : false,
+    );
+
+    // Listen for system color scheme changes
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mql = window.matchMedia('(prefers-color-scheme: dark)');
+        const handler = (e: MediaQueryListEvent): void => setSystemDark(e.matches);
+        mql.addEventListener('change', handler);
+        return () => mql.removeEventListener('change', handler);
+    }, []);
 
     const isDark = mode === 'dark' || (mode === 'system' && systemDark);
 

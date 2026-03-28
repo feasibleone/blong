@@ -159,6 +159,9 @@ export function useDesignStore(options: DesignStoreOptions) {
         setCustomisation(initial ?? {componentId: '', schema: {}, cards: {}, layouts: {}});
     }, [initial, pushUndo]);
 
+    const emptyCustomisation: Customisation = {componentId: '', schema: {}, cards: {}, layouts: {}};
+    const baseline = initial ?? emptyCustomisation;
+
     return {
         customisation,
         setCustomisation,
@@ -171,6 +174,6 @@ export function useDesignStore(options: DesignStoreOptions) {
         reset,
         canUndo: undoStack.current.length > 0,
         canRedo: redoStack.current.length > 0,
-        isDirty: JSON.stringify(customisation) !== JSON.stringify(initial),
+        isDirty: JSON.stringify(customisation) !== JSON.stringify(baseline),
     };
 }

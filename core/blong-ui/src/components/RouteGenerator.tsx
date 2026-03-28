@@ -33,9 +33,11 @@ export interface PageHandler {
  * - `component$subject$entity.open` → `/subject/entity/:id`
  */
 export function deriveRoutePath(componentId: string, pageSuffix: string): string {
-    // Strip the component$ prefix if present
-    const cleanId = componentId.replace(/^component\$/, '');
-    const parts = cleanId.split(/[\$\.]/);
+    // Strip the component$ prefix if present and any trailing page suffix (.browse|.new|.open)
+    const cleanId = componentId
+        .replace(/^component\$/, '')
+        .replace(/\.(browse|new|open)$/, '');
+    const parts = cleanId.split('$');
 
     const basePath = `/${parts.join('/')}`;
 

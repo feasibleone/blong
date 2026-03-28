@@ -55,7 +55,7 @@ export function CascadedDropdown({
     className = '',
 }: CascadedDropdownProps): React.ReactElement {
     const {register, formState: {errors}} = useFormContext();
-    const parentValue = useWatch({name: parentField ?? ''});
+    const parentValue = useWatch({name: parentField as string, disabled: !parentField});
 
     const filteredOptions = useMemo(() => {
         if (!parentField || parentValue == null) return options;

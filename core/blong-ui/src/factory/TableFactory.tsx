@@ -53,8 +53,12 @@ export interface TableFactoryProps {
     selection?: Record<string, unknown> | Record<string, unknown>[];
     /** Called when selection changes. */
     onSelectionChange?: (selection: Record<string, unknown> | Record<string, unknown>[]) => void;
+    /** Called when a row is double-clicked (open/edit). */
+    onRowOpen?: (row: Record<string, unknown>) => void;
     /** Called when page/sort/filter changes. */
     onFetchParamsChange?: (params: FetchParams) => void;
+    /** Unique row identifier key used for selection comparison (default: first column). */
+    dataKey?: string;
     /** Whether data is loading. */
     isLoading?: boolean;
     /** CSS class for the table container. */
@@ -141,13 +145,28 @@ export function TableFactory({
     selectionMode,
     selection,
     onSelectionChange,
+    onRowOpen,
     onFetchParamsChange,
+    dataKey: dataKeyProp,
     isLoading = false,
     className = '',
 }: TableFactoryProps): React.ReactElement {
     const columns = useMemo(() => deriveColumns(schema), [schema]);
     const [sortField, setSortField] = useState<string | undefined>();
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    // Determine the row key: use explicit dataKey, or fall back to first column
+    const dataKey = dataKeyProp ?? columns[0]?.field;
+
+    /** Compare two rows by their data key. */
+    const rowsMatch = useCallback(
+        (a: Record<string, unknown>, b: Record<string, unknown>): boolean => {
+            if (a === b) return true;
+            if (!dataKey) return a === b;
+            return a[dataKey] === b[dataKey];
+        },
+        [dataKey],
+    );
 
     const handleSort = useCallback(
         (field: string) => {
@@ -179,17 +198,22 @@ export function TableFactory({
                 onSelectionChange(row);
             } else {
                 const currentSelection = Array.isArray(selection) ? selection : [];
-                const exists = currentSelection.some(
-                    s => JSON.stringify(s) === JSON.stringify(row),
-                );
+                const exists = currentSelection.some(s => rowsMatch(s, row));
                 onSelectionChange(
                     exists
-                        ? currentSelection.filter(s => JSON.stringify(s) !== JSON.stringify(row))
+                        ? currentSelection.filter(s => !rowsMatch(s, row))
                         : [...currentSelection, row],
                 );
             }
         },
-        [selectionMode, selection, onSelectionChange],
+        [selectionMode, selection, onSelectionChange, rowsMatch],
+    );
+
+    const handleRowDblClick = useCallback(
+        (row: Record<string, unknown>) => {
+            onRowOpen?.(row);
+        },
+        [onRowOpen],
     );
 
     if (isLoading) {
@@ -223,15 +247,16 @@ export function TableFactory({
     const bodyRows = data.map((row, rowIdx) => {
         const isSelected = selectionMode
             ? (Array.isArray(selection)
-                  ? selection.some(s => JSON.stringify(s) === JSON.stringify(row))
-                  : JSON.stringify(selection) === JSON.stringify(row))
+                  ? selection.some(s => rowsMatch(s, row))
+                  : selection != null && rowsMatch(selection, row))
             : false;
 
         return React.createElement(
             'tr',
             {
-                key: rowIdx,
+                key: dataKey ? String(row[dataKey] ?? rowIdx) : rowIdx,
                 onClick: () => handleRowClick(row),
+                onDoubleClick: () => handleRowDblClick(row),
                 className: `blong-tr ${isSelected ? 'blong-tr-selected' : ''} ${selectionMode ? 'blong-tr-selectable' : ''}`,
             },
             ...columns.map(col =>

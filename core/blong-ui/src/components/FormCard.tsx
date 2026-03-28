@@ -1,8 +1,8 @@
 /**
- * FormCard — card wrapping FormFactory with toolbar (Save, Cancel, Reset).
+ * FormCard — card wrapping FormFactory with toolbar (Save, Cancel).
  *
  * Implements the trigger pattern: Save button activates when the form is
- * dirty, Reset restores `$original` values.
+ * dirty.
  */
 
 import React, {useCallback, useState} from 'react';
@@ -16,7 +16,6 @@ import type {
     Layout,
 } from '../types.js';
 import {FormFactory} from '../factory/FormFactory.js';
-import {snapshotOriginal} from '../factory/FormSubmit.js';
 
 /** Props for the FormCard component. */
 export interface FormCardProps {
@@ -83,9 +82,6 @@ export function FormCard({
     const [mode, setMode] = useState<FormMode>(initialMode);
     const [trigger, setTrigger] = useState<(() => Promise<void>) | undefined>();
     const [isSaving, setIsSaving] = useState(false);
-    const [originalValues] = useState(() =>
-        defaultValues ? snapshotOriginal(defaultValues) : undefined,
-    );
 
     const handleSubmit = useCallback(
         async (data: Record<string, unknown>, submitMode: FormMode) => {

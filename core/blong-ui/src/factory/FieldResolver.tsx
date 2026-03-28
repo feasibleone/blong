@@ -136,6 +136,24 @@ export function resolveFields(
 }
 
 /**
+ * Safely retrieve a nested error from formState.errors by dot-path name.
+ * React Hook Form stores errors for nested fields (e.g. `address.city`)
+ * as nested objects, not dot-path keys.
+ */
+function getNestedError(
+    errors: Record<string, unknown>,
+    name: string,
+): {message?: string} | undefined {
+    const parts = name.split('.');
+    let current: unknown = errors;
+    for (const part of parts) {
+        if (current == null || typeof current !== 'object') return undefined;
+        current = (current as Record<string, unknown>)[part];
+    }
+    return current as {message?: string} | undefined;
+}
+
+/**
  * Render a single field based on its resolved metadata.
  * Returns a React element wrapping the appropriate PrimeReact component.
  */
@@ -146,7 +164,10 @@ export function renderField(
 ): React.ReactElement {
     if (field.hidden) return React.createElement(React.Fragment);
 
-    const error = form.formState.errors[field.name];
+    const error = getNestedError(
+        form.formState.errors as unknown as Record<string, unknown>,
+        field.name,
+    );
     const fieldOptions = options ?? field.options;
 
     const inputProps: Record<string, unknown> = {

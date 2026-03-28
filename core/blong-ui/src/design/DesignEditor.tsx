@@ -124,6 +124,16 @@ export function DesignEditor({
                     store.updateSchema(key, val as Record<string, unknown>);
                 }
             }
+            if (update.cards) {
+                for (const [key, val] of Object.entries(update.cards)) {
+                    store.updateCard(key, val as unknown as Record<string, unknown>);
+                }
+            }
+            if (update.layouts) {
+                for (const [key, val] of Object.entries(update.layouts)) {
+                    store.updateLayout(key, val as unknown as Record<string, unknown>);
+                }
+            }
         },
         save: handleSave,
         isSaving,
@@ -253,11 +263,15 @@ export function DesignEditor({
                 schema,
                 cards,
                 onSelect: (fieldName) => {
-                    // Add field to the first card in the layout
+                    // Add field to the first card in the layout, using store state
+                    const currentCards = store.customisation.cards ?? {};
                     const firstCardId = layout.cards[0];
                     if (firstCardId) {
+                        const currentWidgets = currentCards[firstCardId]?.widgets
+                            ?? cards[firstCardId]?.widgets
+                            ?? [];
                         store.updateCard(firstCardId, {
-                            widgets: [...(cards[firstCardId]?.widgets ?? []), fieldName],
+                            widgets: [...currentWidgets, fieldName],
                         });
                     }
                 },
@@ -268,8 +282,12 @@ export function DesignEditor({
                 cards,
                 layout,
                 onSelect: (cardId) => {
+                    // Add card to layout, using store's current layout state
+                    const currentLayouts = store.customisation.layouts ?? {};
+                    const currentEditLayout = currentLayouts.edit ?? layout;
+                    const currentCards = currentEditLayout.cards ?? layout.cards;
                     store.updateLayout('edit', {
-                        cards: [...layout.cards, cardId],
+                        cards: [...currentCards, cardId],
                     });
                 },
                 onClose: () => setShowSelectCard(false),

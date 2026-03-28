@@ -32,7 +32,10 @@ export interface UseCustomizationOptions {
 }
 
 /**
- * Deeply merge schema property overrides into the default schema.
+ * Shallow-merge schema property overrides into the default schema.
+ *
+ * Each property in `overrides` is spread onto the base property
+ * (top-level keys only). Nested sub-objects are not recursively merged.
  */
 function mergeSchema(
     defaultSchema: BlongSchema | undefined,

@@ -159,7 +159,17 @@ export function AuthProvider({
                     user,
                 });
             } catch (err) {
-                const message = err instanceof Error ? err.message : 'Login failed';
+                let message = 'Login failed';
+                if (err instanceof Error && err.message) {
+                    message = err.message;
+                } else if (
+                    err &&
+                    typeof err === 'object' &&
+                    'message' in err &&
+                    typeof (err as {message?: unknown}).message === 'string'
+                ) {
+                    message = (err as {message: string}).message;
+                }
                 setState(prev => ({
                     ...prev,
                     isLoading: false,

@@ -5,7 +5,7 @@
  * cards/layouts model, and implements the trigger pattern for toolbar Save.
  */
 
-import React, {useCallback, useEffect, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {FormProvider, useForm} from 'react-hook-form';
 import type {FieldValues, UseFormReturn} from 'react-hook-form';
 
@@ -24,6 +24,7 @@ import type {ResolvedField} from './FieldResolver.js';
 import {renderField} from './FieldResolver.js';
 import {isCardVisible} from './CardResolver.js';
 import {getTabCards, isTabbedLayout} from './LayoutResolver.js';
+import {isCustomWidget, CustomWidgetRenderer} from './CustomWidgetRenderer.js';
 
 /** Props for the FormFactory component. */
 export interface FormFactoryProps {
@@ -51,6 +52,8 @@ export interface FormFactoryProps {
     isLoading?: boolean;
     /** Active tab index for tabbed layouts. */
     activeTab?: number;
+    /** Called when the user changes tabs. */
+    onTabChange?: (tabIndex: number) => void;
     /** CSS class for the form container. */
     className?: string;
 }
@@ -63,11 +66,13 @@ function CardGroup({
     fields,
     form,
     dropdowns,
+    customWidgets,
 }: {
     card: Card;
     fields: ResolvedField[];
     form: UseFormReturn<FieldValues>;
     dropdowns?: Dropdowns;
+    customWidgets?: React.ReactElement[];
 }): React.ReactElement {
     return React.createElement(
         'fieldset',
@@ -76,6 +81,7 @@ function CardGroup({
         fields.map(field =>
             renderField(field, form, dropdowns?.[field.lookup ?? field.name]),
         ),
+        ...(customWidgets ?? []),
     );
 }
 
@@ -108,7 +114,8 @@ export function FormFactory({
     onSubmit,
     watchFields,
     isLoading = false,
-    activeTab = 0,
+    activeTab: activeTabProp = 0,
+    onTabChange,
     className = '',
 }: FormFactoryProps): React.ReactElement {
     const form = useForm<FieldValues>({
@@ -116,8 +123,19 @@ export function FormFactory({
         mode: 'onChange',
     });
 
-    // Custom widget support will be wired in a future iteration
-    void editors;
+    // Internal tab state, synced with prop when provided
+    const [activeTabInternal, setActiveTabInternal] = useState(activeTabProp);
+    const activeTab = onTabChange != null ? activeTabProp : activeTabInternal;
+    const handleTabChange = useCallback(
+        (idx: number) => {
+            if (onTabChange) {
+                onTabChange(idx);
+            } else {
+                setActiveTabInternal(idx);
+            }
+        },
+        [onTabChange],
+    );
 
     const {handleSubmit, formState, reset} = form;
     const {isDirty} = formState;
@@ -187,8 +205,10 @@ export function FormFactory({
                       {
                           key: tab.label,
                           role: 'tab',
+                          type: 'button',
                           'aria-selected': idx === activeTab,
                           className: `blong-tab ${idx === activeTab ? 'blong-tab-active' : ''}`,
+                          onClick: () => handleTabChange(idx),
                       },
                       tab.label,
                   ),
@@ -206,9 +226,22 @@ export function FormFactory({
 
             // Resolve fields for this card
             const fields: ResolvedField[] = [];
+            const customWidgetElements: React.ReactElement[] = [];
             for (const widget of card.widgets) {
                 const names = typeof widget === 'string' ? [widget] : widget;
                 for (const name of names) {
+                    // Check if this is a custom widget
+                    if (editors && isCustomWidget(name, editors)) {
+                        customWidgetElements.push(
+                            React.createElement(CustomWidgetRenderer, {
+                                key: name,
+                                widgetName: name,
+                                editors,
+                                fieldName: name,
+                            }),
+                        );
+                        continue;
+                    }
                     const prop = schema.properties?.[name];
                     if (prop) {
                         fields.push(resolveField(name, prop, requiredFields));
@@ -222,6 +255,7 @@ export function FormFactory({
                 fields,
                 form,
                 dropdowns,
+                customWidgets: customWidgetElements.length > 0 ? customWidgetElements : undefined,
             });
         })
         .filter(Boolean);
