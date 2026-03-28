@@ -582,7 +582,7 @@ Playwright tests run against the full Blong server + browser stack:
   enabled. Traces include timeline, network requests, browser console
   and DOM snapshots. Trace files can be inspected at
   <https://trace.playwright.dev>.
-- **Test generator**: `npx playwright codegen <url>` records user
+- **Test generator**: `npx playwright codegen {url}` records user
   interactions and generates test scripts as a starting point.
 
 ## Module Loading in the Browser
