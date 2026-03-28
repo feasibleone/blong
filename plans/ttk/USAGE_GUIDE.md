@@ -180,7 +180,56 @@ group('Parallel Provisioning')([
 ])
 ```
 
+## Handler Naming Reference
+
+The migration emitter maps HTTP operations to semantic triple handler names
+(`subjectObjectPredicate`). The following table shows the naming rules:
+
+| Method | Path pattern              | Handler name               |
+|--------|---------------------------|----------------------------|
+| POST   | `/transfers`              | `transferTransferCreate`   |
+| GET    | `/transfers/{id}`         | `transferTransferGet`      |
+| PUT    | `/transfers/{id}`         | `transferTransferUpdate`   |
+| DELETE | `/transfers/{id}`         | `transferTransferRemove`   |
+| PATCH  | `/transfers/{id}`         | `transferTransferPatch`    |
+| GET    | `/transfers`              | `transferTransferFind`     |
+| POST   | `/quotes`                 | `quoteQuoteCreate`         |
+| GET    | `/parties/{type}/{id}`    | `partyPartyGet`            |
+| POST   | `/participants`           | `participantParticipantCreate` |
+| POST   | `/participants/{n}/limits`| `limitLimitCreate`         |
+
+Rules:
+- **Subject** = singular of the last non-parameter path segment  
+- **Object** = same as subject (capitalized)  
+- **Predicate** = Create / Get / Find / Update / Patch / Remove / Execute  
+- `GET` without trailing `{param}` → **Find** (list); with trailing `{param}` → **Get**  
+- Irregular plurals are handled: `parties→party`, `currencies→currency`, etc.
+
+## Variable Reference Handling
+
+The emitter transforms variable references automatically:
+
+| TTK syntax                          | Generated TypeScript         | Notes                                 |
+|-------------------------------------|------------------------------|---------------------------------------|
+| `{$environment.TRANSFER_ID}`        | `inputs.TRANSFER_ID`         | Passed via `inputs` param to function |
+| `{$prev.1.response.body.amount}`    | `` `${undefined}` ``         | Requires manual wiring to step result |
+| `{$request.body.transferId}`        | `` `${undefined}` ``         | Requires manual wiring                |
+
+The generated function signature includes `inputs = {}` for environment variables:
+
+```typescript
+myCollection: ({name = 'My Collection', inputs = {}}: {name?: string; inputs?: Record<string, string>}, $meta: IMeta) =>
+```
+
+Search the generated code for `` `${undefined}` `` to find placeholders that need manual wiring.
+
 ## Migration Guide
+
+### Complete Migration Workflow
+
+```
+ml-testing-toolkit JSON  →  TypeScript  →  Review & wire  →  Run  →  Allure report
+```
 
 ### Step 1: Analyze Existing Collections
 
@@ -209,12 +258,99 @@ import('@feasibleone/blong-ttk').then(({migrateMigrateCollectionConvert}) => {
 "
 ```
 
+### Step 2b: Extract Shared Helpers from Multiple Collections
+
+When migrating several related collections, use `migrateMigrateHelperExtract` first to
+identify operations that appear in multiple collections and generate a shared `helpers.ts`:
+
+```typescript
+import {migrateMigrateHelperExtract} from '@feasibleone/blong-ttk';
+
+const result = await migrateMigrateHelperExtract({
+    sourcePaths: [
+        './collections/hub/p2p.json',
+        './collections/hub/onboarding.json',
+        './collections/hub/regression.json',
+    ],
+    targetDir: './collections/hub/shared',
+    minCollections: 2, // include op if it appears in ≥2 collections
+}, $meta);
+
+// Generated: ./collections/hub/shared/helpers.ts
+// Contents:
+//   export const sharedHandlerNames = ['transferTransferCreate', 'quoteQuoteCreate', ...] as const;
+//   export type SharedHandlerName = typeof sharedHandlerNames[number];
+```
+
+Then import `sharedHandlerNames` in each converted collection to reference the shared operations.
+
+### Step 2c: Convert Callback Rules (if needed)
+
+If your collection uses a `response_rules.json` file for callback dispatch, convert it to
+`@infitx/decision` YAML format:
+
+```typescript
+import {migrateMigrateRuleConvert} from '@feasibleone/blong-ttk';
+
+await migrateMigrateRuleConvert({
+    sourcePath: './response_rules.json',    // json-rules-engine format
+    targetPath: './callback-rules.yaml',   // @infitx/decision format
+}, $meta);
+```
+
+The converted YAML can be passed directly to `callbackRuleDispatch`:
+
+```typescript
+// In callbackRuleDispatch handler:
+const rules = './callback-rules.yaml';  // or inline DecisionConfig object
+```
+
 ### Step 3: Review and Refactor
 
-1. **Check variable references:** Environment variables like `{$environment.VAR}` need to be replaced with provisioning step outputs
-2. **Review scripts:** JavaScript scripts in preRequest/postRequest may need manual conversion
-3. **Extract helpers:** Look for repeated patterns and extract into reusable functions
-4. **Add callbacks:** Replace polling patterns with `callbackWait`
+1. **Wire `$prev` references:** Search for `` `${undefined}` `` in the output — each is a
+   `{$prev.X}` or `{$request.X}` reference that needs to be replaced with the actual step
+   result from the previous async function:
+
+   ```typescript
+   // Generated (needs manual wiring):
+   transferId: `${undefined}`,
+
+   // Fixed (after wiring):
+   const priorResult = await createQuote;
+   // ...
+   transferId: priorResult.transferId,
+   ```
+
+2. **Check variable references:** `inputs.VAR_NAME` references are already wired through
+   the `inputs` parameter. Make sure callers pass the right values:
+
+   ```typescript
+   // Caller provides environment values:
+   await myCollection({inputs: {TRANSFER_ID: uuid(), CURRENCY: 'USD'}}, $meta);
+   ```
+
+3. **Review script comments:** Converted scripts appear as inline comments. Check them for
+   logic that needs to be implemented as TypeScript (e.g., UUID generation, token setting).
+
+4. **Add callbacks where needed:** If a request returns 202 Accepted and expects a callback,
+   add `callbackCallbackRegister` + `callbackCallbackWait`:
+
+   ```typescript
+   async function createTransfer(assert, {$meta}) {
+       await callbackCallbackRegister({correlationId: inputs.TRANSFER_ID, type: 'PUT /transfers/{ID}'}, $meta);
+       const result = await transferTransferCreate({...}, $meta);
+       assert.equal(result.status, 202);
+       return result;
+   },
+   async function waitForCallback(assert, {createTransfer, $meta}) {
+       const callback = await callbackCallbackWait({correlationId: inputs.TRANSFER_ID}, $meta);
+       assert.equal(callback.body.transferState, 'COMMITTED');
+       return callback;
+   },
+   ```
+
+5. **Extract shared helpers:** Move repeated provisioning steps to separate reusable
+   handler files (see Step 2b).
 
 ### Step 4: Run and Validate
 

@@ -1,11 +1,15 @@
-import {realm} from '@feasibleone/blong';
+import { realm } from '@feasibleone/blong';
 
 /**
  * Mojaloop API client realm.
  *
- * Provides HTTP client adapters for:
- * - FSPIOP API (transfers, quotes, parties)
- * - Admin API (participants, endpoints, limits)
+ * Provides HTTP client adapters wired via orchestrator.openapi for:
+ * - FSPIOP API (transfers, quotes, parties) — namespace: fspiop
+ * - Admin API  (participants, endpoints, limits) — namespace: admin
+ *
+ * Handler naming follows semantic triple convention:
+ *   transferTransferCreate, quoteQuoteCreate, partyPartyGet, ...
+ *   adminParticipantCreate, adminEndpointAdd, adminLimitSet, ...
  *
  * Used by test collections to interact with Mojaloop services.
  */
@@ -23,7 +27,27 @@ export default realm(blong => ({
         './adapter/openapi/admin',
     ],
     config: {
-        default: {},
+        default: {
+            // OpenAPI namespace config consumed by orchestrator.openapi.
+            // Lists spec files and server overrides for each API namespace.
+            openapi: {
+                logLevel: 'info' as const,
+                api: {
+                    namespace: {
+                        fspiop: [
+                            new URL('./api/fspiop.yaml', import.meta.url).href,
+                            new URL('./api/fspiop.operations.yaml', import.meta.url).href,
+                            {servers: [{url: 'http://localhost:4000'}]},
+                        ],
+                        admin: [
+                            new URL('./api/admin.yaml', import.meta.url).href,
+                            new URL('./api/admin.operations.yaml', import.meta.url).href,
+                            {servers: [{url: 'http://localhost:4001'}]},
+                        ],
+                    },
+                },
+            },
+        },
         dev: {
             openapi: true,
             provision: true,

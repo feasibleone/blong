@@ -2,8 +2,6 @@
  * Type definitions for blong-ttk
  */
 
-import type {IMeta} from '@feasibleone/blong';
-import type {ITestEvents} from '@feasibleone/blong-chain';
 
 /**
  * Test collection configuration
@@ -58,7 +56,7 @@ export interface ITtkCollection {
  * ml-testing-toolkit test case
  */
 export interface ITtkTestCase {
-    id: number;
+    id: number | string;
     name: string;
     requests: ITtkRequest[];
 }
@@ -67,7 +65,7 @@ export interface ITtkTestCase {
  * ml-testing-toolkit request
  */
 export interface ITtkRequest {
-    id: number;
+    id: number | string;
     description: string;
     apiVersion?: {
         minorVersion: number;
@@ -92,7 +90,7 @@ export interface ITtkRequest {
  * ml-testing-toolkit assertion
  */
 export interface ITtkAssertion {
-    id: number;
+    id: number | string;
     description: string;
     exec: string[];
 }

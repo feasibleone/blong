@@ -1,13 +1,13 @@
 /**
  * Integration test for blong-ttk
- * 
+ *
  * Tests the complete flow: collection execution → results → Allure reporting
  */
 
-import {test} from 'tap';
-import {rm} from 'node:fs/promises';
+import {allureResultWrite, allureSessionEnd, allureSessionStart} from '@feasibleone/blong-allure';
 import {TestExecutor} from '@feasibleone/blong-chain';
-import {allureSessionStart, allureSessionEnd, allureResultWrite} from '@feasibleone/blong-allure';
+import {rm} from 'node:fs/promises';
+import {test} from 'tap';
 
 test('integration - execute example collection with TestExecutor', async t => {
     // Import the example collection
@@ -21,18 +21,17 @@ test('integration - execute example collection with TestExecutor', async t => {
     // Create TestExecutor
     const executor = new TestExecutor({
         concurrency: 2,
-        timeout: 10000,
     });
 
     // Execute the collection
     try {
         // Get the handler function
-        const handler = collection({
+        const handler = (collection as any)({
             lib: {
                 group: (name: string) => (steps: any[]) => steps,
             },
             handler: {},
-        } as any);
+        });
 
         // Execute the test
         const testFn = handler.exampleSimpleTransfer;
@@ -82,12 +81,14 @@ test('integration - result writing for test step', async t => {
 
         // Create a mock step result
         const step = {
-            name: 'test-step',
-            status: 'success' as const,
-            latency: {
-                startedAt: Date.now(),
-                completedAt: Date.now() + 100,
-            },
+            stepName: 'test-step',
+            displayName: 'test-step',
+            groupPath: [],
+            status: 'completed' as const,
+            startTime: Date.now(),
+            endTime: Date.now() + 100,
+            dependencies: [],
+            dependents: [],
         };
 
         // Write result
@@ -111,14 +112,15 @@ test('integration - result writing for test step', async t => {
 
 test('integration - callback coordination', async t => {
     // Test the callback promise coordination
-    const {getPendingCallbacks} = await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
-    
+    const {getPendingCallbacks} =
+        await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
+
     const store = getPendingCallbacks();
     store.clear(); // Clean state
 
     // Simulate callback registration and receipt
     const correlationId = 'test-corr-123';
-    
+
     // Create a pending promise manually
     let resolveCallback: any;
     const callbackPromise = new Promise(resolve => {
@@ -139,7 +141,7 @@ test('integration - callback coordination', async t => {
     // Simulate callback arrival
     const pending = store.get(correlationId);
     t.ok(pending);
-    
+
     if (pending) {
         clearTimeout(pending.timeout);
         pending.resolve({

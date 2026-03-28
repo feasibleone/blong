@@ -1,5 +1,5 @@
-import {handler} from '@feasibleone/blong';
 import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 import {randomUUID} from 'node:crypto';
 
 /**
@@ -13,74 +13,76 @@ import {randomUUID} from 'node:crypto';
  * @param initialLimit - Initial NET_DEBIT_CAP limit (defaults to 1000000)
  * @returns Created participant details with name, currency, and accountIds
  */
-export default handler(({handler: {adminParticipantCreate, adminAccountCreate, adminLimitSet}}) => ({
-    async provisionParticipantCreate(
-        {
-            name = `test-dfsp-${randomUUID().substring(0, 8)}`,
-            currency = 'USD',
-            initialLimit = 1000000,
-        }: {
-            name?: string;
-            currency?: string;
-            initialLimit?: number;
-        } = {},
-        $meta: IMeta,
-    ) {
-        // Create participant
-        const participant = await adminParticipantCreate(
+export default handler(
+    ({handler: {adminParticipantCreate, adminAccountCreate, adminLimitSet}}) => ({
+        async provisionParticipantCreate(
             {
+                name = `test-dfsp-${randomUUID().substring(0, 8)}`,
+                currency = 'USD',
+                initialLimit = 1000000,
+            }: {
+                name?: string;
+                currency?: string;
+                initialLimit?: number;
+            } = {},
+            $meta: IMeta,
+        ) {
+            // Create participant
+            const participant = await adminParticipantCreate(
+                {
+                    name,
+                    currency,
+                },
+                $meta,
+            );
+
+            // Create position account
+            const positionAccount = await adminAccountCreate(
+                {
+                    name,
+                    account: {
+                        currency,
+                        type: 'POSITION',
+                    },
+                },
+                $meta,
+            );
+
+            // Create settlement account
+            const settlementAccount = await adminAccountCreate(
+                {
+                    name,
+                    account: {
+                        currency,
+                        type: 'SETTLEMENT',
+                    },
+                },
+                $meta,
+            );
+
+            // Set NET_DEBIT_CAP limit
+            await adminLimitSet(
+                {
+                    name,
+                    limit: {
+                        currency,
+                        type: 'NET_DEBIT_CAP',
+                        value: initialLimit,
+                    },
+                },
+                $meta,
+            );
+
+            return {
                 name,
                 currency,
-            },
-            $meta,
-        );
-
-        // Create position account
-        const positionAccount = await adminAccountCreate(
-            {
-                name,
-                account: {
-                    currency,
-                    type: 'POSITION',
+                isActive: (participant as any).isActive,
+                accounts: {
+                    position: positionAccount,
+                    settlement: settlementAccount,
                 },
-            },
-            $meta,
-        );
-
-        // Create settlement account
-        const settlementAccount = await adminAccountCreate(
-            {
-                name,
-                account: {
-                    currency,
-                    type: 'SETTLEMENT',
-                },
-            },
-            $meta,
-        );
-
-        // Set NET_DEBIT_CAP limit
-        await adminLimitSet(
-            {
-                name,
-                limit: {
-                    currency,
-                    type: 'NET_DEBIT_CAP',
-                    value: initialLimit,
-                },
-            },
-            $meta,
-        );
-
-        return {
-            name,
-            currency,
-            isActive: participant.isActive,
-            accounts: {
-                position: positionAccount,
-                settlement: settlementAccount,
-            },
-            limit: initialLimit,
-        };
-    },
-}));
+                limit: initialLimit,
+            };
+        },
+    }),
+);

@@ -1,5 +1,5 @@
-import {handler} from '@feasibleone/blong';
 import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 
 /**
  * Remove stale test entities based on retention period.
@@ -33,7 +33,7 @@ export default handler(({handler: {adminParticipantList}}) => ({
         const participants = await adminParticipantList({}, $meta);
 
         // Filter to test participants (prefix: test-dfsp-) created before cutoff
-        const staleParticipants = participants.filter((p: any) => {
+        const staleParticipants = (participants as any[]).filter((p: any) => {
             if (!p.name.startsWith('test-dfsp-')) return false;
             const createdTime = new Date(p.createdDate).getTime();
             return createdTime < cutoffTime;

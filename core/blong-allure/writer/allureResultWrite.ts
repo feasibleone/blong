@@ -2,19 +2,18 @@
  * Write Allure test result files
  */
 
-import {randomUUID, createHash} from 'node:crypto';
+import type {IMeta, IStepProgress} from '@feasibleone/blong-chain';
+import {createHash, randomUUID} from 'node:crypto';
 import {writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import type {IStepProgress, IMeta} from '@feasibleone/blong-chain';
-import type {IAllureResult, IAllureContext} from '../types.js';
-import {allureStatusMap} from './allureStatusMap.js';
+import type {IAllureContext, IAllureResult} from '../types.js';
 import {allureLabelsBuild} from './allureLabelsBuild.js';
 import {allureLinksBuild} from './allureLinksBuild.js';
-import {allureStepMap} from './allureStepMap.js';
+import {allureStatusMap} from './allureStatusMap.js';
 
 /**
  * Write an Allure result file for a test step
- * 
+ *
  * @param outputDir - Results output directory (e.g., 'allure-results/')
  * @param step - Step progress from blong-chain
  * @param context - Execution context (realm, collection, group)
@@ -27,14 +26,13 @@ export async function allureResultWrite(
     meta?: IMeta,
 ): Promise<void> {
     const uuid = randomUUID();
-    
+
+    const stepName = step.displayName ?? step.stepName;
+
     // Build full name from context and step name
-    const fullNameParts = [
-        context.realm,
-        context.collection,
-        context.group,
-        step.name,
-    ].filter(Boolean);
+    const fullNameParts = [context.realm, context.collection, context.group, stepName].filter(
+        Boolean,
+    );
     const fullName = fullNameParts.join('.');
 
     // Compute historyId as deterministic hash of fullName
@@ -45,12 +43,12 @@ export async function allureResultWrite(
         uuid,
         historyId,
         fullName,
-        name: step.name,
+        name: stepName,
         labels: allureLabelsBuild(context),
         links: allureLinksBuild(meta, context),
         status: allureStatusMap(step.status),
-        start: step.latency?.startedAt || Date.now(),
-        stop: step.latency?.completedAt || Date.now(),
+        start: step.startTime || Date.now(),
+        stop: step.endTime || Date.now(),
     };
 
     // Add status details if there's an error
@@ -59,11 +57,6 @@ export async function allureResultWrite(
             message: step.error.message,
             trace: step.error.stack,
         };
-    }
-
-    // Map nested steps
-    if (step.steps && step.steps.length > 0) {
-        result.steps = allureStepMap(step.steps);
     }
 
     // Write result file

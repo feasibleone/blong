@@ -6,20 +6,18 @@ import type {AllureStatus} from '../types.js';
 
 /**
  * Translate blong-chain step status to Allure status
- * 
- * @param status - blong-chain status: 'success' | 'error' | 'waiting' | 'skipped'
+ *
+ * @param status - blong-chain status: 'pending' | 'running' | 'completed' | 'failed'
  * @returns Allure status
  */
 export function allureStatusMap(status: string): AllureStatus {
     switch (status) {
-        case 'success':
+        case 'completed':
             return 'passed';
-        case 'error':
+        case 'failed':
             return 'failed';
-        case 'waiting':
-        case 'scheduled':
-            return 'skipped';
-        case 'skipped':
+        case 'pending':
+        case 'running':
             return 'skipped';
         default:
             return 'unknown';
@@ -30,5 +28,5 @@ export function allureStatusMap(status: string): AllureStatus {
  * Determine if a step is finished based on status
  */
 export function isFinished(status: string): boolean {
-    return status === 'success' || status === 'error' || status === 'skipped';
+    return status === 'completed' || status === 'failed';
 }

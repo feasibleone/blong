@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "strict": true,
         "rootDir": ".",
         "allowJs": true,
         "checkJs": false,

@@ -2,25 +2,27 @@
  * Run a test collection
  */
 
-import {handler} from '@feasibleone/blong';
-import {TestExecutor} from '@feasibleone/blong-chain';
-import {allureSessionStart, allureSessionEnd, allureResultWrite} from '@feasibleone/blong-allure';
 import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
+import {allureResultWrite, allureSessionEnd, allureSessionStart} from '@feasibleone/blong-allure';
+import type {IMeta as IChainMeta} from '@feasibleone/blong-chain';
+import {TestExecutor} from '@feasibleone/blong-chain';
 import type {ICollectionConfig} from '../../../types.js';
 
 export default handler(() => ({
     /**
      * Run a test collection with blong-chain TestExecutor
-     * 
+     *
      * @param config - Collection configuration
      * @param $meta - Metadata
      * @returns Execution results
      */
     engineCollectionRun: async (config: ICollectionConfig, $meta: IMeta) => {
         // Load collection module
-        const collectionModule = typeof config.collection === 'string'
-            ? await import(config.collection)
-            : await config.collection();
+        const collectionModule =
+            typeof config.collection === 'string'
+                ? await import(config.collection)
+                : await config.collection();
 
         // Extract test handlers from collection
         const collectionHandler = collectionModule.default;
@@ -40,42 +42,44 @@ export default handler(() => ({
         // Create test executor
         const executor = new TestExecutor({
             concurrency: config.concurrency || 10,
-            timeout: config.timeout || 60000,
         });
 
         // Subscribe to step completion events to write Allure results
-        executor.on('step:end', async (step) => {
+        executor.on('step:end', async (stepName: string, step) => {
             const context = {
                 realm: config.realm || 'ttk',
-                collection: typeof config.collection === 'string' 
-                    ? config.collection.split('/').pop()?.replace('.ts', '')
-                    : 'collection',
+                collection:
+                    typeof config.collection === 'string'
+                        ? config.collection.split('/').pop()?.replace('.ts', '')
+                        : 'collection',
                 logUrl: allureConfig.logUrl,
             };
-            
+
             await allureResultWrite(
                 allureConfig.outputDir,
                 step,
                 context,
-                $meta,
+                $meta as unknown as IChainMeta,
             );
         });
 
         try {
             // Execute the collection
-            const results = await executor.run(collectionHandler);
+            await executor.execute(collectionHandler, $meta as unknown as IChainMeta);
 
             // End Allure session
             await allureSessionEnd(allureConfig);
 
+            // Get progress snapshot
+            const progress = executor.getProgress();
+            const steps = Array.from(progress.steps.values());
+
             return {
-                success: true,
-                totalTests: results.length,
-                passed: results.filter(r => r.status === 'success').length,
-                failed: results.filter(r => r.status === 'error').length,
-                skipped: results.filter(r => r.status === 'skipped').length,
-                duration: Date.now() - (results[0]?.latency?.startedAt || Date.now()),
-                results,
+                success: progress.status !== 'failed',
+                totalTests: steps.length,
+                passed: steps.filter(s => s.status === 'completed').length,
+                failed: steps.filter(s => s.status === 'failed').length,
+                duration: (progress.endTime ?? Date.now()) - progress.startTime,
             };
         } catch (error: any) {
             // End Allure session even on error

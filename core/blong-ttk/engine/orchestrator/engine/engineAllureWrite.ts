@@ -4,13 +4,12 @@
 
 import {handler} from '@feasibleone/blong';
 import {allureResultWrite} from '@feasibleone/blong-allure';
-import type {IMeta} from '@feasibleone/blong';
-import type {IStepProgress} from '@feasibleone/blong-chain';
+import type {IMeta, IStepProgress} from '@feasibleone/blong-chain';
 
 export default handler(() => ({
     /**
      * Write Allure results for a step or collection
-     * 
+     *
      * @param params - Step progress and context
      * @param $meta - Metadata
      */

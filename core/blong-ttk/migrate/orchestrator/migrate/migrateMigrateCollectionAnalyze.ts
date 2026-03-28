@@ -4,8 +4,8 @@
 
 import {handler} from '@feasibleone/blong';
 import type {IMeta} from '@feasibleone/blong';
-import {parseCollection} from '../../../lib/parser.js';
-import {analyzeCollectionDuplication, calculateReductionPercentage} from '../../../lib/dedup.js';
+import {parseCollection} from '../../../library/parser.js';
+import {analyzeCollectionDuplication, calculateReductionPercentage} from '../../../library/dedup.js';
 
 export default handler(() => ({
     /**

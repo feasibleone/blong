@@ -14,13 +14,13 @@ export default orchestrator(() => ({
     extends: 'orchestrator.openapi',
     activation: {
         default: {
-            logLevel: 'info',
+            logLevel: 'info' as const,
         },
         dev: {
-            logLevel: 'debug',
+            logLevel: 'info' as const,
         },
         integration: {
-            logLevel: 'info',
+            logLevel: 'info' as const,
         },
     },
 }));

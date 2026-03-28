@@ -2,24 +2,23 @@
  * Tests for blong-allure
  */
 
-import {test} from 'tap';
-import {writeFile, mkdir, rm, readFile, readdir} from 'node:fs/promises';
-import {join} from 'node:path';
+import type {IStepProgress} from '@feasibleone/blong-chain';
+import {mkdir, readFile, readdir, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {allureStatusMap} from './writer/allureStatusMap.js';
+import {join} from 'node:path';
+import {test} from 'tap';
+import {allureSessionStart} from './lifecycle/allureSessionStart.js';
 import {allureLabelsBuild} from './writer/allureLabelsBuild.js';
 import {allureLinksBuild} from './writer/allureLinksBuild.js';
-import {allureStepMap} from './writer/allureStepMap.js';
 import {allureResultWrite} from './writer/allureResultWrite.js';
-import {allureSessionStart} from './lifecycle/allureSessionStart.js';
-import {allureSessionEnd} from './lifecycle/allureSessionEnd.js';
-import type {IStepProgress} from '@feasibleone/blong-chain';
+import {allureStatusMap} from './writer/allureStatusMap.js';
+import {allureStepMap} from './writer/allureStepMap.js';
 
 test('allureStatusMap', async t => {
-    t.equal(allureStatusMap('success'), 'passed');
-    t.equal(allureStatusMap('error'), 'failed');
-    t.equal(allureStatusMap('waiting'), 'skipped');
-    t.equal(allureStatusMap('skipped'), 'skipped');
+    t.equal(allureStatusMap('completed'), 'passed');
+    t.equal(allureStatusMap('failed'), 'failed');
+    t.equal(allureStatusMap('pending'), 'skipped');
+    t.equal(allureStatusMap('running'), 'skipped');
     t.equal(allureStatusMap('unknown'), 'unknown');
 });
 
@@ -38,10 +37,9 @@ test('allureLabelsBuild', async t => {
 });
 
 test('allureLinksBuild', async t => {
-    const links = allureLinksBuild(
-        {traceId: 'abc123'} as any,
-        {logUrl: 'http://log.example/trace/{traceId}'},
-    );
+    const links = allureLinksBuild({traceId: 'abc123'} as any, {
+        logUrl: 'http://log.example/trace/{traceId}',
+    });
 
     t.equal(links.length, 1);
     t.equal(links[0].type, 'trace');
@@ -50,59 +48,60 @@ test('allureLinksBuild', async t => {
 });
 
 test('allureLinksBuild without traceId', async t => {
-    const links = allureLinksBuild(
-        undefined,
-        {logUrl: 'http://log.example/trace/{traceId}'},
-    );
+    const links = allureLinksBuild(undefined, {logUrl: 'http://log.example/trace/{traceId}'});
 
     t.equal(links.length, 0);
 });
 
-test('allureStepMap - maps nested steps', async t => {
+test('allureStepMap - maps steps', async t => {
     const steps: IStepProgress[] = [
         {
-            name: 'parent-step',
-            status: 'success',
-            latency: {
-                startedAt: 1000,
-                completedAt: 2000,
-            },
-            steps: [
-                {
-                    name: 'child-step',
-                    status: 'success',
-                    latency: {
-                        startedAt: 1100,
-                        completedAt: 1900,
-                    },
-                },
-            ],
+            stepName: 'parent-step',
+            displayName: 'parent-step',
+            groupPath: [],
+            status: 'completed',
+            startTime: 1000,
+            endTime: 2000,
+            dependencies: [],
+            dependents: [],
+        },
+        {
+            stepName: 'child-step',
+            displayName: 'child-step',
+            groupPath: ['parent-group'],
+            status: 'completed',
+            startTime: 1100,
+            endTime: 1900,
+            dependencies: [],
+            dependents: [],
         },
     ];
 
     const mapped = allureStepMap(steps);
 
     t.ok(mapped);
-    t.equal(mapped.length, 1);
+    if (!mapped) return;
+    t.equal(mapped.length, 2);
     t.equal(mapped[0].name, 'parent-step');
     t.equal(mapped[0].status, 'passed');
-    t.ok(mapped[0].steps);
-    t.equal(mapped[0].steps?.length, 1);
-    t.equal(mapped[0].steps?.[0].name, 'child-step');
+    t.equal(mapped[1].name, 'child-step');
 });
 
 test('allureStepMap - includes error details', async t => {
     const steps: IStepProgress[] = [
         {
-            name: 'failing-step',
-            status: 'error',
+            stepName: 'failing-step',
+            displayName: 'failing-step',
+            groupPath: [],
+            status: 'failed',
+            startTime: 1000,
+            endTime: 1100,
+            dependencies: [],
+            dependents: [],
             error: {
                 message: 'Test error',
                 stack: 'Error: Test error\n  at test.ts:10',
-            },
-            latency: {
-                startedAt: 1000,
-                completedAt: 1100,
+                context: {},
             },
         },
     ];
@@ -110,6 +109,7 @@ test('allureStepMap - includes error details', async t => {
     const mapped = allureStepMap(steps);
 
     t.ok(mapped);
+    if (!mapped) return;
     t.equal(mapped[0].status, 'failed');
     t.ok(mapped[0].statusDetails);
     t.equal(mapped[0].statusDetails?.message, 'Test error');
@@ -121,12 +121,14 @@ test('allureResultWrite - creates result file', async t => {
     await mkdir(tempDir, {recursive: true});
 
     const step: IStepProgress = {
-        name: 'test-step',
-        status: 'success',
-        latency: {
-            startedAt: Date.now(),
-            completedAt: Date.now() + 1000,
-        },
+        stepName: 'test-step',
+        displayName: 'test-step',
+        groupPath: [],
+        status: 'completed',
+        startTime: Date.now(),
+        endTime: Date.now() + 1000,
+        dependencies: [],
+        dependents: [],
     };
 
     await allureResultWrite(
@@ -141,8 +143,9 @@ test('allureResultWrite - creates result file', async t => {
     );
 
     // Verify file was created
-    const files = await readFile(tempDir, 'utf-8');
-    
+    const files = await readdir(tempDir);
+    t.equal(files.filter(f => f.endsWith('-result.json')).length, 1);
+
     await rm(tempDir, {recursive: true, force: true});
     t.pass('Result file created successfully');
 });

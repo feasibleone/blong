@@ -6,8 +6,8 @@ import {handler} from '@feasibleone/blong';
 import {writeFile, mkdir} from 'node:fs/promises';
 import {dirname} from 'node:path';
 import type {IMeta} from '@feasibleone/blong';
-import {parseCollection} from '../../../lib/parser.js';
-import {emitCollection} from '../../../lib/emitter.js';
+import {parseCollection} from '../../../library/parser.js';
+import {emitCollection} from '../../../library/emitter.js';
 import type {IMigrationResult} from '../../../types.js';
 
 export default handler(() => ({
