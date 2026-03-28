@@ -11,6 +11,8 @@ export default server(blong => ({
         './engine',
         './callback',
         './migrate',
+        './mojaloop/realm',
+        async () => import('@feasibleone/blong-openapi/server.js'),
     ],
     config: {
         default: {
@@ -31,11 +33,17 @@ export default server(blong => ({
             engine: {},
             callback: {},
             migrate: {},
+            mojaloop: {
+                openapi: true,
+            },
         },
         integration: {
             remote: {canSkipSocket: true},
             engine: {},
             callback: {},
+            mojaloop: {
+                openapi: true,
+            },
             watch: {
                 test: [
                     'test.engine',
