@@ -109,7 +109,9 @@ todo.md
 .node_repl_history
 .tern*
 .blong_*
-dev
+dev/*
+!dev/ui-demo
+!dev/ui-demo/**
 dist
 .scannerwork
 **/.docusaurus
