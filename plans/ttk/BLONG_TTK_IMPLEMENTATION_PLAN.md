@@ -40,6 +40,12 @@ Create `blong-ttk`, a testing toolkit that:
   patterns
 - Reports provide clear pass/fail status with links to logs and traces
 - The toolkit can be used in CI/CD pipelines without a UI
+- Allure 3 HTML reports are generated after test execution with correct
+  hierarchy (parentSuite = realm, suite = collection, subSuite = group)
+- Allure Timeline tab shows parallel step execution from blong-chain
+- Trace links in Allure reports resolve to correct blong-log trace URLs
+- History trend tracking works across runs via `allurerc.yaml` + `history.jsonl`
+- `blong-allure` is usable from any blong test suite, not just blong-ttk
 
 ---
 
@@ -47,7 +53,23 @@ Create `blong-ttk`, a testing toolkit that:
 
 ### Package Structure
 
-```
+```text
+core/blong-allure/                  # New core package — Allure 3 integration
+├── package.json
+├── tsconfig.json
+├── writer/
+│   ├── allureResultWrite.ts        # Write {uuid}-result.json
+│   ├── allureStepMap.ts            # IStepProgress → Allure steps[]
+│   ├── allureStatusMap.ts          # Status enum translation
+│   ├── allureLabelsBuild.ts        # Suite/realm/framework labels
+│   ├── allureLinksBuild.ts         # Trace links from $meta.traceId
+│   └── allureAttachmentAdd.ts      # Write attachment files
+├── lifecycle/
+│   ├── allureSessionStart.ts       # Init results dir, write env+executor files
+│   └── allureSessionEnd.ts         # Flush, optionally invoke allure generate
+└── config/
+    └── allurerc.ts                 # allurerc.yaml writer with historyPath config
+
 core/blong-ttk/                     # Main package
 ├── package.json
 ├── tsconfig.json
@@ -63,9 +85,9 @@ core/blong-ttk/                     # Main package
 │   │       ├── engineCollectionRun.ts    # Run a test collection
 │   │       ├── engineCollectionList.ts   # List available collections
 │   │       ├── engineReportGet.ts        # Get execution report
-│   │       └── engineReportCreate.ts     # Generate report from results
+│   │       └── engineAllureWrite.ts      # Initiate Allure result writing
 │   └── adapter/
-│       └── report.ts               # Report output adapter (file, HTML, JSON)
+│       └── summary.ts              # Console summary output (pass/fail/duration)
 ├── migrate/                        # Migration tooling realm
 │   ├── server.ts
 │   ├── orchestrator/
@@ -88,6 +110,13 @@ core/blong-ttk/                     # Main package
 │   │       ├── callbackRegister.ts      # Register expected callback
 │   │       ├── callbackWait.ts          # Wait for callback arrival
 │   │       └── callbackReceive.ts       # Handle incoming callback
+│   ├── orchestrator/
+│   │   ├── callbackDispatch.ts
+│   │   └── callback/
+│   │       ├── callbackRegister.ts      # Register expected callback
+│   │       ├── callbackWait.ts          # Wait for callback arrival
+│   │       ├── callbackReceive.ts       # Handle incoming callback
+│   │       └── ruleDispatch.ts          # Decide callback action via @infitx/decision
 │   └── gateway/
 │       └── callbackGateway.ts      # Expose callback endpoints
 └── ui/                             # Optional UI realm (secondary)
@@ -113,6 +142,23 @@ core/blong-ttk/                     # Main package
 4. **Blong handler pattern** for test steps: Each test step is a named function
    following semantic triple naming, enabling code reuse through handler
    imports.
+
+5. **blong-allure** for reporting: A new core framework package bridging
+   blong-chain's `TestExecutor` event system to Allure 3's file-based result
+   format. Each test step produces a `{uuid}-result.json` file; the `allure
+   generate` CLI turns those files into an interactive HTML report. This is a
+   framework-level capability available to all blong test suites, not just
+   blong-ttk.
+
+6. **`@infitx/decision`** for callback dispatch rules: The ml-testing-toolkit
+   uses a `json-rules-engine`-based rules engine to control simulator behaviour
+   (which callback to send, error callbacks, no-callback cases). blong-ttk does
+   **not** carry forward this dependency. Instead, rule files are migrated to
+   `@infitx/decision` YAML and evaluated via the `ruleDispatch` handler in the
+   callback realm. The `@infitx/match`-powered `when` conditions replace
+   `json-rules-engine` conditions; the `then` decision keys map to callback
+   action types (`FIXED_CALLBACK`, `MOCK_CALLBACK`, `FIXED_ERROR_CALLBACK`,
+   `NO_CALLBACK`, etc.).
 
 ### Core Data Structures
 
@@ -183,54 +229,68 @@ export default handler(
 );
 ```
 
-#### Report Structure
+#### Report Structure (Allure 3 result file format)
 
-```typescript
-interface ITestReport {
-    id: string;
-    timestamp: string;
-    duration: number;
-    environment: string;
-    summary: {
-        total: number;
-        passed: number;
-        failed: number;
-        skipped: number;
-    };
-    collections: ICollectionReport[];
-}
+Test results are written as Allure 3 result files (`{uuid}-result.json`) to
+`allure-results/`. This is the stable public contract — no internal
+`allure-js-commons` dependency required. Each file represents one test step
+(top-level step = one test result file; nested steps are embedded in
+`steps[]`).
 
-interface ICollectionReport {
-    name: string;
-    file: string;
-    duration: number;
-    status: 'passed' | 'failed';
-    steps: IStepReport[];
-}
-
-interface IStepReport {
-    name: string;
-    status: 'passed' | 'failed' | 'skipped';
-    duration: number;
-    assertions: IAssertionReport[];
-    error?: {
-        message: string;
-        stack: string;
-    };
-    traceId?: string;
-    traceUrl?: string;
-    logs?: ILogEntry[];
+```json
+{
+  "uuid": "9d95e6e7-9cf6-4ca5-91b4-9b69ce0971f8",
+  "historyId": "2b35e31882061875031701ba05a3cd67",
+  "fullName": "hub/golden_path/p2p.testP2pTransfer.executeTransfer",
+  "name": "executeTransfer",
+  "labels": [
+    {"name": "parentSuite", "value": "ttk"},
+    {"name": "suite",       "value": "hub/golden_path/p2p"},
+    {"name": "subSuite",    "value": "P2P Transfer E2E"},
+    {"name": "framework",   "value": "blong"},
+    {"name": "language",    "value": "typescript"}
+  ],
+  "links": [
+    {"type": "trace", "name": "Trace", "url": "http://log.example/trace/abc123"}
+  ],
+  "status": "passed",
+  "start": 1682358426014,
+  "stop":  1682358426892,
+  "steps": [
+    {"name": "POST /transfers", "status": "passed",
+     "start": 1682358426020, "stop": 1682358426400},
+    {"name": "callbackWait PUT /transfers/{ID}", "status": "passed",
+     "start": 1682358426401, "stop": 1682358426880}
+  ]
 }
 ```
+
+**Mapping from blong-chain to Allure fields:**
+
+| blong-chain (`IStepProgress` / `IStepLatency`) | Allure result field |
+| --- | --- |
+| step name | `name`, `fullName` (collection + step path) |
+| `IStepLatency.startedAt` | `start` (Unix ms) |
+| `IStepLatency.completedAt` | `stop` (Unix ms) |
+| step status (`success`/`error`/`skipped`) | `status` (`passed`/`failed`/`skipped`) |
+| `IStepError.message` | `statusDetails.message` |
+| `IStepError.stack` | `statusDetails.trace` |
+| `$meta.traceId` | `links[].url` (trace link to blong-log) |
+| realm namespace | `labels[parentSuite]` |
+| collection name | `labels[suite]` |
+| group name (`IGroupProgress`) | `labels[subSuite]` |
+| nested `IStepProgress.steps` | `steps[]` (recursive) |
 
 ### Async Flow Handling (Webhooks/Callbacks)
 
 Mojaloop uses an asynchronous pattern where:
+
 1. Client sends POST request (e.g., POST /transfers)
 2. Server responds with 202 Accepted
 3. Server later sends PUT callback to the client's callback URL
 
 The callback realm handles this by:
+
 1. Starting a webhook server that listens for incoming callbacks
 2. Test steps register expected callbacks with correlation IDs
 3. The `callbackWait` handler returns a promise that resolves when the
@@ -243,6 +303,75 @@ OpenAPI mock server) combined with a promise-based coordination mechanism.
 ---
 
 ## Implementation Plan
+
+### Phase 0: `blong-allure` — Core Allure 3 Integration
+
+Create the `core/blong-allure` package as a standalone core framework capability.
+This package is independent of blong-ttk and can be used by any blong test suite.
+
+#### 0.1 Package Setup (Small)
+
+- Create `core/blong-allure/` with `package.json`, `tsconfig.json`, Rush entry
+- Dependencies: `blong`, `blong-chain` (peer); `allure` v3.x as devDependency
+  for CLI invocation; `node:fs`, `node:crypto` from Node built-ins
+- No dependency on `allure-jest` or `allure-js-commons` — result files are
+  written directly in the Allure 3 JSON format (stable public contract)
+
+#### 0.2 Allure Result Writer (Medium)
+
+- Implement `allureResultWrite` — accepts an `IStepProgress` (from blong-chain)
+  and writes `{uuid}-result.json` to a configured output directory
+  (default `allure-results/`)
+- Implement `allureStepMap` — recursively maps `IStepProgress.steps` → Allure
+  `steps[]` (nested steps are natively supported in the Allure format)
+- Implement `allureStatusMap` — translates blong-chain step status to Allure
+  status values: `success`→`passed`, `error`→`failed`, `waiting`→`scheduled`,
+  `skipped`→`skipped`
+- Implement `allureLabelsBuild` — constructs `labels[]` from execution context:
+  - `parentSuite` → realm name (from `$meta` namespace)
+  - `suite` → collection name
+  - `subSuite` → group name (from `IGroupProgress`)
+  - `framework` → `"blong"`, `language` → `"typescript"`
+- Implement `allureLinksBuild` — constructs `links[]` with `type: "trace"` using
+  the blong-log URL pattern (`{traceId}` from `$meta.traceId`); also supports
+  optional issue/story links
+- Implement `allureAttachmentAdd` — writes an attachment file as
+  `{uuid}-attachment.{ext}` and returns the descriptor for embedding in a result;
+  supports `application/json` (request/response bodies), `text/plain` (log
+  excerpts), `text/html`
+- `historyId` computed as a deterministic hash of `fullName`
+  (collection path + step name)
+
+#### 0.3 Lifecycle Hooks (Medium)
+
+- Implement `allureSessionStart` — initialises a writer session:
+  - Creates/clears `allure-results/` directory
+  - Writes `environment.properties` (env name, blong version, Node version,
+    test run ID)
+  - Writes `executor.json` (CI build name, URL, report name, build order;
+    sourced from standard CI env vars: `GITHUB_RUN_ID`, `GITHUB_SERVER_URL`,
+    `CI_BUILD_URL`)
+- Implement `allureSessionEnd` — flushes any pending result files and logs
+  the results directory path; optionally invokes `allure generate` as a
+  subprocess (controlled by `allure.generateOnEnd` config key)
+- Subscribe to `TestExecutor` events via `ITestEvents`:
+  - `step:end` → immediately write result file for that step (streaming,
+    failure-tolerant — a crashed run still produces partial results)
+  - `step:error` → populate `statusDetails` with `IStepError` before writing
+  - `test:end` → trigger `allureSessionEnd`
+
+#### 0.4 `allurerc.yaml` Configuration Support (Small)
+
+- Generate `allurerc.yaml` in the results directory:
+  - `historyPath: .allure/history.jsonl` (gitignored, persisted across runs)
+  - `historyLimit: 30` (trend tracking for last 30 runs)
+  - Report name sourced from suite/collection config
+- Expose blong config keys: `allure.outputDir`, `allure.historyPath`,
+  `allure.generateOnEnd`
+
+**Dependencies**: None (standalone core package)
+
+---
 
 ### Phase 1: Foundation — Core Execution Engine
 
@@ -284,23 +413,42 @@ TypeScript test collections using `blong-chain`.
 - Implement `callbackReceive` handler:
   - Match incoming webhook to registered correlation ID
   - Resolve the pending promise with the callback payload
+- Implement `ruleDispatch` handler:
+  - Load `@infitx/decision` engine configured with YAML rule files
+    (migrated from ml-testing-toolkit JSON rule files — see Phase 2.5)
+  - Accept an incoming request context (`{path, method, body, pathParams,
+    queryParams}`) and call `decide()` to determine the callback action
+  - Supported decision types (mapped from ml-testing-toolkit event types):
+    - `fixedCallback` — send the exact callback body defined in the rule
+    - `mockCallback` — generate a mock callback from the OpenAPI spec
+    - `fixedErrorCallback` — send a fixed error callback
+    - `mockErrorCallback` — generate a mock error callback from the spec
+    - `noCallback` — suppress the callback entirely
+    - `fixedResponse` / `mockResponse` — for synchronous response rules
+  - Configurable parameters (`$request.body.*`, `$request.params.*`, etc.)
+    are resolved from the incoming request context before the decision fires
 - Implement gateway to expose callback endpoints with configurable paths
   matching Mojaloop callback patterns
 
 #### 1.4 Report Generation (Medium)
 
-- Implement `engineReportCreate` handler:
-  - Accept test execution results from `blong-chain` progress/latency data
-  - Generate JSON report following `ITestReport` structure
-  - Include trace IDs from `$meta` for log/trace linking
-- Implement report adapter for output:
-  - JSON file output
-  - HTML report generation (simple template-based)
-  - Console summary output
-- Include trace URL generation using configurable URL pattern
-  (matching blong-log's `{traceId}` pattern)
+Report generation delegates to `blong-allure` (Phase 0) for HTML output.
 
-**Dependencies**: None (this is the foundation)
+- Implement `engineAllureWrite` handler (replaces `engineReportCreate`):
+  - Calls `allureSessionStart` at the start of a collection run
+  - Subscribes to `TestExecutor` events via the blong-allure lifecycle hooks
+  - On completion, calls `allureSessionEnd` (which optionally invokes
+    `allure generate`; in CI, generation is typically handled by the
+    Allure GitHub Action separately)
+- The `report.ts` adapter is replaced by `summary.ts`:
+  - Console summary output only (pass/fail counts, duration, result dir path)
+  - Machine-readable artifact is the `allure-results/` directory itself
+- Attach raw request/response bodies from Mojaloop API calls using
+  `allureAttachmentAdd` (added as `application/json` attachments on the step)
+- Categories file (`categories.json`) written to `allure-results/` classifying
+  common Mojaloop failure patterns (timeout, 404, validation error)
+
+**Dependencies**: Phase 0 (`blong-allure`)
 
 ---
 
@@ -318,6 +466,8 @@ code aligned with Blong patterns.
   - Parse embedded JavaScript in `tests.assertions[].exec` and
     `scripts.preRequest`/`scripts.postRequest`
   - Parse the `apiDefinition` references
+  - Detect and separately parse any co-located rule files (validation rules,
+    callback rules, synchronous response rules)
 
 #### 2.2 Duplication Analysis (Medium)
 
@@ -357,6 +507,99 @@ code aligned with Blong patterns.
 - Implement `migrateHelperExtract` handler:
   - Extract common helper functions from analyzed collections
   - Generate shared library files for reuse across collections
+
+#### 2.5 Rules Engine Migration (Medium)
+
+ml-testing-toolkit rule files use `json-rules-engine` JSON format to control
+validation and callback behaviour. blong-ttk replaces this with `@infitx/decision`
+YAML. There is no runtime dependency on `json-rules-engine`.
+
+- Implement `migrateRuleConvert` handler:
+  - Accept one or more ml-testing-toolkit rule JSON files
+  - Convert each rule to an `@infitx/decision` YAML rule entry:
+    - `conditions.all[]/any[]` → `when` pattern object (using `@infitx/match`
+      semantics; `all` maps to top-level object, `any` maps to an array)
+    - `event.type` → `then` decision key (mapped per table below)
+    - `event.params` → `then` decision value
+    - `priority` → `priority` (higher numeric priority in json-rules-engine
+      = higher priority; `@infitx/decision` uses the same convention)
+  - Write the resulting YAML file to the target rule directory
+- Implement `migrateRuleAnalyze` handler:
+  - Summarise how many rules and which event types are present across
+    collected rule files
+  - Flag any `$function.*` advanced parameters (require manual review)
+
+**Operator mapping** (`json-rules-engine` → `@infitx/match`):
+
+| json-rules-engine operator | `@infitx/match` equivalent |
+| --- | --- |
+| `equal` / `notEqual` | exact value / negated match |
+| `lessThan` / `lessThanInclusive` | `{max: n-1}` / `{max: n}` |
+| `greaterThan` / `greaterThanInclusive` | `{min: n+1}` / `{min: n}` |
+| `numericEqual` etc. | same as above with `coerceTypes: true` |
+| `in` / `notIn` | array value with `includes` strategy |
+| `contains` / `doesNotContain` | `superset` / negated `superset` |
+
+**Event type mapping** (`json-rules-engine` → `@infitx/decision` then key):
+
+| ml-testing-toolkit event type | `then` decision key in YAML |
+| --- | --- |
+| `FIXED_CALLBACK` | `fixedCallback` |
+| `MOCK_CALLBACK` | `mockCallback` |
+| `FIXED_ERROR_CALLBACK` | `fixedErrorCallback` |
+| `MOCK_ERROR_CALLBACK` | `mockErrorCallback` |
+| `NO_CALLBACK` | `noCallback` |
+| `FIXED_RESPONSE` | `fixedResponse` |
+| `MOCK_RESPONSE` | `mockResponse` |
+
+**Example conversion:**
+
+```json
+// ml-testing-toolkit rule (json-rules-engine)
+{
+  "ruleId": 1,
+  "priority": 2,
+  "description": "Fixed error if transfer amount is 2 USD",
+  "conditions": {
+    "all": [
+      {"fact": "path",   "operator": "equal", "value": "/transfers"},
+      {"fact": "method", "operator": "equal", "value": "post"},
+      {"fact": "body",   "operator": "equal", "value": "2",
+       "path": "amount.amount"}
+    ]
+  },
+  "event": {
+    "type": "FIXED_ERROR_CALLBACK",
+    "params": {
+      "path": "/transfers/{$request.body.transferId}/error",
+      "method": "put",
+      "body": {"errorInformation": {"errorCode": "5001",
+                                    "errorDescription": "Amount too small"}}
+    }
+  }
+}
+```
+
+```yaml
+# @infitx/decision YAML (migrated)
+rules:
+  - rule: rule-1
+    priority: 2
+    when:
+      path: /transfers
+      method: post
+      body:
+        amount:
+          amount: "2"
+    then:
+      fixedErrorCallback:
+        path: /transfers/{$request.body.transferId}/error
+        method: put
+        body:
+          errorInformation:
+            errorCode: "5001"
+            errorDescription: Amount too small
+```
 
 **Dependencies**: Phase 1 (engine must exist to validate migrated output)
 
@@ -454,15 +697,27 @@ Enhance reporting with log/trace integration and test plan visibility.
 
 #### 5.1 Enhanced Report (Medium)
 
-- Extend HTML report with:
-  - Collapsible test hierarchy matching blong-chain nested groups
-  - Click-through to trace view for each test step (using blong-log URL
-    pattern)
-  - Inline log entries for failed tests
-  - Execution timeline visualization (from blong-chain latency metrics)
-  - Parallel efficiency metrics
-- Generate JUnit XML output for CI/CD integration
-- Generate TAP output for Blong framework integration
+Allure 3 natively provides the features previously planned as custom HTML.
+This phase configures those native features rather than building a custom
+report renderer:
+
+| Previously planned custom feature | Allure 3 native equivalent |
+| --- | --- |
+| Collapsible test hierarchy | Nested `steps[]` in result files → Allure step tree view |
+| Click-through to trace view | `links[]` with `type: "trace"` and blong-log URL |
+| Execution timeline visualization | Allure Timeline tab (uses `start`/`stop` per step) |
+| Parallel efficiency metrics | Allure Duration charts |
+| Flaky test detection | `statusDetails.flaky: true` set from blong-chain retry detection |
+| History / trend tracking | `historyPath` in `allurerc.yaml` + `history.jsonl` |
+
+- Configure `allurerc.yaml`: history path, suite labels, trace link URL pattern
+  pointing at the blong-log instance
+- Define `categories.json` in `allure-results/` to classify Mojaloop failure
+  patterns (timeout, HTTP 404, validation error, callback not received)
+- Verify that Allure's Timeline tab correctly visualises parallel blong-chain
+  step execution (steps running in parallel will show overlapping time ranges)
+- Generate JUnit XML output for CI/CD integration (separate concern, kept)
+- Generate TAP output for native blong integration (separate concern, kept)
 
 #### 5.2 Test Plan Visibility (Small)
 
@@ -539,8 +794,8 @@ Create an optional browser-based UI for interactive test execution.
   - Step-by-step results as they complete
   - Inline log viewer using blong-log integration
 - Implement report viewer:
-  - View past execution reports
-  - Compare runs
+  - Link to or embed the Allure HTML report for the current run
+  - Compare runs using Allure's built-in history trend view
 
 #### 7.2 Integration with Engine (Small)
 
@@ -618,9 +873,11 @@ as Cucumber step definitions with minimal code changes.
 ## Reference: Blong Patterns Used
 
 | Pattern | Usage in blong-ttk |
-|---|---|
+| --- | --- |
 | `blong-chain` TestExecutor | Test collection execution with parallel steps |
+| `blong-allure` lifecycle hooks | Allure 3 result file writing from TestExecutor events |
 | `blong-openapi` orchestrator | Mojaloop API client generation from OpenAPI specs |
+| `@infitx/decision` + YAML rules | Callback dispatch rules (replaces `json-rules-engine`) |
 | `handler()` with semantic triples | Test steps and helper functions |
 | `adapter.http` | HTTP calls to Mojaloop services |
 | `adapter.http` (server mode) | Webhook/callback server for async flows |
@@ -628,9 +885,27 @@ as Cucumber step definitions with minimal code changes.
 | `group()` + nested arrays | Test organization and hierarchy |
 | Checkpoints `[]` | Phase separation in test collections |
 | `blong-sim-api` pattern | Mock servers for blong-ttk's own tests |
+| Allure 3 `{uuid}-result.json` | Per-step test result files in `allure-results/` |
+| `allure generate` CLI | HTML report generation from result files |
 | `blong-mock-test` pattern | Server-side unit tests for blong-ttk |
 | Snapshot testing | Response validation in migrated collections |
-| Report adapter | Test result output in multiple formats |
+
+## Reference: ML-Testing-Toolkit Rules Engine Migration
+
+The ml-testing-toolkit embeds a `json-rules-engine`-based rules engine used at
+the simulator level to control callback behaviour. blong-ttk replaces this entirely
+with `@infitx/decision` YAML rules — see Phase 2.5 for the full conversion mapping,
+operator table, event-type mapping, and worked example.
+
+**Rule types and their blong-ttk replacement:**
+
+| TTK level | json-rules-engine rule file | Replaced by |
+| --- | --- | --- |
+| Validation Rules Engine | `validation_rules/*.json` | `@infitx/decision` YAML, `fixedErrorCallback` / `mockErrorCallback` decisions |
+| Callbacks Rules Engine | `callback_rules/*.json` | `@infitx/decision` YAML, `fixedCallback` / `mockCallback` / `noCallback` decisions |
+| Synchronous Response Rules Engine | `response_rules/*.json` | `@infitx/decision` YAML, `fixedResponse` / `mockResponse` decisions |
+
+---
 
 ## Reference: ML-Testing-Toolkit JSON Structure
 
