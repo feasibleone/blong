@@ -215,6 +215,31 @@ core/
     cards, layouts overrides) are persisted via
     `ui.customization.edit/get` and merged with defaults at runtime.
 
+11. **Three widget categories**: Blong adopts ut-prime's proven widget
+    taxonomy — scalar (primitive values), scalar array (multi-select from
+    lists), vector array (editable tables with per-column widgets). This
+    covers virtually all data-entry needs without custom code.
+
+12. **Advanced composable patterns**: Cascaded dropdowns/tables,
+    master-detail, static/dynamic pivot, and polymorphic layouts are
+    first-class features. These patterns compose via `$` prefix internal
+    form state (`$.selected.xxx`, `$.edit.xxx`) automatically excluded
+    from submission.
+
+13. **Custom widget escape hatch**: An `editors` property allows passing
+    custom React components as widgets. Custom widgets receive `Input`,
+    `Label`, `ErrorLabel` internal components and declare their
+    properties via `.properties`. This covers the 20% of screens that
+    need hand-written components.
+
+14. **File upload via multipart**: Form properties serialized as JSON
+    with name `$`; files serialized individually with path-based names.
+    The same validation schema covers both JSON and file fields.
+
+15. **Portal menu from handler metadata**: Portal menu is generated from
+    component handler `title` and `permission` properties via
+    `portalMenuItem()`, eliminating manual menu wiring.
+
 ---
 
 ## Implementation Plan
@@ -247,17 +272,18 @@ submission patterns derived from ut-prime's proven architecture.
 
 | Task | Complexity | Dependencies |
 |------|-----------|--------------|
-| 2.1 Create `src/factory/WidgetMap.ts` — mapping from JSON Schema type/format to PrimeReact components (see browser-ui.md for the full type→component table) | Medium | Phase 1 |
+| 2.1 Create `src/factory/WidgetMap.ts` — mapping from JSON Schema type/format to PrimeReact components. Three widget categories: **scalar** (input, password, text, mask, number, currency, integer, boolean, date, time, datetime, dropdown, dropdownTree, select), **scalar array** (multiSelect, multiSelectTree, selectTable, multiSelectPanel, multiSelectTreeTable), **vector array** (table with per-column widgets). See browser-ui.md for the full type→component tables | Large | Phase 1 |
 | 2.2 Create `src/factory/FieldResolver.tsx` — resolve `x-blong-*` extensions to component props; handle `x-blong-widget` overrides, `x-blong-hidden`, `x-blong-order`, `x-blong-group` | Medium | 2.1 |
 | 2.3 Create `src/factory/CardResolver.ts` — resolve cards from schema properties. Each card has `widgets` (field name array), `label`, `className`, `hidden`, `watch`/`match` (conditional visibility), `permission`. Support nested arrays in `widgets` for sub-grouping | Medium | 2.2 |
 | 2.4 Create `src/factory/LayoutResolver.ts` — resolve layouts from `x-blong-layout` or handler config. Support mode-keyed layouts (`editDefault`, `createFoo`), tabbed layouts with `items`/`orientation`, fallback from create→edit layout. Integrate `ThumbIndex` tab navigation for tabbed layouts | Large | 2.3 |
-| 2.5 Create `src/factory/FormFactory.tsx` — generate a react-hook-form form from a request JSON Schema with TypeBox resolver (replacing ut-prime's Joi resolver). Wire `FormProvider`, `handleSubmit`, `formState`. Implement trigger pattern: `setTrigger(submitFn)` when dirty, `setTrigger(undefined)` when clean | Large | 2.1, 2.2, 2.3, 2.4 |
-| 2.6 Create `src/factory/FormSubmit.ts` — `prepareSubmit()` to strip `$original`/`$modified` internal fields before API call. Handle create vs edit mode switching. Merge server response with form data on success | Medium | 2.5 |
-| 2.7 Create `src/factory/TableFactory.tsx` — generate a PrimeReact DataTable from a response array schema. Wire column headers from `title`, formatters from type, sorting/filtering from `x-blong-column` | Large | 2.1, 2.2 |
+| 2.5 Create `src/factory/FormFactory.tsx` — generate a react-hook-form form from a request JSON Schema with TypeBox resolver (replacing ut-prime's Joi resolver). Wire `FormProvider`, `handleSubmit`, `formState`. Implement trigger pattern: `setTrigger(submitFn)` when dirty, `setTrigger(undefined)` when clean. Maintain internal `$` prefix state (`$.edit.xxx`, `$.selected.xxx`) excluded from submit. Display skeleton placeholders during data loading | Large | 2.1, 2.2, 2.3, 2.4 |
+| 2.6 Create `src/factory/FormSubmit.ts` — `prepareSubmit()` to strip `$original`/`$modified` and `$.*` internal state fields before API call. Handle create vs edit mode switching. Merge server response with form data on success | Medium | 2.5 |
+| 2.7 Create `src/factory/TableFactory.tsx` — generate a PrimeReact DataTable from a response array schema. Wire column headers from `title`, formatters from type, sorting/filtering from `x-blong-column`. Support `selectionMode` (single/multiple) for row selection. Maintain `$.selected.xxx` in form state for selected row | Large | 2.1, 2.2 |
 | 2.8 Create `src/factory/DetailFactory.tsx` — generate a read-only detail view from a response schema | Medium | 2.1, 2.2 |
 | 2.9 Handle nested objects (Fieldset) and arrays (useFieldArray / repeatable sections) | Large | 2.5 |
-| 2.10 Implement lookup field support (`x-blong-lookup` → discovered by `useDropdown`, fetched via batch `onDropdown` call) | Medium | 2.5, 1.8 |
-| 2.11 Storybook stories for FormFactory, TableFactory, DetailFactory with mock schemas | Medium | 2.5, 2.7, 2.8 |
+| 2.10 Implement lookup field support (`x-blong-lookup` → discovered by `useDropdown`, fetched via batch `onDropdown` call). Support cascaded dropdowns via `parent` property — child dropdown filters options based on parent field value. Dropdown data includes `parent` field for hierarchical filtering | Large | 2.5, 1.8 |
+| 2.11 Implement custom widgets — an `editors` property on FormCard/Editor allows passing custom React components as widgets. Each receives `Input`, `Label`, `ErrorLabel` internal components as props. Custom widgets declare managed properties via `.properties` array and are referenced by name in card `widgets` | Medium | 2.5 |
+| 2.12 Storybook stories for FormFactory, TableFactory, DetailFactory with mock schemas | Medium | 2.5, 2.7, 2.8 |
 
 ### Phase 3: Standard Component Patterns
 
@@ -274,7 +300,13 @@ Higher-level components that combine the factories into usable UI patterns.
 | 3.7 Integrate React Router — auto-generate routes from discovered page handlers | Medium | 3.5 |
 | 3.8 Permission-based rendering — conditionally show/hide cards and actions based on JWT permissions. Cards with `permission` prop are gated via `usePermissionCheck()` | Medium | 1.10 |
 | 3.9 Conditional card visibility — implement `watch`/`match` pattern: cards with `watch` prop observe a form field, `match` object comparison determines visibility | Medium | 3.1, Phase 2 |
-| 3.10 Storybook stories for all standard patterns | Medium | 3.1–3.6 |
+| 3.10 Cascaded tables — implement `master`/`parent` properties for parent-child table filtering. Child table filters rows based on `$.selected.xxx` from parent table. Support `hidden` columns for relational fields needed by the cascade | Large | 3.2, Phase 2 |
+| 3.11 Master-detail — detail card with `watch: '$.selected.xxx'` edits the selected table row. Edit widgets reference `$.edit.xxx.propertyName`. Changes update the row in the parent array | Large | 3.9, 3.10 |
+| 3.12 Static and dynamic pivot — pre-populate table with static data (`pivot.examples` + `pivot.join`) or dynamic dropdown data (`pivot.dropdown` + `pivot.join`). Merge pivot rows with data array | Large | 3.2, Phase 2 |
+| 3.13 Polymorphic layout — `typeField` property selects layout by data type value. Look up `edit{TypeValue}`/`create{TypeValue}` layout or card. Combine with polymorphic master-detail via `watch`/`match` on detail cards | Medium | 3.9, Phase 2 |
+| 3.14 Portal menu configuration — implement `portal.params.get` handler pattern returning `{theme, portalName, menu}`. Menu items from `portalMenuItem(component$xxx)`. Page handlers follow naming convention: `.browse` (collection), `.new` (create), `.open` (edit with `{id}` prop) | Medium | 3.7 |
+| 3.15 File upload support — switch from `application/json` to `multipart/form-data` for methods with file fields. Serialize regular properties as JSON with name `$`; file properties individually with path-based names. `x-blong-widget: file` for file input widgets | Large | 3.1, Phase 2 |
+| 3.16 Storybook stories for all standard patterns, including mocked API helper: `app()` creates mock context with mocked API responses, `page()` creates individual story exports for each page component | Medium | 3.1–3.6 |
 
 ### Phase 4: Interactive Design Editor
 
@@ -303,8 +335,8 @@ Wire everything together, add e2e tests, and ensure CI works.
 |------|-----------|--------------|
 | 5.1 Create a reference suite (`dev/ui-demo`) with server + browser entry points | Medium | Phases 1–4 |
 | 5.2 Implement example realm with CRUD for a sample entity (auto-generated UI) | Medium | 5.1 |
-| 5.3 Playwright test suite for the reference application | Large | 5.1, 5.2 |
-| 5.4 Chromatic integration in GitHub Actions | Medium | 1.10 |
+| 5.3 Playwright test suite for the reference application. Use `data-testid` and `input[name]` as stable locators. Capture screenshots with `toMatchSnapshot()`. Auto-generate unique test users for parallel execution. Enable tracing on retry for failure diagnostics (timeline, network, console, DOM). Use `npx playwright codegen` for script recording | Large | 5.1, 5.2 |
+| 5.4 Chromatic integration in GitHub Actions — publish Storybook on every build, visual diff comparison, approve/deny workflow for detected changes, host Storybook as online documentation | Medium | 1.12 |
 | 5.5 Production build pipeline — Vite build → static assets served by Blong gateway | Medium | 5.1 |
 | 5.6 GitHub Actions workflow: build browser, run Storybook tests, run Playwright, run Chromatic | Large | 5.3, 5.4, 5.5 |
 | 5.7 Documentation: update patterns/suite.md with browser UI patterns | Small | 5.2 |

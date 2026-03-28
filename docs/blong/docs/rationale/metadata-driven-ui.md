@@ -85,6 +85,62 @@ well-designed system that Blong should learn from, not just replace:
    config has `schema`, `card` and `layout` sections that are merged
    with the defaults at runtime.
 
+7. **Three widget categories**: ut-prime classifies widgets into three
+   categories that cover virtually all data-entry needs:
+   - **Scalar**: primitive-value widgets — input, password, text,
+     mask, number, currency, integer, boolean, date, time, datetime,
+     dropdown, dropdownTree, select.
+   - **Scalar array**: multi-select widgets backed by a list — 
+     multiSelect, multiSelectTree, selectTable, multiSelectPanel,
+     multiSelectTreeTable. These represent arrays of scalar values
+     (e.g. selected IDs from a relational database).
+   - **Vector array**: table widgets that edit arrays of objects. Columns
+     are defined by nested `widgets` arrays.
+
+8. **Advanced UI patterns**: ut-prime implements a family of composable
+   patterns for complex data relationships:
+   - **Cascaded dropdowns** — a `parent` property on dropdown widgets
+     links them hierarchically (e.g. continent → country → city).
+     Dropdown data includes a `parent` field for automatic filtering.
+   - **Cascaded tables** — `master` and `parent` properties configure
+     parent-child table filtering via `$.selected.xxx` form state.
+   - **Master-detail** — a detail card with `watch: '$.selected.xxx'`
+     edits the selected table row. Edit widgets reference
+     `$.edit.xxx.propertyName` from internal form state.
+   - **Static pivot** — pre-populates a table with static data (e.g.
+     weekdays) via `pivot.examples` + `pivot.join`.
+   - **Dynamic pivot** — pre-populates a table with dropdown list data
+     via `pivot.dropdown` + `pivot.join` (e.g. permission matrix).
+   - **Polymorphic layout** — a `typeField` property selects layouts
+     dynamically based on the data type (e.g. `editPerson` vs
+     `editOrganization`). Falls back from `createXyz` to `editXyz`.
+   - **Polymorphic master-detail** — combines master-detail with
+     polymorphic card visibility via `watch`/`match`.
+
+9. **Custom widget escape hatch**: An `editors` property on the Editor
+   allows passing custom React components as widgets. Each receives
+   `Input`, `Label`, `ErrorLabel` internal components as props and
+   declares its properties via a static `.properties` array.
+
+10. **Internal form state with `$` prefix**: The Editor maintains
+    transient state under the `$` property — `$.edit.xxx` for the
+    currently edited table row, `$.selected.xxx` for the selected row.
+    These properties are automatically excluded during form submission.
+
+11. **File upload**: ut-prime supports file upload by switching from
+    `application/json` to `multipart/form-data`. Regular properties are
+    serialized as a single JSON with name `$`; file properties are
+    serialized individually with path-based names
+    (e.g. `$.document.documentIcon`). The server handler receives objects
+    with `originalFilename`, `headers` and temp file `filename`.
+
+12. **Portal menu structure**: Portals define their menu via a
+    `portal.params.get` handler returning `{theme, portalName, menu}`.
+    Menu items are arrays of `{title, items}` using
+    `portalMenuItem(component$xxx)`. Component handlers follow
+    `subject.object.predicate` naming: `.browse` for lists, `.new` for
+    creation, `.open` for editing (receives `{id}` prop).
+
 ### Lessons Learned
 
 While ut-prime proved the concept and contains genuinely good patterns,

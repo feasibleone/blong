@@ -85,21 +85,90 @@ for state management. The schema-to-form mapping:
 ### PrimeReact Component Library
 
 [PrimeReact](https://primereact.org/) provides the component primitives.
-The component factory maps JSON Schema types to PrimeReact components:
+The component factory maps JSON Schema types to PrimeReact components.
 
-| JSON Schema type / format | PrimeReact component |
+#### Widget Categories
+
+Widgets fall into three categories, matching the ut-prime taxonomy:
+
+**Scalar widgets** — edit or display a single primitive value:
+
+| JSON Schema type / format | `x-blong-widget` | PrimeReact component |
+|---------------------------|-------------------|---------------------|
+| `string`                  | (default)         | InputText           |
+| `string`                  | `password`        | Password            |
+| `string`                  | `text`            | InputTextarea       |
+| `string`                  | `mask`            | InputMask           |
+| `string` + `date`         | `date`            | Calendar            |
+| `string` + `time`         | `time`            | Calendar (timeOnly) |
+| `string` + `date-time`    | `date-time`       | Calendar (showTime) |
+| `string` + `enum`         | `dropdown`        | Dropdown            |
+| `string` + `enum`         | `dropdownTree`    | TreeSelect          |
+| `string` + `enum`         | `select`          | SelectButton        |
+| `number`                  | `number`          | InputNumber         |
+| `number`                  | `currency`        | InputNumber (currency) |
+| `integer`                 | `integer`         | InputNumber (integer) |
+| `boolean`                 | `boolean`         | Checkbox / ToggleButton |
+
+**Scalar array widgets** — multi-select from a list, storing arrays of
+scalar values (typically IDs from a relational database):
+
+| `x-blong-widget`         | PrimeReact component |
 |---------------------------|---------------------|
-| `string`                  | InputText           |
-| `string` + `date-time`   | Calendar            |
-| `string` + `enum`        | Dropdown            |
-| `number` / `integer`     | InputNumber         |
-| `boolean`                | Checkbox / ToggleButton |
-| `string` + `text`        | InputTextarea       |
-| `object`                 | Fieldset (recursive) |
-| `array`                  | DataTable or repeatable Fieldset |
+| `multiSelect`             | MultiSelect         |
+| `multiSelectTree`         | TreeSelect (multiple) |
+| `selectTable`             | DataTable (selectionMode: single) |
+| `multiSelectPanel`        | ListBox / PickList  |
+| `multiSelectTreeTable`    | TreeTable (multiple) |
+
+All scalar array widgets require a `dropdown` reference naming the
+options list.
+
+**Vector array widgets** — edit arrays of objects. The primary UI is a
+table with nested column widgets:
+
+| JSON Schema pattern                | PrimeReact component |
+|------------------------------------|---------------------|
+| `array` of `object` items          | DataTable (editable) |
+| `array` + `x-blong-widget: table`  | DataTable with per-column widgets |
+
+Column widgets are specified via nested `widgets` arrays in the card
+definition. Each column can use any scalar widget type.
 
 Developers can override any mapping via `x-blong-widget` in the schema
 or via the interactive design editor.
+
+### Custom Widgets
+
+When built-in widgets are not sufficient, component handlers can provide
+custom widgets via an `editors` property:
+
+```typescript
+function Period({Input, Label, ErrorLabel}) {
+  return (
+    <>
+      <ErrorLabel/>
+      <div className="field grid w-full mx-0">
+        <Label name="period" /><Input name="period" />
+        <Input name="unit" />
+      </div>
+    </>
+  );
+}
+Period.properties = ['period', 'unit'];
+```
+
+Custom widgets:
+- Receive `Input`, `Label` and `ErrorLabel` internal components as props,
+  allowing reuse of built-in widget rendering
+- Declare which properties they manage via a static `.properties` array
+- Are referenced by name in the card's `widgets` array
+
+### Loading States
+
+During data loading (`onGet`, `onDropdown`), the form displays animated
+skeleton placeholders instead of actual widgets, providing visual
+feedback without layout shifts.
 
 ## Pages, Cards and Layouts
 
@@ -274,6 +343,139 @@ These are merged with the defaults at runtime via `useCustomization`:
 6. On next load, `ui.customization.get` retrieves and merges the saved
    customisation
 
+## Internal Form State (`$` Prefix)
+
+The form maintains transient internal state under a reserved `$`
+property. This state drives widget relationships without polluting the
+data submitted to the server:
+
+| State path           | Purpose |
+|----------------------|---------|
+| `$.selected.xxx`     | The currently selected row in table widget `xxx` |
+| `$.edit.xxx`         | The row being edited in table widget `xxx` |
+
+These properties are automatically stripped by `prepareSubmit()` before
+the form data is sent to the API.
+
+## Advanced UI Patterns
+
+Beyond basic forms and tables, the framework supports composable
+patterns for complex data relationships. These patterns are derived from
+ut-prime's proven implementations:
+
+### Cascaded Dropdowns
+
+Dropdowns can be linked hierarchically so that selecting a value in one
+filters the options in the next. Each child dropdown specifies a
+`parent` property pointing to the parent field name. The dropdown data
+includes a `parent` field for each option, used for automatic filtering.
+
+Example: continent → country → city
+
+### Cascaded Tables
+
+Tables can be linked so that selecting a row in a parent table filters
+the rows displayed in a child table. Configuration uses `master`
+(property mapping between parent and child) and `parent` (reference to
+`$.selected.xxx`). Child tables use `hidden` columns for relational
+fields that drive the cascade.
+
+### Master-Detail
+
+A detail card displays or edits the selected row from a table:
+
+- The detail card sets `watch: '$.selected.person'`
+- Edit widgets reference `$.edit.person.fullName`,
+  `$.edit.person.birthDate`, etc.
+- Changes to the edit widgets update the row in the parent array
+
+### Static Pivot
+
+Pre-populates a table with static reference data (e.g. weekdays) and
+joins it with the data array. Configured via:
+- `pivot.examples` — the static data rows
+- `pivot.join` — property mapping between static data and array items
+
+### Dynamic Pivot
+
+Pre-populates a table with data from a dropdown list and joins it with
+the data array. Configured via:
+- `pivot.dropdown` — the dropdown list name
+- `pivot.join` — maps `value`/`label` from the list to array properties
+
+Example: a permission matrix joining entities (from dropdown) with
+boolean permission flags (from the data array).
+
+### Polymorphic Layout
+
+Different object types can display different widgets. Setting
+`typeField` on the component causes it to look up a layout named
+`edit{TypeValue}` or `create{TypeValue}` based on the data. Falls back
+from `createXyz` to `editXyz` to `create` to `edit`.
+
+### Polymorphic Master-Detail
+
+Combines master-detail with polymorphic card visibility. Multiple detail
+cards are included in the layout; each has a `watch` and `match`
+property. Only the card whose `match` equals the selected row's type
+value is rendered.
+
+## Page Naming Conventions
+
+Component handlers follow the `subject.object.predicate` naming pattern.
+Standard page types:
+
+| Pattern                    | Purpose |
+|----------------------------|---------|
+| `subject.object.browse`    | Collection view — table with search, filters, pagination |
+| `subject.object.new`       | Create new entity — form in create mode |
+| `subject.object.open`      | View/edit existing entity — receives `{id}` prop |
+| `subject.object.report`    | Simple report — filters + read-only table |
+| `subject.report.open`      | Advanced report within a subject module |
+
+These conventions enable automatic menu generation and consistent URL
+routing. When a model is defined, all standard pages are available
+without additional wiring.
+
+## Portal and Menu Configuration
+
+A **portal** is the top-level browser application that combines realms
+into a navigable UI. The portal defines:
+
+- **Theme** — PrimeReact design tokens, dark/light mode
+- **Portal name** — displayed in the header
+- **Menu structure** — array of `{title, items}` groups
+
+Each menu item is created from a component handler reference using
+`portalMenuItem(component$subjectObjectBrowse)`, which extracts the
+handler's `title` and `permission` to build the menu entry.
+
+Component handler definitions return:
+```typescript
+{
+  title: 'Entity list',           // Default menu/tab title
+  permission: 'subject.object.browse',  // Required permission
+  component: ({id}) => function EntityBrowse() { ... }
+}
+```
+
+The `component` function can be async, allowing lazy loading and
+pre-fetching of data before returning the React component.
+
+## File Upload
+
+The browser platform supports file upload by switching from
+`application/json` to `multipart/form-data`:
+
+- Regular form properties are serialized as a single JSON part with
+  name `$`
+- File properties are serialized individually with path-based names
+  (e.g. `$.document.documentIcon`, `$.page.0.attachment`)
+- The server handler receives file objects with `originalFilename`,
+  `headers` and temp file `filename`
+- File widgets in the schema use `x-blong-widget: file` and validation
+  specifies the file type constraint
+
 ## State Management
 
 Browser-side state is managed through:
@@ -322,6 +524,57 @@ Vite's HMR handles live reloading.
 | **Storybook** | Component development in isolation. Each component handler can export a Storybook story alongside the component. |
 | **Chromatic** | Visual regression testing of Storybook stories in CI. |
 | **Playwright** | End-to-end browser tests. Playwright tests run against the full Blong server + browser stack. |
+
+### Storybook with Mocked APIs
+
+Storybook stories can run without a real server by providing mocked API
+responses. A helper function creates a mock application context:
+
+```typescript
+import {app} from 'blong-ui/storybook';
+
+const page = app({
+  implementation: 'myApp',
+}, {
+  'subject.object.fetch': () => ({object: [...]}),
+  'subject.object.get': () => ({object: {...}}),
+}, [portal()]);
+
+export const EntityBrowse = page('subject.object.browse');
+export const EntityOpen = page('subject.object.open');
+```
+
+Mocks should include enough varied data to test long texts, pagination,
+multi-language labels and edge cases.
+
+### Chromatic Visual Regression
+
+During CI builds, Chromatic captures screenshots of every Storybook
+story and compares them against the baseline. The workflow:
+
+1. Build triggers Chromatic publish
+2. If visual changes are detected, git commits show pending checks
+3. Reviewers use Chromatic's visual diff tool to approve or deny changes
+4. Chromatic also hosts the published Storybook as online documentation
+
+### Playwright End-to-End Tests
+
+Playwright tests run against the full Blong server + browser stack:
+
+- **Test isolation**: Each test script runs with a unique user (auto-
+  generated credentials), enabling parallel execution without session
+  conflicts.
+- **Widget identification**: Use `data-testid="xxx"` attributes and
+  form input names `input[name="xxx"]` as stable locators.
+- **Screenshot matching**: `expect(page.screenshot()).toMatchSnapshot()`
+  captures and compares screenshots. Screenshots must be taken on the
+  same OS/browser used in CI (Chromium on Linux).
+- **Trace on failure**: Failed tests are retried with Playwright tracing
+  enabled. Traces include timeline, network requests, browser console
+  and DOM snapshots. Trace files can be inspected at
+  https://trace.playwright.dev.
+- **Test generator**: `npx playwright codegen <url>` records user
+  interactions and generates test scripts as a starting point.
 
 ## Module Loading in the Browser
 
