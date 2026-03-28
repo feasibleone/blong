@@ -73,6 +73,12 @@ export {TableFactory, deriveColumns} from './factory/TableFactory.js';
 export type {TableFactoryProps, TableColumn} from './factory/TableFactory.js';
 export {DetailFactory} from './factory/DetailFactory.js';
 export type {DetailFactoryProps} from './factory/DetailFactory.js';
+export {NestedFieldset, ArrayFields} from './factory/NestedFields.js';
+export type {NestedFieldsetProps, ArrayFieldsProps} from './factory/NestedFields.js';
+export {CascadedDropdown} from './factory/CascadedDropdown.js';
+export type {CascadedDropdownProps} from './factory/CascadedDropdown.js';
+export {CustomWidgetRenderer, isCustomWidget} from './factory/CustomWidgetRenderer.js';
+export type {CustomWidgetRendererProps} from './factory/CustomWidgetRenderer.js';
 
 // ── Components ────────────────────────────────────────────────────────────────
 export {FormCard} from './components/FormCard.js';
@@ -87,6 +93,31 @@ export {PageShell} from './components/PageShell.js';
 export type {PageShellProps} from './components/PageShell.js';
 export {ErrorBoundary, RpcErrorDisplay, setFormErrors} from './components/ErrorBoundary.js';
 export type {ErrorBoundaryProps} from './components/ErrorBoundary.js';
+export {AutoRoutes, deriveRoutePath, portalMenuItem} from './components/RouteGenerator.js';
+export type {AutoRoutesProps, PageHandler} from './components/RouteGenerator.js';
+export {PermissionGate, usePermissionCheck} from './components/PermissionGate.js';
+export type {PermissionGateProps} from './components/PermissionGate.js';
+export {ConditionalCard} from './components/ConditionalCard.js';
+export type {ConditionalCardProps} from './components/ConditionalCard.js';
+export {CascadedTable} from './components/CascadedTable.js';
+export type {CascadedTableProps} from './components/CascadedTable.js';
+export {MasterDetail} from './components/MasterDetail.js';
+export type {MasterDetailProps} from './components/MasterDetail.js';
+export {PivotTable} from './components/PivotTable.js';
+export type {PivotTableProps} from './components/PivotTable.js';
+export {PolymorphicLayout} from './components/PolymorphicLayout.js';
+export type {PolymorphicLayoutProps} from './components/PolymorphicLayout.js';
+export {PortalMenu} from './components/PortalMenu.js';
+export type {PortalMenuProps} from './components/PortalMenu.js';
+export {FileUploadField, hasFileFields} from './components/FileUpload.js';
+export type {FileUploadFieldProps} from './components/FileUpload.js';
+export {ThemeProvider, ThemeToggle} from './components/ThemeProvider.js';
+export type {ThemeProviderProps} from './components/ThemeProvider.js';
+export {I18nProvider, useI18n, I18nContext} from './components/I18nProvider.js';
+export type {I18nProviderProps, I18nContextValue, TextDirection, TranslationMap} from './components/I18nProvider.js';
+export {LazyPage, SkeletonField, SkeletonCard, SkeletonTable, PageSkeleton} from './components/Performance.js';
+export type {LazyPageProps, SkeletonFieldProps} from './components/Performance.js';
+export {VisuallyHidden, SkipLink, LiveRegion, FocusTrap} from './components/Accessibility.js';
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 export {useSchema, lookupMethodSchema} from './hooks/useSchema.js';

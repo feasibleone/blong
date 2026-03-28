@@ -540,6 +540,12 @@
             "projectFolder": "ext/rest-fs",
             "reviewCategory": "core",
             "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/ui-demo",
+            "projectFolder": "dev/ui-demo",
+            "reviewCategory": "core",
+            "tags": ["dev"]
         }
     ]
 }
