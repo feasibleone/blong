@@ -140,6 +140,7 @@ export function AuthProvider({
         async (username: string, password: string) => {
             setState(prev => ({...prev, isLoading: true, error: null}));
             try {
+                // OAuth2 token response uses snake_case per RFC 6749
                 const result = await rpcCall<{access_token: string}>(loginMethod, {
                     username,
                     password,

@@ -88,7 +88,7 @@ export async function rpcCall<T = unknown>(method: string, params?: unknown): Pr
     });
 
     if (!res.ok) {
-        throw new Error(`RPC call failed: ${res.status} ${res.statusText}`);
+        throw new Error(`RPC call to "${method}" failed: ${res.status} ${res.statusText}`);
     }
 
     const json = (await res.json()) as RpcResponse<T>;

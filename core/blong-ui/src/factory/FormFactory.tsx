@@ -103,7 +103,7 @@ export function FormFactory({
     mode,
     defaultValues,
     dropdowns,
-    editors: _editors,
+    editors,
     onTrigger,
     onSubmit,
     watchFields,
@@ -115,6 +115,9 @@ export function FormFactory({
         defaultValues: defaultValues as FieldValues,
         mode: 'onChange',
     });
+
+    // Custom widget support will be wired in a future iteration
+    void editors;
 
     const {handleSubmit, formState, reset} = form;
     const {isDirty} = formState;

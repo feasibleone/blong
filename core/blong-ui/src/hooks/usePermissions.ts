@@ -22,6 +22,11 @@ interface JwtPayload {
 /**
  * Decode a JWT token payload (without signature verification — the server
  * has already verified the token; this is for UI display/gating only).
+ *
+ * **WARNING**: This decoding is NOT cryptographically verified. It must
+ * NEVER be used for security-critical decisions. All authorization checks
+ * must happen server-side. This is solely for UI display and conditional
+ * rendering convenience.
  */
 function decodeJwtPayload(token: string): JwtPayload | null {
     try {
