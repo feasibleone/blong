@@ -112,6 +112,7 @@ todo.md
 dev/*
 !dev/ui-demo
 !dev/ui-demo/**
+dev/ui-demo/node_modules
 dist
 .scannerwork
 **/.docusaurus
