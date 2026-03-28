@@ -79,6 +79,27 @@ Tools for converting ml-testing-toolkit JSON to TypeScript.
 - Convert json-rules-engine rules to @infitx/decision YAML
 - Extract environment variable references
 
+### Phase 6: Automated Tests ✅
+Comprehensive test coverage for all components.
+
+**Test Files:**
+- `index.test.ts` - Unit tests for parser, dedup, emitter, callback store
+- `integration.test.ts` - Integration tests for execution flow
+- `migration.test.ts` - Migration validation tests
+- `core/blong-allure/index.test.ts` - Allure writer tests
+
+**Coverage:**
+- JSON parser with sample collections
+- Duplication analysis (requests, assertions, scripts)
+- TypeScript emitter with handler naming
+- Callback promise coordination
+- Allure result writing and session lifecycle
+- Complete execution flow: TestExecutor → callbacks → Allure
+- Migration validation: JSON → TypeScript → validation
+
+**Example Collection:**
+- `examples/collections/simple-transfer.ts` - Demonstrates blong-chain test patterns
+
 **Example Conversion:**
 ```json
 // ml-testing-toolkit JSON
@@ -233,10 +254,11 @@ await engineCollectionRun({
 - Implement test plan visibility
 - Add rerun with diagnostics
 
-### Phase 6: Automated Tests
-- Unit tests for parser/emitter/dedup
-- Integration tests with mock services
-- Migration validation tests
+### Phase 6: Automated Tests ✅ COMPLETE
+- Unit tests for parser/emitter/dedup ✅
+- Integration tests with TestExecutor ✅
+- Migration validation tests ✅
+- Example test collection ✅
 
 ### Phase 7: UI (Optional)
 - Browser-based test runner
