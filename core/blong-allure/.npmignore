@@ -1,0 +1,12 @@
+# Test files
+*.test.ts
+*.test.js
+
+# Build artifacts
+.rush
+.lint
+node_modules/
+
+# Config files
+tsconfig.json
+.eslintrc.js
