@@ -37,21 +37,70 @@ addressed this problem with a metadata-driven approach:
   nothing more than defining a model and the corresponding API handlers.
   The framework took care of rendering.
 
+### What ut-prime Got Right
+
+A review of ut-prime's source code reveals a sophisticated and
+well-designed system that Blong should learn from, not just replace:
+
+1. **react-hook-form integration**: ut-prime already uses react-hook-form
+   with `FormProvider`, `useForm`, `@hookform/resolvers/joi` for
+   validation, and `@hookform/devtools` for debugging. The Form component
+   uses `handleSubmit`, `formState` (errors, isDirty, isSubmitting,
+   dirtyFields), `watch`, `setError`, `clearErrors` and `reset`. This is
+   a mature integration — Blong replaces the Joi resolver with a
+   TypeBox/JSON Schema resolver but keeps the same react-hook-form
+   patterns.
+
+2. **Cards and layouts model**: ut-prime has a rich composition model:
+   - **Cards** are named groups of fields (`widgets` arrays) with
+     `label`, `className` for layout control, `hidden`, `watch`/`match`
+     for conditional visibility, and `permission` for access control.
+   - **Layouts** are named configurations keyed by mode
+     (`editDefault`, `createFoo`, etc.) supporting tabbed navigation
+     (`ThumbIndex`), `orientation` (left/top), nested `items` following
+     PrimeReact's MenuModel API, and `disabled`/`enabled` field lists.
+   - The `useCustomization` hook merges default schema, cards and
+     layouts with per-component customisations at runtime.
+
+3. **Design editor**: The drag-and-drop design editor (`ConfigField`,
+   `ConfigCard`, `Inspector`) allows rearranging fields between cards,
+   adding/removing cards from layouts, and inspecting/editing individual
+   field and card properties — all with live preview.
+
+4. **Dropdown workflow**: Dropdown field names are discovered
+   automatically from the schema/layout via `fieldNames()`. The
+   `onDropdown` callback is called with the discovered names and returns
+   a `Dropdowns` map. This avoids manual wiring of every select field.
+
+5. **Form submission pattern**: ut-prime uses a `trigger` pattern —
+   `setTrigger` sets a callback when the form is dirty, which the
+   toolbar's Save button calls. The submit function receives a 3-element
+   tuple `[formData, layoutState.index, event]`. `prepareSubmit`
+   transforms form data before sending to the API. The form tracks
+   `$original` (snapshot of loaded data) and `$modified` (dirty flag).
+
+6. **Customisation persistence**: Layout customisations are persisted via
+   `portal.customization.edit` and retrieved via
+   `portal.customization.get`, keyed by `componentId`. The stored
+   config has `schema`, `card` and `layout` sections that are merged
+   with the defaults at runtime.
+
 ### Lessons Learned
 
-While ut-prime and ut-model proved the concept, they were constrained by
-the UT framework's legacy:
+While ut-prime proved the concept and contains genuinely good patterns,
+there are areas where Blong can improve:
 
-1. **Separate model layer**: Models were defined in a custom DSL-like
+1. **Separate model layer**: ut-model defines models in a custom DSL-like
    JavaScript format, separate from both the API schema and the React
-   components. This introduced a third source of truth alongside the
+   components. This introduces a third source of truth alongside the
    TypeBox/OpenAPI schema and the handler types.
 
-2. **Older React patterns**: ut-prime was built before React hooks
-   matured. It relied on class components and a custom form state manager
-   rather than react-hook-form.
+2. **Joi-based validation**: ut-prime uses `@hookform/resolvers/joi` for
+   form validation. Blong uses TypeBox everywhere, so the resolver should
+   use JSON Schema / TypeBox directly — eliminating the need for Joi as a
+   dependency.
 
-3. **Older PrimeReact version**: The component mappings targeted an older
+3. **Older PrimeReact version**: The component mappings target an older
    PrimeReact API. Newer versions have improved accessibility,
    unstyled mode and design token support.
 
@@ -63,6 +112,10 @@ the UT framework's legacy:
 
 6. **CI/CD**: Jenkins pipelines were used; GitHub Actions offer tighter
    integration with the source repository.
+
+7. **JSS styling**: ut-prime uses `react-jss` (JSS) for styling. Modern
+   PrimeReact with unstyled mode and design tokens removes the need for
+   a separate CSS-in-JS library.
 
 ## Blong's Approach
 
@@ -84,15 +137,22 @@ TypeBox types. The schema contains:
 This eliminates the need for ut-model's custom model definitions. The
 TypeBox types that developers write for their handlers **are** the model.
 
-### 2. Modern React with Hooks
+### 2. TypeBox Resolver Instead of Joi
+
+ut-prime already uses react-hook-form — so Blong does not need to
+introduce it. What Blong changes is the **validation resolver**: instead
+of `@hookform/resolvers/joi`, Blong uses a TypeBox / JSON Schema
+resolver so that the same TypeBox types that define the server handlers
+also drive browser-side form validation. This eliminates Joi as a
+dependency entirely.
 
 All generated components use functional React with hooks:
 
-- **react-hook-form** manages form state, validation and submission.
-  It is the de facto standard for form handling in React and provides
-  excellent performance through uncontrolled components.
+- **react-hook-form** manages form state, validation and submission
+  (same as ut-prime, but with TypeBox resolver instead of Joi).
 - **React Query (TanStack Query)** manages server state — caching,
-  background refetching, optimistic updates and pagination.
+  background refetching, optimistic updates and pagination. This
+  replaces ut-prime's custom per-component data loading.
 - **React Context** replaces the need for a global store for
   cross-cutting concerns (auth, theme, locale).
 - **React Router** handles client-side navigation with URL-based state.

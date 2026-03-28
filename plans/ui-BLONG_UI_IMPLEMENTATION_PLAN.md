@@ -85,8 +85,9 @@ for current React, PrimeReact, react-hook-form and Vite.
 | Concern | Technology | Reason |
 |---------|-----------|--------|
 | UI components | PrimeReact (latest) | Rich component set, unstyled mode, design tokens, accessibility |
-| Form state | react-hook-form | Performance, validation, uncontrolled components, TypeBox integration |
-| Server state | TanStack Query (React Query) | Caching, refetching, pagination, optimistic updates |
+| Form state | react-hook-form | Performance, validation, uncontrolled components — same as ut-prime but with TypeBox resolver |
+| Form validation | TypeBox / JSON Schema resolver | Same type system as server; replaces ut-prime's Joi resolver |
+| Server state | TanStack Query (React Query) | Caching, refetching, pagination, optimistic updates — replaces ut-prime's per-component loading |
 | Routing | React Router v7+ | URL state, code splitting, nested routes |
 | Bundler | Vite | HMR, ESM, tree-shaking, fast builds |
 | Testing: component | Storybook v8+ | Isolated component development, interaction tests |
@@ -108,33 +109,43 @@ core/
 │   │   ├── index.ts                 # Public API exports
 │   │   ├── factory/                 # Schema → component factory
 │   │   │   ├── FormFactory.tsx      # JSON Schema → react-hook-form
+│   │   │   ├── FormSubmit.ts        # prepareSubmit, $original tracking
 │   │   │   ├── TableFactory.tsx     # JSON Schema → DataTable
 │   │   │   ├── DetailFactory.tsx    # JSON Schema → detail view
 │   │   │   ├── WidgetMap.ts         # type/format → PrimeReact component
-│   │   │   └── FieldResolver.tsx    # Resolves x-blong-* extensions
+│   │   │   ├── FieldResolver.tsx    # Resolves x-blong-* extensions
+│   │   │   ├── CardResolver.ts     # Schema → named card groups
+│   │   │   └── LayoutResolver.ts   # Mode-keyed layout resolution
 │   │   ├── components/              # Standard component patterns
-│   │   │   ├── FormCard.tsx
-│   │   │   ├── TableCard.tsx
-│   │   │   ├── DetailCard.tsx
-│   │   │   ├── ReportCard.tsx
+│   │   │   ├── FormCard.tsx         # Editor (create/edit)
+│   │   │   ├── TableCard.tsx        # Explorer (browse/search)
+│   │   │   ├── DetailCard.tsx       # Inspector (read-only)
+│   │   │   ├── ReportCard.tsx       # Report (filters + table)
 │   │   │   ├── PageShell.tsx        # App shell with nav + breadcrumbs
 │   │   │   └── ErrorBoundary.tsx
 │   │   ├── design/                  # Interactive design editor
-│   │   │   ├── DesignEditor.tsx
-│   │   │   ├── FieldConfigurator.tsx
-│   │   │   ├── LayoutGrid.tsx
-│   │   │   └── DesignStore.ts       # Persist/load layout config
+│   │   │   ├── DesignEditor.tsx     # Main editor overlay + toolbar
+│   │   │   ├── ConfigCard.tsx       # Draggable card wrapper
+│   │   │   ├── ConfigField.tsx      # Draggable field wrapper
+│   │   │   ├── Inspector.tsx        # Property inspector panel
+│   │   │   ├── SelectField.tsx      # Add-field dialog
+│   │   │   ├── SelectCard.tsx       # Add-card dialog
+│   │   │   └── DesignStore.ts       # Customisation state + persistence
 │   │   ├── hooks/                   # Reusable hooks
 │   │   │   ├── useSchema.ts         # Fetch + cache OpenAPI schema
 │   │   │   ├── useApi.ts            # TanStack Query wrappers for JSON-RPC
+│   │   │   ├── useDropdown.ts       # Auto-discover + batch-fetch dropdowns
+│   │   │   ├── useCustomization.ts  # Load/merge customisations
 │   │   │   ├── usePermissions.ts    # Permission checks from JWT
+│   │   │   ├── useLayout.ts         # Layout state resolution
 │   │   │   ├── useDesign.ts         # Design editor context
 │   │   │   └── useTheme.ts          # PrimeReact theme tokens
 │   │   ├── auth/                    # Authentication integration
 │   │   │   ├── AuthProvider.tsx
 │   │   │   ├── LoginForm.tsx
 │   │   │   └── ProtectedRoute.tsx
-│   │   └── types.ts                 # Shared TypeScript types
+│   │   └── types.ts                 # Schema, Cards, Layouts, Dropdowns,
+│   │                                # Customisation, x-blong-* types
 │   └── stories/                     # Storybook stories for core components
 │       ├── FormCard.stories.tsx
 │       ├── TableCard.stories.tsx
@@ -156,25 +167,53 @@ core/
 
 1. **No separate model layer**: Unlike ut-model, there is no separate
    model definition format. The TypeBox schema IS the model. UI hints are
-   added via `x-blong-*` extension fields in the schema.
+   added via `x-blong-*` extension fields in the schema. Cards and
+   layouts are defined in component handlers or derived from schema
+   metadata at runtime.
 
-2. **Component handlers follow the Blong pattern**: A browser component
+2. **TypeBox resolver instead of Joi**: ut-prime already uses
+   react-hook-form with `@hookform/resolvers/joi`. Blong replaces the
+   Joi resolver with a TypeBox / JSON Schema resolver, eliminating Joi
+   as a dependency and keeping a single type system across server and
+   browser.
+
+3. **Component handlers follow the Blong pattern**: A browser component
    handler uses the same `handler()` / `library()` API as server
    handlers. The component factory is itself a library function available
    via `lib.componentFactory`.
 
-3. **Vite replaces file-system scanning**: The server's `Watch` and
+4. **Vite replaces file-system scanning**: The server's `Watch` and
    `readdir` based discovery is replaced by Vite's static import
    resolution and HMR. Each layer's entry file explicitly imports its
    handlers.
 
-4. **TanStack Query replaces custom caching**: ut-prime had custom
-   caching logic. TanStack Query provides battle-tested caching,
-   deduplication and background refetching.
+5. **TanStack Query replaces custom data loading**: ut-prime loaded data
+   per-component with custom `useLoad` hooks. TanStack Query provides
+   battle-tested caching, deduplication and background refetching.
 
-5. **Design editor as a layer**: The interactive editor is a `design`
+6. **Design editor as a layer**: The interactive editor is a `design`
    layer, activated only in `dev` or `design` environments. It is not
    bundled in production unless explicitly enabled.
+
+7. **Cards/layouts composition model**: Blong adopts ut-prime's proven
+   cards/layouts architecture — named card groups of widgets, mode-keyed
+   layout definitions, tabbed navigation via ThumbIndex, conditional
+   visibility via watch/match, and permission-gated cards. The model is
+   derived from `x-blong-*` extensions or defined in component handlers.
+
+8. **Trigger-based form submission**: The toolbar Save button is
+   controlled by a `trigger` callback set when the form is dirty. The
+   submit flow tracks `$original` values for reset, uses
+   `prepareSubmit()` to strip internal fields, and automatically
+   switches from create to edit mode after a successful add.
+
+9. **Automatic dropdown discovery**: Dropdown field names are discovered
+   from the active layout's cards. A single batch `onDropdown` call
+   fetches all options, cached by TanStack Query.
+
+10. **Customisation persistence**: Per-component customisations (schema,
+    cards, layouts overrides) are persisted via
+    `ui.customization.edit/get` and merged with defaults at runtime.
 
 ---
 
@@ -189,29 +228,36 @@ Set up the package, build toolchain and core infrastructure.
 | 1.1 Create `core/blong-ui` package with `package.json`, `tsconfig.json`, `vite.config.ts` | Small | — |
 | 1.2 Register package in `rush.json` | Small | 1.1 |
 | 1.3 Add PrimeReact, react-hook-form, TanStack Query, React Router dependencies | Small | 1.1 |
-| 1.4 Create `src/types.ts` with shared browser UI types and `x-blong-*` extension interfaces | Small | 1.1 |
+| 1.4 Create `src/types.ts` with shared browser UI types: `Schema`, `Cards`, `Layouts`, `Dropdowns`, `Customisation`, `x-blong-*` extension interfaces | Medium | 1.1 |
 | 1.5 Extend `core/blong/types.ts` with `BrowserContext` additions (x-blong extensions, UI hint types) | Small | 1.4 |
 | 1.6 Create `src/hooks/useSchema.ts` — fetch and cache the OpenAPI schema from the server gateway | Medium | 1.3 |
 | 1.7 Create `src/hooks/useApi.ts` — TanStack Query wrapper for JSON-RPC calls via `ky` | Medium | 1.3 |
-| 1.8 Create `src/auth/AuthProvider.tsx` — JWT auth context using blong-login | Medium | 1.7 |
-| 1.9 Create `src/auth/LoginForm.tsx` and `ProtectedRoute.tsx` | Medium | 1.8 |
-| 1.10 Set up Storybook in `core/blong-ui-storybook` | Medium | 1.1 |
-| 1.11 Add GitHub Actions workflow step for browser build + Storybook | Medium | 1.10 |
+| 1.8 Create `src/hooks/useDropdown.ts` — automatic dropdown field discovery from cards/layout, batch fetch via `onDropdown`, TanStack Query caching | Medium | 1.7 |
+| 1.9 Create `src/hooks/useCustomization.ts` — load/merge customisations (schema, cards, layouts) from `ui.customization.get`, expose `saveCustomization` via `ui.customization.edit` | Large | 1.7 |
+| 1.10 Create `src/auth/AuthProvider.tsx` — JWT auth context using blong-login | Medium | 1.7 |
+| 1.11 Create `src/auth/LoginForm.tsx` and `ProtectedRoute.tsx` | Medium | 1.10 |
+| 1.12 Set up Storybook in `core/blong-ui-storybook` | Medium | 1.1 |
+| 1.13 Add GitHub Actions workflow step for browser build + Storybook | Medium | 1.12 |
 
 ### Phase 2: Component Factory (schema → React)
 
 The core value proposition: automatic component generation from OpenAPI schemas.
+This phase also establishes the cards/layouts composition model and form
+submission patterns derived from ut-prime's proven architecture.
 
 | Task | Complexity | Dependencies |
 |------|-----------|--------------|
-| 2.1 Create `src/factory/WidgetMap.ts` — mapping from JSON Schema type/format to PrimeReact components | Medium | Phase 1 |
-| 2.2 Create `src/factory/FieldResolver.tsx` — resolve `x-blong-*` extensions to component props | Medium | 2.1 |
-| 2.3 Create `src/factory/FormFactory.tsx` — generate a react-hook-form form from a request JSON Schema | Large | 2.1, 2.2 |
-| 2.4 Create `src/factory/TableFactory.tsx` — generate a PrimeReact DataTable from a response array schema | Large | 2.1, 2.2 |
-| 2.5 Create `src/factory/DetailFactory.tsx` — generate a read-only detail view from a response schema | Medium | 2.1, 2.2 |
-| 2.6 Handle nested objects (Fieldset) and arrays (useFieldArray / repeatable sections) | Large | 2.3 |
-| 2.7 Implement lookup field support (`x-blong-lookup` → fetch options from another API) | Medium | 2.3, 1.7 |
-| 2.8 Storybook stories for FormFactory, TableFactory, DetailFactory with mock schemas | Medium | 2.3, 2.4, 2.5 |
+| 2.1 Create `src/factory/WidgetMap.ts` — mapping from JSON Schema type/format to PrimeReact components (see browser-ui.md for the full type→component table) | Medium | Phase 1 |
+| 2.2 Create `src/factory/FieldResolver.tsx` — resolve `x-blong-*` extensions to component props; handle `x-blong-widget` overrides, `x-blong-hidden`, `x-blong-order`, `x-blong-group` | Medium | 2.1 |
+| 2.3 Create `src/factory/CardResolver.ts` — resolve cards from schema properties. Each card has `widgets` (field name array), `label`, `className`, `hidden`, `watch`/`match` (conditional visibility), `permission`. Support nested arrays in `widgets` for sub-grouping | Medium | 2.2 |
+| 2.4 Create `src/factory/LayoutResolver.ts` — resolve layouts from `x-blong-layout` or handler config. Support mode-keyed layouts (`editDefault`, `createFoo`), tabbed layouts with `items`/`orientation`, fallback from create→edit layout. Integrate `ThumbIndex` tab navigation for tabbed layouts | Large | 2.3 |
+| 2.5 Create `src/factory/FormFactory.tsx` — generate a react-hook-form form from a request JSON Schema with TypeBox resolver (replacing ut-prime's Joi resolver). Wire `FormProvider`, `handleSubmit`, `formState`. Implement trigger pattern: `setTrigger(submitFn)` when dirty, `setTrigger(undefined)` when clean | Large | 2.1, 2.2, 2.3, 2.4 |
+| 2.6 Create `src/factory/FormSubmit.ts` — `prepareSubmit()` to strip `$original`/`$modified` internal fields before API call. Handle create vs edit mode switching. Merge server response with form data on success | Medium | 2.5 |
+| 2.7 Create `src/factory/TableFactory.tsx` — generate a PrimeReact DataTable from a response array schema. Wire column headers from `title`, formatters from type, sorting/filtering from `x-blong-column` | Large | 2.1, 2.2 |
+| 2.8 Create `src/factory/DetailFactory.tsx` — generate a read-only detail view from a response schema | Medium | 2.1, 2.2 |
+| 2.9 Handle nested objects (Fieldset) and arrays (useFieldArray / repeatable sections) | Large | 2.5 |
+| 2.10 Implement lookup field support (`x-blong-lookup` → discovered by `useDropdown`, fetched via batch `onDropdown` call) | Medium | 2.5, 1.8 |
+| 2.11 Storybook stories for FormFactory, TableFactory, DetailFactory with mock schemas | Medium | 2.5, 2.7, 2.8 |
 
 ### Phase 3: Standard Component Patterns
 
@@ -219,30 +265,35 @@ Higher-level components that combine the factories into usable UI patterns.
 
 | Task | Complexity | Dependencies |
 |------|-----------|--------------|
-| 3.1 Create `src/components/FormCard.tsx` — card wrapping FormFactory with toolbar (Save, Cancel, Reset) | Medium | Phase 2 |
-| 3.2 Create `src/components/TableCard.tsx` — card wrapping TableFactory with search, filters, pagination, row actions | Large | Phase 2 |
+| 3.1 Create `src/components/FormCard.tsx` — card wrapping FormFactory with toolbar (Save, Cancel, Reset). Save uses trigger pattern; Reset restores `$original` values; toolbar state driven by `formState.isDirty` | Medium | Phase 2 |
+| 3.2 Create `src/components/TableCard.tsx` — card wrapping TableFactory with search, filters, pagination, row actions. Wire `fetch` method with `orderBy`/`paging` params (matching ut-model's `browser.fetch` contract), `resultSet` extraction, `pagination.recordsTotal` for page count | Large | Phase 2 |
 | 3.3 Create `src/components/DetailCard.tsx` — read-only entity card | Small | Phase 2 |
 | 3.4 Create `src/components/ReportCard.tsx` — filters + table + optional charts | Medium | 3.2 |
 | 3.5 Create `src/components/PageShell.tsx` — app shell with sidebar nav, breadcrumbs, header | Medium | Phase 1 |
-| 3.6 Create `src/components/ErrorBoundary.tsx` — error boundary with typed Blong error display | Small | Phase 1 |
+| 3.6 Create `src/components/ErrorBoundary.tsx` — error boundary with typed Blong error display. Handle `validation` array errors from JSON-RPC responses (set field-level errors via `setError`) | Medium | Phase 1 |
 | 3.7 Integrate React Router — auto-generate routes from discovered page handlers | Medium | 3.5 |
-| 3.8 Permission-based rendering — conditionally show/hide actions based on JWT permissions | Medium | 1.8 |
-| 3.9 Storybook stories for all standard patterns | Medium | 3.1–3.6 |
+| 3.8 Permission-based rendering — conditionally show/hide cards and actions based on JWT permissions. Cards with `permission` prop are gated via `usePermissionCheck()` | Medium | 1.10 |
+| 3.9 Conditional card visibility — implement `watch`/`match` pattern: cards with `watch` prop observe a form field, `match` object comparison determines visibility | Medium | 3.1, Phase 2 |
+| 3.10 Storybook stories for all standard patterns | Medium | 3.1–3.6 |
 
 ### Phase 4: Interactive Design Editor
 
-The design-time editing capability.
+The design-time editing capability, modelled on ut-prime's `useCustomization`,
+`ConfigCard`, `ConfigField` and `Inspector` components.
 
 | Task | Complexity | Dependencies |
 |------|-----------|--------------|
-| 4.1 Create `src/design/DesignStore.ts` — load/save layout configurations from/to the server | Medium | Phase 1 |
-| 4.2 Create `src/design/LayoutGrid.tsx` — drag-and-drop card arrangement | Large | 4.1 |
-| 4.3 Create `src/design/FieldConfigurator.tsx` — show/hide fields, change widget types, set validation | Large | 4.1, Phase 2 |
-| 4.4 Create `src/design/DesignEditor.tsx` — overlay that activates the editor mode | Medium | 4.2, 4.3 |
-| 4.5 Undo/redo support in DesignStore | Medium | 4.1 |
-| 4.6 Diff view — compare customised vs default layout | Medium | 4.1 |
-| 4.7 Server-side handler for persisting layout configs (`ui.layout.edit`, `ui.layout.get`) | Medium | 4.1 |
-| 4.8 Storybook stories for the design editor | Medium | 4.4 |
+| 4.1 Create `src/design/DesignStore.ts` — manages local customisation state (`{schema, card, layout}` sections). Load from `ui.customization.get` on startup. Provides `setCustomization` for live editing. Save via `ui.customization.edit` | Medium | 1.9 |
+| 4.2 Create `src/design/ConfigCard.tsx` — draggable card wrapper. Supports drag source (card), drop target (card slot), and drop into trash. Cards show add/remove indicators in design mode | Large | 4.1 |
+| 4.3 Create `src/design/ConfigField.tsx` — draggable field wrapper. Supports drag between cards, drag from "add field" palette, and drop into trash. Shows field name in design mode | Large | 4.1 |
+| 4.4 Create `src/design/Inspector.tsx` — property inspector panel for the selected field or card. Edit field properties (title, widget type, validation rules, hidden). Edit card properties (label, className, permission). Changes update local customisation state immediately | Large | 4.1, Phase 2 |
+| 4.5 Create `src/design/SelectField.tsx` — dialog for adding a new field (from schema properties not yet in any card) to a card slot | Medium | 4.1 |
+| 4.6 Create `src/design/SelectCard.tsx` — dialog for adding a new card (from defined cards not yet in the layout) to a layout slot | Medium | 4.1 |
+| 4.7 Create `src/design/DesignEditor.tsx` — overlay that activates design mode: toggle button (⚙), toolbar with save/add card/add field actions, trash zone, inspector panel. Integrates ConfigCard, ConfigField, Inspector | Large | 4.2, 4.3, 4.4, 4.5, 4.6 |
+| 4.8 Undo/redo support in DesignStore | Medium | 4.1 |
+| 4.9 Diff view — compare customised vs default layout | Medium | 4.1 |
+| 4.10 Server-side handlers for persisting layout configs: `ui.customization.get({componentId})` and `ui.customization.edit({component: {componentId, componentConfig}})` | Medium | 4.1 |
+| 4.11 Storybook stories for the design editor | Medium | 4.7 |
 
 ### Phase 5: Integration and Testing
 

@@ -103,33 +103,176 @@ or via the interactive design editor.
 
 ## Pages, Cards and Layouts
 
-The UI is composed of:
+The UI composition model is inspired by ut-prime's proven card/layout
+system but driven entirely from schema metadata.
 
-- **Page** — a routable top-level view. Pages are registered by
-  component handlers using `React Router`.
-- **Card** — a self-contained section within a page that focuses on one
-  entity or action. Cards are the primary unit of composition. A card
-  wraps a generated form, table or detail view and adds a header, toolbar
-  and optional actions.
-- **Layout** — configures how cards are arranged on a page (grid, tabs,
-  split panes). Layouts are stored as JSON configuration that can be
-  edited at design time.
+### Cards
 
-## Interactive Design Editor
+A **card** is a named group of fields (widgets). Each card defines:
 
-Blong retains and improves the interactive UI configuration capability
-from ut-prime. A **design editor** overlay allows authorised users to:
+- **`widgets`** — an ordered array of field names (strings) drawn from
+  the schema's properties. Nested arrays within `widgets` describe
+  sub-groups for layout purposes (e.g. placing two fields side by side).
+- **`label`** — optional display title for the card header.
+- **`className`** — PrimeFlex CSS class for column sizing
+  (e.g. `'lg:col-6 xl:col-4'`). Defaults to `'xl:col-6'` (two columns
+  on large screens).
+- **`hidden`** — hides the card from default rendering (useful for
+  cards that are only shown in specific modes).
+- **`watch` / `match`** — conditional visibility: the card is only
+  rendered when a watched field value matches the `match` object.
+- **`permission`** — the permission string required to render this card.
 
-- Rearrange cards on a page via drag-and-drop
-- Show / hide individual fields or columns
-- Change widget types (e.g. switch a string field from InputText to
-  Dropdown)
-- Configure validation rules beyond what the schema provides
-- Save the layout configuration to the server, where it is persisted
-  per user role or per user
+Cards are the primary composition unit. They are defined either:
+- **In the schema** via `x-blong-cards` extension, or
+- **In the component handler** as a cards configuration object.
 
-The design editor is itself built as a Blong component layer and is only
-activated in `dev` or `design` configuration environments.
+### Layouts
+
+A **layout** configures how cards are arranged on a page for a specific
+mode. Layout names follow the convention `{mode}{TypeName}`:
+- `editDefault`, `createDefault` — standard edit/create layouts
+- `editFoo`, `createBar` — type-dependent layouts (when `typeField` is
+  set, the entity type selects the layout)
+
+Each layout can be:
+- **A simple array** of card names (or nested arrays for side-by-side
+  cards)
+- **A tabbed structure** with `items` (following PrimeReact's MenuModel
+  API), `orientation` (`'left'` or `'top'`), and `type` for the tab
+  navigation style
+
+Layout properties:
+- **`orientation`** — tab index position (`'left'` or `'top'`)
+- **`items`** — array of tab items, each with `label`, `icon` and
+  `widgets` (card name array)
+- **`disabled` / `enabled`** — field-level override arrays
+- **`disableBack` / `hideBack`** — controls for the tab back button
+
+### Pages
+
+A **page** is a routable top-level view registered via React Router.
+Pages are defined by component handlers using the `handler()` API.
+A page typically contains one or more cards arranged according to its
+layout configuration.
+
+### Runtime Model
+
+At runtime, the framework resolves the active layout by:
+1. Looking up `layouts[mode + capitalised(layoutName)]`
+2. Falling back to `layouts['edit' + capitalised(layoutName)]` if not
+   found
+3. Resolving the card list from the layout and the card definitions
+4. Merging customisation overrides (schema, cards, layouts) on top of
+   the defaults
+
+## Dropdown and Lookup Fields
+
+Dropdown fields are resolved through an automatic discovery workflow
+inspired by ut-prime's `onDropdown` pattern:
+
+1. **Discovery**: When a form or table is rendered, the framework scans
+   the active layout's cards to find all fields that require dropdown
+   options. This includes fields with `enum`, `x-blong-lookup`, or
+   schema references to lookup entities.
+
+2. **Batch fetch**: All discovered dropdown field names are collected
+   into a single `onDropdown(fieldNames)` call. The handler fetches
+   options for all fields in one batch and returns a `Dropdowns` map
+   keyed by field name.
+
+3. **Caching**: TanStack Query caches dropdown results. Subsequent
+   renders reuse cached options without re-fetching.
+
+4. **Lookup fields**: Fields with `x-blong-lookup` specify an API method
+   name (e.g. `"currency.currency.find"`). The dropdown handler calls
+   this method and transforms the result into `{label, value}` pairs.
+
+This pattern avoids the need to manually wire every select field to its
+data source — the framework discovers and fetches all dropdown data
+automatically.
+
+## Form Submission and Dirty State
+
+Blong adopts ut-prime's proven form submission patterns, adapted for
+TypeBox validation:
+
+### Trigger Pattern
+
+The `trigger` pattern controls the Save button state:
+
+1. The form tracks dirty state via react-hook-form's `formState`
+   (`isDirty`, `dirtyFields`, `isSubmitting`).
+2. When the form becomes dirty, `setTrigger` is called with a submit
+   function. This enables the Save button in the toolbar.
+3. When the form is clean or submitting, `setTrigger` is called with
+   `undefined`, disabling the Save button.
+4. The toolbar's Save button calls the trigger function, which invokes
+   `handleSubmit`.
+
+### Original Value Tracking
+
+- On load, the form value is stored as `$original` — a deep clone of
+  the loaded data. This allows comparing current values against the
+  original for reset operations.
+- A `$modified` field is set to `true` when the form is dirty, `false`
+  otherwise.
+- Reset restores the form to `$original` values.
+
+### Submit Flow
+
+1. The submit handler receives form data and transforms it via
+   `prepareSubmit()` (strips internal fields like `$original`,
+   `$modified`).
+2. For new entities (no key value), calls `onAdd`. For existing entities,
+   calls `onEdit`.
+3. On success, the response is merged with form data to update the form
+   (e.g. server-generated IDs).
+4. The mode switches from `'create'` to `'edit'` after a successful add.
+
+## Customisation Persistence
+
+Layout customisations are persisted to the server and retrieved at
+startup:
+
+### API
+
+| Method | Purpose |
+|--------|---------|
+| `portal.customization.get` | Retrieve saved customisation for a component by `componentId` |
+| `portal.customization.edit` | Save customisation with `componentId` and `componentConfig` |
+
+In Blong, these map to handler methods:
+- `ui.customization.get({componentId})` → returns `{component: {componentConfig}}`
+- `ui.customization.edit({component: {componentId, componentConfig}})` → persists the config
+
+### Customisation Structure
+
+A customisation config has three sections:
+
+```typescript
+interface Customisation {
+  schema?: Schema;    // Property overrides (labels, widgets, validation)
+  card?: Cards;       // Card overrides (field order, visibility)
+  layout?: Layouts;   // Layout overrides (card arrangement, tabs)
+}
+```
+
+These are merged with the defaults at runtime via `useCustomization`:
+- `mergedSchema = merge({}, schema, customisation.schema)`
+- `mergedCards = merge({}, cards, customisation.card)`
+- `mergedLayouts = merge({}, layouts, customisation.layout)`
+
+### Design Editor Flow
+
+1. User activates design mode (toggles the ⚙ button)
+2. Cards and fields become draggable (`ConfigCard`, `ConfigField`)
+3. Dropping a field/card updates the local customisation state
+4. An Inspector panel shows properties of the inspected field or card
+5. User clicks Save → `ui.customization.edit` is called with the
+   `componentId` and the customisation diff
+6. On next load, `ui.customization.get` retrieves and merges the saved
+   customisation
 
 ## State Management
 
