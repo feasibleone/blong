@@ -6,7 +6,7 @@
 
 import React, {useEffect} from 'react';
 
-import {ThemeContext, useThemeProvider} from '../hooks/useTheme.js';
+import {ThemeContext, useTheme, useThemeProvider} from '../hooks/useTheme.js';
 import type {ThemeMode} from '../hooks/useTheme.js';
 
 /** Props for the ThemeProvider component. */
@@ -60,7 +60,7 @@ export function ThemeToggle({
 }: {
     className?: string;
 }): React.ReactElement {
-    const themeValue = useThemeProvider();
+    const themeValue = useTheme();
 
     const icons: Record<ThemeMode, string> = {
         light: '☀️',

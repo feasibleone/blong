@@ -106,10 +106,9 @@ export function isCardVisible(
     if (!card.watch || !card.match) return true;
 
     const watchedValue = watchValues[card.watch];
-    for (const [key, expectedValue] of Object.entries(card.match)) {
-        if (key === card.watch && watchedValue !== expectedValue) return false;
-    }
-    return true;
+    // Card is visible when the watched field value matches any value in the match object
+    const expectedValues = Object.values(card.match);
+    return expectedValues.includes(watchedValue);
 }
 
 function capitalize(str: string): string {

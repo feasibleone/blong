@@ -21,12 +21,10 @@ export interface ConditionalCardProps {
 
 /**
  * Check if a watched value matches the match criteria.
+ * Card is visible when the watched value matches any value in the match object.
  */
 function matchesValue(watchedValue: unknown, match: Record<string, unknown>): boolean {
-    for (const [, expectedValue] of Object.entries(match)) {
-        if (watchedValue === expectedValue) return true;
-    }
-    return false;
+    return Object.values(match).includes(watchedValue);
 }
 
 /**
