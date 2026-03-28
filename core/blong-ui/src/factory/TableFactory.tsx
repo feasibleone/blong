@@ -162,7 +162,7 @@ export function TableFactory({
     const rowsMatch = useCallback(
         (a: Record<string, unknown>, b: Record<string, unknown>): boolean => {
             if (a === b) return true;
-            if (!dataKey) return a === b;
+            if (!dataKey) return false;
             return a[dataKey] === b[dataKey];
         },
         [dataKey],

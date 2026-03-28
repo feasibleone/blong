@@ -267,7 +267,8 @@ export function DesignEditor({
                     const currentCards = store.customisation.cards ?? {};
                     const firstCardId = layout.cards[0];
                     if (firstCardId) {
-                        const currentWidgets = currentCards[firstCardId]?.widgets
+                        const storeCard = currentCards[firstCardId];
+                        const currentWidgets = (storeCard?.widgets != null ? storeCard.widgets : null)
                             ?? cards[firstCardId]?.widgets
                             ?? [];
                         store.updateCard(firstCardId, {
