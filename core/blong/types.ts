@@ -61,7 +61,12 @@ export type ServerContext = {
     // vault?: client;
 };
 
-export type BrowserContext = {};
+export type BrowserContext = {
+    /** TanStack Query client instance (injected by the browser platform). */
+    queryClient?: unknown;
+    /** React Router navigate function. */
+    navigate?: (to: string) => void;
+};
 
 export type AdapterContext = ServerContext & BrowserContext;
 

@@ -463,6 +463,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-ui",
+            "projectFolder": "core/blong-ui",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-kopi",
             "projectFolder": "core/blong-kopi",
             "reviewCategory": "core",
