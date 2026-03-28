@@ -27,6 +27,7 @@ export default server(blong => ({
                 historyPath: '.allure/history.jsonl',
                 generateOnEnd: false,
                 logUrl: 'http://localhost:9998/trace/{traceId}',
+                categoriesPath: new URL('./config/categories.json', import.meta.url).pathname,
             },
         },
         dev: {

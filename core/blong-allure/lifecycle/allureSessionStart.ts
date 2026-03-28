@@ -2,7 +2,7 @@
  * Initialize Allure reporting session
  */
 
-import {mkdir, writeFile, rm} from 'node:fs/promises';
+import {mkdir, writeFile, rm, copyFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import type {IAllureConfig} from '../types.js';
 
@@ -12,6 +12,7 @@ import type {IAllureConfig} from '../types.js';
  * This initializes the results directory and writes metadata files:
  * - environment.properties (environment info)
  * - executor.json (CI build info)
+ * - categories.json (failure classification) - if provided in config
  * 
  * @param config - Allure configuration
  */
@@ -31,6 +32,15 @@ export async function allureSessionStart(config: IAllureConfig): Promise<void> {
 
     // Write executor.json (CI metadata)
     await writeExecutorInfo(outputDir);
+
+    // Copy categories.json if provided
+    if (config.categoriesPath) {
+        try {
+            await copyFile(config.categoriesPath, join(outputDir, 'categories.json'));
+        } catch (error: any) {
+            console.warn(`Warning: Could not copy categories.json from ${config.categoriesPath}: ${error.message}`);
+        }
+    }
 }
 
 /**

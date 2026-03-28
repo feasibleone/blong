@@ -95,6 +95,7 @@ export interface IAllureConfig {
     historyPath?: string;
     generateOnEnd?: boolean;
     logUrl?: string;
+    categoriesPath?: string;
     categories?: IAllureCategory[];
 }
 
