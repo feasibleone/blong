@@ -95,13 +95,17 @@ export function useDesignStore(options: DesignStoreOptions) {
     const updateCard = useCallback(
         (cardId: string, overrides: Record<string, unknown>) => {
             pushUndo();
-            setCustomisation(prev => ({
-                ...prev,
-                cards: {
-                    ...prev.cards,
-                    [cardId]: {...(prev.cards?.[cardId] ?? {}), ...overrides},
-                },
-            }));
+            setCustomisation(prev => {
+                const existing = prev.cards?.[cardId] ?? {};
+                const updated = {...existing, ...overrides};
+                return {
+                    ...prev,
+                    cards: {
+                        ...prev.cards,
+                        [cardId]: updated,
+                    } as Customisation['cards'],
+                };
+            });
         },
         [pushUndo],
     );
@@ -109,13 +113,17 @@ export function useDesignStore(options: DesignStoreOptions) {
     const updateLayout = useCallback(
         (layoutKey: string, overrides: Record<string, unknown>) => {
             pushUndo();
-            setCustomisation(prev => ({
-                ...prev,
-                layouts: {
-                    ...prev.layouts,
-                    [layoutKey]: {...(prev.layouts?.[layoutKey] ?? {}), ...overrides},
-                },
-            }));
+            setCustomisation(prev => {
+                const existing = prev.layouts?.[layoutKey] ?? {};
+                const updated = {...existing, ...overrides};
+                return {
+                    ...prev,
+                    layouts: {
+                        ...prev.layouts,
+                        [layoutKey]: updated,
+                    } as Customisation['layouts'],
+                };
+            });
         },
         [pushUndo],
     );

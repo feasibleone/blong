@@ -225,8 +225,7 @@ export function FormFactory({
 
     return React.createElement(
         FormProvider,
-        form,
-        React.createElement(
+        {...form, children: React.createElement(
             'form',
             {
                 className: `blong-form blong-form-${mode} ${className}`,
@@ -235,6 +234,6 @@ export function FormFactory({
             },
             tabNav,
             ...cardElements,
-        ),
+        )},
     );
 }

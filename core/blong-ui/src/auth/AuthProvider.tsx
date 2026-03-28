@@ -72,7 +72,7 @@ function decodeToken(token: string): AuthUser | null {
 /** Check if a token is expired. */
 function isTokenExpired(token: string): boolean {
     const payload = decodeToken(token);
-    if (!payload?.exp) return false;
+    if (!payload?.exp || typeof payload.exp !== 'number') return false;
     return payload.exp * 1000 < Date.now();
 }
 

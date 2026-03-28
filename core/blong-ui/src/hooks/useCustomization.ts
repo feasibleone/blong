@@ -44,7 +44,8 @@ function mergeSchema(
     const mergedProperties: Record<string, BlongSchemaProperty> = {};
     for (const [key, prop] of Object.entries(defaultSchema.properties)) {
         const override = overrides[key];
-        mergedProperties[key] = override ? {...prop, ...override} : prop;
+        const baseProp = prop as BlongSchemaProperty;
+        mergedProperties[key] = override ? {...baseProp, ...override} as BlongSchemaProperty : baseProp;
     }
 
     return {...defaultSchema, properties: mergedProperties};

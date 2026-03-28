@@ -7,7 +7,7 @@
  * - Vector array: editable table with per-column widgets
  */
 
-import type {BlongSchemaProperty, BlongWidgetType, WidgetDescriptor} from '../types.js';
+import type {BlongSchemaProperty, BlongWidgetType, ScalarArrayWidget, ScalarWidget, WidgetColumn, WidgetDescriptor} from '../types.js';
 
 // ── Type → Widget mapping tables ──────────────────────────────────────────────
 
@@ -68,12 +68,13 @@ export function resolveWidgetType(property: BlongSchemaProperty): BlongWidgetTyp
 
     // Array types
     if (type === 'array') {
-        const items = property.items;
+        const items = (property as Record<string, unknown>).items;
         if (items && typeof items === 'object' && !Array.isArray(items)) {
-            if ('type' in items && items.type === 'object') {
+            const itemObj = items as Record<string, unknown>;
+            if (itemObj.type === 'object') {
                 return 'table'; // Vector array
             }
-            if ('enum' in items) {
+            if ('enum' in itemObj) {
                 return 'multiSelect';
             }
         }
@@ -99,42 +100,42 @@ export function resolveWidgetDescriptor(property: BlongSchemaProperty): WidgetDe
     ]);
     if (scalarArrayTypes.has(widgetType)) {
         return {
-            category: 'scalarArray',
-            type: widgetType as WidgetDescriptor & {category: 'scalarArray'} extends never
-                ? never
-                : 'multiSelect' | 'multiSelectTree' | 'selectTable' | 'multiSelectPanel' | 'multiSelectTreeTable',
+            category: 'scalarArray' as const,
+            type: widgetType as ScalarArrayWidget['type'],
         };
     }
 
     // Vector array widget
     if (widgetType === 'table') {
-        const items = property.items;
-        const columns: {field: string; header: string; widget: WidgetDescriptor}[] = [];
+        const items = (property as Record<string, unknown>).items;
+        const columns: WidgetColumn[] = [];
 
         if (items && typeof items === 'object' && 'properties' in items) {
             const props = (items as {properties: Record<string, BlongSchemaProperty>}).properties;
             for (const [field, prop] of Object.entries(props)) {
-                columns.push({
-                    field,
-                    header: prop.title ?? field,
-                    widget: resolveWidgetDescriptor(prop),
-                });
+                const colWidget = resolveWidgetDescriptor(prop);
+                // Column widgets must be scalar or scalar array (not nested tables)
+                if (colWidget.category === 'scalar' || colWidget.category === 'scalarArray') {
+                    columns.push({
+                        field,
+                        header: prop.title ?? field,
+                        widget: colWidget,
+                    });
+                }
             }
         }
 
         return {
-            category: 'vectorArray',
-            type: 'table',
+            category: 'vectorArray' as const,
+            type: 'table' as const,
             columns,
         };
     }
 
     // Scalar widget (default)
     return {
-        category: 'scalar',
-        type: widgetType as WidgetDescriptor & {category: 'scalar'} extends never
-            ? never
-            : 'input' | 'password' | 'text' | 'mask' | 'number' | 'currency' | 'integer' | 'boolean' | 'date' | 'time' | 'datetime' | 'dropdown' | 'dropdownTree' | 'select',
+        category: 'scalar' as const,
+        type: widgetType as ScalarWidget['type'],
     };
 }
 
