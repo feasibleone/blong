@@ -23,6 +23,8 @@ tighter integration with the framework's type system.
 
 For the design rationale see
 [Metadata-Driven UI](../rationale/metadata-driven-ui.md).
+For the implementation plan see
+[Browser UI Implementation Plan](../../../../plans/ui-BLONG_UI_IMPLEMENTATION_PLAN.md).
 
 ## Layers in the Browser
 

@@ -45,8 +45,8 @@ for current React, PrimeReact, react-hook-form and Vite.
 
 ### Reference Documents
 
-- **Concept**: [Browser UI](../../docs/blong/docs/concepts/browser-ui.md)
-- **Rationale**: [Metadata-Driven UI](../../docs/blong/docs/rationale/metadata-driven-ui.md)
+- **Concept**: [Browser UI](../docs/blong/docs/concepts/browser-ui.md)
+- **Rationale**: [Metadata-Driven UI](../docs/blong/docs/rationale/metadata-driven-ui.md)
 
 ---
 
