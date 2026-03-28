@@ -1,0 +1,46 @@
+# Mojaloop Admin API - x-blong-method mappings
+#
+# Semantic triple method names for administrative operations
+
+paths:
+  /participants:
+    post:
+      x-blong-method: adminParticipantCreate
+      description: Create a new participant/DFSP
+    get:
+      x-blong-method: adminParticipantList
+      description: List all participants
+
+  /participants/{name}:
+    get:
+      x-blong-method: adminParticipantGet
+      description: Get participant details
+
+  /participants/{name}/endpoints:
+    post:
+      x-blong-method: adminEndpointAdd
+      description: Register a callback endpoint for a participant
+    get:
+      x-blong-method: adminEndpointList
+      description: List endpoints for a participant
+
+  /participants/{name}/limits:
+    post:
+      x-blong-method: adminLimitSet
+      description: Set position/settlement limits
+    get:
+      x-blong-method: adminLimitList
+      description: Get limits for a participant
+
+  /participants/{name}/accounts:
+    post:
+      x-blong-method: adminAccountCreate
+      description: Create account for a participant
+    get:
+      x-blong-method: adminAccountList
+      description: List accounts for a participant
+
+  /parties:
+    post:
+      x-blong-method: adminPartyRegister
+      description: Register a party (account holder) with a DFSP
