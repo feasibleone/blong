@@ -14,6 +14,11 @@ export default realm(blong => ({
     validation: blong.type.Object({}),
     children: [
         './orchestrator/openapi',
+        './orchestrator/provision/provisionParticipantCreate',
+        './orchestrator/provision/provisionPartyCreate',
+        './orchestrator/provision/provisionEndpointAdd',
+        './orchestrator/provision/provisionLimitAdd',
+        './orchestrator/provision/cleanupStaleRemove',
         './adapter/openapi/fspiop',
         './adapter/openapi/admin',
     ],
@@ -21,9 +26,11 @@ export default realm(blong => ({
         default: {},
         dev: {
             openapi: true,
+            provision: true,
         },
         integration: {
             openapi: true,
+            provision: true,
         },
     },
 }));
