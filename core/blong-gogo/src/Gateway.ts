@@ -153,6 +153,7 @@ export default class Gateway extends Internal implements IGateway {
     #routes: RouteOptions[];
     #local: ILocal;
     #errorFields: [string, unknown][] = [];
+    #plugins: {plugin: unknown; options: unknown}[] = [];
 
     public constructor(
         config: IConfig,
@@ -193,6 +194,10 @@ export default class Gateway extends Internal implements IGateway {
 
     protected config(): object {
         return Object.freeze({...this.#config});
+    }
+
+    public registerPlugin(plugin: unknown, options?: unknown): void {
+        this.#plugins.push({plugin, options});
     }
 
     // https://github.com/openzipkin/b3-propagation
@@ -498,6 +503,8 @@ export default class Gateway extends Internal implements IGateway {
             await this.#server.register(swagger, {
                 version: '',
             });
+            for (const {plugin, options} of this.#plugins)
+                await this.#server.register(plugin, options);
             this.#routes.forEach(route => this.#server.route(route));
         } finally {
             await old?.close();

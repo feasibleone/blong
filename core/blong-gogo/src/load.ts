@@ -265,6 +265,7 @@ export default async function loadRealm<T extends TSchema>(
             local: {},
             rpcServer: {},
             gateway: {},
+            restFs: {},
         });
         items = [
             function log() {
@@ -298,6 +299,9 @@ export default async function loadRealm<T extends TSchema>(
                     },
                     function gateway() {
                         return import('./Gateway.ts');
+                    },
+                    function restFs() {
+                        return import('./RestFs.ts');
                     },
                     function registry() {
                         return import('./Registry.ts');
