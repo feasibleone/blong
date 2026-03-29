@@ -63,7 +63,7 @@ export default class RestFs extends Internal {
         const resolveSafePath = async (requestPath: string): Promise<string> => {
             const joined = join(baseDir, requestPath || '/');
             const resolved = resolve(joined);
-            if (!resolved.startsWith(baseDir)) {
+            if (resolved !== baseDir && !resolved.startsWith(baseDir + '/')) {
                 const error = new Error('Access denied: path outside base directory');
                 (error as NodeJS.ErrnoException).code = 'EACCES';
                 throw error;
@@ -71,7 +71,7 @@ export default class RestFs extends Internal {
             // Also check realpath for symlink attacks — but only if the path exists
             try {
                 const real = await realpath(resolved);
-                if (!real.startsWith(baseDir)) {
+                if (real !== baseDir && !real.startsWith(baseDir + '/')) {
                     const error = new Error('Access denied: path outside base directory');
                     (error as NodeJS.ErrnoException).code = 'EACCES';
                     throw error;
