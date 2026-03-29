@@ -2,12 +2,11 @@
  * RouteGenerator Storybook stories.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {MemoryRouter} from 'react-router-dom';
 
-import {AutoRoutes, deriveRoutePath} from '../src/components/RouteGenerator.js';
 import type {PageHandler} from '../src/components/RouteGenerator.js';
+import {AutoRoutes, deriveRoutePath} from '../src/components/RouteGenerator.js';
 
 const BrowsePage = () => <div>Browse Users</div>;
 const NewPage = () => <div>Create User</div>;
@@ -17,19 +16,19 @@ const sampleHandlers: PageHandler[] = [
     {
         componentId: 'component$user$user.browse',
         component: BrowsePage,
-        meta: {title: 'Users'},
+        meta: {title: 'Users', componentId: 'component$user$user.browse'},
         pageSuffix: 'browse',
     },
     {
         componentId: 'component$user$user.new',
         component: NewPage,
-        meta: {title: 'Create User'},
+        meta: {title: 'Create User', componentId: 'component$user$user.new'},
         pageSuffix: 'new',
     },
     {
         componentId: 'component$user$user.open',
         component: OpenPage,
-        meta: {title: 'Edit User'},
+        meta: {title: 'Edit User', componentId: 'component$user$user.open'},
         pageSuffix: 'open',
     },
 ];
@@ -45,9 +44,33 @@ function DeriveRoutePathDisplay() {
         <table style={{borderCollapse: 'collapse', width: '100%'}}>
             <thead>
                 <tr>
-                    <th style={{textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #ccc'}}>componentId</th>
-                    <th style={{textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #ccc'}}>pageSuffix</th>
-                    <th style={{textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid #ccc'}}>derived path</th>
+                    <th
+                        style={{
+                            textAlign: 'left',
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #ccc',
+                        }}
+                    >
+                        componentId
+                    </th>
+                    <th
+                        style={{
+                            textAlign: 'left',
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #ccc',
+                        }}
+                    >
+                        pageSuffix
+                    </th>
+                    <th
+                        style={{
+                            textAlign: 'left',
+                            padding: '0.5rem',
+                            borderBottom: '1px solid #ccc',
+                        }}
+                    >
+                        derived path
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -55,7 +78,9 @@ function DeriveRoutePathDisplay() {
                     <tr key={id}>
                         <td style={{padding: '0.5rem', fontFamily: 'monospace'}}>{id}</td>
                         <td style={{padding: '0.5rem', fontFamily: 'monospace'}}>{suffix}</td>
-                        <td style={{padding: '0.5rem', fontFamily: 'monospace'}}>{deriveRoutePath(id, suffix)}</td>
+                        <td style={{padding: '0.5rem', fontFamily: 'monospace'}}>
+                            {deriveRoutePath(id, suffix)}
+                        </td>
                     </tr>
                 ))}
             </tbody>
@@ -67,7 +92,7 @@ const meta: Meta<typeof AutoRoutes> = {
     title: 'Components/RouteGenerator',
     component: AutoRoutes,
     decorators: [
-        (Story) => (
+        Story => (
             <MemoryRouter>
                 <Story />
             </MemoryRouter>

@@ -1,6 +1,6 @@
-import {fileURLToPath} from 'node:url';
-import {dirname} from 'node:path';
 import type {StorybookConfig} from '@storybook/react-vite';
+import {dirname, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 const config: StorybookConfig = {
     stories: [
@@ -17,6 +17,17 @@ const config: StorybookConfig = {
     typescript: {
         reactDocgen: 'react-docgen-typescript',
     },
+    // Serve PrimeReact theme CSS files so applyThemeCss() works in both the
+    // dev server and the static build used by the test-runner for snapshots.
+    staticDirs: [
+        {
+            from: resolve(
+                dirname(fileURLToPath(import.meta.url)),
+                '../../../common/temp/node_modules/.pnpm/primereact@10.9.7_@types+react@18.3.28_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/primereact/resources/themes',
+            ),
+            to: '/node_modules/primereact/resources/themes',
+        },
+    ],
     viteFinal(config) {
         return {
             ...config,

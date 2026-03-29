@@ -5,9 +5,9 @@
  * the design editor.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
-import {within, userEvent, expect} from '@storybook/test';
+import {expect, userEvent, within} from '@storybook/test';
+import React from 'react';
 
 import {SelectField} from '../src/design/SelectField.js';
 import type {BlongSchema, Cards} from '../src/types.js';
@@ -45,7 +45,7 @@ function SelectFieldDemo() {
                 cards={sampleCards}
                 visible={visible}
                 onClose={() => setVisible(false)}
-                onSelect={(name) => {
+                onSelect={name => {
                     setSelected(name);
                     setVisible(false);
                 }}
@@ -93,16 +93,17 @@ export const Interactive: Story = {
     play: async ({canvasElement}) => {
         const canvas = within(canvasElement);
 
-        // Wait for the dialog to be visible
-        const searchInput = await canvas.findByRole('textbox');
+        // Wait for the search input — rendered as type="search" (role="searchbox")
+        const searchInput = await canvas.findByRole('searchbox');
         await userEvent.type(searchInput, 'first');
 
-        // Only 'First Name' should be visible after filtering
-        await expect(canvas.getByText('First Name')).toBeInTheDocument();
-        await expect(canvas.queryByText('Last Name')).not.toBeInTheDocument();
+        // After filtering with 'first', only firstName/First Name should be visible.
+        // The <li> renders as `<strong>firstName</strong> — First Name` so match via regex.
+        await expect(canvas.getByText(/First Name/)).toBeInTheDocument();
+        await expect(canvas.queryByText(/Last Name/)).not.toBeInTheDocument();
 
-        // Select the filtered field
-        await userEvent.click(canvas.getByText('First Name'));
+        // Select the filtered field by clicking the list item
+        await userEvent.click(canvas.getByText(/First Name/));
 
         // The demo should show the selected field name
         await canvas.findByText('firstName');

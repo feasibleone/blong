@@ -1,0 +1,177 @@
+<div
+  style="background: var(--surface-ground, #111827); color: var(--text-color, rgba(255,255,255,0.87)); min-height: 100vh; padding: 1rem;"
+>
+  <div
+    class="blong-form-card "
+  >
+    <div
+      class="blong-toolbar"
+    >
+      <h3
+        class="blong-toolbar-title"
+      >
+        Create User
+      </h3>
+      <div
+        class="blong-toolbar-actions"
+      >
+        <button
+          type="button"
+          class="blong-btn blong-btn-primary"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          class="blong-btn blong-btn-secondary"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+    <form
+      class="blong-form blong-form-edit "
+      novalidate=""
+    >
+      <fieldset
+        class="blong-card blong-card-account"
+      >
+        <legend>
+          Account
+        </legend>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="userName"
+          >
+            Username
+          </label>
+          <input
+            name="userName"
+            type="text"
+            id="userName"
+            class=""
+            maxlength="50"
+            style=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="emailAddress"
+          >
+            Email Address
+          </label>
+          <input
+            name="emailAddress"
+            type="text"
+            id="emailAddress"
+            class=""
+            style=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="isActive"
+          >
+            Active
+          </label>
+          <input
+            name="isActive"
+            type="checkbox"
+            id="isActive"
+            class=""
+            style=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="roleId"
+          >
+            Role
+          </label>
+          <select
+            name="roleId"
+            id="roleId"
+            class=""
+          >
+            <option
+              value=""
+            >
+              Select...
+            </option>
+          </select>
+        </div>
+      </fieldset>
+      <fieldset
+        class="blong-card blong-card-personal"
+      >
+        <legend>
+          Personal Information
+        </legend>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="firstName"
+          >
+            First Name
+          </label>
+          <input
+            name="firstName"
+            type="text"
+            id="firstName"
+            class=""
+            style=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="lastName"
+          >
+            Last Name
+          </label>
+          <input
+            name="lastName"
+            type="text"
+            id="lastName"
+            class=""
+            style=""
+          />
+        </div>
+      </fieldset>
+      <fieldset
+        class="blong-card blong-card-additional"
+      >
+        <legend>
+          Additional
+        </legend>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="notes"
+          >
+            Notes
+          </label>
+          <textarea
+            name="notes"
+            id="notes"
+            class=""
+            maxlength="1000"
+            rows="5"
+            style=""
+          />
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</div>

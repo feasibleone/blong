@@ -1,8 +1,8 @@
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
-import {within, userEvent, expect} from '@storybook/test';
+import {expect, userEvent, within} from '@storybook/test';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {VisuallyHidden, SkipLink, LiveRegion, FocusTrap} from '../src/components/Accessibility.js';
+import React from 'react';
+import {FocusTrap, LiveRegion, SkipLink, VisuallyHidden} from '../src/components/Accessibility.js';
 
 const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 
@@ -10,7 +10,7 @@ const meta: Meta<typeof FocusTrap> = {
     title: 'Components/Accessibility',
     component: FocusTrap,
     decorators: [
-        (Story) => (
+        Story => (
             <QueryClientProvider client={queryClient}>
                 <Story />
             </QueryClientProvider>
@@ -29,58 +29,72 @@ export const VisuallyHiddenStory: Story = {
             <p>(Nothing appears between these two paragraphs visually.)</p>
         </div>
     ),
-}
+};
 
 export const SkipLinkStory: Story = {
     name: 'SkipLink',
     render: () => (
         <div style={{padding: '16px'}}>
-            <SkipLink href="#main-content">Skip to main content</SkipLink>
+            <SkipLink
+                targetId="#main-content"
+                label="Skip to main content"
+            />
             <p>Tab into this area to reveal the skip link.</p>
-            <div id="main-content" tabIndex={-1}>
+            <div
+                id="main-content"
+                tabIndex={-1}
+            >
                 <p>Main content area</p>
             </div>
         </div>
     ),
     play: async ({canvasElement}) => {
-        const canvas = within(canvasElement)
-        await userEvent.tab()
-        const skipLink = canvas.getByText('Skip to main content')
-        expect(skipLink).toBeInTheDocument()
+        const canvas = within(canvasElement);
+        await userEvent.tab();
+        const skipLink = canvas.getByText('Skip to main content');
+        expect(skipLink).toBeInTheDocument();
     },
-}
+};
 
 function LiveRegionDemo() {
-    const [msg, setMsg] = React.useState('')
+    const [msg, setMsg] = React.useState('');
     return (
         <div>
             <button onClick={() => setMsg('Item saved successfully!')}>Save Item</button>
             <LiveRegion message={msg} />
-            <div aria-live="off" data-testid="status">{msg}</div>
+            <div
+                aria-live="off"
+                data-testid="status"
+            >
+                {msg}
+            </div>
         </div>
-    )
+    );
 }
 
 export const LiveRegionStory: Story = {
     name: 'LiveRegion',
     render: () => <LiveRegionDemo />,
     play: async ({canvasElement}) => {
-        const canvas = within(canvasElement)
-        const button = canvas.getByText('Save Item')
-        await userEvent.click(button)
-        const status = canvas.getByTestId('status')
-        expect(status.textContent).toBe('Item saved successfully!')
+        const canvas = within(canvasElement);
+        const button = canvas.getByText('Save Item');
+        await userEvent.click(button);
+        const status = canvas.getByTestId('status');
+        expect(status.textContent).toBe('Item saved successfully!');
     },
-}
+};
 
 function FocusTrapDemo() {
-    const [active, setActive] = React.useState(false)
+    const [active, setActive] = React.useState(false);
     return (
         <div>
             <button onClick={() => setActive(true)}>Open Dialog</button>
             {active && (
                 <FocusTrap active>
-                    <div role="dialog" style={{border: '1px solid', padding: '16px'}}>
+                    <div
+                        role="dialog"
+                        style={{border: '1px solid', padding: '16px'}}
+                    >
                         <p>Focus is trapped here</p>
                         <button>Action 1</button>
                         <button>Action 2</button>
@@ -89,17 +103,17 @@ function FocusTrapDemo() {
                 </FocusTrap>
             )}
         </div>
-    )
+    );
 }
 
 export const FocusTrapStory: Story = {
     name: 'FocusTrap',
     render: () => <FocusTrapDemo />,
     play: async ({canvasElement}) => {
-        const canvas = within(canvasElement)
-        const openButton = canvas.getByText('Open Dialog')
-        await userEvent.click(openButton)
-        const dialog = canvas.getByRole('dialog')
-        expect(dialog).toBeInTheDocument()
+        const canvas = within(canvasElement);
+        const openButton = canvas.getByText('Open Dialog');
+        await userEvent.click(openButton);
+        const dialog = canvas.getByRole('dialog');
+        expect(dialog).toBeInTheDocument();
     },
-}
+};

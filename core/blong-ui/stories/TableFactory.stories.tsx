@@ -2,8 +2,8 @@
  * TableCard Storybook stories.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
+import {expect, userEvent, within} from '@storybook/test';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import {TableFactory} from '../src/factory/TableFactory.js';
@@ -52,18 +52,48 @@ const userListSchema: BlongSchema = {
 } as BlongSchema;
 
 const sampleData = [
-    {userId: 1, userName: 'alice', emailAddress: 'alice@example.com', isActive: true, createdAt: '2024-01-15'},
-    {userId: 2, userName: 'bob', emailAddress: 'bob@example.com', isActive: true, createdAt: '2024-02-20'},
-    {userId: 3, userName: 'charlie', emailAddress: 'charlie@example.com', isActive: false, createdAt: '2024-03-10'},
-    {userId: 4, userName: 'diana', emailAddress: 'diana@example.com', isActive: true, createdAt: '2024-04-05'},
-    {userId: 5, userName: 'eve', emailAddress: 'eve@example.com', isActive: true, createdAt: '2024-05-12'},
+    {
+        userId: 1,
+        userName: 'alice',
+        emailAddress: 'alice@example.com',
+        isActive: true,
+        createdAt: '2024-01-15',
+    },
+    {
+        userId: 2,
+        userName: 'bob',
+        emailAddress: 'bob@example.com',
+        isActive: true,
+        createdAt: '2024-02-20',
+    },
+    {
+        userId: 3,
+        userName: 'charlie',
+        emailAddress: 'charlie@example.com',
+        isActive: false,
+        createdAt: '2024-03-10',
+    },
+    {
+        userId: 4,
+        userName: 'diana',
+        emailAddress: 'diana@example.com',
+        isActive: true,
+        createdAt: '2024-04-05',
+    },
+    {
+        userId: 5,
+        userName: 'eve',
+        emailAddress: 'eve@example.com',
+        isActive: true,
+        createdAt: '2024-05-12',
+    },
 ];
 
 const meta: Meta<typeof TableFactory> = {
     title: 'Components/TableFactory',
     component: TableFactory,
     decorators: [
-        (Story) => (
+        Story => (
             <QueryClientProvider client={queryClient}>
                 <Story />
             </QueryClientProvider>
@@ -88,7 +118,17 @@ export const WithSelection: Story = {
         data: sampleData,
         totalRecords: sampleData.length,
         selectionMode: 'single',
-        onSelectionChange: (sel) => console.log('Selected:', sel),
+        onSelectionChange: sel => console.log('Selected:', sel),
+    },
+    play: async ({canvasElement}) => {
+        const canvas = within(canvasElement);
+
+        // Wait for table rows to be rendered
+        const aliceCell = await canvas.findByText('alice');
+        await expect(aliceCell).toBeVisible();
+
+        // Click a row (alice's username cell)
+        await userEvent.click(aliceCell);
     },
 };
 

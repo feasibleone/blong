@@ -4,12 +4,13 @@
  * Looks up `edit{TypeValue}`/`create{TypeValue}` layout from the layouts map.
  */
 
-import React from 'react';
-import {useWatch} from 'react-hook-form';
+import React, {useMemo} from 'react';
+import type {FieldValues} from 'react-hook-form';
+import {useForm, useWatch} from 'react-hook-form';
 
-import type {BlongSchema, Cards, FormMode, Layouts} from '../types.js';
 import {FormFactory} from '../factory/FormFactory.js';
 import {resolveLayout} from '../hooks/useLayout.js';
+import type {BlongSchema, Cards, FormMode, Layouts} from '../types.js';
 
 /** Props for the PolymorphicLayout component. */
 export interface PolymorphicLayoutProps {
@@ -63,10 +64,23 @@ export function PolymorphicLayout({
     onTrigger,
     className = '',
 }: PolymorphicLayoutProps): React.ReactElement {
-    const typeValue = useWatch({name: typeField, defaultValue: defaultValues?.[typeField]});
+    // Create a form instance so useWatch has access to control without requiring
+    // an ancestor FormProvider. FormFactory renders its own FormProvider internally
+    // for the editable form; this form tracks the typeField for layout selection.
+    const watchForm = useForm<FieldValues>({
+        defaultValues: defaultValues as FieldValues,
+    });
+    const typeValue = useWatch({
+        name: typeField,
+        defaultValue: defaultValues?.[typeField],
+        control: watchForm.control,
+    });
     const typeValueStr = typeValue != null ? String(typeValue) : undefined;
 
-    const activeLayout = resolveLayout(layouts, mode, typeValueStr);
+    const activeLayout = useMemo(
+        () => resolveLayout(layouts, mode, typeValueStr),
+        [layouts, mode, typeValueStr],
+    );
 
     if (!activeLayout) {
         return React.createElement(

@@ -5,9 +5,9 @@
  * the design editor.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
-import {within, userEvent, expect} from '@storybook/test';
+import {expect, userEvent, within} from '@storybook/test';
+import React from 'react';
 
 import {SelectCard} from '../src/design/SelectCard.js';
 import type {Cards, Layout} from '../src/types.js';
@@ -38,7 +38,7 @@ function SelectCardDemo() {
                 layout={currentLayout}
                 visible={visible}
                 onClose={() => setVisible(false)}
-                onSelect={(id) => {
+                onSelect={id => {
                     setSelected(id);
                     setVisible(false);
                 }}
@@ -71,8 +71,8 @@ export const Interactive: Story = {
     play: async ({canvasElement}) => {
         const canvas = within(canvasElement);
 
-        // Wait for the dialog to be visible
-        const searchInput = await canvas.findByRole('textbox');
+        // Wait for the search input — rendered as type="search" (role="searchbox")
+        const searchInput = await canvas.findByRole('searchbox');
         await userEvent.type(searchInput, 'personal');
 
         // Only 'Personal Information' should be visible after filtering

@@ -2,9 +2,10 @@
  * DesignEditor Storybook stories.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
+import {expect, userEvent, within} from '@storybook/test';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import React from 'react';
 
 import {DesignEditor} from '../src/design/DesignEditor.js';
 import {FormFactory} from '../src/factory/FormFactory.js';
@@ -47,7 +48,7 @@ const meta: Meta<typeof DesignEditor> = {
     title: 'Design/DesignEditor',
     component: DesignEditor,
     decorators: [
-        (Story) => (
+        Story => (
             <QueryClientProvider client={queryClient}>
                 <Story />
             </QueryClientProvider>
@@ -64,14 +65,30 @@ export const Default: Story = {
         cards,
         layout,
         customisation: null,
-        onSave: (c) => console.log('Save:', c),
+        onSave: c => console.log('Save:', c),
         children: React.createElement(FormFactory, {
             schema,
             cards,
             layout,
             mode: 'edit',
             defaultValues: {userName: 'alice', emailAddress: 'alice@example.com'},
-            onSubmit: async (data) => console.log('Submit:', data),
+            onSubmit: async data => console.log('Submit:', data),
         }),
+    },
+    play: async ({canvasElement}) => {
+        const canvas = within(canvasElement);
+
+        // Enter design mode via the gear toggle button
+        const enterBtn = canvas.getByTitle('Enter design mode');
+        await expect(enterBtn).toBeVisible();
+        await userEvent.click(enterBtn);
+
+        // After toggle, Exit button should appear
+        const exitBtn = canvas.getByTitle('Exit design mode');
+        await expect(exitBtn).toBeVisible();
+
+        // Exit design mode
+        await userEvent.click(exitBtn);
+        await expect(canvas.getByTitle('Enter design mode')).toBeVisible();
     },
 };

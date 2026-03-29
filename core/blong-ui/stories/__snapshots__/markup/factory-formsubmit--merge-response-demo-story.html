@@ -1,0 +1,26 @@
+<div
+  style="background: var(--surface-ground, #111827); color: var(--text-color, rgba(255,255,255,0.87)); min-height: 100vh; padding: 1rem;"
+>
+  <div
+    style="font-family: monospace; padding: 16px;"
+  >
+    <h4>
+      Form data (before save):
+    </h4>
+    <pre>
+      { "userName": "alice", "emailAddress": "alice@example.com" }
+    </pre>
+    <h4>
+      Server response:
+    </h4>
+    <pre>
+      { "userId": 42, "emailAddress": "alice@verified.example.com", "createdAt": "2024-01-15T10:00:00Z" }
+    </pre>
+    <h4>
+      After mergeResponse (server fields win):
+    </h4>
+    <pre>
+      { "userName": "alice", "emailAddress": "alice@verified.example.com", "userId": 42, "createdAt": "2024-01-15T10:00:00Z" }
+    </pre>
+  </div>
+</div>

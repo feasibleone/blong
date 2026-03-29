@@ -4,8 +4,8 @@
  * Demonstrates the FormCard component with various schemas and configurations.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
+import {expect, userEvent, within} from '@storybook/test';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import {FormCard} from '../src/components/FormCard.js';
@@ -93,7 +93,7 @@ const meta: Meta<typeof FormCard> = {
     title: 'Components/FormCard',
     component: FormCard,
     decorators: [
-        (Story) => (
+        Story => (
             <QueryClientProvider client={queryClient}>
                 <Story />
             </QueryClientProvider>
@@ -115,6 +115,24 @@ export const CreateMode: Story = {
             console.log('Submit:', mode, data);
         },
         onCancel: () => console.log('Cancel'),
+    },
+    play: async ({canvasElement}) => {
+        const canvas = within(canvasElement);
+
+        // Find required fields by label
+        const usernameInput = canvas.getByLabelText('Username');
+        const emailInput = canvas.getByLabelText('Email Address');
+
+        // Fill required fields — Save button becomes active once form is dirty
+        await userEvent.type(usernameInput, 'newuser');
+        await userEvent.type(emailInput, 'newuser@example.com');
+
+        await expect(usernameInput).toHaveValue('newuser');
+        await expect(emailInput).toHaveValue('newuser@example.com');
+
+        // Save button should now be enabled
+        const saveButton = canvas.getByRole('button', {name: /save/i});
+        await expect(saveButton).not.toBeDisabled();
     },
 };
 
@@ -138,6 +156,18 @@ export const EditMode: Story = {
             console.log('Submit:', mode, data);
         },
         onCancel: () => console.log('Cancel'),
+    },
+    play: async ({canvasElement}) => {
+        const canvas = within(canvasElement);
+
+        // Verify pre-populated values
+        const usernameInput = canvas.getByLabelText('Username');
+        await expect(usernameInput).toHaveValue('alice');
+
+        // Cancel button should be present
+        const cancelButton = canvas.getByRole('button', {name: /cancel/i});
+        await expect(cancelButton).toBeVisible();
+        await userEvent.click(cancelButton);
     },
 };
 

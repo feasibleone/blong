@@ -1,0 +1,79 @@
+<div
+  style="background: var(--surface-ground, #111827); color: var(--text-color, rgba(255,255,255,0.87)); min-height: 100vh; padding: 1rem;"
+>
+  <form>
+    <div
+      class="blong-array-fields "
+    >
+      <h4
+        class="blong-array-label"
+      >
+        Phone Numbers
+      </h4>
+      <div
+        class="blong-array-item"
+      >
+        <div
+          class="blong-array-item-header"
+        >
+          <span>
+            #1
+          </span>
+          <button
+            type="button"
+            class="blong-btn blong-btn-remove"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="phones.0.phoneNumber"
+          >
+            Phone Number
+          </label>
+          <input
+            name="phones.0.phoneNumber"
+            type="text"
+            id="phones.0.phoneNumber"
+            class=""
+            style=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            for="phones.0.phoneType"
+          >
+            Type
+          </label>
+          <select
+            name="phones.0.phoneType"
+            id="phones.0.phoneType"
+            class=""
+          >
+            <option
+              value=""
+            >
+              Select...
+            </option>
+          </select>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="blong-btn blong-btn-add"
+      >
+        + Add
+      </button>
+    </div>
+    <button
+      type="submit"
+    >
+      Save
+    </button>
+  </form>
+</div>

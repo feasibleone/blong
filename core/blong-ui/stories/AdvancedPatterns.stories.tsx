@@ -2,15 +2,12 @@
  * Advanced pattern Storybook stories.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
+import {expect, userEvent, within} from '@storybook/test';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {FormProvider, useForm} from 'react-hook-form';
 
 import {MasterDetail} from '../src/components/MasterDetail.js';
 import {PivotTable} from '../src/components/PivotTable.js';
-import {ConditionalCard} from '../src/components/ConditionalCard.js';
-import {PermissionGate} from '../src/components/PermissionGate.js';
 import type {BlongSchema, Cards, Layout} from '../src/types.js';
 
 const queryClient = new QueryClient({
@@ -57,7 +54,7 @@ const masterDetailMeta: Meta<typeof MasterDetail> = {
     title: 'Patterns/MasterDetail',
     component: MasterDetail,
     decorators: [
-        (Story) => (
+        Story => (
             <QueryClientProvider client={queryClient}>
                 <Story />
             </QueryClientProvider>
@@ -80,6 +77,20 @@ export const Default: MasterDetailStory = {
         masterTitle: 'Users',
         detailTitle: 'Edit User',
     },
+    play: async ({canvasElement}) => {
+        const canvas = within(canvasElement);
+
+        // Verify the master table renders
+        const aliceCell = await canvas.findByText('alice');
+        await expect(aliceCell).toBeVisible();
+
+        // Click the alice row to select it and populate the detail form
+        await userEvent.click(aliceCell);
+
+        // Detail form should now show alice’s username pre-filled
+        const usernameInput = await canvas.findByDisplayValue('alice');
+        await expect(usernameInput).toBeVisible();
+    },
 };
 
 // ── PivotTable Story ──────────────────────────────────────────────────────────
@@ -100,8 +111,14 @@ export const StaticPivotExample: MasterDetailStory = {
         <QueryClientProvider client={queryClient}>
             <PivotTable
                 schema={pivotSchema}
-                data={[{currencyCode: 'USD', balance: 1000}, {currencyCode: 'EUR', balance: 500}]}
-                pivot={{examples: [{currencyCode: 'USD'}, {currencyCode: 'EUR'}, {currencyCode: 'GBP'}], join: 'currencyCode'}}
+                data={[
+                    {currencyCode: 'USD', balance: 1000},
+                    {currencyCode: 'EUR', balance: 500},
+                ]}
+                pivot={{
+                    examples: [{currencyCode: 'USD'}, {currencyCode: 'EUR'}, {currencyCode: 'GBP'}],
+                    join: 'currencyCode',
+                }}
             />
         </QueryClientProvider>
     ),

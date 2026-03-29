@@ -1,0 +1,137 @@
+<div
+  style="background: var(--surface-ground, #111827); color: var(--text-color, rgba(255,255,255,0.87)); min-height: 100vh; padding: 1rem;"
+>
+  <div
+    class="blong-report-card"
+  >
+    <form
+      class="blong-report-filters"
+    >
+      <div
+        class="blong-field"
+      >
+        <label
+          for="dateFrom"
+        >
+          Date From
+        </label>
+        <input
+          name="dateFrom"
+          type="date"
+          id="dateFrom"
+          class=""
+          style=""
+        />
+      </div>
+      <div
+        class="blong-field"
+      >
+        <label
+          for="dateTo"
+        >
+          Date To
+        </label>
+        <input
+          name="dateTo"
+          type="date"
+          id="dateTo"
+          class=""
+          style=""
+        />
+      </div>
+      <div
+        class="blong-field"
+      >
+        <label
+          for="status"
+        >
+          Status
+        </label>
+        <select
+          name="status"
+          id="status"
+          class=""
+        >
+          <option
+            value=""
+          >
+            Select...
+          </option>
+        </select>
+      </div>
+      <button
+        type="submit"
+        class="blong-btn blong-btn-primary"
+      >
+        Apply Filters
+      </button>
+      <button
+        type="button"
+        class="blong-btn blong-btn-secondary"
+      >
+        Clear
+      </button>
+    </form>
+    <div
+      class="blong-table-card "
+    >
+      <div
+        class="blong-toolbar"
+      >
+        <h3
+          class="blong-toolbar-title"
+        >
+          Transaction Report
+        </h3>
+        <form
+          class="blong-search"
+        >
+          <input
+            type="search"
+            placeholder="Search..."
+            class="blong-search-input"
+            value=""
+            style=""
+          />
+          <button
+            type="submit"
+            class="blong-btn blong-btn-search"
+          >
+            🔍
+          </button>
+        </form>
+      </div>
+      <div
+        class="blong-table "
+      >
+        <table>
+          <thead>
+            <tr>
+              <th
+                class="blong-th-sortable"
+              >
+                Transaction ID
+              </th>
+              <th
+                class="blong-th-sortable"
+              >
+                Amount
+              </th>
+              <th
+                class="blong-th-sortable"
+              >
+                Status
+              </th>
+              <th
+                class="blong-th-sortable"
+              >
+                Created At
+              </th>
+            </tr>
+          </thead>
+          <tbody />
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

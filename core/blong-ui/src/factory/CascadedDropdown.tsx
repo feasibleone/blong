@@ -54,12 +54,17 @@ export function CascadedDropdown({
     disabled = false,
     className = '',
 }: CascadedDropdownProps): React.ReactElement {
-    const {register, formState: {errors}} = useFormContext();
+    const {
+        register,
+        formState: {errors},
+    } = useFormContext();
     const parentValue = useWatch({name: parentField as string, disabled: !parentField});
 
     const filteredOptions = useMemo(() => {
         if (!parentField || parentValue == null) return options;
-        return options.filter(opt => opt.parent === parentValue);
+        // Coerce both sides to string for comparison since HTML select returns strings
+        const parentStr = String(parentValue);
+        return options.filter(opt => String(opt.parent) === parentStr);
     }, [options, parentField, parentValue]);
 
     const error = errors[name];
@@ -73,7 +78,7 @@ export function CascadedDropdown({
             {
                 ...register(name, {required: required ? `${label} is required` : false}),
                 id: name,
-                disabled: disabled || (parentField != null && parentValue == null),
+                disabled: disabled || (parentField != null && !parentValue),
                 className: error ? 'p-invalid' : '',
             },
             React.createElement('option', {value: ''}, placeholder),

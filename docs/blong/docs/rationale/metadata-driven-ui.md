@@ -52,15 +52,15 @@ well-designed system that Blong should learn from, not just replace:
    patterns.
 
 2. **Cards and layouts model**: ut-prime has a rich composition model:
-   - **Cards** are named groups of fields (`widgets` arrays) with
-     `label`, `className` for layout control, `hidden`, `watch`/`match`
-     for conditional visibility, and `permission` for access control.
-   - **Layouts** are named configurations keyed by mode
-     (`editDefault`, `createFoo`, etc.) supporting tabbed navigation
-     (`ThumbIndex`), `orientation` (left/top), nested `items` following
-     PrimeReact's MenuModel API, and `disabled`/`enabled` field lists.
-   - The `useCustomization` hook merges default schema, cards and
-     layouts with per-component customisations at runtime.
+    - **Cards** are named groups of fields (`widgets` arrays) with
+      `label`, `className` for layout control, `hidden`, `watch`/`match`
+      for conditional visibility, and `permission` for access control.
+    - **Layouts** are named configurations keyed by mode
+      (`editDefault`, `createFoo`, etc.) supporting tabbed navigation
+      (`ThumbIndex`), `orientation` (left/top), nested `items` following
+      PrimeReact's MenuModel API, and `disabled`/`enabled` field lists.
+    - The `useCustomization` hook merges default schema, cards and
+      layouts with per-component customizations at runtime.
 
 3. **Design editor**: The drag-and-drop design editor (`ConfigField`,
    `ConfigCard`, `Inspector`) allows rearranging fields between cards,
@@ -79,7 +79,7 @@ well-designed system that Blong should learn from, not just replace:
    transforms form data before sending to the API. The form tracks
    `$original` (snapshot of loaded data) and `$modified` (dirty flag).
 
-6. **Customisation persistence**: Layout customisations are persisted via
+6. **Customization persistence**: Layout customizations are persisted via
    `portal.customization.edit` and retrieved via
    `portal.customization.get`, keyed by `componentId`. The stored
    config has `schema`, `card` and `layout` sections that are merged
@@ -87,35 +87,35 @@ well-designed system that Blong should learn from, not just replace:
 
 7. **Three widget categories**: ut-prime classifies widgets into three
    categories that cover virtually all data-entry needs:
-   - **Scalar**: primitive-value widgets — input, password, text,
-     mask, number, currency, integer, boolean, date, time, datetime,
-     dropdown, dropdownTree, select.
-   - **Scalar array**: multi-select widgets backed by a list — 
-     multiSelect, multiSelectTree, selectTable, multiSelectPanel,
-     multiSelectTreeTable. These represent arrays of scalar values
-     (e.g. selected IDs from a relational database).
-   - **Vector array**: table widgets that edit arrays of objects. Columns
-     are defined by nested `widgets` arrays.
+    - **Scalar**: primitive-value widgets — input, password, text,
+      mask, number, currency, integer, boolean, date, time, datetime,
+      dropdown, dropdownTree, select.
+    - **Scalar array**: multi-select widgets backed by a list —
+      multiSelect, multiSelectTree, selectTable, multiSelectPanel,
+      multiSelectTreeTable. These represent arrays of scalar values
+      (e.g. selected IDs from a relational database).
+    - **Vector array**: table widgets that edit arrays of objects. Columns
+      are defined by nested `widgets` arrays.
 
 8. **Advanced UI patterns**: ut-prime implements a family of composable
    patterns for complex data relationships:
-   - **Cascaded dropdowns** — a `parent` property on dropdown widgets
-     links them hierarchically (e.g. continent → country → city).
-     Dropdown data includes a `parent` field for automatic filtering.
-   - **Cascaded tables** — `master` and `parent` properties configure
-     parent-child table filtering via `$.selected.xxx` form state.
-   - **Master-detail** — a detail card with `watch: '$.selected.xxx'`
-     edits the selected table row. Edit widgets reference
-     `$.edit.xxx.propertyName` from internal form state.
-   - **Static pivot** — pre-populates a table with static data (e.g.
-     weekdays) via `pivot.examples` + `pivot.join`.
-   - **Dynamic pivot** — pre-populates a table with dropdown list data
-     via `pivot.dropdown` + `pivot.join` (e.g. permission matrix).
-   - **Polymorphic layout** — a `typeField` property selects layouts
-     dynamically based on the data type (e.g. `editPerson` vs
-     `editOrganization`). Falls back from `createXyz` to `editXyz`.
-   - **Polymorphic master-detail** — combines master-detail with
-     polymorphic card visibility via `watch`/`match`.
+    - **Cascaded dropdowns** — a `parent` property on dropdown widgets
+      links them hierarchically (e.g. continent → country → city).
+      Dropdown data includes a `parent` field for automatic filtering.
+    - **Cascaded tables** — `master` and `parent` properties configure
+      parent-child table filtering via `$.selected.xxx` form state.
+    - **Master-detail** — a detail card with `watch: '$.selected.xxx'`
+      edits the selected table row. Edit widgets reference
+      `$.edit.xxx.propertyName` from internal form state.
+    - **Static pivot** — pre-populates a table with static data (e.g.
+      weekdays) via `pivot.examples` + `pivot.join`.
+    - **Dynamic pivot** — pre-populates a table with dropdown list data
+      via `pivot.dropdown` + `pivot.join` (e.g. permission matrix).
+    - **Polymorphic layout** — a `typeField` property selects layouts
+      dynamically based on the data type (e.g. `editPerson` vs
+      `editOrganization`). Falls back from `createXyz` to `editXyz`.
+    - **Polymorphic master-detail** — combines master-detail with
+      polymorphic card visibility via `watch`/`match`.
 
 9. **Custom widget escape hatch**: An `editors` property on the Editor
    allows passing custom React components as widgets. Each receives
@@ -239,14 +239,14 @@ Standard JSON Schema is not enough to describe every UI concern. Blong
 defines a set of `x-blong-*` extension fields that can be added to any
 schema property:
 
-| Extension | Purpose | Example |
-|-----------|---------|---------|
-| `x-blong-widget` | Override the default widget | `"x-blong-widget": "richtext"` |
-| `x-blong-hidden` | Hide from default views | `"x-blong-hidden": true` |
-| `x-blong-order` | Display order in forms/tables | `"x-blong-order": 5` |
-| `x-blong-group` | Group fields into sections | `"x-blong-group": "address"` |
-| `x-blong-column` | Table column configuration | `"x-blong-column": {"width": 120, "sortable": true}` |
-| `x-blong-lookup` | Populate dropdown from another API | `"x-blong-lookup": "currency.currency.find"` |
+| Extension        | Purpose                            | Example                                              |
+| ---------------- | ---------------------------------- | ---------------------------------------------------- |
+| `x-blong-widget` | Override the default widget        | `"x-blong-widget": "richtext"`                       |
+| `x-blong-hidden` | Hide from default views            | `"x-blong-hidden": true`                             |
+| `x-blong-order`  | Display order in forms/tables      | `"x-blong-order": 5`                                 |
+| `x-blong-group`  | Group fields into sections         | `"x-blong-group": "address"`                         |
+| `x-blong-column` | Table column configuration         | `"x-blong-column": {"width": 120, "sortable": true}` |
+| `x-blong-lookup` | Populate dropdown from another API | `"x-blong-lookup": "currency.currency.find"`         |
 
 These extensions are set in the TypeBox schema (using `x-blong-*` custom
 keywords) and flow through to the OpenAPI document without any extra
@@ -263,7 +263,7 @@ The design editor from ut-prime is retained and improved:
 - **Layout persistence** — saved to the server as JSON, keyed by
   page + role
 - **Undo/redo** support
-- **Diff view** — compare the customised layout against the default
+- **Diff view** — compare the customized layout against the default
   schema-derived layout
 
 The editor is implemented as a Blong `component` layer that is only
@@ -274,12 +274,12 @@ active when the `design` configuration activation is present.
 Blong defines four standard component patterns (analogous to ut-prime's
 Editor, Explorer, Inspector, Report):
 
-| Pattern | Description |
-|---------|-------------|
-| **FormCard** | A card wrapping a react-hook-form form generated from a request schema. Used for create/edit operations. |
-| **TableCard** | A card wrapping a PrimeReact DataTable generated from a response array schema. Used for list/search operations. |
-| **DetailCard** | A read-only card displaying a single entity. |
-| **ReportCard** | A card combining filters, a table and optional charts. |
+| Pattern        | Description                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| **FormCard**   | A card wrapping a react-hook-form form generated from a request schema. Used for create/edit operations.        |
+| **TableCard**  | A card wrapping a PrimeReact DataTable generated from a response array schema. Used for list/search operations. |
+| **DetailCard** | A read-only card displaying a single entity.                                                                    |
+| **ReportCard** | A card combining filters, a table and optional charts.                                                          |
 
 Developers can use these patterns directly or let the component factory
 create them automatically from the OpenAPI schema.

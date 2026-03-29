@@ -5,13 +5,12 @@
  * array sections) wrapped in a FormProvider context.
  */
 
-import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
-import {within, userEvent, expect} from '@storybook/test';
+import {expect, userEvent, waitFor, within} from '@storybook/test';
 import {FormProvider, useForm} from 'react-hook-form';
 
-import {NestedFieldset, ArrayFields} from '../src/factory/NestedFields.js';
-import type {NestedFieldsetProps, ArrayFieldsProps} from '../src/factory/NestedFields.js';
+import type {ArrayFieldsProps, NestedFieldsetProps} from '../src/factory/NestedFields.js';
+import {ArrayFields, NestedFieldset} from '../src/factory/NestedFields.js';
 import type {BlongSchemaProperty} from '../src/types.js';
 
 // ── Sample schemas ────────────────────────────────────────────────────────────
@@ -109,14 +108,17 @@ export const ArrayFieldsWithMaxItems: StoryObj<typeof ArrayFieldsWrapper> = {
     ),
     play: async ({canvasElement}) => {
         const canvas = within(canvasElement);
-        const addButton = canvas.getByRole('button', {name: /add/i});
 
-        await userEvent.click(addButton);
-        await expect(canvas.getByText('#1')).toBeInTheDocument();
+        // First add — button may be remounted by React as array grows,
+        // so re-query the button reference before each click.
+        await userEvent.click(canvas.getByRole('button', {name: /\+ add/i}));
+        await canvas.findByText('#1'); // wait for async state update
 
-        await userEvent.click(addButton);
-        await expect(canvas.getByText('#2')).toBeInTheDocument();
+        // Second add — fresh query avoids stale DOM reference
+        await userEvent.click(canvas.getByRole('button', {name: /\+ add/i}));
+        // waitFor handles any residual async rendering after the second append
+        await waitFor(() => expect(canvas.getByText('#2')).toBeInTheDocument(), {timeout: 3000});
 
-        await expect(addButton).toBeDisabled();
+        await waitFor(() => expect(canvas.getByRole('button', {name: /\+ add/i})).toBeDisabled());
     },
 };
