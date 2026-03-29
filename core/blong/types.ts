@@ -150,6 +150,7 @@ export interface IGateway {
         validations: Record<string, GatewaySchema>,
         pkg: {name: string; version: string},
     ) => void;
+    registerPlugin: (plugin: unknown, options?: unknown) => void;
     start: () => Promise<IGateway>;
     stop: () => Promise<IGateway>;
 }
