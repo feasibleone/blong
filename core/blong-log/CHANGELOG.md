@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/feasibleone/blong/compare/blong-log-v1.0.2...blong-log-v1.0.3) (2026-03-29)
+
+
+### Bug Fixes
+
+* build ([5f158b0](https://github.com/feasibleone/blong/commit/5f158b0a9dbdc9441fe7ce4bc03d85e113582d11))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-log-v1.0.1...blong-log-v1.0.2) (2026-03-06)
 
 
