@@ -280,72 +280,45 @@ async function testError(assert, {$meta}) {
 }
 ```
 
-## Reusing Test Handlers
+## Reusing Test Handlers with Parameters
 
-Call other test handlers to share setup:
-
-```typescript
-export default handler(
-    ({
-        lib: {group},
-        handler: {
-            testLoginTokenCreate, // Reusable login test
-            testUserAdminLogin, // Reusable admin login
-            subjectNumberSum,
-        },
-    }) => ({
-        testNumberSum: ({name = 'number sum'}, $meta) =>
-            group(name)([
-                // Reuse authentication tests
-                testLoginTokenCreate({}, $meta),
-                testUserAdminLogin({}, $meta),
-
-                // Actual test
-                async function sum(assert, {$meta}) {
-                    assert.equal(await subjectNumberSum([1, 2, 3, 4], $meta), 10, 'Sum array');
-                },
-            ]),
-    }),
-);
-```
-
-**Test Composition Pattern:**
-
-The `group` library function allows test arrays to be composed and reused:
+Test handlers support **arbitrary parameters** beyond `name`. This enables
+building a library of reusable scenarios that can be invoked with different
+values:
 
 ```typescript
-// ledger/test/test/testParticipant.ts
-export default handler(
-    ({
-        lib: {group},
-        handler: {testLoginTokenCreate, ledgerParticipantGet, ledgerParticipantAdd},
-    }) => ({
-        testParticipant: ({name = 'ledger'}, $meta) =>
-            group(name)([
-                testLoginTokenCreate({}, $meta), // Reuse login setup
-                async function participant(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                    assert.equal(
-                        (await ledgerParticipantGet({participantId: '1'}, $meta)).participantId,
-                        1,
-                        'participant get',
-                    );
-                    assert.deepEqual(
-                        await ledgerParticipantAdd({}, $meta),
-                        {participantId: '123'},
-                        'participant add',
-                    );
-                },
-            ]),
-    }),
-);
+// realmname/test/test/testTransfer.ts
+export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
+    testTransfer: ({name = 'transfer', amount = 100, currency = 'USD'}, $meta) =>
+        group(name)([
+            async function createTransfer(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = await transferTransferCreate({amount, currency}, $meta);
+                assert.ok(result.transferId, 'Transfer ID returned');
+                assert.equal(result.amount, amount, 'Amount matches');
+                return {transferId: result.transferId};
+            },
+        ]),
+}));
 ```
 
-**Benefits:**
+Compose multiple parameterised runs inside another test handler:
 
-- Share common setup (authentication, database initialization)
-- Compose complex test scenarios from simple building blocks
-- DRY principle for test code
-- Name tests clearly using the `group` function
+```typescript
+// realmname/test/test/testTransferScenarios.ts
+export default handler(({lib: {group}, handler: {testTransfer}}) => ({
+    testTransferScenarios: ({name = 'transfer scenarios'}, $meta) =>
+        group(name)([
+            testTransfer({name: 'small USD',  amount: 10,    currency: 'USD'}, $meta),
+            testTransfer({name: 'large EUR',  amount: 50000, currency: 'EUR'}, $meta),
+            testTransfer({name: 'zero USD',   amount: 0,     currency: 'USD'}, $meta),
+        ]),
+}));
+```
+
+Each `testTransfer(...)` call returns a **named step array** that runs as a
+sub-test. The `name` parameter controls how the run appears in test output.
+
+> **Tip:** For BDD-style testing with Gherkin `.feature` files, see **blong-cucumber**.
 
 ## Controlling Execution Order
 

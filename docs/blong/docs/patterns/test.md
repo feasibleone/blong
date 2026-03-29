@@ -194,9 +194,64 @@ group(name)(
 )
 ```
 
-## Using group() Function
+## Reusing Test Handlers with Parameters
 
-The `group()` function provides cleaner syntax for test naming:
+Test handlers accept arbitrary parameters beyond `name`, enabling powerful reuse
+patterns. A reusable test handler defines custom parameters with default values:
+
+```ts
+// realmname/test/test/testTransfer.ts
+export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
+    testTransfer: ({name = 'transfer', amount = 100, currency = 'USD', userId = 1}, $meta) =>
+        group(name)([
+            async function createTransfer(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = await transferTransferCreate({amount, currency, userId}, $meta);
+                assert.ok(result.transferId, 'Transfer ID returned');
+                assert.equal(result.amount, amount, 'Amount matches');
+                return {transferId: result.transferId};
+            },
+        ])
+}));
+```
+
+Another handler can reuse it with different parameter combinations:
+
+```ts
+// realmname/test/test/testTransferScenarios.ts
+export default handler(({lib: {group}, handler: {testTransfer}}) => ({
+    testTransferScenarios: ({name = 'transfer scenarios'}, $meta) =>
+        group(name)([
+            testTransfer({name: 'small USD',  amount: 10,    currency: 'USD'}, $meta),
+            testTransfer({name: 'large EUR',  amount: 50000, currency: 'EUR'}, $meta),
+            testTransfer({name: 'zero USD',   amount: 0,     currency: 'USD'}, $meta),
+        ])
+}));
+```
+
+Each call to `testTransfer(...)` returns a named step array (`group(name)([...])`).
+Those named arrays are treated as sequential sub-tests within the outer group.
+
+### Parameter Flow
+
+Parameters flow through the `group(name)(steps)` pattern:
+
+1. The handler is **called** with specific parameters at test definition time.
+2. It returns a **named step array** containing closures that capture those parameters.
+3. The step array name (set by `group()`) is how it appears in test output.
+
+This means all parameterisation happens before execution — the test framework
+simply receives a tree of named step arrays and functions.
+
+### Convention
+
+Use descriptive `name` values to distinguish runs in test output:
+
+```ts
+testTransfer({name: 'with admin user', userId: adminId, amount: 500}, $meta),
+testTransfer({name: 'with regular user', userId: userId, amount: 50}, $meta),
+```
+
+
 
 ```ts
 export default handler(({lib: {group}}) => ({

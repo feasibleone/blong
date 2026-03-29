@@ -1,0 +1,12 @@
+{
+    "name": "@feasibleone/blong-cucumber",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+        "@cucumber/gherkin": "^39.0.0",
+        "@cucumber/messages": "^32.0.0",
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "typebox": "^1.1.5"
+    }
+}
