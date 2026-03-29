@@ -199,10 +199,10 @@ The migration emitter maps HTTP operations to semantic triple handler names
 | POST   | `/participants/{n}/limits`| `limitLimitCreate`         |
 
 Rules:
-- **Subject** = singular of the last non-parameter path segment  
-- **Object** = same as subject (capitalized)  
-- **Predicate** = Create / Get / Find / Update / Patch / Remove / Execute  
-- `GET` without trailing `{param}` → **Find** (list); with trailing `{param}` → **Get**  
+- **Subject** = singular of the last non-parameter path segment
+- **Object** = same as subject (capitalized)
+- **Predicate** = Create / Get / Find / Update / Patch / Remove / Execute
+- `GET` without trailing `{param}` → **Find** (list); with trailing `{param}` → **Get**
 - Irregular plurals are handled: `parties→party`, `currencies→currency`, etc.
 
 ## Variable Reference Handling

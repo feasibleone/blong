@@ -1,5 +1,6 @@
 {
     "name": "@feasibleone/blong-ui",
+    "version": "1.0.0",
     "description": "Metadata-driven browser UI framework for Blong",
     "keywords": [
         "blong",
@@ -13,19 +14,18 @@
         "url": "git+https://github.com/feasibleone/blong.git"
     },
     "type": "module",
-    "version": "1.0.0",
     "exports": {
         ".": "./src/index.ts",
         "./auth": "./src/auth/index.ts"
     },
     "scripts": {
         "build": "heft build --clean",
-        "storybook": "storybook dev -p 6006",
         "build-storybook": "storybook build -o storybook-static",
+        "ci-chromatic": "../common/chromatic.sh",
+        "storybook": "storybook dev -p 6006",
         "storybook:test": "test-storybook",
         "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
-        "visual:update": "npm run storybook:test -- --updateSnapshot",
-        "ci-chromatic": "chromatic --exit-zero-on-changes"
+        "visual:update": "npm run storybook:test -- --updateSnapshot"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
