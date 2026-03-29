@@ -555,9 +555,9 @@
         },
         {
             "packageName": "@feasibleone/ui-demo",
-            "projectFolder": "dev/ui-demo",
+            "projectFolder": "core/ui-demo",
             "reviewCategory": "core",
-            "tags": ["dev"]
+            "tags": ["core"]
         }
     ]
 }

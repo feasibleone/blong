@@ -16,6 +16,7 @@
         "core/blong-ttk": {},
         "core/blong-ui": {},
         "core/test": {},
+        "core/ui-demo": {},
         "docs/blong": {},
         "ext/rest-fs": {}
     }

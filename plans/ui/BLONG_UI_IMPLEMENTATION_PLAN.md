@@ -333,7 +333,7 @@ Wire everything together, add e2e tests, and ensure CI works.
 
 | Task | Complexity | Dependencies |
 |------|-----------|--------------|
-| 5.1 Create a reference suite (`dev/ui-demo`) with server + browser entry points | Medium | Phases 1–4 |
+| 5.1 Create a reference suite (`core/ui-demo`) with server + browser entry points | Medium | Phases 1–4 |
 | 5.2 Implement example realm with CRUD for a sample entity (auto-generated UI) | Medium | 5.1 |
 | 5.3 Playwright test suite for the reference application. Use `data-testid` and `input[name]` as stable locators. Capture screenshots with `toMatchSnapshot()`. Auto-generate unique test users for parallel execution. Enable tracing on retry for failure diagnostics (timeline, network, console, DOM). Use `npx playwright codegen` for script recording | Large | 5.1, 5.2 |
 | 5.4 Chromatic integration in GitHub Actions — publish Storybook on every build, visual diff comparison, approve/deny workflow for detected changes, host Storybook as online documentation | Medium | 1.12 |
