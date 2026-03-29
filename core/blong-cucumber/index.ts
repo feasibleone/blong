@@ -1,5 +1,17 @@
 import server from './server.ts';
 
+export {
+    parseGherkin,
+    expandOutline,
+    type IGherkinFeature,
+    type IGherkinScenario,
+    type IGherkinStep,
+    type IGherkinExamples,
+    type IGherkinBackground,
+} from './library/parseGherkin.ts';
+export {compileCucumberExpression, coerceMatchParam, matchStep} from './library/matchStep.ts';
+export {featureToSteps, type IStepDefinitions, type IFeatureToStepsOptions} from './library/featureToSteps.ts';
+
 type Load = (...params: unknown[]) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
