@@ -506,6 +506,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-cucumber",
+            "projectFolder": "core/blong-cucumber",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-allure",
             "projectFolder": "core/blong-allure",
             "reviewCategory": "core",
