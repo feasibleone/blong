@@ -2,15 +2,32 @@
  * PermissionGate Storybook stories.
  *
  * Demonstrates conditional rendering based on JWT permission claims.
- * Uses `setApiConfig` to inject a fake JWT before each story renders.
+ * Uses `setApiConfig` to inject a fake JWT before each story renders,
+ * and restores the previous config on unmount to prevent state leaking
+ * between stories.
  */
 
-import React from 'react';
+import React, {useEffect} from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
 
 import {PermissionGate} from '../src/components/PermissionGate.js';
-import {setApiConfig} from '../src/hooks/useApi.js';
+import {setApiConfig, getApiConfig} from '../src/hooks/useApi.js';
+import type {ApiConfig} from '../src/hooks/useApi.js';
 import {fakeJwt} from './helpers/fakeJwt.js';
+
+// ── Helper: scoped token decorator ───────────────────────────────────────────
+
+/** Temporarily sets an API token for a story and restores previous on unmount. */
+function WithToken({token, children}: {token: string; children: React.ReactNode}): React.ReactElement {
+    useEffect(() => {
+        const previous = getApiConfig();
+        setApiConfig({token});
+        return () => {
+            setApiConfig(previous as ApiConfig);
+        };
+    }, [token]);
+    return <>{children}</>;
+}
 
 // ── Meta ──────────────────────────────────────────────────────────────────────
 
@@ -25,12 +42,11 @@ type Story = StoryObj<typeof PermissionGate>;
 // ── Stories ───────────────────────────────────────────────────────────────────
 
 export const Allowed: Story = {
-    decorators: [
-        (Story) => {
-            setApiConfig({token: fakeJwt(['user.user.edit'])});
-            return <Story />;
-        },
-    ],
+    render: (args) => (
+        <WithToken token={fakeJwt(['user.user.edit'])}>
+            <PermissionGate {...args} />
+        </WithToken>
+    ),
     args: {
         permission: 'user.user.edit',
         children: <button>Edit User</button>,
@@ -39,12 +55,11 @@ export const Allowed: Story = {
 };
 
 export const Denied: Story = {
-    decorators: [
-        (Story) => {
-            setApiConfig({token: fakeJwt([])});
-            return <Story />;
-        },
-    ],
+    render: (args) => (
+        <WithToken token={fakeJwt([])}>
+            <PermissionGate {...args} />
+        </WithToken>
+    ),
     args: {
         permission: 'user.user.edit',
         children: <button>Edit User</button>,
@@ -53,12 +68,11 @@ export const Denied: Story = {
 };
 
 export const NoPermissionRequired: Story = {
-    decorators: [
-        (Story) => {
-            setApiConfig({token: fakeJwt([])});
-            return <Story />;
-        },
-    ],
+    render: (args) => (
+        <WithToken token={fakeJwt([])}>
+            <PermissionGate {...args} />
+        </WithToken>
+    ),
     args: {
         children: <div>Always visible — no permission required.</div>,
     },

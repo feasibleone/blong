@@ -3,7 +3,7 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {SkeletonField, SkeletonCard, SkeletonTable, PageSkeleton, LazyPage} from '../src/components/Performance.js';
 
-const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
+const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 
 const meta: Meta<typeof SkeletonCard> = {
     title: 'Components/Performance',
@@ -15,9 +15,9 @@ const meta: Meta<typeof SkeletonCard> = {
             </QueryClientProvider>
         ),
     ],
-}
-export default meta
-type Story = StoryObj<typeof SkeletonCard>
+};
+export default meta;
+type Story = StoryObj<typeof SkeletonCard>;
 
 export const SkeletonFieldStory: Story = {
     name: 'SkeletonField',

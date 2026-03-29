@@ -3,7 +3,7 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {I18nProvider, useI18n} from '../src/components/I18nProvider.js';
 
-const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
+const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 
 const meta: Meta<typeof I18nProvider> = {
     title: 'Components/I18nProvider',
@@ -15,9 +15,9 @@ const meta: Meta<typeof I18nProvider> = {
             </QueryClientProvider>
         ),
     ],
-}
-export default meta
-type Story = StoryObj<typeof I18nProvider>
+};
+export default meta;
+type Story = StoryObj<typeof I18nProvider>;
 
 function TranslationDemo() {
     const {t, locale, direction} = useI18n()

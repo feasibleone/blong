@@ -25,9 +25,11 @@ const preview: Preview = {
         (Story, context) => {
             const themeName = context.globals['theme'] as string | undefined;
             if (themeName) applyThemeCss(themeName);
+            // Pass key={themeName} to force remount when the toolbar theme changes,
+            // ensuring ThemeProvider's internal state stays in sync with the selection.
             return React.createElement(
                 ThemeProvider,
-                {initialThemeName: themeName ?? 'lara-light'},
+                {key: themeName ?? 'lara-light', initialThemeName: themeName ?? 'lara-light'},
                 React.createElement(Story),
             );
         },

@@ -4,7 +4,7 @@ import {within, userEvent, expect} from '@storybook/test';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {VisuallyHidden, SkipLink, LiveRegion, FocusTrap} from '../src/components/Accessibility.js';
 
-const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
+const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 
 const meta: Meta<typeof FocusTrap> = {
     title: 'Components/Accessibility',
@@ -16,9 +16,9 @@ const meta: Meta<typeof FocusTrap> = {
             </QueryClientProvider>
         ),
     ],
-}
-export default meta
-type Story = StoryObj<typeof FocusTrap>
+};
+export default meta;
+type Story = StoryObj<typeof FocusTrap>;
 
 export const VisuallyHiddenStory: Story = {
     name: 'VisuallyHidden',

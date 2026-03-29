@@ -6,7 +6,7 @@
  * the visual states, and a mocked-fetch story to show TableCard itself.
  */
 
-import React from 'react';
+import React, {useEffect} from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
@@ -135,19 +135,38 @@ export const Loading: Story = {
 // ── Live TableCard with mocked fetch ─────────────────────────────────────────
 
 /**
+ * Wrapper that sets up mock API on mount and tears it down on unmount.
+ * Guarantees globalThis.fetch is restored even if the story is unmounted
+ * before teardown would otherwise run.
+ */
+function WithMockedApi({
+    handlers,
+    children,
+}: {
+    handlers: Record<string, unknown>;
+    children: React.ReactNode;
+}): React.ReactElement {
+    useEffect(() => {
+        setupMockApi(handlers);
+        return () => { teardownMockApi(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return <>{children}</>;
+}
+
+/**
  * TableCard with mocked RPC fetch.
  * Uses setupMockApi to intercept the internal useRpcFetch call so the
  * component receives a valid paginated response without a real server.
  */
 export const WithMockedFetch: Story = {
-    render: () => {
-        setupMockApi({
+    render: () => (
+        <WithMockedApi handlers={{
             'user.user.find': {
                 items: sampleUsers,
                 pagination: {recordsTotal: sampleUsers.length, pageSize: 20, pageNumber: 1},
             },
-        });
-        return (
+        }}>
             <TableCard
                 schema={userListSchema}
                 fetchMethod="user.user.find"
@@ -156,26 +175,19 @@ export const WithMockedFetch: Story = {
                 selectionMode="single"
                 onRowOpen={(row) => console.log('Open row:', row)}
             />
-        );
-    },
-    parameters: {
-        // Ensure teardown runs after story; Storybook test-runner calls afterEach
-        storybook: {
-            afterEach: teardownMockApi,
-        },
-    },
+        </WithMockedApi>
+    ),
 };
 
 /** TableCard showing search toolbar with row-open callback. */
 export const WithRowOpen: Story = {
-    render: () => {
-        setupMockApi({
+    render: () => (
+        <WithMockedApi handlers={{
             'user.user.find': {
                 items: sampleUsers,
                 pagination: {recordsTotal: sampleUsers.length, pageSize: 20, pageNumber: 1},
             },
-        });
-        return (
+        }}>
             <TableCard
                 schema={userListSchema}
                 fetchMethod="user.user.find"
@@ -184,11 +196,6 @@ export const WithRowOpen: Story = {
                 onSelectionChange={(sel) => console.log('Selected:', sel)}
                 onRowOpen={(row) => console.log('Navigate to:', row.userId)}
             />
-        );
-    },
-    parameters: {
-        storybook: {
-            afterEach: teardownMockApi,
-        },
-    },
+        </WithMockedApi>
+    ),
 };

@@ -1,9 +1,17 @@
+/**
+ * WidgetMap Storybook stories.
+ *
+ * Demonstrates how JSON Schema type/format pairs resolve to widget types
+ * and their corresponding PrimeReact component names.
+ */
+
 import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {resolveWidgetType, resolveWidgetDescriptor, getPrimeComponent} from '../src/factory/WidgetMap.js';
 
-const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
+import {resolveWidgetType, getPrimeComponent} from '../src/factory/WidgetMap.js';
+
+const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 
 const meta: Meta = {
     title: 'Factory/WidgetMap',
@@ -14,11 +22,12 @@ const meta: Meta = {
             </QueryClientProvider>
         ),
     ],
-}
-export default meta
-type Story = StoryObj
+};
 
-function WidgetMapDemo() {
+export default meta;
+type Story = StoryObj;
+
+function WidgetMapDemo(): React.ReactElement {
     const testCases = [
         {type: 'string', format: '', expected: 'input'},
         {type: 'string', format: 'password', expected: 'password'},
@@ -28,7 +37,7 @@ function WidgetMapDemo() {
         {type: 'number', format: '', expected: 'number'},
         {type: 'string', enum: ['a', 'b', 'c'], expected: 'dropdown'},
         {type: 'string', 'x-blong-widget': 'text', expected: 'text'},
-    ]
+    ];
     return (
         <table style={{borderCollapse: 'collapse', width: '100%'}}>
             <thead>
@@ -41,22 +50,22 @@ function WidgetMapDemo() {
             </thead>
             <tbody>
                 {testCases.map((tc, i) => {
-                    const resolved = resolveWidgetType(tc as any)
-                    const prime = getPrimeComponent(resolved)
+                    const resolved = resolveWidgetType(tc as any);
+                    const prime = getPrimeComponent(resolved);
                     return (
                         <tr key={i}>
                             <td style={{border: '1px solid #ccc', padding: '8px'}}>{tc.type}</td>
-                            <td style={{border: '1px solid #ccc', padding: '8px'}}>{tc.format || tc['x-blong-widget'] || '—'}</td>
+                            <td style={{border: '1px solid #ccc', padding: '8px'}}>{tc.format || (tc as any)['x-blong-widget'] || '—'}</td>
                             <td style={{border: '1px solid #ccc', padding: '8px'}}>{resolved}</td>
                             <td style={{border: '1px solid #ccc', padding: '8px'}}>{prime}</td>
                         </tr>
-                    )
+                    );
                 })}
             </tbody>
         </table>
-    )
+    );
 }
 
 export const WidgetResolution: Story = {
     render: () => <WidgetMapDemo />,
-}
+};

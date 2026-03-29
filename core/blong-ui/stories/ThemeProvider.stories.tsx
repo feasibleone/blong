@@ -5,7 +5,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {ThemeProvider, ThemeToggle} from '../src/components/ThemeProvider.js';
 import {ThemeSelector} from '../src/components/ThemeSelector.js';
 
-const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
+const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 
 const meta: Meta<typeof ThemeProvider> = {
     title: 'Components/ThemeProvider',
@@ -17,9 +17,9 @@ const meta: Meta<typeof ThemeProvider> = {
             </QueryClientProvider>
         ),
     ],
-}
-export default meta
-type Story = StoryObj<typeof ThemeProvider>
+};
+export default meta;
+type Story = StoryObj<typeof ThemeProvider>;
 
 const SampleCard = () => (
     <div style={{padding: '16px', background: 'var(--surface-0, #fff)', color: 'var(--text-color, #333)', borderRadius: '8px'}}>
