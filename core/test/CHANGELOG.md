@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/test-v1.5.2...test-v1.6.0) (2026-03-29)
+
+
+### Features
+
+* implement blong-cucumber package ([ee0e89b](https://github.com/feasibleone/blong/commit/ee0e89b7025885c6f0db3b1100f9e527a6db7ed6))
+
 ## [1.5.2](https://github.com/feasibleone/blong/compare/test-v1.5.1...test-v1.5.2) (2026-03-24)
 
 

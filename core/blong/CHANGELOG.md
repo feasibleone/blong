@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-v1.13.0...blong-v1.14.0) (2026-03-29)
+
+
+### Features
+
+* built-in REST-FS server component for remote filesystem over Gateway ([#108](https://github.com/feasibleone/blong/issues/108)) ([352ef2a](https://github.com/feasibleone/blong/commit/352ef2a86a4da1f29eaf931c6057d018918fedaf))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-v1.12.4...blong-v1.13.0) (2026-03-29)
 
 
