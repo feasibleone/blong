@@ -1,0 +1,15 @@
+# useSchema
+
+Hook for loading component schema metadata from the server.
+
+## Usage
+
+```tsx
+const { schema, cards, layouts, dropdowns, isLoading } = useSchema({
+    method: 'user.user.schema',
+});
+```
+
+## Design Notes
+
+Schema metadata includes the JSON Schema for request/response objects, card groupings, layout definitions, and dropdown data. The server returns this from component handler methods.

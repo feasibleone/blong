@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/FileUpload.stories';
+
+<Meta of={Stories} />
+
+# FileUpload
+
+File input widget for use within react-hook-form forms. Supports single and multiple file upload with size validation.
+
+## Usage
+
+<Canvas of={Stories.SingleFile} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Must be inside FormProvider. Use hasFileFields to detect file schemas and switch to multipart submission.

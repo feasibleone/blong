@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/ErrorBoundary.stories';
+
+<Meta of={Stories} />
+
+# ErrorBoundary
+
+Catches React rendering errors and displays structured Blong RPC error messages including validation errors.
+
+## Usage
+
+<Canvas of={Stories.RpcErrorStory} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+RpcErrorDisplay handles typed JSON-RPC errors. setFormErrors maps server validation to form fields.

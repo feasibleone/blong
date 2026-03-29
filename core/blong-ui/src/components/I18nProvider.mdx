@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/I18nProvider.stories';
+
+<Meta of={Stories} />
+
+# I18nProvider
+
+Provides translation and RTL support. Use useI18n() hook to access t() function and direction.
+
+## Usage
+
+<Canvas of={Stories.Default} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Pass translations as a flat key-value map. Use {param} syntax for parameter substitution.

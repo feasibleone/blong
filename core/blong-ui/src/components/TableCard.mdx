@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/TableCard.stories';
+
+<Meta of={Stories} />
+
+# TableCard
+
+Fetches and displays paginated tabular data from a JSON-RPC endpoint. Wraps TableFactory with server-side fetch logic.
+
+## Usage
+
+<Canvas of={Stories.Populated} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Use `fetchMethod` for live data; pass static data via TableFactory for static views.

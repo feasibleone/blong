@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/DetailCard.stories';
+
+<Meta of={Stories} />
+
+# DetailCard
+
+Read-only entity display card. Renders schema properties as label-value pairs with optional card grouping.
+
+## Usage
+
+<Canvas of={Stories.Default} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Does not require a form context. Ideal for detail/view pages.

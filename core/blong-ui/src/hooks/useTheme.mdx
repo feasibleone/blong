@@ -1,0 +1,19 @@
+# useTheme
+
+Hook for accessing and modifying the active PrimeReact theme.
+
+## Usage
+
+```tsx
+const { mode, setMode, isDark, themeName, setThemeName } = useTheme();
+```
+
+## Theme Modes
+
+- `light` — always light
+- `dark` — always dark  
+- `system` — follows OS preference
+
+## Design Notes
+
+Wrap the application with ThemeProvider to activate the theme context. Theme preference is persisted to localStorage.

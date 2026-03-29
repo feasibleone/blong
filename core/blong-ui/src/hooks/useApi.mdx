@@ -1,0 +1,45 @@
+# useApi
+
+JSON-RPC hooks for TanStack Query integration.
+
+## Hooks
+
+### useRpcQuery
+
+Fetches data from a JSON-RPC endpoint.
+
+```tsx
+const { data, isLoading } = useRpcQuery<User>({
+    method: 'user.user.get',
+    params: { userId: 42 },
+});
+```
+
+### useRpcFetch
+
+Paginated data fetch for tables.
+
+```tsx
+const { data } = useRpcFetch<User>({
+    method: 'user.user.find',
+    fetchParams: { paging: { pageSize: 20, pageNumber: 1 } },
+});
+```
+
+### useRpcMutation
+
+Write operations with cache invalidation.
+
+```tsx
+const mutation = useRpcMutation<User, CreateParams>({
+    method: 'user.user.add',
+    invalidateKeys: [['user.user.find']],
+});
+mutation.mutate({ userName: 'alice' });
+```
+
+## Configuration
+
+```tsx
+setApiConfig({ baseUrl: 'https://api.example.com', token: jwtToken });
+```

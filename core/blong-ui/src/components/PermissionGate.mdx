@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/PermissionGate.stories';
+
+<Meta of={Stories} />
+
+# PermissionGate
+
+Conditionally renders content based on JWT permission claims. Reads permissions from the current API token.
+
+## Usage
+
+<Canvas of={Stories.Allowed} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Permission checks are UI-only. All server-side authorization must be enforced on the server.

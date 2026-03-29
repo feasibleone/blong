@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/AdvancedPatterns.stories';
+
+<Meta of={Stories} />
+
+# MasterDetail
+
+Master-detail layout combining a data table (master) with an inline form (detail) for the selected row.
+
+## Usage
+
+<Canvas of={Stories.Default} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Part of the AdvancedPatterns story group. Use when editing rows inline.

@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/LayoutResolver.stories';
+
+<Meta of={Stories} />
+
+# LayoutResolver
+
+Derives layout configurations from card definitions. Supports flat and tabbed layouts.
+
+## Usage
+
+<Canvas of={Stories.DefaultLayout} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+createTabbedLayout creates tab groups. isTabbedLayout detects tabbed layouts at render time.

@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/ConditionalCard.stories';
+
+<Meta of={Stories} />
+
+# ConditionalCard
+
+Shows or hides content based on a watched form field value matching a criteria object.
+
+## Usage
+
+<Canvas of={Stories.Visible} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Must be inside a FormProvider. Uses useWatch for reactive visibility.

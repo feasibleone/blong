@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/TableFactory.stories';
+
+<Meta of={Stories} />
+
+# TableFactory
+
+Generates a data table from an array schema. Supports pagination, sorting, and row selection.
+
+## Usage
+
+<Canvas of={Stories.BasicTable} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Pass data and totalRecords directly for static data. onFetchParamsChange receives sort/page changes.

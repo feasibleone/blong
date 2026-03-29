@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/ThemeProvider.stories';
+
+<Meta of={Stories} />
+
+# ThemeProvider
+
+Provides theme context with light/dark/system mode support. Applies CSS class to document root.
+
+## Usage
+
+<Canvas of={Stories.LightMode} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Wrap the application root with ThemeProvider. ThemeToggle cycles modes. ThemeSelector switches presets.

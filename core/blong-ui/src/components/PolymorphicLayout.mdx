@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/PolymorphicLayout.stories';
+
+<Meta of={Stories} />
+
+# PolymorphicLayout
+
+Layout switcher that renders different card arrangements based on a type discriminator field.
+
+## Usage
+
+<Canvas of={Stories.DefaultLayout} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Uses a typeField to select the active layout key. Add layouts for each type value.

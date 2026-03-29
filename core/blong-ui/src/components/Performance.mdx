@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/Performance.stories';
+
+<Meta of={Stories} />
+
+# Performance
+
+Performance utilities: LazyPage for code-splitting, skeleton components for loading states.
+
+## Usage
+
+<Canvas of={Stories.PageSkeletonStory} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Use SkeletonCard/SkeletonTable during data loading. LazyPage uses React.lazy + Suspense internally.

@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/RouteGenerator.stories';
+
+<Meta of={Stories} />
+
+# RouteGenerator
+
+Auto-generates React Router routes from page handler definitions following the browse/new/open convention.
+
+## Usage
+
+<Canvas of={Stories.BrowseNewOpen} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+deriveRoutePath converts componentId to URL path. AutoRoutes renders Route elements from PageHandler array.

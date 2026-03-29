@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/CascadedDropdown.stories';
+
+<Meta of={Stories} />
+
+# CascadedDropdown
+
+Dropdown that filters options based on a parent dropdown selection using the parent field on DropdownOption.
+
+## Usage
+
+<Canvas of={Stories.ParentChildFiltering} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Set parent on each option to the parent dropdown's value. Child is disabled until parent is selected.

@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/PageShell.stories';
+
+<Meta of={Stories} />
+
+# PageShell
+
+Application shell providing sidebar navigation, header, breadcrumbs, and content area.
+
+## Usage
+
+<Canvas of={Stories.WithMenu} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Requires AuthProvider and ThemeProvider in the tree. Consumes PortalConfig for menu rendering.

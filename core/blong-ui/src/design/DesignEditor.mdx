@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/DesignEditor.stories';
+
+<Meta of={Stories} />
+
+# DesignEditor
+
+Visual design editor for customizing card/field layout at runtime. Drag-and-drop card reordering with undo/redo.
+
+## Usage
+
+<Canvas of={Stories.Default} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Requires DesignContext.Provider. Changes are persisted via ui.customization.edit RPC call.

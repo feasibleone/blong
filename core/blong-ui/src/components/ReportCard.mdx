@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/ReportCard.stories';
+
+<Meta of={Stories} />
+
+# ReportCard
+
+Combines a filter form with a paginated data table for report-style views.
+
+## Usage
+
+<Canvas of={Stories.Default} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+filterSchema defines filter fields; filterFields controls which to display.

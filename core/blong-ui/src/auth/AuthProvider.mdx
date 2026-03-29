@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/AuthProvider.stories';
+
+<Meta of={Stories} />
+
+# AuthProvider
+
+JWT authentication context provider. Manages login/logout state and token storage.
+
+## Usage
+
+<Canvas of={Stories.Authenticated} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Uses localStorage for token persistence. Token is decoded for user info display (not cryptographically verified - server-side verification is authoritative).

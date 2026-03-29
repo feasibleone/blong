@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/NestedFields.stories';
+
+<Meta of={Stories} />
+
+# NestedFields
+
+Renders nested object properties as grouped fieldsets and array properties as repeatable sections.
+
+## Usage
+
+<Canvas of={Stories.NestedFieldsetStory} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+NestedFieldset uses dot-path names (address.city). ArrayFields uses react-hook-form useFieldArray.

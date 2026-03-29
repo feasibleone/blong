@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/WidgetMap.stories';
+
+<Meta of={Stories} />
+
+# WidgetMap
+
+Maps JSON Schema type/format combinations to widget types and PrimeReact components.
+
+## Usage
+
+<Canvas of={Stories.WidgetResolution} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Override with x-blong-widget for explicit control. Enum properties automatically resolve to dropdown.

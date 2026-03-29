@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/CascadedTable.stories';
+
+<Meta of={Stories} />
+
+# CascadedTable
+
+Child table that filters its data based on a selected parent row.
+
+## Usage
+
+<Canvas of={Stories.WithSelection} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Requires parentSelection prop with the parent's key value. Shows empty message when no parent selected.

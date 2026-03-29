@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/CardResolver.stories';
+
+<Meta of={Stories} />
+
+# CardResolver
+
+Derives card groupings from x-blong-group schema annotations. Cards group related fields visually.
+
+## Usage
+
+<Canvas of={Stories.DerivedFromGroups} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Fields without x-blong-group go to the default card. isCardVisible handles watch/match conditional visibility.

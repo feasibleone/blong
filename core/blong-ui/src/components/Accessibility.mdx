@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/Accessibility.stories';
+
+<Meta of={Stories} />
+
+# Accessibility
+
+WCAG 2.1 AA accessibility utilities: VisuallyHidden, SkipLink, LiveRegion, FocusTrap.
+
+## Usage
+
+<Canvas of={Stories.FocusTrapStory} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+SkipLink requires a matching id="main-content" on the main element. LiveRegion announces status changes to screen readers.

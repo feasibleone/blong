@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/FormFactory.stories';
+
+<Meta of={Stories} />
+
+# FormFactory
+
+Generates a complete react-hook-form form from JSON Schema, card definitions, and a layout.
+
+## Usage
+
+<Canvas of={Stories.BasicForm} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Supports tabbed layouts, conditional visibility, dropdowns, and custom widgets. Use the trigger pattern (onTrigger) for toolbar-based Save.

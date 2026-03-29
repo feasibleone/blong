@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/PortalMenu.stories';
+
+<Meta of={Stories} />
+
+# PortalMenu
+
+Sidebar navigation menu fetched from portal.params.get. Filters items by JWT permissions.
+
+## Usage
+
+<Canvas of={Stories.Loaded} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+Menu items filtered by usePermissions hook. Nested items render as expandable sub-menus.

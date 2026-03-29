@@ -1,0 +1,20 @@
+import {Meta, ArgTypes, Canvas, Story} from '@storybook/blocks';
+import * as Stories from '../../../stories/FieldResolver.stories';
+
+<Meta of={Stories} />
+
+# FieldResolver
+
+Resolves schema properties with x-blong-* extensions into field metadata and renders them as form inputs.
+
+## Usage
+
+<Canvas of={Stories.ScalarFields} />
+
+## Props
+
+<ArgTypes of={Stories} />
+
+## Design Notes
+
+resolveField extracts widget type, required, placeholder, tooltip, mask, and currency from schema annotations.
