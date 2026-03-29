@@ -13,6 +13,8 @@
         "core/blong-int-sql": {},
         "core/blong-sim-api": {},
         "core/blong-sim-tcp": {},
+        "core/blong-ttk": {},
+        "core/blong-ui": {},
         "core/test": {},
         "docs/blong": {},
         "ext/rest-fs": {}
