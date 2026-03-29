@@ -113,6 +113,8 @@ export {FileUploadField, hasFileFields} from './components/FileUpload.js';
 export type {FileUploadFieldProps} from './components/FileUpload.js';
 export {ThemeProvider, ThemeToggle} from './components/ThemeProvider.js';
 export type {ThemeProviderProps} from './components/ThemeProvider.js';
+export {ThemeSelector} from './components/ThemeSelector.js';
+export type {ThemeSelectorProps} from './components/ThemeSelector.js';
 export {I18nProvider, useI18n, I18nContext} from './components/I18nProvider.js';
 export type {I18nProviderProps, I18nContextValue, TextDirection, TranslationMap} from './components/I18nProvider.js';
 export {LazyPage, SkeletonField, SkeletonCard, SkeletonTable, PageSkeleton} from './components/Performance.js';
@@ -147,6 +149,17 @@ export {useDesign, DesignContext} from './hooks/useDesign.js';
 export type {DesignContextValue} from './hooks/useDesign.js';
 export {useTheme, useThemeProvider, ThemeContext} from './hooks/useTheme.js';
 export type {ThemeContextValue, ThemeMode} from './hooks/useTheme.js';
+
+// ── Themes ────────────────────────────────────────────────────────────────────
+export {
+    registerTheme,
+    getThemeNames,
+    getThemeEntry,
+    applyThemeCss,
+    DEFAULT_THEME_NAME,
+    THEME_STORAGE_KEY,
+} from './themes/registry.js';
+export type {ThemeEntry} from './themes/registry.js';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export {AuthProvider, useAuth} from './auth/AuthProvider.js';

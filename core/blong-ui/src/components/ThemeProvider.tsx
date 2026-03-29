@@ -14,6 +14,8 @@ export interface ThemeProviderProps {
     children: React.ReactNode;
     /** Initial theme mode (default: 'system'). */
     initialMode?: ThemeMode;
+    /** Initial PrimeReact theme preset name (default: 'lara-light'). */
+    initialThemeName?: string;
     /** CSS class prefix for theme scoping. */
     classPrefix?: string;
 }
@@ -31,9 +33,10 @@ export interface ThemeProviderProps {
 export function ThemeProvider({
     children,
     initialMode = 'system',
+    initialThemeName,
     classPrefix = 'blong',
 }: ThemeProviderProps): React.ReactElement {
-    const themeValue = useThemeProvider(initialMode);
+    const themeValue = useThemeProvider(initialMode, initialThemeName);
 
     // Apply theme class to document root
     useEffect(() => {
