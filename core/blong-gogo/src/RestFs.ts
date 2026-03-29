@@ -15,7 +15,7 @@ import {
     unlink,
     writeFile,
 } from 'node:fs/promises';
-import {dirname, join, resolve} from 'node:path';
+import {dirname, isAbsolute, join, relative, resolve, sep} from 'node:path';
 import {pipeline} from 'node:stream/promises';
 
 interface IConfig {
@@ -23,7 +23,7 @@ interface IConfig {
     baseDir: string;
     routePrefix: string;
     maxFileSize: number;
-    auth: false | 'basic' | 'jwt';
+    auth: false | 'jwt';
     shell: boolean;
 }
 
@@ -60,30 +60,44 @@ export default class RestFs extends Internal {
 
         await mkdir(baseDir, {recursive: true});
 
+        const isWithinBase = (candidate: string): boolean => {
+            if (candidate === baseDir) return true;
+            const rel = relative(baseDir, candidate);
+            return !rel.startsWith('..') && !isAbsolute(rel) && !rel.startsWith('..' + sep);
+        };
+
         const resolveSafePath = async (requestPath: string): Promise<string> => {
             const joined = join(baseDir, requestPath || '/');
             const resolved = resolve(joined);
-            if (resolved !== baseDir && !resolved.startsWith(baseDir + '/')) {
+            if (!isWithinBase(resolved)) {
                 const error = new Error('Access denied: path outside base directory');
                 (error as NodeJS.ErrnoException).code = 'EACCES';
                 throw error;
             }
-            // Also check realpath for symlink attacks — but only if the path exists
-            try {
-                const real = await realpath(resolved);
-                if (real !== baseDir && !real.startsWith(baseDir + '/')) {
-                    const error = new Error('Access denied: path outside base directory');
-                    (error as NodeJS.ErrnoException).code = 'EACCES';
-                    throw error;
+            // Walk up to the nearest existing ancestor and realpath-check it
+            // to prevent symlink-escape attacks on non-existent paths
+            let check = resolved;
+            let real: string | undefined;
+            while (check !== baseDir) {
+                try {
+                    real = await realpath(check);
+                    break;
+                } catch (err) {
+                    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+                        check = dirname(check);
+                        continue;
+                    }
+                    throw err;
                 }
-                return real;
-            } catch (err) {
-                if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-                    // Path doesn't exist yet (e.g. for write/mkdir) — the resolved path is safe
-                    return resolved;
-                }
-                throw err;
             }
+            if (real && !isWithinBase(real)) {
+                const error = new Error('Access denied: path outside base directory');
+                (error as NodeJS.ErrnoException).code = 'EACCES';
+                throw error;
+            }
+            // If the full path exists, return the realpath; otherwise the resolved path
+            if (real && check === resolved) return real;
+            return resolved;
         };
 
         const fsError = (
@@ -214,9 +228,15 @@ export default class RestFs extends Internal {
                         reply,
                     ) => {
                         try {
+                            const body = request.body;
+                            if (!Buffer.isBuffer(body)) {
+                                return reply.code(415).send({
+                                    error: 'Unsupported media type: expected application/octet-stream',
+                                });
+                            }
                             const fullPath = await resolveSafePath(request.params['*']);
                             await mkdir(dirname(fullPath), {recursive: true});
-                            await writeFile(fullPath, request.body as Buffer);
+                            await writeFile(fullPath, body);
                             return {success: true};
                         } catch (err) {
                             return fsError(reply, err);
