@@ -32,3 +32,48 @@ without the need to run the whole solution, which is often more complex and
 slower to start.
 
 For more information see the [suite](../patterns/suite.md) patterns.
+
+## Browser Platform
+
+Suites can include a browser entry point (`browser.ts`) that provides a
+rich, metadata-driven user interface. The browser platform uses the
+`@feasibleone/blong-ui` package to automatically generate forms, tables
+and detail views from the server's OpenAPI schema.
+
+### Browser Entry Point
+
+```typescript
+// browser.ts
+import {realm} from '@feasibleone/blong';
+
+export default realm(blong => ({
+    url: import.meta.url,
+    validation: blong.type.Object({}),
+    children: [],
+    config: {
+        default: {},
+        dev: {},
+    },
+}));
+```
+
+### Browser Layers
+
+| Layer         | Purpose |
+|---------------|---------|
+| `backend`     | Adapter communicating with the server gateway over JSON-RPC |
+| `component`   | React component handlers defining UI pages and cards |
+| `orchestrator` | Browser-side business logic coordinating backend calls |
+| `test`        | Playwright / Storybook interaction tests |
+| `init`        | Browser-specific initialisation (theme, locale, service worker) |
+
+### Component Handlers
+
+Component handlers follow the page naming convention:
+
+- `component$subject$entity.browse` — collection view (table)
+- `component$subject$entity.new` — create form
+- `component$subject$entity.open` — edit form with `{id}` parameter
+
+See [Browser UI](browser-ui.md) for the full metadata-driven component
+generation model.

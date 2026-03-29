@@ -1,0 +1,34 @@
+{
+    "name": "@feasibleone/ui-demo",
+    "description": "Reference suite demonstrating blong-ui browser UI framework",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "exports": {
+        "./server.ts": "./server.ts",
+        "./browser.ts": "./browser.ts"
+    },
+    "scripts": {
+        "build": "true",
+        "test": "playwright test",
+        "_ci-ui": "playwright test"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-ui": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.50.5",
+        "@rushstack/eslint-config": "^4.6.4",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@types/node": "^24",
+        "@types/react": "^18.3.4",
+        "@types/react-dom": "^18.3.1",
+        "eslint": "~9.39.2",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "typescript": "^5.9.3"
+    }
+}
