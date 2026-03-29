@@ -13,6 +13,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {TableCard} from '../src/components/TableCard.js';
 import {TableFactory} from '../src/factory/TableFactory.js';
 import type {BlongSchema} from '../src/types.js';
+import {setupMockApi, teardownMockApi} from './helpers/mockApi.js';
 
 const queryClient = new QueryClient({
     defaultOptions: {queries: {retry: false, staleTime: Infinity}},
@@ -56,24 +57,6 @@ function Wrapper({children}: {children: React.ReactNode}) {
             {children}
         </QueryClientProvider>
     );
-}
-
-/** Patches globalThis.fetch to return mock JSON-RPC responses. */
-function withMockFetch(method: string, response: unknown) {
-    const original = globalThis.fetch;
-    globalThis.fetch = async (input, init) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-        if (url.includes('/rpc/')) {
-            const body = init?.body ? JSON.parse(String(init.body)) : {};
-            if (body.method === method) {
-                return new Response(
-                    JSON.stringify({jsonrpc: '2.0', result: response, id: body.id}),
-                    {status: 200, headers: {'Content-Type': 'application/json'}},
-                );
-            }
-        }
-        return original(input, init);
-    };
 }
 
 // ── Meta ──────────────────────────────────────────────────────────────────────
@@ -153,14 +136,16 @@ export const Loading: Story = {
 
 /**
  * TableCard with mocked RPC fetch.
- * Patches fetch before the story renders so the component's internal
- * `useRpcFetch` hook receives a valid paginated response.
+ * Uses setupMockApi to intercept the internal useRpcFetch call so the
+ * component receives a valid paginated response without a real server.
  */
 export const WithMockedFetch: Story = {
     render: () => {
-        withMockFetch('user.user.find', {
-            items: sampleUsers,
-            pagination: {recordsTotal: sampleUsers.length, pageSize: 20, pageNumber: 1},
+        setupMockApi({
+            'user.user.find': {
+                items: sampleUsers,
+                pagination: {recordsTotal: sampleUsers.length, pageSize: 20, pageNumber: 1},
+            },
         });
         return (
             <TableCard
@@ -178,9 +163,11 @@ export const WithMockedFetch: Story = {
 /** TableCard showing search toolbar with row-open callback. */
 export const WithRowOpen: Story = {
     render: () => {
-        withMockFetch('user.user.find', {
-            items: sampleUsers,
-            pagination: {recordsTotal: sampleUsers.length, pageSize: 20, pageNumber: 1},
+        setupMockApi({
+            'user.user.find': {
+                items: sampleUsers,
+                pagination: {recordsTotal: sampleUsers.length, pageSize: 20, pageNumber: 1},
+            },
         });
         return (
             <TableCard

@@ -9,20 +9,12 @@ import React from 'react';
 import type {Meta, StoryObj} from '@storybook/react-vite';
 
 import {AuthProvider, useAuth} from '../src/auth/AuthProvider.js';
+import {fakeJwt} from './helpers/fakeJwt.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeFakeToken(sub: string, permissions: string[]): string {
-    const header = btoa(JSON.stringify({alg: 'HS256', typ: 'JWT'})).replace(/=/g, '');
-    const payload = btoa(
-        JSON.stringify({
-            sub,
-            permissions,
-            exp: Math.floor(Date.now() / 1000) + 3600,
-            iat: Math.floor(Date.now() / 1000),
-        }),
-    ).replace(/=/g, '');
-    return `${header}.${payload}.fakesig`;
+    return fakeJwt(permissions, sub);
 }
 
 // ── Demo component ────────────────────────────────────────────────────────────

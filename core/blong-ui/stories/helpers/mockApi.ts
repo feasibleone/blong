@@ -1,19 +1,23 @@
 /**
  * Mock API helper for Storybook stories.
- * Patches rpcCall to return mock responses without network calls.
+ * Patches globalThis.fetch to intercept JSON-RPC calls and return mock responses.
  */
-import {setApiConfig} from '../../src/hooks/useApi.js';
 
 /** Handler map: method name → response value or function */
 export type MockHandlers = Record<string, unknown | ((params: unknown) => unknown)>;
 
+// Store the original fetch so teardown can restore it.
+let _originalFetch: typeof globalThis.fetch | null = null;
+
 /**
  * Set up mock API config for Storybook.
- * Call this in story decorators or beforeEach.
+ * Patches globalThis.fetch for the duration of the story.
+ * Call teardownMockApi() in afterEach to restore the original.
  */
 export function setupMockApi(handlers: MockHandlers): void {
-    // Patch globalThis.fetch to intercept RPC calls
-    const originalFetch = globalThis.fetch;
+    if (_originalFetch === null) {
+        _originalFetch = globalThis.fetch;
+    }
 
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const url =
@@ -48,15 +52,19 @@ export function setupMockApi(handlers: MockHandlers): void {
             }
         }
 
-        return originalFetch(input, init);
+        return _originalFetch!(input, init);
     };
 }
 
 /**
- * Restore original fetch after mocking.
+ * Restore the original fetch after mocking.
+ * Call this in afterEach to prevent test pollution between stories.
  */
 export function teardownMockApi(): void {
-    // Nothing to do - fetch is module-scoped
+    if (_originalFetch !== null) {
+        globalThis.fetch = _originalFetch;
+        _originalFetch = null;
+    }
 }
 
 /**
