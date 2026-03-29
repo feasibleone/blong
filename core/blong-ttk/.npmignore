@@ -1,0 +1,15 @@
+# Test files
+*.test.ts
+*.test.js
+
+# Build artifacts
+.rush
+.lint
+node_modules/
+allure-results/
+allure-report/
+.allure/
+
+# Config files
+tsconfig.json
+.eslintrc.js

@@ -506,6 +506,18 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-allure",
+            "projectFolder": "core/blong-allure",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-ttk",
+            "projectFolder": "core/blong-ttk",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-int-sql",
             "projectFolder": "core/blong-int-sql",
             "reviewCategory": "core",

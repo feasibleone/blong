@@ -1,0 +1,445 @@
+openapi: "3.0.3"
+info:
+  title: "Mojaloop FSPIOP API"
+  version: "1.1"
+  description: >-
+    Financial Service Provider Interoperability (FSPIOP) API for peer-to-peer transfers,
+    quotes, and party lookups in the Mojaloop switch.
+
+servers:
+  - url: http://localhost:4000
+    description: Local development
+  - url: http://ml-api-adapter-service:3000
+    description: Kubernetes service
+
+paths:
+  /transfers:
+    post:
+      summary: Create a transfer
+      operationId: createTransfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Transfer"
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+
+  /transfers/{id}:
+    get:
+      summary: Get transfer by ID
+      operationId: getTransfer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+    put:
+      summary: Update transfer (callback)
+      operationId: updateTransfer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferFulfil"
+      responses:
+        '200':
+          description: OK
+
+  /transfers/{id}/error:
+    put:
+      summary: Transfer error callback
+      operationId: transferError
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorInformation"
+      responses:
+        '200':
+          description: OK
+
+  /quotes:
+    post:
+      summary: Create a quote
+      operationId: createQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Quote"
+      responses:
+        '202':
+          description: Accepted
+
+  /quotes/{id}:
+    get:
+      summary: Get quote by ID
+      operationId: getQuote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+    put:
+      summary: Update quote (callback)
+      operationId: updateQuote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteResponse"
+      responses:
+        '200':
+          description: OK
+
+  /quotes/{id}/error:
+    put:
+      summary: Quote error callback
+      operationId: quoteError
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorInformation"
+      responses:
+        '200':
+          description: OK
+
+  /parties/{type}/{id}:
+    get:
+      summary: Lookup party information
+      operationId: getParty
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [MSISDN, IBAN, EMAIL, BUSINESS, DEVICE, ACCOUNT_ID, ALIAS]
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted
+    put:
+      summary: Party information callback
+      operationId: updateParty
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Party"
+      responses:
+        '200':
+          description: OK
+
+  /parties/{type}/{id}/error:
+    put:
+      summary: Party lookup error callback
+      operationId: partyError
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorInformation"
+      responses:
+        '200':
+          description: OK
+
+components:
+  schemas:
+    Transfer:
+      type: object
+      required:
+        - transferId
+        - payerFsp
+        - payeeFsp
+        - amount
+        - ilpPacket
+        - condition
+        - expiration
+      properties:
+        transferId:
+          type: string
+          format: uuid
+        payerFsp:
+          type: string
+        payeeFsp:
+          type: string
+        amount:
+          $ref: "#/components/schemas/Money"
+        ilpPacket:
+          type: string
+        condition:
+          type: string
+        expiration:
+          type: string
+          format: date-time
+
+    TransferFulfil:
+      type: object
+      required:
+        - fulfilment
+        - transferState
+      properties:
+        fulfilment:
+          type: string
+        transferState:
+          type: string
+          enum: [COMMITTED, ABORTED, RESERVED]
+        completedTimestamp:
+          type: string
+          format: date-time
+
+    Quote:
+      type: object
+      required:
+        - quoteId
+        - transactionId
+        - payee
+        - payer
+        - amountType
+        - amount
+        - transactionType
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        transactionId:
+          type: string
+          format: uuid
+        payee:
+          $ref: "#/components/schemas/Party"
+        payer:
+          $ref: "#/components/schemas/Party"
+        amountType:
+          type: string
+          enum: [SEND, RECEIVE]
+        amount:
+          $ref: "#/components/schemas/Money"
+        transactionType:
+          $ref: "#/components/schemas/TransactionType"
+        note:
+          type: string
+
+    QuoteResponse:
+      type: object
+      required:
+        - transferAmount
+        - expiration
+        - ilpPacket
+        - condition
+      properties:
+        transferAmount:
+          $ref: "#/components/schemas/Money"
+        payeeReceiveAmount:
+          $ref: "#/components/schemas/Money"
+        payeeFspFee:
+          $ref: "#/components/schemas/Money"
+        payeeFspCommission:
+          $ref: "#/components/schemas/Money"
+        expiration:
+          type: string
+          format: date-time
+        geoCode:
+          $ref: "#/components/schemas/GeoCode"
+        ilpPacket:
+          type: string
+        condition:
+          type: string
+
+    Party:
+      type: object
+      required:
+        - partyIdInfo
+      properties:
+        partyIdInfo:
+          $ref: "#/components/schemas/PartyIdInfo"
+        name:
+          type: string
+        personalInfo:
+          $ref: "#/components/schemas/PersonalInfo"
+
+    PartyIdInfo:
+      type: object
+      required:
+        - partyIdType
+        - partyIdentifier
+      properties:
+        partyIdType:
+          type: string
+          enum: [MSISDN, IBAN, EMAIL, BUSINESS, DEVICE, ACCOUNT_ID, ALIAS]
+        partyIdentifier:
+          type: string
+        partySubIdOrType:
+          type: string
+        fspId:
+          type: string
+
+    PersonalInfo:
+      type: object
+      properties:
+        complexName:
+          type: object
+          properties:
+            firstName:
+              type: string
+            middleName:
+              type: string
+            lastName:
+              type: string
+        dateOfBirth:
+          type: string
+          format: date
+
+    Money:
+      type: object
+      required:
+        - currency
+        - amount
+      properties:
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        amount:
+          type: string
+          pattern: "^[0-9]+(\\.[0-9]+)?$"
+
+    TransactionType:
+      type: object
+      required:
+        - scenario
+        - initiator
+        - initiatorType
+      properties:
+        scenario:
+          type: string
+          enum: [DEPOSIT, WITHDRAWAL, TRANSFER, PAYMENT, REFUND]
+        initiator:
+          type: string
+          enum: [PAYER, PAYEE]
+        initiatorType:
+          type: string
+          enum: [CONSUMER, AGENT, BUSINESS, DEVICE]
+
+    GeoCode:
+      type: object
+      properties:
+        latitude:
+          type: string
+        longitude:
+          type: string
+
+    ErrorInformation:
+      type: object
+      required:
+        - errorCode
+        - errorDescription
+      properties:
+        errorCode:
+          type: string
+        errorDescription:
+          type: string
+        extensionList:
+          $ref: "#/components/schemas/ExtensionList"
+
+    ExtensionList:
+      type: object
+      properties:
+        extension:
+          type: array
+          items:
+            type: object
+            required:
+              - key
+              - value
+            properties:
+              key:
+                type: string
+              value:
+                type: string

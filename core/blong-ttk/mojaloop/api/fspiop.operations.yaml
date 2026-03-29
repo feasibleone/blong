@@ -1,0 +1,58 @@
+# Mojaloop FSPIOP API - x-blong-method mappings
+#
+# This file extends the fspiop.yaml OpenAPI spec with semantic triple method names
+# following the Blong convention: subjectObjectPredicate
+#
+# Subject: The resource/domain (transfer, quote, party)
+# Object: The specific entity being acted upon
+# Predicate: The action (create, get, update, etc.)
+
+paths:
+  /transfers:
+    post:
+      x-blong-method: transferTransferCreate
+      description: Create a new transfer (POST → 202 Accepted → PUT callback)
+
+  /transfers/{id}:
+    get:
+      x-blong-method: transferTransferGet
+      description: Get transfer status
+    put:
+      x-blong-method: transferTransferUpdate
+      description: Fulfil transfer (callback from payee FSP)
+
+  /transfers/{id}/error:
+    put:
+      x-blong-method: transferTransferError
+      description: Transfer error callback
+
+  /quotes:
+    post:
+      x-blong-method: quoteQuoteCreate
+      description: Request a quote (POST → 202 Accepted → PUT callback)
+
+  /quotes/{id}:
+    get:
+      x-blong-method: quoteQuoteGet
+      description: Get quote information
+    put:
+      x-blong-method: quoteQuoteUpdate
+      description: Quote response callback
+
+  /quotes/{id}/error:
+    put:
+      x-blong-method: quoteQuoteError
+      description: Quote error callback
+
+  /parties/{type}/{id}:
+    get:
+      x-blong-method: partyPartyGet
+      description: Lookup party information (GET → 202 Accepted → PUT callback)
+    put:
+      x-blong-method: partyPartyUpdate
+      description: Party information callback
+
+  /parties/{type}/{id}/error:
+    put:
+      x-blong-method: partyPartyError
+      description: Party lookup error callback
