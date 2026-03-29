@@ -1,7 +1,7 @@
-import React from 'react'
-import type {Meta, StoryObj} from '@storybook/react-vite'
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {resolveWidgetType, resolveWidgetDescriptor, getPrimeComponent} from '../src/factory/WidgetMap.js'
+import React from 'react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {resolveWidgetType, resolveWidgetDescriptor, getPrimeComponent} from '../src/factory/WidgetMap.js';
 
 const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
 

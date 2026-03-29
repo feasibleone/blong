@@ -1,9 +1,9 @@
-import React from 'react'
-import type {Meta, StoryObj} from '@storybook/react-vite'
-import {within, userEvent, expect} from '@storybook/test'
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {ThemeProvider, ThemeToggle} from '../src/components/ThemeProvider.js'
-import {ThemeSelector} from '../src/components/ThemeSelector.js'
+import React from 'react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
+import {within, userEvent, expect} from '@storybook/test';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {ThemeProvider, ThemeToggle} from '../src/components/ThemeProvider.js';
+import {ThemeSelector} from '../src/components/ThemeSelector.js';
 
 const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
 

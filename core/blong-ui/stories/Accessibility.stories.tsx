@@ -1,8 +1,8 @@
-import React from 'react'
-import type {Meta, StoryObj} from '@storybook/react-vite'
-import {within, userEvent, expect} from '@storybook/test'
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {VisuallyHidden, SkipLink, LiveRegion, FocusTrap} from '../src/components/Accessibility.js'
+import React from 'react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
+import {within, userEvent, expect} from '@storybook/test';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {VisuallyHidden, SkipLink, LiveRegion, FocusTrap} from '../src/components/Accessibility.js';
 
 const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
 

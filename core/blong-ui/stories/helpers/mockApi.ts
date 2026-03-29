@@ -52,7 +52,7 @@ export function setupMockApi(handlers: MockHandlers): void {
             }
         }
 
-        return _originalFetch!(input, init);
+        return (_originalFetch ?? globalThis.fetch)(input, init);
     };
 }
 

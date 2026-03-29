@@ -158,6 +158,12 @@ export const WithMockedFetch: Story = {
             />
         );
     },
+    parameters: {
+        // Ensure teardown runs after story; Storybook test-runner calls afterEach
+        storybook: {
+            afterEach: teardownMockApi,
+        },
+    },
 };
 
 /** TableCard showing search toolbar with row-open callback. */
@@ -179,5 +185,10 @@ export const WithRowOpen: Story = {
                 onRowOpen={(row) => console.log('Navigate to:', row.userId)}
             />
         );
+    },
+    parameters: {
+        storybook: {
+            afterEach: teardownMockApi,
+        },
     },
 };

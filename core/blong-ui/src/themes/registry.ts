@@ -59,7 +59,10 @@ export const THEME_STORAGE_KEY = 'blong-theme-name';
  * The link element uses id="blong-primereact-theme" for identification.
  *
  * @param themeName - Registered theme name (e.g., 'lara-light')
- * @param basePath - Base path for CSS files (default: '/node_modules/primereact/resources/themes/')
+ * @param basePath - Base path for CSS files. Defaults to the primereact
+ *   resources path resolved from the package root. In production builds,
+ *   set this to a CDN URL or your deployed static asset path.
+ *   Example: 'https://cdn.jsdelivr.net/npm/primereact/resources/themes/'
  */
 export function applyThemeCss(themeName: string, basePath?: string): void {
     if (typeof document === 'undefined') return;
@@ -67,6 +70,8 @@ export function applyThemeCss(themeName: string, basePath?: string): void {
     const entry = themeRegistry.get(themeName);
     if (!entry) return;
 
+    // Default: relative path that works in Vite dev server and standard builds.
+    // For production, pass an explicit basePath pointing to your CDN or /public/ assets.
     const base = basePath ?? '/node_modules/primereact/resources/themes/';
     const href = `${base}${entry.cssPath}`;
 

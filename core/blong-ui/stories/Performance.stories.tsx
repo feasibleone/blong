@@ -1,7 +1,7 @@
-import React from 'react'
-import type {Meta, StoryObj} from '@storybook/react-vite'
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {SkeletonField, SkeletonCard, SkeletonTable, PageSkeleton, LazyPage} from '../src/components/Performance.js'
+import React from 'react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {SkeletonField, SkeletonCard, SkeletonTable, PageSkeleton, LazyPage} from '../src/components/Performance.js';
 
 const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
 

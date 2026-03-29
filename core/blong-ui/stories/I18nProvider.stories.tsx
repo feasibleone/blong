@@ -1,7 +1,7 @@
-import React from 'react'
-import type {Meta, StoryObj} from '@storybook/react-vite'
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {I18nProvider, useI18n} from '../src/components/I18nProvider.js'
+import React from 'react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import {I18nProvider, useI18n} from '../src/components/I18nProvider.js';
 
 const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}})
 
