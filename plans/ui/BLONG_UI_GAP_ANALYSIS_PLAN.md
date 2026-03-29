@@ -50,9 +50,9 @@ demo application.
    theme selection (e.g., Lara, Aura, Nora, Material, etc.)
 6. No portal-level comprehensive stories (equivalent to ut-model's
    `portal/index.stories.js`)
-7. `dev/ui-demo` is referenced in `.gitignore` and `rush.json` memory
-   but does not exist in the repository — the reference demo suite is
-   missing
+7. `core/ui-demo` exists as a reference suite with server, browser entry
+   points, Playwright config, and a sample realm — but it has no
+   Storybook, no stories, and no snapshot tests
 8. No Storybook `preview.tsx` decorator for PrimeReact theme wrapping
 9. The `blong-ui-storybook` separate package mentioned in the original plan
    was not created (Storybook lives directly in `blong-ui`, which is fine)
@@ -351,34 +351,38 @@ Create a `stories/Portal.stories.tsx` that composes the full application:
 
 ---
 
-## Gap 7: Missing ui-demo Reference Suite
+## Gap 7: ui-demo Missing Storybook and Snapshots
 
 ### Current State
 
-The original plan (Phase 5, Task 5.1) calls for a reference suite at
-`core/ui-demo` (later referenced as `dev/ui-demo` in `.gitignore`).
-This suite does not exist. The `.gitignore` already has rules to include
-`dev/ui-demo` even though the `dev/` directory is otherwise ignored.
+The reference suite exists at `core/ui-demo` with:
+- `server.ts` — Blong server with login, openapi, and sample realm
+- `browser.ts` — Browser entry point (minimal, empty children)
+- `sample/` realm with orchestrator handlers: `sampleItemAdd`,
+  `sampleItemFind`, `sampleItemGet`
+- `playwright.config.ts` + `tests/smoke.test.ts` (3 smoke tests)
+- Registered in `rush.json` as `@feasibleone/ui-demo`
 
-A reference suite is critical because:
-- It demonstrates how to wire blong-ui in a real suite
-- It provides a running application for Playwright e2e tests
-- It gives developers a working starting point to copy
+**What is missing:**
+- No Storybook configuration (`.storybook/` directory)
+- No story files
+- No snapshot tests
+- No `storybook`, `build-storybook`, or `visual:update` scripts
+- No sample browser pages (the `browser.ts` has empty `children: []`)
+- No portal-level story equivalent to ut-model's `portal/index.stories.js`
+- Missing `sampleItemEdit` and `sampleItemRemove` handlers for full CRUD
 
 ### Tasks
 
 | Task | Scope | Notes |
 |------|-------|-------|
-| 7.1 Create `dev/ui-demo/` directory structure | Scaffold | `package.json`, `tsconfig.json`, `server.ts`, `browser.ts`, `index.ts` |
-| 7.2 Register in `rush.json` | Config | Add `@feasibleone/ui-demo` with `projectFolder: "dev/ui-demo"`, tag `"dev"` |
-| 7.3 Create sample realm | Realm | A `demo` realm with gateway + orchestrator + adapter for a sample "Item" entity |
-| 7.4 Create browser entry point | Browser | `browser.ts` importing blong-ui components, `PageShell`, `AutoRoutes`, `AuthProvider`, `ThemeProvider` |
-| 7.5 Create sample pages | Components | `item.browse.tsx`, `item.new.tsx`, `item.open.tsx` demonstrating the metadata-driven approach |
-| 7.6 Add Storybook to ui-demo | Config | `.storybook/main.ts`, `.storybook/preview.ts`, story files for the demo pages |
-| 7.7 Add Storybook scripts to ui-demo | package.json | `storybook`, `build-storybook`, `storybook:test`, `visual:update` scripts |
-| 7.8 Create portal story | Stories | Full portal story equivalent to ut-model's `portal/index.stories.js` |
-| 7.9 Add snapshot baseline | Testing | Run `visual:update` to generate initial snapshots for ui-demo stories |
-| 7.10 Add Playwright test scaffolding | Testing | Basic e2e test: login → browse → open → edit → save |
+| 7.1 Add Storybook to `core/ui-demo` | Config | Create `.storybook/main.ts`, `.storybook/preview.ts`; add `storybook`, `build-storybook`, `storybook:test`, `visual:update` scripts to `package.json`; add Storybook devDependencies |
+| 7.2 Add missing CRUD handlers | Sample realm | Create `sampleItemEdit.ts` and `sampleItemRemove.ts` for full CRUD |
+| 7.3 Create sample browser pages | Browser | Create `sample/browser/` with `item.browse.tsx`, `item.new.tsx`, `item.open.tsx` page components; update `browser.ts` to import them |
+| 7.4 Create sample story files | Stories | Stories for each page component + a portal-level story showing the full app flow |
+| 7.5 Add `play()` interaction tests | Stories | Interaction tests for CRUD flows in stories |
+| 7.6 Generate snapshot baseline | Testing | Run `visual:update` to create initial `.snap` files |
+| 7.7 Create portal story | Stories | Full portal story equivalent to ut-model's `portal/index.stories.js` — login → browse → create → edit → search workflow |
 
 ---
 
@@ -405,7 +409,7 @@ Phase D: Portal Stories (Gap 6)
 
 Phase E: Snapshots & Demo (Gaps 3, 7)
   ├── 3.2–3.4  Generate baselines, CI step, docs
-  └── 7.1–7.10 Create ui-demo reference suite
+  └── 7.1–7.7  Add Storybook, pages, stories, and snapshots to core/ui-demo
 ```
 
 Phase A comes first because theme support and MDX configuration are
@@ -435,8 +439,8 @@ exist, and ui-demo needs blong-ui to be feature-complete.
   mocking via story decorators or MSW
 - MDX files must follow Storybook v10 syntax (CSF3 + `@storybook/blocks`)
 - Theme switching must not require page reload
-- The ui-demo suite must work as a standalone Rush project within the
-  monorepo
+- The ui-demo suite already exists at `core/ui-demo` as a Rush project
+  within the monorepo with server, sample realm, and Playwright setup
 
 ### Risks
 
