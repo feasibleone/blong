@@ -1,0 +1,98 @@
+[
+  {
+    "name": "Transfer Failures",
+    "description": "Failed transfer operations",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*transfer.*",
+    "traceRegex": ".*transferTransfer.*"
+  },
+  {
+    "name": "Quote Failures",
+    "description": "Failed quote operations",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*quote.*",
+    "traceRegex": ".*quoteQuote.*"
+  },
+  {
+    "name": "Party Lookup Failures",
+    "description": "Failed party lookup operations",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*party.*|.*lookup.*",
+    "traceRegex": ".*partyParty.*"
+  },
+  {
+    "name": "Timeout Errors",
+    "description": "Operations that exceeded timeout",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*timeout.*|.*timed out.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "Callback Not Received",
+    "description": "Expected callback was not received",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*callback.*not.*received.*|.*callback.*timeout.*",
+    "traceRegex": ".*callbackWait.*"
+  },
+  {
+    "name": "HTTP 400 - Bad Request",
+    "description": "Invalid request format or parameters",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*400.*|.*Bad Request.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "HTTP 404 - Not Found",
+    "description": "Resource not found",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*404.*|.*Not Found.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "HTTP 500 - Internal Server Error",
+    "description": "Server-side errors",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*500.*|.*Internal Server Error.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "Validation Errors",
+    "description": "Schema or data validation failures",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*validation.*|.*invalid.*|.*schema.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "Provisioning Failures",
+    "description": "Failed to create test entities",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*provision.*",
+    "traceRegex": ".*provision.*"
+  },
+  {
+    "name": "Network Errors",
+    "description": "Connection or network issues",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*ECONNREFUSED.*|.*ETIMEDOUT.*|.*ENOTFOUND.*|.*network.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "Assertion Failures",
+    "description": "Test assertions that failed",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*AssertionError.*|.*assert.*",
+    "traceRegex": ".*"
+  },
+  {
+    "name": "Product defects",
+    "description": "Known issues or bugs",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*defect.*|.*bug.*"
+  },
+  {
+    "name": "Test defects",
+    "description": "Issues with the test itself",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*test.*error.*|.*fixture.*"
+  }
+]

@@ -102,7 +102,7 @@ class PromiseManager {
             reject: reject!,
         };
 
-        this.promises.set(path, entry);
+        this.promises.set(path, entry as IPromiseEntry<unknown>);
 
         // Check if this is a top-level step that has already completed
         const parts = path.split('.');
@@ -119,7 +119,7 @@ class PromiseManager {
             entry.resolve(value as T);
         } else {
             // Step hasn't completed yet, check if parent is already resolved
-            this._autoResolveIfParentResolved(path, entry);
+            this._autoResolveIfParentResolved(path, entry as IPromiseEntry<unknown>);
         }
 
         return entry;
@@ -289,8 +289,8 @@ class DependencyTracker {
             if (!this.validStepNames.has(stepName)) {
                 throw new Error(
                     `Invalid step reference(s) detected: Step "${fromStep}" references "context.${property}", ` +
-                    `but no step named "${stepName}" exists. ` +
-                    `Available steps: ${Array.from(this.validStepNames).sort().join(', ')}`
+                        `but no step named "${stepName}" exists. ` +
+                        `Available steps: ${Array.from(this.validStepNames).sort().join(', ')}`,
                 );
             }
         }
@@ -458,7 +458,7 @@ export class TestExecutor extends EventEmitter {
         // Count total steps and collect step names
         this.progress.totalSteps = this._countSteps(steps);
         const allStepNames = this._collectStepNames(steps);
-        
+
         // Set valid step names for dependency validation
         this.dependencyTracker.setValidStepNames(allStepNames);
 
@@ -550,7 +550,7 @@ export class TestExecutor extends EventEmitter {
         parentTestContext?: unknown,
     ): Promise<void> {
         const stepName = fn.name || 'anonymous';
-        
+
         // Check for duplicate step names
         this._checkForDuplicateStepName(stepName);
 
@@ -752,7 +752,7 @@ export class TestExecutor extends EventEmitter {
         if (this.stepNamesUsed.has(stepName)) {
             throw new Error(
                 `Duplicate step name detected: "${stepName}". ` +
-                `Each step must have a unique function name within the same test context.`
+                    `Each step must have a unique function name within the same test context.`,
             );
         }
         this.stepNamesUsed.add(stepName);

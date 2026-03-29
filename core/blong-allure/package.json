@@ -1,0 +1,40 @@
+{
+    "name": "@feasibleone/blong-allure",
+    "version": "1.0.0",
+    "description": "Allure 3 test reporting integration for Blong framework",
+    "keywords": [
+        "blong",
+        "allure",
+        "testing",
+        "reporting"
+    ],
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "scripts": {
+        "build": "heft build --clean",
+        "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
+        "test": "tap *.test.ts"
+    },
+    "devDependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-chain": "workspace:^1.0.0",
+        "@rushstack/eslint-config": "^4.6.4",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@types/node": "^24",
+        "allure": "^3.3.1",
+        "eslint": "~9.39.2",
+        "tap": "^21.6.2",
+        "typescript": "^5.9.3"
+    },
+    "peerDependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-chain": "workspace:^1.0.0"
+    }
+}

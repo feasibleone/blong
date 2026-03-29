@@ -1,0 +1,305 @@
+openapi: "3.0.3"
+info:
+  title: "Mojaloop Admin API"
+  version: "1.0"
+  description: >-
+    Administrative API for managing participants, endpoints, and limits
+    in the Mojaloop switch.
+
+servers:
+  - url: http://localhost:4001
+    description: Local development
+  - url: http://central-ledger-service:3001
+    description: Kubernetes service
+
+paths:
+  /participants:
+    post:
+      summary: Create a participant (DFSP)
+      operationId: createParticipant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParticipantCreate"
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Participant"
+        '400':
+          description: Bad Request
+        '409':
+          description: Participant already exists
+
+    get:
+      summary: List all participants
+      operationId: listParticipants
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Participant"
+
+  /participants/{name}:
+    get:
+      summary: Get participant by name
+      operationId: getParticipant
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Participant"
+        '404':
+          description: Not Found
+
+  /participants/{name}/endpoints:
+    post:
+      summary: Add endpoint for a participant
+      operationId: addEndpoint
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Endpoint"
+      responses:
+        '201':
+          description: Created
+
+    get:
+      summary: Get endpoints for a participant
+      operationId: getEndpoints
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Endpoint"
+
+  /participants/{name}/limits:
+    post:
+      summary: Set position limit for a participant
+      operationId: setLimit
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Limit"
+      responses:
+        '201':
+          description: Created
+
+    get:
+      summary: Get limits for a participant
+      operationId: getLimits
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Limit"
+
+  /participants/{name}/accounts:
+    post:
+      summary: Create account for a participant
+      operationId: createAccount
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Account"
+      responses:
+        '201':
+          description: Created
+
+    get:
+      summary: Get accounts for a participant
+      operationId: getAccounts
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+
+  /parties:
+    post:
+      summary: Register a party (account holder)
+      operationId: registerParty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartyRegistration"
+      responses:
+        '201':
+          description: Created
+
+components:
+  schemas:
+    ParticipantCreate:
+      type: object
+      required:
+        - name
+        - currency
+      properties:
+        name:
+          type: string
+          description: Participant/DFSP identifier
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 currency code
+
+    Participant:
+      type: object
+      required:
+        - name
+        - currency
+        - isActive
+      properties:
+        name:
+          type: string
+        currency:
+          type: string
+        isActive:
+          type: boolean
+        createdDate:
+          type: string
+          format: date-time
+
+    Endpoint:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          enum: 
+            - FSPIOP_CALLBACK_URL_TRANSFER_POST
+            - FSPIOP_CALLBACK_URL_TRANSFER_PUT
+            - FSPIOP_CALLBACK_URL_TRANSFER_ERROR
+            - FSPIOP_CALLBACK_URL_QUOTES_POST
+            - FSPIOP_CALLBACK_URL_QUOTES_PUT
+            - FSPIOP_CALLBACK_URL_QUOTES_ERROR
+            - FSPIOP_CALLBACK_URL_PARTIES_GET
+            - FSPIOP_CALLBACK_URL_PARTIES_PUT
+            - FSPIOP_CALLBACK_URL_PARTIES_ERROR
+        value:
+          type: string
+          format: uri
+
+    Limit:
+      type: object
+      required:
+        - currency
+        - type
+        - value
+      properties:
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        type:
+          type: string
+          enum: [NET_DEBIT_CAP]
+        value:
+          type: number
+          format: double
+
+    Account:
+      type: object
+      required:
+        - currency
+        - type
+      properties:
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        type:
+          type: string
+          enum: [POSITION, SETTLEMENT]
+
+    PartyRegistration:
+      type: object
+      required:
+        - partyIdType
+        - partyIdentifier
+        - fspId
+      properties:
+        partyIdType:
+          type: string
+          enum: [MSISDN, IBAN, EMAIL, BUSINESS, DEVICE, ACCOUNT_ID, ALIAS]
+        partyIdentifier:
+          type: string
+        partySubIdOrType:
+          type: string
+        fspId:
+          type: string
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
