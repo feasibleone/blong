@@ -111,11 +111,30 @@ config: {
 | Expression | Example match | JS type |
 |---|---|---|
 | `{int}` | `42`, `-7` | `number` |
-| `{float}` | `3.14`, `-0.5` | `number` |
+| `{float}` | `3.14`, `-0.5`, `3.0` | `number` |
 | `{word}` | `hello` | `string` |
 | `{string}` | `"hello world"` | `string` (unquoted) |
 | `{}` | any text | `string` |
-| RegExp | anything | string captures |
+| RegExp | anything | string captures (use array format) |
+
+### Using RegExp patterns
+
+Pass step definitions as an array of tuples to use `RegExp` patterns:
+
+```typescript
+featureToSteps(
+    feature,
+    [
+        [/^I add (\d+) and (\d+)$/, (a, b) =>
+            async function addStep(assert, {$meta}) {
+                const result = await add({a: Number(a), b: Number(b)}, $meta);
+                assert.ok(result);
+            },
+        ],
+    ],
+    {name, group},
+)
+```
 
 ## Scenario Outline expansion
 

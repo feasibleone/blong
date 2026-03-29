@@ -77,11 +77,35 @@ Step parameter types:
 | Expression | Matches | Coerced to |
 |---|---|---|
 | `{int}` | `-?\\d+` | `number` |
-| `{float}` | `-?\\d+(\\.\\d+)?` | `number` |
+| `{float}` | `-?\\d+(\\.\\d+)?` | `number` (including `"3.0"` → `3`) |
 | `{word}` | `\\w+` | `string` |
 | `{string}` | `"..."` (quoted) | `string` (without quotes) |
 | `{}` | `.+` | `string` |
-| RegExp | any | captured groups as strings |
+| RegExp | any | string captures (use array-of-tuples format) |
+
+### Using RegExp patterns
+
+Pass step definitions as an array of tuples to mix cucumber expressions with
+raw `RegExp` patterns:
+
+```typescript
+featureToSteps(
+    feature,
+    [
+        [/^the result is (\d+)$/, (expected) =>
+            async function checkResult(assert, {$meta}) {
+                // ...
+            },
+        ],
+        ['{int} plus {int} equals {int}', (a, b, expected) =>
+            async function addEquals(assert, {$meta}) {
+                // ...
+            },
+        ],
+    ],
+    {name, group},
+)
+```
 
 ## Wiring features to step definitions
 

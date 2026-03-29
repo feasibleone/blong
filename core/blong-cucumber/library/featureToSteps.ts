@@ -1,22 +1,30 @@
+import type {ChainStep, ILib} from '@feasibleone/blong';
+
 import type {IGherkinFeature, IGherkinScenario, IGherkinStep} from './parseGherkin.ts';
 import {expandOutline, parseGherkin} from './parseGherkin.ts';
 import {compileCucumberExpression, coerceMatchParam} from './matchStep.ts';
 
-type StepDefinitionFn = (...params: unknown[]) => unknown;
-type GroupFn = (name: string) => (steps: unknown[]) => unknown;
+type StepDefinitionFn = (...params: unknown[]) => ChainStep;
+type GroupFn = ILib['group'];
 
-export interface IStepDefinitions {
-    [pattern: string]: StepDefinitionFn;
-}
+/** Step definitions keyed by cucumber expression strings. */
+export type IStepDefinitions =
+    | Record<string, StepDefinitionFn>
+    | Array<[string | RegExp, StepDefinitionFn]>;
 
 export interface IFeatureToStepsOptions {
     name?: string;
     group: GroupFn;
 }
 
-function buildCompiledPatterns(stepDefs: IStepDefinitions): Array<[RegExp, string, StepDefinitionFn]> {
-    return Object.entries(stepDefs).map(([pattern, fn]) => [
-        compileCucumberExpression(pattern),
+type CompiledPattern = [RegExp, string | RegExp, StepDefinitionFn];
+
+function buildCompiledPatterns(stepDefs: IStepDefinitions): CompiledPattern[] {
+    const entries: Array<[string | RegExp, StepDefinitionFn]> = Array.isArray(stepDefs)
+        ? stepDefs
+        : (Object.entries(stepDefs) as Array<[string, StepDefinitionFn]>);
+    return entries.map(([pattern, fn]) => [
+        pattern instanceof RegExp ? pattern : compileCucumberExpression(pattern),
         pattern,
         fn,
     ]);
@@ -24,8 +32,8 @@ function buildCompiledPatterns(stepDefs: IStepDefinitions): Array<[RegExp, strin
 
 function resolveStep(
     step: IGherkinStep,
-    compiled: Array<[RegExp, string, StepDefinitionFn]>,
-): unknown {
+    compiled: CompiledPattern[],
+): ChainStep {
     for (const [regex, pattern, fn] of compiled) {
         const match = regex.exec(step.text);
         if (match) {
@@ -35,7 +43,7 @@ function resolveStep(
     }
     throw new Error(
         `No step definition found for: "${step.keyword} ${step.text}"\n` +
-        `Available patterns: ${compiled.map(([, p]) => p).join(', ')}`,
+        `Available patterns: ${compiled.map(([, p]) => String(p)).join(', ')}`,
     );
 }
 
@@ -43,7 +51,7 @@ function resolveStep(
  * Renames a step function to include a scenario-unique suffix, ensuring
  * no duplicate step names across scenarios within the same test executor.
  */
-function renameStep(fn: unknown, scenarioIdx: number): unknown {
+function renameStep(fn: ChainStep, scenarioIdx: number): ChainStep {
     if (typeof fn !== 'function') return fn;
     const baseName = (fn as {name?: string}).name || 'step';
     const uniqueName = `${baseName}_s${scenarioIdx}`;
@@ -52,21 +60,20 @@ function renameStep(fn: unknown, scenarioIdx: number): unknown {
             return (fn as (...a: unknown[]) => unknown).apply(this, args);
         },
     }[uniqueName];
-    return renamed;
+    return renamed as ChainStep;
 }
 
 function scenarioToSteps(
     scenario: IGherkinScenario,
-    compiled: Array<[RegExp, string, StepDefinitionFn]>,
+    compiled: CompiledPattern[],
     background: IGherkinStep[],
     group: GroupFn,
     scenarioIdx: number,
-): unknown {
+): ReturnType<ReturnType<GroupFn>> {
     const allSteps = [...background, ...scenario.steps];
-    const steps = allSteps.map(step => {
-        const result = resolveStep(step, compiled);
-        return renameStep(result, scenarioIdx);
-    });
+    const steps: ChainStep[] = allSteps.map(step =>
+        renameStep(resolveStep(step, compiled), scenarioIdx),
+    );
     return group(scenario.name)(steps);
 }
 
@@ -74,7 +81,7 @@ export function featureToSteps(
     source: string | IGherkinFeature,
     stepDefs: IStepDefinitions,
     options: IFeatureToStepsOptions,
-): unknown {
+): ReturnType<ReturnType<GroupFn>> {
     const feature: IGherkinFeature =
         typeof source === 'string' ? parseGherkin(source) : source;
     const {group, name} = options;
@@ -87,7 +94,7 @@ export function featureToSteps(
         scenarios.push(...expandOutline(scenario));
     }
 
-    const scenarioGroups = scenarios.map((scenario, scenarioIdx) =>
+    const scenarioGroups: ChainStep[] = scenarios.map((scenario, scenarioIdx) =>
         scenarioToSteps(scenario, compiled, backgroundSteps, group, scenarioIdx),
     );
 

@@ -1,7 +1,9 @@
 export function coerceMatchParam(p: string | undefined): unknown {
     if (p === undefined) return p;
+    const NUMERIC_PATTERN = /^-?\d+(?:\.\d+)?$/;
+    if (!NUMERIC_PATTERN.test(p)) return p;
     const n = Number(p);
-    return Number.isFinite(n) && String(n) === p ? n : p;
+    return Number.isFinite(n) ? n : p;
 }
 
 /** Maps cucumber expression parameter tokens to their regex equivalents. */
