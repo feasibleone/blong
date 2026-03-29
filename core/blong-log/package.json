@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-log",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Real-time log viewer for the Blong framework",
     "keywords": [
         "blong",

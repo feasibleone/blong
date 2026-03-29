@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.6.0...blong-docs-v1.7.0) (2026-03-29)
+
+
+### Features
+
+* implement blong-ui metadata-driven browser UI framework ([#103](https://github.com/feasibleone/blong/issues/103)) ([b793e3a](https://github.com/feasibleone/blong/commit/b793e3ab7404c00608b6663db634bf9d9c4c3753))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.5.0...blong-docs-v1.6.0) (2026-03-26)
 
 
