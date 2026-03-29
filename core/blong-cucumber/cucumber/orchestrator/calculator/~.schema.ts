@@ -2,37 +2,45 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @rushstack/typedef-var */
 
-import {validationHandlers, type IMeta} from '@feasibleone/blong';
-import {Type, type Static} from 'typebox';
+import { validationHandlers } from '@feasibleone/blong'
+import { Type, type Static } from 'typebox'
 
-type cucumberCalculatorAdd = Static<typeof cucumberCalculatorAdd>;
+type cucumberCalculatorAdd = Static<typeof cucumberCalculatorAdd>
 const cucumberCalculatorAdd = Type.Function(
-    [Type.Object({a: Type.Number(), b: Type.Number()})],
-    Type.Promise(Type.Number()),
-    {description: 'Add two numbers'},
-);
+  [
+    Type.Object({
+      a: Type.Number(),
+      b: Type.Number()
+    })
+  ],
+  Type.Promise(Type.Number())
+)
 
-type cucumberCalculatorSubtract = Static<typeof cucumberCalculatorSubtract>;
+type cucumberCalculatorSubtract = Static<typeof cucumberCalculatorSubtract>
 const cucumberCalculatorSubtract = Type.Function(
-    [Type.Object({a: Type.Number(), b: Type.Number()})],
-    Type.Promise(Type.Number()),
-    {description: 'Subtract b from a'},
-);
+  [
+    Type.Object({
+      a: Type.Number(),
+      b: Type.Number()
+    })
+  ],
+  Type.Promise(Type.Number())
+)
 
 export default validationHandlers({
-    cucumberCalculatorAdd,
-    cucumberCalculatorSubtract,
-});
+  cucumberCalculatorAdd,
+  cucumberCalculatorSubtract
+})
 
 declare module '@feasibleone/blong' {
-    interface IRemoteHandler {
-        cucumberCalculatorAdd<T = ReturnType<cucumberCalculatorAdd>>(
-            params: Parameters<cucumberCalculatorAdd>[0],
-            $meta: IMeta,
-        ): T;
-        cucumberCalculatorSubtract<T = ReturnType<cucumberCalculatorSubtract>>(
-            params: Parameters<cucumberCalculatorSubtract>[0],
-            $meta: IMeta,
-        ): T;
-    }
+  interface ISchema {
+    cucumberCalculatorAdd(
+      params: Parameters<cucumberCalculatorAdd>[0],
+      $meta: IMeta
+    ): ReturnType<cucumberCalculatorAdd>
+    cucumberCalculatorSubtract(
+      params: Parameters<cucumberCalculatorSubtract>[0],
+      $meta: IMeta
+    ): ReturnType<cucumberCalculatorSubtract>
+  }
 }

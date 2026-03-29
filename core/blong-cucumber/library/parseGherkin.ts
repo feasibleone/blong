@@ -1,4 +1,5 @@
-import {AstBuilder, GherkinClassicTokenMatcher, IdGenerator, Parser} from '@cucumber/gherkin';
+import {AstBuilder, GherkinClassicTokenMatcher, Parser} from '@cucumber/gherkin';
+import {IdGenerator} from '@cucumber/messages';
 
 export interface IGherkinStep {
     keyword: string;
@@ -34,9 +35,8 @@ export interface IGherkinFeature {
 }
 
 export function parseGherkin(source: string): IGherkinFeature {
-    const parser = new Parser(new AstBuilder(IdGenerator.uuid()));
-    const matcher = new GherkinClassicTokenMatcher();
-    const doc = parser.parse(source, matcher);
+    const parser = new Parser(new AstBuilder(IdGenerator.uuid()), new GherkinClassicTokenMatcher());
+    const doc = parser.parse(source);
     if (!doc.feature) throw new Error('No feature found in Gherkin source');
     const feature = doc.feature;
     let background: IGherkinBackground | undefined;

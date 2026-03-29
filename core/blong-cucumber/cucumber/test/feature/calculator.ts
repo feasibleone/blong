@@ -1,16 +1,13 @@
 export default `Feature: Calculator
 
   Scenario: Add two numbers
-    When I add 5 and 3
-    Then the result should be 8
+    Then 5 plus 3 equals 8
 
   Scenario: Subtract two numbers
-    When I subtract 3 from 10
-    Then the result should be 7
+    Then 10 minus 3 equals 7
 
-  Scenario Outline: Parameterized addition
-    When I add <a> and <b>
-    Then the result should be <result>
+  Scenario Outline: Parameterized calculation
+    Then <a> plus <b> equals <result>
 
     Examples:
       | a  | b  | result |

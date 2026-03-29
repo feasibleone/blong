@@ -10,39 +10,43 @@ export default handler(
             featureToSteps(
                 calculatorFeature,
                 {
-                    'I add {int} and {int}': (a: unknown, b: unknown) =>
-                        group(`add ${a} + ${b}`)([
-                            async function cucumberAdd(
-                                assert: typeof Assert,
-                                {$meta}: {$meta: IMeta},
-                            ) {
-                                const result = await cucumberCalculatorAdd(
-                                    {a: a as number, b: b as number},
-                                    $meta,
-                                );
-                                return result;
-                            },
-                        ]),
-                    'I subtract {int} from {int}': (b: unknown, a: unknown) =>
-                        group(`subtract ${a} - ${b}`)([
-                            async function cucumberSubtract(
-                                assert: typeof Assert,
-                                {$meta}: {$meta: IMeta},
-                            ) {
-                                const result = await cucumberCalculatorSubtract(
-                                    {a: a as number, b: b as number},
-                                    $meta,
-                                );
-                                return result;
-                            },
-                        ]),
-                    'the result should be {int}': (expected: unknown) =>
-                        async function resultCheck(
+                    '{int} plus {int} equals {int}': (
+                        a: unknown,
+                        b: unknown,
+                        expected: unknown,
+                    ) =>
+                        async function addEquals(
                             assert: typeof Assert,
-                            context: {cucumberAdd?: Promise<number>; cucumberSubtract?: Promise<number>},
+                            {$meta}: {$meta: IMeta},
                         ) {
-                            const result = await (context.cucumberAdd ?? context.cucumberSubtract);
-                            assert.equal(result, expected as number, `result should be ${expected}`);
+                            const result = await cucumberCalculatorAdd(
+                                {a: a as number, b: b as number},
+                                $meta,
+                            );
+                            assert.equal(
+                                result,
+                                expected as number,
+                                `${a} + ${b} should equal ${expected}`,
+                            );
+                        },
+                    '{int} minus {int} equals {int}': (
+                        a: unknown,
+                        b: unknown,
+                        expected: unknown,
+                    ) =>
+                        async function subtractEquals(
+                            assert: typeof Assert,
+                            {$meta}: {$meta: IMeta},
+                        ) {
+                            const result = await cucumberCalculatorSubtract(
+                                {a: a as number, b: b as number},
+                                $meta,
+                            );
+                            assert.equal(
+                                result,
+                                expected as number,
+                                `${a} - ${b} should equal ${expected}`,
+                            );
                         },
                 },
                 {name, group},
