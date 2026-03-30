@@ -21,7 +21,7 @@ values at startup, silently bypassing hot reload.
    (e.g., reconnect DB) without restarting the whole process.
 4. Adapters without a `configChanged` hook fall back gracefully to a full
    port stop/start.
-5. A PoC suite (`dev/config-hot-reload-poc`) demonstrates and validates the
+5. A PoC suite (`core/config-hot-reload-poc`) demonstrates and validates the
    concept end-to-end with automated integration tests.
 6. Existing test suites continue to pass — no breaking changes to the public API.
 
@@ -141,16 +141,16 @@ PoC suite with automated integration tests.
 
 | # | Task | Complexity | Dependency |
 |---|---|---|---|
-| 5.1 | Create `dev/config-hot-reload-poc` suite skeleton (package.json, tsconfig.json, server.ts, index.ts) | Small | 4.5 |
+| 5.1 | Create `core/config-hot-reload-poc` suite skeleton (package.json, tsconfig.json, server.ts, index.ts) | Small | 4.5 |
 | 5.2 | Add a `config` realm with an orchestrator handler that returns a live config value | Small | 5.1 |
 | 5.3 | Add a mock adapter with state (simulating DB connection) that implements `configChanged` | Medium | 5.2 |
 | 5.4 | Write integration test: mutate config file at runtime, assert handler returns new value | Medium | 5.3 |
 | 5.5 | Write integration test: mutate adapter-relevant config, assert `configChanged` was called and state was updated | Medium | 5.4 |
 | 5.6 | Write integration test: mutate unrelated config, assert adapter state was NOT recreated | Small | 5.5 |
-| 5.7 | Register PoC suite in `rush.json` with `dev` tag; add to `.gitignore` un-ignore list | Small | 5.6 |
+| 5.7 | Register PoC suite in `rush.json` with `core` tag | Small | 5.6 |
 
 **Acceptance**: All three integration tests pass; PoC can be run with `blong`
-from the `dev/config-hot-reload-poc` folder.
+from the `core/config-hot-reload-poc` folder.
 
 ### Phase 6: Documentation and Rollout
 

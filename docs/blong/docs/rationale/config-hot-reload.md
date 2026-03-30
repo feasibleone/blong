@@ -194,5 +194,5 @@ Every reload emits a log entry with:
 
 ## PoC suite
 
-A dedicated PoC suite (`dev/config-hot-reload-poc`) demonstrates and validates
+A dedicated PoC suite (`core/config-hot-reload-poc`) demonstrates and validates
 the concept end-to-end. See the implementation plan for details.
