@@ -109,13 +109,13 @@ todo.md
 .node_repl_history
 .tern*
 .blong_*
+dev
 !dev/ui-demo
 !dev/ui-demo/**
 dev/ui-demo/node_modules
 !dev/handler-test-poc
 !dev/handler-test-poc/**
 dev/handler-test-poc/node_modules
-dev
 dist
 .scannerwork
 **/.docusaurus
