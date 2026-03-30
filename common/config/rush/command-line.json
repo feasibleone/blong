@@ -78,6 +78,14 @@
             "ignoreMissingScript": true,
             "allowWarningsInSuccessfulBuild": true,
             "enableParallelism": true
+        },
+        {
+            "commandKind": "bulk",
+            "name": "ci-storybook",
+            "summary": "Run Storybook interaction + visual regression tests",
+            "ignoreMissingScript": true,
+            "allowWarningsInSuccessfulBuild": false,
+            "enableParallelism": false
         }
         // {
         //   /**
