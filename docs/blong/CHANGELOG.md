@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.7.0...blong-docs-v1.8.0) (2026-03-29)
+
+
+### Features
+
+* implement blong-cucumber package ([ee0e89b](https://github.com/feasibleone/blong/commit/ee0e89b7025885c6f0db3b1100f9e527a6db7ed6))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.6.0...blong-docs-v1.7.0) (2026-03-29)
 
 
