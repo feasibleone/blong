@@ -56,12 +56,16 @@ Unify the handler and test concepts along a **continuum** rather than a
    step execution model from `blong-chain`: named functions, thenable
    proxies for automatic dependency detection, and parallel execution.
 
-5. **Unified naming context** — The `name` parameter, already conventional
-   in test handlers, becomes a framework-managed execution context. The
-   framework automatically extracts `name` from the first parameter and
-   uses it for test report nesting, structured logging, and tracing.
-   Handlers no longer need to explicitly call `group(name)([...])` — the
-   framework provides the same grouping behind the scenes.
+5. **Unified naming context** — The execution context name (used for test
+   report nesting, structured logging, and tracing) is injected into `$meta`
+   by the framework, not passed as a handler parameter. This prevents `name`
+   from conflicting with API parameters. Two mechanisms are planned:
+
+   - **Proxy sub-property destructuring** — `{handler: {testPaymentFlow: {billPayment}}}` 
+     returns the same handler but with `$meta.name = 'bill payment'` pre-injected.
+   - **Annotation syntax** — `{'@bill payment testPaymentFlow': billPaymentFlow}` 
+     injects `name` via an `@` prefix annotation, similar to ut-port's annotation
+     approach for method import bindings.
 
 ### Design
 
@@ -127,16 +131,17 @@ A test handler that proves a workflow works correctly:
 ```typescript
 // test/test/testPaymentFlow.ts — starts as a test
 export default handler(({handler: {accountCreate, paymentTransferExecute}}) => ({
-    testPaymentFlow: ({name = 'payment flow'}, $meta) => [
+    testPaymentFlow: ({currency = 'USD', balance = 1000, amount = 100}, $meta) => [
+        // $meta.name is injected by the framework proxy (e.g., 'bill payment', 'loan payment')
         async function createAccount(assert, {$meta}) {
-            const account = await accountCreate({currency: 'USD', balance: 1000}, $meta);
+            const account = await accountCreate({currency, balance}, $meta);
             assert.ok(account.id, 'Account created');
             return account;
         },
         async function executeTransfer(assert, {createAccount, $meta}) {
             const account = await createAccount;
             const result = await paymentTransferExecute(
-                {accountId: account.id, amount: 100},
+                {accountId: account.id, amount},
                 $meta,
             );
             assert.equal(result.state, 'COMPLETED', 'Transfer completed');
@@ -146,9 +151,10 @@ export default handler(({handler: {accountCreate, paymentTransferExecute}}) => (
 }));
 ```
 
-The framework automatically uses the `name` parameter for test report nesting
-and structured logging — no explicit `group()` call needed. The test handler
-simply returns an array of steps.
+The handler signature is clean — no `name` parameter conflicts with API params.
+The execution context name is injected into `$meta` by the framework
+(see "Unified Naming and Context" below). The test handler simply returns
+an array of steps.
 
 Can graduate to a production handler:
 
@@ -178,86 +184,83 @@ accessible as a production API endpoint.
 #### Unified Naming and Context
 
 Traditionally, test handlers use the `group(name)([...steps...])` pattern to
-wrap step arrays with a name for test reporting. This explicit wrapping creates
-friction in the handler-test continuum because it adds ceremony that handlers
-don't need.
+wrap step arrays with a name for test reporting. This creates two problems in
+the unified handler-test continuum:
 
-The unified concept eliminates explicit `group()` calls. Instead, the framework
-automatically extracts the `name` property from the handler's first parameter
-and uses it as the **execution context**:
+1. **Parameter conflict** — A `name` property in the first parameter conflicts
+   with legitimate API parameters (e.g., an item's `name` field).
+2. **Asymmetry** — Production handlers don't need a `name` parameter for
+   logging purposes; they use `$meta` for contextual metadata.
+
+The unified concept eliminates both issues by injecting the execution context
+name into `$meta` via the **handler proxy**, rather than passing it as a
+parameter. Two approaches are planned:
+
+##### Approach 1: Proxy Sub-Property Destructuring
+
+When a handler is accessed via a nested destructuring from the proxy, the
+property name becomes the execution context injected into `$meta`:
 
 ```typescript
-// No group() needed — framework reads name from the first parameter
-export default handler(({handler: {transferCreate}}) => ({
-    testPaymentFlow: ({name = 'payment flow', amount = 100}, $meta) => [
-        async function createTransfer(assert, {$meta}) {
-            const result = await transferCreate({amount}, $meta);
-            assert.ok(result.transferId);
-            return result;
-        },
+// Instead of: testPaymentFlow({name: 'bill payment', amount: 150}, $meta)
+// Destructure a named alias from the proxy:
+export default handler(({handler: {testPaymentFlow: {billPayment, loanPayment}}}) => ({
+    testPaymentScenarios: (params, $meta) => [
+        // billPayment is identical to testPaymentFlow but $meta.name = 'bill payment'
+        billPayment({amount: 150}, $meta),
+        // loanPayment is identical to testPaymentFlow but $meta.name = 'loan payment'
+        loanPayment({amount: 5000}, $meta),
     ],
 }));
 ```
 
-The `name` serves multiple purposes depending on context:
+The proxy converts camelCase property names to sentence form: `billPayment` →
+`'bill payment'`. Conversion rules: insert a space before each uppercase letter
+and lowercase the result (e.g., `cardPaymentFlow` → `'card payment flow'`,
+`httpRequest` → `'http request'`). For fully uppercase segments (acronyms),
+the first letter of each word is preserved as-is in the lowercase result.
+The same handler, the same API parameters, but with context
+carried in `$meta` where it belongs.
 
-| Context | Name Purpose |
-|---------|-------------|
-| **Test reporting** | Creates nesting in test output — identifies which context a reused test handler was invoked in (e.g., "bill payment" vs "loan payment") |
-| **Structured logging** | Appears in log entries as the operation context |
-| **Tracing** | Sets the span name for distributed tracing |
-| **Handler logic** | Available as a regular parameter when the name needs to influence behavior |
+This pattern works equally for production handlers — accessing
+`{handler: {paymentExecute: {cardPayment}}}` produces a `cardPayment` function
+that runs `paymentExecute` with `$meta.name = 'card payment'`. Most of the time
+the name is purely informational (for logging and tracing), but handlers that
+need it can read `$meta.name`.
 
-**Reuse with different contexts** — the key benefit of naming. When the same
-test handler is invoked with different parameters, the `name` distinguishes
-each invocation in test reports:
+##### Approach 2: Annotation Syntax (Side Task — Proxy Update Required)
 
-```typescript
-export default handler(({handler: {testPaymentFlow}}) => ({
-    testPaymentScenarios: ({name = 'payment scenarios'}, $meta) => [
-        // Each invocation gets its own name in the test report
-        testPaymentFlow({name: 'bill payment',  amount: 150}, $meta),
-        testPaymentFlow({name: 'loan payment',  amount: 5000}, $meta),
-        testPaymentFlow({name: 'zero payment',  amount: 0}, $meta),
-    ],
-}));
-```
-
-If a test fails, the report shows exactly which context failed (e.g.,
-"payment scenarios → loan payment → createTransfer"), making it clear whether
-the issue is specific to a particular scenario or systemic.
-
-The same naming pattern applies to **production handlers**. Most of the time
-the name is purely informational (for logging and tracing), but handlers can
-also use it to influence behavior:
+Inspired by [ut-port's annotation-like import bindings](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md),
+a `@` prefix on the destructured key specifies the injected name explicitly:
 
 ```typescript
-export default handler(({handler: {rateGet, transferCreate}, lib: {checkpoint}}) =>
-    async function paymentExecute({name = 'payment', type, amount}, $meta, assert?) {
-        // Name used for observability
-        checkpoint?.('payment-started', {name, type, amount});
-
-        // Name can also influence logic when needed
-        const rate = type === 'international'
-            ? await rateGet({currency: 'FX'}, $meta)
-            : {rate: 1};
-
-        const result = await transferCreate({amount: amount * rate.rate}, $meta);
-        checkpoint?.('payment-completed', {name, transferId: result.id});
-        return result;
+// @annotation-name handlerName: localAlias
+export default handler(({
+    handler: {
+        '@bill payment testPaymentFlow': billPayment,
+        '@loan payment testPaymentFlow': loanPayment,
     }
-);
+}) => ({
+    testPaymentScenarios: (params, $meta) => [
+        billPayment({amount: 150}, $meta),   // $meta.name = 'bill payment'
+        loanPayment({amount: 5000}, $meta),  // $meta.name = 'loan payment'
+    ],
+}));
 ```
 
-This unification means:
+This approach allows arbitrary names without relying on camelCase conversion,
+and mirrors the established ut-port pattern for method configuration.
 
-- **No `group()` import needed** — the framework handles naming automatically
-- **Tests and handlers are structurally identical** — both return results
-  from a function with `(params, $meta)` signature
-- **Context nesting is preserved** — test reports still show hierarchical
-  grouping based on handler invocation chains
-- **Reuse is natural** — the same handler can run with different `name`
-  values to test different scenarios or serve different API consumers
+> **Implementation note:** Both approaches require updating the handler proxy
+> in `layerProxy.ts` to intercept nested property access and return a
+> name-injecting wrapper. The proxy already intercepts `handler.get` — the
+> change adds a second level that intercepts `handler.handlerName.aliasName`.
+> This is a side task tracked as part of this plan.
+
+**Context nesting** — when the proxy-based naming is in place, test report
+output automatically shows the handler invocation chain (e.g.,
+"payment scenarios → bill payment → createTransfer"), making failure context
+immediately visible without any boilerplate.
 
 #### Checkpoint-Driven Test Assertions
 
@@ -266,7 +269,7 @@ collect checkpoint data and make it available for assertions:
 
 ```typescript
 export default handler(({handler: {paymentFlowExecute}}) => ({
-    testPaymentFlowCheckpoints: ({name = 'payment flow checkpoints'}, $meta) => [
+    testPaymentFlowCheckpoints: (params, $meta) => [
         async function executeFlow(assert, {$meta}) {
             const result = await paymentFlowExecute(
                 {currency: 'USD', balance: 1000, amount: 100},

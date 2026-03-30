@@ -59,7 +59,8 @@ import {handler, type IMeta} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({handler: {paymentTransferExecute}}) => ({
-    testPaymentCheckpoints: ({name = 'payment checkpoints'}, $meta) => [
+    // No 'name' parameter — context name is injected into $meta by the framework proxy
+    testPaymentCheckpoints: (params: Record<string, unknown>, $meta: IMeta) => [
         async function executeAndVerify(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
             const result = await paymentTransferExecute(
                 {accountId: 'acc-1', amount: 100},

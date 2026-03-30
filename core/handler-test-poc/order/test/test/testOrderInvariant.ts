@@ -15,10 +15,16 @@ import type Assert from 'node:assert';
  * - Total is always sum of (price × quantity) for all items
  * - Discounted total is always ≤ total
  * - Discount is 10% for orders > 100, 0% otherwise
+ *
+ * Naming note: No 'name' parameter — context name is injected via $meta
+ * by the framework proxy. Planned usage:
+ *   {handler: {testOrderInvariant: {discountBoundary, invalidInput}}}
+ * to distinguish test scenarios in reports without parameter conflicts.
  */
 export default handler(
     ({handler: {orderOrderCreate}}) => ({
-        testOrderInvariant: ({name = 'invariant'}, $meta) => [
+        // No 'name' parameter — context name is injected into $meta by the proxy
+        testOrderInvariant: (_params: {}, $meta: IMeta) => [
             // Test invariant: discount boundary at 100
             async function belowThreshold(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                 const result = await orderOrderCreate(

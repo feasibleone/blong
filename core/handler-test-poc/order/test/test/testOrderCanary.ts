@@ -20,10 +20,16 @@ import type Assert from 'node:assert';
  *
  * At each level, the handler code is identical — only the
  * configuration changes what's active.
+ *
+ * Naming note: No 'name' parameter — context name is injected via $meta
+ * by the framework proxy. Planned usage:
+ *   {handler: {testOrderCanary: {normalFlow, highValueFlow}}}
+ * to distinguish test scenarios in reports without parameter conflicts.
  */
 export default handler(
     ({handler: {orderOrderCreate, orderFlowExecute}}) => ({
-        testOrderCanary: ({name = 'canary'}, $meta) => [
+        // No 'name' parameter — context name is injected into $meta by the proxy
+        testOrderCanary: (_params: {}, $meta: IMeta) => [
             // Verify normal flow works
             async function normalOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                 const result = await orderOrderCreate(

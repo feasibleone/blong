@@ -16,12 +16,22 @@ import type Assert from 'node:assert';
  * The test also calls the graduated handler (orderFlowExecute) to
  * verify it behaves identically to the manual workflow, demonstrating
  * that graduation preserves behavior.
+ *
+ * Naming note: No 'name' parameter in the handler signature. Context names
+ * are injected via $meta by the framework proxy. When the proxy supports
+ * sub-property destructuring, different invocation contexts will be set up as:
+ *
+ *   {handler: {testOrderGraduate: {bookOrder, electronicOrder}}}
+ *
+ * This returns wrappers that inject $meta.name = 'book order' / 'electronic order'
+ * without any changes to the handler's parameter signature.
  */
 export default handler(
     ({
         handler: {orderOrderCreate, orderOrderConfirm, orderFlowExecute},
     }) => ({
-        testOrderGraduate: ({name = 'graduate'}, $meta) => [
+        // No 'name' parameter — context name is injected into $meta by the proxy
+        testOrderGraduate: (_params: {}, $meta: IMeta) => [
             // Step 1: The "test" version — manual orchestration with mandatory assertions
             async function manualFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                 const order = await orderOrderCreate(

@@ -14,10 +14,17 @@ import type Assert from 'node:assert';
  * - Handlers emit checkpoints without knowing about tests
  * - Tests read checkpoints from $meta.checkpoints
  * - The same handler code works in both production and test
+ *
+ * Naming note: The execution context name ('checkpoint verification') is
+ * injected into $meta by the framework, not passed as a parameter.
+ * When the proxy is updated, this will be done via:
+ *   {handler: {testOrderCheckpoint: {checkpointVerification}}}
+ * which injects $meta.name = 'checkpoint verification' automatically.
  */
 export default handler(
     ({handler: {orderOrderCreate, orderOrderConfirm}}) => ({
-        testOrderCheckpoint: ({name = 'checkpoint'}, $meta) => [
+        // No 'name' parameter — context name is injected into $meta by the proxy
+        testOrderCheckpoint: (_params: {}, $meta: IMeta) => [
             async function createOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                 const result = await orderOrderCreate(
                     {
