@@ -16,45 +16,44 @@ import type Assert from 'node:assert';
  * - The same handler code works in both production and test
  */
 export default handler(
-    ({lib: {group}, handler: {orderOrderCreate, orderOrderConfirm}}) => ({
-        testOrderCheckpoint: ({name = 'checkpoint'}, $meta) =>
-            group(name)([
-                async function createOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                    const result = await orderOrderCreate(
-                        {
-                            items: [
-                                {name: 'Widget', price: 50, quantity: 3},
-                                {name: 'Gadget', price: 25, quantity: 2},
-                            ],
-                            customerId: 'cust-1',
-                        },
-                        $meta,
-                    );
+    ({handler: {orderOrderCreate, orderOrderConfirm}}) => ({
+        testOrderCheckpoint: ({name = 'checkpoint'}, $meta) => [
+            async function createOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = await orderOrderCreate(
+                    {
+                        items: [
+                            {name: 'Widget', price: 50, quantity: 3},
+                            {name: 'Gadget', price: 25, quantity: 2},
+                        ],
+                        customerId: 'cust-1',
+                    },
+                    $meta,
+                );
 
-                    // Assert on the result
-                    assert.ok(result.orderId, 'Order ID returned');
-                    assert.equal(result.total, 200, 'Total is correct');
-                    assert.equal(result.discountedTotal, 180, 'Discount applied for orders > 100');
-                    assert.equal(result.status, 'PENDING', 'Initial status is PENDING');
+                // Assert on the result
+                assert.ok(result.orderId, 'Order ID returned');
+                assert.equal(result.total, 200, 'Total is correct');
+                assert.equal(result.discountedTotal, 180, 'Discount applied for orders > 100');
+                assert.equal(result.status, 'PENDING', 'Initial status is PENDING');
 
-                    return result;
-                },
+                return result;
+            },
 
-                async function confirmOrder(
-                    assert: typeof Assert,
-                    {createOrder, $meta}: {createOrder: Promise<{orderId: string}>; $meta: IMeta},
-                ) {
-                    const order = await createOrder;
-                    const result = await orderOrderConfirm(
-                        {orderId: order.orderId, paymentMethod: 'card'},
-                        $meta,
-                    );
+            async function confirmOrder(
+                assert: typeof Assert,
+                {createOrder, $meta}: {createOrder: Promise<{orderId: string}>; $meta: IMeta},
+            ) {
+                const order = await createOrder;
+                const result = await orderOrderConfirm(
+                    {orderId: order.orderId, paymentMethod: 'card'},
+                    $meta,
+                );
 
-                    assert.equal(result.status, 'CONFIRMED', 'Order confirmed');
-                    assert.ok(result.confirmedAt, 'Confirmation timestamp set');
+                assert.equal(result.status, 'CONFIRMED', 'Order confirmed');
+                assert.ok(result.confirmedAt, 'Confirmation timestamp set');
 
-                    return result;
-                },
-            ]),
+                return result;
+            },
+        ],
     }),
 );

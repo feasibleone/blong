@@ -22,55 +22,54 @@ import type Assert from 'node:assert';
  * configuration changes what's active.
  */
 export default handler(
-    ({lib: {group}, handler: {orderOrderCreate, orderFlowExecute}}) => ({
-        testOrderCanary: ({name = 'canary'}, $meta) =>
-            group(name)([
-                // Verify normal flow works
-                async function normalOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                    const result = await orderOrderCreate(
-                        {
-                            items: [{name: 'Normal item', price: 20, quantity: 3}],
-                            customerId: 'canary-1',
-                        },
-                        $meta,
-                    );
+    ({handler: {orderOrderCreate, orderFlowExecute}}) => ({
+        testOrderCanary: ({name = 'canary'}, $meta) => [
+            // Verify normal flow works
+            async function normalOrder(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = await orderOrderCreate(
+                    {
+                        items: [{name: 'Normal item', price: 20, quantity: 3}],
+                        customerId: 'canary-1',
+                    },
+                    $meta,
+                );
 
-                    assert.equal(result.total, 60, 'Normal order total');
-                    assert.equal(result.status, 'PENDING', 'Normal order status');
+                assert.equal(result.total, 60, 'Normal order total');
+                assert.equal(result.status, 'PENDING', 'Normal order status');
 
-                    return result;
-                },
+                return result;
+            },
 
-                // Test the full graduated flow
-                async function fullFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                    const result = await orderFlowExecute(
-                        {
-                            items: [
-                                {name: 'Premium', price: 200, quantity: 1},
-                                {name: 'Standard', price: 50, quantity: 2},
-                            ],
-                            customerId: 'canary-2',
-                            paymentMethod: 'wallet',
-                        },
-                        $meta,
-                    );
+            // Test the full graduated flow
+            async function fullFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                const result = await orderFlowExecute(
+                    {
+                        items: [
+                            {name: 'Premium', price: 200, quantity: 1},
+                            {name: 'Standard', price: 50, quantity: 2},
+                        ],
+                        customerId: 'canary-2',
+                        paymentMethod: 'wallet',
+                    },
+                    $meta,
+                );
 
-                    assert.equal(result.total, 300, 'Full flow total');
-                    assert.equal(result.discountedTotal, 270, 'Full flow discount');
-                    assert.equal(result.status, 'CONFIRMED', 'Full flow confirmed');
+                assert.equal(result.total, 300, 'Full flow total');
+                assert.equal(result.discountedTotal, 270, 'Full flow discount');
+                assert.equal(result.status, 'CONFIRMED', 'Full flow confirmed');
 
-                    // In a real canary scenario, we would check:
-                    // - Was the order total unusually high? (canary)
-                    // - Did processing take too long? (canary)
-                    // - Were all checkpoints hit in order? (invariant)
-                    assert.ok(result.total > 0, 'Canary: total is positive');
-                    assert.ok(
-                        result.discountedTotal <= result.total,
-                        'Canary: discount does not exceed total',
-                    );
+                // In a real canary scenario, we would check:
+                // - Was the order total unusually high? (canary)
+                // - Did processing take too long? (canary)
+                // - Were all checkpoints hit in order? (invariant)
+                assert.ok(result.total > 0, 'Canary: total is positive');
+                assert.ok(
+                    result.discountedTotal <= result.total,
+                    'Canary: discount does not exceed total',
+                );
 
-                    return result;
-                },
-            ]),
+                return result;
+            },
+        ],
     }),
 );

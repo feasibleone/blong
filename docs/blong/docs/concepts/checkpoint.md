@@ -58,24 +58,23 @@ Tests can assert on checkpoints captured during handler execution:
 import {handler, type IMeta} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
-export default handler(({lib: {group}, handler: {paymentTransferExecute}}) => ({
-    testPaymentCheckpoints: ({name = 'payment checkpoints'}, $meta) =>
-        group(name)([
-            async function executeAndVerify(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                const result = await paymentTransferExecute(
-                    {accountId: 'acc-1', amount: 100},
-                    $meta,
-                );
-                assert.ok(result.transferId, 'Transfer created');
+export default handler(({handler: {paymentTransferExecute}}) => ({
+    testPaymentCheckpoints: ({name = 'payment checkpoints'}, $meta) => [
+        async function executeAndVerify(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            const result = await paymentTransferExecute(
+                {accountId: 'acc-1', amount: 100},
+                $meta,
+            );
+            assert.ok(result.transferId, 'Transfer created');
 
-                // Verify checkpoints recorded during execution
-                const checkpoints = $meta.checkpoints;
-                assert.equal(checkpoints.length, 3);
-                assert.equal(checkpoints[0].name, 'account-loaded');
-                assert.equal(checkpoints[1].name, 'balance-verified');
-                assert.equal(checkpoints[2].name, 'transfer-created');
-            },
-        ]),
+            // Verify checkpoints recorded during execution
+            const checkpoints = $meta.checkpoints;
+            assert.equal(checkpoints.length, 3);
+            assert.equal(checkpoints[0].name, 'account-loaded');
+            assert.equal(checkpoints[1].name, 'balance-verified');
+            assert.equal(checkpoints[2].name, 'transfer-created');
+        },
+    ],
 }));
 ```
 
@@ -111,7 +110,7 @@ the line between handlers and tests:
   when the test graduates to a handler, the checkpoints become
   observability points.
 
-See the [handler-test POC suite](https://github.com/feasibleone/blong/tree/main/dev/handler-test-poc)
+See the [handler-test POC suite](https://github.com/feasibleone/blong/tree/main/core/handler-test-poc)
 for working examples.
 
 ## Related Concepts

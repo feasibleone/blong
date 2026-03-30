@@ -56,6 +56,13 @@ Unify the handler and test concepts along a **continuum** rather than a
    step execution model from `blong-chain`: named functions, thenable
    proxies for automatic dependency detection, and parallel execution.
 
+5. **Unified naming context** — The `name` parameter, already conventional
+   in test handlers, becomes a framework-managed execution context. The
+   framework automatically extracts `name` from the first parameter and
+   uses it for test report nesting, structured logging, and tracing.
+   Handlers no longer need to explicitly call `group(name)([...])` — the
+   framework provides the same grouping behind the scenes.
+
 ### Design
 
 #### The Checkpoint Function
@@ -119,26 +126,29 @@ A test handler that proves a workflow works correctly:
 
 ```typescript
 // test/test/testPaymentFlow.ts — starts as a test
-export default handler(({lib: {group}, handler: {accountCreate, paymentTransferExecute}}) => ({
-    testPaymentFlow: ({name = 'payment flow'}, $meta) =>
-        group(name)([
-            async function createAccount(assert, {$meta}) {
-                const account = await accountCreate({currency: 'USD', balance: 1000}, $meta);
-                assert.ok(account.id, 'Account created');
-                return account;
-            },
-            async function executeTransfer(assert, {createAccount, $meta}) {
-                const account = await createAccount;
-                const result = await paymentTransferExecute(
-                    {accountId: account.id, amount: 100},
-                    $meta,
-                );
-                assert.equal(result.state, 'COMPLETED', 'Transfer completed');
-                return result;
-            },
-        ]),
+export default handler(({handler: {accountCreate, paymentTransferExecute}}) => ({
+    testPaymentFlow: ({name = 'payment flow'}, $meta) => [
+        async function createAccount(assert, {$meta}) {
+            const account = await accountCreate({currency: 'USD', balance: 1000}, $meta);
+            assert.ok(account.id, 'Account created');
+            return account;
+        },
+        async function executeTransfer(assert, {createAccount, $meta}) {
+            const account = await createAccount;
+            const result = await paymentTransferExecute(
+                {accountId: account.id, amount: 100},
+                $meta,
+            );
+            assert.equal(result.state, 'COMPLETED', 'Transfer completed');
+            return result;
+        },
+    ],
 }));
 ```
+
+The framework automatically uses the `name` parameter for test report nesting
+and structured logging — no explicit `group()` call needed. The test handler
+simply returns an array of steps.
 
 Can graduate to a production handler:
 
@@ -165,31 +175,114 @@ export default handler(({handler: {accountCreate, paymentTransferExecute}, lib: 
 The same logic, the same assertions, the same checkpoints — but now
 accessible as a production API endpoint.
 
+#### Unified Naming and Context
+
+Traditionally, test handlers use the `group(name)([...steps...])` pattern to
+wrap step arrays with a name for test reporting. This explicit wrapping creates
+friction in the handler-test continuum because it adds ceremony that handlers
+don't need.
+
+The unified concept eliminates explicit `group()` calls. Instead, the framework
+automatically extracts the `name` property from the handler's first parameter
+and uses it as the **execution context**:
+
+```typescript
+// No group() needed — framework reads name from the first parameter
+export default handler(({handler: {transferCreate}}) => ({
+    testPaymentFlow: ({name = 'payment flow', amount = 100}, $meta) => [
+        async function createTransfer(assert, {$meta}) {
+            const result = await transferCreate({amount}, $meta);
+            assert.ok(result.transferId);
+            return result;
+        },
+    ],
+}));
+```
+
+The `name` serves multiple purposes depending on context:
+
+| Context | Name Purpose |
+|---------|-------------|
+| **Test reporting** | Creates nesting in test output — identifies which context a reused test handler was invoked in (e.g., "bill payment" vs "loan payment") |
+| **Structured logging** | Appears in log entries as the operation context |
+| **Tracing** | Sets the span name for distributed tracing |
+| **Handler logic** | Available as a regular parameter when the name needs to influence behavior |
+
+**Reuse with different contexts** — the key benefit of naming. When the same
+test handler is invoked with different parameters, the `name` distinguishes
+each invocation in test reports:
+
+```typescript
+export default handler(({handler: {testPaymentFlow}}) => ({
+    testPaymentScenarios: ({name = 'payment scenarios'}, $meta) => [
+        // Each invocation gets its own name in the test report
+        testPaymentFlow({name: 'bill payment',  amount: 150}, $meta),
+        testPaymentFlow({name: 'loan payment',  amount: 5000}, $meta),
+        testPaymentFlow({name: 'zero payment',  amount: 0}, $meta),
+    ],
+}));
+```
+
+If a test fails, the report shows exactly which context failed (e.g.,
+"payment scenarios → loan payment → createTransfer"), making it clear whether
+the issue is specific to a particular scenario or systemic.
+
+The same naming pattern applies to **production handlers**. Most of the time
+the name is purely informational (for logging and tracing), but handlers can
+also use it to influence behavior:
+
+```typescript
+export default handler(({handler: {rateGet, transferCreate}, lib: {checkpoint}}) =>
+    async function paymentExecute({name = 'payment', type, amount}, $meta, assert?) {
+        // Name used for observability
+        checkpoint?.('payment-started', {name, type, amount});
+
+        // Name can also influence logic when needed
+        const rate = type === 'international'
+            ? await rateGet({currency: 'FX'}, $meta)
+            : {rate: 1};
+
+        const result = await transferCreate({amount: amount * rate.rate}, $meta);
+        checkpoint?.('payment-completed', {name, transferId: result.id});
+        return result;
+    }
+);
+```
+
+This unification means:
+
+- **No `group()` import needed** — the framework handles naming automatically
+- **Tests and handlers are structurally identical** — both return results
+  from a function with `(params, $meta)` signature
+- **Context nesting is preserved** — test reports still show hierarchical
+  grouping based on handler invocation chains
+- **Reuse is natural** — the same handler can run with different `name`
+  values to test different scenarios or serve different API consumers
+
 #### Checkpoint-Driven Test Assertions
 
 When a handler with checkpoints is called from a test, the framework can
 collect checkpoint data and make it available for assertions:
 
 ```typescript
-export default handler(({lib: {group}, handler: {paymentFlowExecute}}) => ({
-    testPaymentFlowCheckpoints: ({name = 'payment flow checkpoints'}, $meta) =>
-        group(name)([
-            async function executeFlow(assert, {$meta}) {
-                const result = await paymentFlowExecute(
-                    {currency: 'USD', balance: 1000, amount: 100},
-                    $meta,
-                );
-                // Assert on the result
-                assert.ok(result.transferId);
+export default handler(({handler: {paymentFlowExecute}}) => ({
+    testPaymentFlowCheckpoints: ({name = 'payment flow checkpoints'}, $meta) => [
+        async function executeFlow(assert, {$meta}) {
+            const result = await paymentFlowExecute(
+                {currency: 'USD', balance: 1000, amount: 100},
+                $meta,
+            );
+            // Assert on the result
+            assert.ok(result.transferId);
 
-                // Assert on checkpoints captured during execution
-                const checkpoints = $meta.checkpoints;
-                assert.equal(checkpoints[0].name, 'account-ready');
-                assert.ok(checkpoints[0].data.accountId);
-                assert.equal(checkpoints[1].name, 'transfer-done');
-                assert.equal(checkpoints[1].data.transferId, result.transferId);
-            },
-        ]),
+            // Assert on checkpoints captured during execution
+            const checkpoints = $meta.checkpoints;
+            assert.equal(checkpoints[0].name, 'account-ready');
+            assert.ok(checkpoints[0].data.accountId);
+            assert.equal(checkpoints[1].name, 'transfer-done');
+            assert.equal(checkpoints[1].data.transferId, result.transferId);
+        },
+    ],
 }));
 ```
 
