@@ -285,7 +285,7 @@ export default handler(({lib: {group}, handler: {orderProcess}}) => ({
     testOrderCheckpoints: ({name = 'order checkpoints'}, $meta) =>
         group(name)([
             async function processOrder(assert, {$meta}) {
-                const result = await orderProcess({items: [{price: 10, qty: 2}]}, $meta);
+                const result = await orderProcess({items: [{price: 10, quantity: 2}]}, $meta);
                 assert.ok(result.orderId, 'Order created');
 
                 // Verify the handler's internal progress

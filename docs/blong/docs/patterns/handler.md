@@ -340,7 +340,7 @@ Handlers can accept an optional third `assert` parameter that is only
 provided in test/debug environments:
 
 ```ts
-export default handler(({lib: {checkpoint}}) =>
+export default handler(({lib: {checkpoint}, handler: {accountGet, accountUpdate}}) =>
     async function accountDebit({accountId, amount}, $meta, assert?) {
         const account = await accountGet({accountId}, $meta);
         assert?.ok(account.balance >= amount, 'Sufficient funds');

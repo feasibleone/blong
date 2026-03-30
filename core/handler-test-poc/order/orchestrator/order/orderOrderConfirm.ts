@@ -32,7 +32,11 @@ export default handler(
         ): Promise<OrderConfirmResult> {
             // Step 1: Validate payment method
             const validMethods = ['card', 'bank', 'wallet'];
-            assert?.ok(validMethods.includes(paymentMethod), 'Valid payment method');
+            const isValidPaymentMethod = validMethods.includes(paymentMethod);
+            assert?.ok(isValidPaymentMethod, 'Valid payment method');
+            if (!isValidPaymentMethod) {
+                throw new Error(`Invalid payment method: ${paymentMethod}`);
+            }
             checkpoint?.('payment-validated', {paymentMethod});
 
             // Step 2: Process payment (simulated)

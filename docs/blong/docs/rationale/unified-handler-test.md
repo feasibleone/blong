@@ -320,13 +320,13 @@ the same shared config objects used in ut-port (e.g., cache policies, retry
 profiles) to be reused in blong without any changes.
 
 If parameters are present and use `key=value` syntax, each `key=value` token
-**overrides** the corresponding property on the looked-up config object before
-the merge. This lets a single call site customise a shared config without
-defining a separate config entry:
+**overrides** the corresponding top-level property of the looked-up config
+object before the merge. This lets a single call site customise a shared config
+without defining a separate config entry:
 
 ```
-@cache                      →  merge config.import.cache into $meta
-@cache ttl=10               →  merge config.import.cache, then override cache.ttl = 10
+@cache                      →  merge config.import.cache into call options
+@cache ttl=10               →  merge config.import.cache, then override its ttl = 10
 @cache ttl=10 maxSize=500   →  merge config.import.cache, override multiple properties
 ```
 
@@ -334,7 +334,7 @@ defining a separate config entry:
 
 ```typescript
 // Configuration (e.g. in realm config):
-// config.import.cache = { cache: { ttl: 60000, maxSize: 1000 } }
+// config.import.cache = { ttl: 60000, maxSize: 1000 }
 
 export default handler(({
     handler: {
@@ -343,8 +343,8 @@ export default handler(({
     }
 }) => ({
     testCachedLookup: (params, $meta) => [
-        // Resolved as: merge({ cache: { ttl: 60000, maxSize: 1000 } }, { cache: { ttl: 10 } })
-        // Effective: $meta.cache = { ttl: 10, maxSize: 1000 }
+        // Resolved as: merge({ ttl: 60000, maxSize: 1000 }, { ttl: 10 })
+        // Effective call options: { ttl: 10, maxSize: 1000 }
         getCachedEntity({id: '123'}, $meta),
     ],
 }));
