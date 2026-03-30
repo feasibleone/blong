@@ -62,10 +62,13 @@ Unify the handler and test concepts along a **continuum** rather than a
    from conflicting with API parameters. Two mechanisms are planned:
 
    - **Proxy sub-property destructuring** — `{handler: {testPaymentFlow: {billPayment}}}` 
-     returns the same handler but with `$meta.name = 'bill payment'` pre-injected.
-   - **Annotation syntax** — `{'@bill payment testPaymentFlow': billPaymentFlow}` 
-     injects `name` via an `@` prefix annotation, similar to ut-port's annotation
-     approach for method import bindings.
+     returns the same handler but with `$meta.name = 'bill payment'` pre-injected
+     (camelCase converted to sentence form).
+   - **Annotation syntax** — `{'@name bill payment testPaymentFlow': billPaymentFlow}` 
+     where `@name` is the annotation type, `bill payment` are its parameters, and
+     `testPaymentFlow` is the handler. Annotations inject into `$meta` as
+     `$meta.name = 'bill payment'`. Multiple annotations can be chained:
+     `'@name bill payment @timeout 5000 testPaymentFlow'`.
 
 ### Design
 
@@ -230,15 +233,43 @@ need it can read `$meta.name`.
 
 ##### Approach 2: Annotation Syntax (Side Task — Proxy Update Required)
 
-Inspired by [ut-port's annotation-like import bindings](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md),
-a `@` prefix on the destructured key specifies the injected name explicitly:
+In [ut-port](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md),
+`import` keys can be prefixed with one or more `@word` annotations. Each
+annotation is a **single word** that refers to a config-object key — the
+proxy merges those config objects into the method's call options, effectively
+injecting properties into `$meta`. For example, `@shortCache namespace.entity.action`
+merges `config.import.shortCache` (a config object with e.g. `{cache:{ttl:60000}}`)
+into the options.
+
+Blong extends this idea with **parameterised annotations**. Rather than
+referencing config objects by name, a blong annotation carries its parameters
+inline in the key string itself. The format is:
+
+```
+@annotationName param1 param2... @annotationName2 param1... handlerName
+│               │                 │                          │
+│               └─ params for @annotationName               │
+│                               └─ second annotation        │
+└─ first annotation name                                     └─ handler to alias
+```
+
+**Parsing rules:**
+1. The **last whitespace-delimited token** is the handler name (must not start with `@`).
+2. Tokens starting with `@` open a new annotation; the annotation name is the
+   word immediately after `@`.
+3. Tokens between an annotation name and the next `@`-token (or the handler name)
+   are the **parameters** of that annotation, joined as a single string value.
+4. Each annotation injects `$meta[annotationName] = joinedParamString`.
+
+**Example — single annotation:**
 
 ```typescript
-// @annotation-name handlerName: localAlias
 export default handler(({
     handler: {
-        '@bill payment testPaymentFlow': billPayment,
-        '@loan payment testPaymentFlow': loanPayment,
+        // @name bill payment testPaymentFlow
+        // └──── annotation ─────┘ └─ handler ─┘
+        '@name bill payment testPaymentFlow': billPayment,
+        '@name loan payment testPaymentFlow': loanPayment,
     }
 }) => ({
     testPaymentScenarios: (params, $meta) => [
@@ -248,14 +279,51 @@ export default handler(({
 }));
 ```
 
-This approach allows arbitrary names without relying on camelCase conversion,
-and mirrors the established ut-port pattern for method configuration.
+**Example — multiple annotations on one handler:**
+
+```typescript
+export default handler(({
+    handler: {
+        // @name bill payment @timeout 5000 testPaymentFlow
+        '@name bill payment @timeout 5000 testPaymentFlow': billPayment,
+    }
+}) => ({
+    testPaymentScenarios: (params, $meta) => [
+        // $meta.name = 'bill payment', $meta.timeout = '5000'
+        billPayment({amount: 150}, $meta),
+    ],
+}));
+```
+
+**How this differs from ut-port:**  
+ut-port's `@shortCache` is a pointer to a config object — the entire object
+is merged into `$meta`. Blong's `@name bill payment` is self-contained —
+the annotation carries its own value inline. This means blong annotations
+require no external config, making them ergonomic for ad-hoc use in test
+handlers without any configuration boilerplate.
+
+**Extensibility** — the annotation name determines what gets injected:
+- `@name` → `$meta.name` (execution context for test reporting / tracing)
+- `@timeout 5000` → `$meta.timeout = '5000'` (string; individual handlers or
+  the framework may coerce to number as needed)
+- Future annotation names map directly to `$meta` properties
+
+This approach allows arbitrary multi-word names without relying on camelCase
+conversion (which governs Approach 1), and it supports stacking multiple
+independent context annotations on a single handler alias.
 
 > **Implementation note:** Both approaches require updating the handler proxy
-> in `layerProxy.ts` to intercept nested property access and return a
-> name-injecting wrapper. The proxy already intercepts `handler.get` — the
-> change adds a second level that intercepts `handler.handlerName.aliasName`.
-> This is a side task tracked as part of this plan.
+> in `layerProxy.ts`. The proxy already intercepts `handler.get` at one level
+> (returning a wrapped function). The changes needed are:
+> - **Approach 1:** Add a second `get` level on the returned wrapper so that
+>   `handler.testFn.billPayment` converts `billPayment` → `'bill payment'`
+>   (camelCase→sentence) and pre-injects `$meta.name`.
+> - **Approach 2:** In the top-level `get`, detect keys starting with `@`,
+>   parse the annotation tokens and handler name, look up the handler normally,
+>   then wrap it to inject the parsed annotations into `$meta` before the call.
+>   The parsing regex mirrors ut-port's `importKeyRegexp` but allows multi-word
+>   annotation parameters.
+> Both are tracked as a side task within this plan.
 
 **Context nesting** — when the proxy-based naming is in place, test report
 output automatically shows the handler invocation chain (e.g.,
