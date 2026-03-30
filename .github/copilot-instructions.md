@@ -6,9 +6,11 @@ Blong is a TypeScript-based API-focused RAD (Rapid Application Development) fram
 
 **Monorepo Structure:** This is a Rush.js monorepo with three main areas:
 
-- `core/` - Framework packages (blong, blong-gogo, blong-kopi, blong-log, blong-login, etc.)
-- `dev/` - Development/example projects (ml, tools)
+- `core/` - Framework packages, examples, and POC suites (blong, blong-gogo, blong-kopi, blong-log, blong-login, etc.)
+- `dev/` - Local development scratch area (gitignored — do not place committed code here)
 - `docs/` - Documentation site
+
+> **Important:** The `dev/` folder is gitignored and must not be used for any code that needs to be committed. All framework code, examples, POC suites, and reference implementations must be placed in the `core/` folder.
 
 **Suite-Based Modular Architecture:** The top-level organizational unit is a **suite**. Suites group related realms and provide entry points for different platforms (server, browser, desktop). Business logic is separated into independent **realms** (domains) within suites. Each realm follows a layered architecture.
 

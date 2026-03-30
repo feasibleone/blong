@@ -302,3 +302,70 @@ export default realm(() => ({
 ```
 
 **Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
+
+## Handler-Test Continuum
+
+Handlers and tests share deep structural similarities — both orchestrate
+sequences of calls, validate results, and produce outputs. The framework
+embraces this by providing mechanisms that work identically in both contexts.
+
+### Checkpoints
+
+The `checkpoint` library function records progress through multi-step
+operations. It is available via `lib.checkpoint` and should always be called
+with optional chaining to ensure zero overhead in production:
+
+```ts
+export default handler(({lib: {checkpoint}, handler: {validate, persist}}) =>
+    async function orderProcess(params, $meta) {
+        const validated = await validate(params, $meta);
+        checkpoint?.('validated', {orderId: validated.id});
+
+        const saved = await persist(validated, $meta);
+        checkpoint?.('persisted', {orderId: saved.id, version: saved.version});
+
+        return saved;
+    }
+);
+```
+
+In test mode, checkpoints are recorded in `$meta.checkpoints` and can be
+asserted on. In debug mode, they emit structured log entries. In production,
+the `?.` operator ensures they are no-ops. See the
+[checkpoint concept](../concepts/checkpoint) for details.
+
+### Optional Assertions
+
+Handlers can accept an optional third `assert` parameter that is only
+provided in test/debug environments:
+
+```ts
+export default handler(({lib: {checkpoint}, handler: {accountGet, accountUpdate}}) =>
+    async function accountDebit({accountId, amount}, $meta, assert?) {
+        const account = await accountGet({accountId}, $meta);
+        assert?.ok(account.balance >= amount, 'Sufficient funds');
+        checkpoint?.('balance-checked', {balance: account.balance});
+
+        const result = await accountUpdate(
+            {accountId, balance: account.balance - amount},
+            $meta,
+        );
+        assert?.equal(result.balance, account.balance - amount, 'Balance updated correctly');
+        checkpoint?.('debit-applied', {newBalance: result.balance});
+
+        return result;
+    }
+);
+```
+
+In production, the handler is called with `(params, $meta)` — `assert` is
+`undefined` and all `assert?.` calls are no-ops. In test mode, the framework
+passes a real `assert` object and failures are reported normally.
+
+### Graduating Tests to Handlers
+
+A test handler that proves a workflow works can be promoted to a production
+handler by moving it from the `test` layer to the `orchestrator` layer,
+changing assertions from mandatory to optional, and adding checkpoints.
+See the [unified handler-test rationale](../rationale/unified-handler-test)
+for the full design.

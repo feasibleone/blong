@@ -1,0 +1,27 @@
+{
+    "name": "@feasibleone/handler-test-poc",
+    "description": "POC suite exploring unified handler-test concepts: checkpoints, optional assertions, handler-test graduation",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "exports": {
+        "./server.ts": "./server.ts",
+        "./browser.ts": "./browser.ts"
+    },
+    "scripts": {
+        "build": "true"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-test": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "@rushstack/eslint-config": "^4.6.4",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@types/node": "^24",
+        "eslint": "~9.39.2",
+        "typescript": "^5.9.3"
+    }
+}

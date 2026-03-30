@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "moduleResolution": "bundler",
+        "esModuleInterop": true,
+        "module": "preserve",
+        "sourceMap": true,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "outDir": "dist",
+        "target": "ES2022",
+        "strict": true
+    },
+    "ts-node": {
+        "esm": true,
+        "swc": true,
+        "transpileOnly": true,
+        "files": true,
+        "experimentalResolver": true
+    },
+    "exclude": ["node_modules", "dist"]
+}

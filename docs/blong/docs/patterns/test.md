@@ -267,3 +267,65 @@ export default handler(({lib: {group}}) => ({
         ])
 }));
 ```
+
+## Handler-Test Convergence
+
+Tests and handlers share deep structural similarities. The framework provides
+mechanisms that work identically in both contexts, enabling a smooth transition
+from test code to production code.
+
+### Checkpoints in Tests
+
+The [checkpoint](../concepts/checkpoint) function records progress through
+multi-step operations. In test mode, checkpoints are recorded in
+`$meta.checkpoints`, enabling assertions on intermediate handler states:
+
+```ts
+export default handler(({lib: {group}, handler: {orderProcess}}) => ({
+    testOrderCheckpoints: ({name = 'order checkpoints'}, $meta) =>
+        group(name)([
+            async function processOrder(assert, {$meta}) {
+                const result = await orderProcess({items: [{price: 10, quantity: 2}]}, $meta);
+                assert.ok(result.orderId, 'Order created');
+
+                // Verify the handler's internal progress
+                const checkpoints = $meta.checkpoints;
+                assert.equal(checkpoints[0].name, 'validated');
+                assert.equal(checkpoints[1].name, 'persisted');
+            },
+        ]),
+}));
+```
+
+### Test Graduation
+
+Test handlers can be promoted to production handlers. The process:
+
+1. Move the handler from `test/test/` to `orchestrator/`
+2. Change mandatory `assert` to optional `assert?`
+3. Add checkpoints at key progress points
+4. Adjust the orchestrator dispatch configuration
+
+The same code that validated a workflow in testing becomes the production
+orchestration, with assertions silenced via optional chaining.
+
+```ts
+// Before (test handler): assert is mandatory
+async function createAndTransfer(assert, {$meta}) {
+    const account = await accountCreate({balance: 1000}, $meta);
+    assert.ok(account.id, 'Account created');
+    return account;
+}
+
+// After (production handler): assert is optional, checkpoint added
+async function accountProvisionAndTransfer({balance}, $meta, assert?) {
+    const account = await accountCreate({balance}, $meta);
+    assert?.ok(account.id, 'Account created');
+    checkpoint?.('account-provisioned', {accountId: account.id});
+    return account;
+}
+```
+
+See the [unified handler-test rationale](../rationale/unified-handler-test)
+for the full design and additional ideas like invariant guards, canary
+assertions, and progressive verification levels.
