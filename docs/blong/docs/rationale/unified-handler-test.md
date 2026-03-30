@@ -64,11 +64,12 @@ Unify the handler and test concepts along a **continuum** rather than a
    - **Proxy sub-property destructuring** — `{handler: {testPaymentFlow: {billPayment}}}` 
      returns the same handler but with `$meta.name = 'bill payment'` pre-injected
      (camelCase converted to sentence form).
-   - **Annotation syntax** — `{'@name bill payment testPaymentFlow': billPaymentFlow}` 
-     where `@name` is the annotation type, `bill payment` are its parameters, and
-     `testPaymentFlow` is the handler. Annotations inject into `$meta` as
-     `$meta.name = 'bill payment'`. Multiple annotations can be chained:
-     `'@name bill payment @timeout 5000 testPaymentFlow'`.
+   - **Annotation syntax** — `@annotationName params... handlerName` keys on the
+     proxy. Annotations operate in two modes: **`$meta` injection** (plain-word
+     params, e.g. `@name bill payment`) sets `$meta.annotationName` directly;
+     **config-object mode** (`key=value` params or no params, e.g. `@cache ttl=10`)
+     merges `config.import[annotationName]` into the call options with optional
+     property overrides. Multiple annotations can be chained on one key.
 
 ### Design
 
@@ -241,9 +242,8 @@ injecting properties into `$meta`. For example, `@shortCache namespace.entity.ac
 merges `config.import.shortCache` (a config object with e.g. `{cache:{ttl:60000}}`)
 into the options.
 
-Blong extends this idea with **parameterised annotations**. Rather than
-referencing config objects by name, a blong annotation carries its parameters
-inline in the key string itself. The format is:
+Blong extends this idea with **parameterised annotations**. The general format
+for a key with annotations is:
 
 ```
 @annotationName param1 param2... @annotationName2 param1... handlerName
@@ -258,16 +258,30 @@ inline in the key string itself. The format is:
 2. Tokens starting with `@` open a new annotation; the annotation name is the
    word immediately after `@`.
 3. Tokens between an annotation name and the next `@`-token (or the handler name)
-   are the **parameters** of that annotation, joined as a single string value.
-4. Each annotation injects `$meta[annotationName] = joinedParamString`.
+   are the **parameters** of that annotation.
 
-**Example — single annotation:**
+Each annotation operates in one of two modes depending on its parameter syntax:
+
+---
+
+**Mode A — `$meta` injection** (plain-word parameters, at least one parameter)
+
+When all parameters are plain words (no `=`), the annotation name is used as
+the `$meta` property key and the joined parameter words become its value:
+
+```
+@name bill payment    →   $meta.name = 'bill payment'
+@timeout 5000         →   $meta.timeout = '5000'
+```
+
+This is the primary mode for contextual metadata such as the execution name
+used in test reports and traces.
+
+**Example — single `$meta` annotation:**
 
 ```typescript
 export default handler(({
     handler: {
-        // @name bill payment testPaymentFlow
-        // └──── annotation ─────┘ └─ handler ─┘
         '@name bill payment testPaymentFlow': billPayment,
         '@name loan payment testPaymentFlow': loanPayment,
     }
@@ -279,12 +293,11 @@ export default handler(({
 }));
 ```
 
-**Example — multiple annotations on one handler:**
+**Example — multiple `$meta` annotations:**
 
 ```typescript
 export default handler(({
     handler: {
-        // @name bill payment @timeout 5000 testPaymentFlow
         '@name bill payment @timeout 5000 testPaymentFlow': billPayment,
     }
 }) => ({
@@ -295,18 +308,70 @@ export default handler(({
 }));
 ```
 
-**How this differs from ut-port:**  
-ut-port's `@shortCache` is a pointer to a config object — the entire object
-is merged into `$meta`. Blong's `@name bill payment` is self-contained —
-the annotation carries its own value inline. This means blong annotations
-require no external config, making them ergonomic for ad-hoc use in test
-handlers without any configuration boilerplate.
+---
 
-**Extensibility** — the annotation name determines what gets injected:
-- `@name` → `$meta.name` (execution context for test reporting / tracing)
-- `@timeout 5000` → `$meta.timeout = '5000'` (string; individual handlers or
-  the framework may coerce to number as needed)
-- Future annotation names map directly to `$meta` properties
+**Mode B — config-object reference** (`key=value` parameters or no parameters)
+
+When the annotation has no parameters, or when any parameter uses `key=value`
+syntax, the annotation name is treated as a **config key** — exactly as
+ut-port does. The proxy looks up `config.import[annotationName]` and merges
+that config object into the call options (which flow into `$meta`). This allows
+the same shared config objects used in ut-port (e.g., cache policies, retry
+profiles) to be reused in blong without any changes.
+
+If parameters are present and use `key=value` syntax, each `key=value` token
+**overrides** the corresponding property on the looked-up config object before
+the merge. This lets a single call site customise a shared config without
+defining a separate config entry:
+
+```
+@cache                      →  merge config.import.cache into $meta
+@cache ttl=10               →  merge config.import.cache, then override cache.ttl = 10
+@cache ttl=10 maxSize=500   →  merge config.import.cache, override multiple properties
+```
+
+**Example — config-object annotation with override:**
+
+```typescript
+// Configuration (e.g. in realm config):
+// config.import.cache = { cache: { ttl: 60000, maxSize: 1000 } }
+
+export default handler(({
+    handler: {
+        // Use the 'cache' config, but shorten TTL for this specific call
+        '@cache ttl=10 namespace.entity.get': getCachedEntity,
+    }
+}) => ({
+    testCachedLookup: (params, $meta) => [
+        // Resolved as: merge({ cache: { ttl: 60000, maxSize: 1000 } }, { cache: { ttl: 10 } })
+        // Effective: $meta.cache = { ttl: 10, maxSize: 1000 }
+        getCachedEntity({id: '123'}, $meta),
+    ],
+}));
+```
+
+---
+
+**Disambiguation** — the proxy determines which mode to apply at parse time:
+- If all parameters are plain words (none contains `=`), Mode A (`$meta` injection) is used.
+- If any parameter contains `=`, Mode B (config-object reference with overrides) is used.
+- If there are no parameters at all, Mode B is used (pure config-object lookup, like ut-port).
+
+This allows both modes to coexist in the same annotation list:
+
+```typescript
+// @name is Mode A ($meta.name injection)
+// @cache is Mode B (config-object lookup with ttl override)
+'@name bill payment @cache ttl=10 namespace.entity.get': getCachedEntity
+```
+
+**Extensibility** — mode is selected purely by parameter syntax; any annotation
+name can be used in either mode:
+- `@name bill payment` → Mode A: `$meta.name = 'bill payment'`
+- `@timeout 5000` → Mode A: `$meta.timeout = '5000'`
+- `@cache` → Mode B: merges `config.import.cache` into call options
+- `@cache ttl=10` → Mode B: merges `config.import.cache` then overrides `cache.ttl`
+- `@retry maxAttempts=3 delay=100` → Mode B: merges `config.import.retry` with two overrides
 
 This approach allows arbitrary multi-word names without relying on camelCase
 conversion (which governs Approach 1), and it supports stacking multiple
@@ -318,11 +383,15 @@ independent context annotations on a single handler alias.
 > - **Approach 1:** Add a second `get` level on the returned wrapper so that
 >   `handler.testFn.billPayment` converts `billPayment` → `'bill payment'`
 >   (camelCase→sentence) and pre-injects `$meta.name`.
-> - **Approach 2:** In the top-level `get`, detect keys starting with `@`,
->   parse the annotation tokens and handler name, look up the handler normally,
->   then wrap it to inject the parsed annotations into `$meta` before the call.
->   The parsing regex mirrors ut-port's `importKeyRegexp` but allows multi-word
->   annotation parameters.
+> - **Approach 2 / Mode A:** In the top-level `get`, detect keys starting with
+>   `@`, parse the annotation tokens and handler name, look up the handler
+>   normally, then wrap it to inject the parsed annotations into `$meta` before
+>   the call. Plain-word parameters are joined and set directly on `$meta`.
+> - **Approach 2 / Mode B:** For annotations whose parameters all use
+>   `key=value` syntax (or have no parameters), look up the config object at
+>   `config.import[annotationName]`, apply `key=value` overrides to a shallow
+>   copy, then deep-merge the result into the call options (which flow into
+>   `$meta`). This is backward-compatible with ut-port's config-object pattern.
 > Both are tracked as a side task within this plan.
 
 **Context nesting** — when the proxy-based naming is in place, test report
