@@ -113,9 +113,6 @@ dev
 !dev/ui-demo
 !dev/ui-demo/**
 dev/ui-demo/node_modules
-!dev/handler-test-poc
-!dev/handler-test-poc/**
-dev/handler-test-poc/node_modules
 dist
 .scannerwork
 **/.docusaurus
