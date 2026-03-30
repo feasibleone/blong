@@ -110,9 +110,6 @@ todo.md
 .tern*
 .blong_*
 dev
-!dev/ui-demo
-!dev/ui-demo/**
-dev/ui-demo/node_modules
 dist
 .scannerwork
 **/.docusaurus
