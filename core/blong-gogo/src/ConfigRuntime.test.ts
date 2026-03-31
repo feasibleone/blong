@@ -6,7 +6,8 @@
  *  2. createConfigProxy — stable proxy with live-updating backing store
  *  3. affectedNamespaces — maps diff keys to port namespaces
  *  4. Destructuring safety checks — verifies that:
- *       ✅ partial destructuring (sub-object level) reads leaves at call time
+ *       ✅ partial destructuring (sub-object level) uses path-based proxies that
+ *          stay live across updates — reads reflect the current value at call time
  *       ❌ full destructuring (scalar level) captures a stale value at load time
  *  5. Factory phase guard — enterConfigFactoryPhase / exitConfigFactoryPhase:
  *       throws on primitive reads in 'throw' mode (default)
@@ -199,8 +200,9 @@ test('affectedNamespaces — partial name prefix does not match', async t => {
 //
 //   ✅ Safe — partial destructuring to an intermediate object:
 //        handler(({ config: { theme } }) => ({ myFn: () => theme.name }))
-//      `theme` is a proxy sub-node (object), so `theme.name` is still
-//      evaluated at call time inside the handler body.
+//      `theme` is a path-based proxy; every property read on it re-traverses
+//      the root `current`, so `theme.name` always returns the current value
+//      even after a config reload.
 //
 //   ❌ Unsafe — full destructuring to a scalar at factory time:
 //        handler(({ config: { theme: { name } } }) => ({ myFn: () => name }))
@@ -212,7 +214,7 @@ test('affectedNamespaces — partial name prefix does not match', async t => {
 // function that mirrors the two patterns.
 // ---------------------------------------------------------------------------
 
-test('partial destructuring — theme sub-object is a proxy node that reflects current values', async t => {
+test('partial destructuring — theme sub-object is a live proxy node that reflects current values after update', async t => {
     const initialStore = {theme: {name: 'light', mode: 'day'}};
     const {proxy, update} = createConfigProxy(initialStore);
 
@@ -227,16 +229,11 @@ test('partial destructuring — theme sub-object is a proxy node that reflects c
     // --- Simulate a config reload by updating the root proxy backing store ---
     update({theme: {name: 'dark', mode: 'night'}} as typeof initialStore);
 
-    // --- Values read AFTER the reload through the ROOT proxy are always fresh ---
-    t.equal((proxy as any).theme.name, 'dark', 'root proxy.theme.name reflects update');
-
-    // NOTE: `theme` was captured before the update. Because the backing store
-    // was replaced with a new object (new theme reference), `theme` is now a
-    // stale sub-proxy pointing to the old theme. This is why root-level access
-    // is always preferred over partial destructuring for hot-reload correctness.
-    // Partial destructuring is safe only when config objects are mutated in-place
-    // rather than replaced.
-    t.comment('Partial destructuring caveat documented: see proxy-access rule in concept docs');
+    // --- Path-based proxies: the captured sub-proxy is a live view over the
+    //     root `current` cell, so it reflects the new values after update() ---
+    t.equal(theme.name, 'dark', 'sub-proxy theme.name reflects update via path traversal');
+    t.equal(theme.mode, 'night', 'sub-proxy theme.mode reflects update via path traversal');
+    t.equal((proxy as any).theme.name, 'dark', 'root proxy.theme.name also reflects update');
 });
 
 test('full destructuring — scalar captured at factory time does NOT reflect later updates', async t => {

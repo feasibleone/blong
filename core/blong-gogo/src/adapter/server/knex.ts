@@ -64,6 +64,7 @@ export default adapter<IConfig>(({utError}) => {
             await this.config.context?.queryBuilder?.destroy();
             const newKnexConfig =
                 (next as Record<string, unknown>)?.[this.config.id]?.['knex'] ?? this.config.knex;
+            this.config.knex = newKnexConfig as object;
             this.config.context = {queryBuilder: Knex(newKnexConfig as any) as any};
         },
         async exec(

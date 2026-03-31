@@ -81,6 +81,8 @@ export type ConfigSubscriber = (
 export interface IConfigRuntime {
     /** Current effective config, exposed as a live proxy */
     readonly snapshot: object;
+    /** Raw (non-proxy) snapshot of the current effective config */
+    readonly rawSnapshot: object;
     /** Load (or reload) config from all sources; returns the updated snapshot */
     load(params?: object): Promise<object>;
     /**
@@ -101,8 +103,9 @@ export interface IConfigRuntime {
 
 /**
  * Wraps `store` in a recursive Proxy so that property lookups always read from
- * the current value of `store`.  When `store` is mutated in-place (via
- * `updateStore`), all existing proxy references automatically see the new data.
+ * the current value of `store`.  When `store` is replaced via `update()`, all
+ * existing proxy references automatically see the new data because sub-proxies
+ * are path-based views over the same root backing cell.
  *
  * IMPORTANT: the proxy is transparent — `typeof proxy`, `Array.isArray`, JSON
  * serialisation, and property enumeration all behave as they would on the
@@ -113,71 +116,121 @@ export function createConfigProxy<T extends object>(
     store: T,
 ): {proxy: T; update: (next: T) => void} {
     // We keep a single mutable cell that holds the "current" backing object.
-    // All get/set/has/ownKeys traps delegate to this cell.
+    // All proxy traps delegate through this cell so that replacing `current`
+    // via update() is automatically reflected by every existing proxy reference.
     let current: T = store;
 
-    // Cache sub-proxies so that reference equality is stable between accesses.
-    const subProxies = new WeakMap<object, object>();
+    // Cache sub-proxies by logical path so that reference equality is stable
+    // between accesses, and proxies stay live across root updates because they
+    // always re-traverse `current` on every property access.
+    const subProxies = new Map<string, object>();
 
-    function proxyFor(value: unknown): unknown {
-        if (value === null || typeof value !== 'object') return value;
-        if (subProxies.has(value as object)) return subProxies.get(value as object);
-        // Recursively create a sub-proxy
-        const {proxy: sub} = createConfigProxy(value as object);
-        subProxies.set(value as object, sub);
-        return sub;
+    // Unique numeric IDs for Symbol keys, so that different Symbols with the
+    // same description do not collide in the path-key string.
+    const symbolIds = new Map<symbol, number>();
+    let symbolIdCounter = 0;
+
+    function makePathKey(path: (string | symbol)[]): string {
+        // Use a separator unlikely to appear in property names.
+        return path
+            .map(part => {
+                if (typeof part === 'string') return `s\x00${part}`;
+                // Assign a stable numeric ID to each unique Symbol reference.
+                let id = symbolIds.get(part);
+                if (id === undefined) symbolIds.set(part, (id = symbolIdCounter++));
+                return `y\x00${id}`;
+            })
+            .join('\x01');
     }
 
-    const proxy = new Proxy({} as T, {
-        get(_target, prop, _receiver) {
-            const val = (current as Record<string | symbol, unknown>)[prop as string];
-            if (val === undefined || val === null || typeof val !== 'object') {
-                if (
-                    _factoryPhase.active &&
-                    val !== undefined &&
-                    val !== null &&
-                    typeof prop === 'string'
-                ) {
-                    const error = new Error(
-                        `Config hot-reload anti-pattern: '${prop}' is a primitive read from the config ` +
-                            `proxy during handler factory initialisation. The value will be captured once ` +
-                            `and will NOT reflect future config reloads.\n` +
-                            `Fix: read the value inside the handler body instead:\n` +
-                            `  ✅  handler(({config}) => ({ fn: () => config.${prop} }))\n` +
-                            `  ❌  handler(({config: {${prop}}}) => ({ fn: () => ${prop} }))`,
-                    );
-                    if (_factoryPhase.mode === 'throw') throw error;
-                    _factoryPhase.errors.push(error);
+    function getNode(path: (string | symbol)[]): unknown {
+        let node: unknown = current;
+        for (const part of path) {
+            if (node == null) return undefined;
+            node = Reflect.get(node as object, part);
+        }
+        return node;
+    }
+
+    function createPathProxy(path: (string | symbol)[]): unknown {
+        const key = makePathKey(path);
+        if (path.length > 0) {
+            const cached = subProxies.get(key);
+            if (cached !== undefined) return cached;
+        }
+
+        const pathProxy = new Proxy({} as T, {
+            get(_target, prop, _receiver) {
+                const container = getNode(path);
+                const val =
+                    container == null ? undefined : Reflect.get(container as object, prop);
+                if (val === undefined || val === null || typeof val !== 'object') {
+                    if (
+                        _factoryPhase.active &&
+                        val !== undefined &&
+                        val !== null &&
+                        typeof prop === 'string'
+                    ) {
+                        const error = new Error(
+                            `Config hot-reload anti-pattern: '${prop}' is a primitive read from the config ` +
+                                `proxy during handler factory initialisation. The value will be captured once ` +
+                                `and will NOT reflect future config reloads.\n` +
+                                `Fix: read the value inside the handler body instead:\n` +
+                                `  ✅  handler(({config}) => ({ fn: () => config.${prop} }))\n` +
+                                `  ❌  handler(({config: {${prop}}}) => ({ fn: () => ${prop} }))`,
+                        );
+                        if (_factoryPhase.mode === 'throw') throw error;
+                        _factoryPhase.errors.push(error);
+                    }
+                    return val;
                 }
-                return val;
-            }
-            return proxyFor(val);
-        },
-        set(_target, prop, value) {
-            (current as Record<string | symbol, unknown>)[prop as string] = value;
-            return true;
-        },
-        has(_target, prop) {
-            return prop in (current as object);
-        },
-        ownKeys(_target) {
-            return Reflect.ownKeys(current as object);
-        },
-        getOwnPropertyDescriptor(_target, prop) {
-            return Object.getOwnPropertyDescriptor(current as object, prop);
-        },
-        getPrototypeOf(_target) {
-            return Object.getPrototypeOf(current as object);
-        },
-        deleteProperty(_target, prop) {
-            return delete (current as Record<string | symbol, unknown>)[prop as string];
-        },
-    });
+                return createPathProxy([...path, prop]);
+            },
+            set(_target, prop, value) {
+                const container = getNode(path);
+                if (container == null) return false;
+                return Reflect.set(container as object, prop, value);
+            },
+            has(_target, prop) {
+                const container = getNode(path);
+                if (container == null) return false;
+                return Reflect.has(container as object, prop);
+            },
+            ownKeys(_target) {
+                const container = getNode(path);
+                if (container == null) return [];
+                return Reflect.ownKeys(container as object);
+            },
+            getOwnPropertyDescriptor(_target, prop) {
+                const container = getNode(path);
+                if (container == null) return undefined;
+                return Object.getOwnPropertyDescriptor(container as object, prop);
+            },
+            getPrototypeOf(_target) {
+                const container = getNode(path);
+                if (container == null) return Object.getPrototypeOf({});
+                return Object.getPrototypeOf(container as object);
+            },
+            deleteProperty(_target, prop) {
+                const container = getNode(path);
+                if (container == null) return false;
+                return Reflect.deleteProperty(container as object, prop);
+            },
+        });
+
+        if (path.length > 0) {
+            subProxies.set(key, pathProxy);
+        }
+
+        return pathProxy;
+    }
+
+    // Root proxy corresponds to the empty path.
+    const proxy = createPathProxy([]) as T;
 
     function update(next: T): void {
-        // Replace the cell's backing data in-place; sub-proxy cache is invalidated
-        // because the objects inside `current` are being replaced.
-        subProxies['_clear']?.();
+        // Replace the cell's backing data; path-based sub-proxies automatically
+        // reflect the new data because they re-traverse `current` on every access.
         current = next;
     }
 
@@ -269,6 +322,10 @@ export default class ConfigRuntime implements IConfigRuntime {
 
     public get snapshot(): object {
         return this.#proxy;
+    }
+
+    public get rawSnapshot(): object {
+        return this.#rawSnapshot;
     }
 
     /**

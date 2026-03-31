@@ -326,7 +326,7 @@ export default class Watch extends Internal implements IWatch {
      *  3. For each affected port: call configChanged if present, else stop+start
      *  4. Trigger test re-run
      */
-    private async _reloadConfig(registry: IRegistry): Promise<void> {
+    private async _reloadConfig(registry: IRegistry, configOverride: object): Promise<void> {
         if (!this.#configRuntime) {
             // No ConfigRuntime attached — nothing to do (graceful degradation)
             this.log?.warn?.({
@@ -336,6 +336,7 @@ export default class Watch extends Internal implements IWatch {
             return;
         }
 
+        const prev = this.#configRuntime.rawSnapshot;
         const diff: ConfigDiff = await this.#configRuntime.reload();
 
         this.log?.info?.({
@@ -355,16 +356,16 @@ export default class Watch extends Internal implements IWatch {
             if (typeof portInstance['configChanged'] === 'function') {
                 // Adapter supports the configChanged hook — zero-downtime update
                 try {
-                    await portInstance['configChanged'](diff, next, {});
+                    await portInstance['configChanged'](diff, next, prev);
                 } catch (error) {
                     this.log?.error?.(error);
                 }
             } else {
-                // Fallback: stop and restart the port
+                // Fallback: stop and restart the port with the current configOverride
                 await portInstance.stop();
                 const fresh = await registry.createPort(portId);
                 if (fresh) {
-                    await fresh.start({});
+                    await fresh.start(configOverride);
                     await fresh.ready();
                 }
             }
@@ -417,7 +418,7 @@ export default class Watch extends Internal implements IWatch {
                     await registry.connected();
                     this.#emit.emit('test');
                 } else if (this.#config.configs.includes(filename)) {
-                    await this._reloadConfig(registry);
+                    await this._reloadConfig(registry, configOverride);
                 } else {
                     let config = this.#handlerFiles.get(filename);
                     if (config) {
