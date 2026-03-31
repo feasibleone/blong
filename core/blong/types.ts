@@ -172,6 +172,7 @@ export interface IRegistry {
     methods: Map<string, Handlers>;
     modules: Map<string | symbol, IRegistry[]>;
     createPort: (id: string) => Promise<ReturnType<IAdapterFactory>>;
+    getPort: (id: string) => ReturnType<IAdapterFactory> | undefined;
     replaceHandlers: (id: string, handlers: object) => Promise<void>;
     loadApi: (
         id: string,
@@ -303,6 +304,22 @@ export interface IAdapter<T, C> {
         what: unknown,
         context: {requests: unknown; waiting: unknown; buffer: unknown},
     ) => void;
+    /**
+     * Optional lifecycle hook called when configuration changes.
+     * When present, the framework calls this instead of a full stop+start cycle.
+     * The adapter should inspect `diff` and only recreate the resources that
+     * actually changed (e.g. destroy and rebuild the DB connection pool when
+     * the `knex` sub-key is in the diff, but leave everything else intact).
+     *
+     * @param diff   Flat map of dotted config paths to `{prev, next}` pairs
+     * @param next   The full new effective config snapshot (via proxy)
+     * @param prev   The full previous effective config snapshot
+     */
+    configChanged?: (
+        diff: Map<string, {prev: unknown; next: unknown}>,
+        next: object,
+        prev: object,
+    ) => Promise<void>;
 }
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {

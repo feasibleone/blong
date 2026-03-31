@@ -1,0 +1,25 @@
+{
+    "name": "@feasibleone/config-hot-reload",
+    "version": "1.0.0",
+    "description": "PoC suite demonstrating configuration hot reload end-to-end",
+    "type": "module",
+    "scripts": {
+        "build": "true",
+        "ci-unit": "tap index.test.ts --allow-incomplete-coverage"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-gogo": "workspace:^1.0.0",
+        "@feasibleone/blong-test": "workspace:^1.0.0",
+        "typebox": "^1.1.5"
+    },
+    "devDependencies": {
+        "@rushstack/eslint-config": "^4.6.4",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@swc/core": "^1.7.14",
+        "tap": "^21.6.2",
+        "typescript": "^5.9.3"
+    }
+}
