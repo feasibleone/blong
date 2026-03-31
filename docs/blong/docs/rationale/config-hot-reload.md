@@ -192,7 +192,83 @@ Every reload emits a log entry with:
 4. **Adapters** that hold stateful connections should implement `configChanged`
    to avoid unnecessary downtime.
 
+## Config access patterns — examples
+
+The proxy enforces a single rule: **stop destructuring at the object level**.
+Leaf (primitive) values must only be read inside the handler body, never in
+the factory argument.
+
+### Pattern 1 — Root proxy access ✅ (always safe)
+
+Hold a reference to the root `config` proxy and traverse down to the leaf
+**inside** the handler body on every call.
+
+```typescript
+// configGet.ts
+export default handler(({config}) => ({
+    configGet: () => ({
+        // `config.theme.name` is evaluated at call time — always current
+        greeting: config.greeting,
+    }),
+}));
+```
+
+### Pattern 2 — Partial destructuring ✅ (safe when stopping at object level)
+
+Destructure **down to an intermediate object** in the factory argument.
+Because the destructured value is still an object, any leaf read that happens
+**inside** the handler body still goes through proxy access.
+
+```typescript
+// configThemeGet.ts
+export default handler(({config: {theme}}) => ({
+    configThemeGet: () => ({
+        // `theme` is a proxy sub-node (not a scalar).
+        // `theme.name` is evaluated at call time — safe.
+        themeName: theme.name,
+    }),
+}));
+```
+
+> **Caveat:** Partial destructuring captures the sub-object proxy at factory
+> time. If the backing object reference is *replaced* on reload (rather than
+> mutated in place), the captured sub-proxy may become stale. Root proxy access
+> (Pattern 1) is always the safest choice and is preferred when in doubt.
+> Prefer partial destructuring only when it significantly improves readability
+> and the config sub-object is unlikely to be replaced as a whole.
+
+### Pattern 3 — Full destructuring ❌ (never safe for hot-reload values)
+
+Destructuring all the way to a scalar in the factory argument captures the
+primitive at module load time. The variable will **never** reflect subsequent
+config changes.
+
+```typescript
+// ❌ Anti-pattern — do not do this
+export default handler(({config: {theme: {name}}}) => ({
+    configThemeGet: () => ({
+        // `name` was captured as 'light' at startup and will never change,
+        // even if the config is hot-reloaded to 'dark'.
+        themeName: name,
+    }),
+}));
+```
+
+### Quick-reference table
+
+| Factory argument | What is captured | Leaf read where? | Hot-reload safe? |
+|---|---|---|---|
+| `({config})` | root proxy | inside handler body | ✅ always |
+| `({config: {theme}})` | sub-object proxy | inside handler body | ✅ when object is mutated in place |
+| `({config: {theme: {name}}})` | primitive scalar | at load time (captured) | ❌ never |
+
 ## PoC suite
 
-A dedicated PoC suite (`core/config-hot-reload-poc`) demonstrates and validates
-the concept end-to-end. See the implementation plan for details.
+A dedicated PoC suite (`core/config-hot-reload`) demonstrates and validates
+the concept end-to-end. The `configReload` realm contains:
+
+- `orchestrator/config/configGet.ts` — side-by-side comparison of root access
+  and partial destructuring patterns.
+- `test/test/testConfigGet.ts` — integration test validating root proxy access.
+- `test/test/testConfigThemeGet.ts` — integration test specific to partial
+  destructuring (`{config: {theme}}` → `theme.name`).

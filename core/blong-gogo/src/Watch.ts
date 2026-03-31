@@ -11,14 +11,14 @@ import {
 import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
 import chokidar, {type FSWatcher} from 'chokidar';
 import type {Dirent} from 'fs';
-import {readFileSync, statSync, writeFileSync} from 'fs';
+import {readFileSync, statSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {EventEmitter} from 'node:events';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
 import merge from 'ut-function.merge';
 
+import ConfigRuntime, {affectedNamespaces, type ConfigDiff} from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
-import './watch.log.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
@@ -30,6 +30,8 @@ export interface IWatch {
         isFile: boolean,
         ...path: string[]
     ) => Promise<(api: T) => T>;
+    /** Attach a ConfigRuntime so config-file changes trigger in-process reloads */
+    setConfigRuntime?(configRuntime: ConfigRuntime): void;
 }
 
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
@@ -68,6 +70,7 @@ export default class Watch extends Internal implements IWatch {
     #error: IErrorFactory;
     #apiSchema: IApiSchema;
     #emit: EventEmitter = new EventEmitter();
+    #configRuntime: ConfigRuntime | null = null;
 
     public constructor(
         config: IConfig,
@@ -83,6 +86,11 @@ export default class Watch extends Internal implements IWatch {
         this.#port = port;
         this.#error = error;
         this.#apiSchema = apiSchema;
+    }
+
+    /** Attach a ConfigRuntime so config-file changes trigger in-process reloads */
+    public setConfigRuntime(configRuntime: ConfigRuntime): void {
+        this.#configRuntime = configRuntime;
     }
 
     /**
@@ -311,6 +319,60 @@ export default class Watch extends Internal implements IWatch {
         }
     }
 
+    /**
+     * In-process config reload pipeline:
+     *  1. Ask ConfigRuntime to reload and compute the diff
+     *  2. Emit a structured log event with the diff scope
+     *  3. For each affected port: call configChanged if present, else stop+start
+     *  4. Trigger test re-run
+     */
+    private async _reloadConfig(registry: IRegistry): Promise<void> {
+        if (!this.#configRuntime) {
+            // No ConfigRuntime attached — nothing to do (graceful degradation)
+            this.log?.warn?.({
+                $meta: {mtid: 'event', method: 'watch.config.reload'},
+                message: 'ConfigRuntime not attached; config change ignored',
+            });
+            return;
+        }
+
+        const diff: ConfigDiff = await this.#configRuntime.reload();
+
+        this.log?.info?.({
+            $meta: {mtid: 'event', method: 'watch.config.reload'},
+            changed: Array.from(diff.keys()),
+        });
+
+        if (diff.size === 0) return;
+
+        const affected = affectedNamespaces(diff, registry.ports.keys());
+        const next = this.#configRuntime.snapshot;
+
+        for (const portId of affected) {
+            const portInstance = await registry.getPort(portId);
+            if (!portInstance) continue;
+
+            if (typeof portInstance['configChanged'] === 'function') {
+                // Adapter supports the configChanged hook — zero-downtime update
+                try {
+                    await portInstance['configChanged'](diff, next, {});
+                } catch (error) {
+                    this.log?.error?.(error);
+                }
+            } else {
+                // Fallback: stop and restart the port
+                await portInstance.stop();
+                const fresh = await registry.createPort(portId);
+                if (fresh) {
+                    await fresh.start({});
+                    await fresh.ready();
+                }
+            }
+        }
+
+        this.#emit.emit('test');
+    }
+
     private _watch(registry: IRegistry, configOverride: object): void {
         const fsWatcher = chokidar.watch(
             Array.from(this.#handlerFolders.keys())
@@ -355,7 +417,7 @@ export default class Watch extends Internal implements IWatch {
                     await registry.connected();
                     this.#emit.emit('test');
                 } else if (this.#config.configs.includes(filename)) {
-                    writeFileSync(join(dirname(import.meta.url.slice(7)), 'watch.log.ts'), '');
+                    await this._reloadConfig(registry);
                 } else {
                     let config = this.#handlerFiles.get(filename);
                     if (config) {

@@ -8,6 +8,7 @@ import {
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.ts';
+import {enterConfigFactoryPhase, exitConfigFactoryPhase} from './ConfigRuntime.ts';
 import {methodId} from './lib.ts';
 import type {IPort} from './Port.ts';
 
@@ -209,7 +210,12 @@ export default function layerProxy(
                                                     break;
                                                 case 'function:handler':
                                                 case 'function:validation':
-                                                    what = await what(layerApi);
+                                                    enterConfigFactoryPhase();
+                                                    try {
+                                                        what = await what(layerApi);
+                                                    } finally {
+                                                        exitConfigFactoryPhase();
+                                                    }
                                                     if (typeof what === 'function')
                                                         local[methodId(what.name)] = what;
                                                     else {

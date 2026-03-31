@@ -14,19 +14,20 @@ import {
     type Kinds,
     type SolutionFactory,
 } from '@feasibleone/blong/types';
-import { existsSync } from 'fs';
-import { readdir } from 'fs/promises';
-import { createRequire } from 'node:module';
-import { basename, dirname, extname, join } from 'path';
+import {existsSync} from 'fs';
+import {readdir} from 'fs/promises';
+import {createRequire} from 'node:module';
+import {basename, dirname, extname, join} from 'path';
 
-import { Type, type TSchema } from 'typebox';
+import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
-import { methodParts } from './lib.ts';
+import {methodParts} from './lib.ts';
 
-import type { Dirent } from 'fs';
+import type {Dirent} from 'fs';
+import ConfigRuntime from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
-import RealmImpl, { type IRealm } from './Realm.ts';
-import type { IWatch } from './Watch.ts';
+import RealmImpl, {type IRealm} from './Realm.ts';
+import type {IWatch} from './Watch.ts';
 
 const LAYER_FILE = 'layer' as const;
 
@@ -83,17 +84,20 @@ async function discoverLayerFolders(
 async function discoverRealmTestMethods(base: string): Promise<string[]> {
     const testDir = join(base, 'test', 'test');
     if (!existsSync(testDir)) return [];
-    const nullFn: unknown = new Proxy(function () {
-        return nullFn;
-    } as unknown as object, {
-        get(_, key) {
-            if (typeof key === 'symbol') return undefined;
+    const nullFn: unknown = new Proxy(
+        function () {
             return nullFn;
+        } as unknown as object,
+        {
+            get(_, key) {
+                if (typeof key === 'symbol') return undefined;
+                return nullFn;
+            },
+            apply() {
+                return nullFn;
+            },
         },
-        apply() {
-            return nullFn;
-        },
-    });
+    );
     const files = (await readdir(testDir, {withFileTypes: true})).filter(
         f => f.isFile() && /\.(ts|mts|js|mjs)$/i.test(f.name) && !f.name.startsWith('~'),
     );
@@ -104,7 +108,14 @@ async function discoverRealmTestMethods(base: string): Promise<string[]> {
             const mod = await import(filePath);
             const fn = mod?.default;
             if (typeof fn === 'function') {
-                const result = fn({lib: nullFn, handler: nullFn, errors: nullFn, config: {}, remote: nullFn, local: nullFn});
+                const result = fn({
+                    lib: nullFn,
+                    handler: nullFn,
+                    errors: nullFn,
+                    config: {},
+                    remote: nullFn,
+                    local: nullFn,
+                });
                 if (result && typeof result === 'object' && !Array.isArray(result)) {
                     for (const key of Object.keys(result)) methods.push(methodParts(key));
                 } else {
@@ -167,6 +178,7 @@ export default async function loadRealm<T extends TSchema>(
         port?: () => void;
         log?: ILog;
         registry?: IRegistry;
+        configRuntime?: ConfigRuntime;
     },
     rootKind?: 'server' | 'browser',
 ): Promise<IRegistry> {
@@ -223,7 +235,11 @@ export default async function loadRealm<T extends TSchema>(
                         },
                         integration: hasBrowser
                             ? {default: {}} // browser side handles watch.test and canSkipSocket
-                            : {default: {}, remote: {canSkipSocket: true}, watch: {test: testMethods}},
+                            : {
+                                  default: {},
+                                  remote: {canSkipSocket: true},
+                                  watch: {test: testMethods},
+                              },
                     },
                 })) as () => any);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -249,8 +265,15 @@ export default async function loadRealm<T extends TSchema>(
     };
     const loadedConfigs = [];
     let items = [];
+    // ConfigRuntime is created only at the root call (when no api is provided)
+    // and only when parentConfig is a string (suite name) so blong-config can
+    // load external files that may change at runtime.
+    let configRuntime: ConfigRuntime | undefined;
     if (!api) {
         api = {};
+        if (typeof parentConfig === 'string') {
+            configRuntime = new ConfigRuntime({config: {suite: parentConfig}});
+        }
         loadedConfigs.push({
             watch: {},
             log: {},
@@ -337,7 +360,13 @@ export default async function loadRealm<T extends TSchema>(
         ];
     }
     loadedConfigs.push(...activeConfigs(mod, configNames));
-    loadedConfigs.push(await loadConfig(parentConfig));
+    // Use ConfigRuntime for the external file/env config at the root level so
+    // that the runtime can later reload() in-place and diff the new snapshot.
+    if (configRuntime) {
+        loadedConfigs.push(await configRuntime.load());
+    } else {
+        loadedConfigs.push(await loadConfig(parentConfig));
+    }
     merge(mergedConfig, ...loadedConfigs.filter(Boolean));
     mergedConfig.configNames = configNames;
     let logger: ILogger;
@@ -450,6 +479,12 @@ export default async function loadRealm<T extends TSchema>(
                 }
             }
         }
+    }
+    // Wire ConfigRuntime into Watch so config-file changes trigger in-process
+    // reload via ConfigRuntime.reload() instead of restarting the process.
+    if (configRuntime) {
+        api.configRuntime = configRuntime;
+        api.watch?.setConfigRuntime?.(configRuntime);
     }
     realm ||= new RealmImpl(mergedConfig, api);
     return api.registry;

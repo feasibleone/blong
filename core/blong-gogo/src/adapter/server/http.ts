@@ -37,6 +37,20 @@ export default adapter<IConfig>(({utError}) => {
             super.connect();
             return super.start();
         },
+        /**
+         * configChanged hook: only recreate TLS options when the `tls` or `url`
+         * sub-key changed.  Unrelated config changes are ignored.
+         */
+        async configChanged(diff, _next, _prev) {
+            const tlsOrUrlChanged = Array.from(diff.keys()).some(
+                key =>
+                    key === this.config.id + '.tls' ||
+                    key.startsWith(this.config.id + '.tls.') ||
+                    key === this.config.id + '.url',
+            );
+            if (!tlsOrUrlChanged) return;
+            https = tls(this.config, true);
+        },
         async exec(
             {
                 path,

@@ -100,6 +100,10 @@ export default class Registry extends Internal implements IRegistry {
         this.#apiSchema = apiSchema;
     }
 
+    public getPort(id: string): ReturnType<IAdapterFactory> | undefined {
+        return this.#ports.get(id);
+    }
+
     public async createPort(id: string): Promise<ReturnType<IAdapterFactory>> {
         const port = this.ports.get(id);
         await this.#ports.get(id)?.stop();

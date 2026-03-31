@@ -21,7 +21,7 @@ values at startup, silently bypassing hot reload.
    (e.g., reconnect DB) without restarting the whole process.
 4. Adapters without a `configChanged` hook fall back gracefully to a full
    port stop/start.
-5. A PoC suite (`core/config-hot-reload-poc`) demonstrates and validates the
+5. A PoC suite (`core/config-hot-reload`) demonstrates and validates the
    concept end-to-end with automated integration tests.
 6. Existing test suites continue to pass — no breaking changes to the public API.
 
@@ -43,9 +43,11 @@ values at startup, silently bypassing hot reload.
 | Knex adapter state | `core/blong-gogo/src/adapter/server/knex.ts` | DB pool in `this.config.context` |
 
 The watch handler for config files today does:
+
 ```typescript
 writeFileSync(join(dirname(import.meta.url.slice(7)), 'watch.log.ts'), '');
 ```
+
 This is a workaround that triggers a full process restart. The new design
 replaces this with an in-process reload pipeline.
 
@@ -141,7 +143,7 @@ PoC suite with automated integration tests.
 
 | # | Task | Complexity | Dependency |
 |---|---|---|---|
-| 5.1 | Create `core/config-hot-reload-poc` suite skeleton (package.json, tsconfig.json, server.ts, index.ts) | Small | 4.5 |
+| 5.1 | Create `core/config-hot-reload` suite skeleton (package.json, tsconfig.json, server.ts, index.ts) | Small | 4.5 |
 | 5.2 | Add a `config` realm with an orchestrator handler that returns a live config value | Small | 5.1 |
 | 5.3 | Add a mock adapter with state (simulating DB connection) that implements `configChanged` | Medium | 5.2 |
 | 5.4 | Write integration test: mutate config file at runtime, assert handler returns new value | Medium | 5.3 |
@@ -150,7 +152,7 @@ PoC suite with automated integration tests.
 | 5.7 | Register PoC suite in `rush.json` with `core` tag | Small | 5.6 |
 
 **Acceptance**: All three integration tests pass; PoC can be run with `blong`
-from the `core/config-hot-reload-poc` folder.
+from the `core/config-hot-reload` folder.
 
 ### Phase 6: Documentation and Rollout
 

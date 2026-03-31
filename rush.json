@@ -457,6 +457,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/config-hot-reload",
+            "projectFolder": "core/config-hot-reload",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-graph",
             "projectFolder": "core/blong-graph",
             "reviewCategory": "core",

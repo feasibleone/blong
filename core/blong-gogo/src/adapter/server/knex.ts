@@ -49,6 +49,23 @@ export default adapter<IConfig>(({utError}) => {
             }
             return result;
         },
+        /**
+         * configChanged hook: only rebuild the Knex connection pool when the
+         * `knex` sub-key changed.  Changing an unrelated config key has no
+         * effect — the existing pool stays open.
+         */
+        async configChanged(diff, next, _prev) {
+            const knexChanged = Array.from(diff.keys()).some(
+                key =>
+                    key === this.config.id + '.knex' || key.startsWith(this.config.id + '.knex.'),
+            );
+            if (!knexChanged) return;
+            // Destroy old pool, recreate with new config
+            await this.config.context?.queryBuilder?.destroy();
+            const newKnexConfig =
+                (next as Record<string, unknown>)?.[this.config.id]?.['knex'] ?? this.config.knex;
+            this.config.context = {queryBuilder: Knex(newKnexConfig as any) as any};
+        },
         async exec(
             params: {
                 key: string;
