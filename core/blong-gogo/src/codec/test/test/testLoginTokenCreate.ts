@@ -1,9 +1,9 @@
-import { handler, type IMeta } from '@feasibleone/blong/types';
+import {handler, type IMeta} from '@feasibleone/blong/types';
 
 export default handler(({handler: {loginTokenCreate}}) => ({
     testLoginTokenCreate: (_params: {}, $meta: IMeta) => [
         function login(assert: unknown, {$meta}: {$meta: IMeta}) {
-            $meta.log?.info?.('create login token');
+            this.log?.debug?.('create login token');
             return loginTokenCreate(
                 {
                     username: 'test',
