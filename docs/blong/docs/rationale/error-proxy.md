@@ -247,8 +247,12 @@ node --test src/error.proxy.test.ts
 
 1. **Type-safe proxy via TypeScript template literals** — derive the camelCase
    property type from the dot-notation key at compile time using
-   `type ErrorKey<T extends string> =`error${Capitalize<CamelCase<T>>}`` so
-   that `errors.errorReleaseJobTrigger` is type-checked against the defined
+
+   ```typescript
+   type ErrorKey<T extends string> =`error${Capitalize<CamelCase<T>>}`
+   ```
+
+   so that `errors.errorReleaseJobTrigger` is type-checked against the defined
    error registry without runtime cost.
 
 2. **Namespace subsetting** — allow `errors.subset('release')` to return a

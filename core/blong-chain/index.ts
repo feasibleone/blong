@@ -370,7 +370,7 @@ function captureSourceLocation(fn: Function): ISourceLocation {
  * Main test executor class
  */
 export class TestExecutor extends EventEmitter {
-    private config: Required<ITestExecutorConfig>;
+    private config: ITestExecutorConfig;
     private queue: PQueue;
     private dependencyTracker = new DependencyTracker();
     private log?: ITestLogger;
