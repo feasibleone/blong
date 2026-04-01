@@ -17,7 +17,7 @@
     "scripts": {
         "build": "true",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "ci-unit": "tap src/ConfigRuntime.test.ts --allow-incomplete-coverage"
+        "ci-unit": "tap src/ConfigRuntime.test.ts src/lib.test.ts --allow-incomplete-coverage"
     },
     "dependencies": {
         "@apidevtools/swagger-parser": "^12.1.0",

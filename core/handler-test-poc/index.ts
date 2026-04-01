@@ -14,6 +14,11 @@ export default async (load: Load): Promise<void> => {
     ]);
     for (const platform of platforms) await platform.start();
     await platforms[1].test();
-    if (!process.env.CI) await new Promise(resolve => setTimeout(resolve, 2000));
+    const waitAfterTestEnv = process.env.WAIT_AFTER_TEST_MS;
+    const waitAfterTestMs =
+        waitAfterTestEnv != null && waitAfterTestEnv !== '' ? Number(waitAfterTestEnv) : 0;
+    if (Number.isFinite(waitAfterTestMs) && waitAfterTestMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitAfterTestMs));
+    }
     if (process.env.CI) for (const platform of platforms) await platform.stop();
 };

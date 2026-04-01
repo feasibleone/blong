@@ -48,6 +48,11 @@ export function parseAnnotatedKey(key: string): {
 } {
     const tokens = key.trim().split(/\s+/);
     const handlerName = tokens.pop()!;
+    if (!handlerName || handlerName.startsWith('@')) {
+        throw new Error(
+            `Malformed annotated key "${key}": the last token must be a non-empty handler name and must not start with "@".`,
+        );
+    }
     const annotations: IAnnotation[] = [];
     let current: IAnnotation | null = null;
     for (const token of tokens) {
