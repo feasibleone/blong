@@ -104,6 +104,7 @@ export default class Registry extends Internal implements IRegistry {
         this.#watch = watch;
         this.#apiSchema = apiSchema;
         this.#attachCheckpoint = createAttachCheckpoint(this.#config.checkpointMode ?? 'production');
+        this.#rpcServer?.setAttachCheckpoint?.(this.#attachCheckpoint);
     }
 
     public getPort(id: string): ReturnType<IAdapterFactory> | undefined {
@@ -284,6 +285,9 @@ export default class Registry extends Internal implements IRegistry {
         port: object,
     ): Promise<{local: object; literals: object[]}> {
         const attachCheckpoint = this.#attachCheckpoint;
+        function isSafeKey(key: string): boolean {
+            return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
+        }
         const lib = {
             type: Type,
             error: this.#error.register.bind(this.#error),
@@ -300,6 +304,23 @@ export default class Registry extends Internal implements IRegistry {
                     enumerable: false,
                     writable: true,
                 }),
+            setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
+                if (!path) return;
+                const parts = path.split('.');
+                let current = obj;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const part = parts[i];
+                    if (!isSafeKey(part)) return;
+                    if (current[part] == null || typeof current[part] !== 'object') {
+                        current[part] = {};
+                    }
+                    current = current[part] as Record<string, unknown>;
+                }
+                const lastPart = parts[parts.length - 1];
+                if (isSafeKey(lastPart)) {
+                    current[lastPart] = value;
+                }
+            },
         };
         const local = {};
         const literals = [];

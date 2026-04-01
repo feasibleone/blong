@@ -476,11 +476,11 @@ export default class Gateway extends Internal implements IGateway {
                     },
                 },
             });
-            this.#server.setErrorHandler((error, request: {body: {id?: unknown}; log: ILog}, reply) => {
+            this.#server.setErrorHandler((error, request: FastifyRequest, reply) => {
                 request.log.error({err: error}, 'gateway unhandled error');
                 return reply.status(500).send({
                     jsonrpc: '2.0',
-                    id: request.body?.id,
+                    id: (request.body as {id?: unknown})?.id,
                     error: this._formatError(error),
                 });
             });

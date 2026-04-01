@@ -128,6 +128,7 @@ export interface IRpcServer {
     unregister: (methods: string[], namespace: string, reply: boolean) => void;
     start: () => Promise<IRpcServer>;
     stop: () => Promise<IRpcServer>;
+    setAttachCheckpoint?: (fn: ((meta: IMeta) => void) | undefined) => void;
 }
 
 export interface ILocal {
@@ -553,6 +554,7 @@ export interface ILib {
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;
+    setProperty: (obj: Record<string, unknown>, path: string, value: unknown) => void;
     merge<T, S1>(target: T, source: S1): T & S1;
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
     merge<T, S1, S2, S3>(target: T, source1: S1, source2: S2, source3: S3): T & S1 & S2 & S3;

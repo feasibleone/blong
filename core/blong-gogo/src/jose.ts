@@ -10,6 +10,7 @@ import {
     compactVerify,
     exportJWK,
     flattenedDecrypt,
+    generateKeyPair,
     generalDecrypt,
     importJWK,
     type CompactDecryptResult,
@@ -23,6 +24,45 @@ import {
     type JWK,
     type KeyLike,
 } from 'jose';
+
+/**
+ * Spec for a JWK key that can be:
+ * - A static JWK object
+ * - `{generate: {alg, crv?, use?, ...}}` — dynamically generate a key pair on startup.
+ *   Additional properties (e.g. `use`, `kid`) are merged into the final JWK, taking precedence
+ *   over the generated key material where keys overlap (except `alg`, which is always taken from the spec).
+ * - `{env: 'ENV_VAR_NAME'}` — load a JSON-serialized JWK from an environment variable
+ */
+export type KeySpec =
+    | JWK
+    | KeyLike
+    | Uint8Array
+    | {generate: {alg: string; crv?: string; modulusLength?: number; use?: string; [k: string]: unknown}}
+    | {env: string};
+
+async function resolveKeySpec(spec: KeySpec | undefined): Promise<JWK | KeyLike | Uint8Array | undefined> {
+    if (!spec) return undefined;
+    if ('generate' in spec) {
+        const {alg, crv, modulusLength, ...rest} = spec.generate;
+        const {privateKey} = await generateKeyPair(alg, {
+            ...(crv && {crv}),
+            ...(typeof modulusLength === 'number' && {modulusLength}),
+            extractable: true,
+        });
+        const jwk = await exportJWK(privateKey);
+        return {...jwk, alg, ...rest};
+    }
+    if ('env' in spec) {
+        const value = process.env[spec.env];
+        if (!value) return undefined;
+        try {
+            return JSON.parse(value) as JWK;
+        } catch {
+            throw new Error(`Gateway key env var "${spec.env}" is set but does not contain valid JSON`);
+        }
+    }
+    return spec as JWK | KeyLike | Uint8Array;
+}
 
 const isBrowser: boolean = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
@@ -170,7 +210,7 @@ async function decryptVerify(
     return verify((await decrypt(message, mlek)) as Uint8Array, mlskPub);
 }
 
-export default async function jose({sign, encrypt}: {sign: JWK; encrypt: JWK}): Promise<{
+export default async function jose({sign, encrypt}: {sign: KeySpec; encrypt: KeySpec}): Promise<{
     keys: {sign: JWK; encrypt: JWK};
     signEncrypt: (
         msg: Parameters<typeof signEncrypt>[0],
@@ -186,12 +226,14 @@ export default async function jose({sign, encrypt}: {sign: JWK; encrypt: JWK}): 
     ) => ReturnType<typeof decrypt> | typeof msg;
     verify: (plaintext: string | Uint8Array, key: KeyLike | Uint8Array) => Promise<object>;
 }> {
-    const mlsk = sign && (await importKey(sign));
-    const mlek = encrypt && (await importKey(encrypt));
+    const resolvedSign = await resolveKeySpec(sign);
+    const resolvedEncrypt = await resolveKeySpec(encrypt);
+    const mlsk = resolvedSign && (await importKey(resolvedSign));
+    const mlek = resolvedEncrypt && (await importKey(resolvedEncrypt));
     return {
         keys: {
-            sign: sign && (await exportKey(sign)),
-            encrypt: encrypt && (await exportKey(encrypt)),
+            sign: resolvedSign && (await exportKey(resolvedSign)),
+            encrypt: resolvedEncrypt && (await exportKey(resolvedEncrypt)),
         },
         signEncrypt: async (
             msg: Parameters<typeof signEncrypt>[0],

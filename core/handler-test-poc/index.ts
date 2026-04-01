@@ -14,6 +14,6 @@ export default async (load: Load): Promise<void> => {
     ]);
     for (const platform of platforms) await platform.start();
     await platforms[1].test();
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!process.env.CI) await new Promise(resolve => setTimeout(resolve, 2000));
     if (process.env.CI) for (const platform of platforms) await platform.stop();
 };

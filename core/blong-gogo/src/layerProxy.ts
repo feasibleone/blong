@@ -3,6 +3,7 @@ import {
     type IAdapterFactory,
     type IApiSchema,
     type IErrorFactory,
+    type ILib,
     type IMeta,
     type IModuleConfig,
 } from '@feasibleone/blong/types';
@@ -123,7 +124,7 @@ export default function layerProxy(
                                         ...rest
                                     }: {
                                         remote: (methodName: string) => () => unknown;
-                                        lib: object;
+                                        lib: ILib;
                                         local: object;
                                         literals: unknown[];
                                         port: ReturnType<IAdapterFactory>;
@@ -250,7 +251,7 @@ export default function layerProxy(
                                                         ) => unknown,
                                                         metaOverrides: Record<
                                                             string,
-                                                            string
+                                                            unknown
                                                         >,
                                                         aliasName?: string,
                                                     ): (
@@ -270,7 +271,7 @@ export default function layerProxy(
                                                                     typeof $meta ===
                                                                         'object'
                                                                 ) {
-                                                                    Object.assign(
+                                                                    merge(
                                                                         $meta,
                                                                         metaOverrides,
                                                                     );
@@ -310,7 +311,7 @@ export default function layerProxy(
                                                             );
                                                         const metaOverrides: Record<
                                                             string,
-                                                            string
+                                                            unknown
                                                         > = {};
                                                         for (const ann of parsed.annotations) {
                                                             const hasKeyValue =
@@ -329,15 +330,12 @@ export default function layerProxy(
                                                                         ' ',
                                                                     );
                                                             } else {
-                                                                // Mode B: config-object reference
+                                                                // Mode B: config-object reference with deep merge
                                                                 const handlerConfig =
                                                                     mergedConfig?.handler as
                                                                         | Record<
                                                                               string,
-                                                                              Record<
-                                                                                  string,
-                                                                                  string
-                                                                              >
+                                                                              unknown
                                                                           >
                                                                         | undefined;
                                                                 const configObj =
@@ -349,24 +347,25 @@ export default function layerProxy(
                                                                     typeof configObj ===
                                                                         'object'
                                                                 ) {
-                                                                    Object.assign(
+                                                                    merge(
                                                                         metaOverrides,
-                                                                        configObj,
+                                                                        configObj as Record<string, unknown>,
                                                                     );
                                                                 }
                                                                 for (const p of ann.params) {
                                                                     const eqIdx =
                                                                         p.indexOf('=');
                                                                     if (eqIdx > 0) {
-                                                                        metaOverrides[
+                                                                        lib.setProperty(
+                                                                            metaOverrides,
                                                                             p.slice(
                                                                                 0,
                                                                                 eqIdx,
-                                                                            )
-                                                                        ] =
+                                                                            ),
                                                                             p.slice(
                                                                                 eqIdx + 1,
-                                                                            );
+                                                                            ),
+                                                                        );
                                                                     }
                                                                 }
                                                             }
