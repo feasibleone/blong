@@ -90,7 +90,7 @@ well-designed system that Blong should learn from, not just replace:
    - **Scalar**: primitive-value widgets — input, password, text,
      mask, number, currency, integer, boolean, date, time, datetime,
      dropdown, dropdownTree, select.
-   - **Scalar array**: multi-select widgets backed by a list — 
+   - **Scalar array**: multi-select widgets backed by a list —
      multiSelect, multiSelectTree, selectTable, multiSelectPanel,
      multiSelectTreeTable. These represent arrays of scalar values
      (e.g. selected IDs from a relational database).
@@ -172,6 +172,40 @@ there are areas where Blong can improve:
 7. **JSS styling**: ut-prime uses `react-jss` (JSS) for styling. Modern
    PrimeReact with unstyled mode and design tokens removes the need for
    a separate CSS-in-JS library.
+
+## Solution
+
+Blong derives UI metadata directly from the **TypeBox schemas** that server-side
+handlers already define. Those schemas flow through to the OpenAPI document, and
+the UI reads that document to generate forms, tables, and validation rules
+automatically. The key principle: **the TypeBox type written for a handler is
+the model** — no separate model layer is needed.
+
+Implementation lives in `core/blong-ui`:
+
+- **`FieldResolver.tsx`** — derives `widget`, `label`, `required`, `options`,
+  and `x-blong-*` extensions from each JSON Schema property.
+- **`FormFactory.tsx`** — takes the full OpenAPI schema + card/layout config
+  and generates a `react-hook-form` form validated by the TypeBox resolver.
+
+```typescript
+// FieldResolver.tsx — field metadata derived directly from the OpenAPI schema
+export interface ResolvedField {
+    name: string;    label: string;   widget: string;
+    hidden: boolean; order: number;   group?: string;
+    required: boolean; readOnly: boolean;
+    placeholder?: string; tooltip?: string;
+    options?: DropdownOption[];           // for select widgets, from enum
+    mask?: string;  currency?: string;  lookup?: string;
+    componentProps: Record<string, unknown>;  // x-blong-* extensions
+    schema: BlongSchemaProperty;          // raw property from OpenAPI schema
+}
+
+export function resolveField(name, property, requiredFields): ResolvedField {
+    const widget = resolveWidgetType(property); // from x-blong-widget or type
+    // ...
+}
+```
 
 ## Blong's Approach
 
@@ -306,3 +340,23 @@ allows:
 - **Generated UIs are generic**. Highly custom screens still need
   hand-written components. The goal is to cover the 80 % of CRUD screens
   automatically and provide escape hatches for the remaining 20 %.
+
+## Future Ideas
+
+1. **AI-assisted schema annotation** — provide a tool that inspects handler
+   signatures and TypeBox schemas and suggests `x-blong-*` annotations (widget
+   types, labels, group names, lookup references). A developer reviews and
+   accepts suggestions rather than writing annotations manually, reducing the
+   time to a working UI to near zero for new handlers.
+
+2. **Schema diff UI notifications** — when a deployed handler's OpenAPI schema
+   changes (new field, removed field, type narrowed), show a UI notification to
+   developers that specific screens may need layout review. This closes the gap
+   between server-side changes and UI updates without requiring manual
+   synchronization.
+
+3. **Progressive disclosure via `x-blong-reveal-when`** — extend the layout
+   model to support conditional card visibility based on form field values
+   (e.g., show the "Wire Transfer Details" card only when `paymentMethod` is
+   `'wire'`). This reduces form complexity for users without requiring custom
+   React components for each conditional layout.

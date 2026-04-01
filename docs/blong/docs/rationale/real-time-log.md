@@ -1,4 +1,33 @@
-# Real time log
+# Real-Time Log
+
+## Problem
+
+Debugging distributed services in a fast-reload development environment is
+difficult. Traditional approaches force the developer to:
+
+- Switch to a terminal window and scroll through mixed log output from multiple
+  services
+- Re-run the application with increased `LOG_LEVEL` and reproduce the issue
+  to see debug detail
+- Stitch together trace IDs manually across multiple log lines to reconstruct
+  a request lifecycle
+- Restart the process to pick up logging configuration changes
+
+When the development loop involves a browser client and multiple server-side
+services, the cognitive overhead of raw log tailing is high enough that
+developers skip it and resort to `console.log` debugging, which is slower and
+harder to observe in production.
+
+## Solution
+
+A self-contained log viewer that runs alongside the application, receiving
+all Pino log output via UDP, storing it in a circular in-memory buffer, and
+presenting it as a filterable, searchable, real-time web UI. The viewer requires
+no additional infrastructure — it is a single microservice started as part of the
+`dev` suite configuration — and it integrates with distributed tracing systems
+via configurable trace URL patterns.
+
+## Features
 
 Real time log is a feature that allows you to see the log of your application in
 real time. This is useful for debugging and monitoring your application. You can
@@ -51,10 +80,10 @@ see the log of your application in the browser, which provides the following fun
   - Color-coded HTTP status (success=green, error=red)
   - Smooth scrolling and row expansion transitions
 
-## Implementation details
+## Implementation Details
 
-This is implemented as a new package in the folder core/blong-log. It is only
-loosely coupled to the blong framework runtime (core/blong-gogo), so that it can
+This is implemented as a new package in the folder `core/blong-log`. It is only
+loosely coupled to the blong framework runtime (`core/blong-gogo`), so that it can
 be tested independently.
 
 ### Server side
@@ -188,3 +217,21 @@ This allows them to see the log entries as they are created, which can provide
 valuable insights into the behavior of the application and help them if the
 functionality they are implementing is working as expected.
 A skill for the same is implemented.
+
+## Future Ideas
+
+1. **Structured error timeline** — group log entries by trace ID and render
+   them as a timeline diagram showing the full request lifecycle with service
+   hops, latency between spans, and the exact step where an error occurred.
+   This eliminates the need to manually correlate trace IDs across rows.
+
+2. **Log-to-test scaffold** — extract the sequence of request/response log
+   entries for a given trace ID and auto-generate a `blong-chain` test step
+   array from the captured HTTP payloads. This turns a successful manual
+   request into a regression test with minimal developer effort.
+
+3. **Agent-triggered synchronous query** — provide a REST endpoint
+   (`POST /api/query`) that accepts filter criteria and returns a filtered
+   log snapshot without requiring a WebSocket connection. AI agents and CI
+   scripts can poll this endpoint to verify that an operation produced
+   expected log entries without holding an open WebSocket.

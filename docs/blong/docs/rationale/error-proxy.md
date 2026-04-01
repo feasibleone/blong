@@ -1,10 +1,53 @@
 # Error Proxy System
 
-Simplified error referencing using JavaScript Proxy for better developer experience.
+## Problem
+
+Referencing typed errors inside handlers required verbose string-keyed
+destructuring that clashed with normal JavaScript patterns. The dot-notation
+key format — necessary to encode the `realm.errorName` ownership — forced
+developers to use the explicit rename syntax:
+
+```typescript
+export default handler(
+    ({errors: {'release.jobTrigger': errorReleaseJobTrigger}}) =>
+        async function releaseJobTrigger(params, $meta) {
+            throw errorReleaseJobTrigger({params: {jobName: 'test'}}, $meta);
+        }
+);
+```
+
+This had three compounding issues:
+
+1. **IDE friction** — string-keyed destructuring provides no autocomplete and
+   the rename requirement is unfamiliar to most JavaScript developers.
+2. **Typo risk deferred to runtime** — a misspelled key in a string literal
+   (`'release.jobTriger'`) would not be caught until the error was actually
+   thrown, potentially in production.
+3. **Verbosity** — every error reference required two tokens (the string key
+   and the local variable name) even when both encode the same information.
+
+## Solution
+
+A JavaScript `Proxy` wraps the errors map at handler registration time, enabling
+a simplified camelCase destructuring syntax while preserving full backwards
+compatibility. The proxy converts property access from
+`errorReleaseJobTrigger` → `release.jobTrigger` via a case-insensitive lookup,
+performing the transformation at definition time (once, not per call).
+
+```typescript
+export default handler(
+    ({errors: {errorReleaseJobTrigger}}) =>
+        async function releaseJobTrigger(params, $meta) {
+            throw errorReleaseJobTrigger({params: {jobName: 'test'}}, $meta);
+        }
+);
+```
 
 ## Overview
 
-The Blong framework now supports a simplified syntax for referencing errors in handlers, making error handling more ergonomic while maintaining full backwards compatibility.
+The Blong framework supports a simplified syntax for referencing errors in
+handlers, making error handling more ergonomic while maintaining full backwards
+compatibility.
 
 ## What Changed
 
@@ -83,6 +126,32 @@ The error proxy is created once upfront and cached for performance. When accessi
 
 **Performance:** The proxy is instantiated once and reused on all subsequent `get()` calls, avoiding repeated proxy creation overhead.
 
+### Real Implementation
+
+The proxy implementation lives in `core/blong-gogo/src/error.ts`:
+
+```typescript
+const errorsProxy = new Proxy(errors, {
+    get(target, prop: string | symbol) {
+        if (typeof prop === 'symbol') return target[prop];
+        if (prop in target) return target[prop]; // direct/dot-notation access
+
+        let lookupKey = (prop as string).toLowerCase();
+        if (lookupKey.startsWith('error')) {
+            lookupKey = lookupKey.substring(5); // strip 'error' prefix
+        }
+        const originalKey = errorLookup[lookupKey];
+        if (originalKey && target[originalKey]) return target[originalKey];
+
+        // Throws immediately — catches typos at destructure time
+        throw new Error(
+            `Error '${String(prop)}' not found. Available errors: ${Object.keys(target).join(', ')}`,
+        );
+    },
+    has(target, prop) { /* ... */ }
+});
+```
+
 ### Type Safety
 
 The proxy maintains all error handler properties:
@@ -154,7 +223,7 @@ export default handler(
 
 ## Testing
 
-Comprehensive test coverage added in `/core/blong-gogo/src/error.proxy.test.ts`:
+Comprehensive test coverage in `core/blong-gogo/src/error.proxy.test.ts`:
 
 - ✅ Backwards compatibility with dot notation
 - ✅ New camelCase access patterns
@@ -167,68 +236,33 @@ Comprehensive test coverage added in `/core/blong-gogo/src/error.proxy.test.ts`:
 - ✅ Property preservation
 - ✅ Proxy instance caching (singleton pattern)
 
-All tests pass. Run with:
+Run with:
 
 ```bash
-cd /home/kalin/work/blong/blong/core/blong-gogo
+cd core/blong-gogo
 node --test src/error.proxy.test.ts
 ```
 
-## Documentation Updates
+## Future Ideas
 
-The following documentation has been updated to reflect the new syntax:
+1. **Type-safe proxy via TypeScript template literals** — derive the camelCase
+   property type from the dot-notation key at compile time using
+   `type ErrorKey<T extends string> =`error${Capitalize<CamelCase<T>>}`` so
+   that `errors.errorReleaseJobTrigger` is type-checked against the defined
+   error registry without runtime cost.
 
-1. **Skills**:
-   - `blong-error`: Complete error management patterns
-   - `blong-handler`: Handler implementation patterns
+2. **Namespace subsetting** — allow `errors.subset('release')` to return a
+   proxy that only exposes `release.*` errors. This reduces the surface area
+   visible in a handler and makes it easier to understand which errors a given
+   handler can throw.
 
-2. **Examples**:
-   - All handler examples now show the simplified syntax
-   - Legacy syntax examples preserved as "backwards compatible" notes
+3. **Auto-generated error documentation** — expose an `errors.all()` method
+   returning the full list of error types, messages, and HTTP status codes.
+   The framework can call this at startup to populate the OpenAPI `responses`
+   section automatically, ensuring API documentation stays in sync with the
+   error registry.
 
-3. **Tests**:
-   - New test file: `error.proxy.test.ts`
-   - Demonstrates all access patterns and edge cases
-
-## Files Changed
-
-### Core Implementation
-
-- `/core/blong-gogo/src/error.ts` - Added Proxy-based error lookup
-
-### Examples
-
-- `/app/release/release/orchestrator/job/releaseJobTrigger.ts` - Updated to new syntax
-- `/app/release/release/orchestrator/dfsp/releaseDfspPing.ts` - Updated to new syntax
-
-### Tests
-
-- `/core/blong-gogo/src/error.proxy.test.ts` - New comprehensive test suite
-
-### Documentation
-
-- `/.github/skills/error/SKILL.md` - Updated with new syntax patterns
-- `/.github/skills/handler/SKILL.md` - Updated examples
-- `/docs/blong/docs/rationale/error-proxy.md` - This design document
-
-## Backwards Compatibility
-
-100% backwards compatible. All existing code continues to work without any changes:
-
-- ✅ Dot notation access: `errors['release.jobTrigger']`
-- ✅ Destructuring with renaming: `{'release.jobTrigger': errorReleaseJobTrigger}`
-- ✅ All existing tests pass
-- ✅ No runtime performance impact
-
-## Future Considerations
-
-Potential future enhancements:
-
-1. **TypeScript Types**: Generate type definitions for better autocomplete
-2. **Error Discovery**: IDE plugin to show available errors
-3. **Migration Tool**: Automated codemod to convert old syntax to new
-4. **Lint Rules**: ESLint rule to encourage new syntax in new code
-
-## Questions?
-
-For questions or issues, refer to the comprehensive test suite in `error.proxy.test.ts` which demonstrates all usage patterns.
+4. **Coverage for error handling in tests** — extend the test framework to track
+   which errors are thrown during test execution and report on error coverage,
+   similar to code coverage. This encourages testing of edge cases and ensures that
+   all defined errors are exercised by tests.
