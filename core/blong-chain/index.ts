@@ -667,6 +667,7 @@ export class TestExecutor extends EventEmitter {
 
                 this.progress.failedSteps++;
                 this.emit('step:error', stepName, error as Error, stepProgress);
+                // eslint-disable-next-line no-console
                 console.error(`step ${stepName} failed:`, (error as Error).message);
 
                 // Reject promises for this step

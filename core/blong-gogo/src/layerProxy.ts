@@ -244,13 +244,56 @@ export default function layerProxy(
                                                         return remote(resolvedName);
                                                     }
 
+                                                    function isSafeKey(key: string): boolean {
+                                                        return key !== '__proto__' &&
+                                                            key !== 'constructor' &&
+                                                            key !== 'prototype';
+                                                    }
+
+                                                    function setAtPath(
+                                                        obj: Record<string, unknown>,
+                                                        path: string,
+                                                        value: unknown,
+                                                    ): void {
+                                                        const parts =
+                                                            path.split('.');
+                                                        let current = obj;
+                                                        for (
+                                                            let i = 0;
+                                                            i < parts.length - 1;
+                                                            i++
+                                                        ) {
+                                                            const part = parts[i];
+                                                            if (!isSafeKey(part)) return;
+                                                            if (
+                                                                current[part] ==
+                                                                    null ||
+                                                                typeof current[
+                                                                    part
+                                                                ] !== 'object'
+                                                            ) {
+                                                                current[part] = {};
+                                                            }
+                                                            current = current[
+                                                                part
+                                                            ] as Record<
+                                                                string,
+                                                                unknown
+                                                            >;
+                                                        }
+                                                        const lastPart = parts[parts.length - 1];
+                                                        if (isSafeKey(lastPart)) {
+                                                            current[lastPart] = value;
+                                                        }
+                                                    }
+
                                                     function wrapWithMeta(
                                                         baseFn: (
                                                             ...params: unknown[]
                                                         ) => unknown,
                                                         metaOverrides: Record<
                                                             string,
-                                                            string
+                                                            unknown
                                                         >,
                                                         aliasName?: string,
                                                     ): (
@@ -270,7 +313,7 @@ export default function layerProxy(
                                                                     typeof $meta ===
                                                                         'object'
                                                                 ) {
-                                                                    Object.assign(
+                                                                    merge(
                                                                         $meta,
                                                                         metaOverrides,
                                                                     );
@@ -310,7 +353,7 @@ export default function layerProxy(
                                                             );
                                                         const metaOverrides: Record<
                                                             string,
-                                                            string
+                                                            unknown
                                                         > = {};
                                                         for (const ann of parsed.annotations) {
                                                             const hasKeyValue =
@@ -329,15 +372,12 @@ export default function layerProxy(
                                                                         ' ',
                                                                     );
                                                             } else {
-                                                                // Mode B: config-object reference
+                                                                // Mode B: config-object reference with deep merge
                                                                 const handlerConfig =
                                                                     mergedConfig?.handler as
                                                                         | Record<
                                                                               string,
-                                                                              Record<
-                                                                                  string,
-                                                                                  string
-                                                                              >
+                                                                              unknown
                                                                           >
                                                                         | undefined;
                                                                 const configObj =
@@ -349,24 +389,25 @@ export default function layerProxy(
                                                                     typeof configObj ===
                                                                         'object'
                                                                 ) {
-                                                                    Object.assign(
+                                                                    merge(
                                                                         metaOverrides,
-                                                                        configObj,
+                                                                        configObj as Record<string, unknown>,
                                                                     );
                                                                 }
                                                                 for (const p of ann.params) {
                                                                     const eqIdx =
                                                                         p.indexOf('=');
                                                                     if (eqIdx > 0) {
-                                                                        metaOverrides[
+                                                                        setAtPath(
+                                                                            metaOverrides,
                                                                             p.slice(
                                                                                 0,
                                                                                 eqIdx,
-                                                                            )
-                                                                        ] =
+                                                                            ),
                                                                             p.slice(
                                                                                 eqIdx + 1,
-                                                                            );
+                                                                            ),
+                                                                        );
                                                                     }
                                                                 }
                                                             }

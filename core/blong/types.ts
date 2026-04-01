@@ -128,6 +128,7 @@ export interface IRpcServer {
     unregister: (methods: string[], namespace: string, reply: boolean) => void;
     start: () => Promise<IRpcServer>;
     stop: () => Promise<IRpcServer>;
+    setAttachCheckpoint?: (fn: ((meta: IMeta) => void) | undefined) => void;
 }
 
 export interface ILocal {

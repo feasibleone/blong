@@ -28,7 +28,7 @@ export default server(blong => ({
                 debug: true,
                 sign: {
                     kty: 'EC',
-                    d: 'BYfl8to6zRfjjm7jFYtY5i_BwR2jXspsv1HDN0OLIaz-tUiACKZBeRruaLzBrHXJ',
+                    ...(process.env.GATEWAY_SIGN_KEY_D && {d: process.env.GATEWAY_SIGN_KEY_D}),
                     use: 'sig',
                     crv: 'P-384',
                     x: 'pM8gcPvgdKrKaxQmIC7Q67AvV7KteWqU5I4X83ErVinZnAgeT1KwfhCYssD3YNvK',
@@ -36,8 +36,8 @@ export default server(blong => ({
                     alg: 'ES384',
                 },
                 encrypt: {
-                    d: '3UScww8iqdRaBeTraC61WCFoO3fisO9A0p49P_GI6BuZO26-WUyElUWoKyhkcbeI',
                     kty: 'EC',
+                    ...(process.env.GATEWAY_ENCRYPT_KEY_D && {d: process.env.GATEWAY_ENCRYPT_KEY_D}),
                     use: 'enc',
                     crv: 'P-384',
                     x: 's8uFX_D-Ow5Q6UoRs6tFDBDkpdpcsueSl7-oyPpBFdgY6Co9L2AZknuqA4vDSKe4',

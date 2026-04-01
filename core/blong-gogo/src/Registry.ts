@@ -104,6 +104,7 @@ export default class Registry extends Internal implements IRegistry {
         this.#watch = watch;
         this.#apiSchema = apiSchema;
         this.#attachCheckpoint = createAttachCheckpoint(this.#config.checkpointMode ?? 'production');
+        this.#rpcServer?.setAttachCheckpoint?.(this.#attachCheckpoint);
     }
 
     public getPort(id: string): ReturnType<IAdapterFactory> | undefined {
