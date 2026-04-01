@@ -102,7 +102,8 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
         methodType: 'request' | 'publish',
     ): (...params: unknown[]) => Promise<unknown> {
         return async (msg, ...rest) => {
-            const {stream, ...$meta} = rest.pop() as IMeta;
+            const callerMeta = rest.pop() as IMeta;
+            const {stream, ...$meta} = callerMeta;
             const {encode, decode, requestParams} = await this.#gatewayCodec.codec(
                 $meta,
                 methodType,
@@ -181,6 +182,11 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                     } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
                         const result = await decode(body.result);
                         if (/\.service\.get$/.test(method)) Object.assign(result[0], requestParams);
+                        if ((body as {checkpoints?: unknown[]}).checkpoints?.length) {
+                            (callerMeta.checkpoints ??= []).push(
+                                ...(body as {checkpoints: unknown[]}).checkpoints,
+                            );
+                        }
                         return result;
                     } else {
                         throw this.#errors['rpc.jsonRpcEmpty']();

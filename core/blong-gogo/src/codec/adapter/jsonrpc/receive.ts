@@ -1,4 +1,4 @@
-import {handler, type ITypedError} from '@feasibleone/blong/types';
+import {handler, type IMeta, type ITypedError} from '@feasibleone/blong/types';
 import {type Response} from 'got';
 
 export default handler(({errors}) => ({
@@ -8,7 +8,9 @@ export default handler(({errors}) => ({
             error?: unknown;
             validation?: unknown;
             debug?: unknown;
+            checkpoints?: unknown[];
         }>,
+        $meta?: IMeta,
     ) {
         const {body} = super.receive ? await super.receive(response) : response;
         if (body?.error !== undefined) {
@@ -52,6 +54,9 @@ export default handler(({errors}) => ({
                 }),
             });
         } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
+            if ($meta && body.checkpoints?.length) {
+                ($meta.checkpoints ??= []).push(...body.checkpoints);
+            }
             return body.result;
         } else {
             throw errors.jsonrpcEmpty();

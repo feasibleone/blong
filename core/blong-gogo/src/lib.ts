@@ -30,6 +30,37 @@ export function identifier(string: string): string {
     return /[^\w$]/.test(string) ? `'${string}'` : string;
 }
 
+export function camelToSentence(str: string): string {
+    return str
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+        .toLowerCase();
+}
+
+export interface IAnnotation {
+    name: string;
+    params: string[];
+}
+
+export function parseAnnotatedKey(key: string): {
+    annotations: IAnnotation[];
+    handlerName: string;
+} {
+    const tokens = key.trim().split(/\s+/);
+    const handlerName = tokens.pop()!;
+    const annotations: IAnnotation[] = [];
+    let current: IAnnotation | null = null;
+    for (const token of tokens) {
+        if (token.startsWith('@')) {
+            current = {name: token.slice(1), params: []};
+            annotations.push(current);
+        } else if (current) {
+            current.params.push(token);
+        }
+    }
+    return {annotations, handlerName};
+}
+
 let loginCache: unknown;
 export async function loginService(discovery) {
     if (!loginCache) loginCache = discovery('login');

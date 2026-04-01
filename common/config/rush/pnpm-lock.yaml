@@ -1052,6 +1052,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
         version: link:../blong-test

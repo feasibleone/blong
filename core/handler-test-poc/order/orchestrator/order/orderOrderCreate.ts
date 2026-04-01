@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import { handler, type IMeta } from '@feasibleone/blong';
 
 interface OrderItem {
     name: string;
@@ -30,29 +30,25 @@ interface OrderResult {
  * then verifying the checkpoints captured in $meta.checkpoints.
  */
 export default handler(
-    ({lib: {checkpoint, calculateTotal}}) =>
+    ({lib: {assert, calculateTotal}}) =>
         async function orderOrderCreate(
             {items, customerId}: OrderParams,
             $meta: IMeta,
-            assert?: {
-                ok: (value: unknown, message?: string) => void;
-                equal: (actual: unknown, expected: unknown, message?: string) => void;
-            },
         ): Promise<OrderResult> {
             // Step 1: Calculate total
-            const total = calculateTotal(items);
+            const total = calculateTotal(items) as number;
             assert?.ok(total > 0, 'Order total must be positive');
-            checkpoint?.('total-calculated', {total, itemCount: items.length});
+            $meta.checkpoint?.('total-calculated', {total, itemCount: items.length});
 
             // Step 2: Apply discount (10% for orders over 100)
             const discount = total > 100 ? 0.1 : 0;
             const discountedTotal = total * (1 - discount);
             assert?.ok(discountedTotal <= total, 'Discounted total must not exceed original');
-            checkpoint?.('discount-applied', {discount, discountedTotal});
+            $meta.checkpoint?.('discount-applied', {discount, discountedTotal});
 
             // Step 3: Create order record
             const orderId = `ORD-${customerId}-${Date.now()}`;
-            checkpoint?.('order-created', {orderId, status: 'PENDING'});
+            $meta.checkpoint?.('order-created', {orderId, status: 'PENDING'});
 
             return {
                 orderId,

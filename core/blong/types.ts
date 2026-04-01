@@ -7,8 +7,8 @@ import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 //     RbacAuthorizationV1Api,
 //     Watch,
 // } from '@kubernetes/client-node';
-import type {IncomingWebhook} from '@slack/webhook';
-import type {MongoClient} from 'mongodb';
+import type { IncomingWebhook } from '@slack/webhook';
+import type { MongoClient } from 'mongodb';
 import type Assert from 'node:assert';
 import {
     Type,
@@ -24,12 +24,12 @@ import {
     type TUnknown,
 } from 'typebox';
 // import type {client} from 'node-vault';
-import type {Dirent} from 'node:fs';
-import type {Duplex} from 'node:stream';
-import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
-import type {Level, LogFn, Logger as PinoLogger} from 'pino';
+import type { Dirent } from 'node:fs';
+import type { Duplex } from 'node:stream';
+import type { OpenAPI, OpenAPIV2, OpenAPIV3_1 } from 'openapi-types';
+import type { Level, LogFn, Logger as PinoLogger } from 'pino';
 import merge from 'ut-function.merge';
-import type {Knex} from './knex.js';
+import type { Knex } from './knex.js';
 
 // export {
 //     AppsV1Api,
@@ -42,9 +42,9 @@ export type * from '@slack/webhook';
 export type * from 'bson';
 export type * from 'mongodb';
 // export type {client} from 'node-vault';
-export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
+export type { IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1 } from 'openapi-types';
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';
-export type {Knex} from './knex.js';
+export type { Knex } from './knex.js';
 
 export type ServerContext = {
     queryBuilder?: Knex;
@@ -221,6 +221,7 @@ export interface IApi {
     utLog: {
         createLog: ILog['logger'];
     };
+    attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {utError: IError; remote: IRemote; type: typeof Type}) => {
         extends?:
             | string
@@ -399,6 +400,9 @@ export interface IMeta {
     };
     gateway?: object;
     validation?: unknown;
+    name?: string;
+    checkpoint?: CheckpointFn;
+    checkpoints?: Array<{name: string; data?: unknown; timestamp: number}>;
 }
 
 export type HRTime = [number, number];
@@ -537,11 +541,15 @@ export type ChainStep =
       ) => Promise<object>)
     | object;
 
+export type CheckpointFn = (this: IMeta, name: string, data?: unknown) => void;
+
 export interface ILib {
     type: typeof Type;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
+    /** @deprecated The framework now auto-names step arrays from handler names. */
     group: (name: string) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
+    assert: typeof Assert | undefined;
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;

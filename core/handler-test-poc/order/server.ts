@@ -1,3 +1,13 @@
 import {realm} from '@feasibleone/blong';
 
-export default realm(() => ({url: import.meta.url}));
+export default realm(blong => ({
+    url: import.meta.url,
+    validation: blong.type.Object({}),
+    config: {
+        default: {},
+        dev: {},
+        microservice: {
+            orchestrator: true,
+        },
+    },
+}));

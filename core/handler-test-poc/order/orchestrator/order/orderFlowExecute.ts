@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import { handler, type IMeta } from '@feasibleone/blong';
 
 interface OrderFlowParams {
     items: Array<{name: string; price: number; quantity: number}>;
@@ -20,28 +20,31 @@ interface OrderFlowParams {
  * the before/after of graduation.
  */
 export default handler(
-    ({lib: {checkpoint}, handler: {orderOrderCreate, orderOrderConfirm}}) =>
+    ({lib: {assert}, handler: {orderOrderCreate, orderOrderConfirm}}) =>
         async function orderFlowExecute(
             {items, customerId, paymentMethod}: OrderFlowParams,
             $meta: IMeta,
-            assert?: {
-                ok: (value: unknown, message?: string) => void;
-                equal: (actual: unknown, expected: unknown, message?: string) => void;
-            },
         ) {
             // Phase 1: Create order
-            const order = await orderOrderCreate({items, customerId}, $meta, assert);
+            const order = await orderOrderCreate({items, customerId}, $meta) as {
+                orderId: string;
+                total: number;
+                discountedTotal: number;
+            };
             assert?.ok(order.orderId, 'Order created successfully');
-            checkpoint?.('order-phase-complete', {orderId: order.orderId, total: order.total});
+            $meta.checkpoint?.('order-phase-complete', {orderId: order.orderId, total: order.total});
 
             // Phase 2: Confirm order
             const confirmed = await orderOrderConfirm(
                 {orderId: order.orderId, paymentMethod},
                 $meta,
-                assert,
-            );
+            ) as {
+                orderId: string;
+                status: string;
+                confirmedAt: string;
+            };
             assert?.equal(confirmed.status, 'CONFIRMED', 'Order confirmed');
-            checkpoint?.('confirm-phase-complete', {
+            $meta.checkpoint?.('confirm-phase-complete', {
                 orderId: confirmed.orderId,
                 status: confirmed.status,
             });

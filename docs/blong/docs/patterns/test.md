@@ -251,8 +251,6 @@ testTransfer({name: 'with admin user', userId: adminId, amount: 500}, $meta),
 testTransfer({name: 'with regular user', userId: userId, amount: 50}, $meta),
 ```
 
-
-
 ```ts
 export default handler(({lib: {group}}) => ({
     testExample: ({name = 'example'}, $meta) =>
@@ -302,7 +300,7 @@ export default handler(({lib: {group}, handler: {orderProcess}}) => ({
 Test handlers can be promoted to production handlers. The process:
 
 1. Move the handler from `test/test/` to `orchestrator/`
-2. Change mandatory `assert` to optional `assert?`
+2. Destructure `assert` and `checkpoint` from `lib` (both use `?.` for zero-cost in production)
 3. Add checkpoints at key progress points
 4. Adjust the orchestrator dispatch configuration
 
@@ -310,15 +308,16 @@ The same code that validated a workflow in testing becomes the production
 orchestration, with assertions silenced via optional chaining.
 
 ```ts
-// Before (test handler): assert is mandatory
+// Before (test handler): assert is mandatory, passed by chain executor
 async function createAndTransfer(assert, {$meta}) {
     const account = await accountCreate({balance: 1000}, $meta);
     assert.ok(account.id, 'Account created');
     return account;
 }
 
-// After (production handler): assert is optional, checkpoint added
-async function accountProvisionAndTransfer({balance}, $meta, assert?) {
+// After (production handler): assert from lib, checkpoint added
+// ({lib: {checkpoint, assert}, handler: {accountCreate}}) =>
+async function accountProvisionAndTransfer({balance}, $meta) {
     const account = await accountCreate({balance}, $meta);
     assert?.ok(account.id, 'Account created');
     checkpoint?.('account-provisioned', {accountId: account.id});

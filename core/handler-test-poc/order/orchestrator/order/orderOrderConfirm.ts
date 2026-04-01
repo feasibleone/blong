@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import { handler, type IMeta } from '@feasibleone/blong';
 
 interface OrderConfirmParams {
     orderId: string;
@@ -21,14 +21,10 @@ interface OrderConfirmResult {
  * - Zero overhead in production via optional chaining
  */
 export default handler(
-    ({lib: {checkpoint}}) =>
+    ({lib: {assert}}) =>
         async function orderOrderConfirm(
             {orderId, paymentMethod}: OrderConfirmParams,
             $meta: IMeta,
-            assert?: {
-                ok: (value: unknown, message?: string) => void;
-                equal: (actual: unknown, expected: unknown, message?: string) => void;
-            },
         ): Promise<OrderConfirmResult> {
             // Step 1: Validate payment method
             const validMethods = ['card', 'bank', 'wallet'];
@@ -37,14 +33,14 @@ export default handler(
             if (!isValidPaymentMethod) {
                 throw new Error(`Invalid payment method: ${paymentMethod}`);
             }
-            checkpoint?.('payment-validated', {paymentMethod});
+            $meta.checkpoint?.('payment-validated', {paymentMethod});
 
             // Step 2: Process payment (simulated)
-            checkpoint?.('payment-processing', {orderId, paymentMethod});
+            $meta.checkpoint?.('payment-processing', {orderId, paymentMethod});
 
             // Step 3: Confirm order
             const confirmedAt = new Date().toISOString();
-            checkpoint?.('order-confirmed', {orderId, confirmedAt});
+            $meta.checkpoint?.('order-confirmed', {orderId, confirmedAt});
 
             return {
                 orderId,

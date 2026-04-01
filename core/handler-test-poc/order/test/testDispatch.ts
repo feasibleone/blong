@@ -1,4 +1,4 @@
-import {orchestrator} from '@feasibleone/blong';
+import { orchestrator } from '@feasibleone/blong';
 
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
@@ -12,7 +12,7 @@ export default orchestrator(blong => ({
         default: {},
         integration: {
             namespace: ['test'],
-            imports: ['order.test'],
+            imports: ['order.test', 'codec.test'],
         },
     },
 }));

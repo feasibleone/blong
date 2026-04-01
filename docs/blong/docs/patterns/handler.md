@@ -336,12 +336,13 @@ the `?.` operator ensures they are no-ops. See the
 
 ### Optional Assertions
 
-Handlers can accept an optional third `assert` parameter that is only
-provided in test/debug environments:
+Handlers destructure `assert` from `lib`, following the same pattern as
+`checkpoint`: `undefined` in production, active in test/debug mode. Both
+use optional chaining for zero-cost in production:
 
 ```ts
-export default handler(({lib: {checkpoint}, handler: {accountGet, accountUpdate}}) =>
-    async function accountDebit({accountId, amount}, $meta, assert?) {
+export default handler(({lib: {checkpoint, assert}, handler: {accountGet, accountUpdate}}) =>
+    async function accountDebit({accountId, amount}, $meta) {
         const account = await accountGet({accountId}, $meta);
         assert?.ok(account.balance >= amount, 'Sufficient funds');
         checkpoint?.('balance-checked', {balance: account.balance});
@@ -358,9 +359,9 @@ export default handler(({lib: {checkpoint}, handler: {accountGet, accountUpdate}
 );
 ```
 
-In production, the handler is called with `(params, $meta)` — `assert` is
-`undefined` and all `assert?.` calls are no-ops. In test mode, the framework
-passes a real `assert` object and failures are reported normally.
+In production (`checkpointMode: 'production'`), both `assert` and `checkpoint`
+are `undefined` — all `assert?.` and `checkpoint?.` calls are no-ops. In
+test/debug mode, `assert` is `node:assert` and failures are reported normally.
 
 ### Graduating Tests to Handlers
 

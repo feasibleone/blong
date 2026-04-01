@@ -667,6 +667,7 @@ export class TestExecutor extends EventEmitter {
 
                 this.progress.failedSteps++;
                 this.emit('step:error', stepName, error as Error, stepProgress);
+                console.error(`step ${stepName} failed:`, (error as Error).message);
 
                 // Reject promises for this step
                 this.promiseManager.reject(stepName, error as Error);

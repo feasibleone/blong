@@ -11,7 +11,7 @@ import {
 import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
 import chokidar, {type FSWatcher} from 'chokidar';
 import type {Dirent} from 'fs';
-import {readFileSync, statSync} from 'fs';
+import {readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
 import {EventEmitter} from 'node:events';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
@@ -475,7 +475,16 @@ export default class Watch extends Internal implements IWatch {
                     const chain = await (await import('./chain.ts')).default(test);
 
                     const steps = await Promise.all(
-                        [].concat(this.#config.test).map(test => remote.remote(test)({}, {})),
+                        [].concat(this.#config.test).map(async method => {
+                            const result = await remote.remote(method)({}, {});
+                            if (Array.isArray(result) && !result.name) {
+                                Object.defineProperty(result, 'name', {
+                                    value: method.replace(/^test\./, '').replace(/\./g, ' '),
+                                    configurable: true,
+                                });
+                            }
+                            return result;
+                        }),
                     );
                     await Promise.all(steps.map(chain));
                 } catch (error) {

@@ -56,19 +56,21 @@ export default class RpcServer extends Internal implements IRpcServer {
                 params: object[];
             };
             const meta = params.pop();
+            const newMeta = {
+                ...meta,
+                method,
+                // forward: forward(request.headers),
+                opcode: method.split('.').pop(),
+            };
             const result = await callback.apply(object, [
                 ...params,
-                {
-                    ...meta,
-                    method,
-                    // forward: forward(request.headers),
-                    opcode: method.split('.').pop(),
-                },
+                newMeta,
             ]);
             return {
                 jsonrpc: '2.0',
                 id,
                 result,
+                ...(newMeta.checkpoints?.length && {checkpoints: newMeta.checkpoints}),
             };
         }
         const prevHandler = this.#handlers.get(url);
