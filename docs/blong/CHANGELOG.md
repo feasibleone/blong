@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.8.0...blong-docs-v1.9.0) (2026-04-01)
+
+
+### Features
+
+* implement ConfigRuntime for hot configuration reload ([#115](https://github.com/feasibleone/blong/issues/115)) ([61bab7c](https://github.com/feasibleone/blong/commit/61bab7ce8587bf83d72fe80138aaef68943f21c4))
+* unified test and handlers ([#117](https://github.com/feasibleone/blong/issues/117)) ([bf0ed96](https://github.com/feasibleone/blong/commit/bf0ed96c5df3d949fa225dd8a30fc25698a7855a))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.7.0...blong-docs-v1.8.0) (2026-03-29)
 
 
