@@ -26,6 +26,7 @@ import type {
     ITestEvents,
     ITestExecutorConfig,
     ITestLatency,
+    ITestLogger,
     ITestProgress,
     IThenableProxy,
     StepArray,
@@ -372,6 +373,7 @@ export class TestExecutor extends EventEmitter {
     private config: Required<ITestExecutorConfig>;
     private queue: PQueue;
     private dependencyTracker = new DependencyTracker();
+    private log?: ITestLogger;
 
     // Progress tracking
     private progress: ITestProgress = {
@@ -413,7 +415,9 @@ export class TestExecutor extends EventEmitter {
             concurrency: config.concurrency ?? 10,
             captureStackTraces: config.captureStackTraces ?? false,
             framework: config.framework,
+            log: config.log,
         };
+        this.log = config.log;
 
         this.queue = new PQueue({concurrency: this.config.concurrency});
 
@@ -667,8 +671,7 @@ export class TestExecutor extends EventEmitter {
 
                 this.progress.failedSteps++;
                 this.emit('step:error', stepName, error as Error, stepProgress);
-                // eslint-disable-next-line no-console
-                console.error(`step ${stepName} failed:`, (error as Error).message);
+                this.log?.error?.({err: error}, `step ${stepName} failed`);
 
                 // Reject promises for this step
                 this.promiseManager.reject(stepName, error as Error);

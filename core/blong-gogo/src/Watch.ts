@@ -472,7 +472,7 @@ export default class Watch extends Internal implements IWatch {
         if (this.#config.test) {
             this.#emit.on('test', async (done, test) => {
                 try {
-                    const chain = await (await import('./chain.ts')).default(test);
+                    const chain = await (await import('./chain.ts')).default(test, this.log);
 
                     const steps = await Promise.all(
                         [].concat(this.#config.test).map(async method => {
