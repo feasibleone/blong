@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.4.0...blong-chain-v1.5.0) (2026-04-01)
+
+
+### Features
+
+* unified test and handlers ([#117](https://github.com/feasibleone/blong/issues/117)) ([bf0ed96](https://github.com/feasibleone/blong/commit/bf0ed96c5df3d949fa225dd8a30fc25698a7855a))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.3.1...blong-chain-v1.4.0) (2026-03-29)
 
 
