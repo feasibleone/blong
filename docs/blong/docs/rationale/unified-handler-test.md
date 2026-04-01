@@ -78,13 +78,13 @@ Unify the handler and test concepts along a **continuum** rather than a
 The `checkpoint` function is a library function injected by the framework:
 
 ```typescript
-export default handler(({lib: {checkpoint}, handler: {accountGet, transferCreate}}) =>
+export default handler(({handler: {accountGet, transferCreate}}) =>
     async function paymentTransferExecute(params, $meta) {
         const account = await accountGet({id: params.accountId}, $meta);
-        checkpoint?.('account-loaded', {accountId: account.id, balance: account.balance});
+        $meta.checkpoint?.('account-loaded', {accountId: account.id, balance: account.balance});
 
         const transfer = await transferCreate({amount: params.amount, from: account.id}, $meta);
-        checkpoint?.('transfer-created', {transferId: transfer.id, state: transfer.state});
+        $meta.checkpoint?.('transfer-created', {transferId: transfer.id, state: transfer.state});
 
         return {transferId: transfer.id, state: transfer.state};
     }
@@ -108,15 +108,15 @@ captured at handler definition time and used with optional chaining for
 zero-overhead in production:
 
 ```typescript
-export default handler(({lib: {checkpoint, assert}}) =>
+export default handler(({lib: {assert}}) =>
     async function orderOrderProcess({orderId, items}, $meta) {
         const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         assert?.ok(total > 0, 'Order total must be positive');
-        checkpoint?.('total-calculated', {total});
+        $meta.checkpoint?.('total-calculated', {total});
 
         const discount = await applyDiscount(total, $meta);
         assert?.ok(discount <= total, 'Discount cannot exceed total');
-        checkpoint?.('discount-applied', {discount, final: total - discount});
+        $meta.checkpoint?.('discount-applied', {discount, final: total - discount});
 
         return {total: total - discount};
     }
@@ -166,18 +166,18 @@ Can graduate to a production handler:
 
 ```typescript
 // orchestrator/payment/paymentFlowExecute.ts — graduated to production
-export default handler(({handler: {accountCreate, paymentTransferExecute}, lib: {checkpoint, assert}}) =>
+export default handler(({handler: {accountCreate, paymentTransferExecute}, lib: {assert}}) =>
     async function paymentFlowExecute({currency, balance, amount}, $meta) {
         const account = await accountCreate({currency, balance}, $meta);
         assert?.ok(account.id, 'Account created');
-        checkpoint?.('account-ready', {accountId: account.id});
+        $meta.checkpoint?.('account-ready', {accountId: account.id});
 
         const result = await paymentTransferExecute(
             {accountId: account.id, amount},
             $meta,
         );
         assert?.equal(result.state, 'COMPLETED', 'Transfer completed');
-        checkpoint?.('transfer-done', {transferId: result.transferId});
+        $meta.checkpoint?.('transfer-done', {transferId: result.transferId});
 
         return result;
     }
@@ -515,9 +515,9 @@ points. The framework can automatically compute:
 - **SLA violations:** Flag when step durations exceed configured thresholds
 
 ```typescript
-checkpoint?.('query-started');
+$meta.checkpoint?.('query-started');
 const result = await db.query(sql);
-checkpoint?.('query-completed', {rows: result.length});
+$meta.checkpoint?.('query-completed', {rows: result.length});
 // Framework automatically measures duration between these two checkpoints
 ```
 

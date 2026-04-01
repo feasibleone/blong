@@ -8,14 +8,10 @@ concerns.
 
 ### 1. Checkpoint-Enabled Handlers
 
-Handlers use `checkpoint?.()` to record progress through multi-step
+Handlers use `$meta.checkpoint?.()` to record progress through multi-step
 operations. The optional chaining ensures zero overhead in production.
 Checkpoints are recorded in `$meta.checkpoints` when checkpoint mode
 is enabled via `registry.checkpointMode: 'test'`.
-
-The `checkpoint` function uses `AsyncLocalStorage` to find the current
-handler's `$meta` — handlers destructure it at definition time and use
-it at call time without passing `$meta` explicitly.
 
 See: `order/orchestrator/order/orderOrderCreate.ts`
 
@@ -27,10 +23,10 @@ active in test/debug mode. No handler signature changes needed — both
 are captured at definition time and used at call time.
 
 ```typescript
-export default handler(({lib: {checkpoint, assert}}) =>
+export default handler(({lib: {assert}}) =>
     async function orderOrderCreate({items, customerId}, $meta) {
         assert?.ok(total > 0, 'Order total must be positive');
-        checkpoint?.('total-calculated', {total});
+        $meta.checkpoint?.('total-calculated', {total});
     }
 );
 ```

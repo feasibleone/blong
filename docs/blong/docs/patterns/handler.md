@@ -311,18 +311,18 @@ embraces this by providing mechanisms that work identically in both contexts.
 
 ### Checkpoints
 
-The `checkpoint` library function records progress through multi-step
-operations. It is available via `lib.checkpoint` and should always be called
+The `checkpoint` function records progress through multi-step
+operations. It is available via `$meta.checkpoint` and should always be called
 with optional chaining to ensure zero overhead in production:
 
 ```ts
-export default handler(({lib: {checkpoint}, handler: {validate, persist}}) =>
+export default handler(({handler: {validate, persist}}) =>
     async function orderProcess(params, $meta) {
         const validated = await validate(params, $meta);
-        checkpoint?.('validated', {orderId: validated.id});
+        $meta.checkpoint?.('validated', {orderId: validated.id});
 
         const saved = await persist(validated, $meta);
-        checkpoint?.('persisted', {orderId: saved.id, version: saved.version});
+        $meta.checkpoint?.('persisted', {orderId: saved.id, version: saved.version});
 
         return saved;
     }
@@ -341,18 +341,18 @@ Handlers destructure `assert` from `lib`, following the same pattern as
 use optional chaining for zero-cost in production:
 
 ```ts
-export default handler(({lib: {checkpoint, assert}, handler: {accountGet, accountUpdate}}) =>
+export default handler(({lib: {assert}, handler: {accountGet, accountUpdate}}) =>
     async function accountDebit({accountId, amount}, $meta) {
         const account = await accountGet({accountId}, $meta);
         assert?.ok(account.balance >= amount, 'Sufficient funds');
-        checkpoint?.('balance-checked', {balance: account.balance});
+        $meta.checkpoint?.('balance-checked', {balance: account.balance});
 
         const result = await accountUpdate(
             {accountId, balance: account.balance - amount},
             $meta,
         );
         assert?.equal(result.balance, account.balance - amount, 'Balance updated correctly');
-        checkpoint?.('debit-applied', {newBalance: result.balance});
+        $meta.checkpoint?.('debit-applied', {newBalance: result.balance});
 
         return result;
     }

@@ -1,4 +1,4 @@
-import { handler, type IMeta } from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong';
 
 interface OrderItem {
     name: string;
@@ -22,7 +22,7 @@ interface OrderResult {
  * Handler: orderOrderCreate
  *
  * Demonstrates the unified handler-test concept:
- * - checkpoint?.() for progress tracing (no-op in production via optional chaining)
+ * - $meta.checkpoint?.() for progress tracing (no-op in production via optional chaining)
  * - assert?.() for optional assertions (no-op in production)
  * - Both become active in test/debug mode without code changes
  *

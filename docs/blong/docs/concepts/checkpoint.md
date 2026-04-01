@@ -25,25 +25,25 @@ production and assertions for tests — without duplicating logic.
 
 ### In Handlers
 
-Handlers access `checkpoint` through the `lib` parameter. Since `checkpoint`
+Handlers access `checkpoint` through the `$meta` parameter. Since `checkpoint`
 may be `undefined` in production, always use optional chaining:
 
 ```typescript
 import {handler, type IMeta} from '@feasibleone/blong';
 
-export default handler(({lib: {checkpoint}, handler: {accountGet, transferCreate}}) =>
+export default handler(({handler: {accountGet, transferCreate}}) =>
     async function paymentTransferExecute(
         {accountId, amount}: {accountId: string; amount: number},
         $meta: IMeta,
     ) {
         const account = await accountGet({id: accountId}, $meta);
-        checkpoint?.('account-loaded', {accountId: account.id, balance: account.balance});
+        $meta.checkpoint?.('account-loaded', {accountId: account.id, balance: account.balance});
 
         if (account.balance < amount) throw new Error('Insufficient funds');
-        checkpoint?.('balance-verified', {available: account.balance, requested: amount});
+        $meta.checkpoint?.('balance-verified', {available: account.balance, requested: amount});
 
         const transfer = await transferCreate({amount, from: account.id}, $meta);
-        checkpoint?.('transfer-created', {transferId: transfer.id});
+        $meta.checkpoint?.('transfer-created', {transferId: transfer.id});
 
         return {transferId: transfer.id, state: transfer.state};
     }

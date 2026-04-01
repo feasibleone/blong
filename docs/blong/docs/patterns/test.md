@@ -316,11 +316,11 @@ async function createAndTransfer(assert, {$meta}) {
 }
 
 // After (production handler): assert from lib, checkpoint added
-// ({lib: {checkpoint, assert}, handler: {accountCreate}}) =>
+// ({lib: {assert}, handler: {accountCreate}}) =>
 async function accountProvisionAndTransfer({balance}, $meta) {
     const account = await accountCreate({balance}, $meta);
     assert?.ok(account.id, 'Account created');
-    checkpoint?.('account-provisioned', {accountId: account.id});
+    $meta.checkpoint?.('account-provisioned', {accountId: account.id});
     return account;
 }
 ```

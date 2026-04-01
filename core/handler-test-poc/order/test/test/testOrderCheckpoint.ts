@@ -6,7 +6,7 @@ import type Assert from 'node:assert';
  *
  * Demonstrates checkpoint-driven test assertions.
  *
- * This test calls handlers that use checkpoint?.() internally,
+ * This test calls handlers that use $meta.checkpoint?.() internally,
  * then verifies the checkpoint sequence to ensure the handler's
  * internal progress matches expectations.
  *

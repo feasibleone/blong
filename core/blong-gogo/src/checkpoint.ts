@@ -1,9 +1,9 @@
-import type { CheckpointFn, IMeta } from '@feasibleone/blong/types';
+import type {CheckpointFn, IMeta} from '@feasibleone/blong/types';
 
 /**
  * Records a checkpoint in the $meta.checkpoints array.
  * Uses `this` binding — works correctly when called as
- * $meta.checkpoint('name', data) with optional chaining.
+ * $meta.checkpoint?.('name', data) with optional chaining.
  */
 const checkpoint: CheckpointFn = function (this: IMeta, name: string, data?: unknown): void {
     (this.checkpoints ??= []).push({
