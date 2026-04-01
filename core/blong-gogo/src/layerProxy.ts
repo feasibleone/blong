@@ -3,6 +3,7 @@ import {
     type IAdapterFactory,
     type IApiSchema,
     type IErrorFactory,
+    type ILib,
     type IMeta,
     type IModuleConfig,
 } from '@feasibleone/blong/types';
@@ -123,7 +124,7 @@ export default function layerProxy(
                                         ...rest
                                     }: {
                                         remote: (methodName: string) => () => unknown;
-                                        lib: object;
+                                        lib: ILib;
                                         local: object;
                                         literals: unknown[];
                                         port: ReturnType<IAdapterFactory>;
@@ -244,49 +245,6 @@ export default function layerProxy(
                                                         return remote(resolvedName);
                                                     }
 
-                                                    function isSafeKey(key: string): boolean {
-                                                        return key !== '__proto__' &&
-                                                            key !== 'constructor' &&
-                                                            key !== 'prototype';
-                                                    }
-
-                                                    function setAtPath(
-                                                        obj: Record<string, unknown>,
-                                                        path: string,
-                                                        value: unknown,
-                                                    ): void {
-                                                        const parts =
-                                                            path.split('.');
-                                                        let current = obj;
-                                                        for (
-                                                            let i = 0;
-                                                            i < parts.length - 1;
-                                                            i++
-                                                        ) {
-                                                            const part = parts[i];
-                                                            if (!isSafeKey(part)) return;
-                                                            if (
-                                                                current[part] ==
-                                                                    null ||
-                                                                typeof current[
-                                                                    part
-                                                                ] !== 'object'
-                                                            ) {
-                                                                current[part] = {};
-                                                            }
-                                                            current = current[
-                                                                part
-                                                            ] as Record<
-                                                                string,
-                                                                unknown
-                                                            >;
-                                                        }
-                                                        const lastPart = parts[parts.length - 1];
-                                                        if (isSafeKey(lastPart)) {
-                                                            current[lastPart] = value;
-                                                        }
-                                                    }
-
                                                     function wrapWithMeta(
                                                         baseFn: (
                                                             ...params: unknown[]
@@ -398,7 +356,7 @@ export default function layerProxy(
                                                                     const eqIdx =
                                                                         p.indexOf('=');
                                                                     if (eqIdx > 0) {
-                                                                        setAtPath(
+                                                                        lib.setProperty(
                                                                             metaOverrides,
                                                                             p.slice(
                                                                                 0,
