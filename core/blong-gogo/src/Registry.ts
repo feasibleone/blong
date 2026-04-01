@@ -7,20 +7,23 @@ import type {
     IGateway,
     ILocal,
     ILog,
+    IMeta,
     IRegistry,
     IRemote,
     IRpcServer,
 } from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
+import { Internal } from '@feasibleone/blong/types';
+import nodeAssert from 'node:assert';
 import PQueue from 'p-queue';
-import {Type} from 'typebox';
-import {monotonicFactory} from 'ulidx';
+import { Type } from 'typebox';
+import { monotonicFactory } from 'ulidx';
 import merge from 'ut-function.merge';
-import {v4 as uuid4, v7 as uuid7} from 'uuid';
+import { v4 as uuid4, v7 as uuid7 } from 'uuid';
 
-import type {IResolution} from './Resolution.ts';
-import type {IWatch} from './Watch.ts';
-import {methodId, methodParts} from './lib.ts';
+import { createAttachCheckpoint } from './checkpoint.ts';
+import { methodId, methodParts } from './lib.ts';
+import type { IResolution } from './Resolution.ts';
+import type { IWatch } from './Watch.ts';
 
 type MatchMethodsCallback = (
     name: string,
@@ -31,6 +34,7 @@ const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
 const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
 interface IConfig {
     api?: Record<string, {source: string; def: {namespace: Record<string, string | string[]>}}>;
+    checkpointMode?: 'test' | 'debug' | 'production';
 }
 
 export default class Registry extends Internal implements IRegistry {
@@ -62,6 +66,7 @@ export default class Registry extends Internal implements IRegistry {
     #log: ILog;
     #apiSchema: IApiSchema;
     #config: IConfig = {};
+    #attachCheckpoint?: (meta: IMeta) => void;
 
     public constructor(
         config: object,
@@ -98,6 +103,8 @@ export default class Registry extends Internal implements IRegistry {
         this.#log = log;
         this.#watch = watch;
         this.#apiSchema = apiSchema;
+        this.#attachCheckpoint = createAttachCheckpoint(this.#config.checkpointMode ?? 'production');
+        this.#rpcServer?.setAttachCheckpoint?.(this.#attachCheckpoint);
     }
 
     public getPort(id: string): ReturnType<IAdapterFactory> | undefined {
@@ -156,6 +163,7 @@ export default class Registry extends Internal implements IRegistry {
             utLog: {
                 createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             },
+            attachCheckpoint: this.#attachCheckpoint,
         };
         const result = await port(api);
         this.#ports.set(id, result);
@@ -276,6 +284,10 @@ export default class Registry extends Internal implements IRegistry {
         handlers: Handlers,
         port: object,
     ): Promise<{local: object; literals: object[]}> {
+        const attachCheckpoint = this.#attachCheckpoint;
+        function isSafeKey(key: string): boolean {
+            return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
+        }
         const lib = {
             type: Type,
             error: this.#error.register.bind(this.#error),
@@ -283,6 +295,7 @@ export default class Registry extends Internal implements IRegistry {
             ulid,
             uuid4,
             uuid7,
+            assert: attachCheckpoint ? nodeAssert : undefined,
             rename: (object: object, value: string) =>
                 Object.defineProperty<unknown>(object, 'name', {value}),
             group: (name: string) => (steps: unknown[]) =>
@@ -291,6 +304,23 @@ export default class Registry extends Internal implements IRegistry {
                     enumerable: false,
                     writable: true,
                 }),
+            setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
+                if (!path) return;
+                const parts = path.split('.');
+                let current = obj;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const part = parts[i];
+                    if (!isSafeKey(part)) return;
+                    if (current[part] == null || typeof current[part] !== 'object') {
+                        current[part] = {};
+                    }
+                    current = current[part] as Record<string, unknown>;
+                }
+                const lastPart = parts[parts.length - 1];
+                if (isSafeKey(lastPart)) {
+                    current[lastPart] = value;
+                }
+            },
         };
         const local = {};
         const literals = [];
@@ -302,6 +332,7 @@ export default class Registry extends Internal implements IRegistry {
                 gateway: this.#gateway,
                 remote: name => this.#remote.remote(methodParts(name)),
                 port,
+                attachCheckpoint,
             });
         }
         return {local, literals};

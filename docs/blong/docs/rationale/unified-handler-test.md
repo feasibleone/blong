@@ -1,8 +1,6 @@
 # Unified Handler-Test Concept
 
-## Rationale
-
-### Problem
+## Problem
 
 Handlers and tests are traditionally separate concepts with different APIs,
 different execution models, and different tooling. Yet in practice, they share
@@ -33,7 +31,7 @@ The traditional separation creates friction:
   verifiable invariants, while tests have no mechanism to contribute
   production-ready orchestration logic.
 
-### Solution
+## Solution
 
 Unify the handler and test concepts along a **continuum** rather than a
 **boundary**. The key ideas:
@@ -61,74 +59,127 @@ Unify the handler and test concepts along a **continuum** rather than a
    by the framework, not passed as a handler parameter. This prevents `name`
    from conflicting with API parameters. Two mechanisms are planned:
 
-   - **Proxy sub-property destructuring** — `{handler: {testPaymentFlow: {billPayment}}}` 
+   - **Proxy sub-property destructuring** — `{handler: {testPaymentFlow: {billPayment}}}`
      returns the same handler but with `$meta.name = 'bill payment'` pre-injected
      (camelCase converted to sentence form).
    - **Annotation syntax** — `@annotationName params... handlerName` keys on the
      proxy. Annotations operate in two modes: **`$meta` injection** (plain-word
      params, e.g. `@name bill payment`) sets `$meta.annotationName` directly;
      **config-object mode** (`key=value` params or no params, e.g. `@cache ttl=10`)
-     merges `config.import[annotationName]` into the call options with optional
+     merges `config.handler[annotationName]` into the call options with optional
      property overrides. Multiple annotations can be chained on one key.
 
-### Design
+## Design
 
-#### The Checkpoint Function
+### The Checkpoint Function
 
-The `checkpoint` function is a library function injected by the framework:
+The `checkpoint` function is injected by the framework. It is implemented in
+`core/blong-gogo/src/checkpoint.ts`:
 
 ```typescript
-export default handler(({lib: {checkpoint}, handler: {accountGet, transferCreate}}) =>
-    async function paymentTransferExecute(params, $meta) {
-        const account = await accountGet({id: params.accountId}, $meta);
-        checkpoint?.('account-loaded', {accountId: account.id, balance: account.balance});
+export function createAttachCheckpoint(mode: 'test' | 'debug' | 'production') {
+    return mode === 'production' ? undefined : attachCheckpoint;
+    // undefined → $meta.checkpoint is never set → optional chaining is zero-cost no-op
+}
+```
 
-        const transfer = await transferCreate({amount: params.amount, from: account.id}, $meta);
-        checkpoint?.('transfer-created', {transferId: transfer.id, state: transfer.state});
+**Real handler using checkpoints** (`core/handler-test-poc/order/orchestrator/order/orderOrderCreate.ts`):
 
-        return {transferId: transfer.id, state: transfer.state};
-    }
+```typescript
+export default handler(
+    ({lib: {assert, calculateTotal}}) =>
+        async function orderOrderCreate({items, customerId}, $meta) {
+            const total = calculateTotal(items) as number;
+            assert?.ok(total > 0, 'Order total must be positive');
+            $meta.checkpoint?.('total-calculated', {total, itemCount: items.length});
+
+            const discount = total > 100 ? 0.1 : 0;
+            const discountedTotal = total * (1 - discount);
+            assert?.ok(discountedTotal <= total, 'Discounted total must not exceed original');
+            $meta.checkpoint?.('discount-applied', {discount, discountedTotal});
+
+            const orderId = `ORD-${customerId}-${Date.now()}`;
+            $meta.checkpoint?.('order-created', {orderId, status: 'PENDING'});
+            return {orderId, total, discountedTotal, status: 'PENDING'};
+        },
 );
+```
+
+**Test reading those checkpoints** (`core/handler-test-poc/order/test/test/testOrderCheckpoint.ts`):
+
+```typescript
+$meta.checkpoints = [];
+const result = await orderOrderCreate({items: [...], customerId: 'cust-1'}, $meta);
+
+assert.equal(result.total, 200);
+const checkpoints = $meta.checkpoints!;
+assert.equal(checkpoints.length, 3);
+assert.equal(checkpoints[0].name, 'total-calculated');
+assert.equal((checkpoints[0].data as any).total, 200);
 ```
 
 The `checkpoint` function:
 
-- **In production:** Is `undefined` by default. The `checkpoint?.()` call is
-  a no-op with zero overhead (no function call, no object allocation).
+- **In production (`checkpointMode: 'production'`):** Is `undefined`. The `checkpoint?.()` call
+  is a no-op with zero overhead (no function call, no object allocation).
 - **In debug/staging mode:** Emits structured log entries with checkpoint
   names and data, feeding distributed tracing systems.
 - **In test mode:** Records checkpoint data in the test context, enabling
   assertions on intermediate states without modifying the handler code.
 
-#### Optional Assertions
+### Optional Assertions
 
-Handlers can include assertions that are active only in non-production
-environments:
+Handlers destructure `assert` from `lib`, following the same pattern as
+`checkpoint`: `undefined` in production, active in test/debug. Both are
+captured at handler definition time and used with optional chaining for
+zero-overhead in production:
 
 ```typescript
-export default handler(({lib: {checkpoint}}) =>
-    async function orderOrderProcess({orderId, items}, $meta, assert?) {
+export default handler(({lib: {assert}}) =>
+    async function orderOrderProcess({orderId, items}, $meta) {
         const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         assert?.ok(total > 0, 'Order total must be positive');
-        checkpoint?.('total-calculated', {total});
+        $meta.checkpoint?.('total-calculated', {total});
 
         const discount = await applyDiscount(total, $meta);
         assert?.ok(discount <= total, 'Discount cannot exceed total');
-        checkpoint?.('discount-applied', {discount, final: total - discount});
+        $meta.checkpoint?.('discount-applied', {discount, final: total - discount});
 
         return {total: total - discount};
     }
 );
 ```
 
-The `assert` parameter uses the optional third parameter convention:
+The `assert` value is controlled by `checkpointMode` configuration:
 
-- **In production:** Called with two arguments `(params, $meta)` — `assert`
-  is `undefined`, all `assert?.` calls are no-ops.
-- **In test/debug mode:** Called with three arguments
-  `(params, $meta, assert)` — assertions execute and failures are reported.
+- **In production (`checkpointMode: 'production'`):** `assert` is `undefined`.
+  All `assert?.` calls are no-ops with zero overhead.
+- **In test/debug mode (`checkpointMode: 'test'` or `'debug'`):** `assert` is
+  `node:assert`. Assertions execute and failures are reported normally.
 
-#### Handler-Test Graduation
+### Handler-Test Graduation
+
+**Flow execution handler composing two sub-handlers**
+(`core/handler-test-poc/order/orchestrator/order/orderFlowExecute.ts`):
+
+```typescript
+export default handler(
+    ({lib: {assert}, handler: {orderOrderCreate, orderOrderConfirm}}) =>
+        async function orderFlowExecute({items, customerId, paymentMethod}, $meta) {
+            const order = await orderOrderCreate({items, customerId}, $meta);
+            assert?.ok(order.orderId);
+            $meta.checkpoint?.('order-phase-complete', {orderId: order.orderId});
+
+            const confirmed = await orderOrderConfirm(
+                {orderId: order.orderId, paymentMethod},
+                $meta,
+            );
+            assert?.equal(confirmed.status, 'CONFIRMED');
+            $meta.checkpoint?.('confirm-phase-complete', {status: confirmed.status});
+            return {...order, ...confirmed};
+        },
+);
+```
 
 A test handler that proves a workflow works correctly:
 
@@ -164,18 +215,18 @@ Can graduate to a production handler:
 
 ```typescript
 // orchestrator/payment/paymentFlowExecute.ts — graduated to production
-export default handler(({handler: {accountCreate, paymentTransferExecute}, lib: {checkpoint}}) =>
-    async function paymentFlowExecute({currency, balance, amount}, $meta, assert?) {
+export default handler(({handler: {accountCreate, paymentTransferExecute}, lib: {assert}}) =>
+    async function paymentFlowExecute({currency, balance, amount}, $meta) {
         const account = await accountCreate({currency, balance}, $meta);
         assert?.ok(account.id, 'Account created');
-        checkpoint?.('account-ready', {accountId: account.id});
+        $meta.checkpoint?.('account-ready', {accountId: account.id});
 
         const result = await paymentTransferExecute(
             {accountId: account.id, amount},
             $meta,
         );
         assert?.equal(result.state, 'COMPLETED', 'Transfer completed');
-        checkpoint?.('transfer-done', {transferId: result.transferId});
+        $meta.checkpoint?.('transfer-done', {transferId: result.transferId});
 
         return result;
     }
@@ -185,7 +236,44 @@ export default handler(({handler: {accountCreate, paymentTransferExecute}, lib: 
 The same logic, the same assertions, the same checkpoints — but now
 accessible as a production API endpoint.
 
-#### Unified Naming and Context
+### blong-chain Step Execution
+
+Both handlers and tests use the same parallel step execution model from
+`blong-chain`. Thenable proxies detect dependencies automatically, allowing
+independent steps to run concurrently:
+
+```typescript
+// Real example from core/blong-chain/examples/demo.test.ts
+const executor = new TestExecutor({concurrency: 10});
+
+const databaseOperations = [
+    async function connectToDatabase() {
+        return {connection: 'db-123', status: 'connected'};
+    },
+    async function createTable(assert, context) {
+        const db = await context.connectToDatabase; // thenable proxy — auto-dep
+        assert.equal(db.status, 'connected');
+        return {table: 'users', created: true};
+    },
+];
+databaseOperations.name = 'Database Setup'; // group name → nested indent in report
+
+const steps = [
+    async function initializeSystem() { return {systemReady: true}; },
+    databaseOperations,    // nested group, steps run in parallel within group
+    async function verifySystem(assert, context) {
+        const system = await context.initializeSystem; // depends on step 1
+        assert.equal(system.systemReady, true);
+    },
+];
+await executor.execute(steps, {}, t);
+```
+
+The `Proxy` wrapping each step result intercepts `.then` / property access to
+record which step a given step depends on, then runs them via `PQueue` at the
+natural concurrency limit.
+
+### Unified Naming and Context
 
 Traditionally, test handlers use the `group(name)([...steps...])` pattern to
 wrap step arrays with a name for test reporting. This creates two problems in
@@ -199,6 +287,230 @@ the unified handler-test continuum:
 The unified concept eliminates both issues by injecting the execution context
 name into `$meta` via the **handler proxy**, rather than passing it as a
 parameter. Two approaches are planned:
+
+#### Approach 1: Proxy Sub-Property Destructuring
+
+When a handler is accessed via a nested destructuring from the proxy, the
+property name becomes the execution context injected into `$meta`:
+
+```typescript
+// Instead of: testPaymentFlow({name: 'bill payment', amount: 150}, $meta)
+// Destructure a named alias from the proxy:
+export default handler(({handler: {testPaymentFlow: {billPayment, loanPayment}}}) => ({
+    testPaymentScenarios: (params, $meta) => [
+        // billPayment is identical to testPaymentFlow but $meta.name = 'bill payment'
+        billPayment({amount: 150}, $meta),
+        // loanPayment is identical to testPaymentFlow but $meta.name = 'loan payment'
+        loanPayment({amount: 5000}, $meta),
+    ],
+}));
+```
+
+The proxy converts camelCase property names to sentence form: `billPayment` →
+`'bill payment'`. Conversion rules: insert a space before each uppercase letter
+and lowercase the result (e.g., `cardPaymentFlow` → `'card payment flow'`,
+`httpRequest` → `'http request'`). The same handler, the same API parameters,
+but with context carried in `$meta` where it belongs.
+
+#### Approach 2: Annotation Syntax
+
+In [ut-port](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md),
+`import` keys can be prefixed with one or more `@word` annotations. Blong
+extends this idea with **parameterised annotations**. The general format is:
+
+```
+@annotationName param1 param2... @annotationName2 param1... handlerName
+```
+
+Each annotation operates in one of two modes:
+
+**Mode A — `$meta` injection** (plain-word parameters):
+
+```typescript
+// @name injects $meta.name; @cache looks up config.handler.cache
+'@name bill payment @cache ttl=10 namespace.entity.get': getCachedEntity
+```
+
+**Mode B — config-object reference** (no params or `key=value` params):
+
+The proxy looks up `config.handler[annotationName]` and merges that config
+object into the call options, allowing shared config objects (e.g., cache
+policies, retry profiles) to be reused without changes.
+
+> **Implementation note:** Both approaches require updating the handler proxy
+> in `layerProxy.ts`. Both are tracked as a side task within this plan.
+
+#### Checkpoint-Driven Test Assertions
+
+When a handler with checkpoints is called from a test, the framework collects
+checkpoint data and makes it available for assertions:
+
+```typescript
+export default handler(({handler: {paymentFlowExecute}}) => ({
+    testPaymentFlowCheckpoints: (params, $meta) => [
+        async function executeFlow(assert, {$meta}) {
+            const result = await paymentFlowExecute(
+                {currency: 'USD', balance: 1000, amount: 100},
+                $meta,
+            );
+            assert.ok(result.transferId);
+
+            const checkpoints = $meta.checkpoints;
+            assert.equal(checkpoints[0].name, 'account-ready');
+            assert.ok(checkpoints[0].data.accountId);
+            assert.equal(checkpoints[1].name, 'transfer-done');
+            assert.equal(checkpoints[1].data.transferId, result.transferId);
+        },
+    ],
+}));
+```
+
+## Future Ideas
+
+1. **Handler coverage matrix** — record which handlers are called by which test
+   steps and generate a "handler coverage" report analogous to code coverage.
+   This exposes API paths that are never exercised by tests, making it easy to
+   identify gaps without inspecting individual test files.
+
+2. **`@retry n` step annotation** — mark flaky steps with a retry policy via
+   the annotation syntax (`@retry 3 executeTransfer`) without modifying the
+   step body. The retry concern stays separate from business logic and the
+   annotation is visible in test reports.
+
+3. **`@parallel` step annotation** — allow `@parallel stepA stepB` to
+   declare that two named steps can overlap in execution even if they share
+   a common dependency, enabling more aggressive parallelism for steps that
+   each only read (not write) the dependency's result.
+
+### Invariant Guards
+
+Handlers can define **invariants** — conditions that must always hold true.
+Unlike assertions (which check specific values), invariants check structural
+properties:
+
+```typescript
+export default handler(({lib: {invariant}}) =>
+    async function accountBalanceUpdate({accountId, amount}, $meta) {
+        const before = await accountGet({accountId}, $meta);
+        invariant?.('non-negative-balance', () => before.balance >= 0);
+
+        const after = await accountUpdate({accountId, balance: before.balance + amount}, $meta);
+        invariant?.('balance-consistency', () => after.balance === before.balance + amount);
+
+        return after;
+    }
+);
+```
+
+Invariants use the same optional chaining pattern. In debug mode, a violated
+invariant throws a typed error. In production, they are no-ops.
+
+### Replay and Time Travel Debugging
+
+Checkpoint data, when captured in debug mode, creates a structured trace of
+handler execution. This trace can be:
+
+- **Replayed:** Re-execute the handler with the same inputs and verify
+  checkpoints match, detecting non-determinism.
+- **Compared:** Diff checkpoint traces between two runs to identify where
+  behavior diverged.
+- **Visualized:** Render checkpoint sequences as timeline diagrams for
+  complex multi-handler flows.
+
+### Contract Testing via Checkpoints
+
+When handler A calls handler B, the checkpoints emitted by B become part of
+A's observable behavior. This creates an implicit **contract** between
+handlers:
+
+```typescript
+// If handler B always emits checkpoint 'validation-passed' before
+// 'record-saved', a test can verify this ordering contract:
+assert.ok(
+    checkpoints.findIndex(c => c.name === 'validation-passed') <
+    checkpoints.findIndex(c => c.name === 'record-saved'),
+    'Validation must precede persistence',
+);
+```
+
+### Canary Assertions
+
+Some assertions should always run, even in production, but only log (not
+throw) on failure. These "canary assertions" detect anomalies without
+breaking the flow:
+
+```typescript
+export default handler(({lib: {canary}}) =>
+    async function transferProcess(params, $meta) {
+        const result = await process(params, $meta);
+        canary?.('unusual-amount', result.amount < 1_000_000,
+            {amount: result.amount, transferId: result.id});
+        return result;
+    }
+);
+```
+
+Canary failures are reported to the observability system but never throw
+exceptions. They serve as early warning signals for potential issues.
+
+### Step Metrics and SLA Tracking
+
+Checkpoints naturally support duration measurement between consecutive
+points. The framework can automatically compute:
+
+- **Step duration:** Time between consecutive checkpoints
+- **Total duration:** Time from first to last checkpoint
+- **SLA violations:** Flag when step durations exceed configured thresholds
+
+```typescript
+$meta.checkpoint?.('query-started');
+const result = await db.query(sql);
+$meta.checkpoint?.('query-completed', {rows: result.length});
+// Framework automatically measures duration between these two checkpoints
+```
+
+### Progressive Verification Levels
+
+Instead of a binary test/production split, support multiple verification
+levels that can be configured per environment:
+
+| Level | Assertions | Checkpoints | Invariants | Canaries |
+|-------|-----------|-------------|------------|----------|
+| 0 — Production | off | off | off | on |
+| 1 — Monitoring | off | on (logging) | off | on |
+| 2 — Staging | on (warn) | on (logging) | on (warn) | on |
+| 3 — Debug | on (throw) | on (context) | on (throw) | on |
+| 4 — Test | on (assert) | on (context) | on (assert) | on |
+
+This turns the handler-test boundary into a **spectrum of verification
+intensity**, configurable per deployment.
+
+### Handler Composition Chains
+
+Since both handlers and tests use the same step model, handlers can be
+composed into chains just like test steps:
+
+```typescript
+export default handler(({lib: {chain}, handler: {validate, enrich, persist, notify}}) =>
+    async function orderProcess(params, $meta) {
+        return chain([
+            async function validateOrder() { return validate(params, $meta); },
+            async function enrichOrder({validateOrder}) {
+                return enrich(await validateOrder, $meta);
+            },
+            async function persistOrder({enrichOrder}) {
+                return persist(await enrichOrder, $meta);
+            },
+            async function notifyParties({persistOrder}) {
+                return notify(await persistOrder, $meta);
+            },
+        ]);
+    }
+);
+```
+
+This makes the handler's internal flow visible, traceable, and testable
+at each step — exactly like a test chain.
 
 ##### Approach 1: Proxy Sub-Property Destructuring
 
@@ -239,7 +551,7 @@ In [ut-port](https://github.com/softwaregroup-bg/ut-port/blob/master/README.md),
 annotation is a **single word** that refers to a config-object key — the
 proxy merges those config objects into the method's call options, effectively
 injecting properties into `$meta`. For example, `@shortCache namespace.entity.action`
-merges `config.import.shortCache` (a config object with e.g. `{cache:{ttl:60000}}`)
+merges `config.handler.shortCache` (a config object with e.g. `{cache:{ttl:60000}}`)
 into the options.
 
 Blong extends this idea with **parameterised annotations**. The general format
@@ -254,6 +566,7 @@ for a key with annotations is:
 ```
 
 **Parsing rules:**
+
 1. The **last whitespace-delimited token** is the handler name (must not start with `@`).
 2. Tokens starting with `@` open a new annotation; the annotation name is the
    word immediately after `@`.
@@ -314,7 +627,7 @@ export default handler(({
 
 When the annotation has no parameters, or when any parameter uses `key=value`
 syntax, the annotation name is treated as a **config key** — exactly as
-ut-port does. The proxy looks up `config.import[annotationName]` and merges
+ut-port does. The proxy looks up `config.handler[annotationName]` and merges
 that config object into the call options (which flow into `$meta`). This allows
 the same shared config objects used in ut-port (e.g., cache policies, retry
 profiles) to be reused in blong without any changes.
@@ -325,16 +638,16 @@ object before the merge. This lets a single call site customise a shared config
 without defining a separate config entry:
 
 ```
-@cache                      →  merge config.import.cache into call options
-@cache ttl=10               →  merge config.import.cache, then override its ttl = 10
-@cache ttl=10 maxSize=500   →  merge config.import.cache, override multiple properties
+@cache                      →  merge config.handler.cache into call options
+@cache ttl=10               →  merge config.handler.cache, then override its ttl = 10
+@cache ttl=10 maxSize=500   →  merge config.handler.cache, override multiple properties
 ```
 
 **Example — config-object annotation with override:**
 
 ```typescript
 // Configuration (e.g. in realm config):
-// config.import.cache = { ttl: 60000, maxSize: 1000 }
+// config.handler.cache = { ttl: 60000, maxSize: 1000 }
 
 export default handler(({
     handler: {
@@ -353,6 +666,7 @@ export default handler(({
 ---
 
 **Disambiguation** — the proxy determines which mode to apply at parse time:
+
 - If all parameters are plain words (none contains `=`), Mode A (`$meta` injection) is used.
 - If any parameter contains `=`, Mode B (config-object reference with overrides) is used.
 - If there are no parameters at all, Mode B is used (pure config-object lookup, like ut-port).
@@ -367,11 +681,12 @@ This allows both modes to coexist in the same annotation list:
 
 **Extensibility** — mode is selected purely by parameter syntax; any annotation
 name can be used in either mode:
+
 - `@name bill payment` → Mode A: `$meta.name = 'bill payment'`
 - `@timeout 5000` → Mode A: `$meta.timeout = '5000'`
-- `@cache` → Mode B: merges `config.import.cache` into call options
-- `@cache ttl=10` → Mode B: merges `config.import.cache` then overrides `cache.ttl`
-- `@retry maxAttempts=3 delay=100` → Mode B: merges `config.import.retry` with two overrides
+- `@cache` → Mode B: merges `config.handler.cache` into call options
+- `@cache ttl=10` → Mode B: merges `config.handler.cache` then overrides `cache.ttl`
+- `@retry maxAttempts=3 delay=100` → Mode B: merges `config.handler.retry` with two overrides
 
 This approach allows arbitrary multi-word names without relying on camelCase
 conversion (which governs Approach 1), and it supports stacking multiple
@@ -380,6 +695,7 @@ independent context annotations on a single handler alias.
 > **Implementation note:** Both approaches require updating the handler proxy
 > in `layerProxy.ts`. The proxy already intercepts `handler.get` at one level
 > (returning a wrapped function). The changes needed are:
+>
 > - **Approach 1:** Add a second `get` level on the returned wrapper so that
 >   `handler.testFn.billPayment` converts `billPayment` → `'bill payment'`
 >   (camelCase→sentence) and pre-injects `$meta.name`.
@@ -389,7 +705,7 @@ independent context annotations on a single handler alias.
 >   the call. Plain-word parameters are joined and set directly on `$meta`.
 > - **Approach 2 / Mode B:** For annotations whose parameters all use
 >   `key=value` syntax (or have no parameters), look up the config object at
->   `config.import[annotationName]`, apply `key=value` overrides to a shallow
+>   `config.handler[annotationName]`, apply `key=value` overrides to a shallow
 >   copy, then deep-merge the result into the call options (which flow into
 >   `$meta`). This is backward-compatible with ut-port's config-object pattern.
 > Both are tracked as a side task within this plan.
@@ -425,135 +741,3 @@ export default handler(({handler: {paymentFlowExecute}}) => ({
     ],
 }));
 ```
-
-## Additional Ideas
-
-### 1. Invariant Guards
-
-Handlers can define **invariants** — conditions that must always hold true.
-Unlike assertions (which check specific values), invariants check structural
-properties:
-
-```typescript
-export default handler(({lib: {invariant}}) =>
-    async function accountBalanceUpdate({accountId, amount}, $meta) {
-        const before = await accountGet({accountId}, $meta);
-        invariant?.('non-negative-balance', () => before.balance >= 0);
-
-        const after = await accountUpdate({accountId, balance: before.balance + amount}, $meta);
-        invariant?.('balance-consistency', () => after.balance === before.balance + amount);
-
-        return after;
-    }
-);
-```
-
-Invariants use the same optional chaining pattern. In debug mode, a violated
-invariant throws a typed error. In production, they are no-ops.
-
-### 2. Replay and Time Travel Debugging
-
-Checkpoint data, when captured in debug mode, creates a structured trace of
-handler execution. This trace can be:
-
-- **Replayed:** Re-execute the handler with the same inputs and verify
-  checkpoints match, detecting non-determinism.
-- **Compared:** Diff checkpoint traces between two runs to identify where
-  behavior diverged.
-- **Visualized:** Render checkpoint sequences as timeline diagrams for
-  complex multi-handler flows.
-
-### 3. Contract Testing via Checkpoints
-
-When handler A calls handler B, the checkpoints emitted by B become part of
-A's observable behavior. This creates an implicit **contract** between
-handlers:
-
-```typescript
-// If handler B always emits checkpoint 'validation-passed' before
-// 'record-saved', a test can verify this ordering contract:
-assert.ok(
-    checkpoints.findIndex(c => c.name === 'validation-passed') <
-    checkpoints.findIndex(c => c.name === 'record-saved'),
-    'Validation must precede persistence',
-);
-```
-
-### 4. Canary Assertions
-
-Some assertions should always run, even in production, but only log (not
-throw) on failure. These "canary assertions" detect anomalies without
-breaking the flow:
-
-```typescript
-export default handler(({lib: {canary}}) =>
-    async function transferProcess(params, $meta) {
-        const result = await process(params, $meta);
-        canary?.('unusual-amount', result.amount < 1_000_000,
-            {amount: result.amount, transferId: result.id});
-        return result;
-    }
-);
-```
-
-Canary failures are reported to the observability system but never throw
-exceptions. They serve as early warning signals for potential issues.
-
-### 5. Step Metrics and SLA Tracking
-
-Checkpoints naturally support duration measurement between consecutive
-points. The framework can automatically compute:
-
-- **Step duration:** Time between consecutive checkpoints
-- **Total duration:** Time from first to last checkpoint
-- **SLA violations:** Flag when step durations exceed configured thresholds
-
-```typescript
-checkpoint?.('query-started');
-const result = await db.query(sql);
-checkpoint?.('query-completed', {rows: result.length});
-// Framework automatically measures duration between these two checkpoints
-```
-
-### 6. Progressive Verification Levels
-
-Instead of a binary test/production split, support multiple verification
-levels that can be configured per environment:
-
-| Level | Assertions | Checkpoints | Invariants | Canaries |
-|-------|-----------|-------------|------------|----------|
-| 0 — Production | off | off | off | on |
-| 1 — Monitoring | off | on (logging) | off | on |
-| 2 — Staging | on (warn) | on (logging) | on (warn) | on |
-| 3 — Debug | on (throw) | on (context) | on (throw) | on |
-| 4 — Test | on (assert) | on (context) | on (assert) | on |
-
-This turns the handler-test boundary into a **spectrum of verification
-intensity**, configurable per deployment.
-
-### 7. Handler Composition Chains
-
-Since both handlers and tests use the same step model, handlers can be
-composed into chains just like test steps:
-
-```typescript
-export default handler(({lib: {chain}, handler: {validate, enrich, persist, notify}}) =>
-    async function orderProcess(params, $meta) {
-        return chain([
-            async function validateOrder() { return validate(params, $meta); },
-            async function enrichOrder({validateOrder}) {
-                return enrich(await validateOrder, $meta);
-            },
-            async function persistOrder({enrichOrder}) {
-                return persist(await enrichOrder, $meta);
-            },
-            async function notifyParties({persistOrder}) {
-                return notify(await persistOrder, $meta);
-            },
-        ]);
-    }
-);
-```
-
-This makes the handler's internal flow visible, traceable, and testable
-at each step — exactly like a test chain.

@@ -17,58 +17,68 @@ import type Assert from 'node:assert';
  * verify it behaves identically to the manual workflow, demonstrating
  * that graduation preserves behavior.
  *
- * Naming note: No 'name' parameter in the handler signature. Context names
- * are injected via $meta by the framework proxy. When the proxy supports
- * sub-property destructuring, different invocation contexts will be set up as:
- *
- *   {handler: {testOrderGraduate: {bookOrder, electronicOrder}}}
- *
- * This returns wrappers that inject $meta.name = 'book order' / 'electronic order'
- * without any changes to the handler's parameter signature.
+ * The graduated handler receives optional `assert?` automatically
+ * from the framework proxy (when checkpoint mode is active), so its
+ * internal assertions execute during tests without any caller changes.
  */
 export default handler(
-    ({
-        handler: {orderOrderCreate, orderOrderConfirm, orderFlowExecute},
-    }) => ({
-        // No 'name' parameter — context name is injected into $meta by the proxy
+    ({handler: {testLoginTokenCreate, orderOrderCreate, orderOrderConfirm, orderFlowExecute}}) => ({
         testOrderGraduate: (_params: {}, $meta: IMeta) => [
+            testLoginTokenCreate({}, $meta),
             // Step 1: The "test" version — manual orchestration with mandatory assertions
             async function manualFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                const order = await orderOrderCreate(
+                const order = (await orderOrderCreate(
                     {
                         items: [{name: 'Book', price: 30, quantity: 4}],
                         customerId: 'cust-2',
                     },
                     $meta,
-                );
+                )) as {orderId: string; total: number; discountedTotal: number};
                 assert.ok(order.orderId, 'Order created');
                 assert.equal(order.total, 120, 'Total calculated');
                 assert.equal(order.discountedTotal, 108, '10% discount applied');
 
-                const confirmed = await orderOrderConfirm(
+                const confirmed = (await orderOrderConfirm(
                     {orderId: order.orderId, paymentMethod: 'bank'},
                     $meta,
-                );
+                )) as {status: string};
                 assert.equal(confirmed.status, 'CONFIRMED', 'Order confirmed');
 
                 return {total: order.total, discountedTotal: order.discountedTotal};
             },
 
             // Step 2: The "graduated" version — same workflow via the production handler
+            // The handler receives assert? automatically from the proxy
             async function graduatedFlow(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
-                const result = await orderFlowExecute(
+                // Reset checkpoints to track graduated handler's progress
+                $meta.checkpoints = [];
+
+                const result = (await orderFlowExecute(
                     {
                         items: [{name: 'Book', price: 30, quantity: 4}],
                         customerId: 'cust-3',
                         paymentMethod: 'bank',
                     },
                     $meta,
-                );
+                )) as {total: number; discountedTotal: number; status: string};
 
                 // Same assertions — the graduated handler should produce identical results
                 assert.equal(result.total, 120, 'Graduated: total matches');
                 assert.equal(result.discountedTotal, 108, 'Graduated: discount matches');
                 assert.equal(result.status, 'CONFIRMED', 'Graduated: status matches');
+
+                // Verify the graduated handler's own checkpoints fired
+                const checkpoints = $meta.checkpoints;
+                assert.ok(checkpoints.length > 0, 'Graduated handler emitted checkpoints');
+                const names = checkpoints.map(cp => cp.name);
+                assert.ok(
+                    names.includes('order-phase-complete'),
+                    'Graduated handler: order phase checkpoint',
+                );
+                assert.ok(
+                    names.includes('confirm-phase-complete'),
+                    'Graduated handler: confirm phase checkpoint',
+                );
 
                 return result;
             },

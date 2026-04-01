@@ -1,4 +1,4 @@
-import {TestExecutor} from '@feasibleone/blong-chain';
+import {TestExecutor, type ITestLogger} from '@feasibleone/blong-chain';
 import assert from 'node:assert';
 
 type Step = (a: typeof assert, results: object) => object | Promise<object>;
@@ -8,10 +8,10 @@ interface ITestContext {
 }
 
 const runSteps =
-    (steps: Steps, results = {$meta: {}}): ((t: ITestContext) => Promise<void>) =>
+    (steps: Steps, log?: ITestLogger, results = {$meta: {}}): ((t: ITestContext) => Promise<void>) =>
     async (t: ITestContext) => {
         // Use new parallel TestExecutor for improved performance
-        const executor = new TestExecutor({concurrency: 10});
+        const executor = new TestExecutor({concurrency: 10, log});
 
         // Resolve any promises in steps array
         const resolvedSteps: (Step | Step[])[] = [];
@@ -59,7 +59,7 @@ const runStepsSerial =
         }
     };
 
-export default async (test: ITestContext): Promise<(steps: Steps) => unknown> => {
+export default async (test: ITestContext, log?: ITestLogger): Promise<(steps: Steps) => unknown> => {
     const context = test || (await import('node:test')).default;
-    return steps => context.test(steps.name, runSteps(steps));
+    return steps => context.test(steps.name, runSteps(steps, log));
 };

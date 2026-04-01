@@ -1,9 +1,9 @@
 {
     "name": "@feasibleone/handler-test-poc",
-    "description": "POC suite exploring unified handler-test concepts: checkpoints, optional assertions, handler-test graduation",
     "version": "1.0.0",
-    "type": "module",
     "private": true,
+    "description": "POC suite exploring unified handler-test concepts: checkpoints, optional assertions, handler-test graduation",
+    "type": "module",
     "exports": {
         "./server.ts": "./server.ts",
         "./browser.ts": "./browser.ts"
@@ -13,6 +13,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-test": "workspace:^1.0.0"
     },
     "devDependencies": {

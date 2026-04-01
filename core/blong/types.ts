@@ -128,6 +128,7 @@ export interface IRpcServer {
     unregister: (methods: string[], namespace: string, reply: boolean) => void;
     start: () => Promise<IRpcServer>;
     stop: () => Promise<IRpcServer>;
+    setAttachCheckpoint?: (fn: ((meta: IMeta) => void) | undefined) => void;
 }
 
 export interface ILocal {
@@ -221,6 +222,7 @@ export interface IApi {
     utLog: {
         createLog: ILog['logger'];
     };
+    attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {utError: IError; remote: IRemote; type: typeof Type}) => {
         extends?:
             | string
@@ -399,6 +401,9 @@ export interface IMeta {
     };
     gateway?: object;
     validation?: unknown;
+    name?: string;
+    checkpoint?: CheckpointFn;
+    checkpoints?: Array<{name: string; data?: unknown; timestamp: number}>;
 }
 
 export type HRTime = [number, number];
@@ -537,14 +542,19 @@ export type ChainStep =
       ) => Promise<object>)
     | object;
 
+export type CheckpointFn = (this: IMeta, name: string, data?: unknown) => void;
+
 export interface ILib {
     type: typeof Type;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
+    /** @deprecated The framework now auto-names step arrays from handler names. */
     group: (name: string) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
+    assert: typeof Assert | undefined;
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;
+    setProperty: (obj: Record<string, unknown>, path: string, value: unknown) => void;
     merge<T, S1>(target: T, source: S1): T & S1;
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
     merge<T, S1, S2, S3>(target: T, source1: S1, source2: S2, source3: S3): T & S1 & S2 & S3;

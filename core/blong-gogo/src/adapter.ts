@@ -60,7 +60,7 @@ const reserved: string[] = [
 ];
 
 export default async function adapter<T, C>(
-    {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry, type}: IApi,
+    {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry, type, attachCheckpoint}: IApi,
     configBase: string,
     activationNames: string[] = [],
 ): Promise<ReturnType<IAdapterFactory>> {
@@ -243,6 +243,7 @@ export default async function adapter<T, C>(
         },
         async handle(...params: unknown[]) {
             const $meta = params && params.length > 1 && (params[params.length - 1] as IMeta);
+            if ($meta && typeof $meta === 'object') attachCheckpoint?.($meta);
             const method = ($meta && $meta.method) || 'exec';
             const handler = this.findHandler(method) || this.imported.exec;
             if (handler instanceof Function) {

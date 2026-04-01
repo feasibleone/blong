@@ -9,7 +9,7 @@ import type {
     ITypedError,
     RemoteMethod,
 } from '@feasibleone/blong/types';
-import {Internal} from '@feasibleone/blong/types';
+import { Internal } from '@feasibleone/blong/types';
 import hrtime from 'browser-process-hrtime';
 
 const errorMap: IErrorMap = {

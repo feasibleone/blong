@@ -6,6 +6,7 @@ export default orchestrator(blong => ({
         default: {
             namespace: ['order'],
             imports: ['order.order'],
+            validations: ['order.order'],
         },
     },
 }));

@@ -92,6 +92,8 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                         jsonrpc: where.jsonrpc,
                         result: result && (await encrypt(Buffer.from(result))),
                         error: error && (await encrypt(Buffer.from(error))),
+                        ...('checkpoints' in where &&
+                            where.checkpoints && {checkpoints: where.checkpoints}),
                     });
                 } catch (error) {
                     reply.code(400); // eslint-disable-line @typescript-eslint/no-floating-promises

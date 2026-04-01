@@ -340,6 +340,7 @@ export default class Gateway extends Internal implements IGateway {
                                                           Type.Number(),
                                                       ]),
                                                       result: value.result,
+                                                      checkpoints: Type.Optional(Type.Array(Type.Any())),
                                                   }),
                                                   Type.Object({
                                                       // notification
@@ -440,9 +441,11 @@ export default class Gateway extends Internal implements IGateway {
                                 jsonrpc: '2.0',
                                 id,
                                 result,
+                                ...(resultMeta?.checkpoints?.length && {checkpoints: resultMeta.checkpoints}),
                             };
                         }
                     } catch (error) {
+                        request.log.error({err: error, method: methodName}, 'gateway handler error');
                         this._applyMeta(
                             reply
                                 .header('x-envoy-decorator-operation', methodName)
@@ -473,10 +476,11 @@ export default class Gateway extends Internal implements IGateway {
                     },
                 },
             });
-            this.#server.setErrorHandler((error, request: {body: {id?: unknown}}, reply) => {
+            this.#server.setErrorHandler((error, request: FastifyRequest, reply) => {
+                request.log.error({err: error}, 'gateway unhandled error');
                 return reply.status(500).send({
                     jsonrpc: '2.0',
-                    id: request.body?.id,
+                    id: (request.body as {id?: unknown})?.id,
                     error: this._formatError(error),
                 });
             });

@@ -1,27 +1,38 @@
 # Configuration Hot Reload
 
-Centralized, hot-reloadable configuration for the Blong framework.
+## Problem
 
-## Overview
-
-Configuration handling in Blong is currently spread across multiple locations:
+Configuration handling in Blong was spread across multiple locations:
 `blong-config` (external file/env loading), `blong-gogo/load.ts` (activation
 merge at startup), and `Watch.ts` (file-change detection). This fragmentation
-makes it hard to reason about the full config lifecycle and prevents runtime
+made it hard to reason about the full config lifecycle and prevented runtime
 configuration changes from propagating cleanly to running components such as
 database adapters.
 
-This document describes the design for a unified configuration runtime that:
+Any configuration change — even a trivial one like updating a log level — forced
+a full process restart because there was no mechanism to:
 
-1. **Centralizes** load/merge logic into a single authoritative pipeline.
-2. **Exposes config via a stable proxy**, so handlers always see the latest
+- diff the new effective configuration against the old one,
+- decide which ports were affected,
+- call an adapter-specific reconfiguration routine.
+
+Restarting dropped all in-flight requests and broke all established connections,
+which was particularly disruptive for adapters with expensive connection
+setup (database pools, TCP sessions) and made iterative development slow.
+
+## Solution
+
+A unified `ConfigRuntime` class centralizes the full configuration lifecycle:
+
+1. **Centralize** load/merge logic into a single authoritative pipeline.
+2. **Expose config via a stable proxy**, so handlers always see the latest
    values without requiring a process restart.
-3. **Detects configuration changes** and notifies adapters/ports so they can
+3. **Detect configuration changes** and notify adapters/ports so they can
    react (e.g., reconnect to a database) rather than forcing a full restart.
-4. **Preserves developer experience** — no mandatory new syntax in handlers,
+4. **Preserve developer experience** — no mandatory new syntax in handlers,
    minimal new rules to learn.
 
-## Problem Statement
+## Design
 
 ### Current flow (simplified)
 
@@ -78,11 +89,9 @@ adapter(({config}) => {
 The rule: **destructure intermediate config objects freely at startup; read
 leaf (primitive) values only at call time**.
 
-## Design
-
 ### ConfigRuntime
 
-A new `ConfigRuntime` class owns the full config lifecycle:
+A `ConfigRuntime` class owns the full config lifecycle:
 
 | Responsibility | Detail |
 |---|---|
@@ -122,27 +131,21 @@ exactly which keys changed.
 **Default behavior** (no hook): if a port's config changed and it has no hook,
 the registry falls back to a full port stop/start cycle.
 
-**Example — Knex adapter reconnection:**
+**Example — real Knex adapter reconnection** (`core/blong-gogo/src/adapter/server/knex.ts`):
 
 ```typescript
-adapter<IConfig>(({utError}) => ({
-    activation: {default: {type: 'knex', knex: {client: 'mysql2', ...}}},
-    start() {
-        this.config.context = {queryBuilder: Knex(this.config.knex)};
-        return super.start();
-    },
-    async configChanged(diff) {
-        if (diff.has('knex')) {
-            await this.config.context.queryBuilder?.destroy();
-            this.config.context = {queryBuilder: Knex(this.config.knex)};
-        }
-    },
-    async stop(...params) {
-        await this.config.context.queryBuilder?.destroy();
-        this.config.context = null;
-        return super.stop(...params);
-    },
-}));
+async configChanged(diff, next, _prev) {
+    // Only rebuild the connection pool when the knex sub-key changed.
+    // Changing an unrelated config key (e.g., log level) has no effect.
+    const knexChanged = Array.from(diff.keys()).some(
+        key => key === this.config.id + '.knex'
+            || key.startsWith(this.config.id + '.knex.'),
+    );
+    if (!knexChanged) return;
+    await this.config.context?.queryBuilder?.destroy();
+    this.config.knex = (next as Record<string, unknown>)?.[this.config.id]?.['knex'];
+    this.config.context = {queryBuilder: Knex(this.config.knex as any) as any};
+},
 ```
 
 The hook only reconstructs the connection pool when the `knex` sub-key
@@ -184,7 +187,7 @@ Every reload emits a log entry with:
 | Adapters (opt-in) | Can implement `configChanged` for zero-downtime reconfiguration |
 | Handler code | No change required; leaf reads inside handlers are already call-time |
 
-## Developer rules (summary)
+## Developer Rules (Summary)
 
 1. **Do** read leaf config values inside handler/operation functions.
 2. **Do** destructure intermediate config objects at startup (e.g., `const {db} = config`).
@@ -192,11 +195,43 @@ Every reload emits a log entry with:
 4. **Adapters** that hold stateful connections should implement `configChanged`
    to avoid unnecessary downtime.
 
-## Config access patterns — examples
+**Real example** (`core/config-hot-reload/configReload/test/test/testConfigGet.ts`):
 
-The proxy enforces a single rule: **stop destructuring at the object level**.
-Leaf (primitive) values must only be read inside the handler body, never in
-the factory argument.
+```typescript
+export default handler(({lib: {group}, handler: {configGet}}) => ({
+    testConfigGet: ({name = 'configGet — root proxy access'}, $meta) =>
+        group(name)([
+            async function greetingComesFromConfig(assert, {$meta}) {
+                // config.greeting is a leaf value read at call time — hot-reload safe
+                const result = await configGet({}, $meta) as {greeting: string};
+                assert.equal(result.greeting, 'hello',
+                    'root proxy: config.greeting should equal the configured default');
+            },
+        ]),
+}));
+```
+
+## Future Ideas
+
+1. **Schema-validated config reload** — run TypeBox validation on the new config
+   snapshot before applying it. If validation fails, reject the reload and log a
+   structured error, preventing invalid configuration from being applied even
+   transiently.
+
+2. **Config change history** — keep a bounded ring buffer of config diffs (name,
+   timestamp, changed keys, affected ports) accessible via the debug REST API.
+   Developers can query what changed and when without reading logs or restarting.
+
+3. **Environment-scoped hot reload** — restrict hot reload to the `dev` activation
+   layer so that `prod`-only config keys require an explicit process restart.
+   This prevents accidental production config drift when developing against a
+   shared environment.
+
+## Config Access Patterns in Depth
+
+The proxy enforces one rule: **stop destructuring at the object level**. Leaf
+(primitive) values must only be read inside the handler body, not in the factory
+argument.
 
 ### Pattern 1 — Root proxy access ✅ (always safe)
 
@@ -207,7 +242,7 @@ Hold a reference to the root `config` proxy and traverse down to the leaf
 // configGet.ts
 export default handler(({config}) => ({
     configGet: () => ({
-        // `config.theme.name` is evaluated at call time — always current
+        // `config.greeting` is evaluated at call time — always current
         greeting: config.greeting,
     }),
 }));
@@ -216,8 +251,8 @@ export default handler(({config}) => ({
 ### Pattern 2 — Partial destructuring ✅ (safe when stopping at object level)
 
 Destructure **down to an intermediate object** in the factory argument.
-Because the destructured value is still an object, any leaf read that happens
-**inside** the handler body still goes through proxy access.
+Because the destructured value is still an object, any leaf read inside the
+handler body goes through proxy access.
 
 ```typescript
 // configThemeGet.ts
@@ -234,21 +269,14 @@ export default handler(({config: {theme}}) => ({
 > time. If the backing object reference is *replaced* on reload (rather than
 > mutated in place), the captured sub-proxy may become stale. Root proxy access
 > (Pattern 1) is always the safest choice and is preferred when in doubt.
-> Prefer partial destructuring only when it significantly improves readability
-> and the config sub-object is unlikely to be replaced as a whole.
 
 ### Pattern 3 — Full destructuring ❌ (never safe for hot-reload values)
-
-Destructuring all the way to a scalar in the factory argument captures the
-primitive at module load time. The variable will **never** reflect subsequent
-config changes.
 
 ```typescript
 // ❌ Anti-pattern — do not do this
 export default handler(({config: {theme: {name}}}) => ({
     configThemeGet: () => ({
-        // `name` was captured as 'light' at startup and will never change,
-        // even if the config is hot-reloaded to 'dark'.
+        // `name` was captured as 'light' at startup and will never change
         themeName: name,
     }),
 }));
@@ -259,10 +287,10 @@ export default handler(({config: {theme: {name}}}) => ({
 | Factory argument | What is captured | Leaf read where? | Hot-reload safe? |
 |---|---|---|---|
 | `({config})` | root proxy | inside handler body | ✅ always |
-| `({config: {theme}})` | sub-object proxy | inside handler body | ✅ when object is mutated in place |
+| `({config: {theme}})` | sub-object proxy | inside handler body | ✅ when object mutated in place |
 | `({config: {theme: {name}}})` | primitive scalar | at load time (captured) | ❌ never |
 
-## PoC suite
+## PoC Suite
 
 A dedicated PoC suite (`core/config-hot-reload`) demonstrates and validates
 the concept end-to-end. The `configReload` realm contains:

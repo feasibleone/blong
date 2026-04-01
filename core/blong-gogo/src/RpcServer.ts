@@ -1,5 +1,5 @@
 // import { DaprServer, CommunicationProtocolEnum } from '@dapr/dapr';
-import {Internal, type ILog, type IRpcServer} from '@feasibleone/blong/types';
+import {Internal, type ILog, type IMeta, type IRpcServer} from '@feasibleone/blong/types';
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
 import type {IResolution} from './Resolution.ts';
@@ -21,6 +21,7 @@ export default class RpcServer extends Internal implements IRpcServer {
     #routes: RouteOptions[] = [];
     #resolution: IResolution;
     #handlers: Map<string, {handle: RouteOptions['handler']}> = new Map();
+    #attachCheckpoint?: (meta: IMeta) => void;
 
     public constructor(config: IConfig, {log, resolution}: {log: ILog; resolution: IResolution}) {
         // https://docs.dapr.io/developing-applications/sdks/js/js-server/
@@ -49,6 +50,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         pkg: unknown,
     ): void {
         const url = `/rpc/${namespace}/${name.split('.').join('/')}`;
+        const attachCheckpoint = this.#attachCheckpoint;
         async function handle(request: FastifyRequest, reply: FastifyReply): Promise<object> {
             const {id, method, params} = request.body as {
                 id: string;
@@ -56,19 +58,22 @@ export default class RpcServer extends Internal implements IRpcServer {
                 params: object[];
             };
             const meta = params.pop();
+            const newMeta = {
+                ...meta,
+                method,
+                // forward: forward(request.headers),
+                opcode: method.split('.').pop(),
+            };
+            attachCheckpoint?.(newMeta as IMeta);
             const result = await callback.apply(object, [
                 ...params,
-                {
-                    ...meta,
-                    method,
-                    // forward: forward(request.headers),
-                    opcode: method.split('.').pop(),
-                },
+                newMeta,
             ]);
             return {
                 jsonrpc: '2.0',
                 id,
                 result,
+                ...(newMeta.checkpoints?.length && {checkpoints: newMeta.checkpoints}),
             };
         }
         const prevHandler = this.#handlers.get(url);
@@ -107,6 +112,10 @@ export default class RpcServer extends Internal implements IRpcServer {
                 }
             });
         }
+    }
+
+    public setAttachCheckpoint(fn: ((meta: IMeta) => void) | undefined): void {
+        this.#attachCheckpoint = fn;
     }
 
     private _unregister(namespace: string, name: string): void {

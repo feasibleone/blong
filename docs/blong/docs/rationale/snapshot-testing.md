@@ -4,9 +4,7 @@ Snapshot testing is an approach where the expected output of a test is captured
 once and stored as a reference "snapshot". Subsequent test runs compare the
 actual output against the stored snapshot to detect regressions.
 
-## Rationale
-
-### Problem
+## Problem
 
 Many test collections contain repetitive assertions that check individual
 properties of API responses. For example, a single API response assertion block
@@ -29,7 +27,7 @@ This pattern has several issues:
   regressions
 - **Duplication**: The same assertion patterns repeat across many test files
 
-### Solution
+## Solution
 
 Snapshot testing addresses these issues by capturing the complete expected
 output structure and comparing it as a whole:
@@ -42,7 +40,48 @@ assert.snapshot(result, 'transfer-committed');
 The snapshot file stores the complete expected structure, and the test framework
 handles the comparison automatically.
 
-### When to Use Snapshot Testing
+### Current Implementation (TAP)
+
+The framework currently uses TAP's built-in `t.matchSnapshot()` for snapshot
+testing. Snapshots are stored in `tap-snapshots/` directories alongside test
+files and regenerated with `TAP_SNAPSHOT=1`.
+
+**Real example from `core/blong-log/src/server.test.ts`:**
+
+```typescript
+t.test('snapshot - GET /api/config', async t => {
+    const response = await fetch(`http://127.0.0.1:${port}/api/config`);
+    const config = await response.json();
+
+    // Normalize dynamic ports before snapshotting
+    config.wsUrl  = config.wsUrl.replace(/:\d+\//, ':PORT/');
+    config.apiUrl = config.apiUrl.replace(/:\d+\//, ':PORT/');
+
+    t.matchSnapshot(config, 'GET /api/config response');
+});
+```
+
+**Stored snapshot** (`core/blong-log/tap-snapshots/src/server.test.ts.test.cjs`):
+
+```javascript
+exports[`... > snapshot - GET /api/config > GET /api/config response 1`] = `
+Object {
+  "apiUrl": "http://127.0.0.1:PORT/api",
+  "properties": Object {
+    "error": "err", "level": "level", "name": "name", ...
+  },
+  "theme": Object { "mode": "dark", "levels": { "info": "#22c55e", ... } },
+  "wsUrl": "ws://127.0.0.1:PORT/ws",
+}
+`
+```
+
+Note that dynamic values (port numbers) are normalized manually before
+`t.matchSnapshot()` is called, because TAP does not have built-in masking
+support. A future `assert.snapshot(result, name, {mask})` helper would
+encapsulate this normalization.
+
+## When to Use Snapshot Testing
 
 Snapshot testing works well for:
 
@@ -53,7 +92,7 @@ Snapshot testing works well for:
 - **Migration scenarios**: Where existing test collections have many repetitive
   assertions that can be replaced
 
-### When Not to Use Snapshot Testing
+## When Not to Use Snapshot Testing
 
 Snapshot testing should be avoided when:
 
@@ -64,7 +103,7 @@ Snapshot testing should be avoided when:
 - **Simple assertions**: When a few targeted assertions are clearer than a
   snapshot
 
-### Handling Dynamic Values
+## Handling Dynamic Values
 
 Snapshots should support masking or normalizing dynamic values:
 
@@ -77,7 +116,10 @@ assert.snapshot(result, 'transfer-committed', {
 Masked fields are replaced with a placeholder value before comparison, so that
 timestamps, IDs, and other dynamic values don't cause false failures.
 
-### Snapshot Storage
+**Note:** This API is proposed. Current practice uses manual normalization (see
+implementation note above) until the framework helper is built.
+
+## Snapshot Storage
 
 Snapshots are stored alongside test files in a `__snapshots__` directory or
 as `.snap` files. They should be committed to source control so that changes
@@ -324,3 +366,21 @@ When migrating test collections that have repetitive assertions:
    API calls, evaluate whether an end-of-chain or checkpoint context snapshot
    can replace multiple per-step snapshots, reducing the total number of
    snapshot files while maintaining regression coverage
+
+## Future Ideas
+
+1. **Schema-aware automatic masking** — any field whose TypeBox schema carries
+   `{format: 'uuid'}` or `{format: 'date-time'}` should be masked automatically,
+   eliminating manual mask lists. The framework knows the schema at test time;
+   using it prevents dynamic-value leakage without extra developer effort.
+
+2. **Snapshot diffing in the real-time log viewer** — when a snapshot assertion
+   fails during a test run, emit the diff as a structured log entry so it
+   appears in the blong-log UI with syntax highlighting and side-by-side
+   comparison, making it faster to understand a regression without leaving
+   the browser.
+
+3. **Snapshot inheritance** — allow a snapshot to reference another snapshot as
+   a base and declare only the delta (e.g., `assert.snapshot(result, 'transfer-reversed', {extends: 'transfer-committed', set: {state: 'REVERSED'}})`).
+   This is particularly useful for testing multiple scenarios from the same
+   base state without duplicating the full expected object.

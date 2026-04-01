@@ -3,6 +3,20 @@
  */
 
 // ============================================================================
+// Logger Interface
+// ============================================================================
+
+/** Minimal logger interface compatible with the framework's ILogger */
+export interface ITestLogger {
+    trace?: (...args: unknown[]) => void;
+    debug?: (...args: unknown[]) => void;
+    info?: (...args: unknown[]) => void;
+    warn?: (...args: unknown[]) => void;
+    error?: (...args: unknown[]) => void;
+    fatal?: (...args: unknown[]) => void;
+}
+
+// ============================================================================
 // Step Function Types
 // ============================================================================
 
@@ -324,6 +338,8 @@ export interface ITestExecutorConfig {
     captureStackTraces?: boolean;
     /** Test framework to use (tap, node:test, etc.) */
     framework?: unknown;
+    /** Logger instance for reporting step failures */
+    log?: ITestLogger;
 }
 
 /**

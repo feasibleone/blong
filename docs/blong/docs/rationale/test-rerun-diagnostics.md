@@ -3,9 +3,7 @@
 Automatic rerun of failing tests with increased logging and tracing to collect
 diagnostic data for inclusion in test reports.
 
-## Rationale
-
-### Problem
+## Problem
 
 When a test fails in a CI/CD pipeline or during a test run, the available
 diagnostic information is often insufficient to determine the root cause. The
@@ -21,7 +19,7 @@ This creates a frustrating cycle:
    issues, or data-dependent conditions
 4. Time is wasted on manual debugging instead of fixing the actual issue
 
-### Solution
+## Solution
 
 Implement an automatic rerun mechanism that:
 
@@ -124,6 +122,12 @@ const executor = new TestExecutor({
 });
 ```
 
+**Note:** The `rerun` configuration option and the selective failure detection
+pipeline are not yet implemented. Current test execution in `blong-chain` runs
+steps to completion and reports failures via TAP, but does not automatically
+rerun failing steps with increased diagnostics. The configuration schema above
+describes the intended API for implementation.
+
 ### Future Considerations
 
 - **Flaky test detection**: If a test passes on rerun, flag it as potentially
@@ -132,3 +136,22 @@ const executor = new TestExecutor({
   failures with attached diagnostic data
 - **Historical analysis**: Track rerun patterns over time to identify
   systemic issues
+
+## Future Ideas
+
+1. **Flaky test quarantine** — automatically quarantine tests that pass on
+   rerun. After N consecutive passes, the test is reinstated. The quarantine
+   registry is stored per-suite and visible in the test report, making
+   flakiness a first-class concept rather than a noise source.
+
+2. **Differential diagnostics** — when a test fails on rerun too, compare
+   the structured diagnostic data (logs, traces, timing) from the original
+   run and the rerun to highlight what changed between attempts. A timing
+   spike, a missing trace span, or a different HTTP error code narrows the
+   root cause significantly.
+
+3. **Pre-flight diagnostic baseline** — run the full test suite once with
+   `checkpointMode: 'debug'` before a release deployment and store the
+   resulting checkpoint and timing data as a baseline. Post-deployment tests
+   are compared against this baseline so that regressions in performance or
+   intermediate state are caught even when the final assertion still passes.
