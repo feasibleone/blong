@@ -548,6 +548,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-hello",
+            "projectFolder": "core/blong-hello",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/test",
             "projectFolder": "core/test",
             "reviewCategory": "core",

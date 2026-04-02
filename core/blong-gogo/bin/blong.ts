@@ -3,6 +3,7 @@
 import minimist from 'minimist';
 import { existsSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
+import { analyzeFolder, synthesizeServerFromHandlers } from '../src/folderAnalysis.ts';
 import load from '../src/load.ts';
 
 const argv: {_: string[]} = minimist(process.argv.slice(2));
@@ -40,9 +41,20 @@ if (target) {
         await platform.test();
         if (process.env.CI) await platform.stop();
     } else {
-        throw new Error(
-            `No index.ts or server.ts found in ${cwd}. ` +
-                'Run blong from a suite or realm folder, or provide a file path.',
-        );
+        const analysis = await analyzeFolder(cwd);
+        if (analysis.kind === 'handlers' || analysis.kind === 'mixed') {
+            const serverDef = await synthesizeServerFromHandlers(cwd, analysis);
+            const platform = await load(serverDef, name, name, ['microservice', 'integration', 'dev']);
+            await platform.start();
+            await platform.test();
+            if (process.env.CI) await platform.stop();
+        } else {
+            throw new Error(
+                `No entry point found in ${cwd}. ` +
+                    'Run blong from a folder that contains a suite (server.ts / browser.ts / index.ts), ' +
+                    'a realm (realm.ts), or handler files (e.g. helloHello.ts). ' +
+                    'You can also provide a file path as an argument.',
+            );
+        }
     }
 }
