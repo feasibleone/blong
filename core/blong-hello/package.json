@@ -1,13 +1,13 @@
 {
     "name": "@feasibleone/blong-hello",
     "version": "1.0.0",
-    "type": "module",
     "description": "Hello-world example: a single handler file runnable with `blong`",
+    "type": "module",
     "scripts": {
         "build": "true"
     },
     "dependencies": {
-        "@feasibleone/blong-gogo": "workspace:^1.0.0"
+        "@feasibleone/blong": "workspace:^1.0.0"
     },
     "devDependencies": {
         "@types/node": "^24",

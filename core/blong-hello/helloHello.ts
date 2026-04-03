@@ -1,4 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong/types';
+import {handler, type IMeta} from '@feasibleone/blong';
 
 /**
  * Minimal hello-world handler.
