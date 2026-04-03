@@ -294,7 +294,7 @@ export default async function loadRealm<T extends TSchema>(
         });
         items = [
             function log() {
-                return import('./Log.ts');
+                return defKind === 'browser' ? import('./BrowserLog.ts') : import('./Log.ts');
             },
             function apiSchema() {
                 return import('./ApiSchema.ts');
@@ -314,51 +314,48 @@ export default async function loadRealm<T extends TSchema>(
             function resolution() {
                 return import('./ResolutionLocal.ts');
             },
-            ...({
-                server: [
-                    function remote() {
-                        return import('./RpcClient.ts');
-                    },
-                    function rpcServer() {
-                        return import('./RpcServer.ts');
-                    },
-                    function gateway() {
-                        return import('./Gateway.ts');
-                    },
-                    function restFs() {
-                        return import('./RestFs.ts');
-                    },
-                    function registry() {
-                        return import('./Registry.ts');
-                    },
-                    function codec() {
-                        return import('./codec/server.ts');
-                    },
-                    function orchestrator() {
-                        return import('./orchestrator/index.ts');
-                    },
-                    function adapter() {
-                        return import('./adapter/server.ts');
-                    },
-                ],
-                browser: [
-                    function remote() {
-                        return import('./Remote.ts');
-                    },
-                    function registry() {
-                        return import('./Registry.ts');
-                    },
-                    function codec() {
-                        return import('./codec/browser.ts');
-                    },
-                    function orchestrator() {
-                        return import('./orchestrator/index.ts');
-                    },
-                    function adapter() {
-                        return import('./adapter/browser.ts');
-                    },
-                ],
-            }[defKind] ?? []),
+            ...(defKind === 'browser' ? [
+                function remote() {
+                    return import('./Remote.ts');
+                },
+                function registry() {
+                    return import('./Registry.ts');
+                },
+                function codec() {
+                    return import('./codec/browser.ts');
+                },
+                function orchestrator() {
+                    return import('./orchestrator/index.ts');
+                },
+                function adapter() {
+                    return import('./adapter/browser.ts');
+                },
+            ] : [
+                function remote() {
+                    return import('./RpcClient.ts');
+                },
+                function rpcServer() {
+                    return import('./RpcServer.ts');
+                },
+                function gateway() {
+                    return import('./Gateway.ts');
+                },
+                function restFs() {
+                    return import('./RestFs.ts');
+                },
+                function registry() {
+                    return import('./Registry.ts');
+                },
+                function codec() {
+                    return import('./codec/server.ts');
+                },
+                function orchestrator() {
+                    return import('./orchestrator/index.ts');
+                },
+                function adapter() {
+                    return import('./adapter/server.ts');
+                },
+            ]),
         ];
     }
     loadedConfigs.push(...activeConfigs(mod, configNames));

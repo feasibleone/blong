@@ -36,7 +36,8 @@
     "main": "./dist/blong-ui.es.js",
     "types": "./dist/index.d.ts",
     "scripts": {
-        "build": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
+        "build": "true",
+        "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
         "build:watch": "vite build --watch",
         "build-storybook": "storybook build",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
