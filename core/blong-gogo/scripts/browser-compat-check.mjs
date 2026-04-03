@@ -3,38 +3,42 @@
 // Usage:
 //   node scripts/browser-compat-check.mjs
 //
-// Starts the ui-demo/marine Vite dev server, opens Chromium via Playwright,
+// Starts the ui-demo Vite dev server, opens Chromium via Playwright,
 // captures ALL console output and network errors, prints a summary, and exits.
 // Run after every code change. Exit code 1 if errors were found.
 
 import {chromium} from 'playwright';
 import {spawn} from 'child_process';
 
-const VITE_URL = 'http://localhost:5173';
 const TIMEOUT_MS = 30_000;
 
 async function startVite() {
     const proc = spawn('node', ['../../common/scripts/install-run-rush-pnpm.js', 'run', 'dev'], {
-        cwd: new URL('../../ui-demo/marine', import.meta.url).pathname,
+        cwd: new URL('../../ui-demo', import.meta.url).pathname,
         stdio: 'pipe',
     });
-    // Wait until Vite prints its "ready" line
-    await new Promise((resolve, reject) => {
+    // Wait until Vite prints its "ready" line; strip ANSI codes before matching
+    const url = await new Promise((resolve, reject) => {
         const onData = chunk => {
-            if (chunk.toString().includes('Local:')) resolve(proc);
+            const text = chunk.toString().replace(/\x1b\[[0-9;]*m/g, '');
+            const match = text.match(/Local:\s+(http:\/\/localhost:\d+)/);
+            if (match) resolve(match[1]);
         };
         proc.stdout.on('data', onData);
         proc.stderr.on('data', onData);
         setTimeout(() => reject(new Error('Vite did not start in time')), TIMEOUT_MS);
     });
-    return proc;
+    return {proc, url};
 }
 
 async function run() {
     console.log('Starting Vite dev server…');
-    const vite = await startVite();
+    const {proc: vite, url: viteUrl} = await startVite();
 
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+        executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium-browser',
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
 
     const errors = [];
@@ -60,8 +64,8 @@ async function run() {
         console.error(`[browser:request] ${msg}`);
     });
 
-    console.log(`Navigating to ${VITE_URL} …`);
-    await page.goto(VITE_URL, {waitUntil: 'networkidle', timeout: TIMEOUT_MS});
+    console.log(`Navigating to ${viteUrl} …`);
+    await page.goto(viteUrl, {waitUntil: 'networkidle', timeout: TIMEOUT_MS});
 
     // Give async framework init a moment to complete
     await page.waitForTimeout(3000);
