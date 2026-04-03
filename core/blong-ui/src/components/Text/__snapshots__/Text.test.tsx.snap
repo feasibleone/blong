@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Text > accepts className 1`] = `
+<div>
+  <span
+    class="font-bold"
+  >
+    label.name
+  </span>
+</div>
+`;
+
+exports[`Text > renders inside a custom tag 1`] = `
+<div>
+  <h1>
+    page.title
+  </h1>
+</div>
+`;
+
+exports[`Text > renders translation key as fallback text 1`] = `
+<div>
+  <span>
+    buttons.save
+  </span>
+</div>
+`;

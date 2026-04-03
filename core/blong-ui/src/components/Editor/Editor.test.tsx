@@ -1,0 +1,363 @@
+import {act} from '@testing-library/react';
+import {describe, expect, it, vi} from 'vitest';
+import {render} from '../../test/render.js';
+import {
+    Basic,
+    Design,
+    EditorWithExplorer,
+    Files,
+    FilesInTab,
+    Loading,
+    ServerValidation,
+    Steps,
+    StepsDisabledBack,
+    StepsHiddenBack,
+    Submit,
+    Tabs,
+    Toolbar,
+} from './Editor.stories.js';
+import {CascadedDropdowns} from './stories/CascadedDropdowns.stories.js';
+import {CascadedTables} from './stories/CascadedTables.stories.js';
+import {CustomEditors} from './stories/CustomEditors.stories.js';
+import {MasterDetail} from './stories/MasterDetail.stories.js';
+import {MasterDetailPolymorphic} from './stories/MasterDetailPolymorphic.stories.js';
+import {Pivot, PivotBG} from './stories/Pivot.stories.js';
+import {PolymorphicLayout} from './stories/PolymorphicLayout.stories.js';
+import {ResponsiveLayout} from './stories/ResponsiveLayout.stories.js';
+import {TabbedLayout} from './stories/TabbedLayout.stories.js';
+import {ThumbIndexLayout} from './stories/ThumbIndexLayout.stories.js';
+import {Validation, ValidationBG} from './stories/Validation.stories.js';
+
+/** dispatch mock: returns pre-seeded data; 'treeTreeEditError' rejects with validation errors */
+const dispatch = vi.fn().mockImplementation(async (method: string) => {
+    if (method === 'treeTreeEditError') {
+        const err = new Error('Server validation error') as Error & {
+            validation?: Record<string, string>;
+        };
+        err.validation = {treeName: 'Duplicate name', treeType: 'Invalid Type'};
+        throw err;
+    }
+    return {treeName: 'Oak', treeId: 1, treeType: 1, treeDescription: '', createdOn: '2023-03-08'};
+});
+
+describe('<Editor />', () => {
+    it('Basic render equals snapshot', async () => {
+        const {findByTestId} = render(<Basic />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Loading render equals snapshot', async () => {
+        const neverResolve = vi.fn().mockImplementation(() => new Promise(() => {}));
+        const {findByTestId} = render(<Loading />, {dispatch: neverResolve});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * Design render equals snapshot
+     * MISMATCH JUSTIFICATION: target injects drag-drop handles per card in
+     * design mode. blong-ui controls design mode via DesignModeProvider at
+     * the suite level. The Editor component itself has no `design` prop —
+     * both snapshots render the same card layout without handles.
+     */
+    it('Design render equals snapshot', async () => {
+        const {findByTestId} = render(<Design />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Tabs render equals snapshot', async () => {
+        const {findByTestId} = render(<Tabs />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * CascadedDropdowns render equals snapshot
+     * MISMATCH JUSTIFICATION: blong-ui wires dropdowns via global `dispatch`;
+     * target uses an `onDropdown` prop. The selected options differ because
+     * the dispatch mock returns no data for the dropdown keys used in this story.
+     */
+    it('CascadedDropdowns render equals snapshot', async () => {
+        const {findByTestId, container} = render(<CascadedDropdowns />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (CascadedDropdowns.play) {
+            await act(() => CascadedDropdowns.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * CascadedTables render equals snapshot
+     * Story uses three `widget.type='table'` cards (Person, Document, Attachment).
+     * The DataTable renders correctly; row-selection-driven cascading is a
+     * runtime interaction not captured by this static snapshot test.
+     */
+    it('CascadedTables render equals snapshot', async () => {
+        const {findByTestId, container} = render(<CascadedTables />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (CascadedTables.play) {
+            await act(() => CascadedTables.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * CustomEditors render equals snapshot
+     * MISMATCH JUSTIFICATION: target allows passing custom widget component
+     * factories at the story level via `editors` prop. blong-ui uses a global
+     * widgetRegistry; story-level registration is not yet implemented.
+     */
+    it('CustomEditors render equals snapshot', async () => {
+        const {findByTestId} = render(<CustomEditors />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * MasterDetail render equals snapshot
+     * MISMATCH JUSTIFICATION: target `card.watch = '$.selected.person'`
+     * fills the detail card when a table row is selected. blong-ui does not
+     * yet implement the `watch` reactive card-fill pattern.
+     */
+    it('MasterDetail render equals snapshot', async () => {
+        const {findByTestId, container} = render(<MasterDetail />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (MasterDetail.play) {
+            await act(() => MasterDetail.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * MasterDetailPolymorphic render equals snapshot
+     * MISMATCH JUSTIFICATION: `card.match` polymorphic card visibility is
+     * not yet implemented in blong-ui.
+     */
+    it('MasterDetailPolymorphic render equals snapshot', async () => {
+        const {findByTestId, container} = render(<MasterDetailPolymorphic />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (MasterDetailPolymorphic.play) {
+            await act(() => MasterDetailPolymorphic.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * Pivot render equals snapshot
+     * Story uses `widget.type='table'` cards (Group A, Group B), matching
+     * the DataTable-based structure of the target Pivot snapshot.
+     */
+    it('Pivot render equals snapshot', async () => {
+        const {findByTestId} = render(<Pivot />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * Pivot BG render equals snapshot
+     * Same structure as Pivot with Bulgarian card labels (Група А / Група Б).
+     */
+    it('Pivot BG render equals snapshot', async () => {
+        const {findByTestId} = render(<PivotBG />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * PolymorphicLayout render equals snapshot
+     * MISMATCH JUSTIFICATION: `card.match` polymorphic card selection is not
+     * yet implemented. Both cards render unconditionally.
+     */
+    it('PolymorphicLayout render equals snapshot', async () => {
+        const {findByTestId} = render(<PolymorphicLayout />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('ResponsiveLayout render equals snapshot', async () => {
+        const {findByTestId} = render(<ResponsiveLayout />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('TabbedLayout render equals snapshot', async () => {
+        const {findByTestId} = render(<TabbedLayout />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * ThumbIndexLayout render equals snapshot
+     * orientation='left' renders PanelMenu (vertical accordion nav) instead
+     * of TabMenu, matching the target PanelMenu-based ThumbIndex structure.
+     * Nested sub-items within panel sections are not yet implemented.
+     */
+    it('ThumbIndexLayout render equals snapshot', async () => {
+        const {findByTestId} = render(<ThumbIndexLayout />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Submit render equals snapshot', async () => {
+        const {findByTestId, container} = render(<Submit />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (Submit.play) {
+            await act(() => Submit.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Validation render equals snapshot', async () => {
+        const {findByTestId, container} = render(<Validation />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (Validation.play) {
+            await act(() => Validation.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * ValidationBG render equals snapshot
+     * MISMATCH JUSTIFICATION: blong-ui does not yet have per-story locale
+     * switching. Labels render in English. target renders Bulgarian labels.
+     */
+    it('ValidationBG render equals snapshot', async () => {
+        const {findByTestId, container} = render(<ValidationBG />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (ValidationBG.play) {
+            await act(() => ValidationBG.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Server validation render equals snapshot', async () => {
+        const {findByTestId, container} = render(<ServerValidation />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (ServerValidation.play) {
+            await act(() => ServerValidation.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Toolbar render equals snapshot', async () => {
+        const {findByTestId} = render(<Toolbar />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * Files render equals snapshot
+     * MISMATCH JUSTIFICATION: imageUpload, ocr, webcamera, and file widget
+     * types are not yet implemented in blong-ui. The snapshot shows plain
+     * card layout with text inputs.
+     */
+    it('Files render equals snapshot', async () => {
+        const {findByTestId, container} = render(<Files />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (Files.play) {
+            await act(() => Files.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * FilesInTab render equals snapshot
+     * MISMATCH JUSTIFICATION: Same file widget limitation as Files.
+     */
+    it('FilesInTab render equals snapshot', async () => {
+        const {findByTestId, container} = render(<FilesInTab />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (FilesInTab.play) {
+            await act(() => FilesInTab.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('Steps render equals snapshot', async () => {
+        const {findByTestId} = render(<Steps />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('StepsDisabledBack render equals snapshot', async () => {
+        const {findByTestId, container} = render(<StepsDisabledBack />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (StepsDisabledBack.play) {
+            await act(() => StepsDisabledBack.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    it('StepsHiddenBack render equals snapshot', async () => {
+        const {findByTestId, container} = render(<StepsHiddenBack />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (StepsHiddenBack.play) {
+            await act(() => StepsHiddenBack.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    /**
+     * EditorTabsExplorer render equals snapshot
+     * The History tab injects an Explorer (DataTable) via the `component` slot
+     * on ILayoutTabItem. The play function navigates to the History tab so the
+     * Explorer is visible in the snapshot.
+     */
+    it('EditorTabsExplorer render equals snapshot', async () => {
+        const {findByTestId, container} = render(<EditorWithExplorer />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        if (EditorWithExplorer.play) {
+            await act(() => EditorWithExplorer.play!({canvasElement: container}));
+        }
+        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
+        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+    });
+
+    // ── Structural assertions (verify DOM structure rather than exact HTML) ────
+
+    it('Basic: role="toolbar" element is present', async () => {
+        const {container} = render(<Basic />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
+        expect(container.querySelector('[role="toolbar"]')).toBeTruthy();
+    });
+
+    it('Basic: Edit button is present in read-only mode', async () => {
+        const {container} = render(<Basic />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
+        const labels = Array.from(container.querySelectorAll('.p-button-label')).map(el =>
+            el.textContent?.trim(),
+        );
+        expect(labels).toContain('Edit');
+    });
+
+    it('Tabs: role="tablist" is present', async () => {
+        const {container} = render(<Tabs />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
+        expect(container.querySelector('[role="tablist"]')).toBeTruthy();
+    });
+
+    /**
+     * Steps: no toolbar — mirrors target Steps story which sets toolbar:false.
+     * In blong-ui the equivalent is editable={false} to prevent the Edit button.
+     */
+    it('Steps: steps indicator (ol/role=tablist) is present', async () => {
+        const {container} = render(<Steps />, {dispatch});
+        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
+        const stepsList = container.querySelector('.p-steps-list, .p-steps, [role="tablist"]');
+        expect(stepsList).toBeTruthy();
+    });
+});

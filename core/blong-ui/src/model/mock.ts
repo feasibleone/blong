@@ -18,7 +18,6 @@
  *     }
  *   });
  *
- * Mirror of ut-rule/model/dropdown.js + ut-rule/model/condition.mock.js.
  */
 import {dropdownRegistry} from './dropdownRegistry.js';
 import {setFetchFn} from './schemaFetcher.js';

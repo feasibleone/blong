@@ -16,6 +16,9 @@
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {Portal, type IPortalProps} from '../Portal/index.js';
+import {Theme, type IThemeConfig} from '../Theme/index.js';
+
+const DEFAULT_THEME: IThemeConfig = {name: 'lara-light-blue', palette: 'light'};
 
 export interface IAppProps extends IPortalProps {
     /** Method dispatch — routes calls through the browser handler registry */
@@ -26,12 +29,33 @@ export interface IAppProps extends IPortalProps {
     baseUrl?: string;
     /** Enable debug mode */
     debug?: boolean;
+    /** PrimeReact theme configuration (defaults to lara-light-blue / light palette) */
+    theme?: IThemeConfig;
+    /**
+     * When provided, renders in place of the Portal shell.
+     * Useful for Storybook decorators and unit tests that need provider
+     * context (BlongUiProvider + Theme) without the full portal UI.
+     */
+    children?: React.ReactNode;
 }
 
-export function App({dispatch, schemaUrl, baseUrl, debug, ...portalProps}: IAppProps) {
+export function App({
+    dispatch,
+    schemaUrl,
+    baseUrl,
+    debug,
+    theme = DEFAULT_THEME,
+    children,
+    ...portalProps
+}: IAppProps) {
     return (
-        <BlongUiProvider dispatch={dispatch} schemaUrl={schemaUrl} baseUrl={baseUrl} debug={debug}>
-            <Portal {...portalProps} />
+        <BlongUiProvider
+            dispatch={dispatch}
+            schemaUrl={schemaUrl}
+            baseUrl={baseUrl}
+            debug={debug}
+        >
+            <Theme theme={theme}>{children ?? <Portal {...portalProps} />}</Theme>
         </BlongUiProvider>
     );
 }

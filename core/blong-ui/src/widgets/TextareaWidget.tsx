@@ -20,7 +20,7 @@ export function TextareaWidget({
             onBlur={onBlur}
             readOnly={readOnly}
             disabled={disabled}
-            className={`blong-textarea ${error ? 'p-invalid' : ''}`}
+            className={`blong-textarea w-full ${error ? 'p-invalid' : ''}`}
             autoResize
             rows={3}
             maxLength={schema.maxLength}

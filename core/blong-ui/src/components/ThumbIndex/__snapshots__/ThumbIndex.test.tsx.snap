@@ -1,0 +1,293 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
+<div>
+  <div
+    class="p-tabview p-component blong-thumb-index blong-thumb-index--horizontal "
+  >
+    <div
+      class="p-tabview-nav-container"
+    >
+      <div
+        class="p-tabview-nav-content"
+        id="pr_id_3"
+      >
+        <ul
+          class="p-tabview-nav"
+          role="tablist"
+        >
+          <li
+            class="p-tabview-ink-bar"
+            style="width: 0px;"
+          />
+        </ul>
+      </div>
+    </div>
+    <div
+      class="p-tabview-panels"
+    />
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > handles controlled activeId 1`] = `
+<div>
+  <div
+    class="p-tabview p-component blong-thumb-index blong-thumb-index--horizontal "
+  >
+    <div
+      class="p-tabview-nav-container"
+    >
+      <div
+        class="p-tabview-nav-content"
+        id="pr_id_5"
+      >
+        <ul
+          class="p-tabview-nav"
+          role="tablist"
+        >
+          <li
+            class="p-tabview-ink-bar"
+            style="width: 0px;"
+          />
+        </ul>
+      </div>
+    </div>
+    <div
+      class="p-tabview-panels"
+    />
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > renders empty tab set (horizontal) 1`] = `
+<div>
+  <div
+    class="p-tabview p-component blong-thumb-index blong-thumb-index--horizontal "
+  >
+    <div
+      class="p-tabview-nav-container"
+    >
+      <div
+        class="p-tabview-nav-content"
+        id="pr_id_1"
+      >
+        <ul
+          class="p-tabview-nav"
+          role="tablist"
+        >
+          <li
+            class="p-tabview-ink-bar"
+            style="width: 0px;"
+          />
+        </ul>
+      </div>
+    </div>
+    <div
+      class="p-tabview-panels"
+    />
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
+<div>
+  <div
+    class="p-tabview p-component blong-thumb-index blong-thumb-index--horizontal "
+  >
+    <div
+      class="p-tabview-nav-container"
+    >
+      <div
+        class="p-tabview-nav-content"
+        id="pr_id_2"
+      >
+        <ul
+          class="p-tabview-nav"
+          role="tablist"
+        >
+          <li
+            class="p-tabview-ink-bar"
+            style="width: 0px;"
+          />
+        </ul>
+      </div>
+    </div>
+    <div
+      class="p-tabview-panels"
+    />
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > renders vertical layout 1`] = `
+<div>
+  <div
+    class="blong-thumb-index blong-thumb-index--vertical "
+  >
+    <nav
+      class="blong-thumb-index__nav"
+    >
+      <div
+        class="blong-thumb-index__nav-group"
+      >
+        <ul
+          class="blong-thumb-index__nav-items"
+        >
+          <li
+            class="blong-thumb-index__nav-item blong-thumb-index__nav-item--active"
+          >
+            <button
+              class="blong-thumb-index__nav-btn"
+              type="button"
+            >
+              X
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div
+        class="blong-thumb-index__nav-group"
+      >
+        <ul
+          class="blong-thumb-index__nav-items"
+        >
+          <li
+            class="blong-thumb-index__nav-item "
+          >
+            <button
+              class="blong-thumb-index__nav-btn"
+              type="button"
+            >
+              Y
+            </button>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <div
+      class="blong-thumb-index__content"
+    >
+      <div>
+        X
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > renders vertical layout with group items 1`] = `
+<div>
+  <div
+    class="blong-thumb-index blong-thumb-index--vertical "
+  >
+    <nav
+      class="blong-thumb-index__nav"
+    >
+      <div
+        class="blong-thumb-index__nav-group"
+      >
+        <button
+          class="blong-thumb-index__nav-icon"
+          type="button"
+        >
+          <i
+            class="pi pi-folder"
+          />
+        </button>
+        <ul
+          class="blong-thumb-index__nav-items"
+        >
+          <li
+            class="blong-thumb-index__nav-item blong-thumb-index__nav-item--active"
+          >
+            <button
+              class="blong-thumb-index__nav-btn"
+              type="button"
+            >
+              Child 1
+            </button>
+          </li>
+          <li
+            class="blong-thumb-index__nav-item "
+          >
+            <button
+              class="blong-thumb-index__nav-btn"
+              type="button"
+            >
+              Child 2
+            </button>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <div
+      class="blong-thumb-index__content"
+    >
+      <div>
+        Child 1
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] = `
+<div>
+  <div
+    class="p-tabview p-component blong-thumb-index blong-thumb-index--horizontal "
+  >
+    <div
+      class="p-tabview-nav-container"
+    >
+      <div
+        class="p-tabview-nav-content"
+        id="pr_id_4"
+      >
+        <ul
+          class="p-tabview-nav"
+          role="tablist"
+        >
+          <li
+            class="p-tabview-ink-bar"
+            style="width: 0px;"
+          />
+        </ul>
+      </div>
+    </div>
+    <div
+      class="p-tabview-panels"
+    />
+  </div>
+</div>
+`;
+
+exports[`ThumbIndex > renders with icons in items 1`] = `
+<div>
+  <div
+    class="p-tabview p-component blong-thumb-index blong-thumb-index--horizontal "
+  >
+    <div
+      class="p-tabview-nav-container"
+    >
+      <div
+        class="p-tabview-nav-content"
+        id="pr_id_6"
+      >
+        <ul
+          class="p-tabview-nav"
+          role="tablist"
+        >
+          <li
+            class="p-tabview-ink-bar"
+            style="width: 0px;"
+          />
+        </ul>
+      </div>
+    </div>
+    <div
+      class="p-tabview-panels"
+    />
+  </div>
+</div>
+`;

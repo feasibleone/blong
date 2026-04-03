@@ -1,82 +1,87 @@
 /**
  * Card — container component grouping related fields with a label.
- * Design-mode-aware from day one.
+ * Extends PrimeReact Card; design-mode-aware.
  */
-import React, {useState, type ReactNode} from 'react';
-import {DesignHandle} from '../../design/DesignHandle.js';
-import {SelectionIndicator} from '../../design/SelectionIndicator.js';
-import {useDesignable} from '../../design/useDesignable.js';
-import {useDesignMode} from '../../design/useDesignMode.js';
+import { Card as PrimeCard } from 'primereact/card';
+import React, { useState, type ReactNode } from 'react';
+import { DesignHandle } from '../../design/DesignHandle.js';
+import { SelectionIndicator } from '../../design/SelectionIndicator.js';
+import { useDesignable } from '../../design/useDesignable.js';
+import { useDesignMode } from '../../design/useDesignMode.js';
 
 export interface ICardProps {
-    name: string;
-    label?: string;
+    /** Card title shown in the header */
+    title?: string | ReactNode;
     children?: ReactNode;
     readOnly?: boolean;
     loading?: boolean;
     collapsible?: boolean;
     /** Additional CSS class */
     className?: string;
-    /** Unique element ID for design mode */
-    designId?: string;
+    /** Unique element ID for design-mode anchoring */
+    id?: string;
 }
 
 export function Card({
-    name,
-    label,
+    title,
     children,
     readOnly: _readOnly,
     loading,
     collapsible,
     className,
-    designId,
+    id,
 }: ICardProps) {
     const [collapsed, setCollapsed] = useState(false);
     const {active: isDesignMode} = useDesignMode();
-    const elementId = designId ?? `card:${name}`;
+    const elementId = id ?? 'card';
     const {isSelected, select, dragProps, designClass, style} = useDesignable(elementId, 'card');
 
+    /** Build the title element — includes collapse toggle and design handle */
+    const titleNode =
+        title || collapsible || isDesignMode ? (
+            <>
+                {isDesignMode && (
+                    <DesignHandle
+                        label={typeof title === 'string' ? title : undefined}
+                        onSelect={select}
+                    />
+                )}
+                {title && (
+                    <span
+                        className="blong-card__label"
+                        onClick={collapsible ? () => setCollapsed(c => !c) : undefined}
+                        style={collapsible ? {cursor: 'pointer'} : undefined}
+                    >
+                        {collapsible && (
+                            <i
+                                className={`pi ${collapsed ? 'pi-chevron-right' : 'pi-chevron-down'} blong-card__collapse-icon`}
+                            />
+                        )}
+                        {title}
+                    </span>
+                )}
+            </>
+        ) : undefined;
+
+    const cardClassName =
+        [
+            collapsed ? 'blong-card--collapsed' : '',
+            loading ? 'blong-card--loading' : '',
+            designClass,
+            className ?? '',
+        ]
+            .filter(Boolean)
+            .join(' ') || undefined;
+
     return (
-        <div
-            className={[
-                'blong-card',
-                collapsed ? 'blong-card--collapsed' : '',
-                loading ? 'blong-card--loading' : '',
-                designClass,
-                className ?? '',
-            ]
-                .filter(Boolean)
-                .join(' ')}
+        <PrimeCard
+            id={elementId}
+            title={titleNode}
+            className={cardClassName}
             style={style}
             onClick={isDesignMode ? select : undefined}
             {...(isDesignMode ? (dragProps as React.HTMLAttributes<HTMLDivElement>) : {})}
         >
-            {/* Card header */}
-            {(label || collapsible || isDesignMode) && (
-                <div className="blong-card__header">
-                    {isDesignMode && (
-                        <DesignHandle
-                            label={label}
-                            onSelect={select}
-                        />
-                    )}
-                    {label && (
-                        <h3
-                            className="blong-card__label"
-                            onClick={collapsible ? () => setCollapsed(c => !c) : undefined}
-                        >
-                            {collapsible && (
-                                <i
-                                    className={`pi ${collapsed ? 'pi-chevron-right' : 'pi-chevron-down'} blong-card__collapse-icon`}
-                                />
-                            )}
-                            {label}
-                        </h3>
-                    )}
-                </div>
-            )}
-
-            {/* Card body */}
             {!collapsed && (
                 <div className="blong-card__body">
                     {loading ? (
@@ -93,14 +98,12 @@ export function Card({
                     )}
                 </div>
             )}
-
-            {/* Selection indicator in design mode */}
             {isSelected && (
                 <SelectionIndicator
                     id={elementId}
-                    label={label ?? name}
+                    label={typeof title === 'string' ? title : elementId}
                 />
             )}
-        </div>
+        </PrimeCard>
     );
 }

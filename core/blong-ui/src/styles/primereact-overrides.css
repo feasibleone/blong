@@ -1,0 +1,244 @@
+/**
+ * PrimeReact overrides — blong-ui global stylesheet.
+ *
+ * Imported once by the Theme component so every downstream package picks them up.
+ *
+ * Sections:
+ *   1. Card (p-card)
+ *   2. DataTable / DataTable wrapper (p-datatable)
+ *   3. Explorer (p-card inside Explorer, DataView, Splitter)
+ *   4. Inspector (compact card)
+ *   5. Portal / TabView (p-tabview, p-menubar)
+ *   6. Chips (p-chips inside cards)
+ *   7. ThumbIndex / Steps
+ *   8. Loader animation
+ */
+
+/* ─── 1. Card ─────────────────────────────────────────────────────────────── */
+
+/* Remove PrimeReact's default content padding so field grids fill the card */
+.p-card .p-card-body>.p-card-content {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* Standard gap between card title and content */
+.p-card .p-card-body>.p-card-title {
+    margin-bottom: 1.5rem;
+}
+
+/* ─── 2. DataTable wrapper ──────────────────────────────────────────────── */
+
+/* Allow tables to scroll horizontally without overflowing the card */
+.p-datatable-wrapper {
+    overflow-x: auto;
+    max-width: 100vw;
+}
+
+.p-datatable-wrapper th {
+    min-width: 3rem;
+    position: relative;
+}
+
+.p-datatable-wrapper th.p-selection-column {
+    flex-grow: 0;
+    width: 3rem;
+}
+
+.p-datatable-wrapper td {
+    min-width: 3rem;
+}
+
+/* Scrollable variant header/body cells */
+.p-datatable-scrollable .p-datatable-thead>tr>th {
+    min-width: 3rem;
+    position: relative;
+    flex-direction: column;
+    align-items: unset;
+    justify-content: space-evenly;
+}
+
+.p-datatable-scrollable .p-datatable-tbody>tr>td {
+    min-width: 3rem;
+    flex-direction: column;
+    align-items: unset;
+    justify-content: space-evenly;
+}
+
+/* Action buttons inside table body cells */
+.p-datatable-tbody .p-button {
+    max-width: 100%;
+    width: fit-content;
+}
+
+.p-datatable-tbody .p-button .p-button-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.p-datatable-tbody td .value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ─── 3. Explorer ──────────────────────────────────────────────────────── */
+
+/* Card inside Explorer has no content padding (already covered by rule 1) */
+.blong-explorer .p-card .p-card-content {
+    padding: 0;
+}
+
+/* DataView content area */
+.p-dataview .p-dataview-content {
+    overflow-y: auto;
+    max-height: inherit;
+    background: none;
+}
+
+.p-dataview .p-dataview-content .p-card .p-card-content {
+    padding: 0;
+}
+
+/* Splitter panels scroll vertically */
+.p-splitter-panel {
+    overflow-y: auto;
+}
+
+/* Toolbar left group fills remaining width */
+.p-toolbar-group-left {
+    flex-grow: 1;
+}
+
+/* Embedded explorer constrains wrapper width to avoid scrollbar overlap */
+.blong-explorer.embedded .p-datatable-wrapper {
+    max-width: calc(100vw - 2rem);
+}
+
+/* ─── 4. Inspector — compact card ─────────────────────────────────────── */
+
+.blong-inspector .p-card-body {
+    padding: 0.25rem;
+}
+
+.blong-inspector .p-card-body .p-card-content {
+    padding-top: 0;
+}
+
+.blong-inspector .p-card-body .p-card-content .field {
+    margin-bottom: 0.25rem;
+}
+
+/* ─── 5. Portal / TabView ───────────────────────────────────────────── */
+
+/* TabView fills its container and lets panels grow */
+.p-tabview {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.p-tabview .p-tabview-panels {
+    padding: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.p-tabview .p-tabview-panel {
+    flex-grow: 1;
+}
+
+/* MenuBar resets */
+.p-menubar {
+    border: 0;
+}
+
+.p-menubar.blong-menubar--grow {
+    flex-grow: 1;
+}
+
+/* Right-side menubar: submenu opens to the left */
+.p-menubar.blong-menubar--right ul.p-submenu-list {
+    right: 0;
+}
+
+.p-menubar.blong-menubar--right.p-menubar-mobile-active ul.p-menubar-root-list {
+    right: 0;
+    left: initial;
+    min-width: 200px;
+}
+
+@media (max-width: 960px) {
+    .p-menubar {
+        flex-grow: 1;
+    }
+}
+
+/* ─── 6. Chips inside cards ──────────────────────────────────────────── */
+
+/* Chips multi-value input: align content to the top */
+.p-card .p-chips .p-inputtext {
+    align-content: flex-start;
+}
+
+/* ─── 7. ThumbIndex / Steps ─────────────────────────────────────────── */
+
+/* Steps: center items and use surface border for active step circle */
+.blong-steps {
+    justify-content: center;
+}
+
+.blong-steps .p-steps .p-steps-item.p-highlight .p-steps-number {
+    background: var(--surface-border);
+}
+
+/* ─── 8. Loader animation ───────────────────────────────────────────── */
+
+@keyframes blong-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.blong-loader-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    z-index: 9998;
+}
+
+.blong-loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--surface-50);
+    opacity: 0.7;
+}
+
+.blong-loader-spinner {
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+    border: 3px solid #4096fd;
+    border-bottom-color: transparent;
+    animation: blong-rotate 0.8s linear infinite;
+}
+
+.blong-loader-message {
+    margin-top: 20px;
+    font-size: 16px;
+    font-family: Roboto, Arial;
+    z-index: 1;
+}

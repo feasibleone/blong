@@ -26,7 +26,7 @@ export function MultiSelectWidget({
     readOnly,
     disabled,
 }: IWidgetProps) {
-    const {fetch: fetchAction, options: staticOptions} = schema.widget ?? {};
+    const {fetch: fetchAction, options: staticOptions, type: widgetType} = schema.widget ?? {};
     const {dispatch} = useBlongUi();
     const [options, setOptions] = useState<SelectOption[]>(
         staticOptions ? toOptions(staticOptions) : [],
@@ -52,18 +52,29 @@ export function MultiSelectWidget({
         return <span className="blong-display">{labels.join(', ')}</span>;
     }
 
+    // multiSelectPanel: render as inline checkbox panel
+    // (inline + flex + itemClassName='col-3' → 4-column grid of checkboxes)
+    const isPanel = widgetType === 'multiSelectPanel';
+
     return (
         <MultiSelect
             inputId={name}
             value={arrValue}
             options={options}
             onChange={e => onChange(e.value)}
-            onHide={onBlur}
+            onHide={isPanel ? undefined : onBlur}
             disabled={disabled}
-            className={`blong-multiselect ${error ? 'p-invalid' : ''}`}
+            className={`blong-multiselect w-full ${error ? 'p-invalid' : ''}`}
             display="chip"
-            filter={options.length > 8}
+            filter={!isPanel && options.length > 8}
             placeholder={schema.placeholder ?? 'Select…'}
+            {...(isPanel
+                ? {
+                      inline: true,
+                      flex: true,
+                      itemClassName: 'col-3',
+                  }
+                : {})}
         />
     );
 }

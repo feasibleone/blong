@@ -18,7 +18,7 @@ export function TextWidget({
     const copyToClipboard = () => void navigator.clipboard.writeText(strValue);
 
     return (
-        <span className="blong-input-wrapper">
+        <span className="blong-input-wrapper w-full">
             <InputText
                 id={name}
                 name={name}
@@ -27,7 +27,7 @@ export function TextWidget({
                 onBlur={onBlur}
                 readOnly={readOnly}
                 disabled={disabled}
-                className={`blong-input ${error ? 'p-invalid' : ''}`}
+                className={`blong-input w-full ${error ? 'p-invalid' : ''}`}
                 maxLength={schema.maxLength}
             />
             {copy && strValue && (

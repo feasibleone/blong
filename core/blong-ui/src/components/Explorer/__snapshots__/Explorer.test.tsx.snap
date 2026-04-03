@@ -1,0 +1,880 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Explorer > renders empty state with no listAction 1`] = `
+<div>
+  <div
+    class="blong-explorer "
+  >
+    <div
+      class="blong-explorer-table"
+    >
+      <div
+        class="p-toolbar p-component blong-explorer-toolbar"
+        end="[object Object]"
+        role="toolbar"
+      >
+        <div
+          class="p-toolbar-group-left"
+        />
+        <div
+          class="p-toolbar-group-right"
+        />
+      </div>
+      <div
+        class="p-datatable p-component p-datatable-selectable p-datatable-scrollable p-datatable-flex-scrollable p-datatable-sm blong-explorer-dt"
+        data-scrollselectors=".p-datatable-wrapper"
+        pr_id_1=""
+      >
+        <div
+          class="p-paginator p-component p-paginator-top"
+        >
+          <button
+            aria-label="First Page"
+            class="p-paginator-first p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-left"
+            />
+          </button>
+          <button
+            aria-label="Previous Page"
+            class="p-paginator-prev p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-left"
+            />
+          </button>
+          <span
+            class="p-paginator-pages"
+          />
+          <button
+            aria-label="Next Page"
+            class="p-paginator-next p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-right"
+            />
+          </button>
+          <button
+            aria-label="Last Page"
+            class="p-paginator-last p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-right"
+            />
+          </button>
+          <div
+            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          >
+            <div
+              class="p-hidden-accessible"
+            >
+              <input
+                aria-haspopup="listbox"
+                aria-label="Choose"
+                disabled=""
+                readonly=""
+                type="text"
+              />
+            </div>
+            <div
+              class="p-hidden-accessible p-dropdown-hidden-select"
+            >
+              <select
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="25"
+                >
+                  25
+                </option>
+              </select>
+            </div>
+            <span
+              class="p-dropdown-label p-inputtext"
+            >
+              25
+            </span>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Choose"
+              class="p-dropdown-trigger"
+              role="button"
+            >
+              <span
+                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          class="p-datatable-wrapper"
+          style="max-height: flex;"
+        >
+          <table
+            class="p-datatable-table"
+            role="table"
+          >
+            <thead
+              class="p-datatable-thead"
+            >
+              <tr
+                role="row"
+              >
+                <th
+                  class="p-selection-column"
+                  role="columnheader"
+                  style="width: 40px;"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    />
+                  </div>
+                </th>
+                <th
+                  aria-sort="none"
+                  class="p-sortable-column"
+                  role="columnheader"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    >
+                      Name
+                    </span>
+                    <span
+                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                    />
+                  </div>
+                </th>
+                <th
+                  aria-sort="none"
+                  class="p-sortable-column"
+                  role="columnheader"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    >
+                      Size
+                    </span>
+                    <span
+                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                    />
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="p-datatable-tbody"
+            >
+              <tr
+                class="p-datatable-emptymessage"
+                role="row"
+              >
+                <td
+                  colspan="3"
+                  role="cell"
+                >
+                  No records found.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          class="p-paginator p-component p-paginator-bottom"
+        >
+          <button
+            aria-label="First Page"
+            class="p-paginator-first p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-left"
+            />
+          </button>
+          <button
+            aria-label="Previous Page"
+            class="p-paginator-prev p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-left"
+            />
+          </button>
+          <span
+            class="p-paginator-pages"
+          />
+          <button
+            aria-label="Next Page"
+            class="p-paginator-next p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-right"
+            />
+          </button>
+          <button
+            aria-label="Last Page"
+            class="p-paginator-last p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-right"
+            />
+          </button>
+          <div
+            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          >
+            <div
+              class="p-hidden-accessible"
+            >
+              <input
+                aria-haspopup="listbox"
+                aria-label="Choose"
+                disabled=""
+                readonly=""
+                type="text"
+              />
+            </div>
+            <div
+              class="p-hidden-accessible p-dropdown-hidden-select"
+            >
+              <select
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="25"
+                >
+                  25
+                </option>
+              </select>
+            </div>
+            <span
+              class="p-dropdown-label p-inputtext"
+            >
+              25
+            </span>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Choose"
+              class="p-dropdown-trigger"
+              role="button"
+            >
+              <span
+                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Explorer > renders toolbar 1`] = `
+<div>
+  <div
+    class="blong-explorer "
+  >
+    <div
+      class="blong-explorer-table"
+    >
+      <div
+        class="p-toolbar p-component blong-explorer-toolbar"
+        end="[object Object]"
+        role="toolbar"
+      >
+        <div
+          class="p-toolbar-group-left"
+        />
+        <div
+          class="p-toolbar-group-right"
+        />
+      </div>
+      <div
+        class="p-datatable p-component p-datatable-selectable p-datatable-scrollable p-datatable-flex-scrollable p-datatable-sm blong-explorer-dt"
+        data-scrollselectors=".p-datatable-wrapper"
+        pr_id_2=""
+      >
+        <div
+          class="p-paginator p-component p-paginator-top"
+        >
+          <button
+            aria-label="First Page"
+            class="p-paginator-first p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-left"
+            />
+          </button>
+          <button
+            aria-label="Previous Page"
+            class="p-paginator-prev p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-left"
+            />
+          </button>
+          <span
+            class="p-paginator-pages"
+          />
+          <button
+            aria-label="Next Page"
+            class="p-paginator-next p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-right"
+            />
+          </button>
+          <button
+            aria-label="Last Page"
+            class="p-paginator-last p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-right"
+            />
+          </button>
+          <div
+            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          >
+            <div
+              class="p-hidden-accessible"
+            >
+              <input
+                aria-haspopup="listbox"
+                aria-label="Choose"
+                disabled=""
+                readonly=""
+                type="text"
+              />
+            </div>
+            <div
+              class="p-hidden-accessible p-dropdown-hidden-select"
+            >
+              <select
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="25"
+                >
+                  25
+                </option>
+              </select>
+            </div>
+            <span
+              class="p-dropdown-label p-inputtext"
+            >
+              25
+            </span>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Choose"
+              class="p-dropdown-trigger"
+              role="button"
+            >
+              <span
+                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          class="p-datatable-wrapper"
+          style="max-height: flex;"
+        >
+          <table
+            class="p-datatable-table"
+            role="table"
+          >
+            <thead
+              class="p-datatable-thead"
+            >
+              <tr
+                role="row"
+              >
+                <th
+                  class="p-selection-column"
+                  role="columnheader"
+                  style="width: 40px;"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    />
+                  </div>
+                </th>
+                <th
+                  aria-sort="none"
+                  class="p-sortable-column"
+                  role="columnheader"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    >
+                      Name
+                    </span>
+                    <span
+                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                    />
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="p-datatable-tbody"
+            >
+              <tr
+                class="p-datatable-emptymessage"
+                role="row"
+              >
+                <td
+                  colspan="2"
+                  role="cell"
+                >
+                  No records found.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          class="p-paginator p-component p-paginator-bottom"
+        >
+          <button
+            aria-label="First Page"
+            class="p-paginator-first p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-left"
+            />
+          </button>
+          <button
+            aria-label="Previous Page"
+            class="p-paginator-prev p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-left"
+            />
+          </button>
+          <span
+            class="p-paginator-pages"
+          />
+          <button
+            aria-label="Next Page"
+            class="p-paginator-next p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-right"
+            />
+          </button>
+          <button
+            aria-label="Last Page"
+            class="p-paginator-last p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-right"
+            />
+          </button>
+          <div
+            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          >
+            <div
+              class="p-hidden-accessible"
+            >
+              <input
+                aria-haspopup="listbox"
+                aria-label="Choose"
+                disabled=""
+                readonly=""
+                type="text"
+              />
+            </div>
+            <div
+              class="p-hidden-accessible p-dropdown-hidden-select"
+            >
+              <select
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="25"
+                >
+                  25
+                </option>
+              </select>
+            </div>
+            <span
+              class="p-dropdown-label p-inputtext"
+            >
+              25
+            </span>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Choose"
+              class="p-dropdown-trigger"
+              role="button"
+            >
+              <span
+                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
+<div>
+  <div
+    class="blong-explorer "
+  >
+    <div
+      class="blong-explorer-table"
+    >
+      <div
+        class="p-toolbar p-component blong-explorer-toolbar"
+        end="[object Object]"
+        role="toolbar"
+      >
+        <div
+          class="p-toolbar-group-left"
+        />
+        <div
+          class="p-toolbar-group-right"
+        />
+      </div>
+      <div
+        class="p-datatable p-component p-datatable-selectable p-datatable-scrollable p-datatable-flex-scrollable p-datatable-sm blong-explorer-dt"
+        data-scrollselectors=".p-datatable-wrapper"
+        pr_id_3=""
+      >
+        <div
+          class="p-paginator p-component p-paginator-top"
+        >
+          <button
+            aria-label="First Page"
+            class="p-paginator-first p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-left"
+            />
+          </button>
+          <button
+            aria-label="Previous Page"
+            class="p-paginator-prev p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-left"
+            />
+          </button>
+          <span
+            class="p-paginator-pages"
+          />
+          <button
+            aria-label="Next Page"
+            class="p-paginator-next p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-right"
+            />
+          </button>
+          <button
+            aria-label="Last Page"
+            class="p-paginator-last p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-right"
+            />
+          </button>
+          <div
+            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          >
+            <div
+              class="p-hidden-accessible"
+            >
+              <input
+                aria-haspopup="listbox"
+                aria-label="Choose"
+                disabled=""
+                readonly=""
+                type="text"
+              />
+            </div>
+            <div
+              class="p-hidden-accessible p-dropdown-hidden-select"
+            >
+              <select
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="25"
+                >
+                  25
+                </option>
+              </select>
+            </div>
+            <span
+              class="p-dropdown-label p-inputtext"
+            >
+              25
+            </span>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Choose"
+              class="p-dropdown-trigger"
+              role="button"
+            >
+              <span
+                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          class="p-datatable-wrapper"
+          style="max-height: flex;"
+        >
+          <table
+            class="p-datatable-table"
+            role="table"
+          >
+            <thead
+              class="p-datatable-thead"
+            >
+              <tr
+                role="row"
+              >
+                <th
+                  class="p-selection-column"
+                  role="columnheader"
+                  style="width: 40px;"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    />
+                  </div>
+                </th>
+                <th
+                  aria-sort="none"
+                  class="p-sortable-column"
+                  role="columnheader"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    >
+                      Name
+                    </span>
+                    <span
+                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                    />
+                  </div>
+                </th>
+                <th
+                  aria-sort="none"
+                  class="p-sortable-column"
+                  role="columnheader"
+                >
+                  <div
+                    class="p-column-header-content"
+                  >
+                    <span
+                      class="p-column-title"
+                    >
+                      Size
+                    </span>
+                    <span
+                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                    />
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="p-datatable-tbody"
+            >
+              <tr
+                class="p-datatable-emptymessage"
+                role="row"
+              >
+                <td
+                  colspan="3"
+                  role="cell"
+                >
+                  No records found.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div
+          class="p-paginator p-component p-paginator-bottom"
+        >
+          <button
+            aria-label="First Page"
+            class="p-paginator-first p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-left"
+            />
+          </button>
+          <button
+            aria-label="Previous Page"
+            class="p-paginator-prev p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-left"
+            />
+          </button>
+          <span
+            class="p-paginator-pages"
+          />
+          <button
+            aria-label="Next Page"
+            class="p-paginator-next p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-right"
+            />
+          </button>
+          <button
+            aria-label="Last Page"
+            class="p-paginator-last p-paginator-element p-link p-disabled"
+            disabled=""
+            type="button"
+          >
+            <span
+              class="p-paginator-icon pi pi-angle-double-right"
+            />
+          </button>
+          <div
+            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          >
+            <div
+              class="p-hidden-accessible"
+            >
+              <input
+                aria-haspopup="listbox"
+                aria-label="Choose"
+                disabled=""
+                readonly=""
+                type="text"
+              />
+            </div>
+            <div
+              class="p-hidden-accessible p-dropdown-hidden-select"
+            >
+              <select
+                aria-hidden="true"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="25"
+                >
+                  25
+                </option>
+              </select>
+            </div>
+            <span
+              class="p-dropdown-label p-inputtext"
+            >
+              25
+            </span>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Choose"
+              class="p-dropdown-trigger"
+              role="button"
+            >
+              <span
+                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

@@ -1,0 +1,407 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Form > renders card layout with fields 1`] = `
+<div>
+  <form
+    class="blong-form"
+    id="_r_0_"
+    novalidate=""
+  >
+    <div
+      class="blong-deck"
+    >
+      <div
+        class="p-card p-component"
+        id="card-edit"
+      >
+        <div
+          class="p-card-body"
+        >
+          <div
+            class="p-card-title"
+          >
+            <span
+              class="blong-card__label"
+            >
+              User
+            </span>
+          </div>
+          <div
+            class="p-card-content"
+          >
+            <div
+              class="blong-card__body"
+            >
+              <div
+                class="blong-form-fields"
+              >
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="userName"
+                  >
+                    User Name
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component blong-input "
+                      id="userName"
+                      name="userName"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="emailAddress"
+                  >
+                    Email Address
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component blong-input "
+                      id="emailAddress"
+                      name="emailAddress"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="phoneNumber"
+                  >
+                    Phone
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component blong-input "
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      value=""
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+`;
+
+exports[`Form > renders loading skeleton 1`] = `
+<div>
+  <form
+    class="blong-form"
+    id="_r_2_"
+    novalidate=""
+  >
+    <div
+      class="blong-deck"
+    >
+      <div
+        class="p-card p-component blong-card--loading"
+        id="card-edit"
+      >
+        <div
+          class="p-card-body"
+        >
+          <div
+            class="p-card-title"
+          >
+            <span
+              class="blong-card__label"
+            >
+              User
+            </span>
+          </div>
+          <div
+            class="p-card-content"
+          >
+            <div
+              class="blong-card__body"
+            >
+              <div
+                class="blong-card__skeleton"
+              >
+                <div
+                  class="blong-skeleton-row"
+                />
+                <div
+                  class="blong-skeleton-row"
+                />
+                <div
+                  class="blong-skeleton-row"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+`;
+
+exports[`Form > renders multiple card groups 1`] = `
+<div>
+  <form
+    class="blong-form"
+    id="_r_3_"
+    novalidate=""
+  >
+    <div
+      class="blong-deck"
+    >
+      <div
+        class="p-card p-component"
+        id="card-personal"
+      >
+        <div
+          class="p-card-body"
+        >
+          <div
+            class="p-card-title"
+          >
+            <span
+              class="blong-card__label"
+            >
+              Personal Info
+            </span>
+          </div>
+          <div
+            class="p-card-content"
+          >
+            <div
+              class="blong-card__body"
+            >
+              <div
+                class="blong-form-fields"
+              >
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="userName"
+                  >
+                    User Name
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component blong-input "
+                      id="userName"
+                      name="userName"
+                      value=""
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="blong-deck"
+    >
+      <div
+        class="p-card p-component"
+        id="card-contact"
+      >
+        <div
+          class="p-card-body"
+        >
+          <div
+            class="p-card-title"
+          >
+            <span
+              class="blong-card__label"
+            >
+              Contact
+            </span>
+          </div>
+          <div
+            class="p-card-content"
+          >
+            <div
+              class="blong-card__body"
+            >
+              <div
+                class="blong-form-fields"
+              >
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="emailAddress"
+                  >
+                    Email Address
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component blong-input "
+                      id="emailAddress"
+                      name="emailAddress"
+                      value=""
+                    />
+                  </span>
+                </div>
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="phoneNumber"
+                  >
+                    Phone
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component blong-input "
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      value=""
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+`;
+
+exports[`Form > renders read-only form with values 1`] = `
+<div>
+  <form
+    class="blong-form"
+    id="_r_1_"
+    novalidate=""
+  >
+    <div
+      class="blong-deck"
+    >
+      <div
+        class="p-card p-component"
+        id="card-edit"
+      >
+        <div
+          class="p-card-body"
+        >
+          <div
+            class="p-card-title"
+          >
+            <span
+              class="blong-card__label"
+            >
+              User
+            </span>
+          </div>
+          <div
+            class="p-card-content"
+          >
+            <div
+              class="blong-card__body"
+            >
+              <div
+                class="blong-form-fields"
+              >
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="userName"
+                  >
+                    User Name
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component p-filled blong-input "
+                      id="userName"
+                      name="userName"
+                      readonly=""
+                      value="Alice"
+                    />
+                  </span>
+                </div>
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="emailAddress"
+                  >
+                    Email Address
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component p-filled blong-input "
+                      id="emailAddress"
+                      name="emailAddress"
+                      readonly=""
+                      value="alice@example.com"
+                    />
+                  </span>
+                </div>
+                <div
+                  class="blong-field"
+                >
+                  <label
+                    class="blong-field-label"
+                    for="phoneNumber"
+                  >
+                    Phone
+                  </label>
+                  <span
+                    class="blong-input-wrapper"
+                  >
+                    <input
+                      class="p-inputtext p-component p-filled blong-input "
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      readonly=""
+                      value="555-1234"
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+`;

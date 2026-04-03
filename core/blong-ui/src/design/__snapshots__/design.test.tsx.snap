@@ -1,0 +1,339 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ComponentPalette > renders widget list when design mode is active 1`] = `
+<div>
+  <div
+    class="blong-component-palette"
+  >
+    <section
+      class="blong-component-palette__section"
+    >
+      <h4
+        class="blong-component-palette__heading"
+      >
+        Widgets
+      </h4>
+      <ul
+        class="blong-component-palette__list"
+      >
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="input"
+          draggable="true"
+        >
+          <i
+            class="pi pi-pencil"
+          />
+          <span>
+            Text Input
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="textArea"
+          draggable="true"
+        >
+          <i
+            class="pi pi-align-left"
+          />
+          <span>
+            Textarea
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="number"
+          draggable="true"
+        >
+          <i
+            class="pi pi-hashtag"
+          />
+          <span>
+            Number
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="boolean"
+          draggable="true"
+        >
+          <i
+            class="pi pi-check-square"
+          />
+          <span>
+            Boolean
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="date"
+          draggable="true"
+        >
+          <i
+            class="pi pi-calendar"
+          />
+          <span>
+            Date
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="dropdown"
+          draggable="true"
+        >
+          <i
+            class="pi pi-chevron-down"
+          />
+          <span>
+            Dropdown
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="multiSelect"
+          draggable="true"
+        >
+          <i
+            class="pi pi-list"
+          />
+          <span>
+            Multi Select
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="table"
+          draggable="true"
+        >
+          <i
+            class="pi pi-table"
+          />
+          <span>
+            Table
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="file"
+          draggable="true"
+        >
+          <i
+            class="pi pi-upload"
+          />
+          <span>
+            File Upload
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="image"
+          draggable="true"
+        >
+          <i
+            class="pi pi-image"
+          />
+          <span>
+            Image
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="code"
+          draggable="true"
+        >
+          <i
+            class="pi pi-code"
+          />
+          <span>
+            Code
+          </span>
+        </li>
+      </ul>
+    </section>
+    <section
+      class="blong-component-palette__section"
+    >
+      <h4
+        class="blong-component-palette__heading"
+      >
+        Layout
+      </h4>
+      <ul
+        class="blong-component-palette__list"
+      >
+        <li
+          class="blong-component-palette__item"
+          data-element-type="card"
+          draggable="true"
+        >
+          <i
+            class="pi pi-stop"
+          />
+          <span>
+            New Card
+          </span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+`;
+
+exports[`DesignHandle > calls onSelect when clicked in design mode 1`] = `
+<div>
+  <div
+    class="blong-design-handle"
+  >
+    <span
+      class="blong-design-handle__grip pi pi-bars"
+      title="Drag Card"
+    />
+  </div>
+</div>
+`;
+
+exports[`DesignHandle > renders in design mode when active 1`] = `
+<div>
+  <div
+    class="blong-design-handle"
+  >
+    <span
+      class="blong-design-handle__grip pi pi-bars"
+      title="Drag Test Card"
+    />
+  </div>
+</div>
+`;
+
+exports[`DesignModeProvider > renders children in active (design) mode 1`] = `
+<div>
+  <div
+    data-testid="child"
+  >
+    design content
+  </div>
+</div>
+`;
+
+exports[`DesignModeProvider > renders children in inactive mode 1`] = `
+<div>
+  <div
+    data-testid="child"
+  >
+    content
+  </div>
+</div>
+`;
+
+exports[`DesignToolbar > renders design mode buttons when active 1`] = `
+<div>
+  <div
+    class="blong-design-toolbar"
+  >
+    <button
+      aria-label="Done"
+      class="p-button p-component p-button-sm p-button-outlined"
+    >
+      <span
+        class="p-button-icon p-c p-button-icon-undefined pi pi-check"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+        Done
+      </span>
+    </button>
+    <button
+      class="p-button p-component p-button-sm p-button-text p-button-icon-only p-disabled"
+      disabled=""
+    >
+      <span
+        class="p-button-icon p-c pi pi-undo"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+         
+      </span>
+    </button>
+    <button
+      class="p-button p-component p-button-sm p-button-text p-button-icon-only p-disabled"
+      disabled=""
+    >
+      <span
+        class="p-button-icon p-c pi pi-refresh"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+         
+      </span>
+    </button>
+    <button
+      aria-label="Save layout"
+      class="p-button p-component p-button-sm p-button-success"
+    >
+      <span
+        class="p-button-icon p-c p-button-icon-undefined pi pi-save"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+        Save layout
+      </span>
+    </button>
+  </div>
+</div>
+`;
+
+exports[`DesignToolbar > renders toggle button 1`] = `
+<div>
+  <div
+    class="blong-design-toolbar"
+  >
+    <button
+      aria-label="Configure"
+      class="p-button p-component p-button-sm p-button-outlined"
+    >
+      <span
+        class="p-button-icon p-c p-button-icon-undefined pi pi-cog"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+        Configure
+      </span>
+    </button>
+  </div>
+</div>
+`;
+
+exports[`PropertyEditor > renders empty hint when design mode active but no selection 1`] = `
+<div>
+  <div
+    class="blong-property-editor blong-property-editor--empty"
+  >
+    <p
+      class="blong-property-editor__hint"
+    >
+      Select an element to edit its properties
+    </p>
+  </div>
+</div>
+`;
+
+exports[`PropertyEditor > renders empty hint when design mode inactive 1`] = `
+<div>
+  <div
+    class="blong-property-editor blong-property-editor--empty"
+  >
+    <p
+      class="blong-property-editor__hint"
+    >
+      Select an element to edit its properties
+    </p>
+  </div>
+</div>
+`;
+
+exports[`SelectionIndicator > renders indicator when its id is the selected element 1`] = `<div />`;

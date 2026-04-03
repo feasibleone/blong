@@ -46,6 +46,8 @@ export interface IWidgetConfig {
     type: WidgetType;
     /** For dropdown/multiSelect — action name to fetch options */
     fetch?: string;
+    /** Named dropdown key — loads options via portal.dropdown.list */
+    dropdown?: string;
     /** Options list for static select/multiSelect/select */
     options?: Array<{value: unknown; label: string; icon?: string}>;
     /** Parent field name for cascaded dropdowns */
@@ -55,13 +57,15 @@ export interface IWidgetConfig {
     /** Mask pattern (mask widget) */
     mask?: string;
     /** Column definitions for table widget */
-    columns?: Record<string, IFieldConfig>;
+    columns?: string[] | Record<string, IFieldConfig>;
     /** Pivot config for static or dynamic pivots */
     pivot?: IPivotConfig;
     /** Field names to hide in table (used as implicit keys) */
     hidden?: string[];
     /** Selection mode for table widget */
     selectionMode?: 'single' | 'multiple';
+    /** Label shown inside the widget (e.g. as table toolbar title instead of field label) */
+    label?: string;
     /** Label field name in fetched options */
     labelField?: string;
     /** Value field name in fetched options */
@@ -95,11 +99,20 @@ export interface IFieldConfig {
 
 /** Card configuration */
 export interface ICardConfig {
-    label: string;
+    label?: string;
+    /** Field list for this card (preferred alias: widgets) */
     fields?: Record<string, IFieldConfig> | string[];
+    /** Alias for fields */
+    widgets?: string[];
+    className?: string;
     readOnly?: boolean;
     collapsible?: boolean;
     loading?: boolean;
+    /** When true: card is not shown visually; fields render as hidden inputs */
+    hidden?: boolean;
+    /** Permission key required to display this card. If set and no checkPermission
+     *  callback is provided (or it returns false), the card is not rendered. */
+    permission?: string;
     /** Watch path for reactive cards (e.g. '$.selected.personTable') */
     watch?: string;
     /** Match condition to show polymorphic detail cards */
@@ -122,6 +135,8 @@ export interface IWidgetProps {
     readOnly?: boolean;
     loading?: boolean;
     disabled?: boolean;
+    /** All current form values — enables inter-widget reactivity (cascaded dropdowns etc.) */
+    formValues?: Record<string, unknown>;
 }
 
 /** Widget registry interface */
@@ -135,7 +150,11 @@ export interface IWidgetRegistry {
 export interface IEnrichedFieldSchema {
     title?: string;
     type?: string;
+    /** JSON Schema format (e.g. 'date', 'date-time', 'email') */
+    format?: string;
     description?: string;
+    /** Placeholder text for input widgets */
+    placeholder?: string;
     minLength?: number;
     maxLength?: number;
     minimum?: number;
@@ -146,6 +165,10 @@ export interface IEnrichedFieldSchema {
     required?: boolean;
     /** Normalized widget config */
     widget?: IWidgetConfig;
+    /** JSON Schema items — describes the shape of array-field rows (used by TableWidget) */
+    items?: {
+        properties?: Record<string, Record<string, unknown>>;
+    };
     /** Include field in filter panel */
     'x-filter'?: boolean;
     /** Enable column sorting */

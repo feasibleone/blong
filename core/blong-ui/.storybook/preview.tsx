@@ -1,32 +1,61 @@
-import type { Preview } from '@storybook/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type {Preview} from '@storybook/react';
+import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
-import { PrimeReactProvider } from 'primereact/api';
 import 'primereact/resources/primereact.min.css';
-import 'primereact/resources/themes/lara-light-blue/theme.css';
+import 'primereact/resources/themes/vela-blue/theme.css';
+import {App} from '../src/components/App/index.js';
 
-const queryClient = new QueryClient({
-    defaultOptions: {queries: {retry: false, staleTime: 60_000}},
-});
-
-/** Noop dispatch for stories that don't need a backend */
-const noopDispatch = async (method: string) => {
-    console.info('[Storybook] dispatch:', method);
+/** Noop dispatch — logs calls; stories that need real data should override via args */
+const noopDispatch = async (method: string, params?: Record<string, unknown>) => {
+    console.info('[Storybook] dispatch:', method, params);
     return undefined;
 };
+
+// Ensure proper height propagation for fullscreen stories
+const style = document.createElement('style');
+style.textContent = `
+    /* Fix Storybook iframe to fill available space */
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Roboto';
+        color: var(--text-color);
+        background-color: var(--surface-0);
+    }
+
+    /* Make storybook-root fill the viewport for fullscreen layout */
+    #storybook-root {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Ensure stories with fullscreen layout fill the container */
+    #storybook-root > * {
+        flex: 1;
+        min-height: 0;
+    }
+`;
+document.head.appendChild(style);
 
 const preview: Preview = {
     decorators: [
         Story => (
-            <QueryClientProvider client={queryClient}>
-                <PrimeReactProvider>
-                    <Story />
-                </PrimeReactProvider>
-            </QueryClientProvider>
+            <App
+                dispatch={noopDispatch}
+                schemaUrl="/schema.json"
+                theme={{name: 'vela-blue', palette: 'dark-compact'}}
+            >
+                <Story />
+            </App>
         ),
     ],
     parameters: {
         actions: {argTypesRegex: '^on[A-Z].*'},
+        layout: 'fullscreen',
         controls: {
             matchers: {
                 color: /(background|color)$/i,

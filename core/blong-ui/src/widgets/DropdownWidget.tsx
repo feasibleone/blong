@@ -24,15 +24,25 @@ export function DropdownWidget({
     error,
     readOnly,
     disabled,
+    formValues,
 }: IWidgetProps) {
-    const {fetch: fetchAction, options: staticOptions, dropdown: dropdownKey} = schema.widget ?? {};
+    const {
+        fetch: fetchAction,
+        options: staticOptions,
+        dropdown: dropdownKey,
+        parent,
+    } = schema.widget ?? {};
     const {dispatch} = useBlongUi();
+    const parentValue = parent ? formValues?.[parent] : undefined;
     const [options, setOptions] = useState<SelectOption[]>(
         staticOptions ? toOptions(staticOptions) : [],
     );
 
     useEffect(() => {
         let cancelled = false;
+
+        // Skip async load when static options are already provided
+        if (staticOptions) return;
 
         // Priority 1: named dropdown via portal orchestrator (handles batching + caching)
         if (dropdownKey) {
@@ -55,9 +65,11 @@ export function DropdownWidget({
             };
         }
 
-        // Priority 2: explicit fetch action
+        // Priority 2: explicit fetch action (re-fetch when parent value changes)
         if (!fetchAction) return;
-        (dispatch(fetchAction, {}) as Promise<unknown>)
+        const params: Record<string, unknown> = {};
+        if (parent && parentValue !== undefined) params[parent] = parentValue;
+        (dispatch(fetchAction, params) as Promise<unknown>)
             .then(data => {
                 if (!cancelled) setOptions(toOptions(data));
             })
@@ -65,10 +77,16 @@ export function DropdownWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, dispatch]);
+    }, [fetchAction, dropdownKey, dispatch, parentValue]);
+
+    // Filter static options by parent value (client-side cascade)
+    const visibleOptions =
+        parent && parentValue !== undefined
+            ? options.filter(o => (o as unknown as Record<string, unknown>)[parent] === parentValue)
+            : options;
 
     if (readOnly) {
-        const found = options.find(o => o.value === value);
+        const found = visibleOptions.find(o => o.value === value);
         return (
             <span className="blong-display">
                 {found?.label ?? (value != null ? String(value) : '')}
@@ -80,13 +98,13 @@ export function DropdownWidget({
         <Dropdown
             inputId={name}
             value={value}
-            options={options}
+            options={visibleOptions}
             onChange={e => onChange(e.value)}
             onHide={onBlur}
             disabled={disabled}
-            className={`blong-dropdown ${error ? 'p-invalid' : ''}`}
+            className={`blong-dropdown w-full ${error ? 'p-invalid' : ''}`}
             showClear={!schema.required}
-            filter={options.length > 8}
+            filter={visibleOptions.length > 8}
             placeholder={schema.placeholder ?? 'Select…'}
         />
     );

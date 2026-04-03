@@ -14,7 +14,7 @@ export interface IDropdownOption {
     [key: string]: unknown;
 }
 
-/** Widget metadata overlay — mirrored from ut-rule condition.js  */
+/** Widget metadata overlay  */
 export interface IWidgetOverride {
     type?: string;
     /** Named dropdown: 'rule.country', 'marine.species', etc. */

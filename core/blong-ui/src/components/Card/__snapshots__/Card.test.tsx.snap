@@ -1,0 +1,138 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Card > renders collapsible card 1`] = `
+<div>
+  <div
+    class="p-card p-component"
+    id="collapsible-card"
+  >
+    <div
+      class="p-card-body"
+    >
+      <div
+        class="p-card-title"
+      >
+        <span
+          class="blong-card__label"
+          style="cursor: pointer;"
+        >
+          <i
+            class="pi pi-chevron-down blong-card__collapse-icon"
+          />
+          Collapsible
+        </span>
+      </div>
+      <div
+        class="p-card-content"
+      >
+        <div
+          class="blong-card__body"
+        >
+          <span>
+            content
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Card > renders label and children 1`] = `
+<div>
+  <div
+    class="p-card p-component"
+    id="test-card"
+  >
+    <div
+      class="p-card-body"
+    >
+      <div
+        class="p-card-title"
+      >
+        <span
+          class="blong-card__label"
+        >
+          My Card
+        </span>
+      </div>
+      <div
+        class="p-card-content"
+      >
+        <div
+          class="blong-card__body"
+        >
+          <span>
+            inner
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Card > renders without label 1`] = `
+<div>
+  <div
+    class="p-card p-component"
+    id="no-label-card"
+  >
+    <div
+      class="p-card-body"
+    >
+      <div
+        class="p-card-content"
+      >
+        <div
+          class="blong-card__body"
+        />
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Card > shows loading state 1`] = `
+<div>
+  <div
+    class="p-card p-component blong-card--loading"
+    id="loading-card"
+  >
+    <div
+      class="p-card-body"
+    >
+      <div
+        class="p-card-title"
+      >
+        <span
+          class="blong-card__label"
+        >
+          Loading
+        </span>
+      </div>
+      <div
+        class="p-card-content"
+      >
+        <div
+          class="blong-card__body"
+        >
+          <div
+            class="blong-card__skeleton"
+          >
+            <div
+              class="blong-skeleton-row"
+            />
+            <div
+              class="blong-skeleton-row"
+            />
+            <div
+              class="blong-skeleton-row"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

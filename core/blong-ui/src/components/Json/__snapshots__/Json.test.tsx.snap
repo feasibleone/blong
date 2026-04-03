@@ -1,0 +1,79 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Json > renders key-value diff view 1`] = `
+<div>
+  <dl
+    class="blong-json blong-json--kv"
+  >
+    <div
+      class="blong-json__line blong-json__line--changed"
+    >
+      <dt
+        class="blong-json__key"
+      >
+        name
+      </dt>
+      <dd
+        class="blong-json__value"
+      >
+        <span
+          class="blong-json__prev"
+        >
+          "Bob"
+        </span>
+        <span
+          class="blong-json__curr"
+        >
+          "Alice"
+        </span>
+      </dd>
+    </div>
+    <div
+      class="blong-json__line blong-json__line--changed"
+    >
+      <dt
+        class="blong-json__key"
+      >
+        age
+      </dt>
+      <dd
+        class="blong-json__value"
+      >
+        <span
+          class="blong-json__prev"
+        >
+          25
+        </span>
+        <span
+          class="blong-json__curr"
+        >
+          30
+        </span>
+      </dd>
+    </div>
+  </dl>
+</div>
+`;
+
+exports[`Json > renders null value 1`] = `
+<div>
+  <pre
+    class="blong-json"
+  >
+    null
+  </pre>
+</div>
+`;
+
+exports[`Json > renders raw JSON pre block 1`] = `
+<div>
+  <pre
+    class="blong-json"
+  >
+    {
+  "name": "Alice",
+  "age": 30
+}
+  </pre>
+</div>
+`;

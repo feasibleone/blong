@@ -3,25 +3,25 @@
  * Can be extended per suite using registry.register().
  */
 import type React from 'react';
-import type { IWidgetProps, IWidgetRegistry, WidgetType } from '../types/widget.js';
-import { BooleanWidget } from './BooleanWidget.js';
-import { CurrencyWidget } from './CurrencyWidget.js';
-import { DateTimeWidget } from './DateTimeWidget.js';
-import { DateWidget } from './DateWidget.js';
-import { DropdownWidget } from './DropdownWidget.js';
-import { FileWidget } from './FileWidget.js';
-import { ImageWidget } from './ImageWidget.js';
-import { IntegerWidget } from './IntegerWidget.js';
-import { JsonWidget } from './JsonWidget.js';
-import { MaskWidget } from './MaskWidget.js';
-import { MultiSelectWidget } from './MultiSelectWidget.js';
-import { NumberWidget } from './NumberWidget.js';
-import { PasswordWidget } from './PasswordWidget.js';
-import { SelectWidget } from './SelectWidget.js';
-import { TableWidget } from './TableWidget.js';
-import { TextWidget } from './TextWidget.js';
-import { TextareaWidget } from './TextareaWidget.js';
-import { TimeWidget } from './TimeWidget.js';
+import type {IWidgetProps, IWidgetRegistry, WidgetType} from '../types/widget.js';
+import {BooleanWidget} from './BooleanWidget.js';
+import {CurrencyWidget} from './CurrencyWidget.js';
+import {DateTimeWidget} from './DateTimeWidget.js';
+import {DateWidget} from './DateWidget.js';
+import {DropdownWidget} from './DropdownWidget.js';
+import {FileWidget} from './FileWidget.js';
+import {ImageWidget} from './ImageWidget.js';
+import {IntegerWidget} from './IntegerWidget.js';
+import {JsonWidget} from './JsonWidget.js';
+import {MaskWidget} from './MaskWidget.js';
+import {MultiSelectWidget} from './MultiSelectWidget.js';
+import {NumberWidget} from './NumberWidget.js';
+import {PasswordWidget} from './PasswordWidget.js';
+import {SelectWidget} from './SelectWidget.js';
+import {TableWidget} from './TableWidget.js';
+import {TextWidget} from './TextWidget.js';
+import {TextareaWidget} from './TextareaWidget.js';
+import {TimeWidget} from './TimeWidget.js';
 
 class WidgetRegistryImpl implements IWidgetRegistry {
     private map = new Map<string, React.ComponentType<IWidgetProps>>();
@@ -59,6 +59,7 @@ const builtins: Array<[WidgetType, React.ComponentType<IWidgetProps>]> = [
     ['mask', MaskWidget as React.ComponentType<IWidgetProps>],
     ['dropdown', DropdownWidget as React.ComponentType<IWidgetProps>],
     ['multiSelect', MultiSelectWidget as React.ComponentType<IWidgetProps>],
+    ['multiSelectPanel', MultiSelectWidget as React.ComponentType<IWidgetProps>],
     ['select', SelectWidget as React.ComponentType<IWidgetProps>],
     ['table', TableWidget as React.ComponentType<IWidgetProps>],
     ['json', JsonWidget as React.ComponentType<IWidgetProps>],
@@ -75,4 +76,3 @@ export function registerBuiltinWidgets(): void {
 
 // Auto-register on module load so widgets are always available
 registerBuiltinWidgets();
-

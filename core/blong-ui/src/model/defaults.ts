@@ -1,8 +1,6 @@
 /**
  * Model defaults — fills in standard values for unspecified ModelSpec fields.
  *
- * Mirrors the logic of ut-model/mapObjects.js defaults(), but in TypeScript
- * and without the joi dependency.
  */
 import type {IModelSpec, IResolvedModelSpec} from './types.js';
 

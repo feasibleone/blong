@@ -1,24 +1,45 @@
-import type { StorybookConfig } from '@storybook/react-vite';
+import type {StorybookConfig} from '@storybook/react-vite';
+import {dirname, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
     stories: ['../src/**/*.stories.@(ts|tsx)'],
-    addons: [
-        '@storybook/addon-links',
-        '@storybook/addon-essentials',
-        '@storybook/addon-interactions',
-        '@storybook/addon-a11y',
-    ],
+    addons: [getAbsolutePath('@storybook/addon-a11y'), getAbsolutePath('@storybook/addon-docs')],
     framework: {
-        name: '@storybook/react-vite',
+        name: getAbsolutePath('@storybook/react-vite') as '@storybook/react-vite',
         options: {},
     },
-    docs: {
-        autodocs: 'tag',
+    typescript: {
+        reactDocgen: 'react-docgen-typescript',
     },
-    viteFinal: async config => {
-        // Ensure aliases resolve correctly inside the monorepo
-        return config;
+    viteFinal(config) {
+        return {
+            ...config,
+            define: {
+                ...config.define,
+                'process.env': {},
+            },
+            resolve: {
+                ...config.resolve,
+                dedupe: ['react', 'react-dom'],
+            },
+            server: {
+                ...config.server,
+                fs: {
+                    // Allow Vite to serve files from the Rush pnpm virtual store
+                    // (needed for fonts/assets in packages like primeicons).
+                    // __dirname is .storybook/ → 3 levels up reaches the monorepo root.
+                    allow: ['..', resolve(__dirname, '../../../common/temp/node_modules')],
+                },
+            },
+        };
     },
 };
 
 export default config;
+
+function getAbsolutePath(value: string): string {
+    return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
+}

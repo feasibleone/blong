@@ -1,0 +1,401 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Login > renders the login form 1`] = `
+<div>
+  <div
+    class="blong-login"
+  >
+    <div
+      class="blong-login__card"
+    >
+      <h2
+        class="blong-login__title"
+      >
+        Sign In
+      </h2>
+      <form
+        class="blong-login__form"
+      >
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-username"
+          >
+            Username
+          </label>
+          <input
+            class="p-inputtext p-component blong-login__input"
+            id="login-username"
+            name="username"
+            value=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-password"
+          >
+            Password
+          </label>
+          <div
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+          >
+            <input
+              class="p-inputtext p-component p-password-input"
+              id="login-password"
+              name="password"
+              type="password"
+              value=""
+            />
+            <i
+              class="pi pi-eye"
+            />
+          </div>
+        </div>
+        <button
+          aria-label="Sign In"
+          class="p-button p-component blong-login__submit"
+          type="submit"
+        >
+          <span
+            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
+          />
+          <span
+            class="p-button-label p-c"
+          >
+            Sign In
+          </span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Login > renders with custom title 1`] = `
+<div>
+  <div
+    class="blong-login"
+  >
+    <div
+      class="blong-login__card"
+    >
+      <h2
+        class="blong-login__title"
+      >
+        Admin Login
+      </h2>
+      <form
+        class="blong-login__form"
+      >
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-username"
+          >
+            Username
+          </label>
+          <input
+            class="p-inputtext p-component blong-login__input"
+            id="login-username"
+            name="username"
+            value=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-password"
+          >
+            Password
+          </label>
+          <div
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+          >
+            <input
+              class="p-inputtext p-component p-password-input"
+              id="login-password"
+              name="password"
+              type="password"
+              value=""
+            />
+            <i
+              class="pi pi-eye"
+            />
+          </div>
+        </div>
+        <button
+          aria-label="Sign In"
+          class="p-button p-component blong-login__submit"
+          type="submit"
+        >
+          <span
+            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
+          />
+          <span
+            class="p-button-label p-c"
+          >
+            Sign In
+          </span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Login > renders with external error 1`] = `
+<div>
+  <div
+    class="blong-login"
+  >
+    <div
+      class="blong-login__card"
+    >
+      <h2
+        class="blong-login__title"
+      >
+        Sign In
+      </h2>
+      <div
+        aria-live="polite"
+        class="p-inline-message p-component p-inline-message-error blong-login__error"
+        role="alert"
+      >
+        <span
+          class="p-inline-message-icon pi pi-times-circle"
+        />
+        <span
+          class="p-inline-message-text"
+        >
+          Invalid credentials
+        </span>
+      </div>
+      <form
+        class="blong-login__form"
+      >
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-username"
+          >
+            Username
+          </label>
+          <input
+            class="p-inputtext p-component blong-login__input"
+            id="login-username"
+            name="username"
+            value=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-password"
+          >
+            Password
+          </label>
+          <div
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+          >
+            <input
+              class="p-inputtext p-component p-password-input"
+              id="login-password"
+              name="password"
+              type="password"
+              value=""
+            />
+            <i
+              class="pi pi-eye"
+            />
+          </div>
+        </div>
+        <button
+          aria-label="Sign In"
+          class="p-button p-component blong-login__submit"
+          type="submit"
+        >
+          <span
+            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
+          />
+          <span
+            class="p-button-label p-c"
+          >
+            Sign In
+          </span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Login > renders with loading state 1`] = `
+<div>
+  <div
+    class="blong-login"
+  >
+    <div
+      class="blong-login__card"
+    >
+      <h2
+        class="blong-login__title"
+      >
+        Sign In
+      </h2>
+      <form
+        class="blong-login__form"
+      >
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-username"
+          >
+            Username
+          </label>
+          <input
+            class="p-inputtext p-component p-disabled blong-login__input"
+            disabled=""
+            id="login-username"
+            name="username"
+            value=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-password"
+          >
+            Password
+          </label>
+          <div
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+          >
+            <input
+              class="p-inputtext p-component p-disabled p-password-input"
+              disabled=""
+              id="login-password"
+              name="password"
+              type="password"
+              value=""
+            />
+            <i
+              class="pi pi-eye"
+            />
+          </div>
+        </div>
+        <button
+          aria-label="Sign In"
+          class="p-button p-component blong-login__submit p-disabled p-button-loading"
+          disabled=""
+          type="submit"
+        >
+          <span
+            class="p-button-label p-c"
+          >
+            Sign In
+          </span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Login > renders with register link 1`] = `
+<div>
+  <div
+    class="blong-login"
+  >
+    <div
+      class="blong-login__card"
+    >
+      <h2
+        class="blong-login__title"
+      >
+        Sign In
+      </h2>
+      <form
+        class="blong-login__form"
+      >
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-username"
+          >
+            Username
+          </label>
+          <input
+            class="p-inputtext p-component blong-login__input"
+            id="login-username"
+            name="username"
+            value=""
+          />
+        </div>
+        <div
+          class="blong-field"
+        >
+          <label
+            class="blong-field__label"
+            for="login-password"
+          >
+            Password
+          </label>
+          <div
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+          >
+            <input
+              class="p-inputtext p-component p-password-input"
+              id="login-password"
+              name="password"
+              type="password"
+              value=""
+            />
+            <i
+              class="pi pi-eye"
+            />
+          </div>
+        </div>
+        <button
+          aria-label="Sign In"
+          class="p-button p-component blong-login__submit"
+          type="submit"
+        >
+          <span
+            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
+          />
+          <span
+            class="p-button-label p-c"
+          >
+            Sign In
+          </span>
+        </button>
+        <a
+          class="blong-login__register"
+          href="/register"
+        >
+          Register
+        </a>
+      </form>
+    </div>
+  </div>
+</div>
+`;

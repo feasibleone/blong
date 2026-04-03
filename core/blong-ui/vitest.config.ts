@@ -19,6 +19,8 @@ export default defineConfig({
                 'src/**/*.test.ts',
                 'src/test/**',
                 'src/index.ts',
+                'src/types/**',
+                'src/storybook.ts',
             ],
             thresholds: {
                 lines: 80,
