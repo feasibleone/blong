@@ -42,7 +42,7 @@ export interface IDesignModeContextValue {
     saveConfig: () => Promise<void>;
 }
 
-const DesignModeContext = createContext<IDesignModeContextValue | null>(null);
+export const DesignModeContext = createContext<IDesignModeContextValue | null>(null);
 
 export function useDesignModeContext(): IDesignModeContextValue {
     const ctx = useContext(DesignModeContext);

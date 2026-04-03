@@ -43,7 +43,7 @@ export function MultiSelectWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, call]);
+    }, [fetchAction, dispatch]);
 
     const arrValue: unknown[] = Array.isArray(value) ? value : value != null ? [value] : [];
 

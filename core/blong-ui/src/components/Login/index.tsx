@@ -23,6 +23,8 @@ interface ILoginProps {
     logoUrl?: string;
     error?: string;
     loading?: boolean;
+    /** Initial step (for development preview and testing) */
+    initialStep?: LoginStep;
 }
 
 export function Login({
@@ -34,8 +36,9 @@ export function Login({
     logoUrl,
     error: externalError,
     loading: externalLoading,
+    initialStep = 'credentials',
 }: ILoginProps) {
-    const [step, setStep] = useState<LoginStep>('credentials');
+    const [step, setStep] = useState<LoginStep>(initialStep);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [otp, setOtp] = useState('');
