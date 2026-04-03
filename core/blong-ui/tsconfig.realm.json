@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "rootDir": ".",
+        "moduleResolution": "NodeNext",
+        "module": "NodeNext",
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "jsx": "react-jsx",
+        "outDir": "dist",
+        "target": "ES2022",
+        "declaration": true,
+        "declarationMap": true,
+        "resolveJsonModule": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    },
+    "include": [
+        "browser.ts",
+        "adapter/**/*.ts",
+        "orchestrator/**/*.ts"
+    ],
+    "exclude": ["node_modules", "dist"]
+}

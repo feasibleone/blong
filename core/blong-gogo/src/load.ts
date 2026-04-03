@@ -44,6 +44,8 @@ const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     browser: {server: {default: true}},
     backend: {browser: {default: true}},
     component: {browser: {default: true}},
+    action: {browser: {default: true}},
+    actions: {browser: {default: true}},
     test: {browser: {integration: true}},
     'server/test': {server: {integration: true}},
     'browser/test': {browser: {integration: true}},

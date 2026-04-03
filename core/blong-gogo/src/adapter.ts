@@ -143,7 +143,13 @@ export default async function adapter<T, C>(
                 .some(namespace => name.startsWith(namespace));
         },
         methodPath(methodName: string) {
-            return methodName.split('/', 2)[1];
+            const afterSlash = methodName.split('/', 2)[1];
+            // '/' separator: auto-strip the namespace prefix (existing behaviour)
+            if (afterSlash !== undefined) return afterSlash;
+            // dot-separator: strip the configured number of leading segments
+            const strip = this.config?.stripNamespace;
+            if (strip) return methodName.split('.').slice(strip).join('.');
+            return methodName;
         },
         getConversion($meta: IMeta, type: 'send' | 'receive') {
             let fn;

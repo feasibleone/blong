@@ -113,6 +113,22 @@ export type Config<T, C> = {
     logLevel: Parameters<ILog['logger']>[0];
     namespace: string | string[];
     imports: string | RegExp | (string | RegExp)[];
+    /**
+     * Strip this many dot-separated namespace segments from the incoming method
+     * name before looking up and calling a local handler.  Useful when the
+     * adapter handles a namespace prefix (e.g. `backend`) that must be removed
+     * before the real handler name is used.
+     *
+     * Only applied when the method name does NOT contain a `/` separator
+     * (the `/` form is auto-stripped by `methodPath` already).
+     */
+    stripNamespace?: number;
+    /**
+     * Prepend this namespace segment (dot-separated) to the outgoing method
+     * name when dispatching.  This is the dot-notation counterpart of the
+     * existing `destination` field (which uses `/` as separator).
+     */
+    appendNamespace?: string;
 } & T;
 
 export type RemoteMethod = (...params: unknown[]) => Promise<unknown>;
@@ -680,6 +696,81 @@ export abstract class Internal {
 export const handler = <T = Record<string, unknown>, C = AdapterContext>(
     definition: Definition<T, C>,
 ): Definition<T, C> => Object.defineProperty(definition, Kind, {value: 'handler'});
+
+/**
+ * Browser-side equivalent of `handler`.  Use this to define a component handler
+ * in a realm's `component/` layer.  Functionally identical to `handler` — the
+ * distinction is semantic and makes intent clear in code review.
+ *
+ * The inner function should return a map whose keys are dot-notation method names
+ * (e.g. `'coral.browse'`) and values are async functions that return component
+ * metadata `{title, permission, icon, component: async () => ReactComponent}`.
+ *
+ * @example
+ * ```ts
+ * export default componentHandler(blong => function coralBrowse() {
+ *   return {
+ *     'coral.browse': async () => ({
+ *       title: 'Browse Corals',
+ *       permission: 'marine.coral.browse',
+ *       component: async () => (await import('./CoralBrowse.js')).default,
+ *     }),
+ *   };
+ * });
+ * ```
+ */
+export const componentHandler = <T = Record<string, unknown>, C = AdapterContext>(
+    definition: Definition<T, C>,
+): Definition<T, C> => Object.defineProperty(definition, Kind, {value: 'handler'});
+
+/** Action definition for use with `defineActions`. */
+export interface IActionDef {
+    title?: string;
+    permission?: string;
+    icon?: string;
+    /** Lazy-load a page component (page action). */
+    component?: () => Promise<unknown>;
+    /** Bus method name to invoke (query or mutation action). */
+    method?: string;
+    /** When true the action mutates data and should invalidate related caches. */
+    mutates?: boolean;
+    /** Action names whose query caches should be invalidated on success. */
+    invalidates?: string[];
+    /** Static params merged into every invocation. */
+    params?: Record<string, unknown> | ((params: Record<string, unknown>) => Record<string, unknown>);
+}
+
+/**
+ * Register action metadata for a realm's browser layer.
+ *
+ * Returns a handler-compatible function that the blong framework loads from
+ * the realm's `actions/` or `action/` folder.  Each entry in `actions` is
+ * wrapped in a no-argument function so the framework can call it as a method.
+ *
+ * @example
+ * ```ts
+ * // marine/actions/index.ts
+ * export default defineActions({
+ *   'marine.coral.browse': {
+ *     title: 'Browse Corals',
+ *     permission: 'marine.coral.browse',
+ *     component: () => import('./components/CoralBrowse.js'),
+ *   },
+ * });
+ * ```
+ */
+export const defineActions = (
+    actions: Record<string, IActionDef>,
+): ((_blong: unknown) => Record<string, () => IActionDef>) =>
+    Object.defineProperty(
+        (_blong: unknown) =>
+            Object.fromEntries(
+                Object.entries(actions).map(([key, value]) => [key, () => value]),
+            ),
+        Kind,
+        {value: 'handler'},
+    );
+
 export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T> =>
     Object.defineProperty(definition, Kind, {value: 'lib'});
 export const validation = (validation: ValidationDefinition): ValidationDefinition =>
@@ -736,6 +827,8 @@ export const kind = (what: {[Kind]: Kinds | undefined}): Kinds | undefined => wh
 
 export default {
     handler,
+    componentHandler,
+    defineActions,
     library,
     validation,
     api,

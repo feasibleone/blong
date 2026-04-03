@@ -572,16 +572,16 @@
             "tags": ["core"]
         },
         {
-            "packageName": "@feasibleone/ui-demo",
-            "projectFolder": "core/ui-demo",
-            "reviewCategory": "core",
-            "tags": ["core"]
-        },
-        {
             "packageName": "@feasibleone/handler-test-poc",
             "projectFolder": "core/handler-test-poc",
             "reviewCategory": "core",
             "tags": ["dev"]
+        },
+        {
+            "packageName": "@feasibleone/ui-demo",
+            "projectFolder": "core/ui-demo",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

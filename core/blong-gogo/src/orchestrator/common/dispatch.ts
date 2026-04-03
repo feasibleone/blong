@@ -1,6 +1,6 @@
 import {orchestrator, type IMeta} from '@feasibleone/blong/types';
 
-export default orchestrator<{destination?: string}>(({remote}) => ({
+export default orchestrator<{destination?: string; appendNamespace?: string}>(({remote}) => ({
     activation: {
         default: {
             type: 'dispatch',
@@ -11,14 +11,19 @@ export default orchestrator<{destination?: string}>(({remote}) => ({
         return super.start();
     },
     async exec(...params: unknown[]) {
+        // Support both `destination` (slash-based routing, auto-stripped by methodPath)
+        // and `appendNamespace` (dot-based prefix, stripped via stripNamespace on receiver).
         const destination = this.config.destination;
-        if (destination && params.length > 1) {
+        const appendNamespace = this.config.appendNamespace;
+        const prefix = destination ?? appendNamespace;
+        const separator = destination ? '/' : '.';
+        if (prefix && params.length > 1) {
             const $meta = params.pop() as IMeta;
             if ($meta?.method) {
                 return (
                     await remote.dispatch(...params, {
                         ...$meta,
-                        method: destination + '/' + $meta.method,
+                        method: prefix + separator + $meta.method,
                     })
                 )?.[0];
             }
