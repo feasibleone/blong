@@ -3,6 +3,12 @@ import {adapter} from '@feasibleone/blong/types';
 import ky, {type Options as KyOptions} from 'ky';
 
 export interface IConfig {
+    tls?: {
+        key?: string;
+        cert?: string;
+        ca?: string | string[];
+        crl?: string;
+    };
     url?: string;
 }
 
@@ -15,6 +21,7 @@ let _errors: Errors<typeof errorMap>;
 export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
+    let kyInstance: typeof ky = ky;
     return {
         activation: {
             default: {
@@ -23,6 +30,36 @@ export default adapter<IConfig>(({utError}) => {
         },
         async init(...configs: object[]) {
             await super.init(...configs);
+            if (this.config.tls) {
+                // Dynamic imports — only run on the server; @vite-ignore prevents
+                // Vite from trying to bundle these Node.js-only modules for the browser.
+                const [{Agent}, {readFileSync}] = await Promise.all([
+                    import(/* @vite-ignore */ 'undici') as Promise<typeof import('undici')>,
+                    import(/* @vite-ignore */ 'node:fs') as Promise<typeof import('node:fs')>,
+                ]);
+                const {tls} = this.config;
+                const agent = new Agent({
+                    connect: {
+                        minVersion: 'TLSv1.3',
+                        ...(tls.key && {key: readFileSync(tls.key)}),
+                        ...(tls.cert && {cert: readFileSync(tls.cert)}),
+                        ...(tls.ca && {
+                            ca: Array.isArray(tls.ca)
+                                ? tls.ca.map(f => readFileSync(f))
+                                : readFileSync(tls.ca),
+                        }),
+                        ...(tls.crl && {crl: readFileSync(tls.crl)}),
+                    },
+                });
+                kyInstance = ky.create({
+                    fetch: (url, options) =>
+                        fetch(url as string, {
+                            ...(options as RequestInit),
+                            // @ts-expect-error: undici dispatcher is not in the standard RequestInit type
+                            dispatcher: agent,
+                        }),
+                });
+            }
         },
         start() {
             super.connect();
@@ -72,7 +109,7 @@ export default adapter<IConfig>(({utError}) => {
                     ...(body != null && json == null && form == null ? {body} : {}),
                     ...(searchParams != null ? {searchParams: searchParams as Record<string, string>} : {}),
                 };
-                const res = await ky(url.toString(), kyOptions);
+                const res = await kyInstance(url.toString(), kyOptions);
                 const resolvedBody =
                     responseType === 'buffer'
                         ? await res.arrayBuffer()

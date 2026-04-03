@@ -410,6 +410,9 @@ importers:
       ulidx:
         specifier: ^2.4.1
         version: 2.4.1
+      undici:
+        specifier: ^8.0.1
+        version: 8.0.1
       ut-bitsyntax:
         specifier: ^6.2.7
         version: 6.2.7
@@ -12398,6 +12401,10 @@ packages:
 
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
+  undici@8.0.1:
+    resolution: {integrity: sha512-6qdTUr+jabXmYKeYkv/+pIvO7d0bs1k9uy+5PFnXr4segNVwILH1KExhwRh3/iGa6gSLmySK3hTnSs3k7ZPnjQ==}
+    engines: {node: '>=22.19.0'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
@@ -27792,6 +27799,8 @@ snapshots:
   underscore@1.13.8: {}
 
   undici-types@7.16.0: {}
+
+  undici@8.0.1: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
