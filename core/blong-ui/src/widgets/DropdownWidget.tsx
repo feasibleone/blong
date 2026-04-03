@@ -80,29 +80,3 @@ export function DropdownWidget({
         />
     );
 }
-
-
-    if (readOnly) {
-        const found = options.find(o => o.value === value);
-        return (
-            <span className="blong-display">
-                {found?.label ?? (value != null ? String(value) : '')}
-            </span>
-        );
-    }
-
-    return (
-        <Dropdown
-            inputId={name}
-            value={value}
-            options={options}
-            onChange={e => onChange(e.value)}
-            onHide={onBlur}
-            disabled={disabled}
-            className={`blong-dropdown ${error ? 'p-invalid' : ''}`}
-            showClear={!schema.required}
-            filter={options.length > 8}
-            placeholder={schema.placeholder ?? 'Select…'}
-        />
-    );
-}
