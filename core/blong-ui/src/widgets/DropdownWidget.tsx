@@ -37,23 +37,34 @@ export function DropdownWidget({
         // Priority 1: named dropdown via portal orchestrator (handles batching + caching)
         if (dropdownKey) {
             const loader = (key: string) =>
-                (dispatch('portal.dropdown.list', {names: [key]}) as Promise<Record<string, unknown>>)
-                    .then(result => toOptions(result[key]));
+                (
+                    dispatch('portal.dropdown.list', {names: [key]}) as Promise<
+                        Record<string, unknown>
+                    >
+                ).then(result => toOptions(result[key]));
 
             dropdownRegistry
                 .get(dropdownKey, loader)
-                .then(data => { if (!cancelled) setOptions(data); })
+                .then(data => {
+                    if (!cancelled) setOptions(data);
+                })
                 .catch(() => {});
 
-            return () => { cancelled = true; };
+            return () => {
+                cancelled = true;
+            };
         }
 
         // Priority 2: explicit fetch action
         if (!fetchAction) return;
         (dispatch(fetchAction, {}) as Promise<unknown>)
-            .then(data => { if (!cancelled) setOptions(toOptions(data)); })
+            .then(data => {
+                if (!cancelled) setOptions(toOptions(data));
+            })
             .catch(() => {});
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [fetchAction, dropdownKey, dispatch]);
 
     if (readOnly) {

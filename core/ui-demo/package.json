@@ -1,11 +1,12 @@
 {
     "name": "@feasibleone/ui-demo",
     "version": "1.0.0",
+    "private": true,
     "description": "Marine biology demo blong suite showcasing @feasibleone/blong-ui realm patterns",
     "type": "module",
-    "private": true,
     "scripts": {
         "dev": "vite",
+        "build": "true",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
