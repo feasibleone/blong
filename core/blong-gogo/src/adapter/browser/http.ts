@@ -1,15 +1,8 @@
 import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong/types';
 import {adapter} from '@feasibleone/blong/types';
-import got, {type HttpsOptions, type Options} from 'got';
-
-import tls from '../../tls.ts';
+import ky, {type Options as KyOptions} from 'ky';
 
 export interface IConfig {
-    tls?: {
-        key?: string;
-        cert?: string;
-        ca?: string | string[];
-    };
     url?: string;
 }
 
@@ -22,7 +15,6 @@ let _errors: Errors<typeof errorMap>;
 export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
-    let https: HttpsOptions;
     return {
         activation: {
             default: {
@@ -31,7 +23,6 @@ export default adapter<IConfig>(({utError}) => {
         },
         async init(...configs: object[]) {
             await super.init(...configs);
-            https = tls(this.config, true);
         },
         start() {
             super.connect();
@@ -50,57 +41,56 @@ export default adapter<IConfig>(({utError}) => {
                 json,
             }: {
                 path: string;
-                query: string;
+                query: string | Record<string, string>;
                 url: URL;
-                responseType: Options['responseType'];
-                method: Options['method'];
-                headers: Options['headers'];
-                body: Options['body'];
-                form: Options['form'];
-                json: Options['json'];
+                responseType: 'json' | 'text' | 'buffer';
+                method: string;
+                headers: Record<string, string>;
+                body: BodyInit;
+                form: Record<string, string>;
+                json: unknown;
             },
-            {stream}: IMeta,
+            _meta: IMeta,
         ) {
             try {
                 this.log.debug?.({
                     req: {
-                        method: method.toUpperCase(),
+                        method: (method || 'POST').toUpperCase(),
                         url,
                         headers,
                         body,
                         json,
                     },
                 });
-                const result = (await got({
-                    url,
-                    searchParams,
-                    https,
+                const kyOptions: KyOptions = {
                     method: method || 'POST',
                     headers,
-                    responseType,
-                    body,
-                    form,
-                    json,
                     throwHttpErrors: false,
-                    followRedirect: false,
-                    isStream: !!stream,
-                })) as {
-                    statusCode: number;
-                    statusMessage: string;
-                    headers: Record<string, unknown>;
-                    body: unknown;
+                    redirect: 'manual',
+                    ...(json != null ? {json} : {}),
+                    ...(form != null ? {body: new URLSearchParams(form)} : {}),
+                    ...(body != null && json == null && form == null ? {body} : {}),
+                    ...(searchParams != null ? {searchParams: searchParams as Record<string, string>} : {}),
+                };
+                const res = await ky(url.toString(), kyOptions);
+                const resolvedBody =
+                    responseType === 'buffer'
+                        ? await res.arrayBuffer()
+                        : responseType === 'text'
+                          ? await res.text()
+                          : await res.json().catch(() => null);
+                const result = {
+                    statusCode: res.status,
+                    statusMessage: res.statusText,
+                    headers: Object.fromEntries(res.headers.entries()),
+                    body: resolvedBody,
                 };
                 this.log.debug?.({
                     req: {
                         url,
-                        method: method.toUpperCase(),
+                        method: (method || 'POST').toUpperCase(),
                     },
-                    res: {
-                        statusCode: result.statusCode,
-                        statusMessage: result.statusMessage,
-                        headers: result.headers,
-                        body: result.body,
-                    },
+                    res: result,
                 });
                 return result;
             } catch (error) {
