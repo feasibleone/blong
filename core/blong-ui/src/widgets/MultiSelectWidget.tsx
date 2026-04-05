@@ -1,12 +1,11 @@
-import {MultiSelect} from 'primereact/multiselect';
-import {useEffect, useState} from 'react';
-import {useBlongUi} from '../context/BlongUiContext.js';
-import type {IWidgetProps} from '../types/widget.js';
+import { MultiSelect } from 'primereact/multiselect';
+import { useEffect, useState } from 'react';
+import { useBlongUi } from '../context/BlongUiContext.js';
+import { dropdownRegistry } from '../model/dropdownRegistry.js';
+import type { IDropdownOption } from '../model/types.js';
+import type { IWidgetProps } from '../types/widget.js';
 
-interface SelectOption {
-    label: string;
-    value: unknown;
-}
+type SelectOption = IDropdownOption;
 
 function toOptions(data: unknown): SelectOption[] {
     if (!Array.isArray(data)) return [];
@@ -26,15 +25,39 @@ export function MultiSelectWidget({
     readOnly,
     disabled,
 }: IWidgetProps) {
-    const {fetch: fetchAction, options: staticOptions, type: widgetType} = schema.widget ?? {};
+    const {fetch: fetchAction, options: staticOptions, dropdown: dropdownKey, type: widgetType} = schema.widget ?? {};
     const {dispatch} = useBlongUi();
     const [options, setOptions] = useState<SelectOption[]>(
         staticOptions ? toOptions(staticOptions) : [],
     );
 
     useEffect(() => {
-        if (!fetchAction) return;
         let cancelled = false;
+        if (staticOptions) return;
+
+        // Priority 1: named dropdown via portal orchestrator (batched + cached)
+        if (dropdownKey) {
+            const loader = (key: string) =>
+                (
+                    dispatch('portal.dropdown.list', {names: [key]}) as Promise<
+                        Record<string, unknown>
+                    >
+                ).then(result => toOptions(result[key]));
+            dropdownRegistry
+                .get(dropdownKey, loader)
+                .then(data => {
+                    if (!cancelled) setOptions(data);
+                })
+                .catch(() => {
+                    // Error surfaced by the central dispatch wrapper in BlongUiProvider.
+                });
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        // Priority 2: explicit fetch action
+        if (!fetchAction) return;
         (dispatch(fetchAction, {}) as Promise<unknown>)
             .then(data => {
                 if (!cancelled) setOptions(toOptions(data));
@@ -43,27 +66,28 @@ export function MultiSelectWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dispatch]);
+    }, [fetchAction, dropdownKey, dispatch, staticOptions]);
 
     const arrValue: unknown[] = Array.isArray(value) ? value : value != null ? [value] : [];
-
-    if (readOnly) {
-        const labels = arrValue.map(v => options.find(o => o.value === v)?.label ?? String(v));
-        return <span className="blong-display">{labels.join(', ')}</span>;
-    }
 
     // multiSelectPanel: render as inline checkbox panel
     // (inline + flex + itemClassName='col-3' → 4-column grid of checkboxes)
     const isPanel = widgetType === 'multiSelectPanel';
+
+    if (readOnly && !isPanel) {
+        // Regular multi-select in read-only: show comma-separated labels
+        const labels = arrValue.map(v => options.find(o => o.value === v)?.label ?? String(v));
+        return <span className="blong-display">{labels.join(', ')}</span>;
+    }
 
     return (
         <MultiSelect
             inputId={name}
             value={arrValue}
             options={options}
-            onChange={e => onChange(e.value)}
-            onHide={isPanel ? undefined : onBlur}
-            disabled={disabled}
+            onChange={readOnly ? undefined : e => onChange(e.value)}
+            onHide={isPanel || readOnly ? undefined : onBlur}
+            disabled={disabled || readOnly}
             className={`blong-multiselect w-full ${error ? 'p-invalid' : ''}`}
             display="chip"
             filter={!isPanel && options.length > 8}

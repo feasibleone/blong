@@ -103,10 +103,6 @@ const tree: ITreeFixture = {
             label: 'System',
             widgets: ['createdOn'],
         },
-        history: {
-            label: 'History',
-            widgets: [],
-        },
         links: {
             label: undefined,
             widgets: ['links'],

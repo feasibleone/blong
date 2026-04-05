@@ -15,6 +15,7 @@
  */
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
+import {ErrorDialog} from '../Error/index.js';
 import {Portal, type IPortalProps} from '../Portal/index.js';
 import {Theme, type IThemeConfig} from '../Theme/index.js';
 
@@ -32,6 +33,11 @@ export interface IAppProps extends IPortalProps {
     /** PrimeReact theme configuration (defaults to lara-light-blue / light palette) */
     theme?: IThemeConfig;
     /**
+     * Login route — when set, the global error dialog shows a "Login" button
+     * that navigates here when a session-expiry error occurs.
+     */
+    loginRoute?: string;
+    /**
      * When provided, renders in place of the Portal shell.
      * Useful for Storybook decorators and unit tests that need provider
      * context (BlongUiProvider + Theme) without the full portal UI.
@@ -44,6 +50,7 @@ export function App({
     schemaUrl,
     baseUrl,
     debug,
+    loginRoute,
     theme = DEFAULT_THEME,
     children,
     ...portalProps
@@ -54,8 +61,12 @@ export function App({
             schemaUrl={schemaUrl}
             baseUrl={baseUrl}
             debug={debug}
+            loginRoute={loginRoute}
         >
-            <Theme theme={theme}>{children ?? <Portal {...portalProps} />}</Theme>
+            <Theme theme={theme}>
+                {children ?? <Portal {...portalProps} />}
+                <ErrorDialog />
+            </Theme>
         </BlongUiProvider>
     );
 }

@@ -1,5 +1,5 @@
 import {Dropdown} from 'primereact/dropdown';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 import type {IDropdownOption} from '../model/types.js';
@@ -10,6 +10,7 @@ type SelectOption = IDropdownOption;
 function toOptions(data: unknown): SelectOption[] {
     if (!Array.isArray(data)) return [];
     return data.map((item: Record<string, unknown>) => ({
+        ...item, // preserve extra properties (e.g., parent field keys for cascade filtering)
         label: String(item.label ?? item.name ?? item.value ?? item),
         value: item.value ?? item,
     }));
@@ -38,6 +39,17 @@ export function DropdownWidget({
         staticOptions ? toOptions(staticOptions) : [],
     );
 
+    // Clear this widget's value when the parent selection changes
+    const prevParentValueRef = useRef<unknown>(parentValue);
+    useEffect(() => {
+        if (parent === undefined) return;
+        if (prevParentValueRef.current !== parentValue) {
+            prevParentValueRef.current = parentValue;
+            if (value !== undefined && value !== null) onChange(undefined);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [parentValue]);
+
     useEffect(() => {
         let cancelled = false;
 
@@ -58,7 +70,10 @@ export function DropdownWidget({
                 .then(data => {
                     if (!cancelled) setOptions(data);
                 })
-                .catch(() => {});
+                .catch(() => {
+                    // Error already surfaced by the central dispatch wrapper in
+                    // BlongUiProvider. Widget renders with empty options.
+                });
 
             return () => {
                 cancelled = true;
@@ -79,10 +94,14 @@ export function DropdownWidget({
         };
     }, [fetchAction, dropdownKey, dispatch, parentValue]);
 
-    // Filter static options by parent value (client-side cascade)
+    // Filter options by parent value (client-side cascade).
+    // Supports both named-key format ({continent: 1}) and generic parent key ({parent: 1}).
     const visibleOptions =
         parent && parentValue !== undefined
-            ? options.filter(o => (o as unknown as Record<string, unknown>)[parent] === parentValue)
+            ? options.filter(o => {
+                  const opt = o as unknown as Record<string, unknown>;
+                  return opt[parent] === parentValue || opt['parent'] === parentValue;
+              })
             : options;
 
     if (readOnly) {
@@ -94,6 +113,8 @@ export function DropdownWidget({
         );
     }
 
+    const isParentEmpty = !!parent && (parentValue === undefined || parentValue === null);
+
     return (
         <Dropdown
             inputId={name}
@@ -101,11 +122,12 @@ export function DropdownWidget({
             options={visibleOptions}
             onChange={e => onChange(e.value)}
             onHide={onBlur}
-            disabled={disabled}
+            disabled={disabled || isParentEmpty}
             className={`blong-dropdown w-full ${error ? 'p-invalid' : ''}`}
             showClear={!schema.required}
             filter={visibleOptions.length > 8}
             placeholder={schema.placeholder ?? 'Select…'}
+            dropdownIcon="pi pi-chevron-down"
         />
     );
 }

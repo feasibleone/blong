@@ -1,5 +1,4 @@
-import {Calendar} from 'primereact/calendar';
-import type {IWidgetProps} from '../types/widget.js';
+import type { IWidgetProps } from '../types/widget.js';
 
 export function DateWidget({
     name,
@@ -10,18 +9,27 @@ export function DateWidget({
     readOnly,
     disabled,
 }: IWidgetProps) {
-    const dateValue = value instanceof Date ? value : value ? new Date(value as string) : null;
+    // Normalise to ISO yyyy-mm-dd string — the canonical storage format for format:'date'
+    const isoValue =
+        value instanceof Date
+            ? value.toISOString().slice(0, 10)
+            : typeof value === 'string'
+              ? value.slice(0, 10)
+              : '';
+
+    if (readOnly) {
+        return <span className="blong-display">{isoValue}</span>;
+    }
+
     return (
-        <Calendar
-            inputId={name}
-            value={dateValue}
-            onChange={e => onChange(e.value ?? null)}
-            onHide={onBlur}
-            readOnlyInput={readOnly}
+        <input
+            type="date"
+            id={name}
+            value={isoValue}
+            onChange={e => onChange(e.target.value || null)}
+            onBlur={onBlur}
             disabled={disabled}
-            className={`blong-date ${error ? 'p-invalid' : ''}`}
-            showIcon
-            dateFormat="mm/dd/yy"
+            className={`p-inputtext p-component w-full blong-date${error ? ' p-invalid' : ''}`}
         />
     );
 }

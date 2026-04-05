@@ -175,9 +175,11 @@ describe('<Editor />', () => {
      * yet implemented. Both cards render unconditionally.
      */
     it('PolymorphicLayout render equals snapshot', async () => {
-        const {findByTestId} = render(<PolymorphicLayout />, {dispatch});
+        const {container} = render(<PolymorphicLayout />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
-        expect(await findByTestId('blong-ui-test')).toMatchSnapshot();
+        // PolymorphicLayout renders multiple Editor instances so there are multiple test roots;
+        // snapshot the outermost container instead.
+        expect(container.firstChild).toMatchSnapshot();
     });
 
     it('ResponsiveLayout render equals snapshot', async () => {
@@ -240,7 +242,10 @@ describe('<Editor />', () => {
     });
 
     it('Server validation render equals snapshot', async () => {
-        const {findByTestId, container} = render(<ServerValidation />, {dispatch});
+        // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
+        const {findByTestId, container} = render(ServerValidation(ServerValidation.args ?? {}), {
+            dispatch,
+        });
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (ServerValidation.play) {
             await act(() => ServerValidation.play!({canvasElement: container}));
@@ -336,16 +341,17 @@ describe('<Editor />', () => {
     });
 
     it('Basic: Edit button is present in read-only mode', async () => {
-        const {container} = render(<Basic />, {dispatch});
+        // Basic story is in editMode; render with editMode=false to get the Edit button.
+        const {container} = render(Basic({editMode: false}), {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 200)));
-        const labels = Array.from(container.querySelectorAll('.p-button-label')).map(el =>
-            el.textContent?.trim(),
-        );
-        expect(labels).toContain('Edit');
+        // Edit button renders as icon-only — check aria-label, not text content.
+        const editBtn = container.querySelector('[aria-label="Edit"]');
+        expect(editBtn).toBeTruthy();
     });
 
     it('Tabs: role="tablist" is present', async () => {
-        const {container} = render(<Tabs />, {dispatch});
+        // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
+        const {container} = render(Tabs(Tabs.args ?? {}), {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 200)));
         expect(container.querySelector('[role="tablist"]')).toBeTruthy();
     });
@@ -355,9 +361,12 @@ describe('<Editor />', () => {
      * In blong-ui the equivalent is editable={false} to prevent the Edit button.
      */
     it('Steps: steps indicator (ol/role=tablist) is present', async () => {
-        const {container} = render(<Steps />, {dispatch});
+        // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
+        const {container} = render(Steps(Steps.args ?? {}), {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 200)));
-        const stepsList = container.querySelector('.p-steps-list, .p-steps, [role="tablist"]');
+        const stepsList = container.querySelector(
+            '.p-steps-list, .p-steps, [role="tablist"], .blong-form-steps',
+        );
         expect(stepsList).toBeTruthy();
     });
 });

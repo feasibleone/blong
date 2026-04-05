@@ -7,72 +7,46 @@ import type {Meta} from '@storybook/react';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
-const meta: Meta<typeof Editor> = {
-    title: 'Editor/Pivot',
-    component: Editor,
-};
+const meta: Meta<typeof Editor> = {title: 'Editor/Pivot', component: Editor};
 export default meta;
 
-export const Pivot: StoryFn = () => (
+const pivotSchema = {
+    properties: {
+        groupA: {
+            title: '' as const,
+            type: 'array' as const,
+            widget: {type: 'table' as const, columns: ['col1', 'col2', 'col3']},
+        },
+        groupB: {
+            title: '' as const,
+            type: 'array' as const,
+            widget: {type: 'table' as const, columns: ['col1', 'col2', 'col3']},
+        },
+    },
+};
+
+const PivotTemplate: StoryFn = (args = {}) => (
     <Editor
-        schema={{
-            properties: {
-                groupA: {
-                    title: '',
-                    type: 'array',
-                    widget: {
-                        type: 'table',
-                        columns: ['col1', 'col2', 'col3'],
-                    },
-                },
-                groupB: {
-                    title: '',
-                    type: 'array',
-                    widget: {
-                        type: 'table',
-                        columns: ['col1', 'col2', 'col3'],
-                    },
-                },
-            },
-        }}
-        cards={{
-            a: {label: 'Group A', widgets: ['groupA']},
-            b: {label: 'Group B', widgets: ['groupB']},
-        }}
+        schema={pivotSchema}
         editable
         layout="edit"
         layouts={{edit: [['a', 'b']]}}
+        {...args}
     />
 );
 
-export const PivotBG: StoryFn = () => (
-    <Editor
-        schema={{
-            properties: {
-                groupA: {
-                    title: '',
-                    type: 'array',
-                    widget: {
-                        type: 'table',
-                        columns: ['col1', 'col2', 'col3'],
-                    },
-                },
-                groupB: {
-                    title: '',
-                    type: 'array',
-                    widget: {
-                        type: 'table',
-                        columns: ['col1', 'col2', 'col3'],
-                    },
-                },
-            },
-        }}
-        cards={{
-            a: {label: 'Група А', widgets: ['groupA']},
-            b: {label: 'Група Б', widgets: ['groupB']},
-        }}
-        editable
-        layout="edit"
-        layouts={{edit: [['a', 'b']]}}
-    />
-);
+export const Pivot: StoryFn = PivotTemplate.bind({});
+Pivot.args = {
+    cards: {
+        a: {label: 'Group A', widgets: ['groupA']},
+        b: {label: 'Group B', widgets: ['groupB']},
+    },
+};
+
+export const PivotBG: StoryFn = PivotTemplate.bind({});
+PivotBG.args = {
+    cards: {
+        a: {label: 'Група А', widgets: ['groupA']},
+        b: {label: 'Група Б', widgets: ['groupB']},
+    },
+};

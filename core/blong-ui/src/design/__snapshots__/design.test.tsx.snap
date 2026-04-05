@@ -313,24 +313,13 @@ exports[`PropertyEditor > renders empty hint when design mode active but no sele
   <div
     class="blong-property-editor blong-property-editor--empty"
   >
+    <i
+      class="pi pi-info-circle blong-property-editor__icon"
+    />
     <p
       class="blong-property-editor__hint"
     >
-      Select an element to edit its properties
-    </p>
-  </div>
-</div>
-`;
-
-exports[`PropertyEditor > renders empty hint when design mode inactive 1`] = `
-<div>
-  <div
-    class="blong-property-editor blong-property-editor--empty"
-  >
-    <p
-      class="blong-property-editor__hint"
-    >
-      Select an element to edit its properties
+      Click a card or field to inspect it
     </p>
   </div>
 </div>

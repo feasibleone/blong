@@ -209,10 +209,9 @@ describe('DesignToolbar', () => {
 });
 
 describe('PropertyEditor', () => {
-    it('renders empty hint when design mode inactive', () => {
+    it('renders nothing when design mode inactive', () => {
         const {container} = render(<PropertyEditor />);
-        expect(screen.getByText(/select an element/i)).toBeInTheDocument();
-        expect(container).toMatchSnapshot();
+        expect(container.firstChild).toBeNull();
     });
 
     it('renders empty hint when design mode active but no selection', () => {

@@ -8,92 +8,104 @@ exports[`Form > renders card layout with fields 1`] = `
     novalidate=""
   >
     <div
-      class="blong-deck"
+      class="grid col align-self-start max-w-screen"
     >
       <div
-        class="p-card p-component"
-        id="card-edit"
+        class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card-body"
+          class="p-card p-component w-full"
+          id="card-edit"
         >
           <div
-            class="p-card-title"
-          >
-            <span
-              class="blong-card__label"
-            >
-              User
-            </span>
-          </div>
-          <div
-            class="p-card-content"
+            class="p-card-body"
           >
             <div
-              class="blong-card__body"
+              class="p-card-title"
+            >
+              <span
+                class="blong-card__label"
+              >
+                User
+              </span>
+            </div>
+            <div
+              class="p-card-content"
             >
               <div
-                class="blong-form-fields"
+                class="blong-card__body"
               >
                 <div
-                  class="blong-field"
+                  class="field grid"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="userName"
                   >
                     User Name
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component blong-input "
-                      id="userName"
-                      name="userName"
-                      value=""
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component blong-input w-full "
+                        id="userName"
+                        name="userName"
+                        value=""
+                      />
+                    </span>
+                  </div>
                 </div>
                 <div
-                  class="blong-field"
+                  class="field grid"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="emailAddress"
                   >
                     Email Address
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component blong-input "
-                      id="emailAddress"
-                      name="emailAddress"
-                      value=""
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component blong-input w-full "
+                        id="emailAddress"
+                        name="emailAddress"
+                        value=""
+                      />
+                    </span>
+                  </div>
                 </div>
                 <div
-                  class="blong-field"
+                  class="field grid mb-0"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="phoneNumber"
                   >
                     Phone
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component blong-input "
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value=""
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component blong-input w-full "
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        value=""
+                      />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -113,42 +125,81 @@ exports[`Form > renders loading skeleton 1`] = `
     novalidate=""
   >
     <div
-      class="blong-deck"
+      class="grid col align-self-start max-w-screen"
     >
       <div
-        class="p-card p-component blong-card--loading"
-        id="card-edit"
+        class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card-body"
+          class="p-card p-component blong-card--loading w-full"
+          id="card-edit"
         >
           <div
-            class="p-card-title"
-          >
-            <span
-              class="blong-card__label"
-            >
-              User
-            </span>
-          </div>
-          <div
-            class="p-card-content"
+            class="p-card-body"
           >
             <div
-              class="blong-card__body"
+              class="p-card-title"
+            >
+              <span
+                class="blong-card__label"
+              >
+                User
+              </span>
+            </div>
+            <div
+              class="p-card-content"
             >
               <div
-                class="blong-card__skeleton"
+                class="blong-card__body"
               >
                 <div
-                  class="blong-skeleton-row"
-                />
+                  class="field grid"
+                >
+                  <label
+                    class="col-12 md:col-4"
+                  >
+                    User Name
+                  </label>
+                  <div
+                    class="flex align-items-center col-12 md:col-8"
+                  >
+                    <div
+                      class="p-skeleton p-component p-inputtext w-full"
+                    />
+                  </div>
+                </div>
                 <div
-                  class="blong-skeleton-row"
-                />
+                  class="field grid"
+                >
+                  <label
+                    class="col-12 md:col-4"
+                  >
+                    Email Address
+                  </label>
+                  <div
+                    class="flex align-items-center col-12 md:col-8"
+                  >
+                    <div
+                      class="p-skeleton p-component p-inputtext w-full"
+                    />
+                  </div>
+                </div>
                 <div
-                  class="blong-skeleton-row"
-                />
+                  class="field grid mb-0"
+                >
+                  <label
+                    class="col-12 md:col-4"
+                  >
+                    Phone
+                  </label>
+                  <div
+                    class="flex align-items-center col-12 md:col-8"
+                  >
+                    <div
+                      class="p-skeleton p-component p-inputtext w-full"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -167,126 +218,134 @@ exports[`Form > renders multiple card groups 1`] = `
     novalidate=""
   >
     <div
-      class="blong-deck"
+      class="grid col align-self-start max-w-screen"
     >
       <div
-        class="p-card p-component"
-        id="card-personal"
+        class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card-body"
+          class="p-card p-component w-full"
+          id="card-personal"
         >
           <div
-            class="p-card-title"
-          >
-            <span
-              class="blong-card__label"
-            >
-              Personal Info
-            </span>
-          </div>
-          <div
-            class="p-card-content"
+            class="p-card-body"
           >
             <div
-              class="blong-card__body"
+              class="p-card-title"
+            >
+              <span
+                class="blong-card__label"
+              >
+                Personal Info
+              </span>
+            </div>
+            <div
+              class="p-card-content"
             >
               <div
-                class="blong-form-fields"
+                class="blong-card__body"
               >
                 <div
-                  class="blong-field"
+                  class="field grid mb-0"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="userName"
                   >
                     User Name
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component blong-input "
-                      id="userName"
-                      name="userName"
-                      value=""
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component blong-input w-full "
+                        id="userName"
+                        name="userName"
+                        value=""
+                      />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <div
-      class="blong-deck"
-    >
       <div
-        class="p-card p-component"
-        id="card-contact"
+        class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card-body"
+          class="p-card p-component w-full"
+          id="card-contact"
         >
           <div
-            class="p-card-title"
-          >
-            <span
-              class="blong-card__label"
-            >
-              Contact
-            </span>
-          </div>
-          <div
-            class="p-card-content"
+            class="p-card-body"
           >
             <div
-              class="blong-card__body"
+              class="p-card-title"
+            >
+              <span
+                class="blong-card__label"
+              >
+                Contact
+              </span>
+            </div>
+            <div
+              class="p-card-content"
             >
               <div
-                class="blong-form-fields"
+                class="blong-card__body"
               >
                 <div
-                  class="blong-field"
+                  class="field grid"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="emailAddress"
                   >
                     Email Address
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component blong-input "
-                      id="emailAddress"
-                      name="emailAddress"
-                      value=""
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component blong-input w-full "
+                        id="emailAddress"
+                        name="emailAddress"
+                        value=""
+                      />
+                    </span>
+                  </div>
                 </div>
                 <div
-                  class="blong-field"
+                  class="field grid mb-0"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="phoneNumber"
                   >
                     Phone
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component blong-input "
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      value=""
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component blong-input w-full "
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        value=""
+                      />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -306,95 +365,107 @@ exports[`Form > renders read-only form with values 1`] = `
     novalidate=""
   >
     <div
-      class="blong-deck"
+      class="grid col align-self-start max-w-screen"
     >
       <div
-        class="p-card p-component"
-        id="card-edit"
+        class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card-body"
+          class="p-card p-component w-full"
+          id="card-edit"
         >
           <div
-            class="p-card-title"
-          >
-            <span
-              class="blong-card__label"
-            >
-              User
-            </span>
-          </div>
-          <div
-            class="p-card-content"
+            class="p-card-body"
           >
             <div
-              class="blong-card__body"
+              class="p-card-title"
+            >
+              <span
+                class="blong-card__label"
+              >
+                User
+              </span>
+            </div>
+            <div
+              class="p-card-content"
             >
               <div
-                class="blong-form-fields"
+                class="blong-card__body"
               >
                 <div
-                  class="blong-field"
+                  class="field grid"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="userName"
                   >
                     User Name
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component p-filled blong-input "
-                      id="userName"
-                      name="userName"
-                      readonly=""
-                      value="Alice"
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component p-filled blong-input w-full "
+                        id="userName"
+                        name="userName"
+                        readonly=""
+                        value="Alice"
+                      />
+                    </span>
+                  </div>
                 </div>
                 <div
-                  class="blong-field"
+                  class="field grid"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="emailAddress"
                   >
                     Email Address
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component p-filled blong-input "
-                      id="emailAddress"
-                      name="emailAddress"
-                      readonly=""
-                      value="alice@example.com"
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component p-filled blong-input w-full "
+                        id="emailAddress"
+                        name="emailAddress"
+                        readonly=""
+                        value="alice@example.com"
+                      />
+                    </span>
+                  </div>
                 </div>
                 <div
-                  class="blong-field"
+                  class="field grid mb-0"
                 >
                   <label
-                    class="blong-field-label"
+                    class="col-12 md:col-4"
                     for="phoneNumber"
                   >
                     Phone
                   </label>
-                  <span
-                    class="blong-input-wrapper"
+                  <div
+                    class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component p-filled blong-input "
-                      id="phoneNumber"
-                      name="phoneNumber"
-                      readonly=""
-                      value="555-1234"
-                    />
-                  </span>
+                    <span
+                      class="blong-input-wrapper w-full"
+                    >
+                      <input
+                        class="p-inputtext p-component p-filled blong-input w-full "
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        readonly=""
+                        value="555-1234"
+                      />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

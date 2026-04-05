@@ -2,14 +2,14 @@
  * useDesignMode — consumes design mode context.
  * Returns {active: false, ...} when not in a DesignModeProvider.
  */
-import {useContext} from 'react';
-import {DesignModeContext, type IDesignModeContextValue} from './DesignModeContext.js';
+import { useContext } from 'react';
+import { DesignModeContext, type IDesignModeContextValue } from './DesignModeContext.js';
 
 const inertResult: IDesignModeContextValue = {
     active: false,
     selected: null,
     select: () => undefined,
-    config: {cards: {}, layouts: {}},
+    config: {cards: {}, layouts: {}, schema: {}},
     updateConfig: () => undefined,
     permission: 'portal.design',
     canUndo: false,

@@ -1,15 +1,9 @@
-import type {Preview} from '@storybook/react';
+import type { Preview } from '@storybook/react';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import 'primereact/resources/primereact.min.css';
 import 'primereact/resources/themes/vela-blue/theme.css';
-import {App} from '../src/components/App/index.js';
-
-/** Noop dispatch — logs calls; stories that need real data should override via args */
-const noopDispatch = async (method: string, params?: Record<string, unknown>) => {
-    console.info('[Storybook] dispatch:', method, params);
-    return undefined;
-};
+import { withDispatch } from './dispatch.js';
 
 // Ensure proper height propagation for fullscreen stories
 const style = document.createElement('style');
@@ -42,17 +36,7 @@ style.textContent = `
 document.head.appendChild(style);
 
 const preview: Preview = {
-    decorators: [
-        Story => (
-            <App
-                dispatch={noopDispatch}
-                schemaUrl="/schema.json"
-                theme={{name: 'vela-blue', palette: 'dark-compact'}}
-            >
-                <Story />
-            </App>
-        ),
-    ],
+    decorators: [withDispatch()],
     parameters: {
         actions: {argTypesRegex: '^on[A-Z].*'},
         layout: 'fullscreen',

@@ -40,8 +40,9 @@ class DropdownRegistry {
                 })
                 .catch(err => {
                     this.pending.delete(name);
-                    console.warn(`[blong-ui] Failed to load dropdown "${name}":`, err);
-                    return [] as IDropdownOption[];
+                    // Re-throw so callers (e.g. DropdownWidget) can handle the error
+                    // (show a dialog, log the user out, etc.).
+                    throw err;
                 });
             this.pending.set(name, promise);
         }

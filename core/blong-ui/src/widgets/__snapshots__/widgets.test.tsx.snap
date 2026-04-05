@@ -134,80 +134,33 @@ exports[`DateTimeWidget > renders 1`] = `
 
 exports[`DateWidget > renders 1`] = `
 <div>
-  <span
-    class="p-calendar p-component p-inputwrapper blong-date  p-calendar-w-btn p-calendar-w-btn-undefined"
-  >
-    <input
-      autocomplete="off"
-      class="p-inputtext p-component"
-      id="testField"
-      type="text"
-    />
-    <button
-      class="p-button p-component p-datepicker-trigger"
-      tabindex="-1"
-      type="button"
-    >
-      <span
-        class="p-button-label p-c"
-      >
-         
-      </span>
-    </button>
-  </span>
+  <input
+    class="p-inputtext p-component w-full blong-date"
+    id="testField"
+    type="date"
+    value=""
+  />
 </div>
 `;
 
 exports[`DateWidget > renders readOnly 1`] = `
 <div>
   <span
-    class="p-calendar p-component p-inputwrapper blong-date  p-calendar-w-btn p-calendar-w-btn-undefined p-inputwrapper-filled"
+    class="blong-display"
   >
-    <input
-      autocomplete="off"
-      class="p-inputtext p-component"
-      id="testField"
-      readonly=""
-      type="text"
-    />
-    <button
-      class="p-button p-component p-datepicker-trigger"
-      tabindex="-1"
-      type="button"
-    >
-      <span
-        class="p-button-label p-c"
-      >
-         
-      </span>
-    </button>
+    2024-06-30
   </span>
 </div>
 `;
 
 exports[`DateWidget > renders with value 1`] = `
 <div>
-  <span
-    class="p-calendar p-component p-inputwrapper blong-date  p-calendar-w-btn p-calendar-w-btn-undefined p-inputwrapper-filled"
-  >
-    <input
-      autocomplete="off"
-      class="p-inputtext p-component"
-      id="testField"
-      type="text"
-    />
-    <button
-      class="p-button p-component p-datepicker-trigger"
-      tabindex="-1"
-      type="button"
-    >
-      <span
-        class="p-button-label p-c"
-      >
-         
-      </span>
-    </button>
-  </span>
+  <input
+    class="p-inputtext p-component w-full blong-date"
+    id="testField"
+    type="date"
+    value="2024-01-15"
+  />
 </div>
 `;
 
@@ -224,7 +177,7 @@ exports[`DropdownWidget > renders readOnly 1`] = `
 exports[`DropdownWidget > renders with static options 1`] = `
 <div>
   <div
-    class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown "
+    class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
   >
     <div
       class="p-hidden-accessible"
@@ -267,7 +220,7 @@ exports[`DropdownWidget > renders with static options 1`] = `
       role="button"
     >
       <span
-        class="p-dropdown-trigger-icon p-clickable"
+        class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
       />
     </div>
   </div>
@@ -407,7 +360,7 @@ exports[`JsonWidget > renders with object value 1`] = `
 exports[`MultiSelectWidget > renders 1`] = `
 <div>
   <div
-    class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect "
+    class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect w-full "
   >
     <div
       class="p-hidden-accessible"
@@ -556,10 +509,10 @@ exports[`SelectWidget > renders with options 1`] = `
 exports[`TextWidget > renders 1`] = `
 <div>
   <span
-    class="blong-input-wrapper"
+    class="blong-input-wrapper w-full"
   >
     <input
-      class="p-inputtext p-component blong-input "
+      class="p-inputtext p-component blong-input w-full "
       id="testField"
       name="testField"
       value=""
@@ -571,10 +524,10 @@ exports[`TextWidget > renders 1`] = `
 exports[`TextWidget > renders readOnly 1`] = `
 <div>
   <span
-    class="blong-input-wrapper"
+    class="blong-input-wrapper w-full"
   >
     <input
-      class="p-inputtext p-component p-filled blong-input "
+      class="p-inputtext p-component p-filled blong-input w-full "
       id="testField"
       name="testField"
       readonly=""
@@ -587,10 +540,10 @@ exports[`TextWidget > renders readOnly 1`] = `
 exports[`TextWidget > renders with copy button 1`] = `
 <div>
   <span
-    class="blong-input-wrapper"
+    class="blong-input-wrapper w-full"
   >
     <input
-      class="p-inputtext p-component p-filled blong-input "
+      class="p-inputtext p-component p-filled blong-input w-full "
       id="testField"
       name="testField"
       value="hello"
@@ -615,10 +568,10 @@ exports[`TextWidget > renders with copy button 1`] = `
 exports[`TextWidget > renders with error 1`] = `
 <div>
   <span
-    class="blong-input-wrapper"
+    class="blong-input-wrapper w-full"
   >
     <input
-      class="p-inputtext p-component blong-input p-invalid"
+      class="p-inputtext p-component blong-input w-full p-invalid"
       id="testField"
       name="testField"
       value=""
@@ -630,7 +583,7 @@ exports[`TextWidget > renders with error 1`] = `
 exports[`TextareaWidget > renders 1`] = `
 <div>
   <textarea
-    class="p-inputtextarea p-inputtext p-component p-inputtextarea-resizable blong-textarea "
+    class="p-inputtextarea p-inputtext p-component p-inputtextarea-resizable blong-textarea w-full "
     id="testField"
     name="testField"
     rows="3"
@@ -642,7 +595,7 @@ exports[`TextareaWidget > renders 1`] = `
 exports[`TextareaWidget > renders with value 1`] = `
 <div>
   <textarea
-    class="p-inputtextarea p-inputtext p-component p-filled p-inputtextarea-resizable blong-textarea "
+    class="p-inputtextarea p-inputtext p-component p-filled p-inputtextarea-resizable blong-textarea w-full "
     id="testField"
     maxlength="200"
     name="testField"

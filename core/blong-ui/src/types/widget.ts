@@ -50,8 +50,12 @@ export interface IWidgetConfig {
     dropdown?: string;
     /** Options list for static select/multiSelect/select */
     options?: Array<{value: unknown; label: string; icon?: string}>;
-    /** Parent field name for cascaded dropdowns */
+    /** Parent field name for cascaded dropdowns/tables (supports '$.selected.field' or just 'field') */
     parent?: string;
+    /** Key mapping for cascaded table filtering: {ownKey: parentKey} */
+    master?: Record<string, string>;
+    /** Auto-select first filtered row when parent selection changes */
+    autoSelect?: boolean;
     /** Copy-to-clipboard icon (input widget) */
     copy?: boolean;
     /** Mask pattern (mask widget) */
@@ -72,6 +76,15 @@ export interface IWidgetConfig {
     valueField?: string;
     /** Custom component type (for 'custom' type) */
     component?: React.ComponentType<IWidgetProps>;
+    /** Table action permissions */
+    actions?: {
+        allowAdd?: boolean;
+        allowDelete?: boolean;
+        allowEdit?: boolean;
+        allowSelect?: boolean;
+    };
+    /** Whether to show the inline editor directly inside the cell (boolean/dropdown) */
+    inlineEdit?: boolean;
 }
 
 /** Pivot config for table widget */
@@ -137,6 +150,11 @@ export interface IWidgetProps {
     disabled?: boolean;
     /** All current form values — enables inter-widget reactivity (cascaded dropdowns etc.) */
     formValues?: Record<string, unknown>;
+    /**
+     * Called by table widgets when a row is selected (selectionMode: 'single').
+     * Passes null when the selection is cleared.
+     */
+    onSelect?: (selection: {row: Record<string, unknown>; index: number} | null) => void;
 }
 
 /** Widget registry interface */

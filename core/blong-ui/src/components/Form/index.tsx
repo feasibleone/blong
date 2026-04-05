@@ -1,35 +1,37 @@
 /**
  * Form — schema-driven form component.
  *
- * Renders a hierarchy of Deck → Card → widget for every field in the schema.
+ * Renders a hierarchy of Deck → Card → field for every field in the schema.
  * Supports flat layout, tab layout, and steps layout.
  * Driven by react-hook-form internally; publishes flattened values via onChange/onSubmit.
+ *
+ * Form's responsibilities:
+ *  - react-hook-form setup (control, errors, reset, watch)
+ *  - Table-row selection state (for master-detail / watch cards)
+ *  - Layout structure: resolves rows/tabs/steps and renders Deck components
+ *  - Design-mode DnD (card reordering across columns)
+ *  - Provides FormContext so Deck and Card can render without prop-drilling
  */
 import {
     DndContext,
+    DragOverlay,
     PointerSensor,
     closestCenter,
     useSensor,
     useSensors,
     type DragEndEvent,
 } from '@dnd-kit/core';
-import {SortableContext, rectSortingStrategy} from '@dnd-kit/sortable';
-import {Message} from 'primereact/message';
-import {PanelMenu} from 'primereact/panelmenu';
-import {Steps} from 'primereact/steps';
-import {TabMenu} from 'primereact/tabmenu';
-import React, {useEffect, useId, useState} from 'react';
-import {Controller, useForm, type SubmitHandler} from 'react-hook-form';
-import {
-    useLayout,
-    type FlatLayoutConfig,
-    type IResolvedCard,
-    type LayoutConfig,
-} from '../../hooks/useLayout.js';
-import {buildValidationRules} from '../../schema/validate.js';
-import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
-import {widgetRegistry} from '../../widgets/index.js';
-import {Card} from '../Card/index.js';
+import { PanelMenu } from 'primereact/panelmenu';
+import { Steps } from 'primereact/steps';
+import { TabMenu } from 'primereact/tabmenu';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useForm, type FieldErrors, type SubmitHandler } from 'react-hook-form';
+import { useDesignMode } from '../../design/useDesignMode.js';
+import { useLayout, type FlatLayoutConfig, type LayoutConfig } from '../../hooks/useLayout.js';
+import { useAppStore } from '../../state/appStore.js';
+import type { ICardConfig, IEnrichedFieldSchema, IEnrichedSchema } from '../../types/widget.js';
+import { Deck } from '../Deck/index.js';
+import { FormContext } from './FormContext.js';
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -70,6 +72,12 @@ export interface IFormProps {
      * Receives the layout key and the updated FlatLayoutConfig so the caller can persist the change.
      */
     onLayoutChange?: (layoutKey: string, newLayout: FlatLayoutConfig) => void;
+    /**
+     * Optional side panel rendered alongside the form (e.g. the design inspector).
+     * Rendered inside FormContext.Provider but outside the <form> element so its
+     * inputs do not participate in form submission.
+     */
+    rightPanel?: React.ReactNode;
 }
 
 export function Form({
@@ -87,17 +95,78 @@ export function Form({
     checkPermission,
     dropdowns,
     onLayoutChange,
+    rightPanel,
 }: IFormProps) {
     const fallbackId = useId();
     const formId = id ?? fallbackId;
 
-    const layoutResult = useLayout(schema, cardsConfig, layout, layouts);
+    // Design mode — merge designCtx.config.cards overrides into cardsConfig so
+    // layout and field ordering reflect real-time design changes.
+    const designCtx = useDesignMode();
+    const effectiveCards = useMemo<Record<string, ICardConfig> | undefined>(() => {
+        if (!designCtx.active || !cardsConfig) return cardsConfig;
+        const result: Record<string, ICardConfig> = {};
+        for (const [name, card] of Object.entries(cardsConfig)) {
+            const override = designCtx.config.cards[name] as ICardConfig | undefined;
+            result[name] = override ? {...card, ...override} : card;
+        }
+        // Include design-created cards not in original config
+        for (const [name, override] of Object.entries(designCtx.config.cards)) {
+            if (!(name in result)) result[name] = override as ICardConfig;
+        }
+        return result;
+    }, [cardsConfig, designCtx.active, designCtx.config.cards]);
+
+    // Merge per-field schema overrides from design mode (title, widget type, readOnly, etc.)
+    const effectiveSchema = useMemo(() => {
+        if (!designCtx.active || !schema) return schema;
+        const overrides = designCtx.config.schema;
+        if (!overrides || Object.keys(overrides).length === 0) return schema;
+        const newProps = {...schema.properties};
+        for (const [fieldName, override] of Object.entries(overrides)) {
+            if (newProps[fieldName]) {
+                newProps[fieldName] = {...newProps[fieldName], ...override};
+                // Merge widget overrides (partial)
+                const o = override as {widget?: Record<string, unknown>};
+                if (o.widget && newProps[fieldName].widget) {
+                    newProps[fieldName] = {
+                        ...newProps[fieldName],
+                        widget: {
+                            ...(newProps[fieldName].widget as object),
+                            ...o.widget,
+                        } as unknown as IEnrichedFieldSchema['widget'],
+                    };
+                }
+            }
+        }
+        return {...schema, properties: newProps};
+    }, [schema, designCtx.active, designCtx.config.schema]);
+
+    const layoutResult = useLayout(effectiveSchema, effectiveCards, layout, layouts);
     const {rows, cards, tabs, layoutType} = layoutResult;
 
     const [activeTabIndex, setActiveTabIndex] = useState(0);
 
+    /**
+     * Tracks rows selected in table widgets with selectionMode: 'single'.
+     * Key = field name; value = {row, index} (without __key) or null.
+     */
+    const [tableSelections, setTableSelections] = useState<
+        Record<string, {row: Record<string, unknown>; index: number} | null>
+    >({});
+
+    const handleTableSelect = useCallback(
+        (fieldName: string, selection: {row: Record<string, unknown>; index: number} | null) => {
+            setTableSelections(prev => ({...prev, [fieldName]: selection}));
+        },
+        [],
+    );
+
     // Pointer sensor for design-mode drag-drop
     const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 5}}));
+
+    /** Label of the item currently being dragged (for DragOverlay ghost) */
+    const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
 
     const {
         control,
@@ -105,13 +174,24 @@ export function Form({
         reset,
         setError,
         watch,
+        setValue,
         formState: {errors},
     } = useForm<Record<string, unknown>>({
         defaultValues: value ?? {},
         mode: 'onBlur',
     });
 
-    const formValues = watch();
+    const rawFormValues = watch();
+
+    /**
+     * Extended form values — includes raw form values plus table selections.
+     * Table selections are stored under __sel_{fieldName} so cascaded dropdowns
+     * and watch/match cards can react to row selection.
+     */
+    const formValues: Record<string, unknown> = {
+        ...rawFormValues,
+        ...Object.fromEntries(Object.entries(tableSelections).map(([k, v]) => [`__sel_${k}`, v])),
+    };
 
     // Sync external value changes (e.g. after fetch)
     useEffect(() => {
@@ -130,124 +210,37 @@ export function Form({
         await onSubmit?.(data);
     };
 
-    /** Render all cards in a tab's cardNames list */
-    const renderTabCards = (cardNames: string[]) =>
-        cardNames.flatMap((rowSpec, i) => {
-            const cardName = typeof rowSpec === 'string' ? rowSpec : rowSpec;
-            const resolved = cards[cardName];
-            if (!resolved) return [];
-            return [renderCard(cardName, resolved, i)];
+    const handleFormInvalid = (fieldErrors: FieldErrors<Record<string, unknown>>) => {
+        const count = Object.keys(fieldErrors).length;
+        if (count === 0) return;
+        useAppStore.getState().showToast({
+            severity: 'error',
+            summary: 'Validation error',
+            detail:
+                count === 1
+                    ? 'Please correct the highlighted field.'
+                    : `Please correct ${count} highlighted fields.`,
         });
-
-    /** Render a single card.
-     * @param isLastInGroup - when false, adds mb-3 spacing */
-    const renderCard = (
-        cardName: string,
-        resolved: IResolvedCard,
-        key: React.Key,
-        isLastInGroup = true,
-    ) => {
-        const cardReadOnly = readOnly || resolved.config.readOnly;
-        return (
-            <Card
-                key={key}
-                id={`card-${cardName}`}
-                title={resolved.label}
-                collapsible={resolved.config.collapsible}
-                loading={loading || resolved.config.loading}
-                className={`w-full${isLastInGroup ? '' : ' mb-3'}`}
-            >
-                {resolved.fields.map((fieldName, idx) =>
-                    renderField(fieldName, cardReadOnly, idx === resolved.fields.length - 1),
-                )}
-            </Card>
-        );
     };
 
-    /** Render a single form field.
-     *
-     * When `schema.title === ''` (empty string) the label is suppressed and the
-     * input wrapper expands to fill the full row width
-     *
-     * @param isLast - adds `mb-0` to the outer div for the last field in a card
-     */
-    const renderField = (fieldName: string, cardReadOnly: boolean | undefined, isLast = false) => {
-        const rawSchema: IEnrichedFieldSchema | undefined = schema?.properties?.[fieldName];
-        // Enrich schema with static dropdown options when provided by parent
-        const dropdownKey = rawSchema?.widget?.dropdown;
-        const fieldSchema: IEnrichedFieldSchema | undefined =
-            dropdowns && dropdownKey && dropdowns[dropdownKey] && rawSchema
-                ? {
-                      ...rawSchema,
-                      widget: {
-                          ...rawSchema.widget!,
-                          options: dropdowns[dropdownKey],
-                          dropdown: undefined,
-                      },
-                  }
-                : rawSchema;
-        if (!fieldSchema) return null;
-        const widgetType = fieldSchema.widget?.type ?? 'input';
-        const WidgetComponent = widgetRegistry.get(widgetType);
-        if (!WidgetComponent) return null;
-        const fieldReadOnly = cardReadOnly || fieldSchema.readOnly;
-
-        // title === '' (empty string) means: no label, input fills the full row
-        const hasLabel = fieldSchema.title !== '';
-
-        return (
-            <div
-                key={fieldName}
-                className={`field grid${isLast ? ' mb-0' : ''}`}
-            >
-                {hasLabel && (
-                    <label
-                        htmlFor={fieldName}
-                        className="col-12 md:col-4"
-                    >
-                        {fieldSchema.title ?? fieldName}
-                        {fieldSchema.required && <span className="blong-required"> *</span>}
-                    </label>
-                )}
-                <div
-                    className={`flex align-items-center relative col-12${hasLabel ? ' md:col-8' : ''}`}
-                >
-                    <Controller
-                        name={fieldName}
-                        control={control}
-                        rules={buildValidationRules(fieldSchema)}
-                        render={({field, fieldState}) => (
-                            <WidgetComponent
-                                name={fieldName}
-                                schema={fieldSchema}
-                                value={field.value}
-                                onChange={val => {
-                                    field.onChange(val);
-                                    onChange?.({...value, [fieldName]: val});
-                                }}
-                                onBlur={field.onBlur}
-                                error={fieldState.error}
-                                readOnly={fieldReadOnly}
-                                loading={loading}
-                                disabled={loading}
-                                formValues={formValues}
-                            />
-                        )}
+    /** Render tab or step content — a grid of Deck columns from deck groups. */
+    const renderTabContent = (deckGroups: string[][]) => (
+        <div className="grid col align-self-start max-w-screen">
+            {deckGroups.map((groupNames, groupIdx) => {
+                if (!groupNames.length) return null;
+                const firstResolved = groupNames.map(n => cards[n]).find(Boolean);
+                const colClass = firstResolved?.config.className ?? 'col-12 xl:col-6';
+                return (
+                    <Deck
+                        key={groupIdx}
+                        id={`deck-tab-${groupIdx}`}
+                        className={colClass}
+                        cardNames={groupNames}
                     />
-                    {errors[fieldName] && (
-                        <Message
-                            severity="error"
-                            text={errors[fieldName]?.message ?? 'Invalid value'}
-                            className="blong-field-error"
-                        />
-                    )}
-                    {fieldSchema.description && (
-                        <small className="blong-field-hint">{fieldSchema.description}</small>
-                    )}
-                </div>
-            </div>
-        );
-    };
+                );
+            })}
+        </div>
+    );
 
     const formBody = (() => {
         if (layoutType === 'tabs') {
@@ -256,7 +249,7 @@ export function Form({
             const tabContent = activeTab?.component
                 ? React.createElement(activeTab.component)
                 : activeTab
-                  ? renderTabCards(activeTab.cardNames)
+                  ? renderTabContent(activeTab.cardNames)
                   : null;
 
             // Left/right orientation: use PanelMenu (vertical accordion nav, no role="tablist")
@@ -278,9 +271,9 @@ export function Form({
                     >
                         <PanelMenu
                             model={panelItems}
-                            className="blong-form-panelmenu flex-1"
+                            className="blong-form-panelmenu flex-none"
                         />
-                        <div className="blong-form-panel-content">{tabContent}</div>
+                        <div className="blong-form-panel-content flex-1">{tabContent}</div>
                     </div>
                 );
             }
@@ -312,63 +305,67 @@ export function Form({
             const stepContent = activeStep?.component
                 ? React.createElement(activeStep.component)
                 : activeStep
-                  ? renderTabCards(activeStep.cardNames)
+                  ? renderTabContent(activeStep.cardNames)
                   : null;
+            const isFirst = activeTabIndex === 0;
+            const isLast = activeTabIndex === (tabs ?? []).length - 1;
             return (
                 <div className="blong-form-steps">
-                    <Steps
-                        model={stepItems}
-                        activeIndex={activeTabIndex}
-                        onSelect={e => setActiveTabIndex(e.index)}
-                        className="blong-steps-indicator"
-                    />
-                    <div className="blong-steps-content">{stepContent}</div>
-                    <div className="blong-steps-nav">
-                        {activeTabIndex > 0 && (
-                            <button
-                                type="button"
-                                className="p-button p-component p-button-outlined"
-                                onClick={() => setActiveTabIndex(i => i - 1)}
-                            >
-                                <span className="p-button-label">Back</span>
-                            </button>
-                        )}
-                        {activeTabIndex < (tabs ?? []).length - 1 && (
-                            <button
-                                type="button"
-                                className="p-button p-component"
-                                onClick={() => setActiveTabIndex(i => i + 1)}
-                            >
-                                <span className="p-button-label">Next</span>
-                            </button>
-                        )}
+                    {/* Navigation bar: ← [Steps indicator] → centered as a group */}
+                    <div className="blong-form-steps__nav flex align-items-center justify-content-center sticky top-0 z-1 surface-0">
+                        <button
+                            type="button"
+                            className={`p-button p-component p-button-text p-button-icon-only m-1${isFirst ? ' p-disabled' : ''}`}
+                            aria-label="Back"
+                            disabled={isFirst}
+                            onClick={() => setActiveTabIndex(i => i - 1)}
+                        >
+                            <span className="p-button-icon pi pi-caret-left" />
+                        </button>
+                        <Steps
+                            model={stepItems}
+                            activeIndex={activeTabIndex}
+                            onSelect={e => setActiveTabIndex(e.index)}
+                            className="blong-steps-indicator"
+                        />
+                        <button
+                            type={isLast ? 'submit' : 'button'}
+                            form={isLast ? id : undefined}
+                            className="p-button p-component p-button-text p-button-icon-only m-1"
+                            aria-label={isLast ? 'Save' : 'Next'}
+                            onClick={isLast ? undefined : () => setActiveTabIndex(i => i + 1)}
+                        >
+                            <span
+                                className={`p-button-icon pi ${isLast ? 'pi-save' : 'pi-caret-right'}`}
+                            />
+                        </button>
                     </div>
+                    <div className="blong-form-tab-content">{stepContent}</div>
                 </div>
             );
         }
 
         // Flat layout — single PrimeFlex grid.
-        // Each element of `rows` is a COLUMN GROUP (may contain multiple cards stacked vertically).
-        // treats ['one','two'] as one column with two cards.
-        // Hidden cards render only hidden inputs (no visual chrome).
-        // Cards with a permission key are skipped unless checkPermission passes.
+        // Each element of `rows` is a column group (may contain multiple stacked cards).
+        // Deck handles permission/match filtering and hidden-input rendering internally.
 
-        // Build id list for SortableContext (design mode DnD — requires DndContext parent)
-        const allVisibleCardIds = rows.flatMap(col =>
-            col.filter(name => !cards[name]?.config.hidden).map(name => `card-${name}`),
-        );
+        // All non-hidden card ids for DnD (no SortableContext needed — we use useDraggable directly)
 
         /**
-         * handleDragEnd — mutate the flat layout when a card is dropped onto another.
-         * Finds active.id (dragged) and over.id (drop target), removes the dragged card
-         * from its source column, and inserts it at the target position. Empty columns
-         * are pruned. Calls onLayoutChange with the updated FlatLayoutConfig.
+         * handleDragEnd — handles card and field moves in design mode.
+         * - card over card-{name}       → insert dragged card at that position
+         * - card over col-end:{colIdx}  → append card to column
+         * - field over field:{f}:{c}    → insert dragged field before that field
+         * - field over card-end:{c}     → append field to card
          */
         const handleDragEnd = (event: DragEndEvent) => {
+            setActiveDragLabel(null);
             const {active, over} = event;
             if (!over || active.id === over.id) return;
-            const activeCardName = String(active.id).replace(/^card-/, '');
-            const overCardName = String(over.id).replace(/^card-/, '');
+
+            const activeId = String(active.id);
+            const overId = String(over.id);
+            const activeType = active.data.current?.type as string | undefined;
 
             const findCard = (name: string) => {
                 for (let ci = 0; ci < rows.length; ci++) {
@@ -378,111 +375,162 @@ export function Form({
                 return null;
             };
 
-            const from = findCard(activeCardName);
-            const to = findCard(overCardName);
-            if (!from || !to) return;
+            const applyNewRows = (newRows: string[][]) => {
+                const filteredRows = newRows.filter(col => col.length > 0);
+                const newLayoutConfig: FlatLayoutConfig = filteredRows.map(group =>
+                    group.length === 1 ? group[0] : group,
+                );
+                onLayoutChange?.(layout, newLayoutConfig);
+            };
 
-            const newRows = rows.map(col => [...col]);
-            newRows[from.ci].splice(from.idx, 1);
-            // Adjust insert index when moving downward within the same column
-            const insertIdx = from.ci === to.ci && to.idx > from.idx ? to.idx - 1 : to.idx;
-            newRows[to.ci].splice(insertIdx, 0, activeCardName);
+            if (activeType === 'card') {
+                const activeCardName = activeId.replace(/^card-/, '');
 
-            const filteredRows = newRows.filter(col => col.length > 0);
-            const newLayoutConfig: FlatLayoutConfig = filteredRows.map(group =>
-                group.length === 1 ? group[0] : group,
-            );
-            onLayoutChange?.(layout, newLayoutConfig);
+                if (overId.startsWith('col-end:')) {
+                    // Append card to the end of the target column
+                    const toColIdx = parseInt(overId.replace('col-end:', ''), 10);
+                    const from = findCard(activeCardName);
+                    if (!from) return;
+                    if (from.ci === toColIdx) return; // already in same column
+                    const newRows = rows.map(col => [...col]);
+                    newRows[from.ci].splice(from.idx, 1);
+                    if (!newRows[toColIdx]) return;
+                    newRows[toColIdx].push(activeCardName);
+                    applyNewRows(newRows);
+                } else if (overId.startsWith('card-') && !overId.startsWith('card-end:')) {
+                    // Insert before another card (same or different column)
+                    const overCardName = overId.replace(/^card-/, '');
+                    const from = findCard(activeCardName);
+                    const to = findCard(overCardName);
+                    if (!from || !to) return;
+                    const newRows = rows.map(col => [...col]);
+                    newRows[from.ci].splice(from.idx, 1);
+                    const insertIdx =
+                        from.ci === to.ci && to.idx > from.idx ? to.idx - 1 : to.idx;
+                    newRows[to.ci].splice(insertIdx, 0, activeCardName);
+                    applyNewRows(newRows);
+                }
+            } else if (activeType === 'field') {
+                // Parse 'field:{fieldName}:{cardName}'
+                const withoutPrefix = activeId.replace(/^field:/, '');
+                const firstColon = withoutPrefix.indexOf(':');
+                if (firstColon === -1) return;
+                const fromField = withoutPrefix.substring(0, firstColon);
+                const fromCard = withoutPrefix.substring(firstColon + 1);
+
+                const moveField = (targetField: string | null, targetCard: string) => {
+                    const fromCardResolved = cards[fromCard];
+                    const toCardResolved = cards[targetCard];
+                    if (!fromCardResolved) return;
+
+                    const fromFields = [...fromCardResolved.fields];
+                    const toFields =
+                        fromCard === targetCard
+                            ? fromFields
+                            : [...(toCardResolved?.fields ?? [])];
+
+                    const fromIdx = fromFields.indexOf(fromField);
+                    if (fromIdx === -1) return;
+                    fromFields.splice(fromIdx, 1);
+
+                    if (fromCard === targetCard) {
+                        const insertIdx =
+                            targetField !== null
+                                ? Math.max(0, fromFields.indexOf(targetField))
+                                : fromFields.length;
+                        fromFields.splice(insertIdx, 0, fromField);
+                        designCtx.updateConfig({
+                            cards: {
+                                ...designCtx.config.cards,
+                                [fromCard]: {
+                                    ...(designCtx.config.cards[fromCard] ?? {}),
+                                    widgets: fromFields,
+                                    fields: undefined,
+                                } as ICardConfig,
+                            },
+                        });
+                    } else {
+                        const insertIdx =
+                            targetField !== null ? toFields.indexOf(targetField) : -1;
+                        toFields.splice(
+                            insertIdx === -1 ? toFields.length : insertIdx,
+                            0,
+                            fromField,
+                        );
+                        designCtx.updateConfig({
+                            cards: {
+                                ...designCtx.config.cards,
+                                [fromCard]: {
+                                    ...(designCtx.config.cards[fromCard] ?? {}),
+                                    widgets: fromFields,
+                                    fields: undefined,
+                                } as ICardConfig,
+                                [targetCard]: {
+                                    ...(designCtx.config.cards[targetCard] ?? {}),
+                                    widgets: toFields,
+                                    fields: undefined,
+                                } as ICardConfig,
+                            },
+                        });
+                    }
+                };
+
+                if (overId.startsWith('card-end:')) {
+                    const toCard = overId.replace('card-end:', '');
+                    if (fromCard === toCard) return;
+                    moveField(null, toCard);
+                } else if (overId.startsWith('field:')) {
+                    // Drop onto another field row — insert dragged field before it
+                    const rest = overId.replace(/^field:/, '');
+                    const colonIdx = rest.indexOf(':');
+                    if (colonIdx === -1) return;
+                    const targetField = rest.substring(0, colonIdx);
+                    const targetCard = rest.substring(colonIdx + 1);
+                    moveField(targetField, targetCard);
+                }
+            }
         };
 
         const gridContent = (
             <div className="grid col align-self-start max-w-screen">
                 {rows.map((columnCards, colIdx) => {
                     const hiddenCards = columnCards.filter(name => cards[name]?.config.hidden);
-                    const visibleCards = columnCards.filter(name => {
-                        const resolved = cards[name];
-                        if (!resolved || resolved.config.hidden) return false;
-                        if (resolved.config.permission !== undefined) {
-                            return !!checkPermission?.(resolved.config.permission);
-                        }
-                        return true;
-                    });
-
-                    const hiddenInputs = hiddenCards.flatMap(cardName => {
-                        const resolved = cards[cardName];
-                        if (!resolved) return [];
-                        return resolved.fields.map(fieldName => {
-                            const fieldSchema = schema?.properties?.[fieldName];
-                            if (!fieldSchema) return null;
-                            return (
-                                <Controller
-                                    key={fieldName}
-                                    name={fieldName}
-                                    control={control}
-                                    render={({field}) => (
-                                        <input
-                                            type="hidden"
-                                            name={fieldName}
-                                            value={field.value != null ? String(field.value) : ''}
-                                        />
-                                    )}
-                                />
-                            );
-                        });
-                    });
-
-                    if (!visibleCards.length && !hiddenInputs.length) return null;
-
-                    const firstVisible =
-                        visibleCards.length > 0 ? cards[visibleCards[0]] : undefined;
-                    const colClass = firstVisible?.config.className ?? 'col-12 xl:col-6';
-
+                    const nonHiddenCards = columnCards.filter(name => !cards[name]?.config.hidden);
+                    if (!nonHiddenCards.length && !hiddenCards.length) return null;
+                    // Use first non-hidden card's className for the column width
+                    const firstCard = nonHiddenCards[0] ? cards[nonHiddenCards[0]] : undefined;
+                    const colClass = firstCard?.config.className ?? 'col-12 xl:col-6';
                     return (
-                        <React.Fragment key={colIdx}>
-                            {hiddenInputs.length > 0 && (
-                                <div
-                                    key="hidden"
-                                    className="col-12"
-                                    style={{display: 'none'}}
-                                >
-                                    {hiddenInputs}
-                                </div>
-                            )}
-                            {visibleCards.length > 0 && (
-                                <div
-                                    key="visible"
-                                    className={colClass}
-                                >
-                                    {visibleCards.map((cardName, idx) =>
-                                        renderCard(
-                                            cardName,
-                                            cards[cardName]!,
-                                            cardName,
-                                            idx === visibleCards.length - 1,
-                                        ),
-                                    )}
-                                </div>
-                            )}
-                        </React.Fragment>
+                        <Deck
+                            key={colIdx}
+                            id={`deck-${colIdx}`}
+                            className={colClass}
+                            cardNames={nonHiddenCards}
+                            hiddenCardNames={hiddenCards}
+                        />
                     );
                 })}
             </div>
         );
 
-        // Wrap in DndContext when design mode is active so useSortable (in useDesignable) works
+        // Wrap in DndContext when design mode is active so useDraggable / useDroppable work
         if (onLayoutChange) {
             return (
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
+                    onDragStart={({active: a}) =>
+                        setActiveDragLabel((a.data.current?.label as string | undefined) ?? null)
+                    }
                     onDragEnd={handleDragEnd}
+                    onDragCancel={() => setActiveDragLabel(null)}
                 >
-                    <SortableContext
-                        items={allVisibleCardIds}
-                        strategy={rectSortingStrategy}
-                    >
-                        {gridContent}
-                    </SortableContext>
+                    {gridContent}
+                    <DragOverlay dropAnimation={null}>
+                        {activeDragLabel && (
+                            <div className="blong-drag-ghost">{activeDragLabel}</div>
+                        )}
+                    </DragOverlay>
                 </DndContext>
             );
         }
@@ -490,13 +538,46 @@ export function Form({
     })();
 
     return (
-        <form
-            id={formId}
-            onSubmit={onSubmit ? handleSubmit(handleFormSubmit) : undefined}
-            className="blong-form"
-            noValidate
+        <FormContext.Provider
+            value={{
+                schema: effectiveSchema,
+                cards,
+                control,
+                errors,
+                rawFormValues,
+                formValues,
+                readOnly,
+                loading,
+                dropdowns,
+                onChange,
+                tableSelections,
+                handleTableSelect,
+                setValue,
+                checkPermission,
+            }}
         >
-            {formBody}
-        </form>
+            {rightPanel ? (
+                <div className="blong-form-layout">
+                    <form
+                        id={formId}
+                        onSubmit={handleSubmit(handleFormSubmit, handleFormInvalid)}
+                        className="blong-form"
+                        noValidate
+                    >
+                        {formBody}
+                    </form>
+                    {rightPanel}
+                </div>
+            ) : (
+                <form
+                    id={formId}
+                    onSubmit={handleSubmit(handleFormSubmit, handleFormInvalid)}
+                    className="blong-form"
+                    noValidate
+                >
+                    {formBody}
+                </form>
+            )}
+        </FormContext.Provider>
     );
 }

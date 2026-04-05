@@ -2,9 +2,9 @@
  * DesignModeContext — propagates design mode state through the component tree.
  * When active=false, all design concerns are zero-cost no-ops.
  */
-import {createContext, useCallback, useContext, useState, type ReactNode} from 'react';
-import type {LayoutConfig} from '../hooks/useLayout.js';
-import type {ICardConfig} from '../types/widget.js';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import type { LayoutConfig } from '../hooks/useLayout.js';
+import type { ICardConfig, IEnrichedFieldSchema } from '../types/widget.js';
 
 export type DesignElementType = 'card' | 'field' | 'deck' | 'widget';
 
@@ -17,6 +17,8 @@ export interface IDesignElement {
 export interface ILayoutEditorConfig {
     cards: Record<string, ICardConfig>;
     layouts: Record<string, LayoutConfig>;
+    /** Per-field schema overrides (title, widget.type, readOnly, required, etc.) */
+    schema?: Record<string, Partial<IEnrichedFieldSchema>>;
 }
 
 export interface IHistoryEntry {
@@ -56,7 +58,7 @@ const inertContext: IDesignModeContextValue = {
     active: false,
     selected: null,
     select: () => undefined,
-    config: {cards: {}, layouts: {}},
+    config: {cards: {}, layouts: {}, schema: {}},
     updateConfig: () => undefined,
     permission: 'portal.design',
     canUndo: false,

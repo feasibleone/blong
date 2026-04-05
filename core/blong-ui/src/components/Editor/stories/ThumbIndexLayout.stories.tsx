@@ -1,24 +1,33 @@
 /**
  * ThumbIndexLayout story — layout with PanelMenu orientation='left' navigation.
+ * Three groups of cards accessible from a vertical accordion sidebar.
  */
-import type {Meta} from '@storybook/react';
-import type {StoryFn} from '../Editor.stories.js';
-import {Editor} from '../index.js';
+import type { Meta } from '@storybook/react';
+import type { StoryFn } from '../Editor.stories.js';
+import { Editor } from '../index.js';
 
-const meta: Meta<typeof Editor> = {
-    title: 'Editor/ThumbIndexLayout',
-    component: Editor,
-};
+const meta: Meta<typeof Editor> = {title: 'Editor/ThumbIndexLayout', component: Editor};
 export default meta;
+
+const mock = (count: number) => Array.from({length: count}, (_, i) => `field${i + 1}`);
+const mockSchema = (count: number) =>
+    Object.fromEntries(mock(count).map(name => [name, {title: name}]));
 
 export const ThumbIndexLayout: StoryFn = () => (
     <Editor
-        schema={{properties: {}}}
+        schema={{properties: mockSchema(4)}}
         cards={{
-            a1: {label: 'A 1', widgets: []},
-            a2: {label: 'A 2', widgets: []},
-            b1: {label: 'B 1', widgets: []},
-            b2: {label: 'B 2', widgets: []},
+            a1: {label: 'A 1', widgets: mock(3)},
+            a2: {label: 'A 2', widgets: mock(2)},
+            b1: {label: 'B 1', widgets: mock(2)},
+            b2: {label: 'B 2', widgets: mock(1)},
+            c1: {label: 'C 1', widgets: mock(4)},
+            c2: {label: 'C 2', widgets: mock(1)},
+            d:  {label: 'D',   widgets: mock(4)},
+            e:  {label: 'E',   widgets: mock(2)},
+            f1: {label: 'F 1', widgets: mock(1)},
+            f2: {label: 'F 2', widgets: mock(1)},
+            g:  {label: 'G',   widgets: mock(1)},
         }}
         editable
         layout="edit"
@@ -26,8 +35,9 @@ export const ThumbIndexLayout: StoryFn = () => (
             edit: {
                 orientation: 'left',
                 items: [
-                    {id: 'ab', label: 'A / B', icon: 'pi pi-user', widgets: ['a1', 'a2']},
-                    {id: 'cd', label: 'B', icon: 'pi pi-id-card', widgets: ['b1', 'b2']},
+                    {id: 'ab',  label: 'A / B',   icon: 'pi pi-user',    widgets: [['a1', 'a2'], ['b1', 'b2']]},
+                    {id: 'cd',  label: 'C and D', icon: 'pi pi-id-card', widgets: [['c1', 'c2'], ['d']]},
+                    {id: 'efg', label: 'E, F, G', icon: 'pi pi-list',   widgets: [['e'], ['f1', 'f2'], ['g']]},
                 ],
             },
         }}

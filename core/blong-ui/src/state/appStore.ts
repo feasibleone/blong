@@ -2,6 +2,7 @@
  * Global application Zustand store.
  * Manages auth state, portal tabs, toasts, and loader.
  */
+import type {ReactNode} from 'react';
 import {create} from 'zustand';
 import type {ActionRegistry, IBlongError} from '../types/action.js';
 import type {IAuthState, IUserProfile, PermissionMap} from '../types/permission.js';
@@ -12,7 +13,7 @@ export interface IToast {
     id: string;
     severity: 'success' | 'info' | 'warn' | 'error';
     summary?: string;
-    detail?: string;
+    detail?: ReactNode;
     life?: number;
 }
 

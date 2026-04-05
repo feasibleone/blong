@@ -2,10 +2,13 @@
  * BlongUiContext — the central provider that wires together all blong-ui
  * infrastructure: method registry dispatch, schema fetching, QueryClient, etc.
  */
-import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {createContext, useContext, useMemo, type ReactNode} from 'react';
-import {schemaRegistry as defaultSchemaRegistry} from '../schema/registry.js';
-import type {ISchemaRegistry} from '../types/schema.js';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { blongEvents } from '../lib/eventBus.js';
+import { schemaRegistry as defaultSchemaRegistry } from '../schema/registry.js';
+import { useAppStore } from '../state/appStore.js';
+import type { IBlongError } from '../types/action.js';
+import type { ISchemaRegistry } from '../types/schema.js';
 
 /** Handler dispatch function — calls a method on the browser registry */
 export type DispatchFn = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
@@ -24,6 +27,12 @@ export interface IBlongUiContextValue {
     baseUrl?: string;
     /** Debug mode */
     debug: boolean;
+    /**
+     * Login route — when set, the global error dialog shows a "Login" button
+     * that navigates here. Typically used when a dropdown / load error indicates
+     * an expired session (401 / unauthenticated).
+     */
+    loginRoute?: string;
 }
 
 const BlongUiContext = createContext<IBlongUiContextValue | null>(null);
@@ -46,6 +55,12 @@ export interface IBlongUiProviderProps {
     baseUrl?: string;
     /** Enable debug mode */
     debug?: boolean;
+    /**
+     * Login route — when set, the global error dialog shows a "Login" button
+     * that navigates here. Typically used when a dropdown / load error indicates
+     * an expired session (401 / unauthenticated).
+     */
+    loginRoute?: string;
     children: ReactNode;
 }
 
@@ -69,20 +84,52 @@ export function BlongUiProvider({
     schemaRegistry = defaultSchemaRegistry,
     baseUrl,
     debug = false,
+    loginRoute,
     children,
 }: IBlongUiProviderProps) {
     const queryClient = useMemo(() => createQueryClient(), []);
 
+    /**
+     * Wrap the incoming dispatch so errors that are NOT field-validation errors
+     * (i.e. they have no `validation` array, meaning they are auth/network/server
+     * errors) are surfaced via the global error dialog automatically.
+     * Field-validation errors are intentionally left for the form to handle.
+     * The error is always re-thrown so callers can still react if needed.
+     */
+    const wrappedDispatch = useMemo<DispatchFn>(
+        () => async (method, params) => {
+            blongEvents.emit('action:before', {method, params});
+            try {
+                const result = await dispatch(method, params);
+                blongEvents.emit('action:success', {method, params, result});
+                return result;
+            } catch (err) {
+                blongEvents.emit('action:error', {method, params, error: err});
+                const blongErr = err as Partial<IBlongError>;
+                if (!blongErr.validation?.length) {
+                    useAppStore.getState().showError({
+                        type: blongErr.type ?? 'error',
+                        message: blongErr.message ?? 'An unexpected error occurred.',
+                        print: blongErr.print,
+                    } as IBlongError);
+                }
+                throw err;
+            }
+        },
+        [dispatch],
+    );
+
     const value = useMemo<IBlongUiContextValue>(
         () => ({
-            dispatch,
+            dispatch: wrappedDispatch,
             schemaRegistry,
             schemaUrl,
             queryClient,
             baseUrl,
             debug,
+            loginRoute,
         }),
-        [dispatch, schemaRegistry, schemaUrl, queryClient, baseUrl, debug],
+        [wrappedDispatch, schemaRegistry, schemaUrl, queryClient, baseUrl, debug, loginRoute],
     );
 
     return (

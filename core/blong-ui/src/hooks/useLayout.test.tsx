@@ -61,8 +61,9 @@ describe('useLayout', () => {
         const cards = {a: {label: 'A', widgets: ['name']}, b: {label: 'B', widgets: ['email']}};
         const layouts = {custom: [['a', 'b']] as never};
         const {result} = renderHook(() => useLayout(schema, cards, 'custom', layouts), {wrapper});
-        // Both cards are in one row
-        expect(result.current.rows).toHaveLength(2);
+        // Both cards share one deck column
+        expect(result.current.rows).toHaveLength(1);
+        expect(result.current.rows[0]).toHaveLength(2);
     });
 
     it('returns allFields list from all cards', () => {

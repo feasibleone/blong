@@ -68,78 +68,62 @@ export function useAction<TResult = unknown>(
         [action, params],
     );
 
-    // ── Page action ──────────────────────────────────────────────────────
-    if (!action || isPageAction(action)) {
-        const open = useCallback(
-            async (callParams?: Record<string, unknown>) => {
-                const resolved = mergedParams(callParams);
-                if (action && isPageAction(action)) {
-                    // Resolve component metadata
-                    try {
-                        const component = await action.component();
-                        const tab: ITab = {
-                            id: ulid(),
-                            actionName,
-                            params: resolved,
-                            title: action.title,
-                            component,
-                        };
-                        openTab(tab);
-                    } catch (err) {
-                        showError({type: 'error.component.load', message: String(err)});
-                    }
-                } else {
-                    // No action definition — dispatch directly
-                    await dispatch(`component/${actionName}`, resolved);
+    // ── Page / open action ─────────────────────────────────────────────────
+    // Always declared unconditionally — used when action is absent or page-type.
+    const open = useCallback(
+        async (callParams?: Record<string, unknown>) => {
+            const resolved = mergedParams(callParams);
+            if (action && isPageAction(action)) {
+                try {
+                    const component = await action.component();
+                    const tab: ITab = {
+                        id: ulid(),
+                        actionName,
+                        params: resolved,
+                        title: action.title,
+                        component,
+                    };
+                    openTab(tab);
+                } catch (err) {
+                    showError({type: 'error.component.load', message: String(err)});
                 }
-            },
-            [action, actionName, mergedParams, openTab, showError, dispatch],
-        );
-
-        return {
-            call: open,
-            open,
-            loading: false,
-        };
-    }
+            } else {
+                // No action definition — dispatch directly
+                await dispatch(`component/${actionName}`, resolved);
+            }
+        },
+        [action, actionName, mergedParams, openTab, showError, dispatch],
+    );
 
     // ── Query action ─────────────────────────────────────────────────────
-    if (isQueryAction(action)) {
-        const queryKey = [method, params ?? {}];
-        const {data, isLoading, error, refetch} = useQuery<TResult, IBlongError>({
-            queryKey,
-            queryFn: () => dispatch(method, mergedParams()) as Promise<TResult>,
-            enabled: true,
-        });
+    // Always declared unconditionally; enabled only when action is a query action.
+    const {
+        data,
+        isLoading,
+        error: queryError,
+        refetch,
+    } = useQuery<TResult, IBlongError>({
+        queryKey: [method, params ?? {}],
+        queryFn: () => dispatch(method, mergedParams()) as Promise<TResult>,
+        enabled: !!action && isQueryAction(action),
+    });
 
-        const call = useCallback(
-            (callParams?: Record<string, unknown>) => {
-                return dispatch(method, mergedParams(callParams)) as Promise<TResult>;
-            },
-            [method, mergedParams, dispatch],
-        );
+    const queryCall = useCallback(
+        (callParams?: Record<string, unknown>) =>
+            dispatch(method, mergedParams(callParams)) as Promise<TResult>,
+        [method, mergedParams, dispatch],
+    );
 
-        return {
-            call,
-            open: call as IUseActionResult<TResult>['open'],
-            data,
-            loading: isLoading,
-            error: error ?? undefined,
-            refetch: () => refetch().then(r => r.data!),
-        };
-    }
-
-    // ── Mutation action ───────────────────────────────────────────────────
-    if (isMutationAction(action)) {
-        const {mutateAsync, isPending, error} = useMutation<
-            TResult,
-            IBlongError,
-            Record<string, unknown>
-        >({
-            mutationFn: callParams =>
-                dispatch(method, mergedParams(callParams)) as Promise<TResult>,
-            onSuccess: () => {
-                // Invalidate related query caches
+    // ── Mutation action ────────────────────────────────────────────────────
+    // Always declared unconditionally; only triggered when mutateAsync is called.
+    const {
+        mutateAsync,
+        isPending,
+        error: mutationError,
+    } = useMutation<TResult, IBlongError, Record<string, unknown>>({
+        mutationFn: callParams => dispatch(method, mergedParams(callParams)) as Promise<TResult>,
+        onSuccess: () => {
+            if (isMutationAction(action)) {
                 const invalidates = (action as IMutationAction).invalidates ?? [];
                 for (const name of invalidates) {
                     const invalidAction = actions[name];
@@ -151,19 +135,37 @@ export function useAction<TResult = unknown>(
                             : name;
                     void queryClient.invalidateQueries({queryKey: [invalidMethod]});
                 }
-            },
-        });
+            }
+        },
+    });
 
-        const call = useCallback(
-            (callParams?: Record<string, unknown>) => mutateAsync(callParams ?? {}),
-            [mutateAsync],
-        );
+    const mutationCall = useCallback(
+        (callParams?: Record<string, unknown>) => mutateAsync(callParams ?? {}),
+        [mutateAsync],
+    );
 
+    // ── Return based on action type ────────────────────────────────────────
+    if (!action || isPageAction(action)) {
+        return {call: open, open, loading: false};
+    }
+
+    if (isQueryAction(action)) {
         return {
-            call,
-            open: call as IUseActionResult<TResult>['open'],
+            call: queryCall,
+            open: queryCall as IUseActionResult<TResult>['open'],
+            data,
+            loading: isLoading,
+            error: queryError ?? undefined,
+            refetch: () => refetch().then(r => r.data!),
+        };
+    }
+
+    if (isMutationAction(action)) {
+        return {
+            call: mutationCall,
+            open: mutationCall as IUseActionResult<TResult>['open'],
             loading: isPending,
-            error: error ?? undefined,
+            error: mutationError ?? undefined,
         };
     }
 

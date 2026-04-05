@@ -10,14 +10,11 @@
  * Snapshot behaviour: renders a card with a plain input (fallback) for
  * unregistered widget types.
  */
-import type {Meta} from '@storybook/react';
-import type {StoryFn} from '../Editor.stories.js';
-import {Editor} from '../index.js';
+import type { Meta } from '@storybook/react';
+import type { StoryFn } from '../Editor.stories.js';
+import { Editor } from '../index.js';
 
-const meta: Meta<typeof Editor> = {
-    title: 'Editor/CustomEditors',
-    component: Editor,
-};
+const meta: Meta<typeof Editor> = {title: 'Editor/CustomEditors', component: Editor};
 export default meta;
 
 export const CustomEditors: StoryFn = () => (

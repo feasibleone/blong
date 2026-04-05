@@ -2,8 +2,8 @@
  * useLayout — compute visible cards and fields from schema + card config + layout config.
  */
 import type React from 'react';
-import {useMemo} from 'react';
-import type {ICardConfig, IEnrichedSchema} from '../types/widget.js';
+import { useMemo } from 'react';
+import type { ICardConfig, IEnrichedSchema } from '../types/widget.js';
 
 export type LayoutRow = string | (string | string[])[];
 export type FlatLayoutConfig = LayoutRow[];
@@ -13,8 +13,9 @@ export interface ILayoutTabItem {
     id: string;
     label?: string;
     icon?: string;
-    /** Card names shown in this tab/step */
-    widgets: string[];
+    /** Card names shown in this tab/step. A string is a single-card deck; a string[] is a
+     *  multi-card deck where all cards are stacked vertically in the same grid column. */
+    widgets: (string | string[])[];
     /** Optional React component rendered in place of cards (e.g. Explorer) */
     component?: React.ComponentType;
 }
@@ -40,9 +41,10 @@ export interface IResolvedCard {
 /** A resolved tab/step */
 export interface IResolvedTab {
     id: string;
-    label: string;
+    label?: string;
     icon?: string;
-    cardNames: string[];
+    /** Each entry is a deck-group: one or more card names stacked in the same grid column. */
+    cardNames: string[][];
     /** Optional React component rendered in place of cards */
     component?: React.ComponentType;
 }
@@ -105,8 +107,12 @@ export function useLayout(
                 // Derive from schema: all schema fields
                 fields = Object.keys(schemaProps);
             }
-            // Only include fields present in the schema
-            const validFields = fields.filter(f => f in schemaProps || !schema);
+            // Watch cards contain sub-fields of the watched array — skip top-level schema filter
+            const isWatchCard = !!cardCfg.watch;
+            // Only include fields present in the schema (unless it's a watch/detail card or schema is absent)
+            const validFields = (isWatchCard || !schema)
+                ? fields
+                : fields.filter(f => f in schemaProps);
             cards[name] = {
                 name,
                 // undefined label → no card title (e.g. table widget provides its own title)
@@ -123,12 +129,14 @@ export function useLayout(
             // Tab / steps layout
             const tabs: IResolvedTab[] = layoutDef.items.map(item => ({
                 id: item.id,
-                label: item.label ?? item.id,
+                label: item.label,
                 icon: item.icon,
-                cardNames: item.widgets,
+                // Reuse flattenLayout so tab widgets follow the same deck-grouping rules
+                // as the flat layout: 'a1' → [['a1']], ['a1','a2'] → [['a1','a2']]
+                cardNames: item.component ? [] : flattenLayout(item.widgets as FlatLayoutConfig),
                 component: item.component,
             }));
-            const allTabCards = tabs.flatMap(t => t.cardNames);
+            const allTabCards = tabs.flatMap(t => t.cardNames.flat());
             const allFields = [...new Set(allTabCards.flatMap(c => cards[c]?.fields ?? []))];
             return {
                 rows: [],
