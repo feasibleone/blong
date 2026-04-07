@@ -245,6 +245,83 @@ export const Default = {
 
 ---
 
+## Internationalisation (i18n)
+
+blong-browser has a lightweight translation system built on `appStore`.
+
+### Text component
+
+`<Text>` is the universal translation primitive. Its string children act as both the
+translation key and the English fallback:
+
+```tsx
+import {Text} from '@feasibleone/blong-browser';
+
+<Text>Save</Text>
+<Text params={{field: 'Name', minLength: 3}}>
+    {'{field} must be at least {minLength} characters'}
+</Text>
+```
+
+### Button auto-translation
+
+The blong `Button` wrapper auto-translates its string `label` via `<Text>`. Always import
+`Button` from blong-browser rather than primereact to get automatic translation:
+
+```tsx
+import {Button} from '@feasibleone/blong-browser';  // ✅ translates label
+<Button label="Save" icon="pi pi-check" />
+```
+
+### Activating a language
+
+```ts
+import {useAppStore} from '@feasibleone/blong-browser';
+
+useAppStore.getState().setTranslations({
+    Save: 'Запази',
+    '{field} is required': '{field} е задължително',
+});
+useAppStore.getState().setLanguage('bg');
+```
+
+### PrimeReact widget locale via `Theme.languages`
+
+Register custom PrimeReact locale data through `IThemeConfig.languages`, which `Theme`
+passes to `addLocale` automatically. Fetch locale data from
+[primefaces/primelocale](https://github.com/primefaces/primelocale):
+
+```tsx
+<App
+    dispatch={dispatch}
+    theme={{
+        name: 'lara-light-blue',
+        languages: {
+            bg: {
+                accept: 'Да', cancel: 'Отказ',
+                emptyMessage: 'Не са открити резултати',
+                dateFormat: 'dd/mm/yy', firstDayOfWeek: 1,
+                // … full locale object
+            },
+        },
+    }}
+/>
+```
+
+Calling `setLanguage('bg')` activates the PrimeReact locale via `locale('bg')` in `Theme`.
+
+### Storybook language stories
+
+Set `lang: '<locale>'` as a story arg to activate a language for that story — `withDispatch`
+picks it up from `context.args.lang`:
+
+```ts
+export const ToolbarBG: Story = {...Toolbar};
+ToolbarBG.args = {lang: 'bg'};
+```
+
+---
+
 ## Testing
 
 Add an interaction test with a `play()` function:

@@ -1,11 +1,11 @@
 /**
  * Login — multi-step authentication form.
  */
-import {Button} from 'primereact/button';
 import {InputText} from 'primereact/inputtext';
 import {Message} from 'primereact/message';
 import {Password} from 'primereact/password';
 import React, {useState} from 'react';
+import {Button} from '../Button/index.js';
 
 type LoginStep = 'credentials' | 'otp' | 'newPassword';
 

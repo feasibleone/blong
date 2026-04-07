@@ -4,17 +4,22 @@
  * Wires a Form to load/save actions, renders a configurable toolbar,
  * and manages edit/read-only toggling. Designed to edit a single entity.
  */
-import { OverlayPanel } from 'primereact/overlaypanel';
-import { Toolbar } from 'primereact/toolbar';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { DesignModeProvider } from '../../design/DesignModeContext.js';
-import { DesignAddCardButton, DesignAddFieldButton, PropertyEditor } from '../../design/PropertyEditor.js';
-import { useAction } from '../../hooks/useAction.js';
-import { type FlatLayoutConfig, type LayoutConfig } from '../../hooks/useLayout.js';
-import type { IBlongError, IToolbarButton } from '../../types/action.js';
-import type { ICardConfig, IEnrichedSchema } from '../../types/widget.js';
-import { ActionButton } from '../ActionButton/index.js';
-import { Form } from '../Form/index.js';
+import {confirmPopup} from 'primereact/confirmpopup';
+import {OverlayPanel} from 'primereact/overlaypanel';
+import {Toolbar} from 'primereact/toolbar';
+import {useCallback, useEffect, useId, useRef, useState} from 'react';
+import {DesignModeProvider} from '../../design/DesignModeContext.js';
+import {
+    DesignAddCardButton,
+    DesignAddFieldButton,
+    PropertyEditor,
+} from '../../design/PropertyEditor.js';
+import {useAction} from '../../hooks/useAction.js';
+import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
+import type {IBlongError, IToolbarButton} from '../../types/action.js';
+import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
+import {ActionButton} from '../ActionButton/index.js';
+import {Form} from '../Form/index.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -89,9 +94,15 @@ export function Editor({
     const [isDirty, setIsDirty] = useState(false);
     /** Whether the last save succeeded and the form hasn't been touched since */
     const [savedSuccess, setSavedSuccess] = useState(false);
+    /** Number of in-flight toolbar button calls — form is read-only while > 0 */
+    const [toolbarBusy, setToolbarBusy] = useState(0);
+    const handleToolbarBusy = useCallback((busy: boolean) => {
+        setToolbarBusy(n => n + (busy ? 1 : -1));
+    }, []);
     /** error.print from the last failed save — shown in OverlayPanel anchored to save button */
     const [validationHint, setValidationHint] = useState<string | undefined>(undefined);
     const saveButtonRef = useRef<HTMLButtonElement>(null);
+    const cancelButtonRef = useRef<HTMLButtonElement>(null);
     const hintOverlayRef = useRef<OverlayPanel>(null);
     const [designMode, setDesignMode] = useState(designable && initialDesignMode);
     // Mutable copy of layouts — updated when the user reorders cards in design mode
@@ -180,15 +191,30 @@ export function Editor({
         ...(designable ? [{label: 'Design', icon: 'pi pi-cog', action: '__design__'}] : []),
     ];
 
+    /** True while any toolbar action or save is in-flight — disables all remaining buttons */
+    const globalBusy = toolbarBusy > 0 || saver.loading;
+
     const handleToolbarAction = (actionName: string) => {
         if (actionName === '__edit__') setEditMode(true);
         if (actionName === '__design__') setDesignMode(d => !d);
         if (actionName === '__cancel__') {
-            setLocalValue(undefined);
-            setIsDirty(false);
-            setSavedSuccess(false);
-            setValidationHint(undefined);
-            setEditMode(false);
+            const doReset = () => {
+                setLocalValue(undefined);
+                setIsDirty(false);
+                setSavedSuccess(false);
+                setValidationHint(undefined);
+                setEditMode(initialEditMode);
+            };
+            if (isDirty) {
+                confirmPopup({
+                    target: cancelButtonRef.current!,
+                    message: 'Changed data will not be saved. Are you sure you want to proceed?',
+                    icon: 'pi pi-exclamation-triangle',
+                    accept: doReset,
+                });
+            } else {
+                doReset();
+            }
         }
     };
 
@@ -198,10 +224,12 @@ export function Editor({
                 const actionName =
                     typeof btn.action === 'string' ? btn.action : (btn.action?.name ?? '');
                 const isDisabled =
-                    (actionName === '__save__' || actionName === '__cancel__') && !isDirty;
+                    (actionName === '__save__' || actionName === '__cancel__') &&
+                    (!isDirty || saver.loading || toolbarBusy > 0);
                 if (actionName === '__edit__' || actionName === '__cancel__') {
                     return (
                         <button
+                            ref={actionName === '__cancel__' ? cancelButtonRef : undefined}
                             key={i}
                             type="button"
                             className={`p-button p-component p-button-icon-only mr-2${isDisabled ? ' p-disabled' : ''}`}
@@ -225,7 +253,11 @@ export function Editor({
                             aria-label={btn.label}
                             disabled={isDisabled}
                         >
-                            {btn.icon && <span className={`p-button-icon p-c pi ${btn.icon}`} />}
+                            {btn.icon && (
+                                <span
+                                    className={`p-button-icon p-c pi ${saver.loading || toolbarBusy > 0 ? 'pi-spin pi-spinner' : btn.icon}`}
+                                />
+                            )}
                             <span className="p-button-label p-c">&nbsp;</span>
                         </button>
                     );
@@ -234,7 +266,10 @@ export function Editor({
                     <ActionButton
                         key={i}
                         {...btn}
+                        disabled={globalBusy}
                         formId={formId}
+                        className="mr-2"
+                        onBusyChange={handleToolbarBusy}
                     />
                 );
             })}
@@ -249,7 +284,10 @@ export function Editor({
                         typeof btn.action === 'string' ? btn.action : (btn.action?.name ?? '');
                     if (actionName === '__design__') {
                         return (
-                            <span key={i} className="blong-design-toolbar">
+                            <span
+                                key={i}
+                                className="blong-design-toolbar"
+                            >
                                 <button
                                     type="button"
                                     className={`p-button p-component p-button-icon-only${designMode ? ' p-button-success' : ''}`}
@@ -265,7 +303,10 @@ export function Editor({
                                 {designMode && (
                                     <>
                                         <DesignAddCardButton onCardAdded={handleCardAdded} />
-                                        <DesignAddFieldButton schema={schema as Record<string, unknown>} cards={cards as Record<string, unknown>} />
+                                        <DesignAddFieldButton
+                                            schema={schema as Record<string, unknown>}
+                                            cards={cards as Record<string, unknown>}
+                                        />
                                     </>
                                 )}
                             </span>
@@ -275,7 +316,10 @@ export function Editor({
                         <ActionButton
                             key={i}
                             {...btn}
+                            disabled={globalBusy}
                             formId={formId}
+                            className="mr-2"
+                            onBusyChange={handleToolbarBusy}
                         />
                     );
                 })}
@@ -316,7 +360,12 @@ export function Editor({
                     setValidationHint(undefined);
                 }}
                 onSubmit={saveAction ? handleSubmit : undefined}
-                readOnly={!editMode && !initialEditMode}
+                readOnly={
+                    (!editMode && !initialEditMode) ||
+                    saver.loading ||
+                    toolbarBusy > 0 ||
+                    loader.loading
+                }
                 loading={loader.loading}
                 serverErrors={serverErrors}
                 checkPermission={checkPermission}

@@ -27,12 +27,12 @@
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
 import React from 'react';
-import { App } from '../src/components/App/index.js';
-import { Hint } from '../src/components/Hint/index.js';
-import type { DispatchFn } from '../src/context/BlongUiContext.js';
-import { blongEvents } from '../src/lib/eventBus.js';
-import { useAppStore } from '../src/state/appStore.js';
-import type { IBlongError } from '../src/types/action.js';
+import {App} from '../src/components/App/index.js';
+import {Hint} from '../src/components/Hint/index.js';
+import type {DispatchFn} from '../src/context/BlongUiContext.js';
+import {blongEvents} from '../src/lib/eventBus.js';
+import {useAppStore} from '../src/state/appStore.js';
+import type {IBlongError} from '../src/types/action.js';
 
 /**
  * Controls which dispatch calls show a Storybook toast on success:
@@ -63,6 +63,237 @@ function shouldNotify(notify: NotifyConfig, method: string): boolean {
 }
 
 // ── Tree fixture data ──────────────────────────────────────────────────────────
+
+/**
+ * Parse a block of `Key=Translation` lines into a translation dictionary.
+ * Blank lines and lines where key === value are ignored.
+ * Only the first `=` is used as separator, so values may contain `=`.
+ */
+function parseTranslations(content: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const raw of content.trim().split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line) continue;
+        const eq = line.indexOf('=');
+        if (eq < 0) continue;
+        const key = line.slice(0, eq).trim();
+        const val = line.slice(eq + 1).trim();
+        if (key && val && key !== val) result[key] = val;
+    }
+    return result;
+}
+
+/* spell-checker: disable */
+/**
+ * PrimeReact locale data keyed by language code.
+ * Each entry is passed as `theme.languages` so the Theme component registers it via addLocale.
+ * Source: https://github.com/primefaces/primelocale
+ */
+const primeLocales: Record<string, object> = {};
+
+/**
+ * Official Bulgarian locale for PrimeReact widgets (calendar, dropdown, etc.).
+ * Source: https://github.com/primefaces/primelocale/blob/main/bg.json
+ */
+const bgPrimeLocale = {
+    accept: 'Да',
+    addRule: 'Добавяне на условие',
+    am: 'AM',
+    apply: 'Приложи',
+    cancel: 'Отказ',
+    choose: 'Избор',
+    chooseDate: 'Изберете Дата',
+    chooseMonth: 'Изберете месец',
+    chooseYear: 'Изберете година',
+    clear: 'Изчистване',
+    completed: 'Завършено',
+    contains: 'Съдържа',
+    custom: 'Персонализиран',
+    dateAfter: 'Датата е след',
+    dateBefore: 'Датата е преди',
+    dateFormat: 'dd/mm/yy',
+    dateIs: 'Датата е',
+    dateIsNot: 'Дататата не е',
+    dayNames: ['Неделя', 'Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота'],
+    dayNamesMin: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+    dayNamesShort: ['Нед', 'Пон', 'Вто', 'Сря', 'Чет', 'Пет', 'Съб'],
+    emptyFilterMessage: 'Няма налична информация',
+    emptyMessage: 'Не са открити резултати',
+    emptySearchMessage: 'Няма намерени резултати',
+    emptySelectionMessage: 'Няма избран елемент',
+    endsWith: 'Завършва на',
+    equals: 'Равно е на',
+    fileChosenMessage: '{0} файла',
+    fileSizeTypes: ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
+    filter: 'Филтър',
+    firstDayOfWeek: 1,
+    gt: 'По-голямо от',
+    gte: 'По-голямо или равно на',
+    lt: 'По-малко от',
+    lte: 'По-малко или равно на',
+    matchAll: 'Съвпадение на всички',
+    matchAny: 'Съвпадение на някое',
+    medium: 'Средна',
+    monthNames: [
+        'Януари',
+        'Февруари',
+        'Март',
+        'Април',
+        'Май',
+        'Юни',
+        'Юли',
+        'Август',
+        'Септември',
+        'Октомври',
+        'Ноември',
+        'Декември',
+    ],
+    monthNamesShort: [
+        'Яну',
+        'Фев',
+        'Мар',
+        'Апр',
+        'Май',
+        'Юни',
+        'Юли',
+        'Авг',
+        'Сеп',
+        'Окт',
+        'Ное',
+        'Дек',
+    ],
+    nextDecade: 'Следващото десетилетие',
+    nextHour: 'Следващият час',
+    nextMinute: 'Следващата минута',
+    nextMonth: 'Следващият месец',
+    nextSecond: 'Следваща секунда',
+    nextYear: 'Следващата година',
+    noFileChosenMessage: 'Няма избран файл',
+    noFilter: 'Без филтър',
+    notContains: 'Не съдържа',
+    notEquals: 'Не е равно на',
+    now: 'Сега',
+    passwordPrompt: 'Въведете парола',
+    pending: 'В очакване',
+    pm: 'PM',
+    prevDecade: 'Предишното десетилетие',
+    prevHour: 'Предишен час',
+    prevMinute: 'Предишна минута',
+    prevMonth: 'Предишния месец',
+    prevSecond: 'Предишен втори',
+    prevYear: 'Предходната година',
+    reject: 'Не',
+    removeRule: 'Премахване на условие',
+    searchMessage: 'Налични са {0} резултата',
+    selectionMessage: '{0} избрани елемента',
+    showMonthAfterYear: false,
+    startsWith: 'Започва с',
+    strong: 'Добра',
+    today: 'Днес',
+    upload: 'Качване',
+    weak: 'Слаба',
+    weekHeader: 'Сд',
+    aria: {
+        cancelEdit: 'Отказ Редактиране',
+        close: 'Близо',
+        collapseLabel: 'Свиване',
+        collapseRow: 'Редът е свит',
+        editRow: 'Редактиране на ред',
+        expandLabel: 'Разширяване',
+        expandRow: 'Редът е разширен',
+        falseLabel: 'Невярно',
+        filterConstraint: 'Ограничение на филтъра',
+        filterOperator: 'Филтър оператор',
+        firstPageLabel: 'Първа страница',
+        gridView: 'Мрежов изглед',
+        hideFilterMenu: 'Скриване на менюто за филтриране',
+        jumpToPageDropdownLabel: 'Отидете до падащото меню на страницата',
+        jumpToPageInputLabel: 'Преминете към Въвеждане на страница',
+        lastPageLabel: 'Последна страница',
+        listLabel: 'Списък с опции',
+        listView: 'Списъчен изглед',
+        maximizeLabel: 'Максимизиране',
+        minimizeLabel: 'Минимизиране',
+        moveAllToSource: 'Преместете всички в източника',
+        moveAllToTarget: 'Преместете всички в целта',
+        moveBottom: 'Преместване на дъното',
+        moveDown: 'Преместване надолу',
+        moveTop: 'Преместване отгоре',
+        moveToSource: 'Преместване към източника',
+        moveToTarget: 'Преместете се в Target',
+        moveUp: 'Преместване нагоре',
+        navigation: 'Навигация',
+        next: 'Следващия',
+        nextPageLabel: 'Следваща страница',
+        nullLabel: 'Не е избрано',
+        otpLabel: 'Моля, въведете еднократна парола {0}',
+        pageLabel: 'Страница {страница}',
+        passwordHide: 'Скриване на паролата',
+        passwordShow: 'Покажи парола',
+        previous: 'Предишен',
+        prevPageLabel: 'Предишна страница',
+        removeLabel: 'Премахване',
+        rotateLeft: 'Завърти наляво',
+        rotateRight: 'Завъртане надясно',
+        rowsPerPageLabel: 'Редове на страница',
+        saveEdit: 'Запазване на редактирането',
+        scrollTop: 'Превъртете отгоре',
+        selectAll: 'Всички избрани елементи',
+        selectColor: 'Изберете цвят',
+        selectLabel: 'Изберете',
+        selectRow: 'Избран ред',
+        showFilterMenu: 'Показване на менюто за филтриране',
+        slide: 'пързалка',
+        slideNumber: '{slideNumber}',
+        star: '1 звезда',
+        stars: '{star} звезди',
+        trueLabel: 'Вярно',
+        unselectAll: 'Всички елементи са премахнати',
+        unselectLabel: 'Премахване на избора',
+        unselectRow: 'Редът не е избран',
+        zoomImage: 'Увеличете изображението',
+        zoomIn: 'Увеличавам',
+        zoomOut: 'Отдалечавам',
+    },
+};
+primeLocales['bg'] = bgPrimeLocale;
+
+/**
+ * Bulgarian translations for UI labels and schema titles used in the ToolbarBG story.
+ * Keyed by the English text (same key used by useText/useTranslate as fallback).
+ */
+export const bgTranslations = parseTranslations(`
+    Add=Добавяне
+    Browse=Преглед
+    Created On=Дата
+    Delete=Изтриване
+    Description=Описание
+    Edit=Редактирай
+    Female Cone=Женска шишарка
+    Flower=Цвят
+    Fruit=Плод
+    Habitat=Местообитание
+    Links=Връзки
+    Male Cone=Мъжка шишарка
+    Morphology=Морфология
+    Name=Име
+    Reproduction=Размножаване
+    Reset=Отмени
+    Save=Запази
+    Seed=Семе
+    Taxonomy=Таксономия
+    title=Заглавие
+    Tree=Дърво
+    Type=Тип
+    url=Връзка
+    {field} is required={field} е задължително
+    {field} must be at least {minLength} characters={field} трябва да бъде поне {minLength} символа
+    {field} must be at most {maxLength} characters={field} трябва да съдържа най-много {maxLength} символа
+    {field} must be at least {minimum}={field} трябва да бъде поне {minimum}
+    {field} must be at most {maximum}={field} трябва да бъде най-много {maximum}
+    {field} has invalid format={field} има невалиден формат
+`);
+/* spell-checker: enable */
 
 export const treeValue = {
     treeName: 'Oak',
@@ -144,7 +375,22 @@ export const defaultHandlers: Record<string, Handler> = {
     /** Find — returns an empty result set (explorer list). */
     itemItemFind: () => Promise.resolve({items: [], total: 0}),
 
-    // ── Dropdown batch ─────────────────────────────────────────────────────────
+    // ── Submit mock actions (used by Toolbar story) ───────────────────────────
+
+    /** Generic submit — resolves immediately; used for Browse/Open toolbar buttons. */
+    treeTreeSubmit: params => Promise.resolve({result: 'ok', ...params}),
+
+    /** Error submit — rejects; used for the Error toolbar button. */
+    treeTreeSubmitError: () =>
+        Promise.reject({
+            type: 'error.submit.failed',
+            message: 'Submit failed',
+            print: 'Submit failed',
+        } satisfies IBlongError),
+
+    /** Delayed submit — resolves after 1.5 s; used for the Delay toolbar button (demonstrates successHint). */
+    treeTreeSubmitDelay: params =>
+        new Promise<unknown>(resolve => setTimeout(() => resolve({result: 'ok', ...params}), 1500)),
 
     /**
      * Handle named-dropdown requests from DropdownWidget.
@@ -171,9 +417,7 @@ export const defaultHandlers: Record<string, Handler> = {
  * `overrides`.  Used internally by `withDispatch`; also exported for unit tests
  * that need a standalone dispatch without a React tree.
  */
-export function makeDispatch(
-    overrides: Record<string, Handler> = {},
-): DispatchFn {
+export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchFn {
     const handlers = {...defaultHandlers, ...overrides};
     return async (method, params) => {
         const handler = handlers[method];
@@ -200,15 +444,21 @@ export function withDispatch(
     {
         loginRoute = '/login',
         notify = DEFAULT_NOTIFY,
-    }: {loginRoute?: string; notify?: NotifyConfig} = {},
-): (Story: React.ComponentType) => React.ReactElement {
+        language,
+        translations,
+    }: {
+        loginRoute?: string;
+        notify?: NotifyConfig;
+        language?: string;
+        translations?: Record<string, string>;
+    } = {},
+): (Story: React.ComponentType, context?: unknown) => React.ReactElement {
     const dispatch = makeDispatch(overrides);
     // Register query (read) actions so TanStack Query can show loading state.
     // Register mutation (write) actions with mutates:true so they are NOT
     // auto-fetched by TanStack Query — only called when explicitly invoked.
     const isReadAction = (name: string) =>
-        name === 'portal.dropdown.list' ||
-        /(?:Get|Load|Find|List|Fetch)(?:Error)?$/i.test(name);
+        name === 'portal.dropdown.list' || /(?:Get|Load|Find|List|Fetch)(?:Error)?$/i.test(name);
     const actionEntries = Object.fromEntries(
         Object.keys({...defaultHandlers, ...overrides}).map(name => [
             name,
@@ -216,7 +466,20 @@ export function withDispatch(
         ]),
     );
 
-    return Story => {
+    return (Story, context) => {
+        const langArg = (context as {args?: Record<string, unknown>} | undefined)?.args?.lang as
+            | string
+            | undefined;
+        const effectiveLang = langArg ?? language;
+
+        // Pass locale data for the active language via theme.languages so Theme registers it.
+        const themeLanguages = React.useMemo(() => {
+            if (effectiveLang && primeLocales[effectiveLang]) {
+                return {[effectiveLang]: primeLocales[effectiveLang]};
+            }
+            return undefined;
+        }, [effectiveLang]);
+
         React.useEffect(() => {
             useAppStore.getState().registerActions(actionEntries);
 
@@ -251,13 +514,22 @@ export function withDispatch(
         React.useEffect(() => {
             useAppStore.getState().clearError();
             useAppStore.getState().clearAllToasts();
-        }, [Story]);
+            // Apply translations + PrimeReact locale for this story.
+            if (effectiveLang && effectiveLang !== 'en') {
+                const dict = translations ?? (effectiveLang === 'bg' ? bgTranslations : {});
+                useAppStore.getState().setTranslations(dict);
+                useAppStore.getState().setLanguage(effectiveLang);
+            } else {
+                useAppStore.getState().setTranslations({});
+                useAppStore.getState().setLanguage('en');
+            }
+        }, [Story, effectiveLang]);
 
         return (
             <App
                 dispatch={dispatch}
                 schemaUrl="/schema.json"
-                theme={{name: 'vela-blue', palette: 'dark-compact'}}
+                theme={{name: 'vela-blue', palette: 'dark-compact', languages: themeLanguages}}
                 loginRoute={loginRoute}
             >
                 <Story />

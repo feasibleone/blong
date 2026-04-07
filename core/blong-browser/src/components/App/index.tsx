@@ -13,9 +13,12 @@
  * Props mirror IPortalProps so callers can customise the shell (logo, etc.)
  * while the provider wiring is always handled here.
  */
+import {ConfirmDialog} from 'primereact/confirmdialog';
+import {ConfirmPopup} from 'primereact/confirmpopup';
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {ErrorDialog} from '../Error/index.js';
+import {ActionHint} from '../Hint/index.js';
 import {Portal, type IPortalProps} from '../Portal/index.js';
 import {Theme, type IThemeConfig} from '../Theme/index.js';
 
@@ -66,6 +69,9 @@ export function App({
             <Theme theme={theme}>
                 {children ?? <Portal {...portalProps} />}
                 <ErrorDialog />
+                <ConfirmDialog />
+                <ConfirmPopup />
+                <ActionHint />
             </Theme>
         </BlongUiProvider>
     );

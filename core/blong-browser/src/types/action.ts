@@ -81,6 +81,10 @@ export interface IToolbarButton {
     align?: 'left' | 'right';
     /** Split-button sub-items */
     menu?: IToolbarButton[];
+    /** Extra params passed to the action/method on invocation */
+    params?: Record<string, unknown>;
+    /** Success hint text shown in an overlay near the button after the action completes */
+    successHint?: string;
 }
 
 /** Return type of useAction hook */

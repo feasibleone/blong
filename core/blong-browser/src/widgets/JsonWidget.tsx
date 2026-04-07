@@ -1,6 +1,6 @@
-import {Button} from 'primereact/button';
 import {InputTextarea} from 'primereact/inputtextarea';
 import {useState} from 'react';
+import {Button} from '../components/Button/index.js';
 import type {IWidgetProps} from '../types/widget.js';
 
 export function JsonWidget({

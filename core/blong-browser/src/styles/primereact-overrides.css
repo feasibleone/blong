@@ -554,3 +554,10 @@
 .blong-design-field-picker__item:hover {
     background: var(--highlight-bg, rgba(100, 149, 237, 0.1));
 }
+
+/* Required field marker — CSS ::after so the '*' is purely visual and never
+   part of the accessible name computed from the label's text content. */
+.blong-required::after {
+    content: ' *';
+    color: var(--red-500, #ef4444);
+}

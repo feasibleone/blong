@@ -5,8 +5,6 @@
  * to automatically select the first row when the parent selection changes.
  */
 import type {Meta} from '@storybook/react';
-import {within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
@@ -157,8 +155,7 @@ export const CascadedTables: StoryFn = () => (
     />
 );
 
-CascadedTables.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+CascadedTables.play = async ({canvas, userEvent}) => {
     const johnRow = await canvas.findByText('John Doe');
     await userEvent.click(johnRow);
     await new Promise(resolve => setTimeout(resolve, 200));

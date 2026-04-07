@@ -1,10 +1,10 @@
 /**
  * Error — global error dialog.
  */
-import {Button} from 'primereact/button';
 import {Dialog} from 'primereact/dialog';
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
+import {Button} from '../Button/index.js';
 
 /**
  * Error types that indicate an expired or invalid session.

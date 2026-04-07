@@ -1,5 +1,5 @@
-import {Button} from 'primereact/button';
 import {InputText} from 'primereact/inputtext';
+import {Button} from '../components/Button/index.js';
 import type {IWidgetProps} from '../types/widget.js';
 
 export function TextWidget({

@@ -1,9 +1,10 @@
-import {Button} from 'primereact/button';
 import {Checkbox} from 'primereact/checkbox';
 import {Column} from 'primereact/column';
 import {DataTable} from 'primereact/datatable';
 import {Toolbar} from 'primereact/toolbar';
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {Button} from '../components/Button/index.js';
+import {Text} from '../components/Text/index.js';
 import type {IWidgetProps} from '../types/widget.js';
 
 type Row = Record<string, unknown>;
@@ -107,7 +108,8 @@ export function TableWidget({
     const [singleSelected, setSingleSelected] = useState<Row | null>(null);
     const pendingKeyRef = useRef<unknown>(null);
     const allowEdit = schema.widget?.actions?.allowEdit !== false;
-    const editable = !readOnly && !disabled && allowEdit;
+    const editable = !readOnly && allowEdit;
+    const interactionDisabled = disabled || readOnly;
     const isSingleSelect = schema.widget?.selectionMode === 'single';
     // When schema.widget.label is set, it acts as the card title inside the toolbar
     const widgetLabel = schema.widget?.label;
@@ -217,6 +219,7 @@ export function TableWidget({
                 className="p-button mr-2"
                 onClick={addRow}
                 type="button"
+                disabled={interactionDisabled}
             />
             <Button
                 label="Delete"
@@ -224,13 +227,15 @@ export function TableWidget({
                 className="p-button"
                 onClick={deleteSelected}
                 type="button"
-                disabled={!selected.length && !singleSelected}
+                disabled={interactionDisabled || (!selected.length && !singleSelected)}
             />
         </>
     ) : null;
 
     const toolbarLeft = widgetLabel ? (
-        <span className="p-card-title">{widgetLabel}</span>
+        <span className="p-card-title">
+            <Text>{widgetLabel}</Text>
+        </span>
     ) : (
         actionButtons
     );
@@ -287,7 +292,7 @@ export function TableWidget({
                         <Column
                             key={field}
                             field={field}
-                            header={header}
+                            header={<Text>{header}</Text>}
                             filter={filter}
                             sortable={sortable}
                             body={

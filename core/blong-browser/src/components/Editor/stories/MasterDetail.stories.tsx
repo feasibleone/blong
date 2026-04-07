@@ -4,8 +4,6 @@
  * The detail card uses watch: '$.selected.person' with '$.edit.person.*' widget names.
  */
 import type {Meta} from '@storybook/react';
-import {within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
@@ -69,8 +67,7 @@ export const MasterDetail: StoryFn = () => (
     />
 );
 
-MasterDetail.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+MasterDetail.play = async ({canvas, userEvent}) => {
     const johnRow = await canvas.findByText('John Doe');
     await userEvent.click(johnRow);
     await new Promise(resolve => setTimeout(resolve, 200));

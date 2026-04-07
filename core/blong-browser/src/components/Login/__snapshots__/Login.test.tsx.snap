@@ -67,7 +67,9 @@ exports[`Login > renders the login form 1`] = `
           <span
             class="p-button-label p-c"
           >
-            Sign In
+            <span>
+              Sign In
+            </span>
           </span>
         </button>
       </form>
@@ -143,7 +145,9 @@ exports[`Login > renders with custom title 1`] = `
           <span
             class="p-button-label p-c"
           >
-            Sign In
+            <span>
+              Sign In
+            </span>
           </span>
         </button>
       </form>
@@ -233,7 +237,9 @@ exports[`Login > renders with external error 1`] = `
           <span
             class="p-button-label p-c"
           >
-            Sign In
+            <span>
+              Sign In
+            </span>
           </span>
         </button>
       </form>
@@ -309,7 +315,9 @@ exports[`Login > renders with loading state 1`] = `
           <span
             class="p-button-label p-c"
           >
-            Sign In
+            <span>
+              Sign In
+            </span>
           </span>
         </button>
       </form>
@@ -385,7 +393,9 @@ exports[`Login > renders with register link 1`] = `
           <span
             class="p-button-label p-c"
           >
-            Sign In
+            <span>
+              Sign In
+            </span>
           </span>
         </button>
         <a

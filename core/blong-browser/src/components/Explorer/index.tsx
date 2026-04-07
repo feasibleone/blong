@@ -4,7 +4,6 @@
  * Renders a configurable list/grid view backed by query/mutation actions.
  * Supports inline selection, sorting, filtering, pagination, and row actions.
  */
-import {Button} from 'primereact/button';
 import {Column} from 'primereact/column';
 import {
     DataTable,
@@ -20,6 +19,7 @@ import {useAction} from '../../hooks/useAction.js';
 import type {IToolbarButton} from '../../types/action.js';
 import type {IEnrichedSchema} from '../../types/widget.js';
 import {ActionButton} from '../ActionButton/index.js';
+import {Button} from '../Button/index.js';
 import {Navigator} from '../Navigator/index.js';
 
 export interface IExplorerColumn {

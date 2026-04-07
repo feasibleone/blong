@@ -26,7 +26,9 @@ exports[`Form > renders card layout with fields 1`] = `
               <span
                 class="blong-card__label"
               >
-                User
+                <span>
+                  User
+                </span>
               </span>
             </div>
             <div
@@ -42,7 +44,9 @@ exports[`Form > renders card layout with fields 1`] = `
                     class="col-12 md:col-4"
                     for="userName"
                   >
-                    User Name
+                    <span>
+                      User Name
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -66,7 +70,9 @@ exports[`Form > renders card layout with fields 1`] = `
                     class="col-12 md:col-4"
                     for="emailAddress"
                   >
-                    Email Address
+                    <span>
+                      Email Address
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -90,7 +96,9 @@ exports[`Form > renders card layout with fields 1`] = `
                     class="col-12 md:col-4"
                     for="phoneNumber"
                   >
-                    Phone
+                    <span>
+                      Phone
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -143,7 +151,9 @@ exports[`Form > renders loading skeleton 1`] = `
               <span
                 class="blong-card__label"
               >
-                User
+                <span>
+                  User
+                </span>
               </span>
             </div>
             <div
@@ -158,7 +168,9 @@ exports[`Form > renders loading skeleton 1`] = `
                   <label
                     class="col-12 md:col-4"
                   >
-                    User Name
+                    <span>
+                      User Name
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center col-12 md:col-8"
@@ -174,7 +186,9 @@ exports[`Form > renders loading skeleton 1`] = `
                   <label
                     class="col-12 md:col-4"
                   >
-                    Email Address
+                    <span>
+                      Email Address
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center col-12 md:col-8"
@@ -190,7 +204,9 @@ exports[`Form > renders loading skeleton 1`] = `
                   <label
                     class="col-12 md:col-4"
                   >
-                    Phone
+                    <span>
+                      Phone
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center col-12 md:col-8"
@@ -236,7 +252,9 @@ exports[`Form > renders multiple card groups 1`] = `
               <span
                 class="blong-card__label"
               >
-                Personal Info
+                <span>
+                  Personal Info
+                </span>
               </span>
             </div>
             <div
@@ -252,7 +270,9 @@ exports[`Form > renders multiple card groups 1`] = `
                     class="col-12 md:col-4"
                     for="userName"
                   >
-                    User Name
+                    <span>
+                      User Name
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -290,7 +310,9 @@ exports[`Form > renders multiple card groups 1`] = `
               <span
                 class="blong-card__label"
               >
-                Contact
+                <span>
+                  Contact
+                </span>
               </span>
             </div>
             <div
@@ -306,7 +328,9 @@ exports[`Form > renders multiple card groups 1`] = `
                     class="col-12 md:col-4"
                     for="emailAddress"
                   >
-                    Email Address
+                    <span>
+                      Email Address
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -330,7 +354,9 @@ exports[`Form > renders multiple card groups 1`] = `
                     class="col-12 md:col-4"
                     for="phoneNumber"
                   >
-                    Phone
+                    <span>
+                      Phone
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -383,7 +409,9 @@ exports[`Form > renders read-only form with values 1`] = `
               <span
                 class="blong-card__label"
               >
-                User
+                <span>
+                  User
+                </span>
               </span>
             </div>
             <div
@@ -399,7 +427,9 @@ exports[`Form > renders read-only form with values 1`] = `
                     class="col-12 md:col-4"
                     for="userName"
                   >
-                    User Name
+                    <span>
+                      User Name
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -408,10 +438,10 @@ exports[`Form > renders read-only form with values 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component p-filled blong-input w-full "
+                        class="p-inputtext p-component p-disabled p-filled blong-input w-full "
+                        disabled=""
                         id="userName"
                         name="userName"
-                        readonly=""
                         value="Alice"
                       />
                     </span>
@@ -424,7 +454,9 @@ exports[`Form > renders read-only form with values 1`] = `
                     class="col-12 md:col-4"
                     for="emailAddress"
                   >
-                    Email Address
+                    <span>
+                      Email Address
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -433,10 +465,10 @@ exports[`Form > renders read-only form with values 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component p-filled blong-input w-full "
+                        class="p-inputtext p-component p-disabled p-filled blong-input w-full "
+                        disabled=""
                         id="emailAddress"
                         name="emailAddress"
-                        readonly=""
                         value="alice@example.com"
                       />
                     </span>
@@ -449,7 +481,9 @@ exports[`Form > renders read-only form with values 1`] = `
                     class="col-12 md:col-4"
                     for="phoneNumber"
                   >
-                    Phone
+                    <span>
+                      Phone
+                    </span>
                   </label>
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
@@ -458,10 +492,10 @@ exports[`Form > renders read-only form with values 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component p-filled blong-input w-full "
+                        class="p-inputtext p-component p-disabled p-filled blong-input w-full "
+                        disabled=""
                         id="phoneNumber"
                         name="phoneNumber"
-                        readonly=""
                         value="555-1234"
                       />
                     </span>

@@ -1,13 +1,14 @@
 /**
  * useText — i18n text lookup.
  */
+import {useCallback} from 'react';
 import {useAppStore} from '../state/appStore.js';
 
 /**
  * Returns translated text for the given key.
  * Falls back to the key itself if no translation is found.
  *
- * @param id - Translation key (e.g. 'buttons.save')
+ * @param id - Translation key (e.g. 'buttons.save') or raw English text
  * @param params - Interpolation parameters (e.g. {name: 'Alice'})
  */
 export function useText(id: string, params?: Record<string, string | number>): string {
@@ -19,4 +20,14 @@ export function useText(id: string, params?: Record<string, string | number>): s
         }
     }
     return text;
+}
+
+/**
+ * useTranslate — returns a stable `t(text)` function for use outside JSX.
+ * The returned function looks up the text in the translations store,
+ * falling back to the original text.
+ */
+export function useTranslate(): (text: string) => string {
+    const translations = useAppStore(s => s.translations);
+    return useCallback((text: string) => translations[text] ?? text, [translations]);
 }

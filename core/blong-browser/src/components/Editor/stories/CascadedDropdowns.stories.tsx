@@ -7,7 +7,6 @@
  */
 import type {Meta} from '@storybook/react';
 import {within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
@@ -77,8 +76,7 @@ export const CascadedDropdowns: StoryFn = () => (
     />
 );
 
-CascadedDropdowns.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+CascadedDropdowns.play = async ({canvas, userEvent}) => {
     const body = within(document.body);
 
     // PrimeReact Dropdown renders a hidden accessible <input type="text" aria-haspopup="listbox">

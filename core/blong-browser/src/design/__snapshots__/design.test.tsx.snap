@@ -240,7 +240,9 @@ exports[`DesignToolbar > renders design mode buttons when active 1`] = `
       <span
         class="p-button-label p-c"
       >
-        Done
+        <span>
+          Done
+        </span>
       </span>
     </button>
     <button
@@ -279,7 +281,9 @@ exports[`DesignToolbar > renders design mode buttons when active 1`] = `
       <span
         class="p-button-label p-c"
       >
-        Save layout
+        <span>
+          Save layout
+        </span>
       </span>
     </button>
   </div>
@@ -301,7 +305,9 @@ exports[`DesignToolbar > renders toggle button 1`] = `
       <span
         class="p-button-label p-c"
       >
-        Configure
+        <span>
+          Configure
+        </span>
       </span>
     </button>
   </div>

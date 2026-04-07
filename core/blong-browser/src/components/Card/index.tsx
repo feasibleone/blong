@@ -11,19 +11,21 @@
  * 2. **Passthrough** (no `cardName`): behaves as a plain titled container and
  *    renders `children` as-is. Used for standalone layout and stories.
  */
-import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
-import { Card as PrimeCard } from 'primereact/card';
-import { Skeleton } from 'primereact/skeleton';
-import React, { useCallback, useState, type ReactNode } from 'react';
-import { Controller } from 'react-hook-form';
-import { DropZone } from '../../design/DropZone.js';
-import { SelectionIndicator } from '../../design/SelectionIndicator.js';
-import { useDesignable } from '../../design/useDesignable.js';
-import { useDesignMode } from '../../design/useDesignMode.js';
-import { buildValidationRules } from '../../schema/validate.js';
-import type { IEnrichedFieldSchema } from '../../types/widget.js';
-import { widgetRegistry } from '../../widgets/index.js';
-import { useBlongForm, type IFormContext, type ITableSelection } from '../Form/FormContext.js';
+import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
+import {Card as PrimeCard} from 'primereact/card';
+import {Skeleton} from 'primereact/skeleton';
+import React, {useCallback, useState, type ReactNode} from 'react';
+import {Controller} from 'react-hook-form';
+import {DropZone} from '../../design/DropZone.js';
+import {SelectionIndicator} from '../../design/SelectionIndicator.js';
+import {useDesignable} from '../../design/useDesignable.js';
+import {useDesignMode} from '../../design/useDesignMode.js';
+import {buildValidationRules} from '../../schema/validate.js';
+import {useAppStore} from '../../state/appStore.js';
+import type {IEnrichedFieldSchema} from '../../types/widget.js';
+import {widgetRegistry} from '../../widgets/index.js';
+import {useBlongForm, type IFormContext, type ITableSelection} from '../Form/FormContext.js';
+import {Text} from '../Text/index.js';
 
 export interface ICardProps {
     /** Card title shown in the header */
@@ -64,6 +66,7 @@ function DraggableFieldRow({
     formCtx: IFormContext;
 }) {
     const {active: isDesignMode, selected, select} = useDesignMode();
+    const translations = useAppStore(s => s.translations);
     const fieldId = `field:${fieldName}:${cardName}`;
     const fieldSchema = formCtx.schema?.properties?.[fieldName];
     const fieldLabel = fieldSchema?.title ?? fieldName;
@@ -73,7 +76,12 @@ function DraggableFieldRow({
     const {active: dragCtx} = useDndContext();
     const activeDragType = dragCtx?.data?.current?.type as string | undefined;
 
-    const {attributes, listeners, setNodeRef: setDragRef, isDragging} = useDraggable({
+    const {
+        attributes,
+        listeners,
+        setNodeRef: setDragRef,
+        isDragging,
+    } = useDraggable({
         id: fieldId,
         data: {type: 'field', fieldName, cardName, label: fieldLabel, sourceId: cardName},
         disabled: !isDesignMode,
@@ -102,7 +110,7 @@ function DraggableFieldRow({
         [isDesignMode, fieldId, fieldLabel, select],
     );
 
-    const fieldContent = renderField(fieldName, cardReadOnly, isLast, formCtx);
+    const fieldContent = renderField(fieldName, cardReadOnly, isLast, formCtx, translations);
 
     if (!isDesignMode) return fieldContent;
 
@@ -114,7 +122,9 @@ function DraggableFieldRow({
                 'blong-field-row--design',
                 isSelected ? 'blong-field-row--design--selected' : '',
                 isDragging ? 'blong-field-row--design--dragging' : '',
-                isDropOver && !isDragging && activeDragType === 'field' ? 'blong-field-row--design--over' : '',
+                isDropOver && !isDragging && activeDragType === 'field'
+                    ? 'blong-field-row--design--over'
+                    : '',
             ]
                 .filter(Boolean)
                 .join(' ')}
@@ -149,16 +159,30 @@ function renderField(
     cardReadOnly: boolean | undefined,
     isLast: boolean,
     ctx: IFormContext,
+    translations: Record<string, string>,
 ): React.ReactNode {
-    const {schema, control, errors, formValues, rawFormValues, loading, dropdowns, onChange, handleTableSelect} =
-        ctx;
+    const {
+        schema,
+        control,
+        errors,
+        formValues,
+        rawFormValues,
+        loading,
+        dropdowns,
+        onChange,
+        handleTableSelect,
+    } = ctx;
     const rawSchema: IEnrichedFieldSchema | undefined = schema?.properties?.[fieldName];
     const dropdownKey = rawSchema?.widget?.dropdown;
     const fieldSchema: IEnrichedFieldSchema | undefined =
         dropdowns && dropdownKey && dropdowns[dropdownKey] && rawSchema
             ? {
                   ...rawSchema,
-                  widget: {...rawSchema.widget!, options: dropdowns[dropdownKey], dropdown: undefined},
+                  widget: {
+                      ...rawSchema.widget!,
+                      options: dropdowns[dropdownKey],
+                      dropdown: undefined,
+                  },
               }
             : rawSchema;
     if (!fieldSchema) return null;
@@ -166,14 +190,21 @@ function renderField(
     const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema));
     if (!WidgetComponent) return null;
 
-    const fieldReadOnly = cardReadOnly || fieldSchema.readOnly;
+    const schemaReadOnly = cardReadOnly || fieldSchema.readOnly;
+    /** Transient disabled state (during save/load) — disables widget without changing its structure */
+    const fieldDisabled = ctx.readOnly;
     const hasLabel = fieldSchema.title !== '';
 
     if (loading) {
         return (
-            <div key={fieldName} className={`field grid${isLast ? ' mb-0' : ''}`}>
+            <div
+                key={fieldName}
+                className={`field grid${isLast ? ' mb-0' : ''}`}
+            >
                 {hasLabel && (
-                    <label className="col-12 md:col-4">{fieldSchema.title ?? fieldName}</label>
+                    <label className="col-12 md:col-4">
+                        <Text>{fieldSchema.title ?? fieldName}</Text>
+                    </label>
                 )}
                 <div className={`flex align-items-center col-12${hasLabel ? ' md:col-8' : ''}`}>
                     <Skeleton className="p-inputtext w-full" />
@@ -183,11 +214,18 @@ function renderField(
     }
 
     return (
-        <div key={fieldName} className={`field grid${isLast ? ' mb-0' : ''}`}>
+        <div
+            key={fieldName}
+            className={`field grid${isLast ? ' mb-0' : ''}`}
+        >
             {hasLabel && (
-                <label htmlFor={fieldName} className="col-12 md:col-4">
-                    {fieldSchema.title ?? fieldName}
-                    {fieldSchema.required && <span className="blong-required"> *</span>}
+                <label
+                    htmlFor={fieldName}
+                    className={`col-12 md:col-4${
+                        fieldSchema.required ? ' blong-required' : ''
+                    }`}
+                >
+                    <Text>{fieldSchema.title ?? fieldName}</Text>
                 </label>
             )}
             <div
@@ -208,9 +246,9 @@ function renderField(
                             }}
                             onBlur={field.onBlur}
                             error={fieldState.error}
-                            readOnly={fieldReadOnly}
+                            readOnly={schemaReadOnly}
                             loading={loading}
-                            disabled={loading}
+                            disabled={fieldDisabled}
                             formValues={formValues}
                             onSelect={
                                 fieldSchema.widget?.selectionMode === 'single'
@@ -228,7 +266,20 @@ function renderField(
                 <>
                     <small className="col-12 md:col-4" />
                     <small className="p-error blong-field-error col-12 md:col-8">
-                        {errors[fieldName]?.message ?? 'Invalid value'}
+                        <Text
+                            params={{
+                                field:
+                                    translations[fieldSchema.title ?? fieldName] ??
+                                    fieldSchema.title ??
+                                    fieldName,
+                                minLength: fieldSchema.minLength ?? 0,
+                                maxLength: fieldSchema.maxLength ?? 0,
+                                minimum: fieldSchema.minimum ?? 0,
+                                maximum: fieldSchema.maximum ?? 0,
+                            }}
+                        >
+                            {errors[fieldName]?.message ?? '{field} is invalid'}
+                        </Text>
                     </small>
                 </>
             )}
@@ -270,10 +321,16 @@ function renderWatchField(
     const widgetKey = `${fieldName}-${selection.index}-${String(currentVal)}`;
 
     return (
-        <div key={fieldName} className={`field grid${isLast ? ' mb-0' : ''}`}>
+        <div
+            key={fieldName}
+            className={`field grid${isLast ? ' mb-0' : ''}`}
+        >
             {hasLabel && (
-                <label htmlFor={fieldName} className="col-12 md:col-4">
-                    {fieldSchema.title ?? fieldName}
+                <label
+                    htmlFor={fieldName}
+                    className="col-12 md:col-4"
+                >
+                    <Text>{fieldSchema.title ?? fieldName}</Text>
                 </label>
             )}
             <div
@@ -325,22 +382,25 @@ export function Card({
 
     const formCtx = useBlongForm();
     const resolved = cardName && formCtx ? formCtx.cards[cardName] : undefined;
+    const translations = useAppStore(s => s.translations);
 
     // When cardName is active, prefer resolved values over explicit props
     const resolvedTitle: string | ReactNode | undefined = resolved ? resolved.label : title;
     const titleLabel = typeof resolvedTitle === 'string' ? resolvedTitle : (cardName ?? elementId);
 
-    const {isSelected, select, dragProps, setRef, designClass, style} = useDesignable(elementId, 'card', {
-        colIdx,
-        cardName,
-        label: titleLabel,
-        sourceId: colIdx,
-    });
+    const {isSelected, select, dragProps, setRef, designClass, style} = useDesignable(
+        elementId,
+        'card',
+        {
+            colIdx,
+            cardName,
+            label: titleLabel,
+            sourceId: colIdx,
+        },
+    );
     const resolvedCollapsible = resolved ? resolved.config.collapsible : collapsible;
     const resolvedLoading = resolved ? formCtx!.loading : loading;
-    const cardReadOnly = resolved
-        ? (formCtx!.readOnly || resolved.config.readOnly)
-        : readOnly;
+    const cardReadOnly = resolved ? resolved.config.readOnly : readOnly;
 
     // Build content
     let content: React.ReactNode;
@@ -348,9 +408,7 @@ export function Card({
         if (!resolved) {
             // Unknown card name — render a visible error stub
             content = (
-                <span className="p-error text-sm">
-                    ❌ Card &quot;{cardName}&quot; not found
-                </span>
+                <span className="p-error text-sm">❌ Card &quot;{cardName}&quot; not found</span>
             );
         } else {
             const rawWatch = resolved.config.watch;
@@ -359,22 +417,20 @@ export function Card({
                     ? rawWatch.slice('$.selected.'.length)
                     : rawWatch;
                 const selection = formCtx.tableSelections[watchField] ?? null;
-                content = selection
-                    ? resolved.fields.map((rawFieldName, idx) =>
-                          renderWatchField(
-                              rawFieldName,
-                              idx === resolved.fields.length - 1,
-                              selection,
-                              watchField,
-                              cardReadOnly,
-                              formCtx,
-                          ),
-                      )
-                    : (
-                        <span className="p-text-secondary text-sm">
-                            Select a row to see details
-                        </span>
-                    );
+                content = selection ? (
+                    resolved.fields.map((rawFieldName, idx) =>
+                        renderWatchField(
+                            rawFieldName,
+                            idx === resolved.fields.length - 1,
+                            selection,
+                            watchField,
+                            cardReadOnly,
+                            formCtx,
+                        ),
+                    )
+                ) : (
+                    <span className="p-text-secondary text-sm">Select a row to see details</span>
+                );
             } else if (isDesignMode) {
                 content = resolved.fields.map((fieldName, idx) => (
                     <DraggableFieldRow
@@ -393,6 +449,7 @@ export function Card({
                         cardReadOnly,
                         idx === resolved.fields.length - 1,
                         formCtx,
+                        translations,
                     ),
                 );
             }
@@ -423,7 +480,7 @@ export function Card({
                         } blong-card__collapse-icon`}
                     />
                 )}
-                {resolvedTitle}
+                {typeof resolvedTitle === 'string' ? <Text>{resolvedTitle}</Text> : resolvedTitle}
             </span>
         ) : undefined;
 
@@ -444,7 +501,10 @@ export function Card({
                     {resolvedLoading && !(cardName && formCtx) ? (
                         <div className="blong-card__skeleton">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="blong-skeleton-row" />
+                                <div
+                                    key={i}
+                                    className="blong-skeleton-row"
+                                />
                             ))}
                         </div>
                     ) : (
@@ -494,20 +554,25 @@ export function Card({
         <PrimeCard
             id={elementId}
             title={titleNode}
-            className={[
-                collapsed ? 'blong-card--collapsed' : '',
-                resolvedLoading ? 'blong-card--loading' : '',
-                className ?? '',
-            ]
-                .filter(Boolean)
-                .join(' ') || undefined}
+            className={
+                [
+                    collapsed ? 'blong-card--collapsed' : '',
+                    resolvedLoading ? 'blong-card--loading' : '',
+                    className ?? '',
+                ]
+                    .filter(Boolean)
+                    .join(' ') || undefined
+            }
         >
             {!collapsed && (
                 <div className="blong-card__body">
                     {resolvedLoading && !(cardName && formCtx) ? (
                         <div className="blong-card__skeleton">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="blong-skeleton-row" />
+                                <div
+                                    key={i}
+                                    className="blong-skeleton-row"
+                                />
                             ))}
                         </div>
                     ) : (

@@ -149,6 +149,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Developing with Storybook                | **storybook-testing-workflow**                        |
 | Viewing real-time logs                   | **blong-log**                                         |
 | Implementing blong-browser components    | **blong-browser**                                     |
+| Adding multi-language / i18n support     | **blong-i18n**                                        |
 | Using the model for realm CRUD pages     | **blong-model**                                       |
 | Developing the model system internals    | **blong-model-dev**                                   |
 

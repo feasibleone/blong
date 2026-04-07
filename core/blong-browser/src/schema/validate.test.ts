@@ -8,42 +8,46 @@ describe('buildValidationRules', () => {
 
     it('adds required rule', () => {
         const rules = buildValidationRules({required: true, title: 'Name'});
-        expect(rules.required).toBe('"Name" is required');
+        expect(rules.required).toBe('{field} is required');
     });
 
     it('adds minLength rule', () => {
         const rules = buildValidationRules({minLength: 3, title: 'Username'});
         expect((rules.minLength as {value: number}).value).toBe(3);
-        expect((rules.minLength as {message: string}).message).toContain('at least 3');
+        expect((rules.minLength as {message: string}).message).toBe(
+            '{field} must be at least {minLength} characters',
+        );
     });
 
     it('adds maxLength rule', () => {
         const rules = buildValidationRules({maxLength: 50, title: 'Bio'});
         expect((rules.maxLength as {value: number}).value).toBe(50);
-        expect((rules.maxLength as {message: string}).message).toContain('at most 50');
+        expect((rules.maxLength as {message: string}).message).toBe(
+            '{field} must be at most {maxLength} characters',
+        );
     });
 
     it('adds minimum (min) rule', () => {
         const rules = buildValidationRules({minimum: 18, title: 'Age'});
         expect((rules.min as {value: number}).value).toBe(18);
-        expect((rules.min as {message: string}).message).toContain('at least 18');
+        expect((rules.min as {message: string}).message).toBe('{field} must be at least {minimum}');
     });
 
     it('adds maximum (max) rule', () => {
         const rules = buildValidationRules({maximum: 100, title: 'Score'});
         expect((rules.max as {value: number}).value).toBe(100);
-        expect((rules.max as {message: string}).message).toContain('at most 100');
+        expect((rules.max as {message: string}).message).toBe('{field} must be at most {maximum}');
     });
 
     it('adds pattern rule', () => {
         const rules = buildValidationRules({pattern: '^[a-z]+$', title: 'Slug'});
         expect((rules.pattern as {value: RegExp}).value).toBeInstanceOf(RegExp);
-        expect((rules.pattern as {message: string}).message).toContain('invalid format');
+        expect((rules.pattern as {message: string}).message).toBe('{field} has invalid format');
     });
 
-    it('falls back to schema.name when title is absent', () => {
+    it('uses {field} placeholder regardless of title or name', () => {
         const rules = buildValidationRules({required: true, name: 'userId'});
-        expect(rules.required).toContain('userId');
+        expect(rules.required).toBe('{field} is required');
     });
 
     it('combines multiple rules', () => {
@@ -59,30 +63,34 @@ describe('buildValidationRules', () => {
     });
 });
 
-describe('buildValidationRules — name fallback (no title)', () => {
-    it('uses schema.name in minLength message when title absent', () => {
+describe('buildValidationRules — message templates use {field} placeholder', () => {
+    it('minLength message is a template', () => {
         const rules = buildValidationRules({minLength: 5, name: 'username'});
-        expect((rules.minLength as {message: string}).message).toContain('username');
+        expect((rules.minLength as {message: string}).message).toBe(
+            '{field} must be at least {minLength} characters',
+        );
     });
 
-    it('uses schema.name in maxLength message when title absent', () => {
+    it('maxLength message is a template', () => {
         const rules = buildValidationRules({maxLength: 20, name: 'bio'});
-        expect((rules.maxLength as {message: string}).message).toContain('bio');
+        expect((rules.maxLength as {message: string}).message).toBe(
+            '{field} must be at most {maxLength} characters',
+        );
     });
 
-    it('uses schema.name in minimum message when title absent', () => {
+    it('minimum message is a template', () => {
         const rules = buildValidationRules({minimum: 0, name: 'qty'});
-        expect((rules.min as {message: string}).message).toContain('qty');
+        expect((rules.min as {message: string}).message).toBe('{field} must be at least {minimum}');
     });
 
-    it('uses schema.name in maximum message when title absent', () => {
+    it('maximum message is a template', () => {
         const rules = buildValidationRules({maximum: 99, name: 'score'});
-        expect((rules.max as {message: string}).message).toContain('score');
+        expect((rules.max as {message: string}).message).toBe('{field} must be at most {maximum}');
     });
 
-    it('uses schema.name in pattern message when title absent', () => {
+    it('pattern message is a template', () => {
         const rules = buildValidationRules({pattern: '^[a-z]+$', name: 'slug'});
-        expect((rules.pattern as {message: string}).message).toContain('slug');
+        expect((rules.pattern as {message: string}).message).toBe('{field} has invalid format');
     });
 });
 

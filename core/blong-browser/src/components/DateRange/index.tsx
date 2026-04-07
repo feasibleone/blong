@@ -1,9 +1,9 @@
 /**
  * DateRange — date range picker with relative presets.
  */
-import {Button} from 'primereact/button';
 import {Calendar} from 'primereact/calendar';
 import {useState} from 'react';
+import {Button} from '../Button/index.js';
 
 export type DateRangePreset =
     | 'Last30min'

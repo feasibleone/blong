@@ -20,6 +20,13 @@ export interface IToast {
 /** Translation dictionary */
 export type TranslationDict = Record<string, string>;
 
+/** Inline hint shown near a button (success or error feedback) */
+export interface IHint {
+    target: HTMLElement | null;
+    message: string;
+    error: boolean;
+}
+
 /** Complete app state */
 export interface IAppState {
     auth: IAuthState;
@@ -27,8 +34,10 @@ export interface IAppState {
     toasts: IToast[];
     loader: {active: boolean; message?: string; count: number};
     translations: TranslationDict;
+    language: string;
     actions: ActionRegistry;
     error: IBlongError | null;
+    hint: IHint | null;
 }
 
 /** App store actions */
@@ -60,6 +69,7 @@ export interface IAppActions {
 
     // Translations
     setTranslations: (dict: TranslationDict) => void;
+    setLanguage: (language: string) => void;
 
     // Actions registry
     registerActions: (actions: ActionRegistry) => void;
@@ -67,6 +77,10 @@ export interface IAppActions {
     // Error
     showError: (error: IBlongError) => void;
     clearError: () => void;
+
+    // Hint
+    showHint: (target: HTMLElement | null, message: string, error: boolean) => void;
+    clearHint: () => void;
 }
 
 const initialAuth: IAuthState = {
@@ -90,8 +104,10 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     toasts: [],
     loader: {active: false, count: 0},
     translations: {},
+    language: 'en',
     actions: {},
     error: null,
+    hint: null,
 
     // Auth actions
     setToken: token =>
@@ -179,6 +195,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
 
     // Translations
     setTranslations: dict => set({translations: dict}),
+    setLanguage: language => set({language}),
 
     // Actions registry
     registerActions: actions => set(state => ({actions: {...state.actions, ...actions}})),
@@ -186,4 +203,8 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     // Error
     showError: error => set({error}),
     clearError: () => set({error: null}),
+
+    // Hint
+    showHint: (target, message, error) => set({hint: {target, message, error}}),
+    clearHint: () => set({hint: null}),
 }));

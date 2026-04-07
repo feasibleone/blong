@@ -4,17 +4,17 @@
  * Renders a Menubar at the top, a TabView of open pages below it,
  * and wires menu item clicks to action dispatches.
  */
-import { Button } from 'primereact/button';
-import { Menubar } from 'primereact/menubar';
-import { ProgressSpinner } from 'primereact/progressspinner';
-import { TabPanel, TabView } from 'primereact/tabview';
-import React, { Suspense } from 'react';
-import { usePortal } from '../../hooks/usePortal.js';
-import { useAppStore } from '../../state/appStore.js';
-import type { IMenuItem } from '../../types/portal.js';
-import { ErrorDialog } from '../Error/index.js';
-import { Hint } from '../Hint/index.js';
-import { Loader } from '../Loader/index.js';
+import {Menubar} from 'primereact/menubar';
+import {ProgressSpinner} from 'primereact/progressspinner';
+import {TabPanel, TabView} from 'primereact/tabview';
+import React, {Suspense} from 'react';
+import {usePortal} from '../../hooks/usePortal.js';
+import {useAppStore} from '../../state/appStore.js';
+import type {IMenuItem} from '../../types/portal.js';
+import {Button} from '../Button/index.js';
+import {ErrorDialog} from '../Error/index.js';
+import {Hint} from '../Hint/index.js';
+import {Loader} from '../Loader/index.js';
 
 function buildMenuModel(items: IMenuItem[], openAction: (actionName: string) => void): object[] {
     return items.map(item => {
@@ -28,7 +28,9 @@ function buildMenuModel(items: IMenuItem[], openAction: (actionName: string) => 
         return {
             label: item.title,
             icon: item.icon,
-            command: () => { if (item.action) openAction(item.action); },
+            command: () => {
+                if (item.action) openAction(item.action);
+            },
         };
     });
 }
@@ -48,7 +50,7 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
         // Tab deduplication is handled by openTab in appStore
         // Here we look up registered action but can work with the name too
         openAction({
-            id: actionName,   // openTab deduplicates by actionName
+            id: actionName, // openTab deduplicates by actionName
             actionName,
             params: {},
             title: actionName,
@@ -58,7 +60,11 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);
     const menuModel = menuConfig?.menu ? buildMenuModel(menuConfig.menu, openByAction) : [];
 
-    const start = logo ?? (menuConfig?.title ? <span className="blong-portal-brand">{menuConfig.title}</span> : undefined);
+    const start =
+        logo ??
+        (menuConfig?.title ? (
+            <span className="blong-portal-brand">{menuConfig.title}</span>
+        ) : undefined);
 
     return (
         <div className={`blong-portal ${className}`}>
@@ -90,13 +96,22 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                                     <Button
                                         icon="pi pi-times"
                                         className="p-button-text p-button-sm blong-tab-close"
-                                        onClick={e => { e.stopPropagation(); closeTab(tab.id); }}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            closeTab(tab.id);
+                                        }}
                                     />
                                 </span>
                             }
                         >
                             {tab.component ? (
-                                <Suspense fallback={<div style={{padding: 32}}><ProgressSpinner /></div>}>
+                                <Suspense
+                                    fallback={
+                                        <div style={{padding: 32}}>
+                                            <ProgressSpinner />
+                                        </div>
+                                    }
+                                >
                                     <tab.component {...tab.params} />
                                 </Suspense>
                             ) : (

@@ -3,8 +3,6 @@
  * Uses Template from Editor.stories to avoid repeating the tree fixture.
  */
 import type {Meta} from '@storybook/react';
-import {within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
 import type {StoryFn} from '../Editor.stories.js';
 import {Template} from '../Editor.stories.js';
 import {Editor} from '../index.js';
@@ -12,31 +10,33 @@ import {Editor} from '../index.js';
 const meta: Meta<typeof Editor> = {title: 'Editor/Validation', component: Editor};
 export default meta;
 
-/** Validation — clear required field and submit to trigger validation errors */
+/** Validation — clear required field and submit to trigger client-side validation errors */
 export const Validation: StoryFn = Template.bind({});
 Validation.args = {
     editMode: true,
     value: {treeName: 'Oak', treeType: 1, treeDescription: ''},
 };
-Validation.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
-    await new Promise(resolve => setTimeout(resolve, 50));
-    const nameInput = canvas.queryByLabelText?.('Name') as HTMLInputElement | null;
-    if (nameInput) await userEvent.clear(nameInput);
-    const descInput = canvas.queryByLabelText?.('Description') as HTMLTextAreaElement | null;
-    if (descInput) await userEvent.type(descInput, 'test');
-    const saveBtn = canvas.queryByText?.('Save') as HTMLButtonElement | null;
-    if (saveBtn) await userEvent.click(saveBtn);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+Validation.play = async ({canvas, userEvent}) => {
+    // Value is static — form renders synchronously. Use getByRole for accessible-name matching
+    // (which correctly excludes aria-hidden content like the required '*' marker).
+    await userEvent.clear(canvas.getByRole('textbox', {name: 'Name'}));
+    await userEvent.type(canvas.getByRole('textbox', {name: 'Description'}), 'test');
+    await userEvent.click(canvas.getByRole('button', {name: 'Save'}));
+    await new Promise(resolve => setTimeout(resolve, 200));
 };
 
 /**
  * ValidationBG — same validation with Bulgarian locale.
- * NOTE: blong-browser does not yet support per-story locale switching.
+ * Uses `lang: 'bg'` story arg — all labels and error messages are translated.
  */
 export const ValidationBG: StoryFn = Template.bind({});
 ValidationBG.args = {
     ...Validation.args,
-    value: {treeName: 'Дъб', treeType: 1, treeDescription: ''},
+    lang: 'bg',
 };
-ValidationBG.play = Validation.play;
+ValidationBG.play = async ({canvas, userEvent}) => {
+    await userEvent.clear(canvas.getByRole('textbox', {name: 'Име'}));
+    await userEvent.type(canvas.getByRole('textbox', {name: 'Описание'}), 'тест');
+    await userEvent.click(canvas.getByRole('button', {name: 'Save'}));
+    await new Promise(resolve => setTimeout(resolve, 200));
+};

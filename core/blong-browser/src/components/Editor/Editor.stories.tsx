@@ -7,8 +7,8 @@
  * - target Template uses Redux + useToast → blong-browser uses `dispatch` vi.fn() in tests
  */
 import type {Meta} from '@storybook/react';
-import {within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
+import type {within} from '@testing-library/react';
+import type {UserEvent} from '@testing-library/user-event';
 import React from 'react';
 import {treeDropdownData, treeValue} from '../../../.storybook/dispatch.js';
 import {Card} from '../Card/index.js';
@@ -19,14 +19,15 @@ import {Editor} from './index.js';
 
 const meta: Meta<typeof Editor> = {
     title: 'Editor',
+    excludeStories: ['Template'],
     component: Editor,
 };
 export default meta;
 
-export type StoryArgs = Partial<IEditorProps>;
+export type StoryArgs = Partial<IEditorProps> & {lang?: string};
 export type StoryFn = ((args: StoryArgs) => React.ReactElement) & {
     args?: StoryArgs;
-    play?: (ctx: {canvasElement: HTMLElement}) => Promise<void>;
+    play?: (ctx: {canvas: ReturnType<typeof within>; userEvent: UserEvent}) => Promise<void>;
     decorators?: Array<(Story: React.ComponentType) => React.ReactElement>;
 };
 
@@ -165,8 +166,7 @@ Submit.args = {
         ],
     },
 };
-Submit.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+Submit.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 50));
     const descInput = canvas.queryByLabelText?.('Description') as HTMLTextAreaElement | null;
     if (descInput) await userEvent.type(descInput, 'test');
@@ -181,8 +181,7 @@ ServerValidation.args = {
     editMode: true,
     saveAction: 'treeTreeEditError',
 };
-ServerValidation.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+ServerValidation.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 200));
     // Make the form dirty so the Save button becomes enabled
     const nameInput = canvas.getByRole('textbox', {name: /name/i});
@@ -193,21 +192,41 @@ ServerValidation.play = async ({canvasElement}) => {
     await new Promise(resolve => setTimeout(resolve, 500));
 };
 
-/** Toolbar — custom buttons on the right side */
+/** Toolbar — custom buttons on the LEFT side beside save/reset; matches ut-prime pattern */
 export const Toolbar: StoryFn = Template.bind({});
 Toolbar.args = {
     loadAction: 'treeTreeGet',
-    toolbarRight: [
-        {label: 'Browse', icon: 'pi pi-list', action: 'browseAction'},
-        {label: 'Open', icon: 'pi pi-folder-open', action: 'openAction'},
+    editMode: true,
+    toolbar: [
+        {label: 'Browse', icon: 'pi pi-list', method: 'treeTreeSubmit'},
+        {label: 'Open', icon: 'pi pi-folder-open', method: 'treeTreeSubmit', params: {id: 1}},
+        {label: 'Error', icon: 'pi pi-times-circle', method: 'treeTreeSubmitError'},
+        {
+            label: 'Delay',
+            icon: 'pi pi-clock',
+            method: 'treeTreeSubmitDelay',
+            params: {id: 1},
+            successHint: 'Done',
+        },
     ],
+};
+
+/**
+ * ToolbarBG — same as Toolbar but with Bulgarian translations applied.
+ * Demonstrates multi-language support: card titles, field labels, column headers,
+ * and built-in toolbar/widget button labels are all translated.
+ * PrimeReact UI (e.g. Calendar month names) is also localised.
+ */
+export const ToolbarBG: StoryFn = Template.bind({});
+ToolbarBG.args = {
+    ...Toolbar.args,
+    lang: 'bg',
 };
 
 /** Files — stub; imageUpload/ocr/webcamera widgets not yet implemented in blong-browser. */
 export const Files: StoryFn = Template.bind({});
 Files.args = {loadAction: 'treeTreeGet', editMode: true, layouts: {edit: ['edit']}};
-Files.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+Files.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 50));
     const saveBtn = canvas.queryByText?.('Save') as HTMLButtonElement | null;
     if (saveBtn) await userEvent.click(saveBtn);
@@ -244,8 +263,7 @@ Steps.args = {loadAction: 'treeTreeGet', editable: false, layouts: {edit: stepsL
 /** Steps with back disabled (stub — disableBack not yet in ITabLayoutConfig). */
 export const StepsDisabledBack: StoryFn = Template.bind({});
 StepsDisabledBack.args = {...Steps.args};
-StepsDisabledBack.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+StepsDisabledBack.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 50));
     const nextBtn = canvas.queryByText?.('Next') as HTMLButtonElement | null;
     if (nextBtn) await userEvent.click(nextBtn);
@@ -298,8 +316,7 @@ EditorWithExplorer.args = {
         },
     },
 };
-EditorWithExplorer.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+EditorWithExplorer.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 50));
     const historyTab = canvas.queryByText?.('History');
     if (historyTab) await userEvent.click(historyTab);

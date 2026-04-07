@@ -2,22 +2,23 @@
 name: blong-browser
 description: >
     Implement, extend, or debug the blong-browser React/TypeScript component library and portal
-    framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill whenever
-    working on UI components, Editor/Form/Explorer/Report pages, widgets, portal navigation,
-    schema-driven forms, action wiring, Storybook stories, or any blong-browser adapter/orchestrator code
-    — even if the user just says "add a page", "fix the widget", or "show this in a tab". For
-    developing or improving the model system itself, use the blong-browser-model-dev skill. For using the
-    model to implement CRUD pages in a realm, use the blong-browser-model skill.
+    framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill
+    whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal
+    navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser
+    adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show
+    this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill.
+    For developing or improving the model system itself, use the blong-browser-model-dev skill. For
+    using the model to implement CRUD pages in a realm, use the blong-browser-model skill.
 ---
 
 # blong-browser Skill
 
 ## What is blong-browser?
 
-`@feasibleone/blong-browser` (`core/blong-browser/`) is a schema-driven React UI framework and portal shell.
-It supersedes `ut-prime` and `ut-model`, preserving their proven UX patterns while adopting a
-cleaner architecture aligned with the Blong framework. The primary domain example used in stories
-and mocks is **marine biology** (corals, fish, etc.) — not the `ut-prime` tree metaphor.
+`@feasibleone/blong-browser` (`core/blong-browser/`) is a schema-driven React UI framework and
+portal shell. It supersedes `ut-prime` and `ut-model`, preserving their proven UX patterns while
+adopting a cleaner architecture aligned with the Blong framework. The primary domain example used in
+stories and mocks is **marine biology** (corals, fish, etc.) — not the `ut-prime` tree metaphor.
 
 **Key goals:**
 
@@ -207,6 +208,19 @@ a popup anchored to the Save button.
 
 **Dropdown/load errors:** Use an error-suffixed action name or static dropdown key to test error
 states. The widget enters an error visual state.
+
+**Validation message translation:** Validation messages use `{field}` placeholder templates. The
+field name is resolved to its translated label at render time. For full details, see the **blong-i18n** skill.
+
+### Internationalisation (i18n)
+
+blong-browser has a lightweight string-translation system built on `appStore`. For the full
+details — Text component, Button auto-translation, setTranslations/setLanguage, PrimeReact locale
+registration, Storybook `lang` arg, and test patterns — see the **blong-i18n** skill.
+
+**Key rule:** Wrap every user-visible string in `<Text>` so it participates in translation. Always
+import `Button` from `@feasibleone/blong-browser` (not primereact directly) — it auto-translates
+string `label` values via `Text`.
 
 ### Editor toolbar
 
@@ -402,24 +416,10 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 
 ## Adapters and orchestrators
 
-### `adapter/backend.ts` — HTTP JSON-RPC
-
-Extends `adapter.http` with `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go
-through this adapter under the `backend` namespace.
-
-### `adapter/storage.ts` — Browser storage
-
-Extends `adapter.dispatch` for local browser storage operations (namespace: `storage`).
-
-### `orchestrator/portal.ts`
-
-Extends `orchestrator.dispatch` for `portal.*` methods. Imports handlers matching `/\.component$/`,
-`/\.portal$/`, `/\.actions?$/`, plus `ui.portal`. Realms contribute components and actions by
-registering handlers in files ending with `.component`, `.portal`, or `.actions`.
-
-### `orchestrator/auth.ts`
-
-Extends `orchestrator.dispatch` for `auth.*` methods (`authLogin`, `authLogout`, `authSessionGet`).
+- **`adapter/backend.ts`** (`backend` namespace) — HTTP JSON-RPC via `adapter.http` + `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go through this adapter.
+- **`adapter/storage.ts`** (`storage` namespace) — browser storage via `adapter.dispatch`.
+- **`orchestrator/portal.ts`** (`portal.*`) — imports handlers matching `/\.component$/`, `/\.portal$/`, `/\.actions?$/`. Realms contribute pages and actions by naming files with these suffixes.
+- **`orchestrator/auth.ts`** (`auth.*`) — `authLogin`, `authLogout`, `authSessionGet`.
 
 ---
 
@@ -437,15 +437,15 @@ Extends `orchestrator.dispatch` for `auth.*` methods (`authLogin`, `authLogout`,
 | `loader`             | Global loading overlay                      |
 | `actions`            | Registered `ActionRegistry`                 |
 | `error`              | Last unhandled error (shown in ErrorDialog) |
+| `language`           | Active locale code (e.g. `'en'`, `'bg'`)    |
+| `translations`       | Key→value translation dictionary            |
 
 ---
 
 ## Event bus
 
-`blongEvents` is a singleton typed event bus (exported from `@feasibleone/blong-browser`). It uses the
-native browser `EventTarget` API — zero dependencies, works in any environment.
-
-Events are emitted automatically by `BlongUiContext`'s `wrappedDispatch`:
+`blongEvents` is a singleton typed event bus emitted automatically by `BlongUiContext`'s
+`wrappedDispatch`. Subscribe with `blongEvents.on(event, handler)` — returns an unsubscribe fn.
 
 | Event            | Payload                    | When fired                     |
 | ---------------- | -------------------------- | ------------------------------ |
@@ -453,65 +453,38 @@ Events are emitted automatically by `BlongUiContext`'s `wrappedDispatch`:
 | `action:success` | `{method, params, result}` | After a dispatch call resolves |
 | `action:error`   | `{method, params, error}`  | After a dispatch call rejects  |
 
-**Subscribing:**
-
-```ts
-import {blongEvents} from '@feasibleone/blong-browser';
-
-// Subscribe — returns an unsubscribe function
-const off = blongEvents.on('action:success', ({method, result}) => {
-    console.log('[blong]', method, result);
-});
-
-// Unsubscribe
-off();
-```
-
-**In React (useEffect):**
-
-```ts
-useEffect(() => {
-    return blongEvents.on('action:success', ({method, result}) => {
-        // show toast, update analytics, etc.
-    });
-}, []);
-```
-
-The Storybook `withDispatch` decorator uses `blongEvents.on('action:success', ...)` to show the
-configurable success toast — making it independent of the dispatch mock implementation.
-
 ---
 
 ## Schema registry
 
 `schemaRegistry` fetches `/openapi.json` on first use and caches enriched schemas per component
-name. `useBlongUi().schemaRegistry.resolve('ModelName')` returns an `IEnrichedSchema`.
-
-Widget config (`x-widget`) is normalized from the OpenAPI extension into `IWidgetConfig` at
-enrichment time. Field schemas drive: widget type resolution, validation rules, label display,
-required marker, and layout inference.
+name. `useBlongUi().schemaRegistry.resolve('ModelName')` returns an `IEnrichedSchema`. Widget
+config (`x-widget`) drives: widget type resolution, validation rules, label display, required
+marker, and layout inference.
 
 ---
 
 ## Component summary
 
-| Component      | Purpose                                                         |
-| -------------- | --------------------------------------------------------------- |
-| `App`          | Top-level composition root; wraps provider + theme + portal     |
-| `Portal`       | Menubar + TabView shell; opens actions as tabs                  |
-| `Editor`       | Form + toolbar + load/save lifecycle; schema-driven page editor |
-| `Form`         | react-hook-form wrapper; Card grid; owns all form state         |
-| `Explorer`     | DataTable list view + toolbar + optional tree navigator         |
-| `Report`       | Filter form + metrics summary cards + read-only DataTable       |
-| `Card`         | Labelled container for a group of widgets                       |
-| `Deck`         | PrimeFlex grid column; stacks one or more cards                 |
-| `ActionButton` | Button wired to an action name via dispatch                     |
-| `Navigator`    | Tree navigator panel for hierarchical browsing                  |
-| `ThumbIndex`   | Tabbed index navigation (letter or custom groups)               |
-| `Page`         | Simple page wrapper with title and breadcrumb                   |
-| `Permission`   | Render children only if `checkPermission(key)` passes           |
-| `Login`        | Login form; calls `auth.login` action on submit                 |
-| `Theme`        | PrimeReact theme loader (CSS-variable based, lara family)       |
+| Component      | Purpose                                                                    |
+| -------------- | -------------------------------------------------------------------------- |
+| `App`          | Top-level composition root; wraps provider + theme + portal                |
+| `Portal`       | Menubar + TabView shell; opens actions as tabs                             |
+| `Editor`       | Form + toolbar + load/save lifecycle; schema-driven page editor            |
+| `Form`         | react-hook-form wrapper; Card grid; owns all form state                    |
+| `Explorer`     | DataTable list view + toolbar + optional tree navigator                    |
+| `Report`       | Filter form + metrics summary cards + read-only DataTable                  |
+| `Card`         | Labelled container for a group of widgets                                  |
+| `Deck`         | PrimeFlex grid column; stacks one or more cards                            |
+| `Button`       | PrimeReact Button wrapper; auto-translates string `label` via `Text`       |
+| `Text`         | Inline text with auto-translation; children used as key + English fallback |
+| `ActionButton` | Button wired to an action name via dispatch                                |
+| `Navigator`    | Tree navigator panel for hierarchical browsing                             |
+| `ThumbIndex`   | Tabbed index navigation (letter or custom groups)                          |
+| `Page`         | Simple page wrapper with title and breadcrumb                              |
+| `Permission`   | Render children only if `checkPermission(key)` passes                      |
+| `Login`        | Login form; calls `auth.login` action on submit                            |
+| `Theme`        | PrimeReact theme loader; registers custom locales; activates active locale |
 
 ---
 
@@ -527,33 +500,28 @@ contract. Use it in Storybook decorators or wrap `withDispatch(mockDispatch)` fo
 **Template / reuse pattern:** Export a base story with `.args` set, then re-export it with
 `.bind({})` for variant sub-stories — mirrors the ut-prime pattern for avoiding JSX duplication.
 
-**Toast notifications:** The global `withDispatch` decorator subscribes to `blongEvents` and shows a
-success toast after any handler that looks like a mutation completes (default filter: exclude
-`portal.dropdown.list` and methods ending with `Get/Load/Find/List/Fetch`). The toast displays the
-method name and the JSON result. Control per story via `decorators`:
+**Language / translations:** Set `lang: 'bg'` (or any registered locale code) as a story arg —
+`withDispatch` activates translations and PrimeReact locale automatically. See the **blong-i18n**
+skill for setup details.
 
 ```ts
-// Show toasts for specific methods only
-MyStory.decorators = [withDispatch({}, {notify: ['marine.coral.add', 'marine.coral.edit']})];
-// Suppress all toasts for a story
-MyStory.decorators = [withDispatch({}, {notify: false})];
-// Show toasts for ALL methods (including reads)
-MyStory.decorators = [withDispatch({}, {notify: true})];
+export const ToolbarBG: StoryFn = Template.bind({});
+ToolbarBG.args = {lang: 'bg'};
 ```
 
-`NotifyConfig = boolean | string[] | ((method: string) => boolean)` — the predicate form lets you
-write any matching logic.
+**Toast notifications:** The global `withDispatch` decorator shows a success toast after mutations
+(excludes `portal.dropdown.list` and methods ending with `Get/Load/Find/List/Fetch`). Control per
+story via `decorators: [withDispatch({}, {notify: false})]` (suppress),
+`{notify: ['method.name']}` (specific), or `{notify: true}` (all).
+`NotifyConfig = boolean | string[] | ((method: string) => boolean)`.
 
-The toasts come from `blongEvents` (see Event bus section) — not from `onSave` or the dispatch mock
-directly. This means any code that subscribes to `blongEvents.on('action:success', ...)` gets the
-same notifications.
-
-**`play()` functions:** Use `within(canvasElement)` + `@testing-library/user-event` to simulate
-interactions. All Storybook stories with `play()` are run as Storybook interaction tests:
+**`play()` functions:** Use the modern Storybook 10 pattern — `canvas` and `userEvent` are provided
+as play context args (`canvas` is pre-scoped, no need for `within`). Run play functions in unit
+tests by passing `{canvas: within(container), userEvent}`. For translated stories, see **blong-i18n**
+for which labels are translated and which aren't.
 
 ```ts
-MyStory.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+MyStory.play = async ({canvas, userEvent}) => {
     await userEvent.click(await canvas.findByText('Row label'));
     await new Promise(r => setTimeout(r, 200)); // wait for reactive updates
 };
@@ -592,9 +560,10 @@ The portal orchestrator imports all matching handlers automatically without dire
 
 ## Debugging tips
 
-Check for any shared browser tabs, where the one using localhost:6006 is the blong-browser Storybook and
-another one hosted on chromatic.com. Use them to verify blong-browser is working as expected (e.g. the
-expected is on chromatic.com). Open the iframes to avoid the Storybook UI getting in the way.
+Check for any shared browser tabs, where the one using localhost:6006 is the blong-browser Storybook
+and another one hosted on chromatic.com. Use them to verify blong-browser is working as expected
+(e.g. the expected is on chromatic.com). Open the iframes to avoid the Storybook UI getting in the
+way.
 
 ---
 
@@ -604,6 +573,8 @@ expected is on chromatic.com). Open the iframes to avoid the Storybook UI gettin
   (createModelHandlers, entry files, schemaFetcher, dropdownRegistry, types, defaults, mock).
 - **blong-browser-model** — Use when a realm needs to define `IModelSpec` objects and use
   `createModelHandlers` to generate CRUD pages.
+- **blong-i18n** — Use when adding multi-language support, translating labels or validation
+  messages, wiring PrimeReact locale, or adding a `lang` story arg.
 
 Documentation:
 

@@ -10,36 +10,36 @@ export function buildValidationRules(schema: IEnrichedFieldSchema): RegisterOpti
     const rules: RegisterOptions = {};
 
     if (schema.required) {
-        rules.required = `"${schema.title ?? schema.name}" is required`;
+        rules.required = '{field} is required';
     }
     if (schema.minLength != null) {
         rules.minLength = {
             value: schema.minLength,
-            message: `"${schema.title ?? schema.name}" must be at least ${schema.minLength} characters`,
+            message: '{field} must be at least {minLength} characters',
         };
     }
     if (schema.maxLength != null) {
         rules.maxLength = {
             value: schema.maxLength,
-            message: `"${schema.title ?? schema.name}" must be at most ${schema.maxLength} characters`,
+            message: '{field} must be at most {maxLength} characters',
         };
     }
     if (schema.minimum != null) {
         rules.min = {
             value: schema.minimum,
-            message: `"${schema.title ?? schema.name}" must be at least ${schema.minimum}`,
+            message: '{field} must be at least {minimum}',
         };
     }
     if (schema.maximum != null) {
         rules.max = {
             value: schema.maximum,
-            message: `"${schema.title ?? schema.name}" must be at most ${schema.maximum}`,
+            message: '{field} must be at most {maximum}',
         };
     }
     if (schema.pattern) {
         rules.pattern = {
             value: new RegExp(schema.pattern),
-            message: `"${schema.title ?? schema.name}" has invalid format`,
+            message: '{field} has invalid format',
         };
     }
 

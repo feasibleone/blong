@@ -9,7 +9,9 @@
  * PRIMEREACT_PALETTE_THEMES to look up which CSS file to load for a
  * given palette + dark-mode combination.
  */
+import {addLocale, locale} from 'primereact/api';
 import {type ReactNode, useEffect} from 'react';
+import {useAppStore} from '../../state/appStore.js';
 import '../../styles/primereact-overrides.css';
 
 export type PaletteType = 'light' | 'dark' | 'big' | 'compact' | 'light-compact' | 'dark-compact';
@@ -44,6 +46,12 @@ export interface IThemeConfig {
     primary?: string;
     /** Override the font size (px). Defaults to palette-based size. */
     fontSize?: number;
+    /**
+     * Custom PrimeReact locale data per language code.
+     * Each entry is registered via addLocale(lang, options).
+     * Only needed for locales not already bundled with PrimeReact.
+     */
+    languages?: Record<string, object>;
 }
 
 interface IThemeProps {
@@ -52,6 +60,20 @@ interface IThemeProps {
 }
 
 export function Theme({theme, children}: IThemeProps) {
+    const language = useAppStore(s => s.language);
+
+    useEffect(() => {
+        if (theme.languages) {
+            for (const [lang, options] of Object.entries(theme.languages)) {
+                addLocale(lang, options as Parameters<typeof addLocale>[1]);
+            }
+        }
+    }, [theme.languages]);
+
+    useEffect(() => {
+        locale(language && language !== 'en' ? language : 'en');
+    }, [language]);
+
     useEffect(() => {
         const palette = theme.palette ?? 'dark-compact';
         const fontSize = theme.fontSize ?? PALETTE_FONT_SIZES[palette];

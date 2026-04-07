@@ -19,7 +19,9 @@ exports[`Card > renders collapsible card 1`] = `
           <i
             class="pi pi-chevron-down blong-card__collapse-icon"
           />
-          Collapsible
+          <span>
+            Collapsible
+          </span>
         </span>
       </div>
       <div
@@ -53,7 +55,9 @@ exports[`Card > renders label and children 1`] = `
         <span
           class="blong-card__label"
         >
-          My Card
+          <span>
+            My Card
+          </span>
         </span>
       </div>
       <div
@@ -108,7 +112,9 @@ exports[`Card > shows loading state 1`] = `
         <span
           class="blong-card__label"
         >
-          Loading
+          <span>
+            Loading
+          </span>
         </span>
       </div>
       <div

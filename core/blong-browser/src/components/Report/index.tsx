@@ -4,7 +4,6 @@
  * Combines a filter bar, a summary section (cards), and a detail DataTable.
  * Designed for print/export-oriented display of aggregated data.
  */
-import {Button} from 'primereact/button';
 import {Column} from 'primereact/column';
 import {DataTable} from 'primereact/datatable';
 import {Panel} from 'primereact/panel';
@@ -13,6 +12,7 @@ import {Toolbar} from 'primereact/toolbar';
 import {useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import type {IEnrichedSchema} from '../../types/widget.js';
+import {Button} from '../Button/index.js';
 import {Form} from '../Form/index.js';
 
 export interface IReportColumn {

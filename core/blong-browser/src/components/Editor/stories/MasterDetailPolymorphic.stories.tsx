@@ -6,8 +6,6 @@
  * Each detail card uses `card.watch: 'shape'` to display the selected row's fields.
  */
 import type {Meta} from '@storybook/react';
-import {within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
@@ -104,8 +102,7 @@ export const MasterDetailPolymorphic: StoryFn = () => (
     />
 );
 
-MasterDetailPolymorphic.play = async ({canvasElement}) => {
-    const canvas = within(canvasElement);
+MasterDetailPolymorphic.play = async ({canvas, userEvent}) => {
     // Wait for data to render
     const ellipseRow = await canvas.findByText('Small ellipse');
     await userEvent.click(ellipseRow);
