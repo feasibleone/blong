@@ -469,8 +469,8 @@
             "tags": ["core"]
         },
         {
-            "packageName": "@feasibleone/blong-ui",
-            "projectFolder": "core/blong-ui",
+            "packageName": "@feasibleone/blong-browser",
+            "projectFolder": "core/blong-browser",
             "reviewCategory": "core",
             "tags": ["core"]
         },

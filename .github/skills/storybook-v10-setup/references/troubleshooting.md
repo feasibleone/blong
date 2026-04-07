@@ -217,7 +217,7 @@ viteFinal(config) {
 http://localhost:6006/@fs/home/.../common/temp/node_modules/.pnpm/primeicons@6.0.1/node_modules/primeicons/fonts/primeicons.woff
 ```
 
-**Cause**: Vite's dev server filesystem security (`server.fs.allow`) only permits files within the project root by default. In a Rush monorepo, packages like `primeicons` resolve through the pnpm virtual store at `common/temp/node_modules/.pnpm/...`, which is outside the `blong-ui` package root.
+**Cause**: Vite's dev server filesystem security (`server.fs.allow`) only permits files within the project root by default. In a Rush monorepo, packages like `primeicons` resolve through the pnpm virtual store at `common/temp/node_modules/.pnpm/...`, which is outside the `blong-browser` package root.
 
 **Fix**: Add `server.fs.allow` in `viteFinal` in `.storybook/main.ts`:
 

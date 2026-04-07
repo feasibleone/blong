@@ -34,7 +34,7 @@ local scratch area; `docs/` — documentation site.
 
 ### Reusable realms
 
-- `core/blong-ui/` - realm for the browser platform
+- `core/blong-browser/` - realm for the browser platform
 - `core/blong-test/` - realm for public API testing, simulating browser-side requests
 - `core/blong-login/` - realm for authentication
 
@@ -148,9 +148,9 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Setting up Storybook                     | **storybook-v10-setup**                               |
 | Developing with Storybook                | **storybook-testing-workflow**                        |
 | Viewing real-time logs                   | **blong-log**                                         |
-| Implementing blong-ui components         | **blong-ui**                                          |
-| Using the model for realm CRUD pages     | **blong-ui-model**                                    |
-| Developing the model system internals    | **blong-ui-model-dev**                                |
+| Implementing blong-browser components    | **blong-browser**                                     |
+| Using the model for realm CRUD pages     | **blong-model**                                       |
+| Developing the model system internals    | **blong-model-dev**                                   |
 
 **For understanding concepts:**
 

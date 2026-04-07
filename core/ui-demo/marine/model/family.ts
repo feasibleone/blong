@@ -1,4 +1,4 @@
-import type {IModelSpec} from '@feasibleone/blong-ui';
+import type {IModelSpec} from '@feasibleone/blong-browser';
 
 export const family: IModelSpec = {
     subject: 'marine',

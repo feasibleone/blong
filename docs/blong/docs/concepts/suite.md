@@ -37,7 +37,7 @@ For more information see the [suite](../patterns/suite.md) patterns.
 
 Suites can include a browser entry point (`browser.ts`) that provides a
 rich, metadata-driven user interface. The browser platform uses the
-`@feasibleone/blong-ui` package to automatically generate forms, tables
+`@feasibleone/blong-browser` package to automatically generate forms, tables
 and detail views from the server's OpenAPI schema.
 
 ### Browser Entry Point

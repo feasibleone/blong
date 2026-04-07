@@ -7,13 +7,13 @@
  *
  * Usage:
  *
- *   import {setupModelMock} from '@feasibleone/blong-ui';
+ *   import {setupModelMock} from '@feasibleone/blong-browser';
  *   import {marineMock} from '../model/mock.js';
  *   setupModelMock(marineMock);
  *
  * Mirrors the pattern from ut-rule/model/dropdown.js + ut-rule/model/condition.mock.js.
  */
-import type {IModelMockOptions} from '@feasibleone/blong-ui/src/model/mock.js';
+import type {IModelMockOptions} from '@feasibleone/blong-browser/src/model/mock.js';
 
 /** Minimal OpenAPI-shaped schema for each marine object */
 const marineOpenApi = {

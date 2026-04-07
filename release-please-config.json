@@ -14,7 +14,7 @@
         "core/blong-sim-api": {},
         "core/blong-sim-tcp": {},
         "core/blong-ttk": {},
-        "core/blong-ui": {},
+        "core/blong-browser": {},
         "core/test": {},
         "core/ui-demo": {},
         "docs/blong": {},

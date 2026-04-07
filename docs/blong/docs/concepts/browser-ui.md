@@ -10,20 +10,20 @@ For the design rationale that explains *why* these choices were made see
 [Metadata-Driven UI](../rationale/metadata-driven-ui.md).
 
 For implementation patterns see
-[Modular UI](../patterns/blong-ui.md).
+[Modular UI](../patterns/blong-browser.md).
 
 ---
 
-## Where blong-ui Sits in the Architecture
+## Where blong-browser Sits in the Architecture
 
-`blong-ui` (`core/blong-ui/`) is a **blong realm** that provides the
+`blong-browser` (`core/blong-browser/`) is a **blong realm** that provides the
 shared UI infrastructure for all browser-side suites. It is not a
 standalone UI library — it is a proper realm loaded into a suite's
 browser entry point as a peer alongside application realms.
 
 ```
 Suite (browser.ts)
-  └── blong-ui realm          ← @feasibleone/blong-ui/browser.js
+  └── blong-browser realm          ← @feasibleone/blong-browser/browser.js
         ├── adapter/backend   ← HTTP/JSON-RPC to Blong server gateway
         ├── adapter/storage   ← Browser localStorage
         ├── orchestrator/auth ← Session management
@@ -33,7 +33,7 @@ Suite (browser.ts)
         └── orchestrator/…    ← realm business logic
 ```
 
-Application realms sit alongside blong-ui. They do not import blong-ui
+Application realms sit alongside blong-browser. They do not import blong-browser
 code directly. Instead, they register page handlers by file-naming
 convention (`*.component`, `*.portal`, `*.actions`) and the portal
 orchestrator discovers and wires them automatically through the handler
@@ -132,7 +132,7 @@ match three file-naming patterns:
 
 Any realm that places files following these naming conventions
 automatically participates in the portal without a direct dependency on
-blong-ui. This is the primary mechanism for building multi-realm
+blong-browser. This is the primary mechanism for building multi-realm
 browser-side suites.
 
 ---
@@ -143,14 +143,14 @@ For common CRUD workflows, the **model system** (`src/model/`) provides a
 higher-level abstraction: an `IModelSpec` declaration is sufficient to
 generate Browse / New / Open / Report pages for an entity automatically.
 
-See [Model System](blong-ui-model.md) for the concept and
-[Schema based UI](../patterns/blong-ui-model.md) for usage.
+See [Model System](blong-model.md) for the concept and
+[Schema based UI](../patterns/blong-model.md) for usage.
 
 ---
 
 ## Storybook
 
-Storybook (`core/blong-ui/.storybook/`) provides isolated development of
+Storybook (`core/blong-browser/.storybook/`) provides isolated development of
 all components. Stories mock the dispatch function so components can be
 developed and tested without a running Blong server. The canonical
 example domain is **marine biology** (corals, habitats, fish families).

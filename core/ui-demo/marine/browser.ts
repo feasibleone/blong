@@ -2,7 +2,7 @@
  * marine/browser.ts — marine biology demonstration realm.
  *
  * Contributes component handlers, action metadata, and an orchestrator to
- * the blong-ui registry.  The auto-discovery mechanism picks up:
+ * the blong-browser registry.  The auto-discovery mechanism picks up:
  *
  *   component/  — coral/habitat/species/family component handlers
  *   actions/    — action metadata for all marine interactions

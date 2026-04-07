@@ -1,8 +1,8 @@
-import { Editor, Explorer } from '@feasibleone/blong-ui';
-import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
-import { mockHabitats } from '../../mockData.js';
-import { habitatSchema } from '../../schemas.js';
+import {Editor, Explorer} from '@feasibleone/blong-browser';
+import type {Meta, StoryObj} from '@storybook/react';
+import {useState} from 'react';
+import {mockHabitats} from '../../mockData.js';
+import {habitatSchema} from '../../schemas.js';
 
 const meta: Meta = {
     title: 'Marine/Habitat',
@@ -35,7 +35,11 @@ export const HabitatExplorer: StoryObj = {
                 </div>
                 {selected && (
                     <div style={{width: 420}}>
-                        <Editor schema={habitatSchema} value={selected} editable />
+                        <Editor
+                            schema={habitatSchema}
+                            value={selected}
+                            editable
+                        />
                     </div>
                 )}
             </div>
@@ -44,5 +48,11 @@ export const HabitatExplorer: StoryObj = {
 };
 
 export const HabitatEditor: StoryObj = {
-    render: () => <Editor schema={habitatSchema} value={mockHabitats[0]} editMode />,
+    render: () => (
+        <Editor
+            schema={habitatSchema}
+            value={mockHabitats[0]}
+            editMode
+        />
+    ),
 };

@@ -1,4 +1,4 @@
-import {Editor, Explorer} from '@feasibleone/blong-ui';
+import {Editor, Explorer} from '@feasibleone/blong-browser';
 import type {Meta, StoryObj} from '@storybook/react';
 import {mockSpecies} from '../../mockData.js';
 import {speciesSchema} from '../../schemas.js';

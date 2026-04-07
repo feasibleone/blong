@@ -14,12 +14,12 @@ entities, each with dozens of fields, multiple CRUD operations and
 role-based visibility rules. Writing bespoke React components for every
 screen does not scale.
 
-For how this vision is realised in blong-ui see:
+For how this vision is realised in blong-browser see:
 
 - [Browser UI](../concepts/browser-ui.md) — concept
-- [Model System](../concepts/blong-ui-model.md) — concept
-- [Modular UI](../patterns/blong-ui.md) — how-to guide
-- [Schema based UI](../patterns/blong-ui-model.md) — how-to guide for the model system
+- [Model System](../concepts/blong-model.md) — concept
+- [Modular UI](../patterns/blong-browser.md) — how-to guide
+- [Schema based UI](../patterns/blong-model.md) — how-to guide for the model system
 
 ## Prior Art: react-jsonschema-form
 
@@ -27,7 +27,7 @@ The open-source library [react-jsonschema-form](https://github.com/rjsf-team/rea
 similar approach by generating forms from JSON Schema definitions. It supports validation, custom widgets, and layout
 customization, allowing developers to focus on the data model rather than the UI implementation. However, it is
 primarily focused on form generation and does not provide a complete solution for building complex CRUD interfaces,
-navigation, or integration with backend APIs. Blong-ui builds on the idea of schema-driven UI but extends it to
+navigation, or integration with backend APIs. blong-browser builds on the idea of schema-driven UI but extends it to
 cover the full spectrum of UI needs in an enterprise application, including layouts, tables, detail views, role-based
 access control, translation and a modular architecture for contributing pages from multiple realms. It is also
 well aligned with the Blong framework's architectural principles and patterns.
@@ -199,7 +199,7 @@ the UI reads that document to generate forms, tables, and validation rules
 automatically. The key principle: **the TypeBox type written for a handler is
 the model** — no separate model layer is needed.
 
-The implementation (`core/blong-ui`) contains a schema registry that fetches and
+The implementation (`core/blong-browser`) contains a schema registry that fetches and
 enriches per-subject OpenAPI documents at runtime, a widget resolution layer that
 maps JSON Schema types and extension fields to PrimeReact components, and four
 high-level page components (Editor, Explorer, Report, and their model-driven

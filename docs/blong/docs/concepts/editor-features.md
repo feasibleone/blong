@@ -1,7 +1,7 @@
 # Editor Features
 
 The `Editor` component is the most important and complex feature of the
-blong-ui framework. It combines a schema-driven form, a configurable toolbar,
+blong-browser framework. It combines a schema-driven form, a configurable toolbar,
 a rich layout system, and a set of advanced interaction patterns into a single
 composable component that covers the majority of entity editing use cases.
 
@@ -9,8 +9,8 @@ This document is a **feature guide and placeholder**. Detailed sub-sections
 with code examples and Storybook screenshots will be added as each feature
 is stabilised.
 
-For implementation reference see `core/blong-ui/src/components/Editor/`.
-For usage patterns see [Modular UI](../patterns/blong-ui.md).
+For implementation reference see `core/blong-browser/src/components/Editor/`.
+For usage patterns see [Modular UI](../patterns/blong-browser.md).
 
 ---
 
@@ -273,4 +273,4 @@ The `blongEvents` singleton emits `action:before`, `action:success`, and
 `action:error` events for every dispatch call. The Storybook `withDispatch`
 decorator uses this to show success toasts after mutations.
 
-_[See blong-ui SKILL.md for event bus API]_
+_[See blong-browser SKILL.md for event bus API]_

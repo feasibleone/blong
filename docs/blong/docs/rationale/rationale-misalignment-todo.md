@@ -111,7 +111,7 @@ recommendation to help decide whether to update the docs, the code, or both.
    have no executable demos.**
 
 - Misalignment: the rationale describes these patterns in detail (drawn from
-  ut-prime) but `core/blong-ui` has no Storybook stories or integration tests
+  ut-prime) but `core/blong-browser` has no Storybook stories or integration tests
   exercising them.
 - Task: add at minimum one Storybook story per advanced pattern with a minimal
   reproducible example.
@@ -132,10 +132,10 @@ recommendation to help decide whether to update the docs, the code, or both.
   maintain forwards compatibility.
 
 **11. The design editor is documented as a feature but is not yet in
-    `core/blong-ui`.**
+    `core/blong-browser`.**
 
 - Misalignment: the rationale describes a drag-and-drop design editor with
-  persistence. No such component exists in the current `blong-ui` source.
+  persistence. No such component exists in the current `blong-browser` source.
 - Task: create a tracking issue for the design editor; add a "Not yet
   implemented" note in the rationale.
 - Recommendation: defer the editor until the base form/table generation is

@@ -2,16 +2,16 @@
     "name": "@feasibleone/ui-demo",
     "version": "1.0.0",
     "private": true,
-    "description": "Marine biology demo blong suite showcasing @feasibleone/blong-ui realm patterns",
+    "description": "Marine biology demo blong suite showcasing @feasibleone/blong-browser realm patterns",
     "type": "module",
     "scripts": {
-        "dev": "vite",
         "build": "true",
+        "dev": "vite",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
-        "@feasibleone/blong-ui": "workspace:^",
+        "@feasibleone/blong-browser": "workspace:^",
         "react": "^19.1.0",
         "react-dom": "^19.1.0"
     },

@@ -1,7 +1,7 @@
 /**
  * browser.ts — ui-demo suite browser entry point.
  *
- * Wires the blong-ui built-in realm (RPC adapter, auth, portal) with the
+ * Wires the blong-browser built-in realm (RPC adapter, auth, portal) with the
  * marine biology demonstration realm so the two can cooperate in a single
  * browser registry during development and integration tests.
  */
@@ -14,9 +14,9 @@ export default browser(blong => ({
         marine: blong.type.Object({}),
     }),
     children: [
-        /** Built-in blong-ui realm: RPC, auth, portal, auth orchestrators */
+        /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
         async function blongUi() {
-            return import('@feasibleone/blong-ui/browser.ts');
+            return import('@feasibleone/blong-browser/browser.ts');
         },
         /** Marine biology demonstration realm */
         './marine',

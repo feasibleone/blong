@@ -1,7 +1,7 @@
-import { Editor, Explorer } from '@feasibleone/blong-ui';
-import type { Meta, StoryObj } from '@storybook/react';
-import { mockFamilies } from '../../mockData.js';
-import { familySchema } from '../../schemas.js';
+import {Editor, Explorer} from '@feasibleone/blong-browser';
+import type {Meta, StoryObj} from '@storybook/react';
+import {mockFamilies} from '../../mockData.js';
+import {familySchema} from '../../schemas.js';
 
 const meta: Meta = {
     title: 'Marine/Family',
@@ -20,11 +20,20 @@ const columns = [
 export const FamilyExplorer: StoryObj = {
     render: () => (
         <div style={{height: 600}}>
-            <Explorer schema={familySchema} columns={columns} />
+            <Explorer
+                schema={familySchema}
+                columns={columns}
+            />
         </div>
     ),
 };
 
 export const FamilyEditor: StoryObj = {
-    render: () => <Editor schema={familySchema} value={mockFamilies[0]} editMode />,
+    render: () => (
+        <Editor
+            schema={familySchema}
+            value={mockFamilies[0]}
+            editMode
+        />
+    ),
 };

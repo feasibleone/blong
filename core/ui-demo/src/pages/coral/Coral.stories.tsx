@@ -1,11 +1,11 @@
 /**
  * Coral Explorer — list and drill-down of coral species.
  */
-import { Editor, Explorer } from '@feasibleone/blong-ui';
-import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
-import { mockCorals } from '../../mockData.js';
-import { coralSchema } from '../../schemas.js';
+import {Editor, Explorer} from '@feasibleone/blong-browser';
+import type {Meta, StoryObj} from '@storybook/react';
+import {useState} from 'react';
+import {mockCorals} from '../../mockData.js';
+import {coralSchema} from '../../schemas.js';
 
 const meta: Meta = {
     title: 'Marine/Coral',

@@ -1,4 +1,4 @@
-import type {IModelSpec} from '@feasibleone/blong-ui';
+import type {IModelSpec} from '@feasibleone/blong-browser';
 import {coral} from './coral.js';
 import {family} from './family.js';
 import {habitat} from './habitat.js';

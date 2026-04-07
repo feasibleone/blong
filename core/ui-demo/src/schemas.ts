@@ -2,7 +2,7 @@
  * Marine biology domain schemas.
  * Used throughout the ui-demo Storybook stories.
  */
-import type {IEnrichedSchema} from '@feasibleone/blong-ui';
+import type {IEnrichedSchema} from '@feasibleone/blong-browser';
 
 /** Coral entity schema */
 export const coralSchema: IEnrichedSchema = {
