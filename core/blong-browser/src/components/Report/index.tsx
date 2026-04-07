@@ -157,8 +157,8 @@ export function Report({
             {/* Data table */}
             <div className="blong-report-table">
                 <Toolbar
-                    start={title ? <h3 className="blong-report-title">{title}</h3> : undefined}
-                    end={
+                    left={title ? <h3 className="blong-report-title">{title}</h3> : undefined}
+                    right={
                         <div>
                             <Button
                                 icon="pi pi-refresh"

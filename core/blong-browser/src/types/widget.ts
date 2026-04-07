@@ -189,8 +189,12 @@ export interface IEnrichedFieldSchema {
     };
     /** Include field in filter panel */
     'x-filter'?: boolean;
+    /** Enable inline column filtering (shows filter row in DataTable) */
+    'x-filterable'?: boolean;
     /** Enable column sorting */
     'x-sort'?: boolean;
+    /** Action method name — renders the field cell as a clickable link */
+    action?: string;
     /** Card names to show this field in */
     'x-cards'?: string[];
     /** Raw x-widget extension from OpenAPI */

@@ -1,296 +1,282 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`Explorer > renders DataView in grid layout mode 1`] = `
+<div>
+  <div
+    class="blong-explorer "
+    style="display: flex; flex-direction: column; height: 100%;"
+  >
+    <style>
+      .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
+    </style>
+    <div
+      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      role="toolbar"
+      style="background: none;"
+    >
+      <div
+        class="p-toolbar-group-left"
+      >
+        <div
+          class="blong-toolbar-left"
+        />
+      </div>
+      <div
+        class="p-toolbar-group-right"
+      >
+        <div
+          class="blong-toolbar-right"
+        >
+          <button
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+          >
+            <span
+              class="p-button-icon p-c pi pi-search"
+            />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
+          </button>
+          <span
+            class="p-input-icon-left mr-2"
+            style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;"
+          >
+            <i
+              class="pi pi-search"
+              style="position: absolute; left: 0.5rem; pointer-events: none;"
+            />
+            <input
+              class="p-inputtext p-component blong-explorer-search"
+              placeholder="Search…"
+              style="width: 10rem; padding-left: 1.75rem;"
+              value=""
+            />
+          </span>
+          <button
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            style="opacity: 0.5;"
+          >
+            <span
+              class="p-button-icon p-c pi pi-cog"
+            />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div
+      style="flex: 1 1 0%; min-height: 0;"
+    >
+      <div
+        class="blong-explorer-table"
+        style="display: flex; flex-direction: column; height: 100%;"
+      >
+        <div
+          class="p-dataview p-component p-dataview-grid blong-explorer-dv"
+          style="flex: 1 1 0%; overflow: auto;"
+        >
+          <div
+            class="p-dataview-content"
+          >
+            <div
+              class="p-grid grid p-nogutter grid-nogutter"
+            >
+              <div
+                class="p-col-12 col-12 p-dataview-emptymessage"
+              >
+                No records found.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`Explorer > renders empty state with no listAction 1`] = `
 <div>
   <div
     class="blong-explorer "
+    style="display: flex; flex-direction: column; height: 100%;"
   >
+    <style>
+      .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
+    </style>
     <div
-      class="blong-explorer-table"
+      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      role="toolbar"
+      style="background: none;"
     >
       <div
-        class="p-toolbar p-component blong-explorer-toolbar"
-        end="[object Object]"
-        role="toolbar"
+        class="p-toolbar-group-left"
       >
         <div
-          class="p-toolbar-group-left"
-        />
-        <div
-          class="p-toolbar-group-right"
+          class="blong-toolbar-left"
         />
       </div>
       <div
-        class="p-datatable p-component p-datatable-selectable p-datatable-scrollable p-datatable-flex-scrollable p-datatable-sm blong-explorer-dt"
-        data-scrollselectors=".p-datatable-wrapper"
-        pr_id_1=""
+        class="p-toolbar-group-right"
       >
         <div
-          class="p-paginator p-component p-paginator-top"
+          class="blong-toolbar-right"
         >
           <button
-            aria-label="First Page"
-            class="p-paginator-first p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-button p-component p-button-text mr-2 ml-2 p-button-icon-only"
+            style="opacity: 0.5;"
           >
             <span
-              class="p-paginator-icon pi pi-angle-double-left"
+              class="p-button-icon p-c pi pi-arrows-h"
             />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
           </button>
           <button
-            aria-label="Previous Page"
-            class="p-paginator-prev p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
           >
             <span
-              class="p-paginator-icon pi pi-angle-left"
+              class="p-button-icon p-c pi pi-search"
             />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
           </button>
           <span
-            class="p-paginator-pages"
-          />
-          <button
-            aria-label="Next Page"
-            class="p-paginator-next p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-input-icon-left mr-2"
+            style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;"
           >
-            <span
-              class="p-paginator-icon pi pi-angle-right"
+            <i
+              class="pi pi-search"
+              style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
-          </button>
-          <button
-            aria-label="Last Page"
-            class="p-paginator-last p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-right"
+            <input
+              class="p-inputtext p-component blong-explorer-search"
+              placeholder="Search…"
+              style="width: 10rem; padding-left: 1.75rem;"
+              value=""
             />
-          </button>
-          <div
-            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          </span>
+          <button
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            style="opacity: 0.5;"
           >
-            <div
-              class="p-hidden-accessible"
-            >
-              <input
-                aria-haspopup="listbox"
-                aria-label="Choose"
-                disabled=""
-                readonly=""
-                type="text"
-              />
-            </div>
-            <div
-              class="p-hidden-accessible p-dropdown-hidden-select"
-            >
-              <select
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option
-                  selected=""
-                  value="25"
-                >
-                  25
-                </option>
-              </select>
-            </div>
             <span
-              class="p-dropdown-label p-inputtext"
+              class="p-button-icon p-c pi pi-cog"
+            />
+            <span
+              class="p-button-label p-c"
             >
-              25
+               
             </span>
-            <div
-              aria-expanded="false"
-              aria-haspopup="listbox"
-              aria-label="Choose"
-              class="p-dropdown-trigger"
-              role="button"
-            >
-              <span
-                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
-              />
-            </div>
-          </div>
+          </button>
         </div>
+      </div>
+    </div>
+    <div
+      style="flex: 1 1 0%; min-height: 0;"
+    >
+      <div
+        class="blong-explorer-table"
+        style="display: flex; flex-direction: column; height: 100%;"
+      >
         <div
-          class="p-datatable-wrapper"
-          style="max-height: flex;"
+          class="p-datatable p-component p-datatable-selectable p-datatable-sm blong-explorer-dt"
+          data-scrollselectors=".p-datatable-wrapper"
+          pr_id_1=""
+          style="flex: 1 1 0%; min-height: 0;"
         >
-          <table
-            class="p-datatable-table"
-            role="table"
-          >
-            <thead
-              class="p-datatable-thead"
-            >
-              <tr
-                role="row"
-              >
-                <th
-                  class="p-selection-column"
-                  role="columnheader"
-                  style="width: 40px;"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
-                    />
-                  </div>
-                </th>
-                <th
-                  aria-sort="none"
-                  class="p-sortable-column"
-                  role="columnheader"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
-                    >
-                      Name
-                    </span>
-                    <span
-                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                    />
-                  </div>
-                </th>
-                <th
-                  aria-sort="none"
-                  class="p-sortable-column"
-                  role="columnheader"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
-                    >
-                      Size
-                    </span>
-                    <span
-                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                    />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody
-              class="p-datatable-tbody"
-            >
-              <tr
-                class="p-datatable-emptymessage"
-                role="row"
-              >
-                <td
-                  colspan="3"
-                  role="cell"
-                >
-                  No records found.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div
-          class="p-paginator p-component p-paginator-bottom"
-        >
-          <button
-            aria-label="First Page"
-            class="p-paginator-first p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-left"
-            />
-          </button>
-          <button
-            aria-label="Previous Page"
-            class="p-paginator-prev p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-left"
-            />
-          </button>
-          <span
-            class="p-paginator-pages"
-          />
-          <button
-            aria-label="Next Page"
-            class="p-paginator-next p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-right"
-            />
-          </button>
-          <button
-            aria-label="Last Page"
-            class="p-paginator-last p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-right"
-            />
-          </button>
           <div
-            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+            class="p-datatable-wrapper"
           >
-            <div
-              class="p-hidden-accessible"
+            <table
+              class="p-datatable-table"
+              role="table"
             >
-              <input
-                aria-haspopup="listbox"
-                aria-label="Choose"
-                disabled=""
-                readonly=""
-                type="text"
-              />
-            </div>
-            <div
-              class="p-hidden-accessible p-dropdown-hidden-select"
-            >
-              <select
-                aria-hidden="true"
-                tabindex="-1"
+              <thead
+                class="p-datatable-thead"
               >
-                <option
-                  selected=""
-                  value="25"
+                <tr
+                  role="row"
                 >
-                  25
-                </option>
-              </select>
-            </div>
-            <span
-              class="p-dropdown-label p-inputtext"
-            >
-              25
-            </span>
-            <div
-              aria-expanded="false"
-              aria-haspopup="listbox"
-              aria-label="Choose"
-              class="p-dropdown-trigger"
-              role="button"
-            >
-              <span
-                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
-              />
-            </div>
+                  <th
+                    class="p-selection-column"
+                    role="columnheader"
+                    style="width: 40px;"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      />
+                    </div>
+                  </th>
+                  <th
+                    aria-sort="none"
+                    class="p-sortable-column"
+                    role="columnheader"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      >
+                        Name
+                      </span>
+                      <span
+                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                      />
+                    </div>
+                  </th>
+                  <th
+                    aria-sort="none"
+                    class="p-sortable-column"
+                    role="columnheader"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      >
+                        Size
+                      </span>
+                      <span
+                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                      />
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody
+                class="p-datatable-tbody"
+              >
+                <tr
+                  class="p-datatable-emptymessage"
+                  role="row"
+                >
+                  <td
+                    colspan="3"
+                    role="cell"
+                  >
+                    No records found.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -303,275 +289,180 @@ exports[`Explorer > renders toolbar 1`] = `
 <div>
   <div
     class="blong-explorer "
+    style="display: flex; flex-direction: column; height: 100%;"
   >
+    <style>
+      .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
+    </style>
     <div
-      class="blong-explorer-table"
+      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      role="toolbar"
+      style="background: none;"
     >
       <div
-        class="p-toolbar p-component blong-explorer-toolbar"
-        end="[object Object]"
-        role="toolbar"
+        class="p-toolbar-group-left"
       >
         <div
-          class="p-toolbar-group-left"
-        />
-        <div
-          class="p-toolbar-group-right"
-        />
+          class="blong-toolbar-left"
+        >
+          <span
+            style="display: inline-block;"
+          >
+            <button
+              aria-label="Add"
+              class="p-button p-component blong-action-btn mr-2"
+            >
+              <span
+                class="p-button-icon p-c p-button-icon-left pi-plus"
+              />
+              <span
+                class="p-button-label p-c"
+              >
+                <span>
+                  Add
+                </span>
+              </span>
+            </button>
+          </span>
+        </div>
       </div>
       <div
-        class="p-datatable p-component p-datatable-selectable p-datatable-scrollable p-datatable-flex-scrollable p-datatable-sm blong-explorer-dt"
-        data-scrollselectors=".p-datatable-wrapper"
-        pr_id_2=""
+        class="p-toolbar-group-right"
       >
         <div
-          class="p-paginator p-component p-paginator-top"
+          class="blong-toolbar-right"
         >
           <button
-            aria-label="First Page"
-            class="p-paginator-first p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-button p-component p-button-text mr-2 ml-2 p-button-icon-only"
+            style="opacity: 0.5;"
           >
             <span
-              class="p-paginator-icon pi pi-angle-double-left"
+              class="p-button-icon p-c pi pi-arrows-h"
             />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
           </button>
           <button
-            aria-label="Previous Page"
-            class="p-paginator-prev p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
           >
             <span
-              class="p-paginator-icon pi pi-angle-left"
+              class="p-button-icon p-c pi pi-search"
             />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
           </button>
           <span
-            class="p-paginator-pages"
-          />
-          <button
-            aria-label="Next Page"
-            class="p-paginator-next p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-input-icon-left mr-2"
+            style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;"
           >
-            <span
-              class="p-paginator-icon pi pi-angle-right"
+            <i
+              class="pi pi-search"
+              style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
-          </button>
-          <button
-            aria-label="Last Page"
-            class="p-paginator-last p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-right"
+            <input
+              class="p-inputtext p-component blong-explorer-search"
+              placeholder="Search…"
+              style="width: 10rem; padding-left: 1.75rem;"
+              value=""
             />
-          </button>
-          <div
-            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          </span>
+          <button
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            style="opacity: 0.5;"
           >
-            <div
-              class="p-hidden-accessible"
-            >
-              <input
-                aria-haspopup="listbox"
-                aria-label="Choose"
-                disabled=""
-                readonly=""
-                type="text"
-              />
-            </div>
-            <div
-              class="p-hidden-accessible p-dropdown-hidden-select"
-            >
-              <select
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option
-                  selected=""
-                  value="25"
-                >
-                  25
-                </option>
-              </select>
-            </div>
             <span
-              class="p-dropdown-label p-inputtext"
+              class="p-button-icon p-c pi pi-cog"
+            />
+            <span
+              class="p-button-label p-c"
             >
-              25
+               
             </span>
-            <div
-              aria-expanded="false"
-              aria-haspopup="listbox"
-              aria-label="Choose"
-              class="p-dropdown-trigger"
-              role="button"
-            >
-              <span
-                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
-              />
-            </div>
-          </div>
+          </button>
         </div>
+      </div>
+    </div>
+    <div
+      style="flex: 1 1 0%; min-height: 0;"
+    >
+      <div
+        class="blong-explorer-table"
+        style="display: flex; flex-direction: column; height: 100%;"
+      >
         <div
-          class="p-datatable-wrapper"
-          style="max-height: flex;"
+          class="p-datatable p-component p-datatable-selectable p-datatable-sm blong-explorer-dt"
+          data-scrollselectors=".p-datatable-wrapper"
+          pr_id_2=""
+          style="flex: 1 1 0%; min-height: 0;"
         >
-          <table
-            class="p-datatable-table"
-            role="table"
+          <div
+            class="p-datatable-wrapper"
           >
-            <thead
-              class="p-datatable-thead"
+            <table
+              class="p-datatable-table"
+              role="table"
             >
-              <tr
-                role="row"
+              <thead
+                class="p-datatable-thead"
               >
-                <th
-                  class="p-selection-column"
-                  role="columnheader"
-                  style="width: 40px;"
+                <tr
+                  role="row"
                 >
-                  <div
-                    class="p-column-header-content"
+                  <th
+                    class="p-selection-column"
+                    role="columnheader"
+                    style="width: 40px;"
                   >
-                    <span
-                      class="p-column-title"
-                    />
-                  </div>
-                </th>
-                <th
-                  aria-sort="none"
-                  class="p-sortable-column"
-                  role="columnheader"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
+                    <div
+                      class="p-column-header-content"
                     >
-                      Name
-                    </span>
-                    <span
-                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                    />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody
-              class="p-datatable-tbody"
-            >
-              <tr
-                class="p-datatable-emptymessage"
-                role="row"
+                      <span
+                        class="p-column-title"
+                      />
+                    </div>
+                  </th>
+                  <th
+                    aria-sort="none"
+                    class="p-sortable-column"
+                    role="columnheader"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      >
+                        Name
+                      </span>
+                      <span
+                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                      />
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody
+                class="p-datatable-tbody"
               >
-                <td
-                  colspan="2"
-                  role="cell"
+                <tr
+                  class="p-datatable-emptymessage"
+                  role="row"
                 >
-                  No records found.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div
-          class="p-paginator p-component p-paginator-bottom"
-        >
-          <button
-            aria-label="First Page"
-            class="p-paginator-first p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-left"
-            />
-          </button>
-          <button
-            aria-label="Previous Page"
-            class="p-paginator-prev p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-left"
-            />
-          </button>
-          <span
-            class="p-paginator-pages"
-          />
-          <button
-            aria-label="Next Page"
-            class="p-paginator-next p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-right"
-            />
-          </button>
-          <button
-            aria-label="Last Page"
-            class="p-paginator-last p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-right"
-            />
-          </button>
-          <div
-            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
-          >
-            <div
-              class="p-hidden-accessible"
-            >
-              <input
-                aria-haspopup="listbox"
-                aria-label="Choose"
-                disabled=""
-                readonly=""
-                type="text"
-              />
-            </div>
-            <div
-              class="p-hidden-accessible p-dropdown-hidden-select"
-            >
-              <select
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option
-                  selected=""
-                  value="25"
-                >
-                  25
-                </option>
-              </select>
-            </div>
-            <span
-              class="p-dropdown-label p-inputtext"
-            >
-              25
-            </span>
-            <div
-              aria-expanded="false"
-              aria-haspopup="listbox"
-              aria-label="Choose"
-              class="p-dropdown-trigger"
-              role="button"
-            >
-              <span
-                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
-              />
-            </div>
+                  <td
+                    colspan="2"
+                    role="cell"
+                  >
+                    No records found.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -584,293 +475,178 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
 <div>
   <div
     class="blong-explorer "
+    style="display: flex; flex-direction: column; height: 100%;"
   >
+    <style>
+      .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
+    </style>
     <div
-      class="blong-explorer-table"
+      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      role="toolbar"
+      style="background: none;"
     >
       <div
-        class="p-toolbar p-component blong-explorer-toolbar"
-        end="[object Object]"
-        role="toolbar"
+        class="p-toolbar-group-left"
       >
         <div
-          class="p-toolbar-group-left"
-        />
-        <div
-          class="p-toolbar-group-right"
+          class="blong-toolbar-left"
         />
       </div>
       <div
-        class="p-datatable p-component p-datatable-selectable p-datatable-scrollable p-datatable-flex-scrollable p-datatable-sm blong-explorer-dt"
-        data-scrollselectors=".p-datatable-wrapper"
-        pr_id_3=""
+        class="p-toolbar-group-right"
       >
         <div
-          class="p-paginator p-component p-paginator-top"
+          class="blong-toolbar-right"
         >
           <button
-            aria-label="First Page"
-            class="p-paginator-first p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-button p-component p-button-text mr-2 ml-2 p-button-icon-only"
+            style="opacity: 0.5;"
           >
             <span
-              class="p-paginator-icon pi pi-angle-double-left"
+              class="p-button-icon p-c pi pi-arrows-h"
             />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
           </button>
           <button
-            aria-label="Previous Page"
-            class="p-paginator-prev p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
           >
             <span
-              class="p-paginator-icon pi pi-angle-left"
+              class="p-button-icon p-c pi pi-search"
             />
+            <span
+              class="p-button-label p-c"
+            >
+               
+            </span>
           </button>
           <span
-            class="p-paginator-pages"
-          />
-          <button
-            aria-label="Next Page"
-            class="p-paginator-next p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
+            class="p-input-icon-left mr-2"
+            style="position: relative; display: inline-flex; align-items: center; flex-shrink: 0;"
           >
-            <span
-              class="p-paginator-icon pi pi-angle-right"
+            <i
+              class="pi pi-search"
+              style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
-          </button>
-          <button
-            aria-label="Last Page"
-            class="p-paginator-last p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-right"
+            <input
+              class="p-inputtext p-component blong-explorer-search"
+              placeholder="Search…"
+              style="width: 10rem; padding-left: 1.75rem;"
+              value=""
             />
-          </button>
-          <div
-            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+          </span>
+          <button
+            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            style="opacity: 0.5;"
           >
-            <div
-              class="p-hidden-accessible"
-            >
-              <input
-                aria-haspopup="listbox"
-                aria-label="Choose"
-                disabled=""
-                readonly=""
-                type="text"
-              />
-            </div>
-            <div
-              class="p-hidden-accessible p-dropdown-hidden-select"
-            >
-              <select
-                aria-hidden="true"
-                tabindex="-1"
-              >
-                <option
-                  selected=""
-                  value="25"
-                >
-                  25
-                </option>
-              </select>
-            </div>
             <span
-              class="p-dropdown-label p-inputtext"
+              class="p-button-icon p-c pi pi-cog"
+            />
+            <span
+              class="p-button-label p-c"
             >
-              25
+               
             </span>
-            <div
-              aria-expanded="false"
-              aria-haspopup="listbox"
-              aria-label="Choose"
-              class="p-dropdown-trigger"
-              role="button"
-            >
-              <span
-                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
-              />
-            </div>
-          </div>
+          </button>
         </div>
+      </div>
+    </div>
+    <div
+      style="flex: 1 1 0%; min-height: 0;"
+    >
+      <div
+        class="blong-explorer-table"
+        style="display: flex; flex-direction: column; height: 100%;"
+      >
         <div
-          class="p-datatable-wrapper"
-          style="max-height: flex;"
+          class="p-datatable p-component p-datatable-selectable p-datatable-sm blong-explorer-dt"
+          data-scrollselectors=".p-datatable-wrapper"
+          pr_id_3=""
+          style="flex: 1 1 0%; min-height: 0;"
         >
-          <table
-            class="p-datatable-table"
-            role="table"
-          >
-            <thead
-              class="p-datatable-thead"
-            >
-              <tr
-                role="row"
-              >
-                <th
-                  class="p-selection-column"
-                  role="columnheader"
-                  style="width: 40px;"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
-                    />
-                  </div>
-                </th>
-                <th
-                  aria-sort="none"
-                  class="p-sortable-column"
-                  role="columnheader"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
-                    >
-                      Name
-                    </span>
-                    <span
-                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                    />
-                  </div>
-                </th>
-                <th
-                  aria-sort="none"
-                  class="p-sortable-column"
-                  role="columnheader"
-                >
-                  <div
-                    class="p-column-header-content"
-                  >
-                    <span
-                      class="p-column-title"
-                    >
-                      Size
-                    </span>
-                    <span
-                      class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                    />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody
-              class="p-datatable-tbody"
-            >
-              <tr
-                class="p-datatable-emptymessage"
-                role="row"
-              >
-                <td
-                  colspan="3"
-                  role="cell"
-                >
-                  No records found.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div
-          class="p-paginator p-component p-paginator-bottom"
-        >
-          <button
-            aria-label="First Page"
-            class="p-paginator-first p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-left"
-            />
-          </button>
-          <button
-            aria-label="Previous Page"
-            class="p-paginator-prev p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-left"
-            />
-          </button>
-          <span
-            class="p-paginator-pages"
-          />
-          <button
-            aria-label="Next Page"
-            class="p-paginator-next p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-right"
-            />
-          </button>
-          <button
-            aria-label="Last Page"
-            class="p-paginator-last p-paginator-element p-link p-disabled"
-            disabled=""
-            type="button"
-          >
-            <span
-              class="p-paginator-icon pi pi-angle-double-right"
-            />
-          </button>
           <div
-            class="p-dropdown p-component p-inputwrapper p-disabled p-inputwrapper-filled"
+            class="p-datatable-wrapper"
           >
-            <div
-              class="p-hidden-accessible"
+            <table
+              class="p-datatable-table"
+              role="table"
             >
-              <input
-                aria-haspopup="listbox"
-                aria-label="Choose"
-                disabled=""
-                readonly=""
-                type="text"
-              />
-            </div>
-            <div
-              class="p-hidden-accessible p-dropdown-hidden-select"
-            >
-              <select
-                aria-hidden="true"
-                tabindex="-1"
+              <thead
+                class="p-datatable-thead"
               >
-                <option
-                  selected=""
-                  value="25"
+                <tr
+                  role="row"
                 >
-                  25
-                </option>
-              </select>
-            </div>
-            <span
-              class="p-dropdown-label p-inputtext"
-            >
-              25
-            </span>
-            <div
-              aria-expanded="false"
-              aria-haspopup="listbox"
-              aria-label="Choose"
-              class="p-dropdown-trigger"
-              role="button"
-            >
-              <span
-                class="p-dropdown-trigger-icon p-clickable pi pi-chevron-down"
-              />
-            </div>
+                  <th
+                    class="p-selection-column"
+                    role="columnheader"
+                    style="width: 40px;"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      />
+                    </div>
+                  </th>
+                  <th
+                    aria-sort="none"
+                    class="p-sortable-column"
+                    role="columnheader"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      >
+                        Name
+                      </span>
+                      <span
+                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                      />
+                    </div>
+                  </th>
+                  <th
+                    aria-sort="none"
+                    class="p-sortable-column"
+                    role="columnheader"
+                  >
+                    <div
+                      class="p-column-header-content"
+                    >
+                      <span
+                        class="p-column-title"
+                      >
+                        Size
+                      </span>
+                      <span
+                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                      />
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody
+                class="p-datatable-tbody"
+              >
+                <tr
+                  class="p-datatable-emptymessage"
+                  role="row"
+                >
+                  <td
+                    colspan="3"
+                    role="cell"
+                  >
+                    No records found.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

@@ -51,7 +51,16 @@ export function ActionButton({
     const actionName = typeof actionRef === 'string' ? actionRef : actionRef?.name;
     const actionParamsOverride =
         typeof actionRef === 'object' && actionRef !== null ? actionRef.params : undefined;
-    const mergedParams = {...(actionParamsOverride ?? {}), ...(extraParams ?? {})};
+    // extraParams may be a pre-resolved Record; if it arrives as a non-object (rare, e.g. a
+    // primitive wrapped by resolveTemplate), treat it as the whole call payload.
+    const mergedParams =
+        extraParams !== null && typeof extraParams === 'object' && !Array.isArray(extraParams)
+            ? {...(actionParamsOverride ?? {}), ...(extraParams as Record<string, unknown>)}
+            : {...(actionParamsOverride ?? {})};
+    const callParams =
+        extraParams !== null && typeof extraParams === 'object' && !Array.isArray(extraParams)
+            ? mergedParams
+            : ((extraParams as Record<string, unknown> | undefined) ?? mergedParams);
     const directMethod = method ?? actionName ?? '';
     const {call} = useAction(directMethod, mergedParams);
     const clearError = useAppStore(s => s.clearError);
@@ -74,7 +83,7 @@ export function ActionButton({
         setLoading(true);
         onBusyChange?.(true);
         try {
-            await call(mergedParams);
+            await call(callParams);
             if (successHint) showHint(hintTargetRef.current, successHint, false);
         } catch (err: unknown) {
             const e = err as {print?: string; message?: string};

@@ -13,7 +13,7 @@ import {Text} from '../Text/index.js';
 
 export type {ButtonProps};
 
-export function Button({'aria-label': ariaLabel, label, ...props}: ButtonProps) {
+export function Button({'aria-label': ariaLabel, label, iconPos = 'left', ...props}: ButtonProps) {
     const translations = useAppStore(s => s.translations);
     if (typeof label === 'string') {
         // Derive the accessible name from the translation dictionary (or fall back to the English
@@ -23,6 +23,7 @@ export function Button({'aria-label': ariaLabel, label, ...props}: ButtonProps) 
         return (
             <PrimeButton
                 {...props}
+                iconPos={iconPos}
                 label={<Text>{label}</Text>}
                 aria-label={accessibleName}
             />
@@ -31,6 +32,7 @@ export function Button({'aria-label': ariaLabel, label, ...props}: ButtonProps) 
     return (
         <PrimeButton
             {...props}
+            iconPos={iconPos}
             label={label}
             aria-label={ariaLabel}
         />

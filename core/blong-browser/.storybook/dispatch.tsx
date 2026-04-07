@@ -322,6 +322,34 @@ export const treeDropdownData: Record<string, {value: number; label: string}[]> 
     ],
 };
 
+// ── Coral fixtures (for Explorer stories) ─────────────────────────────────────
+
+const coralNames = [
+    'Brain Coral',
+    'Staghorn Coral',
+    'Sea Fan',
+    'Black Wire Coral',
+    'Pillar Coral',
+    'Elkhorn Coral',
+    'Fire Coral',
+    'Star Coral',
+    'Mushroom Coral',
+    'Table Coral',
+];
+const coralTypes = ['Hard', 'Soft', 'Black', 'Fire'];
+
+const coralBaseDate = new Date(2022, 5, 22);
+
+export const coralFixtures = [...Array(55).keys()].map(i => ({
+    id: i,
+    speciesName: coralNames[i % coralNames.length],
+    coralType: coralTypes[i % coralTypes.length],
+    maxDepth: (i + 1) * 5,
+    endangered: i % 3 === 0,
+    discoveredOn: new Date(coralBaseDate.getTime() + 1000 * 60 * 60 * 24 * i),
+    lastUpdated: new Date(coralBaseDate.getTime() + 1000 * 60 * 60 * i),
+}));
+
 // ── Handlers ───────────────────────────────────────────────────────────────────
 
 export type Handler = (params?: Record<string, unknown>) => Promise<unknown>;
@@ -374,6 +402,106 @@ export const defaultHandlers: Record<string, Handler> = {
 
     /** Find — returns an empty result set (explorer list). */
     itemItemFind: () => Promise.resolve({items: [], total: 0}),
+
+    // ── Coral entity (for Explorer stories) ───────────────────────────────────
+
+    /** Find corals — server-side filter, sort, and paging. */
+    coralCoralFind: (params = {}) => {
+        const {filterBy, search, orderBy, paging} = params as {
+            filterBy?: Record<string, string>;
+            search?: string;
+            orderBy?: Array<{field: string; dir: string}>;
+            paging?: {pageSize: number; pageNumber: number};
+        };
+        type CoralRow = (typeof coralFixtures)[number];
+        let result: CoralRow[] = [...coralFixtures];
+        if (filterBy) {
+            for (const [field, value] of Object.entries(filterBy)) {
+                if (value) {
+                    const s = String(value).toLowerCase();
+                    result = result.filter(r =>
+                        String((r as Record<string, unknown>)[field] ?? '')
+                            .toLowerCase()
+                            .includes(s),
+                    );
+                }
+            }
+        }
+        if (search) {
+            const s = String(search).toLowerCase();
+            result = result.filter(r =>
+                Object.values(r).some(v =>
+                    String(v ?? '')
+                        .toLowerCase()
+                        .includes(s),
+                ),
+            );
+        }
+        if (orderBy?.length) {
+            const {field, dir} = orderBy[0];
+            result = result.slice().sort((a, b) => {
+                const av = (a as Record<string, unknown>)[field];
+                const bv = (b as Record<string, unknown>)[field];
+                if (av === bv) return 0;
+                const cmp = av == null ? -1 : bv == null ? 1 : av < bv ? -1 : 1;
+                return dir === 'DESC' ? -cmp : cmp;
+            });
+        }
+        const recordsTotal = result.length;
+        if (paging?.pageSize) {
+            const {pageSize, pageNumber = 1} = paging;
+            result = result.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+        }
+        return Promise.resolve({items: result, pagination: {recordsTotal}});
+    },
+
+    /** Find — never resolves; use as `listAction` to show loading skeleton forever. */
+    coralCoralLoad: () => new Promise<never>(() => {}),
+
+    /** Find — rejects; use as `listAction` to show session-expired error dialog. */
+    coralCoralFindError: () =>
+        Promise.reject({
+            type: 'identity.unauthenticated',
+            message: 'Not authenticated',
+            print: 'Your session has expired. Please log in again.',
+        } satisfies IBlongError),
+
+    /** Add coral — success stub. */
+    coralCoralAdd: params => Promise.resolve({result: 'ok', ...params}),
+
+    /** Edit coral — success stub. */
+    coralCoralEdit: params => Promise.resolve({result: 'ok', ...params}),
+
+    /** Delete coral — success stub; fires a toast. */
+    coralCoralDelete: params => Promise.resolve({result: 'ok', ...params}),
+
+    /**
+     * Submit coral — echoes resolved params back so the toast shows exactly
+     * what the toolbar button prepared.  Used by the Submit story to demonstrate
+     * ${id}, ${current}, ${selected} and ${current.field} template resolution.
+     */
+    coralCoralSubmit: params => Promise.resolve({submitted: true, params}),
+
+    /** Submit coral error — rejects; used for the Error toolbar button in the Submit story. */
+    coralCoralSubmitError: () =>
+        Promise.reject({
+            type: 'error.submit.failed',
+            message: 'Submit failed',
+            print: 'Action failed on the server.',
+        } satisfies IBlongError),
+
+    /**
+     * Submit coral delayed — resolves after 1.5 s; demonstrates the successHint
+     * (the "Done" overlay that appears next to the button after completion).
+     */
+    coralCoralSubmitDelay: params =>
+        new Promise<unknown>(resolve => setTimeout(() => resolve({result: 'ok', ...params}), 1500)),
+
+    /**
+     * Open coral — triggered when a Name cell link is clicked; echoes the row
+     * so the toast shows the full clicked row.
+     */
+    coralCoralOpen: params => Promise.resolve({opened: true, params}),
 
     // ── Submit mock actions (used by Toolbar story) ───────────────────────────
 
