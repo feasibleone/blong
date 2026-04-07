@@ -14,6 +14,24 @@ entities, each with dozens of fields, multiple CRUD operations and
 role-based visibility rules. Writing bespoke React components for every
 screen does not scale.
 
+For how this vision is realised in blong-ui see:
+
+- [Browser UI](../concepts/browser-ui.md) — concept
+- [Model System](../concepts/blong-ui-model.md) — concept
+- [Modular UI](../patterns/blong-ui.md) — how-to guide
+- [Schema based UI](../patterns/blong-ui-model.md) — how-to guide for the model system
+
+## Prior Art: react-jsonschema-form
+
+The open-source library [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) provides a
+similar approach by generating forms from JSON Schema definitions. It supports validation, custom widgets, and layout
+customization, allowing developers to focus on the data model rather than the UI implementation. However, it is
+primarily focused on form generation and does not provide a complete solution for building complex CRUD interfaces,
+navigation, or integration with backend APIs. Blong-ui builds on the idea of schema-driven UI but extends it to
+cover the full spectrum of UI needs in an enterprise application, including layouts, tables, detail views, role-based
+access control, translation and a modular architecture for contributing pages from multiple realms. It is also
+well aligned with the Blong framework's architectural principles and patterns.
+
 ## Prior Art: ut-prime and ut-model
 
 The [UT framework](https://github.com/softwaregroup-bg/ut-prime)
@@ -181,31 +199,11 @@ the UI reads that document to generate forms, tables, and validation rules
 automatically. The key principle: **the TypeBox type written for a handler is
 the model** — no separate model layer is needed.
 
-Implementation lives in `core/blong-ui`:
-
-- **`FieldResolver.tsx`** — derives `widget`, `label`, `required`, `options`,
-  and `x-blong-*` extensions from each JSON Schema property.
-- **`FormFactory.tsx`** — takes the full OpenAPI schema + card/layout config
-  and generates a `react-hook-form` form validated by the TypeBox resolver.
-
-```typescript
-// FieldResolver.tsx — field metadata derived directly from the OpenAPI schema
-export interface ResolvedField {
-    name: string;    label: string;   widget: string;
-    hidden: boolean; order: number;   group?: string;
-    required: boolean; readOnly: boolean;
-    placeholder?: string; tooltip?: string;
-    options?: DropdownOption[];           // for select widgets, from enum
-    mask?: string;  currency?: string;  lookup?: string;
-    componentProps: Record<string, unknown>;  // x-blong-* extensions
-    schema: BlongSchemaProperty;          // raw property from OpenAPI schema
-}
-
-export function resolveField(name, property, requiredFields): ResolvedField {
-    const widget = resolveWidgetType(property); // from x-blong-widget or type
-    // ...
-}
-```
+The implementation (`core/blong-ui`) contains a schema registry that fetches and
+enriches per-subject OpenAPI documents at runtime, a widget resolution layer that
+maps JSON Schema types and extension fields to PrimeReact components, and four
+high-level page components (Editor, Explorer, Report, and their model-driven
+counterparts) that build complete CRUD screens from the enriched schema.
 
 ## Blong's Approach
 
@@ -221,11 +219,17 @@ TypeBox types. The schema contains:
 - Descriptions and titles (used as labels)
 - Required fields (used for validation)
 - Enums (used for dropdowns)
-- Extension fields (`x-blong-*`) for UI-specific hints that have no
-  equivalent in standard JSON Schema
+- Extension fields (`x-widget`, `x-filter`, `x-sort`, `x-hidden`) for
+  UI-specific hints that have no equivalent in standard JSON Schema
 
 This eliminates the need for ut-model's custom model definitions. The
 TypeBox types that developers write for their handlers **are** the model.
+
+A thin **browser-side overlay** (`IModelSpec`) can enrich the server
+schema with display hints and dropdown references that the server does
+not need to know about. This is how realms add per-object UI details
+without server changes. The overlay does not replace the server schema —
+it augments it.
 
 ### 2. TypeBox Resolver Instead of Joi
 
@@ -236,105 +240,75 @@ resolver so that the same TypeBox types that define the server handlers
 also drive browser-side form validation. This eliminates Joi as a
 dependency entirely.
 
-All generated components use functional React with hooks:
+The technology stack is:
 
-- **react-hook-form** manages form state, validation and submission
-  (same as ut-prime, but with TypeBox resolver instead of Joi).
-- **React Query (TanStack Query)** manages server state — caching,
-  background refetching, optimistic updates and pagination. This
-  replaces ut-prime's custom per-component data loading.
-- **React Context** replaces the need for a global store for
-  cross-cutting concerns (auth, theme, locale).
-- **React Router** handles client-side navigation with URL-based state.
+- **react-hook-form** — form state, validation and submission
+- **TanStack Query** — server state caching (used inside the browser
+  adapter layer only, never imported directly in UI components)
+- **Zustand** — lightweight global portal and auth state
+- **PrimeReact** — component library providing all rendered widgets
 
 ### 3. Latest PrimeReact
 
-Blong targets the current PrimeReact release, taking advantage of:
-
-- **Unstyled mode** with design tokens — allows full theming without
-  CSS overrides
-- **Pass-through props** — fine-grained control over every DOM element
-- **Improved accessibility** — WCAG 2.1 compliance out of the box
-- **Smaller bundle** — unused components are tree-shaken by Vite
+Blong targets the current PrimeReact release, taking advantage of
+CSS-variable theming, improved accessibility, pass-through props, and
+tree-shakeable bundles via Vite.
 
 ### 4. Vite Toolchain
 
-Vite replaces Webpack and provides:
+Vite replaces Webpack and provides instant HMR, native ESM (the same
+module format used on the server), automatic code-splitting, and
+first-class TypeScript support.
 
-- Instant HMR during development (no full rebuilds)
-- Native ESM — the same module format Blong uses on the server
-- Automatic code-splitting per route
-- First-class TypeScript and JSX support
-- Plugin ecosystem for SSR, PWA, etc. if needed later
+### 5. Two-Level Schema Enrichment
 
-### 5. Extension Fields for UI Hints
+Metadata flows through two levels:
 
-Standard JSON Schema is not enough to describe every UI concern. Blong
-defines a set of `x-blong-*` extension fields that can be added to any
-schema property:
+1. **Server level** — TypeBox schemas generate an OpenAPI document at
+   `GET /rpc/{subject}/openapi.json`. Standard JSON Schema
+   properties (type, format, enum, required, title) describe the data.
+   Server-side UI hints (`x-filter`, `x-sort`, `x-widget`, `x-hidden`)
+   communicate display preferences from the owner of the API.
 
-| Extension | Purpose | Example |
-|-----------|---------|---------|
-| `x-blong-widget` | Override the default widget | `"x-blong-widget": "richtext"` |
-| `x-blong-hidden` | Hide from default views | `"x-blong-hidden": true` |
-| `x-blong-order` | Display order in forms/tables | `"x-blong-order": 5` |
-| `x-blong-group` | Group fields into sections | `"x-blong-group": "address"` |
-| `x-blong-column` | Table column configuration | `"x-blong-column": {"width": 120, "sortable": true}` |
-| `x-blong-lookup` | Populate dropdown from another API | `"x-blong-lookup": "currency.currency.find"` |
+2. **Browser level** — a browser-side `IModelSpec` overlay adds or
+   overrides field metadata (widget type, dropdown references, card
+   groupings, layout configuration) without any server change. These
+   overrides are compiled into the realm's component handler.
 
-These extensions are set in the TypeBox schema (using `x-blong-*` custom
-keywords) and flow through to the OpenAPI document without any extra
-configuration.
+This layering lets server teams define clean TypeBox schemas and browser
+teams tune visual presentation independently.
 
-### 6. Interactive Design Editor (Improved)
+### 6. Interactive Design Editor
 
-The design editor from ut-prime is retained and improved:
+The design editor from ut-prime is retained as a first-class feature:
 
-- **Drag-and-drop** card rearrangement on a page grid
-- **Field visibility** toggle per role
-- **Widget type** selector with live preview
-- **Validation rule** editor (min, max, pattern, custom)
-- **Layout persistence** — saved to the server as JSON, keyed by
-  page + role
-- **Undo/redo** support
-- **Diff view** — compare the customised layout against the default
-  schema-derived layout
+- Drag-and-drop card rearrangement on a page grid
+- Field visibility toggle per role
+- Widget type selector with live preview
+- Layout persistence — saved to the server keyed by page and tenant
 
-The editor is implemented as a Blong `component` layer that is only
-active when the `design` configuration activation is present.
+### 7. Micro-Frontend Model
 
-### 7. Component Patterns
+Realms contribute pages, actions, and portal configuration without
+importing each other's code. The portal orchestrator discovers component
+handlers by file-name convention (`*.component`, `*.actions`, `*.portal`)
+and wires them through the handler namespace — the same mechanism used
+for server-side inter-realm communication.
 
-Blong defines four standard component patterns (analogous to ut-prime's
-Editor, Explorer, Inspector, Report):
+### 8. Model-Driven CRUD Factory
 
-| Pattern | Description |
-|---------|-------------|
-| **FormCard** | A card wrapping a react-hook-form form generated from a request schema. Used for create/edit operations. |
-| **TableCard** | A card wrapping a PrimeReact DataTable generated from a response array schema. Used for list/search operations. |
-| **DetailCard** | A read-only card displaying a single entity. |
-| **ReportCard** | A card combining filters, a table and optional charts. |
-
-Developers can use these patterns directly or let the component factory
-create them automatically from the OpenAPI schema.
-
-### 8. No Legacy Compatibility Burden
-
-ut-prime had to co-exist with older UT modules that used different
-patterns (Backbone, Angular, etc.). Blong has no such constraint. This
-allows:
-
-- A cleaner component API without adaptation layers
-- Consistent use of ESM throughout
-- No polyfills for older browsers (targeting evergreen browsers)
-- Simpler handler signatures that match the server-side pattern
+For the common 80 % of CRUD screens, the `createModelHandlers()`
+function accepts an array of `IModelSpec` objects and automatically
+generates Browse / New / Open / Report pages for each entity.
+This eliminates the need to write individual page components for standard
+list/edit workflows.
 
 ## Trade-offs
 
 - **Runtime schema fetching** adds a network round-trip at startup. This
-  is mitigated by caching and by bundling a schema snapshot for
-  production builds.
-- **Extension fields** (`x-blong-*`) are not part of the OpenAPI
+  is mitigated by per-subject caching and by the option to bundle schema
+  snapshots for production builds.
+- **Extension fields** (`x-widget`, etc.) are not part of the OpenAPI
   standard. They are valid per the specification's extension mechanism,
   but third-party tools may ignore them.
 - **Generated UIs are generic**. Highly custom screens still need
@@ -343,20 +317,17 @@ allows:
 
 ## Future Ideas
 
-1. **AI-assisted schema annotation** — provide a tool that inspects handler
-   signatures and TypeBox schemas and suggests `x-blong-*` annotations (widget
-   types, labels, group names, lookup references). A developer reviews and
-   accepts suggestions rather than writing annotations manually, reducing the
-   time to a working UI to near zero for new handlers.
+1. **AI-assisted schema annotation** — a tool that inspects handler
+   signatures and TypeBox schemas and suggests `x-widget` annotations.
+   A developer reviews and accepts suggestions rather than writing
+   annotations manually.
 
-2. **Schema diff UI notifications** — when a deployed handler's OpenAPI schema
-   changes (new field, removed field, type narrowed), show a UI notification to
-   developers that specific screens may need layout review. This closes the gap
-   between server-side changes and UI updates without requiring manual
-   synchronization.
+2. **Schema diff notifications** — when a deployed handler's OpenAPI
+   schema changes, notify developers that specific screens may need
+   layout review, closing the gap between server-side changes and UI
+   updates.
 
-3. **Progressive disclosure via `x-blong-reveal-when`** — extend the layout
-   model to support conditional card visibility based on form field values
-   (e.g., show the "Wire Transfer Details" card only when `paymentMethod` is
-   `'wire'`). This reduces form complexity for users without requiring custom
-   React components for each conditional layout.
+3. **Progressive disclosure** — conditional card visibility based on
+   form field values (e.g., show the "Wire Transfer Details" card only
+   when `paymentMethod` is `'wire'`), reducing form complexity without
+   custom React code.

@@ -5,7 +5,9 @@ description: >
     framework. blong-ui is a Blong realm that lives in `core/blong-ui/`. Use this skill whenever
     working on UI components, Editor/Form/Explorer/Report pages, widgets, portal navigation,
     schema-driven forms, action wiring, Storybook stories, or any blong-ui adapter/orchestrator code
-    — even if the user just says "add a page", "fix the widget", or "show this in a tab".
+    — even if the user just says "add a page", "fix the widget", or "show this in a tab". For
+    developing or improving the model system itself, use the blong-ui-model-dev skill. For using the
+    model to implement CRUD pages in a realm, use the blong-ui-model skill.
 ---
 
 # blong-ui Skill
@@ -593,3 +595,21 @@ The portal orchestrator imports all matching handlers automatically without dire
 Check for any shared browser tabs, where the one using localhost:6006 is the blong-ui Storybook and
 another one hosted on chromatic.com. Use them to verify blong-ui is working as expected (e.g. the
 expected is on chromatic.com). Open the iframes to avoid the Storybook UI getting in the way.
+
+---
+
+## Related skills and documentation
+
+- **blong-ui-model-dev** — Use when developing or improving `src/model/` internals
+  (createModelHandlers, entry files, schemaFetcher, dropdownRegistry, types, defaults, mock).
+- **blong-ui-model** — Use when a realm needs to define `IModelSpec` objects and use
+  `createModelHandlers` to generate CRUD pages.
+
+Documentation:
+
+- [Browser UI concept](../../docs/blong/docs/concepts/browser-ui.md)
+- [blong-ui Model concept](../../docs/blong/docs/concepts/blong-ui-model.md)
+- [Editor Features](../../docs/blong/docs/concepts/editor-features.md)
+- [blong-ui Pattern](../../docs/blong/docs/patterns/blong-ui.md)
+- [blong-ui Model Pattern](../../docs/blong/docs/patterns/blong-ui-model.md)
+- [Metadata-Driven UI rationale](../../docs/blong/docs/rationale/metadata-driven-ui.md)
