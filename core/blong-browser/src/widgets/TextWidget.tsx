@@ -1,8 +1,10 @@
-import {InputText} from 'primereact/inputtext';
+import {InputText} from '../primereact/index.js';
+
 import {Button} from '../components/Button/index.js';
 import type {IWidgetProps} from '../types/widget.js';
 
 export function TextWidget({
+    id,
     name,
     schema,
     value,
@@ -20,10 +22,10 @@ export function TextWidget({
     return (
         <span className="blong-input-wrapper w-full">
             <InputText
-                id={name}
+                id={id ?? name}
                 name={name}
                 value={strValue}
-                onChange={e => onChange(e.target.value)}
+                onChange={e => onChange(e.target.value || null)}
                 onBlur={onBlur}
                 readOnly={readOnly}
                 disabled={disabled}

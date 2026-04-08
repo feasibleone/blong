@@ -1,71 +1,334 @@
-import {Checkbox} from 'primereact/checkbox';
-import {Column} from 'primereact/column';
-import {DataTable} from 'primereact/datatable';
-import {Toolbar} from 'primereact/toolbar';
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {Calendar, Checkbox, Column, DataTable, Dropdown, InputMask, InputNumber, InputText, InputTextarea, MultiSelect, Password, SelectButton, Toolbar} from '../primereact/index.js';
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {dateIn, dateOut} from './DateWidget.js';
 import {Button} from '../components/Button/index.js';
 import {Text} from '../components/Text/index.js';
-import type {IWidgetProps} from '../types/widget.js';
+import type {IEnrichedFieldSchema, IWidgetProps} from '../types/widget.js';
 
 type Row = Record<string, unknown>;
+type DropdownOption = {value: unknown; label: string; [k: string]: unknown};
 
 const KEY = '__key';
 
-/** Extract logical field name from parent path ('$.selected.person' → 'person', 'person' → 'person') */
+function resolveWidgetType(schema: IEnrichedFieldSchema): string {
+    if (schema.widget?.type) return schema.widget.type;
+    if (schema.type === 'boolean') return 'boolean';
+    if (schema.type === 'number') return 'number';
+    if (schema.type === 'integer') return 'integer';
+    if (schema.format === 'date-time') return 'dateTime';
+    if (schema.format === 'date') return 'date';
+    return 'input';
+}
+
+function getColumnOptions(schema: IEnrichedFieldSchema, dropdowns?: Record<string, unknown[]>): DropdownOption[] {
+    const raw = schema.widget?.options ?? (schema.widget?.dropdown && dropdowns?.[schema.widget.dropdown]);
+    if (!Array.isArray(raw)) return [];
+    return raw as DropdownOption[];
+}
+
+function resolveColumns(
+    widget: IWidgetProps['schema']['widget'],
+    items: IWidgetProps['schema']['items'],
+): {field: string; header: string; filter?: boolean; sortable?: boolean; fieldSchema: IEnrichedFieldSchema}[] {
+    const properties = items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
+    const cols = widget?.columns;
+
+    if (cols && Array.isArray(cols)) {
+        return cols.map(c => ({
+            field: c,
+            header: properties?.[c]?.title ?? c,
+            filter: !!(properties?.[c] as Record<string, unknown>)?.filter,
+            sortable: !!(properties?.[c] as Record<string, unknown>)?.sort,
+            fieldSchema: properties?.[c] ?? {},
+        }));
+    }
+    if (cols && typeof cols === 'object') {
+        return Object.entries(cols).map(([field, cfg]) => ({
+            field,
+            header: ((cfg as Record<string, unknown>)?.title as string) ?? field,
+            fieldSchema: properties?.[field] ?? {},
+        }));
+    }
+    const hidden = new Set(widget?.hidden ?? []);
+    const show = cols
+        ? Array.isArray(cols) ? cols : Object.keys(cols)
+        : null;
+    if (properties) {
+        return Object.entries(properties)
+            .filter(([field]) => !hidden.has(field) && (!show || show.includes(field)))
+            .map(([field, schema]) => ({
+                field,
+                header: schema.title ?? field,
+                filter: !!(schema as Record<string, unknown>).filter,
+                sortable: !!(schema as Record<string, unknown>).sort,
+                fieldSchema: schema,
+            }));
+    }
+    return [];
+}
+
+function newRow(colFields: string[], properties?: Record<string, IEnrichedFieldSchema>): Row {
+    const row: Row = {};
+    for (const field of colFields) {
+        const schema = properties?.[field];
+        if (schema && 'default' in (schema as Record<string, unknown>)) {
+            row[field] = (schema as Record<string, unknown>).default;
+        } else if (schema?.type === 'boolean' || schema?.widget?.type === 'boolean') {
+            row[field] = false;
+        } else if (
+            schema?.type === 'number' ||
+            schema?.type === 'integer' ||
+            ['number', 'integer', 'currency', 'percent'].includes(schema?.widget?.type ?? '')
+        ) {
+            row[field] = null;
+        } else {
+            row[field] = '';
+        }
+    }
+    row[KEY] = Math.random().toString();
+    return row;
+}
+
+function renderBody(
+    widgetType: string,
+    field: string,
+    rowData: Row,
+    cellId: string,
+    options: DropdownOption[],
+): React.ReactNode {
+    const value = rowData[field];
+
+    switch (widgetType) {
+        case 'password':
+            return <span data-testid={cellId}>{value ? '*'.repeat(10) : ''}</span>;
+        case 'dropdown': {
+            const item = options.find(o => o.value === value);
+            return <span data-testid={cellId}>{item?.label ?? (value != null ? String(value) : '')}</span>;
+        }
+        case 'dropdownTree': {
+            function findLabel(nodes: DropdownOption[], v: unknown): string | undefined {
+                for (const n of nodes) {
+                    if (n.key === v || n.value === v) return n.label;
+                    if (Array.isArray(n.children)) {
+                        const found = findLabel(n.children as DropdownOption[], v);
+                        if (found != null) return found;
+                    }
+                }
+            }
+            return <span data-testid={cellId}>{findLabel(options, value) ?? (value != null ? String(value) : '')}</span>;
+        }
+        case 'multiSelect':
+        case 'multiSelectTree': {
+            const arr = Array.isArray(value) ? (value as unknown[]) : [];
+            const labels = arr.map(v => options.find(o => o.value === v)?.label ?? String(v));
+            return <span data-testid={cellId}>{labels.join(', ')}</span>;
+        }
+        case 'select': {
+            const item = options.find(o => o.value === value);
+            return <span data-testid={cellId}>{item?.label ?? (value != null ? String(value) : '')}</span>;
+        }
+        case 'date': {
+            if (value == null) return <span data-testid={cellId} />;
+            try { const d = dateIn(value as string | Date); return <span data-testid={cellId}>{d instanceof Date ? d.toLocaleDateString() : String(value)}</span>; }
+            catch { return <span data-testid={cellId}>{String(value)}</span>; }
+        }
+        case 'time': {
+            if (value == null) return <span data-testid={cellId} />;
+            const d = value instanceof Date ? value : new Date(value as string);
+            return <span data-testid={cellId}>{isNaN(d.getTime()) ? String(value) : d.toLocaleTimeString()}</span>;
+        }
+        case 'dateTime': {
+            if (value == null) return <span data-testid={cellId} />;
+            try { const d = dateIn(value as string | Date); return <span data-testid={cellId}>{d instanceof Date ? d.toLocaleString() : String(value)}</span>; }
+            catch { return <span data-testid={cellId}>{String(value)}</span>; }
+        }
+        case 'number':
+        case 'integer':
+        case 'currency':
+        case 'percent':
+            return (
+                <span data-testid={cellId} className="block text-right">
+                    {value != null ? String(value) : ''}
+                </span>
+            );
+        default:
+            return <span data-testid={cellId}>{value != null ? String(value) : ''}</span>;
+    }
+}
+
+function renderEditor(
+    widgetType: string,
+    fieldSchema: IEnrichedFieldSchema,
+    field: string,
+    rowData: Row,
+    cellId: string,
+    cellName: string,
+    editorCallback: (v: unknown) => void,
+    options: DropdownOption[],
+): React.ReactNode {
+    const value = rowData[field];
+
+    switch (widgetType) {
+        case 'integer':
+            return (
+                <InputNumber
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    value={value == null ? null : Number(value)}
+                    onValueChange={e => editorCallback(e.value)}
+                    className="w-full" inputClassName="w-full text-right"
+                    showButtons
+                    min={fieldSchema.minimum} max={fieldSchema.maximum}
+                />
+            );
+        case 'number':
+            return (
+                <InputNumber
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    value={value == null ? null : Number(value)}
+                    onValueChange={e => editorCallback(e.value)}
+                    className="w-full" inputClassName="w-full text-right"
+                    min={fieldSchema.minimum} max={fieldSchema.maximum}
+                />
+            );
+        case 'currency':
+        case 'percent':
+            return (
+                <InputNumber
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    value={value == null ? null : Number(value)}
+                    onValueChange={e => editorCallback(e.value)}
+                    className="w-full" inputClassName="w-full text-right"
+                    mode="decimal" minFractionDigits={2} maxFractionDigits={4}
+                    min={fieldSchema.minimum} max={fieldSchema.maximum}
+                />
+            );
+        case 'dropdown':
+        case 'dropdownTree':
+            return (
+                <Dropdown
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    value={value} options={options}
+                    onChange={e => editorCallback(e.value)}
+                    className="w-full blong-dropdown"
+                    showClear={!fieldSchema.required}
+                    placeholder="Select…"
+                    filter={options.length > 8}
+                />
+            );
+        case 'multiSelect':
+        case 'multiSelectTree':
+            return (
+                <MultiSelect
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    value={Array.isArray(value) ? value : []}
+                    options={options}
+                    onChange={e => editorCallback(e.value)}
+                    className="w-full blong-multiselect"
+                    display="chip" placeholder="Select…"
+                />
+            );
+        case 'select':
+            return (
+                <SelectButton
+                    id={cellId} name={cellName} data-testid={cellId}
+                    value={value} options={options}
+                    onChange={e => editorCallback(e.value)}
+                    className="white-space-nowrap"
+                />
+            );
+        case 'password':
+            return (
+                <Password
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    value={value != null ? String(value) : ''}
+                    onInput={e => editorCallback(e.currentTarget.value)}
+                    className="w-full" inputClassName="w-full" feedback={false}
+                />
+            );
+        case 'date':
+            return (
+                <Calendar
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    showOnFocus={false}
+                    value={value != null ? dateIn(value as string | Date) : null}
+                    onChange={e => editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)}
+                    showIcon className="w-full"
+                />
+            );
+        case 'time':
+            return (
+                <Calendar
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    showOnFocus={false}
+                    value={value != null ? new Date(value as string) : new Date(1970, 0, 1)}
+                    onChange={e => editorCallback(e.value)}
+                    timeOnly showIcon className="w-full"
+                />
+            );
+        case 'dateTime':
+            return (
+                <Calendar
+                    inputId={cellId} name={cellName} data-testid={cellId}
+                    showOnFocus={false}
+                    value={value != null ? dateIn(value as string | Date) : null}
+                    onChange={e => editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)}
+                    showTime showIcon className="w-full"
+                />
+            );
+        case 'mask':
+            return (
+                <InputMask
+                    id={cellId} name={cellName} data-testid={cellId}
+                    value={value != null ? String(value) : ''}
+                    onChange={e => editorCallback(e.value)}
+                    mask={fieldSchema.widget?.mask ?? ''}
+                    className="w-full"
+                />
+            );
+        case 'text':
+        case 'textArea':
+            return (
+                <InputTextarea
+                    id={cellId} name={cellName} data-testid={cellId}
+                    value={value != null ? String(value) : ''}
+                    onChange={e => editorCallback(e.target.value)}
+                    autoFocus className="w-full" rows={2}
+                />
+            );
+        default:
+            // input, chips, autocomplete, dateRange, etc.
+            return (
+                <InputText
+                    id={cellId} name={cellName} data-testid={cellId}
+                    value={value != null ? String(value) : ''}
+                    onChange={e => editorCallback(e.target.value)}
+                    autoFocus className="w-full"
+                />
+            );
+    }
+}
+
 function resolveParentField(parent?: string): string | undefined {
     if (!parent) return undefined;
     if (parent.startsWith('$.selected.')) return parent.slice('$.selected.'.length);
     return parent;
 }
 
-/** Derive column definitions from schema.widget.columns and schema.items.properties */
-function resolveColumns(
-    widget: IWidgetProps['schema']['widget'],
-    items: IWidgetProps['schema']['items'],
-): {field: string; header: string; filter?: boolean; sortable?: boolean}[] {
-    const cols = widget?.columns;
-    if (cols && Array.isArray(cols)) {
-        return cols.map(c => ({
-            field: c,
-            header: ((items?.properties?.[c] as Record<string, unknown>)?.title as string) ?? c,
-            filter: !!(items?.properties?.[c] as Record<string, unknown>)?.filter,
-            sortable: !!(items?.properties?.[c] as Record<string, unknown>)?.sort,
-        }));
-    }
-    if (cols && typeof cols === 'object') {
-        return Object.entries(cols).map(([field, cfg]) => ({
-            field,
-            header: ((cfg as Record<string, unknown>).title as string) ?? field,
-        }));
-    }
-    // Fall back to items.properties keys (excluding hidden fields)
-    const hidden = new Set(widget?.hidden ?? []);
-    const widgetCols = widget?.columns;
-    const show = widgetCols
-        ? Array.isArray(widgetCols)
-            ? widgetCols
-            : Object.keys(widgetCols)
-        : null;
-    if (items?.properties) {
-        return Object.entries(items.properties)
-            .filter(([field]) => !hidden.has(field) && (!show || show.includes(field)))
-            .map(([field, cfg]) => ({
-                field,
-                header: ((cfg as Record<string, unknown>).title as string) ?? field,
-                filter: !!(cfg as Record<string, unknown>).filter,
-                sortable: !!(cfg as Record<string, unknown>).sort,
-            }));
-    }
-    return [];
-}
-
-function newRow(cols: string[]): Row {
-    const row = Object.fromEntries(cols.map(c => [c, '']));
-    row[KEY] = Math.random().toString();
-    return row;
-}
-
 export function TableWidget({
+    id,
     name,
     schema,
     value,
@@ -74,9 +337,13 @@ export function TableWidget({
     disabled,
     onSelect,
     formValues,
+    dropdowns,
 }: IWidgetProps) {
     const cols = resolveColumns(schema.widget, schema.items);
     const colFields = cols.map(c => c.field);
+    const tableId = id ?? name;
+    const properties = schema.items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
+
     const rows: Row[] = (Array.isArray(value) ? (value as Row[]) : []).map((r, i) => ({
         ...r,
         [KEY]: (r as Row)[KEY] ?? i,
@@ -104,23 +371,20 @@ export function TableWidget({
             : rows;
 
     const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
+    const [pendingEdit, setPendingEdit] = useState<Record<string, boolean> | null>(null);
     const [selected, setSelected] = useState<Row[]>([]);
     const [singleSelected, setSingleSelected] = useState<Row | null>(null);
-    const pendingKeyRef = useRef<unknown>(null);
     const allowEdit = schema.widget?.actions?.allowEdit !== false;
+    const allowAdd = schema.widget?.actions?.allowAdd !== false;
+    const allowDelete = schema.widget?.actions?.allowDelete !== false;
     const editable = !readOnly && allowEdit;
     const interactionDisabled = disabled || readOnly;
     const isSingleSelect = schema.widget?.selectionMode === 'single';
-    // When schema.widget.label is set, it acts as the card title inside the toolbar
     const widgetLabel = schema.widget?.label;
 
-    // Helper: fire onSelect with row + original index in full `rows` array
     const fireSingleSelect = useCallback(
         (row: Row | null) => {
-            if (!row) {
-                onSelect?.(null);
-                return;
-            }
+            if (!row) { onSelect?.(null); return; }
             const {[KEY]: _k, ...clean} = row;
             const originalIndex = rows.findIndex(r => r[KEY] === row[KEY]);
             onSelect?.({row: clean as Record<string, unknown>, index: originalIndex});
@@ -128,7 +392,6 @@ export function TableWidget({
         [rows, onSelect],
     );
 
-    // Row class — apply outline to the currently selected single-select row
     const rowClass = useCallback(
         (data: Row) =>
             isSingleSelect && singleSelected && data[KEY] === singleSelected[KEY]
@@ -137,9 +400,6 @@ export function TableWidget({
         [isSingleSelect, singleSelected],
     );
 
-    // Auto-select first filtered row when parent selection changes.
-    // prevParentKeyRef starts at null (same as curKey when no parent selected) to avoid
-    // a spurious onSelect(null) call on mount.
     const prevParentKeyRef = useRef<unknown>(null);
     useEffect(() => {
         if (!schema.widget?.autoSelect || !parentFieldName) return;
@@ -156,6 +416,12 @@ export function TableWidget({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [parentSelection?.index, parentFieldName, schema.widget?.autoSelect]);
 
+    useEffect(() => {
+        if (!pendingEdit) return;
+        setPendingEdit(null);
+        setEditingRows(prev => ({...prev, ...pendingEdit}));
+    }, [pendingEdit]);
+
     const onRowEditChange = useCallback(
         (e: {data: Record<string, boolean>}) => setEditingRows(e.data),
         [],
@@ -163,8 +429,6 @@ export function TableWidget({
 
     const onRowEditComplete = useCallback(
         (e: {newData: Row}) => {
-            // Use the row's KEY to find the original position in the unfiltered rows array.
-            // e.index would be the index in filteredRows (not rows), so we can't use it.
             const {[KEY]: k, ...rest} = e.newData;
             const matchKey = e.newData[KEY];
             const updated = rows.map(r => (r[KEY] === matchKey ? {...rest, [KEY]: k} : r));
@@ -176,20 +440,17 @@ export function TableWidget({
     const addRow = useCallback(
         (event: React.MouseEvent) => {
             event.preventDefault();
-            const row = newRow(colFields);
-            // For child tables (cascaded), auto-fill FK fields from the parent selection
+            const row = newRow(colFields, properties);
             if (parentSelection && masterMapping) {
                 for (const [ownKey, parentKey] of Object.entries(masterMapping)) {
                     row[ownKey] = parentSelection.row[String(parentKey)];
                 }
             }
-            pendingKeyRef.current = row[KEY];
             const updated = [...rows, row];
             onChange(updated.map(({[KEY]: _k, ...r}) => r));
-            // Open the new row in edit mode; key by the row's KEY (not array index)
-            setEditingRows(prev => ({...prev, [String(row[KEY])]: true}));
+            setPendingEdit({[rows.length]: true});
         },
-        [rows, colFields, onChange, parentSelection, masterMapping],
+        [rows, colFields, properties, onChange, parentSelection, masterMapping],
     );
 
     const deleteSelected = useCallback(
@@ -202,47 +463,44 @@ export function TableWidget({
             const updated = rows.filter(r => !selectedKeys.has(r[KEY]));
             setSelected([]);
             setSingleSelected(null);
-            onSelect?.(null); // clear child cascades
+            onSelect?.(null);
             onChange(updated.map(({[KEY]: _k, ...r}) => r));
         },
         [rows, selected, singleSelected, onChange, onSelect],
     );
 
-    // Toolbar layout:
-    // - when widget.label is set: left=title, right=buttons (label acts as card title)
-    // - otherwise: left=buttons, right=null
     const actionButtons = editable ? (
         <>
-            <Button
-                label="Add"
-                icon="pi pi-plus"
-                className="p-button mr-2"
-                onClick={addRow}
-                type="button"
-                disabled={interactionDisabled}
-            />
-            <Button
-                label="Delete"
-                icon="pi pi-trash"
-                className="p-button"
-                onClick={deleteSelected}
-                type="button"
-                disabled={interactionDisabled || (!selected.length && !singleSelected)}
-            />
+            {allowAdd && (
+                <Button
+                    label="Add"
+                    icon="pi pi-plus"
+                    className="p-button mr-2"
+                    onClick={addRow}
+                    type="button"
+                    disabled={interactionDisabled}
+                    data-testid={`${tableId}-addButton`}
+                />
+            )}
+            {allowDelete && (
+                <Button
+                    label="Delete"
+                    icon="pi pi-trash"
+                    className="p-button"
+                    onClick={deleteSelected}
+                    type="button"
+                    disabled={interactionDisabled || (!selected.length && !singleSelected)}
+                    data-testid={`${tableId}-deleteButton`}
+                />
+            )}
         </>
     ) : null;
 
-    const toolbarLeft = widgetLabel ? (
-        <span className="p-card-title">
-            <Text>{widgetLabel}</Text>
-        </span>
-    ) : (
-        actionButtons
-    );
+    const toolbarLeft = widgetLabel
+        ? <span className="p-card-title"><Text>{widgetLabel}</Text></span>
+        : actionButtons;
     const toolbarRight = widgetLabel ? actionButtons : null;
 
-    // When this table is a child in a cascaded layout, don't render anything until
-    // the parent has an active selection. This prevents stale/uncascaded data showing.
     if (parentFieldName && masterMapping && !parentSelection) return null;
 
     return (
@@ -278,16 +536,14 @@ export function TableWidget({
                 metaKeySelection={false}
             >
                 {!isSingleSelect && editable && (
-                    <Column
-                        selectionMode="multiple"
-                        style={{width: '3rem', flexGrow: 0}}
-                    />
+                    <Column selectionMode="multiple" style={{width: '3rem', flexGrow: 0}} />
                 )}
-                {cols.map(({field, header, filter, sortable}) => {
-                    const fieldSchema = schema.items?.properties?.[field] as
-                        | Record<string, unknown>
-                        | undefined;
-                    const isBool = fieldSchema?.type === 'boolean';
+                {cols.map(({field, header, filter, sortable, fieldSchema}) => {
+                    const widgetType = resolveWidgetType(fieldSchema);
+                    const options = getColumnOptions(fieldSchema, dropdowns);
+                    const isNumeric = ['number', 'integer', 'currency', 'percent'].includes(widgetType);
+                    const isBoolType = ['boolean', 'checkbox'].includes(widgetType);
+
                     return (
                         <Column
                             key={field}
@@ -295,53 +551,55 @@ export function TableWidget({
                             header={<Text>{header}</Text>}
                             filter={filter}
                             sortable={sortable}
-                            body={
-                                isBool
-                                    ? (rowData: Row) => (
-                                          // Stop click propagation so the inline boolean toggle
-                                          // doesn't also trigger DataTable row-selection change.
-                                          <span onClick={e => e.stopPropagation()}>
-                                              <Checkbox
-                                                  checked={Boolean(rowData[field])}
-                                                  onChange={e => {
-                                                      if (readOnly || disabled) return;
-                                                      const matchKey = rowData[KEY];
-                                                      const updated = rows.map(r =>
-                                                          r[KEY] === matchKey
-                                                              ? {...r, [field]: e.checked}
-                                                              : r,
-                                                      );
-                                                      onChange(
-                                                          updated.map(({[KEY]: _k, ...r}) => r),
-                                                      );
-                                                  }}
-                                                  disabled={readOnly || disabled}
-                                              />
-                                          </span>
-                                      )
-                                    : undefined
-                            }
+                            alignHeader={isNumeric ? 'right' : undefined}
+                            bodyClassName={isNumeric ? 'text-right' : undefined}
+                            body={(rowData: Row, colOptions) => {
+                                const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
+                                if (isBoolType) {
+                                    return (
+                                        <span data-testid={cellId} onClick={e => e.stopPropagation()}>
+                                            <Checkbox
+                                                checked={Boolean(rowData[field])}
+                                                onChange={e => {
+                                                    if (readOnly || disabled) return;
+                                                    const matchKey = rowData[KEY];
+                                                    const updated = rows.map(r =>
+                                                        r[KEY] === matchKey
+                                                            ? {...r, [field]: e.checked}
+                                                            : r,
+                                                    );
+                                                    onChange(updated.map(({[KEY]: _k, ...r}) => r));
+                                                }}
+                                                disabled={readOnly || disabled}
+                                            />
+                                        </span>
+                                    );
+                                }
+                                return renderBody(widgetType, field, rowData, cellId, options);
+                            }}
                             editor={
-                                editable && !isBool
-                                    ? options => (
-                                          <input
-                                              className="p-inputtext p-component w-full"
-                                              value={String((options.rowData as Row)[field] ?? '')}
-                                              onChange={e =>
-                                                  options.editorCallback?.(e.target.value)
-                                              }
-                                          />
-                                      )
+                                editable && !isBoolType
+                                    ? colOptions => {
+                                          const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
+                                          const cellName = `${tableId}[${colOptions.rowIndex}].${field}`;
+                                          return renderEditor(
+                                              widgetType,
+                                              fieldSchema,
+                                              field,
+                                              colOptions.rowData as Row,
+                                              cellId,
+                                              cellName,
+                                              (v: unknown) => colOptions.editorCallback?.(v),
+                                              options,
+                                          );
+                                      }
                                     : undefined
                             }
                         />
                     );
                 })}
                 {editable && (
-                    <Column
-                        rowEditor
-                        style={{width: '7rem', textAlign: 'center'}}
-                    />
+                    <Column rowEditor style={{width: '7rem', textAlign: 'center'}} />
                 )}
             </DataTable>
         </div>

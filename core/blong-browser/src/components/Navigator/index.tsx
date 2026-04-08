@@ -2,8 +2,7 @@
  * Navigator — tree view for hierarchical data navigation.
  * Typically placed on the left side of an Explorer.
  */
-import {Tree} from 'primereact/tree';
-import type {TreeNode} from 'primereact/treenode';
+import {Tree, type TreeNode} from '../../primereact/index.js';
 import React, {useState} from 'react';
 
 interface INavigatorProps {
@@ -92,7 +91,6 @@ export function Navigator({
             <Tree
                 value={treeData}
                 loading={loading}
-                selectionMode="single"
                 selectionKeys={selectedKey ?? undefined}
                 onSelectionChange={e => {
                     const key = e.value as string;
@@ -110,7 +108,6 @@ export function Navigator({
                 }}
                 className="blong-navigator__tree"
                 filter
-                filterMode="lenient"
                 filterPlaceholder="Search..."
             />
         </div>

@@ -1,8 +1,10 @@
-import {SelectButton} from 'primereact/selectbutton';
+import {SelectButton} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function SelectWidget({
-    name: _name,
+    id,
+    name,
     schema,
     value,
     onChange,
@@ -13,15 +15,17 @@ export function SelectWidget({
 }: IWidgetProps) {
     const {options = []} = schema.widget ?? {};
     return (
-        <SelectButton
-            value={value}
-            options={options}
-            onChange={e => {
-                onChange(e.value);
-                onBlur();
-            }}
-            disabled={disabled || readOnly}
-            className="blong-select"
-        />
+        <div id={id ?? name} data-testid={id ?? name} className="blong-select-wrapper">
+            <SelectButton
+                value={value}
+                options={options}
+                onChange={e => {
+                    onChange(e.value);
+                    onBlur();
+                }}
+                disabled={disabled || readOnly}
+                className="blong-select"
+            />
+        </div>
     );
 }

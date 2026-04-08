@@ -12,8 +12,9 @@
  *    renders `children` as-is. Used for standalone layout and stories.
  */
 import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
-import {Card as PrimeCard} from 'primereact/card';
-import {Skeleton} from 'primereact/skeleton';
+import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
+
+
 import React, {useCallback, useState, type ReactNode} from 'react';
 import {Controller} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
@@ -22,7 +23,7 @@ import {useDesignable} from '../../design/useDesignable.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
-import type {IEnrichedFieldSchema} from '../../types/widget.js';
+import type {IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {useBlongForm, type IFormContext, type ITableSelection} from '../Form/FormContext.js';
 import {Text} from '../Text/index.js';
@@ -153,6 +154,63 @@ function resolveWidgetType(fieldSchema: IEnrichedFieldSchema): string {
     return 'input';
 }
 
+/**
+ * Resolve a dot-notation field path to its leaf IEnrichedFieldSchema.
+ * E.g. 'input.input' → schema.properties.input.properties.input.
+ * '#id' suffixes (column-override keys like 'table#table1') are stripped before resolution.
+ */
+function resolveFieldSchema(
+    schema: IEnrichedSchema | undefined,
+    fieldPath: string,
+): IEnrichedFieldSchema | undefined {
+    if (!schema?.properties) return undefined;
+    // Strip '#id' suffix from ICardWidgetEntry column-override keys
+    const hashIdx = fieldPath.indexOf('#');
+    const basePath = hashIdx >= 0 ? fieldPath.slice(0, hashIdx) : fieldPath;
+    const dot = basePath.indexOf('.');
+    if (dot === -1) return schema.properties[basePath];
+    const head = basePath.slice(0, dot);
+    const tail = basePath.slice(dot + 1);
+    return resolveFieldSchema(
+        {properties: schema.properties[head]?.properties},
+        tail,
+    );
+}
+
+/**
+ * Deep-set a value at a dot-notation path within a plain object.
+ * E.g. setFieldValue({}, 'input.input', 'v') → {input: {input: 'v'}}.
+ */
+function setFieldValue(
+    obj: Record<string, unknown>,
+    path: string,
+    value: unknown,
+): Record<string, unknown> {
+    const dot = path.indexOf('.');
+    if (dot === -1) return {...obj, [path]: value};
+    const head = path.slice(0, dot);
+    const tail = path.slice(dot + 1);
+    return {
+        ...obj,
+        [head]: setFieldValue((obj[head] as Record<string, unknown>) ?? {}, tail, value),
+    };
+}
+
+/**
+ * Read a react-hook-form FieldErrors value at a dot-notation path.
+ * RHF stores nested errors as nested objects, not flat 'a.b' keys.
+ */
+function getFieldError(
+    errors: Record<string, unknown>,
+    path: string,
+): {message?: string} | undefined {
+    const dot = path.indexOf('.');
+    if (dot === -1) return errors[path] as {message?: string} | undefined;
+    const head = path.slice(0, dot);
+    const tail = path.slice(dot + 1);
+    return getFieldError((errors[head] as Record<string, unknown>) ?? {}, tail);
+}
+
 /** Render a single field controlled by react-hook-form. */
 function renderField(
     fieldName: string,
@@ -160,7 +218,17 @@ function renderField(
     isLast: boolean,
     ctx: IFormContext,
     translations: Record<string, string>,
+    columnOverride?: string[],
 ): React.ReactNode {
+    // Strip '#id' suffix (ICardWidgetEntry key) to get the real form field name
+    const hashIdx = fieldName.indexOf('#');
+    const baseName = hashIdx >= 0 ? fieldName.slice(0, hashIdx) : fieldName;
+    // Derive id/data-testid:
+    //   - ICardWidgetEntry (e.g. 'table#table1') → 'table1'
+    //   - nested field (e.g. 'input.password')  → 'input-password'
+    const instanceId = hashIdx >= 0
+        ? fieldName.slice(hashIdx + 1)
+        : baseName.replace(/\./g, '-');
     const {
         schema,
         control,
@@ -172,28 +240,33 @@ function renderField(
         onChange,
         handleTableSelect,
     } = ctx;
-    const rawSchema: IEnrichedFieldSchema | undefined = schema?.properties?.[fieldName];
+    const rawSchema: IEnrichedFieldSchema | undefined = resolveFieldSchema(schema, fieldName);
     const dropdownKey = rawSchema?.widget?.dropdown;
     const fieldSchema: IEnrichedFieldSchema | undefined =
         dropdowns && dropdownKey && dropdowns[dropdownKey] && rawSchema
-            ? {
+            ? ({
                   ...rawSchema,
                   widget: {
                       ...rawSchema.widget!,
                       options: dropdowns[dropdownKey],
                       dropdown: undefined,
                   },
-              }
+              } as IEnrichedFieldSchema)
             : rawSchema;
-    if (!fieldSchema) return null;
+    // Apply column override from ICardWidgetEntry (e.g. show only certain columns in a table)
+    const effectiveSchema: IEnrichedFieldSchema | undefined =
+        fieldSchema && columnOverride
+            ? ({...fieldSchema, widget: {...fieldSchema.widget, columns: columnOverride}} as IEnrichedFieldSchema)
+            : fieldSchema;
+    if (!effectiveSchema) return null;
 
-    const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema));
+    const WidgetComponent = widgetRegistry.get(resolveWidgetType(effectiveSchema));
     if (!WidgetComponent) return null;
 
-    const schemaReadOnly = cardReadOnly || fieldSchema.readOnly;
+    const schemaReadOnly = cardReadOnly || effectiveSchema.readOnly;
     /** Transient disabled state (during save/load) — disables widget without changing its structure */
     const fieldDisabled = ctx.readOnly;
-    const hasLabel = fieldSchema.title !== '';
+    const hasLabel = effectiveSchema.title !== '';
 
     if (loading) {
         return (
@@ -203,7 +276,7 @@ function renderField(
             >
                 {hasLabel && (
                     <label className="col-12 md:col-4">
-                        <Text>{fieldSchema.title ?? fieldName}</Text>
+                        <Text>{effectiveSchema.title ?? baseName}</Text>
                     </label>
                 )}
                 <div className={`flex align-items-center col-12${hasLabel ? ' md:col-8' : ''}`}>
@@ -220,29 +293,30 @@ function renderField(
         >
             {hasLabel && (
                 <label
-                    htmlFor={fieldName}
+                    htmlFor={instanceId}
                     className={`col-12 md:col-4${
-                        fieldSchema.required ? ' blong-required' : ''
+                        effectiveSchema.required ? ' blong-required' : ''
                     }`}
                 >
-                    <Text>{fieldSchema.title ?? fieldName}</Text>
+                    <Text>{effectiveSchema.title ?? baseName}</Text>
                 </label>
             )}
             <div
                 className={`flex align-items-center relative col-12${hasLabel ? ' md:col-8' : ''}`}
             >
                 <Controller
-                    name={fieldName}
+                    name={baseName}
                     control={control}
-                    rules={buildValidationRules(fieldSchema)}
+                    rules={buildValidationRules(effectiveSchema)}
                     render={({field, fieldState}) => (
                         <WidgetComponent
-                            name={fieldName}
-                            schema={fieldSchema}
+                            id={instanceId}
+                            name={baseName}
+                            schema={effectiveSchema}
                             value={field.value}
                             onChange={val => {
                                 field.onChange(val);
-                                onChange?.({...rawFormValues, [fieldName]: val});
+                                onChange?.(setFieldValue(rawFormValues, baseName, val));
                             }}
                             onBlur={field.onBlur}
                             error={fieldState.error}
@@ -250,35 +324,36 @@ function renderField(
                             loading={loading}
                             disabled={fieldDisabled}
                             formValues={formValues}
+                            dropdowns={dropdowns}
                             onSelect={
-                                fieldSchema.widget?.selectionMode === 'single'
-                                    ? sel => handleTableSelect(fieldName, sel)
+                                effectiveSchema.widget?.selectionMode === 'single'
+                                    ? sel => handleTableSelect(baseName, sel)
                                     : undefined
                             }
                         />
                     )}
                 />
-                {fieldSchema.description && (
-                    <small className="blong-field-hint">{fieldSchema.description}</small>
+                {effectiveSchema.description && (
+                    <small className="blong-field-hint">{effectiveSchema.description}</small>
                 )}
             </div>
-            {errors[fieldName] && (
+            {getFieldError(errors as Record<string, unknown>, baseName) && (
                 <>
                     <small className="col-12 md:col-4" />
                     <small className="p-error blong-field-error col-12 md:col-8">
                         <Text
                             params={{
                                 field:
-                                    translations[fieldSchema.title ?? fieldName] ??
-                                    fieldSchema.title ??
-                                    fieldName,
-                                minLength: fieldSchema.minLength ?? 0,
-                                maxLength: fieldSchema.maxLength ?? 0,
-                                minimum: fieldSchema.minimum ?? 0,
-                                maximum: fieldSchema.maximum ?? 0,
+                                    translations[effectiveSchema.title ?? baseName] ??
+                                    effectiveSchema.title ??
+                                    baseName,
+                                minLength: effectiveSchema.minLength ?? 0,
+                                maxLength: effectiveSchema.maxLength ?? 0,
+                                minimum: effectiveSchema.minimum ?? 0,
+                                maximum: effectiveSchema.maximum ?? 0,
                             }}
                         >
-                            {errors[fieldName]?.message ?? '{field} is invalid'}
+                            {getFieldError(errors as Record<string, unknown>, baseName)?.message ?? '{field} is invalid'}
                         </Text>
                     </small>
                 </>
@@ -450,6 +525,7 @@ export function Card({
                         idx === resolved.fields.length - 1,
                         formCtx,
                         translations,
+                        resolved.columnOverrides?.[fieldName],
                     ),
                 );
             }

@@ -1,7 +1,9 @@
-import {InputNumber} from 'primereact/inputnumber';
+import {InputNumber} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function CurrencyWidget({
+    id,
     name,
     schema: _schema,
     value,
@@ -13,17 +15,17 @@ export function CurrencyWidget({
 }: IWidgetProps) {
     return (
         <InputNumber
-            inputId={name}
+            inputId={id ?? name}
+            name={name}
             value={value == null ? null : Number(value)}
             onValueChange={e => onChange(e.value)}
             onBlur={onBlur}
             readOnly={readOnly}
             disabled={disabled}
-            className={`blong-currency ${error ? 'p-invalid' : ''}`}
-            mode="decimal"
+            className={`blong-currency w-full ${error ? 'p-invalid' : ''}`}
+            inputClassName="text-right"
             minFractionDigits={2}
             maxFractionDigits={2}
-            useGrouping
         />
     );
 }

@@ -1,9 +1,10 @@
 /**
  * Login — multi-step authentication form.
  */
-import {InputText} from 'primereact/inputtext';
-import {Message} from 'primereact/message';
-import {Password} from 'primereact/password';
+import {InputText, Message, Password} from '../../primereact/index.js';
+
+
+
 import React, {useState} from 'react';
 import {Button} from '../Button/index.js';
 
@@ -158,7 +159,6 @@ export function Login({
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 className="blong-login__input"
-                                feedback={false}
                                 toggleMask
                                 disabled={isLoading}
                             />
@@ -248,7 +248,6 @@ export function Login({
                                 value={confirmPassword}
                                 onChange={e => setConfirmPassword(e.target.value)}
                                 toggleMask
-                                feedback={false}
                                 disabled={isLoading}
                             />
                         </div>

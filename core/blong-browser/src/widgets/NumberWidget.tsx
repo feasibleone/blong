@@ -1,7 +1,9 @@
-import {InputNumber} from 'primereact/inputnumber';
+import {InputNumber} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function NumberWidget({
+    id,
     name,
     schema,
     value,
@@ -13,13 +15,15 @@ export function NumberWidget({
 }: IWidgetProps) {
     return (
         <InputNumber
-            inputId={name}
+            inputId={id ?? name}
+            name={name}
             value={value == null ? null : Number(value)}
             onValueChange={e => onChange(e.value)}
             onBlur={onBlur}
             readOnly={readOnly}
             disabled={disabled}
-            className={`blong-number ${error ? 'p-invalid' : ''}`}
+            className={`blong-number w-full ${error ? 'p-invalid' : ''}`}
+            inputClassName="text-right"
             min={schema.minimum}
             max={schema.maximum}
             useGrouping

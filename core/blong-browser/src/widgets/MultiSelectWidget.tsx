@@ -1,4 +1,5 @@
-import { MultiSelect } from 'primereact/multiselect';
+import {MultiSelect} from '../primereact/index.js';
+
 import { useEffect, useState } from 'react';
 import { useBlongUi } from '../context/BlongUiContext.js';
 import { dropdownRegistry } from '../model/dropdownRegistry.js';
@@ -16,6 +17,7 @@ function toOptions(data: unknown): SelectOption[] {
 }
 
 export function MultiSelectWidget({
+    id,
     name,
     schema,
     value,
@@ -82,7 +84,8 @@ export function MultiSelectWidget({
 
     return (
         <MultiSelect
-            inputId={name}
+            inputId={id ?? name}
+            data-testid={id ?? name}
             value={arrValue}
             options={options}
             onChange={readOnly ? undefined : e => onChange(e.value)}

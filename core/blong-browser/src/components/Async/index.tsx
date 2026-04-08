@@ -1,7 +1,8 @@
 /**
  * Async — dynamic async component loader with loading skeleton.
  */
-import {ProgressBar} from 'primereact/progressbar';
+import {ProgressBar} from '../../primereact/index.js';
+
 import React, {Suspense, lazy, type ComponentType} from 'react';
 
 interface IAsyncProps {

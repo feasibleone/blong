@@ -1,7 +1,8 @@
 /**
  * Error — global error dialog.
  */
-import {Dialog} from 'primereact/dialog';
+import {Dialog} from '../../primereact/index.js';
+
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Button} from '../Button/index.js';

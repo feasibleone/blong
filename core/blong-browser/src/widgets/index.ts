@@ -4,19 +4,27 @@
  */
 import type React from 'react';
 import type {IWidgetProps, IWidgetRegistry, WidgetType} from '../types/widget.js';
+import {AutoCompleteWidget} from './AutoCompleteWidget.js';
 import {BooleanWidget} from './BooleanWidget.js';
+import {ChipsWidget} from './ChipsWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
+import {DateRangeWidget} from './DateRangeWidget.js';
 import {DateTimeWidget} from './DateTimeWidget.js';
 import {DateWidget} from './DateWidget.js';
+import {DropdownTreeWidget} from './DropdownTreeWidget.js';
 import {DropdownWidget} from './DropdownWidget.js';
 import {FileWidget} from './FileWidget.js';
+import {ImageUploadWidget} from './ImageUploadWidget.js';
 import {ImageWidget} from './ImageWidget.js';
 import {IntegerWidget} from './IntegerWidget.js';
 import {JsonWidget} from './JsonWidget.js';
 import {MaskWidget} from './MaskWidget.js';
+import {MultiSelectTreeTableWidget} from './MultiSelectTreeTableWidget.js';
+import {MultiSelectTreeWidget} from './MultiSelectTreeWidget.js';
 import {MultiSelectWidget} from './MultiSelectWidget.js';
 import {NumberWidget} from './NumberWidget.js';
 import {PasswordWidget} from './PasswordWidget.js';
+import {SelectTableWidget} from './SelectTableWidget.js';
 import {SelectWidget} from './SelectWidget.js';
 import {TableWidget} from './TableWidget.js';
 import {TextWidget} from './TextWidget.js';
@@ -55,16 +63,24 @@ const builtins: Array<[WidgetType, React.ComponentType<IWidgetProps>]> = [
     ['date', DateWidget as React.ComponentType<IWidgetProps>],
     ['time', TimeWidget as React.ComponentType<IWidgetProps>],
     ['dateTime', DateTimeWidget as React.ComponentType<IWidgetProps>],
+    ['dateRange', DateRangeWidget as React.ComponentType<IWidgetProps>],
     ['password', PasswordWidget as React.ComponentType<IWidgetProps>],
     ['mask', MaskWidget as React.ComponentType<IWidgetProps>],
+    ['chips', ChipsWidget as React.ComponentType<IWidgetProps>],
+    ['autocomplete', AutoCompleteWidget as React.ComponentType<IWidgetProps>],
     ['dropdown', DropdownWidget as React.ComponentType<IWidgetProps>],
+    ['dropdownTree', DropdownTreeWidget as React.ComponentType<IWidgetProps>],
     ['multiSelect', MultiSelectWidget as React.ComponentType<IWidgetProps>],
+    ['multiSelectTree', MultiSelectTreeWidget as React.ComponentType<IWidgetProps>],
     ['multiSelectPanel', MultiSelectWidget as React.ComponentType<IWidgetProps>],
+    ['multiSelectTreeTable', MultiSelectTreeTableWidget as React.ComponentType<IWidgetProps>],
     ['select', SelectWidget as React.ComponentType<IWidgetProps>],
+    ['selectTable', SelectTableWidget as React.ComponentType<IWidgetProps>],
     ['table', TableWidget as React.ComponentType<IWidgetProps>],
     ['json', JsonWidget as React.ComponentType<IWidgetProps>],
     ['file', FileWidget as React.ComponentType<IWidgetProps>],
     ['image', ImageWidget as React.ComponentType<IWidgetProps>],
+    ['imageUpload', ImageUploadWidget as React.ComponentType<IWidgetProps>],
 ];
 
 /** Register all built-in widgets synchronously */

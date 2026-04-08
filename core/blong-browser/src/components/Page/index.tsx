@@ -4,8 +4,9 @@
  * Provides a consistent page header (title, breadcrumb, toolbar)
  * and a scrollable content area.
  */
-import { BreadCrumb } from 'primereact/breadcrumb';
-import { Toolbar } from 'primereact/toolbar';
+import {BreadCrumb, Toolbar} from '../../primereact/index.js';
+
+
 import React from 'react';
 import type { IToolbarButton } from '../../types/action.js';
 import { ActionButton } from '../ActionButton/index.js';

@@ -1,7 +1,9 @@
-import {InputNumber} from 'primereact/inputnumber';
+import {InputNumber} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function IntegerWidget({
+    id,
     name,
     schema,
     value,
@@ -13,15 +15,16 @@ export function IntegerWidget({
 }: IWidgetProps) {
     return (
         <InputNumber
-            inputId={name}
+            inputId={id ?? name}
+            name={name}
             value={value == null ? null : Number(value)}
             onValueChange={e => onChange(e.value)}
             onBlur={onBlur}
             readOnly={readOnly}
             disabled={disabled}
-            className={`blong-integer ${error ? 'p-invalid' : ''}`}
+            className={`blong-integer w-full ${error ? 'p-invalid' : ''}`}
+            inputClassName="w-full text-right"
             showButtons
-            step={1}
             min={schema.minimum}
             max={schema.maximum}
         />

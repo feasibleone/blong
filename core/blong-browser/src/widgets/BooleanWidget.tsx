@@ -1,7 +1,9 @@
-import {Checkbox} from 'primereact/checkbox';
+import {Checkbox} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function BooleanWidget({
+    id,
     name,
     value,
     onChange,
@@ -12,7 +14,7 @@ export function BooleanWidget({
 }: IWidgetProps) {
     return (
         <Checkbox
-            inputId={name}
+            inputId={id ?? name}
             checked={Boolean(value)}
             onChange={e => onChange(e.checked)}
             onBlur={onBlur}

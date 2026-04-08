@@ -33,6 +33,8 @@ export type WidgetType =
     | 'chips'
     | 'file'
     | 'image'
+    | 'imageUpload'
+    | 'autocomplete'
     | 'table'
     | 'json'
     | 'code'
@@ -48,8 +50,9 @@ export interface IWidgetConfig {
     fetch?: string;
     /** Named dropdown key — loads options via portal.dropdown.list */
     dropdown?: string;
-    /** Options list for static select/multiSelect/select */
-    options?: Array<{value: unknown; label: string; icon?: string}>;
+    /** Options list for static select/multiSelect/select/tree widgets.
+     * Flat options use `{value, label}`. TreeNode-style options use `{key, label, children}`. */
+    options?: Array<{value?: unknown; label?: string; icon?: string; key?: string | number; children?: unknown[]; [extra: string]: unknown}>;
     /** Parent field name for cascaded dropdowns/tables (supports '$.selected.field' or just 'field') */
     parent?: string;
     /** Key mapping for cascaded table filtering: {ownKey: parentKey} */
@@ -85,6 +88,16 @@ export interface IWidgetConfig {
     };
     /** Whether to show the inline editor directly inside the cell (boolean/dropdown) */
     inlineEdit?: boolean;
+    /** Accepted file types (file/imageUpload widgets) */
+    accept?: string;
+    /** Maximum file size in bytes (file/image widgets) */
+    maxSize?: number;
+    /** Base URL prefix for image display (image/imageUpload widgets) */
+    basePath?: string;
+    /** Exclude boundary times (dateRange widget: end = 23:59:59 instead of 00:00:00 next day) */
+    exclusive?: boolean;
+    /** Show time-only pickers (dateRange/time widget) */
+    timeOnly?: boolean;
 }
 
 /** Pivot config for table widget */
@@ -101,6 +114,16 @@ export interface IPivotConfig {
     };
 }
 
+/** Object entry in a card's widget list — renders the named array field as a table, showing only the specified columns */
+export interface ICardWidgetEntry {
+    /** Field name from the schema (must be a table/array field) */
+    name: string;
+    /** Unique render key (allows showing the same field multiple times with different column subsets) */
+    id: string;
+    /** Column names from the field's items.properties to display */
+    widgets: string[];
+}
+
 /** Field configuration within a card */
 export interface IFieldConfig {
     title?: string;
@@ -115,8 +138,8 @@ export interface ICardConfig {
     label?: string;
     /** Field list for this card (preferred alias: widgets) */
     fields?: Record<string, IFieldConfig> | string[];
-    /** Alias for fields */
-    widgets?: string[];
+    /** Alias for fields — supports plain field names or ICardWidgetEntry objects for column-subset table views */
+    widgets?: (string | ICardWidgetEntry)[];
     className?: string;
     readOnly?: boolean;
     collapsible?: boolean;
@@ -139,6 +162,8 @@ export interface ICardConfig {
 
 /** Props that every widget component receives */
 export interface IWidgetProps {
+    /** Field id — forwarded to the inner control for label/id association (same value as name) */
+    id?: string;
     name: string;
     schema: IEnrichedFieldSchema;
     value: unknown;
@@ -155,6 +180,9 @@ export interface IWidgetProps {
      * Passes null when the selection is cleared.
      */
     onSelect?: (selection: {row: Record<string, unknown>; index: number} | null) => void;
+    /** Dropdown option maps — keyed by dropdown name, each value is the options array.
+     *  Passed to TableWidget so column-level dropdown schemas can resolve their options. */
+    dropdowns?: Record<string, unknown[]>;
 }
 
 /** Widget registry interface */
@@ -183,9 +211,11 @@ export interface IEnrichedFieldSchema {
     required?: boolean;
     /** Normalized widget config */
     widget?: IWidgetConfig;
+    /** Nested object properties — for composite/grouped fields accessed via dot-notation paths */
+    properties?: Record<string, IEnrichedFieldSchema>;
     /** JSON Schema items — describes the shape of array-field rows (used by TableWidget) */
     items?: {
-        properties?: Record<string, Record<string, unknown>>;
+        properties?: Record<string, IEnrichedFieldSchema | Record<string, unknown>>;
     };
     /** Include field in filter panel */
     'x-filter'?: boolean;

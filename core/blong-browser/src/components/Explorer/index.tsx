@@ -5,12 +5,13 @@
  * Supports inline selection, sorting, filtering, pagination, toolbar actions,
  * a details side-panel, an optional left-panel (children), and a grid/card layout.
  */
-import {Column} from 'primereact/column';
-import {DataTable, type DataTableSelectionChangeParams} from 'primereact/datatable';
-import {DataView} from 'primereact/dataview';
-import {InputText} from 'primereact/inputtext';
-import {Splitter, SplitterPanel} from 'primereact/splitter';
-import {Toolbar} from 'primereact/toolbar';
+import {Column, DataTable, DataView, InputText, Splitter, SplitterPanel, Toolbar, type DataTableSelectionChangeParams} from '../../primereact/index.js';
+
+
+
+
+
+
 import {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useAction} from '../../hooks/useAction.js';
@@ -481,7 +482,6 @@ export function Explorer({
                     onSelectionChange={handleSelection}
                     onRowClick={handleRowClick}
                     selectionMode={selectionMode === 'none' ? undefined : selectionMode}
-                    sortMode="single"
                     removableSort
                     defaultSortOrder={1}
                     sortField={sortField ?? undefined}
@@ -541,7 +541,6 @@ export function Explorer({
                                             {val && (
                                                 <Button
                                                     icon="pi pi-times"
-                                                    iconPos="left"
                                                     className="p-button-text p-button-sm"
                                                     style={{
                                                         position: 'absolute',
@@ -795,7 +794,6 @@ export function Explorer({
                             {searchInput && (
                                 <Button
                                     icon="pi pi-times"
-                                    iconPos="left"
                                     className="p-button-text p-button-sm"
                                     style={{position: 'absolute', right: 0, padding: '0.25rem'}}
                                     onClick={() => handleSearchChange('')}

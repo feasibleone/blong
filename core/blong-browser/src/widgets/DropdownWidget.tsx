@@ -1,4 +1,5 @@
-import {Dropdown} from 'primereact/dropdown';
+import {Dropdown} from '../primereact/index.js';
+
 import {useEffect, useRef, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
@@ -17,6 +18,7 @@ function toOptions(data: unknown): SelectOption[] {
 }
 
 export function DropdownWidget({
+    id,
     name,
     schema,
     value,
@@ -117,7 +119,8 @@ export function DropdownWidget({
 
     return (
         <Dropdown
-            inputId={name}
+            inputId={id ?? name}
+            data-testid={id ?? name}
             value={value}
             options={visibleOptions}
             onChange={e => onChange(e.value)}
@@ -127,7 +130,6 @@ export function DropdownWidget({
             showClear={!schema.required}
             filter={visibleOptions.length > 8}
             placeholder={schema.placeholder ?? 'Select…'}
-            dropdownIcon="pi pi-chevron-down"
         />
     );
 }

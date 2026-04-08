@@ -8,8 +8,9 @@
  *  - Submit form before calling (when submit=true)
  *  - Split-button variant when menu items are provided
  */
-import {confirmDialog} from 'primereact/confirmdialog';
-import {SplitButton} from 'primereact/splitbutton';
+import {confirmDialog, SplitButton} from '../../primereact/index.js';
+
+
 import {useRef, useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import {usePermission} from '../../hooks/usePermission.js';

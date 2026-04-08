@@ -9,7 +9,8 @@
  * PRIMEREACT_PALETTE_THEMES to look up which CSS file to load for a
  * given palette + dark-mode combination.
  */
-import {addLocale, locale} from 'primereact/api';
+import {addLocale, locale} from '../../primereact/index.js';
+
 import {type ReactNode, useEffect} from 'react';
 import {useAppStore} from '../../state/appStore.js';
 import '../../styles/primereact-overrides.css';

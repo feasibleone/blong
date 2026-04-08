@@ -1,7 +1,9 @@
-import {Calendar} from 'primereact/calendar';
+import {Calendar} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function DateTimeWidget({
+    id,
     name,
     value,
     onChange,
@@ -13,17 +15,17 @@ export function DateTimeWidget({
     const dateValue = value instanceof Date ? value : value ? new Date(value as string) : null;
     return (
         <Calendar
-            inputId={name}
+            inputId={id ?? name}
             value={dateValue}
             onChange={e => onChange(e.value ?? null)}
             onHide={onBlur}
             readOnlyInput={readOnly}
             disabled={disabled}
-            className={`blong-datetime ${error ? 'p-invalid' : ''}`}
+            className={`blong-datetime w-full ${error ? 'p-invalid' : ''}`}
             showIcon
+            showOnFocus={false}
             showTime
-            hourFormat="24"
-            dateFormat="mm/dd/yy"
+            showSeconds
         />
     );
 }

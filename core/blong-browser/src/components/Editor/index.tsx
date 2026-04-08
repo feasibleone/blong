@@ -4,9 +4,10 @@
  * Wires a Form to load/save actions, renders a configurable toolbar,
  * and manages edit/read-only toggling. Designed to edit a single entity.
  */
-import {confirmPopup} from 'primereact/confirmpopup';
-import {OverlayPanel} from 'primereact/overlaypanel';
-import {Toolbar} from 'primereact/toolbar';
+import {confirmPopup, OverlayPanel, Toolbar} from '../../primereact/index.js';
+
+
+
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import {DesignModeProvider} from '../../design/DesignModeContext.js';
 import {

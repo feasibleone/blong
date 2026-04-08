@@ -3,7 +3,7 @@
  */
 import type React from 'react';
 import { useMemo } from 'react';
-import type { ICardConfig, IEnrichedSchema } from '../types/widget.js';
+import type { ICardConfig, ICardWidgetEntry, IEnrichedFieldSchema, IEnrichedSchema } from '../types/widget.js';
 
 export type LayoutRow = string | (string | string[])[];
 export type FlatLayoutConfig = LayoutRow[];
@@ -36,6 +36,11 @@ export interface IResolvedCard {
     label: string | undefined;
     fields: string[];
     config: ICardConfig;
+    /**
+     * Per-entry column overrides for ICardWidgetEntry objects.
+     * Key is 'fieldName#id' (e.g. 'table#table1'); value is the column list.
+     */
+    columnOverrides?: Record<string, string[]>;
 }
 
 /** A resolved tab/step */
@@ -71,6 +76,27 @@ export function isTabLayout(config: LayoutConfig): config is ITabLayoutConfig {
 }
 
 /**
+ * Check whether a dot-notation field path resolves to a leaf property in the schema.
+ * E.g. 'input.input' checks schema.properties.input.properties.input.
+ * Single-segment paths (e.g. 'table') are checked directly in schemaProps.
+ * Paths with '#id' suffix (ICardWidgetEntry column-override keys) strip the suffix first.
+ */
+function schemaHasField(
+    schemaProps: Record<string, IEnrichedFieldSchema>,
+    fieldPath: string,
+): boolean {
+    // Strip '#id' suffix generated for ICardWidgetEntry column overrides (e.g. 'table#table1')
+    const hashIdx = fieldPath.indexOf('#');
+    const basePath = hashIdx >= 0 ? fieldPath.slice(0, hashIdx) : fieldPath;
+    const dot = basePath.indexOf('.');
+    if (dot === -1) return basePath in schemaProps;
+    const head = basePath.slice(0, dot);
+    const tail = basePath.slice(dot + 1);
+    const nested = schemaProps[head]?.properties;
+    return nested != null && schemaHasField(nested as Record<string, IEnrichedFieldSchema>, tail);
+}
+
+/**
  * Compute layout structure from schema + cards config + layout key.
  */
 export function useLayout(
@@ -98,9 +124,20 @@ export function useLayout(
         // Resolve each card's field list
         for (const [name, cardCfg] of Object.entries(cardDefs)) {
             let fields: string[];
+            const columnOverrides: Record<string, string[]> = {};
             const widgetList = cardCfg.widgets ?? cardCfg.fields;
             if (Array.isArray(widgetList)) {
-                fields = widgetList;
+                fields = [];
+                for (const entry of widgetList) {
+                    if (typeof entry === 'string') {
+                        fields.push(entry);
+                    } else {
+                        // ICardWidgetEntry: encode as 'fieldName#id'
+                        const key = `${entry.name}#${entry.id}`;
+                        fields.push(key);
+                        columnOverrides[key] = (entry as ICardWidgetEntry).widgets;
+                    }
+                }
             } else if (widgetList && typeof widgetList === 'object') {
                 fields = Object.keys(widgetList);
             } else {
@@ -110,15 +147,17 @@ export function useLayout(
             // Watch cards contain sub-fields of the watched array — skip top-level schema filter
             const isWatchCard = !!cardCfg.watch;
             // Only include fields present in the schema (unless it's a watch/detail card or schema is absent)
+            // Supports dot-notation paths like 'input.input' and 'table#table1' column-override entries.
             const validFields = (isWatchCard || !schema)
                 ? fields
-                : fields.filter(f => f in schemaProps);
+                : fields.filter(f => schemaHasField(schemaProps as Record<string, IEnrichedFieldSchema>, f));
             cards[name] = {
                 name,
                 // undefined label → no card title (e.g. table widget provides its own title)
                 label: 'label' in cardCfg ? cardCfg.label : name,
                 fields: validFields,
                 config: cardCfg,
+                ...(Object.keys(columnOverrides).length > 0 ? {columnOverrides} : {}),
             };
         }
 

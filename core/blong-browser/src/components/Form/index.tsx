@@ -21,9 +21,10 @@ import {
     useSensors,
     type DragEndEvent,
 } from '@dnd-kit/core';
-import { PanelMenu } from 'primereact/panelmenu';
-import { Steps } from 'primereact/steps';
-import { TabMenu } from 'primereact/tabmenu';
+import {PanelMenu, Steps, TabMenu} from '../../primereact/index.js';
+
+
+
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useForm, type FieldErrors, type SubmitHandler } from 'react-hook-form';
 import { useDesignMode } from '../../design/useDesignMode.js';

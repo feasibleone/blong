@@ -2,7 +2,8 @@
  * ThumbIndex — multi-panel indexer.
  * Supports horizontal tabs, vertical side tabs, and wizard-style steps.
  */
-import {TabPanel, TabView} from 'primereact/tabview';
+import {TabPanel, TabView} from '../../primereact/index.js';
+
 import {useState, type ReactNode} from 'react';
 
 export interface IThumbIndexItem {

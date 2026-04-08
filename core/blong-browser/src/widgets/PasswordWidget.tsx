@@ -1,7 +1,9 @@
-import {Password} from 'primereact/password';
+import {Password} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function PasswordWidget({
+    id,
     name,
     value,
     onChange,
@@ -12,15 +14,17 @@ export function PasswordWidget({
 }: IWidgetProps) {
     return (
         <Password
-            inputId={name}
+            inputId={id ?? name}
+            name={name}
             value={value == null ? '' : String(value)}
-            onChange={e => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value || null)}
             onBlur={onBlur}
             readOnly={readOnly}
             disabled={disabled}
-            className={`blong-password ${error ? 'p-invalid' : ''}`}
-            feedback={false}
+            className={`blong-password w-full ${error ? 'p-invalid' : ''}`}
             toggleMask
+            role="textbox"
+            inputClassName="w-full"
         />
     );
 }

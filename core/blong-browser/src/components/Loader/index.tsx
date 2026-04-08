@@ -1,7 +1,8 @@
 /**
  * Loader — full-page loading overlay.
  */
-import {ProgressSpinner} from 'primereact/progressspinner';
+import {ProgressSpinner} from '../../primereact/index.js';
+
 import {useLoader} from '../../hooks/useLoader.js';
 
 export function Loader() {

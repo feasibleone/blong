@@ -13,8 +13,9 @@
  * Props mirror IPortalProps so callers can customise the shell (logo, etc.)
  * while the provider wiring is always handled here.
  */
-import {ConfirmDialog} from 'primereact/confirmdialog';
-import {ConfirmPopup} from 'primereact/confirmpopup';
+import {ConfirmDialog, ConfirmPopup} from '../../primereact/index.js';
+
+
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {ErrorDialog} from '../Error/index.js';

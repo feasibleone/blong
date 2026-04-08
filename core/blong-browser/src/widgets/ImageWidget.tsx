@@ -1,6 +1,11 @@
-import {FileUpload} from 'primereact/fileupload';
+import {FileUpload} from '../primereact/index.js';
+
 import {useRef, useState} from 'react';
 import type {IWidgetProps} from '../types/widget.js';
+
+// PrimeReact 8 declares chooseOptions/uploadOptions/cancelOptions via defaultProps,
+// which React 19 no longer merges — pass them explicitly to prevent crashes.
+const FILE_UPLOAD_OPTIONS = {label: undefined, icon: undefined, iconOnly: false, className: undefined, style: undefined} as const;
 
 export function ImageWidget({
     name: _name,
@@ -59,6 +64,9 @@ export function ImageWidget({
                 className="blong-image"
                 auto
                 chooseLabel="Upload image"
+                chooseOptions={FILE_UPLOAD_OPTIONS}
+                uploadOptions={FILE_UPLOAD_OPTIONS}
+                cancelOptions={FILE_UPLOAD_OPTIONS}
             />
         </div>
     );

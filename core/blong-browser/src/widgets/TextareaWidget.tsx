@@ -1,7 +1,9 @@
-import {InputTextarea} from 'primereact/inputtextarea';
+import {InputTextarea} from '../primereact/index.js';
+
 import type {IWidgetProps} from '../types/widget.js';
 
 export function TextareaWidget({
+    id,
     name,
     schema,
     value,
@@ -13,10 +15,10 @@ export function TextareaWidget({
 }: IWidgetProps) {
     return (
         <InputTextarea
-            id={name}
+            id={id ?? name}
             name={name}
             value={value == null ? '' : String(value)}
-            onChange={e => onChange(e.target.value)}
+            onChange={e => onChange(e.target.value || null)}
             onBlur={onBlur}
             readOnly={readOnly}
             disabled={disabled}

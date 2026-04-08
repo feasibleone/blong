@@ -4,9 +4,10 @@
  * Renders a Menubar at the top, a TabView of open pages below it,
  * and wires menu item clicks to action dispatches.
  */
-import {Menubar} from 'primereact/menubar';
-import {ProgressSpinner} from 'primereact/progressspinner';
-import {TabPanel, TabView} from 'primereact/tabview';
+import {Menubar, ProgressSpinner, TabPanel, TabView} from '../../primereact/index.js';
+
+
+
 import React, {Suspense} from 'react';
 import {usePortal} from '../../hooks/usePortal.js';
 import {useAppStore} from '../../state/appStore.js';

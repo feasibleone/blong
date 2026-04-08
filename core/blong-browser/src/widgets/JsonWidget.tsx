@@ -1,4 +1,5 @@
-import {InputTextarea} from 'primereact/inputtextarea';
+import {InputTextarea} from '../primereact/index.js';
+
 import {useState} from 'react';
 import {Button} from '../components/Button/index.js';
 import type {IWidgetProps} from '../types/widget.js';
