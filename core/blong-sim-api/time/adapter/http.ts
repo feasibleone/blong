@@ -10,13 +10,26 @@ import {adapter} from '@feasibleone/blong';
  * The namespace/import mapping (configured in time/server.ts) tells the adapter
  * which handler group to use for request/response transformation.
  */
-export default adapter(blong => ({
+export default adapter<{
+    'codec.openapi': unknown;
+}>(blong => ({
     extends: 'adapter.http',
     activation: {
         default: {
             namespace: ['time'],
             imports: ['codec.openapi'],
             logLevel: 'info',
+        },
+        integration: {
+            'codec.openapi': {
+                namespace: {
+                    time: [
+                        new URL('../api/world-time.yaml', import.meta.url).href,
+                        new URL('../api/world-time.operations.yaml', import.meta.url).href,
+                        {servers: [{url: 'http://localhost:8082/rest/mocktime'}]},
+                    ],
+                },
+            },
         },
     },
 }));

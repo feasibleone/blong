@@ -16,34 +16,4 @@ import {realm} from '@feasibleone/blong';
  */
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),
-    children: ['./adapter', './sim', './orchestrator', './test'],
-    config: {
-        default: {
-            http: {
-                namespace: ['time'],
-                imports: ['codec.openapi'],
-                logLevel: 'info',
-            },
-        },
-        microservice: {
-            adapter: true,
-            orchestrator: true,
-        },
-        integration: {
-            http: {
-                'codec.openapi': {
-                    namespace: {
-                        time: [
-                            new URL('./api/world-time.yaml', import.meta.url).href,
-                            new URL('./api/world-time.operations.yaml', import.meta.url).href,
-                            {servers: [{url: 'http://localhost:8082/rest/mocktime'}]},
-                        ],
-                    },
-                },
-            },
-            sim: true,
-            test: true,
-        },
-    },
 }));
