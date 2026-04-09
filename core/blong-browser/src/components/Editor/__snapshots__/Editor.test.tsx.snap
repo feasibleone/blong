@@ -180,6 +180,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                     >
                       <div
                         class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
+                        data-testid="treeType"
                       >
                         <div
                           class="p-hidden-accessible"
@@ -497,10 +498,11 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                             <button
                               aria-label="Add"
                               class="p-button p-component p-button mr-2"
+                              data-testid="links-addButton"
                               type="button"
                             >
                               <span
-                                class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                                class="p-button-icon p-c p-button-icon-left pi pi-plus"
                               />
                               <span
                                 class="p-button-label p-c"
@@ -513,11 +515,12 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                             <button
                               aria-label="Delete"
                               class="p-button p-component p-button p-disabled"
+                              data-testid="links-deleteButton"
                               disabled=""
                               type="button"
                             >
                               <span
-                                class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                                class="p-button-icon p-c p-button-icon-left pi pi-trash"
                               />
                               <span
                                 class="p-button-label p-c"
@@ -574,12 +577,16 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                           title
                                         </span>
                                       </span>
+                                      <div
+                                        class="p-column-filter p-fluid p-column-filter-menu"
+                                      />
                                     </div>
                                   </th>
                                   <th
                                     aria-sort="none"
                                     class="p-sortable-column"
                                     role="columnheader"
+                                    tabindex="0"
                                   >
                                     <div
                                       class="p-column-header-content"
@@ -593,6 +600,9 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                       </span>
                                       <span
                                         class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                      />
+                                      <div
+                                        class="p-column-filter p-fluid p-column-filter-menu"
                                       />
                                     </div>
                                   </th>
@@ -615,7 +625,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                 class="p-datatable-tbody"
                               >
                                 <tr
-                                  class="p-selectable-row p-row-odd"
+                                  class="p-selectable-row"
                                   role="row"
                                 >
                                   <td
@@ -643,13 +653,21 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                     class="p-selection-column p-editable-column"
                                     role="cell"
                                   >
-                                    Wikipedia
+                                    <span
+                                      data-testid="links-0-title"
+                                    >
+                                      Wikipedia
+                                    </span>
                                   </td>
                                   <td
                                     class="p-selection-column p-editable-column"
                                     role="cell"
                                   >
-                                    https://en.wikipedia.org/wiki/Oak
+                                    <span
+                                      data-testid="links-0-url"
+                                    >
+                                      https://en.wikipedia.org/wiki/Oak
+                                    </span>
                                   </td>
                                   <td
                                     class="p-selection-column"
@@ -659,6 +677,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                     <button
                                       class="p-row-editor-init p-link"
                                       name="row-edit"
+                                      tabindex="0"
                                       type="button"
                                     >
                                       <span
@@ -696,13 +715,21 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                     class="p-selection-column p-editable-column"
                                     role="cell"
                                   >
-                                    GBIF
+                                    <span
+                                      data-testid="links-1-title"
+                                    >
+                                      GBIF
+                                    </span>
                                   </td>
                                   <td
                                     class="p-selection-column p-editable-column"
                                     role="cell"
                                   >
-                                    https://www.gbif.org/species/2878688
+                                    <span
+                                      data-testid="links-1-url"
+                                    >
+                                      https://www.gbif.org/species/2878688
+                                    </span>
                                   </td>
                                   <td
                                     class="p-selection-column"
@@ -712,6 +739,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                     <button
                                       class="p-row-editor-init p-link"
                                       name="row-edit"
+                                      tabindex="0"
                                       type="button"
                                     >
                                       <span
@@ -767,6 +795,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                     >
                       <div
                         class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect w-full "
+                        data-testid="habitat"
                       >
                         <div
                           class="p-hidden-accessible"
@@ -776,6 +805,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                             id="habitat"
                             readonly=""
                             role="listbox"
+                            tabindex="0"
                             type="text"
                           />
                         </div>
@@ -784,6 +814,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                         >
                           <div
                             class="p-multiselect-items-wrapper"
+                            style="max-height: 200px;"
                           >
                             <ul
                               aria-multiselectable="true"
@@ -1045,6 +1076,7 @@ exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
+                      data-testid="continent"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -1109,6 +1141,7 @@ exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
+                      data-testid="country"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -1173,6 +1206,7 @@ exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-focus p-dropdown-clearable p-inputwrapper-filled p-inputwrapper-focus blong-dropdown w-full "
+                      data-testid="city"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -1339,10 +1373,11 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2"
+                            data-testid="person-addButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -1355,10 +1390,11 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button"
+                            data-testid="person-deleteButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -1458,28 +1494,40 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                               class="p-datatable-tbody"
                             >
                               <tr
-                                class="blong-table-current p-highlight p-selectable-row p-row-odd"
+                                class="blong-table-current p-highlight p-selectable-row"
                                 draggable="false"
                                 role="row"
-                                tabindex="-1"
+                                tabindex="0"
                               >
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  John Doe
+                                  <span
+                                    data-testid="person-0-fullName"
+                                  >
+                                    John Doe
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  777777777
+                                  <span
+                                    data-testid="person-0-nationalId"
+                                  >
+                                    777777777
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2000-01-08
+                                  <span
+                                    data-testid="person-0-birthDate"
+                                  >
+                                    2000-01-08
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -1489,6 +1537,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -1506,19 +1555,31 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Jane Doe
+                                  <span
+                                    data-testid="person-1-fullName"
+                                  >
+                                    Jane Doe
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  888888888
+                                  <span
+                                    data-testid="person-1-nationalId"
+                                  >
+                                    888888888
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2002-03-18
+                                  <span
+                                    data-testid="person-1-birthDate"
+                                  >
+                                    2002-03-18
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -1528,6 +1589,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -1595,10 +1657,11 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2"
+                            data-testid="document-addButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -1611,10 +1674,11 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button"
+                            data-testid="document-deleteButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -1714,7 +1778,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                               class="p-datatable-tbody"
                             >
                               <tr
-                                class="p-selectable-row p-row-odd"
+                                class="p-selectable-row"
                                 role="row"
                                 tabindex="-1"
                               >
@@ -1722,19 +1786,31 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Passport
+                                  <span
+                                    data-testid="document-0-documentType"
+                                  >
+                                    Passport
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2020-01-01
+                                  <span
+                                    data-testid="document-0-issueDate"
+                                  >
+                                    2020-01-01
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2025-01-01
+                                  <span
+                                    data-testid="document-0-expiryDate"
+                                  >
+                                    2025-01-01
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -1744,6 +1820,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -1756,25 +1833,37 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                 class="blong-table-current p-highlight p-selectable-row p-row-odd"
                                 draggable="false"
                                 role="row"
-                                tabindex="-1"
+                                tabindex="0"
                               >
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Driving License
+                                  <span
+                                    data-testid="document-1-documentType"
+                                  >
+                                    Driving License
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2020-01-02
+                                  <span
+                                    data-testid="document-1-issueDate"
+                                  >
+                                    2020-01-02
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2025-01-02
+                                  <span
+                                    data-testid="document-1-expiryDate"
+                                  >
+                                    2025-01-02
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -1784,6 +1873,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -1793,7 +1883,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                 </td>
                               </tr>
                               <tr
-                                class="p-selectable-row p-row-odd"
+                                class="p-selectable-row"
                                 role="row"
                                 tabindex="-1"
                               >
@@ -1801,19 +1891,31 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Marriage Certificate
+                                  <span
+                                    data-testid="document-2-documentType"
+                                  >
+                                    Marriage Certificate
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2020-01-03
+                                  <span
+                                    data-testid="document-2-issueDate"
+                                  >
+                                    2020-01-03
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2025-01-03
+                                  <span
+                                    data-testid="document-2-expiryDate"
+                                  >
+                                    2025-01-03
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -1823,6 +1925,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -1890,10 +1993,11 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2"
+                            data-testid="attachment-addButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -1906,10 +2010,11 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button"
+                            data-testid="attachment-deleteButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -2009,27 +2114,39 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                               class="p-datatable-tbody"
                             >
                               <tr
-                                class="blong-table-current p-highlight p-selectable-row p-row-odd"
+                                class="blong-table-current p-highlight p-selectable-row"
                                 role="row"
-                                tabindex="-1"
+                                tabindex="0"
                               >
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  1
+                                  <span
+                                    data-testid="attachment-0-pageNumber"
+                                  >
+                                    1
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  image/png
+                                  <span
+                                    data-testid="attachment-0-contentType"
+                                  >
+                                    image/png
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  33333
+                                  <span
+                                    data-testid="attachment-0-sizeBytes"
+                                  >
+                                    33333
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -2039,6 +2156,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -2056,19 +2174,31 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  2
+                                  <span
+                                    data-testid="attachment-1-pageNumber"
+                                  >
+                                    2
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  image/png
+                                  <span
+                                    data-testid="attachment-1-contentType"
+                                  >
+                                    image/png
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  22222
+                                  <span
+                                    data-testid="attachment-1-sizeBytes"
+                                  >
+                                    22222
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -2078,6 +2208,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -2391,6 +2522,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -2711,11 +2843,12 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -2728,11 +2861,12 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -2789,12 +2923,16 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -2808,6 +2946,9 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -2887,6 +3028,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -2897,6 +3039,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -2905,6 +3048,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -3064,6 +3208,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -3384,11 +3529,12 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -3401,11 +3547,12 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -3420,7 +3567,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_49=""
+                        pr_id_51=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -3462,12 +3609,16 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -3481,6 +3632,9 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -3560,6 +3714,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -3570,6 +3725,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -3578,6 +3734,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -3737,6 +3894,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -4057,11 +4215,12 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -4074,11 +4233,12 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -4093,7 +4253,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_39=""
+                        pr_id_41=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -4135,12 +4295,16 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -4154,6 +4318,9 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -4233,6 +4400,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -4243,6 +4411,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -4251,6 +4420,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -4410,6 +4580,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -4730,11 +4901,12 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -4747,11 +4919,12 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -4766,7 +4939,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_41=""
+                        pr_id_43=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -4808,12 +4981,16 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -4827,6 +5004,9 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -4906,6 +5086,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -4916,6 +5097,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -4924,6 +5106,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -5083,6 +5266,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -5403,11 +5587,12 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -5420,11 +5605,12 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -5481,12 +5667,16 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -5500,6 +5690,9 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -5579,6 +5772,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -5589,6 +5783,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -5597,6 +5792,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -5771,22 +5967,30 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                               class="p-datatable-tbody"
                             >
                               <tr
-                                class="blong-table-current p-highlight p-selectable-row p-row-odd"
+                                class="blong-table-current p-highlight p-selectable-row"
                                 draggable="false"
                                 role="row"
-                                tabindex="-1"
+                                tabindex="0"
                               >
                                 <td
                                   class="p-selection-column"
                                   role="cell"
                                 >
-                                  John Doe
+                                  <span
+                                    data-testid="person-0-fullName"
+                                  >
+                                    John Doe
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
                                   role="cell"
                                 >
-                                  777777777
+                                  <span
+                                    data-testid="person-0-nationalId"
+                                  >
+                                    777777777
+                                  </span>
                                 </td>
                               </tr>
                               <tr
@@ -5798,17 +6002,25 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                                   class="p-selection-column"
                                   role="cell"
                                 >
-                                  Jane Doe
+                                  <span
+                                    data-testid="person-1-fullName"
+                                  >
+                                    Jane Doe
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
                                   role="cell"
                                 >
-                                  888888888
+                                  <span
+                                    data-testid="person-1-nationalId"
+                                  >
+                                    888888888
+                                  </span>
                                 </td>
                               </tr>
                               <tr
-                                class="p-selectable-row p-row-odd"
+                                class="p-selectable-row"
                                 role="row"
                                 tabindex="-1"
                               >
@@ -5816,13 +6028,21 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                                   class="p-selection-column"
                                   role="cell"
                                 >
-                                  Alice Smith
+                                  <span
+                                    data-testid="person-2-fullName"
+                                  >
+                                    Alice Smith
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
                                   role="cell"
                                 >
-                                  123456789
+                                  <span
+                                    data-testid="person-2-nationalId"
+                                  >
+                                    123456789
+                                  </span>
                                 </td>
                               </tr>
                             </tbody>
@@ -5904,12 +6124,30 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                   <div
                     class="flex align-items-center relative col-12 md:col-8"
                   >
-                    <input
-                      class="p-inputtext p-component w-full blong-date"
-                      id="birthDate"
-                      type="date"
-                      value="2000-01-08"
-                    />
+                    <span
+                      class="p-calendar p-component p-inputwrapper blong-date w-full  p-calendar-w-btn p-calendar-w-btn-right p-inputwrapper-filled"
+                    >
+                      <input
+                        autocomplete="off"
+                        class="p-inputtext p-component p-filled"
+                        id="birthDate"
+                        type="text"
+                      />
+                      <button
+                        class="p-button p-component p-datepicker-trigger p-button-icon-only"
+                        tabindex="-1"
+                        type="button"
+                      >
+                        <span
+                          class="p-button-icon p-c pi pi-calendar"
+                        />
+                        <span
+                          class="p-button-label p-c"
+                        >
+                           
+                        </span>
+                      </button>
+                    </span>
                   </div>
                 </div>
                 <div
@@ -6039,11 +6277,12 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="shape-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -6056,11 +6295,12 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="shape-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -6078,7 +6318,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_18=""
+                        pr_id_20=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -6144,7 +6384,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                               class="p-datatable-tbody"
                             >
                               <tr
-                                class="p-selectable-row p-row-odd"
+                                class="p-selectable-row"
                                 role="row"
                                 tabindex="-1"
                               >
@@ -6152,13 +6392,21 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Big circle
+                                  <span
+                                    data-testid="shape-0-name"
+                                  >
+                                    Big circle
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  circle
+                                  <span
+                                    data-testid="shape-0-type"
+                                  >
+                                    circle
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -6168,6 +6416,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -6180,19 +6429,27 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                 class="blong-table-current p-highlight p-selectable-row p-row-odd"
                                 draggable="false"
                                 role="row"
-                                tabindex="-1"
+                                tabindex="0"
                               >
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Small ellipse
+                                  <span
+                                    data-testid="shape-1-name"
+                                  >
+                                    Small ellipse
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  ellipse
+                                  <span
+                                    data-testid="shape-1-type"
+                                  >
+                                    ellipse
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -6202,6 +6459,49 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
+                                    type="button"
+                                  >
+                                    <span
+                                      class="p-row-editor-init-icon pi pi-fw pi-pencil"
+                                    />
+                                  </button>
+                                </td>
+                              </tr>
+                              <tr
+                                class="p-selectable-row"
+                                role="row"
+                                tabindex="-1"
+                              >
+                                <td
+                                  class="p-selection-column p-editable-column"
+                                  role="cell"
+                                >
+                                  <span
+                                    data-testid="shape-2-name"
+                                  >
+                                    Big square
+                                  </span>
+                                </td>
+                                <td
+                                  class="p-selection-column p-editable-column"
+                                  role="cell"
+                                >
+                                  <span
+                                    data-testid="shape-2-type"
+                                  >
+                                    square
+                                  </span>
+                                </td>
+                                <td
+                                  class="p-selection-column"
+                                  role="cell"
+                                  style="width: 7rem; text-align: center;"
+                                >
+                                  <button
+                                    class="p-row-editor-init p-link"
+                                    name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -6219,13 +6519,21 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Big square
+                                  <span
+                                    data-testid="shape-3-name"
+                                  >
+                                    Medium triangle
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  square
+                                  <span
+                                    data-testid="shape-3-type"
+                                  >
+                                    triangle
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -6235,6 +6543,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -6244,7 +6553,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                 </td>
                               </tr>
                               <tr
-                                class="p-selectable-row p-row-odd"
+                                class="p-selectable-row"
                                 role="row"
                                 tabindex="-1"
                               >
@@ -6252,46 +6561,21 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  Medium triangle
-                                </td>
-                                <td
-                                  class="p-selection-column p-editable-column"
-                                  role="cell"
-                                >
-                                  triangle
-                                </td>
-                                <td
-                                  class="p-selection-column"
-                                  role="cell"
-                                  style="width: 7rem; text-align: center;"
-                                >
-                                  <button
-                                    class="p-row-editor-init p-link"
-                                    name="row-edit"
-                                    type="button"
+                                  <span
+                                    data-testid="shape-4-name"
                                   >
-                                    <span
-                                      class="p-row-editor-init-icon pi pi-fw pi-pencil"
-                                    />
-                                  </button>
-                                </td>
-                              </tr>
-                              <tr
-                                class="p-selectable-row p-row-odd"
-                                role="row"
-                                tabindex="-1"
-                              >
-                                <td
-                                  class="p-selection-column p-editable-column"
-                                  role="cell"
-                                >
-                                  Small rectangle
+                                    Small rectangle
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column p-editable-column"
                                   role="cell"
                                 >
-                                  rectangle
+                                  <span
+                                    data-testid="shape-4-type"
+                                  >
+                                    rectangle
+                                  </span>
                                 </td>
                                 <td
                                   class="p-selection-column"
@@ -6301,6 +6585,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                                   <button
                                     class="p-row-editor-init p-link"
                                     name="row-edit"
+                                    tabindex="0"
                                     type="button"
                                   >
                                     <span
@@ -8098,6 +8383,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-dropdown-clearable blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -8412,10 +8698,11 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2"
+                            data-testid="links-addButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -8428,11 +8715,12 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -8447,7 +8735,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_35=""
+                        pr_id_37=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -8489,12 +8777,16 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -8508,6 +8800,9 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -8587,6 +8882,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -8596,6 +8892,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -8604,6 +8901,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -8763,6 +9061,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -9083,11 +9382,12 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -9100,11 +9400,12 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -9119,7 +9420,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_43=""
+                        pr_id_45=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -9161,12 +9462,16 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -9180,6 +9485,9 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -9259,6 +9567,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -9269,6 +9578,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -9277,6 +9587,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -9436,6 +9747,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -9756,11 +10068,12 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -9773,11 +10086,12 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -9792,7 +10106,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_45=""
+                        pr_id_47=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -9834,12 +10148,16 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -9853,6 +10171,9 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -9932,6 +10253,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -9942,6 +10264,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -9950,6 +10273,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -10109,6 +10433,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -10429,11 +10754,12 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -10446,11 +10772,12 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -10465,7 +10792,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_47=""
+                        pr_id_49=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -10507,12 +10834,16 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -10526,6 +10857,9 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -10605,6 +10939,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -10615,6 +10950,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -10623,6 +10959,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -10782,6 +11119,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -11102,11 +11440,12 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -11119,11 +11458,12 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -11138,7 +11478,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_29=""
+                        pr_id_31=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -11180,12 +11520,16 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -11199,6 +11543,9 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -11278,6 +11625,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -11288,6 +11636,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -11296,6 +11645,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -11915,6 +12265,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -12235,11 +12586,12 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -12252,11 +12604,12 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -12313,12 +12666,16 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -12332,6 +12689,9 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -12411,6 +12771,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -12421,6 +12782,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -12429,6 +12791,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -12505,10 +12868,10 @@ exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
             class="p-component p-panelmenu-header"
           >
             <a
-              aria-controls="pr_id_27_content"
+              aria-controls="pr_id_29_content"
               class="p-panelmenu-header-link"
               href="#"
-              id="pr_id_27_header"
+              id="pr_id_29_header"
             >
               <span
                 class="p-menuitem-icon pi pi-user"
@@ -12528,10 +12891,10 @@ exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
             class="p-component p-panelmenu-header"
           >
             <a
-              aria-controls="pr_id_27_content"
+              aria-controls="pr_id_29_content"
               class="p-panelmenu-header-link"
               href="#"
-              id="pr_id_27_header"
+              id="pr_id_29_header"
             >
               <span
                 class="p-menuitem-icon pi pi-id-card"
@@ -12551,10 +12914,10 @@ exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
             class="p-component p-panelmenu-header"
           >
             <a
-              aria-controls="pr_id_27_content"
+              aria-controls="pr_id_29_content"
               class="p-panelmenu-header-link"
               href="#"
-              id="pr_id_27_header"
+              id="pr_id_29_header"
             >
               <span
                 class="p-menuitem-icon pi pi-list"
@@ -13055,6 +13418,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-disabled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -13375,11 +13739,12 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2 p-disabled"
+                            data-testid="links-addButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -13392,11 +13757,12 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -13411,7 +13777,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_37=""
+                        pr_id_39=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -13453,12 +13819,16 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -13472,6 +13842,9 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -13551,6 +13924,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip p-disabled blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -13561,6 +13935,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -13569,6 +13944,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -13745,6 +14121,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -14062,10 +14439,11 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                           <button
                             aria-label="Add"
                             class="p-button p-component p-button mr-2"
+                            data-testid="links-addButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -14078,11 +14456,12 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                           <button
                             aria-label="Delete"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -14097,7 +14476,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_31=""
+                        pr_id_33=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -14139,12 +14518,16 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                                         title
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -14158,6 +14541,9 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -14237,6 +14623,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -14246,6 +14633,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -14254,6 +14642,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"
@@ -14430,6 +14819,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                   >
                     <div
                       class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
+                      data-testid="treeType"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -14747,10 +15137,11 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                           <button
                             aria-label="Добавяне"
                             class="p-button p-component p-button mr-2"
+                            data-testid="links-addButton"
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-plus"
+                              class="p-button-icon p-c p-button-icon-left pi pi-plus"
                             />
                             <span
                               class="p-button-label p-c"
@@ -14763,11 +15154,12 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                           <button
                             aria-label="Изтриване"
                             class="p-button p-component p-button p-disabled"
+                            data-testid="links-deleteButton"
                             disabled=""
                             type="button"
                           >
                             <span
-                              class="p-button-icon p-c p-button-icon-undefined pi pi-trash"
+                              class="p-button-icon p-c p-button-icon-left pi pi-trash"
                             />
                             <span
                               class="p-button-label p-c"
@@ -14782,7 +15174,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
                         data-scrollselectors=".p-datatable-wrapper"
-                        pr_id_33=""
+                        pr_id_35=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -14824,12 +15216,16 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                                         Заглавие
                                       </span>
                                     </span>
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
+                                    />
                                   </div>
                                 </th>
                                 <th
                                   aria-sort="none"
                                   class="p-sortable-column"
                                   role="columnheader"
+                                  tabindex="0"
                                 >
                                   <div
                                     class="p-column-header-content"
@@ -14843,6 +15239,9 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                                     </span>
                                     <span
                                       class="p-sortable-column-icon pi pi-fw pi-sort-alt"
+                                    />
+                                    <div
+                                      class="p-column-filter p-fluid p-column-filter-menu"
                                     />
                                   </div>
                                 </th>
@@ -14922,6 +15321,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                   >
                     <div
                       class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect w-full "
+                      data-testid="habitat"
                     >
                       <div
                         class="p-hidden-accessible"
@@ -14931,6 +15331,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                           id="habitat"
                           readonly=""
                           role="listbox"
+                          tabindex="0"
                           type="text"
                         />
                       </div>
@@ -14939,6 +15340,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                       >
                         <div
                           class="p-multiselect-items-wrapper"
+                          style="max-height: 200px;"
                         >
                           <ul
                             aria-multiselectable="true"

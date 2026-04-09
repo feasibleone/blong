@@ -3,16 +3,27 @@
 exports[`Login > renders the login form 1`] = `
 <div>
   <div
-    class="blong-login"
+    class="blong-login p-component"
   >
+    <div
+      class="blong-login__top"
+    >
+      <div
+        class="blong-login__brand"
+      >
+        <i
+          class="blong-login__brand-icon pi pi-circle"
+        />
+      </div>
+    </div>
     <div
       class="blong-login__card"
     >
-      <h2
-        class="blong-login__title"
+      <p
+        class="blong-login__card-heading"
       >
-        Sign In
-      </h2>
+        Login with password
+      </p>
       <form
         class="blong-login__form"
       >
@@ -26,7 +37,7 @@ exports[`Login > renders the login form 1`] = `
             Username
           </label>
           <input
-            class="p-inputtext p-component blong-login__input"
+            class="p-inputtext p-component blong-login__input w-full"
             id="login-username"
             name="username"
             value=""
@@ -42,10 +53,10 @@ exports[`Login > renders the login form 1`] = `
             Password
           </label>
           <div
-            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input w-full"
           >
             <input
-              class="p-inputtext p-component p-password-input"
+              class="p-inputtext p-component p-password-input w-full"
               id="login-password"
               name="password"
               type="password"
@@ -57,23 +68,23 @@ exports[`Login > renders the login form 1`] = `
           </div>
         </div>
         <button
-          aria-label="Sign In"
+          aria-label="Login"
           class="p-button p-component blong-login__submit"
           type="submit"
         >
           <span
-            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
-          />
-          <span
             class="p-button-label p-c"
           >
             <span>
-              Sign In
+              Login
             </span>
           </span>
         </button>
       </form>
     </div>
+    <div
+      class="blong-login__bottom"
+    />
   </div>
 </div>
 `;
@@ -81,16 +92,32 @@ exports[`Login > renders the login form 1`] = `
 exports[`Login > renders with custom title 1`] = `
 <div>
   <div
-    class="blong-login"
+    class="blong-login p-component"
   >
+    <div
+      class="blong-login__top"
+    >
+      <div
+        class="blong-login__brand"
+      >
+        <i
+          class="blong-login__brand-icon pi pi-circle"
+        />
+        <span
+          class="blong-login__brand-name"
+        >
+          Admin Login
+        </span>
+      </div>
+    </div>
     <div
       class="blong-login__card"
     >
-      <h2
-        class="blong-login__title"
+      <p
+        class="blong-login__card-heading"
       >
-        Admin Login
-      </h2>
+        Login with password
+      </p>
       <form
         class="blong-login__form"
       >
@@ -104,7 +131,7 @@ exports[`Login > renders with custom title 1`] = `
             Username
           </label>
           <input
-            class="p-inputtext p-component blong-login__input"
+            class="p-inputtext p-component blong-login__input w-full"
             id="login-username"
             name="username"
             value=""
@@ -120,10 +147,10 @@ exports[`Login > renders with custom title 1`] = `
             Password
           </label>
           <div
-            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input w-full"
           >
             <input
-              class="p-inputtext p-component p-password-input"
+              class="p-inputtext p-component p-password-input w-full"
               id="login-password"
               name="password"
               type="password"
@@ -135,23 +162,23 @@ exports[`Login > renders with custom title 1`] = `
           </div>
         </div>
         <button
-          aria-label="Sign In"
+          aria-label="Login"
           class="p-button p-component blong-login__submit"
           type="submit"
         >
           <span
-            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
-          />
-          <span
             class="p-button-label p-c"
           >
             <span>
-              Sign In
+              Login
             </span>
           </span>
         </button>
       </form>
     </div>
+    <div
+      class="blong-login__bottom"
+    />
   </div>
 </div>
 `;
@@ -159,16 +186,27 @@ exports[`Login > renders with custom title 1`] = `
 exports[`Login > renders with external error 1`] = `
 <div>
   <div
-    class="blong-login"
+    class="blong-login p-component"
   >
+    <div
+      class="blong-login__top"
+    >
+      <div
+        class="blong-login__brand"
+      >
+        <i
+          class="blong-login__brand-icon pi pi-circle"
+        />
+      </div>
+    </div>
     <div
       class="blong-login__card"
     >
-      <h2
-        class="blong-login__title"
+      <p
+        class="blong-login__card-heading"
       >
-        Sign In
-      </h2>
+        Login with password
+      </p>
       <div
         aria-live="polite"
         class="p-inline-message p-component p-inline-message-error blong-login__error"
@@ -196,7 +234,7 @@ exports[`Login > renders with external error 1`] = `
             Username
           </label>
           <input
-            class="p-inputtext p-component blong-login__input"
+            class="p-inputtext p-component blong-login__input w-full"
             id="login-username"
             name="username"
             value=""
@@ -212,10 +250,10 @@ exports[`Login > renders with external error 1`] = `
             Password
           </label>
           <div
-            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input w-full"
           >
             <input
-              class="p-inputtext p-component p-password-input"
+              class="p-inputtext p-component p-password-input w-full"
               id="login-password"
               name="password"
               type="password"
@@ -227,23 +265,23 @@ exports[`Login > renders with external error 1`] = `
           </div>
         </div>
         <button
-          aria-label="Sign In"
+          aria-label="Login"
           class="p-button p-component blong-login__submit"
           type="submit"
         >
           <span
-            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
-          />
-          <span
             class="p-button-label p-c"
           >
             <span>
-              Sign In
+              Login
             </span>
           </span>
         </button>
       </form>
     </div>
+    <div
+      class="blong-login__bottom"
+    />
   </div>
 </div>
 `;
@@ -251,16 +289,27 @@ exports[`Login > renders with external error 1`] = `
 exports[`Login > renders with loading state 1`] = `
 <div>
   <div
-    class="blong-login"
+    class="blong-login p-component"
   >
+    <div
+      class="blong-login__top"
+    >
+      <div
+        class="blong-login__brand"
+      >
+        <i
+          class="blong-login__brand-icon pi pi-circle"
+        />
+      </div>
+    </div>
     <div
       class="blong-login__card"
     >
-      <h2
-        class="blong-login__title"
+      <p
+        class="blong-login__card-heading"
       >
-        Sign In
-      </h2>
+        Login with password
+      </p>
       <form
         class="blong-login__form"
       >
@@ -274,7 +323,7 @@ exports[`Login > renders with loading state 1`] = `
             Username
           </label>
           <input
-            class="p-inputtext p-component p-disabled blong-login__input"
+            class="p-inputtext p-component p-disabled blong-login__input w-full"
             disabled=""
             id="login-username"
             name="username"
@@ -291,10 +340,10 @@ exports[`Login > renders with loading state 1`] = `
             Password
           </label>
           <div
-            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input w-full"
           >
             <input
-              class="p-inputtext p-component p-disabled p-password-input"
+              class="p-inputtext p-component p-disabled p-password-input w-full"
               disabled=""
               id="login-password"
               name="password"
@@ -307,8 +356,8 @@ exports[`Login > renders with loading state 1`] = `
           </div>
         </div>
         <button
-          aria-label="Sign In"
-          class="p-button p-component blong-login__submit p-disabled p-button-loading"
+          aria-label="Login"
+          class="p-button p-component blong-login__submit p-disabled p-button-loading p-button-loading-label-only"
           disabled=""
           type="submit"
         >
@@ -316,29 +365,59 @@ exports[`Login > renders with loading state 1`] = `
             class="p-button-label p-c"
           >
             <span>
-              Sign In
+              Login
             </span>
           </span>
         </button>
       </form>
     </div>
+    <div
+      class="blong-login__bottom"
+    />
   </div>
 </div>
 `;
 
-exports[`Login > renders with register link 1`] = `
+exports[`Login > renders with register button 1`] = `
 <div>
   <div
-    class="blong-login"
+    class="blong-login p-component"
   >
+    <div
+      class="blong-login__register-area"
+    >
+      <button
+        aria-label="Register"
+        class="p-button p-component p-button-outlined"
+      >
+        <span
+          class="p-button-label p-c"
+        >
+          <span>
+            Register
+          </span>
+        </span>
+      </button>
+    </div>
+    <div
+      class="blong-login__top"
+    >
+      <div
+        class="blong-login__brand"
+      >
+        <i
+          class="blong-login__brand-icon pi pi-circle"
+        />
+      </div>
+    </div>
     <div
       class="blong-login__card"
     >
-      <h2
-        class="blong-login__title"
+      <p
+        class="blong-login__card-heading"
       >
-        Sign In
-      </h2>
+        Login with password
+      </p>
       <form
         class="blong-login__form"
       >
@@ -352,7 +431,7 @@ exports[`Login > renders with register link 1`] = `
             Username
           </label>
           <input
-            class="p-inputtext p-component blong-login__input"
+            class="p-inputtext p-component blong-login__input w-full"
             id="login-username"
             name="username"
             value=""
@@ -368,10 +447,10 @@ exports[`Login > renders with register link 1`] = `
             Password
           </label>
           <div
-            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input"
+            class="p-password p-component p-inputwrapper p-input-icon-right blong-login__input w-full"
           >
             <input
-              class="p-inputtext p-component p-password-input"
+              class="p-inputtext p-component p-password-input w-full"
               id="login-password"
               name="password"
               type="password"
@@ -383,29 +462,23 @@ exports[`Login > renders with register link 1`] = `
           </div>
         </div>
         <button
-          aria-label="Sign In"
+          aria-label="Login"
           class="p-button p-component blong-login__submit"
           type="submit"
         >
           <span
-            class="p-button-icon p-c p-button-icon-undefined pi pi-sign-in"
-          />
-          <span
             class="p-button-label p-c"
           >
             <span>
-              Sign In
+              Login
             </span>
           </span>
         </button>
-        <a
-          class="blong-login__register"
-          href="/register"
-        >
-          Register
-        </a>
       </form>
     </div>
+    <div
+      class="blong-login__bottom"
+    />
   </div>
 </div>
 `;

@@ -5,6 +5,7 @@
  * Supports inline selection, sorting, filtering, pagination, toolbar actions,
  * a details side-panel, an optional left-panel (children), and a grid/card layout.
  */
+import './index.css';
 import {Column, DataTable, DataView, InputText, Splitter, SplitterPanel, Toolbar, type DataTableSelectionChangeParams} from '../../primereact/index.js';
 
 

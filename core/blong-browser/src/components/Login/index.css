@@ -1,0 +1,189 @@
+/*
+ * Login component styles.
+ *
+ * Layout uses CSS grid with three symmetric rows:
+ *  - row 1 (1fr): product area    — content end-aligned (pushed toward card)
+ *  - row 2 (auto): login card     — perfectly centred
+ *  - row 3 (1fr): org brand area  — content start-aligned (pushed toward card)
+ *
+ * Both outer rows are 1fr so the card is always visually centred regardless
+ * of how much content the product or org areas contain.
+ *
+ *  ┌──────────────────────────────────────────┐
+ *  │                              [Register]  │  ← fixed top-right
+ *  │                                          │
+ *  │  ┌── product area (1fr, end-aligned) ──┐ │
+ *  │  │  [titleComponent slot]              │ │
+ *  │  │  [icon]  Product Title              │ │
+ *  │  └─────────────────────────────────────┘ │
+ *  │                                          │
+ *  │  ┌── card (auto) ──────────────────────┐ │
+ *  │  │  Login with password                │ │
+ *  │  │  Username: [__________]             │ │
+ *  │  │  Password: [__________][👁]         │ │
+ *  │  │  [          Login      ]            │ │
+ *  │  └─────────────────────────────────────┘ │
+ *  │                                          │
+ *  │  ┌── org brand area (1fr, start) ──────┐ │
+ *  │  │  [orgComponent / orgIcon + name]    │ │
+ *  │  └─────────────────────────────────────┘ │
+ *  └──────────────────────────────────────────┘
+ */
+
+/* Full-screen fixed overlay — bypasses .blong-app overflow:hidden */
+.blong-login {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-rows: 1fr auto 1fr;
+    background: var(--surface-ground);
+    overflow-y: auto;
+}
+
+/* Register / Back-to-Login button — fixed top-right, above all content */
+.blong-login__register-area {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1;
+}
+
+/* ── Product area (above card) ─────────────────────────────────────── */
+/* Content end-aligned so it sits flush against the card */
+.blong-login__top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 2rem 1rem 2rem;
+    box-sizing: border-box;
+}
+
+/* Pluggable product header slot (titleComponent prop) */
+.blong-login__title-slot {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: var(--text-color-secondary);
+}
+
+/* Brand row: icon + product name */
+.blong-login__brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.blong-login__brand-icon {
+    font-size: 4rem;
+    color: var(--primary-color);
+}
+
+.blong-login__brand-img {
+    height: 5rem;
+    object-fit: contain;
+}
+
+.blong-login__brand-name {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* ── Login card (auto height, middle row) ──────────────────────────── */
+.blong-login__card {
+    justify-self: center;
+    width: min(380px, 100% - 2rem);
+    background: var(--surface-card);
+    border-radius: var(--border-radius);
+    padding: 1.75rem 2rem 2rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    box-sizing: border-box;
+}
+
+.blong-login__card-heading {
+    text-align: center;
+    font-size: 1rem;
+    color: var(--text-color-secondary);
+    margin: 0 0 1.25rem;
+}
+
+/* Error message full-width inside the card */
+.blong-login__error {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+/* Form fields */
+.blong-login__form .blong-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Input + Password wrapper fill the card width */
+.blong-login__input,
+.blong-login__input .p-password,
+.blong-login__input .p-password .p-inputtext {
+    width: 100%;
+}
+
+/* Submit button full-width */
+.blong-login__submit {
+    width: 100%;
+    margin-top: 0.25rem;
+    justify-content: center;
+}
+
+/* Hint text inside multi-step forms */
+.blong-login__hint {
+    margin: 0 0 1rem;
+    color: var(--text-color-secondary);
+    font-size: 0.875rem;
+}
+
+/* ── Org brand area (below card) ───────────────────────────────────── */
+/* Content start-aligned so it sits flush against the card */
+.blong-login__bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2rem 1rem 2rem;
+    box-sizing: border-box;
+}
+
+/* Default org brand row: icon + name */
+.blong-login__org-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    opacity: 0.85;
+}
+
+.blong-login__org-icon {
+    font-size: 2rem;
+    color: var(--text-color-secondary);
+}
+
+.blong-login__org-img {
+    height: 3rem;
+    object-fit: contain;
+}
+
+.blong-login__org-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-color-secondary);
+}
+
+/* ── Registration overlay ──────────────────────────────────────────── */
+/* Spans all three grid rows, taking the full viewport height */
+.blong-login__register-view {
+    grid-row: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4rem 1rem 2rem;
+    box-sizing: border-box;
+}

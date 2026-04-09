@@ -1,0 +1,80 @@
+/* Portal shell — full-height column layout */
+.blong-portal {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.blong-portal-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Per-tab error display */
+.blong-tab-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem;
+    color: var(--red-400, #f87171);
+    gap: 1rem;
+}
+
+.blong-tab-error__icon {
+    font-size: 2.5rem;
+}
+
+.blong-tab-error__message {
+    font-size: 1rem;
+    max-width: 480px;
+    text-align: center;
+}
+
+/* TabView fills its container and lets panels grow */
+.p-tabview {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.p-tabview .p-tabview-panels {
+    padding: 0;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.p-tabview .p-tabview-panel {
+    flex-grow: 1;
+}
+
+/* MenuBar resets */
+.p-menubar {
+    border: 0;
+}
+
+.p-menubar.blong-menubar--grow {
+    flex-grow: 1;
+}
+
+/* Right-side menubar: submenu opens to the left */
+.p-menubar.blong-menubar--right ul.p-submenu-list {
+    right: 0;
+}
+
+.p-menubar.blong-menubar--right.p-menubar-mobile-active ul.p-menubar-root-list {
+    right: 0;
+    left: initial;
+    min-width: 200px;
+}
+
+@media (max-width: 960px) {
+    .p-menubar {
+        flex-grow: 1;
+    }
+}

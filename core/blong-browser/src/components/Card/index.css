@@ -1,0 +1,35 @@
+/* Remove PrimeReact's default content padding so field grids fill the card */
+.p-card .p-card-body > .p-card-content {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* Standard gap between card title and content */
+.p-card .p-card-body > .p-card-title {
+    margin-bottom: 1.5rem;
+}
+
+/* Compact inspector card variant */
+.blong-inspector .p-card-body {
+    padding: 0.25rem;
+}
+
+.blong-inspector .p-card-body .p-card-content {
+    padding-top: 0;
+}
+
+.blong-inspector .p-card-body .p-card-content .field {
+    margin-bottom: 0.25rem;
+}
+
+/* Chips multi-value input: align content to the top */
+.p-card .p-chips .p-inputtext {
+    align-content: flex-start;
+}
+
+/* Required field marker — CSS ::after so the '*' is purely visual and never
+   part of the accessible name computed from the label's text content. */
+.blong-required::after {
+    content: ' *';
+    color: var(--red-500, #ef4444);
+}

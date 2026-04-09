@@ -13,7 +13,6 @@ import {addLocale, locale} from '../../primereact/index.js';
 
 import {type ReactNode, useEffect} from 'react';
 import {useAppStore} from '../../state/appStore.js';
-import '../../styles/primereact-overrides.css';
 
 export type PaletteType = 'light' | 'dark' | 'big' | 'compact' | 'light-compact' | 'dark-compact';
 

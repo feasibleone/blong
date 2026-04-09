@@ -11,6 +11,7 @@
  * 2. **Passthrough** (no `cardName`): behaves as a plain titled container and
  *    renders `children` as-is. Used for standalone layout and stories.
  */
+import './index.css';
 import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 

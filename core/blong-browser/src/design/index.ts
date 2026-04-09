@@ -1,6 +1,7 @@
 /**
  * Design mode module re-exports.
  */
+import './index.css';
 export {ComponentPalette} from './ComponentPalette.js';
 export {DesignHandle} from './DesignHandle.js';
 export {DesignModeProvider, useDesignModeContext} from './DesignModeContext.js';

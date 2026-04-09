@@ -17,15 +17,73 @@ exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
           role="tablist"
         >
           <li
+            class="p-unselectable-text p-tabview-selected p-highlight"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_3_content_0"
+              aria-selected="true"
+              class="p-tabview-nav-link"
+              id="pr_id_3_header_0"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    First
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
+            class="p-unselectable-text"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_3_content_1"
+              aria-selected="false"
+              class="p-tabview-nav-link"
+              id="pr_id_3_header_1"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    Second
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
             class="p-tabview-ink-bar"
-            style="width: 0px;"
+            style="left: 0px;"
           />
         </ul>
       </div>
     </div>
     <div
       class="p-tabview-panels"
-    />
+    >
+      <div
+        aria-hidden="false"
+        aria-labelledby="pr_id_3_header_0"
+        class="p-tabview-panel"
+        id="pr_id_3_content_0"
+        role="tabpanel"
+      />
+    </div>
   </div>
 </div>
 `;
@@ -47,15 +105,73 @@ exports[`ThumbIndex > handles controlled activeId 1`] = `
           role="tablist"
         >
           <li
+            class="p-unselectable-text"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_5_content_0"
+              aria-selected="false"
+              class="p-tabview-nav-link"
+              id="pr_id_5_header_0"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    Tab 1
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
+            class="p-unselectable-text p-tabview-selected p-highlight"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_5_content_1"
+              aria-selected="true"
+              class="p-tabview-nav-link"
+              id="pr_id_5_header_1"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    Tab 2
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
             class="p-tabview-ink-bar"
-            style="width: 0px;"
+            style="left: 0px;"
           />
         </ul>
       </div>
     </div>
     <div
       class="p-tabview-panels"
-    />
+    >
+      <div
+        aria-hidden="false"
+        aria-labelledby="pr_id_5_header_1"
+        class="p-tabview-panel"
+        id="pr_id_5_content_1"
+        role="tabpanel"
+      />
+    </div>
   </div>
 </div>
 `;
@@ -107,15 +223,103 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
           role="tablist"
         >
           <li
+            class="p-unselectable-text p-tabview-selected p-highlight"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_2_content_0"
+              aria-selected="true"
+              class="p-tabview-nav-link"
+              id="pr_id_2_header_0"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    A
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
+            class="p-unselectable-text"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_2_content_1"
+              aria-selected="false"
+              class="p-tabview-nav-link"
+              id="pr_id_2_header_1"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    B
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
+            class="p-unselectable-text"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_2_content_2"
+              aria-selected="false"
+              class="p-tabview-nav-link"
+              id="pr_id_2_header_2"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    C
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
             class="p-tabview-ink-bar"
-            style="width: 0px;"
+            style="left: 0px;"
           />
         </ul>
       </div>
     </div>
     <div
       class="p-tabview-panels"
-    />
+    >
+      <div
+        aria-hidden="false"
+        aria-labelledby="pr_id_2_header_0"
+        class="p-tabview-panel"
+        id="pr_id_2_content_0"
+        role="tabpanel"
+      >
+        <div>
+          Content for 
+          A
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 `;
@@ -249,15 +453,77 @@ exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] =
           role="tablist"
         >
           <li
+            class="p-unselectable-text p-tabview-selected p-highlight"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_4_content_0"
+              aria-selected="true"
+              class="p-tabview-nav-link"
+              id="pr_id_4_header_0"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    One
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
+            class="p-unselectable-text"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_4_content_1"
+              aria-selected="false"
+              class="p-tabview-nav-link"
+              id="pr_id_4_header_1"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <span>
+                    Two
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
             class="p-tabview-ink-bar"
-            style="width: 0px;"
+            style="left: 0px;"
           />
         </ul>
       </div>
     </div>
     <div
       class="p-tabview-panels"
-    />
+    >
+      <div
+        aria-hidden="false"
+        aria-labelledby="pr_id_4_header_0"
+        class="p-tabview-panel"
+        id="pr_id_4_content_0"
+        role="tabpanel"
+      >
+        <span>
+          One
+        </span>
+      </div>
+    </div>
   </div>
 </div>
 `;
@@ -279,15 +545,79 @@ exports[`ThumbIndex > renders with icons in items 1`] = `
           role="tablist"
         >
           <li
+            class="p-unselectable-text p-tabview-selected p-highlight"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_6_content_0"
+              aria-selected="true"
+              class="p-tabview-nav-link"
+              id="pr_id_6_header_0"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <i
+                    class="pi pi-home"
+                  />
+                  <span>
+                    Home
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
+            class="p-unselectable-text"
+            role="presentation"
+          >
+            <a
+              aria-controls="pr_id_6_content_1"
+              aria-selected="false"
+              class="p-tabview-nav-link"
+              id="pr_id_6_header_1"
+              role="tab"
+              tabindex="0"
+            >
+              <span
+                class="p-tabview-title"
+              >
+                <span
+                  class="blong-thumb-index__tab-header"
+                >
+                  <i
+                    class="pi pi-cog"
+                  />
+                  <span>
+                    Settings
+                  </span>
+                </span>
+              </span>
+            </a>
+          </li>
+          <li
             class="p-tabview-ink-bar"
-            style="width: 0px;"
+            style="left: 0px;"
           />
         </ul>
       </div>
     </div>
     <div
       class="p-tabview-panels"
-    />
+    >
+      <div
+        aria-hidden="false"
+        aria-labelledby="pr_id_6_header_0"
+        class="p-tabview-panel"
+        id="pr_id_6_content_0"
+        role="tabpanel"
+      />
+    </div>
   </div>
 </div>
 `;

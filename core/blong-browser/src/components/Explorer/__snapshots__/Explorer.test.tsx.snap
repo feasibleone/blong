@@ -227,6 +227,7 @@ exports[`Explorer > renders empty state with no listAction 1`] = `
                     aria-sort="none"
                     class="p-sortable-column"
                     role="columnheader"
+                    tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
@@ -245,6 +246,7 @@ exports[`Explorer > renders empty state with no listAction 1`] = `
                     aria-sort="none"
                     class="p-sortable-column"
                     role="columnheader"
+                    tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
@@ -431,6 +433,7 @@ exports[`Explorer > renders toolbar 1`] = `
                     aria-sort="none"
                     class="p-sortable-column"
                     role="columnheader"
+                    tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
@@ -597,6 +600,7 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
                     aria-sort="none"
                     class="p-sortable-column"
                     role="columnheader"
+                    tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
@@ -615,6 +619,7 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
                     aria-sort="none"
                     class="p-sortable-column"
                     role="columnheader"
+                    tabindex="0"
                   >
                     <div
                       class="p-column-header-content"

@@ -1,0 +1,7 @@
+/* App — outermost theme wrapper fills the parent / viewport */
+.blong-app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}

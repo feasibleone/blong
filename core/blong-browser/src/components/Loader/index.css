@@ -1,0 +1,48 @@
+@keyframes blong-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.blong-loader-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    z-index: 9998;
+}
+
+.blong-loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--surface-50);
+    opacity: 0.7;
+}
+
+.blong-loader-spinner {
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+    border: 3px solid #4096fd;
+    border-bottom-color: transparent;
+    animation: blong-rotate 0.8s linear infinite;
+}
+
+.blong-loader-message {
+    margin-top: 20px;
+    font-size: 16px;
+    font-family: Roboto, Arial;
+    z-index: 1;
+}

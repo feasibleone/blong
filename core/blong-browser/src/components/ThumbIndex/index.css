@@ -1,0 +1,8 @@
+/* Steps: center items and use surface border for active step circle */
+.blong-steps {
+    justify-content: center;
+}
+
+.blong-steps .p-steps .p-steps-item.p-highlight .p-steps-number {
+    background: var(--surface-border);
+}

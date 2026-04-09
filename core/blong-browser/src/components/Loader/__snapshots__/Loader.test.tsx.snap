@@ -27,6 +27,7 @@ exports[`Loader > renders overlay when loading is active 1`] = `
             class="p-progress-spinner-circle"
             cx="50"
             cy="50"
+            fill="none"
             r="20"
             stroke-miterlimit="10"
             stroke-width="4"

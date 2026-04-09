@@ -1,0 +1,88 @@
+/* Allow tables to scroll horizontally without overflowing the card */
+.p-datatable-wrapper {
+    overflow-x: auto;
+    max-width: 100vw;
+}
+
+.p-datatable-wrapper th {
+    min-width: 3rem;
+    position: relative;
+}
+
+.p-datatable-wrapper th.p-selection-column {
+    flex-grow: 0;
+    width: 3rem;
+}
+
+.p-datatable-wrapper td {
+    min-width: 3rem;
+}
+
+/* Scrollable variant header/body cells */
+.p-datatable-scrollable .p-datatable-thead > tr > th {
+    min-width: 3rem;
+    position: relative;
+    flex-direction: column;
+    align-items: unset;
+    justify-content: space-evenly;
+}
+
+.p-datatable-scrollable .p-datatable-tbody > tr > td {
+    min-width: 3rem;
+    flex-direction: column;
+    align-items: unset;
+    justify-content: space-evenly;
+}
+
+/* Action buttons inside table body cells */
+.p-datatable-tbody .p-button {
+    max-width: 100%;
+    width: fit-content;
+}
+
+.p-datatable-tbody .p-button .p-button-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.p-datatable-tbody td .value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Selected/current row highlight — outline instead of background */
+.blong-table-current {
+    outline: 0.15rem solid var(--primary-color);
+    outline-offset: -0.15rem;
+}
+
+/* Card inside Explorer has no content padding (rule 1 already covers base) */
+.blong-explorer .p-card .p-card-content {
+    padding: 0;
+}
+
+/* DataView content area */
+.p-dataview .p-dataview-content {
+    overflow-y: auto;
+    max-height: inherit;
+    background: none;
+}
+
+.p-dataview .p-dataview-content .p-card .p-card-content {
+    padding: 0;
+}
+
+/* Splitter panels scroll vertically */
+.p-splitter-panel {
+    overflow-y: auto;
+}
+
+/* Toolbar left group fills remaining width */
+.p-toolbar-group-left {
+    flex-grow: 1;
+}
+
+/* Embedded explorer constrains wrapper width to avoid scrollbar overlap */
+.blong-explorer.embedded .p-datatable-wrapper {
+    max-width: calc(100vw - 2rem);
+}

@@ -1,0 +1,11 @@
+/* Form layout with optional side panel (design mode property editor) */
+.blong-form-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.blong-form-layout > .blong-form {
+    flex: 1;
+    min-width: 0;
+}

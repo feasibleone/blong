@@ -3,21 +3,22 @@
 exports[`BooleanWidget > renders checked 1`] = `
 <div>
   <div
-    class="p-checkbox p-component blong-boolean"
+    class="p-checkbox p-component p-checkbox-checked blong-boolean"
   >
     <div
       class="p-hidden-accessible"
     >
       <input
+        checked=""
         id="testField"
         type="checkbox"
       />
     </div>
     <div
-      class="p-checkbox-box"
+      class="p-checkbox-box p-highlight"
     >
       <span
-        class="p-checkbox-icon p-c"
+        class="p-checkbox-icon p-c pi pi-check"
       />
     </div>
   </div>
@@ -76,13 +77,15 @@ exports[`BooleanWidget > renders unchecked 1`] = `
 exports[`CurrencyWidget > renders 1`] = `
 <div>
   <span
-    class="p-inputnumber p-component p-inputwrapper blong-currency "
+    class="p-inputnumber p-component p-inputwrapper blong-currency w-full "
   >
     <input
-      class="p-inputtext p-component p-filled p-inputnumber-input"
+      class="p-inputtext p-component p-filled p-inputnumber-input text-right"
       id="testField"
       inputmode="decimal"
+      name="testField"
       role="spinbutton"
+      type="text"
       value="0"
     />
   </span>
@@ -92,14 +95,16 @@ exports[`CurrencyWidget > renders 1`] = `
 exports[`CurrencyWidget > renders with value 1`] = `
 <div>
   <span
-    class="p-inputnumber p-component p-inputwrapper p-inputwrapper-filled blong-currency "
+    class="p-inputnumber p-component p-inputwrapper p-inputwrapper-filled blong-currency w-full "
   >
     <input
       aria-valuenow="99.99"
-      class="p-inputtext p-component p-filled p-inputnumber-input"
+      class="p-inputtext p-component p-filled p-inputnumber-input text-right"
       id="testField"
       inputmode="decimal"
+      name="testField"
       role="spinbutton"
+      type="text"
       value="99.99"
     />
   </span>
@@ -109,7 +114,7 @@ exports[`CurrencyWidget > renders with value 1`] = `
 exports[`DateTimeWidget > renders 1`] = `
 <div>
   <span
-    class="p-calendar p-component p-inputwrapper blong-datetime  p-calendar-w-btn p-calendar-w-btn-undefined"
+    class="p-calendar p-component p-inputwrapper blong-datetime w-full  p-calendar-w-btn p-calendar-w-btn-right"
   >
     <input
       autocomplete="off"
@@ -118,10 +123,13 @@ exports[`DateTimeWidget > renders 1`] = `
       type="text"
     />
     <button
-      class="p-button p-component p-datepicker-trigger"
+      class="p-button p-component p-datepicker-trigger p-button-icon-only"
       tabindex="-1"
       type="button"
     >
+      <span
+        class="p-button-icon p-c pi pi-calendar"
+      />
       <span
         class="p-button-label p-c"
       >
@@ -134,33 +142,91 @@ exports[`DateTimeWidget > renders 1`] = `
 
 exports[`DateWidget > renders 1`] = `
 <div>
-  <input
-    class="p-inputtext p-component w-full blong-date"
-    id="testField"
-    type="date"
-    value=""
-  />
+  <span
+    class="p-calendar p-component p-inputwrapper blong-date w-full  p-calendar-w-btn p-calendar-w-btn-right"
+  >
+    <input
+      autocomplete="off"
+      class="p-inputtext p-component"
+      id="testField"
+      type="text"
+    />
+    <button
+      class="p-button p-component p-datepicker-trigger p-button-icon-only"
+      tabindex="-1"
+      type="button"
+    >
+      <span
+        class="p-button-icon p-c pi pi-calendar"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+         
+      </span>
+    </button>
+  </span>
 </div>
 `;
 
 exports[`DateWidget > renders readOnly 1`] = `
 <div>
   <span
-    class="blong-display"
+    class="p-calendar p-component p-inputwrapper blong-date w-full  p-calendar-w-btn p-calendar-w-btn-right p-calendar-disabled p-inputwrapper-filled"
   >
-    2024-06-30
+    <input
+      autocomplete="off"
+      class="p-inputtext p-component p-disabled p-filled"
+      disabled=""
+      id="testField"
+      readonly=""
+      type="text"
+    />
+    <button
+      class="p-button p-component p-datepicker-trigger p-button-icon-only p-disabled"
+      disabled=""
+      tabindex="-1"
+      type="button"
+    >
+      <span
+        class="p-button-icon p-c pi pi-calendar"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+         
+      </span>
+    </button>
   </span>
 </div>
 `;
 
 exports[`DateWidget > renders with value 1`] = `
 <div>
-  <input
-    class="p-inputtext p-component w-full blong-date"
-    id="testField"
-    type="date"
-    value="2024-01-15"
-  />
+  <span
+    class="p-calendar p-component p-inputwrapper blong-date w-full  p-calendar-w-btn p-calendar-w-btn-right p-inputwrapper-filled"
+  >
+    <input
+      autocomplete="off"
+      class="p-inputtext p-component p-filled"
+      id="testField"
+      type="text"
+    />
+    <button
+      class="p-button p-component p-datepicker-trigger p-button-icon-only"
+      tabindex="-1"
+      type="button"
+    >
+      <span
+        class="p-button-icon p-c pi pi-calendar"
+      />
+      <span
+        class="p-button-label p-c"
+      >
+         
+      </span>
+    </button>
+  </span>
 </div>
 `;
 
@@ -178,6 +244,7 @@ exports[`DropdownWidget > renders with static options 1`] = `
 <div>
   <div
     class="p-dropdown p-component p-inputwrapper p-dropdown-clearable p-inputwrapper-filled blong-dropdown w-full "
+    data-testid="testField"
   >
     <div
       class="p-hidden-accessible"
@@ -230,33 +297,39 @@ exports[`DropdownWidget > renders with static options 1`] = `
 exports[`IntegerWidget > renders 1`] = `
 <div>
   <span
-    class="p-inputnumber p-component p-inputwrapper blong-integer "
+    class="p-inputnumber p-component p-inputwrapper p-inputnumber-buttons-stacked blong-integer w-full "
   >
     <input
-      class="p-inputtext p-component p-filled p-inputnumber-input"
+      class="p-inputtext p-component p-filled p-inputnumber-input w-full text-right"
       id="testField"
-      inputmode="decimal"
+      inputmode="numeric"
+      name="testField"
       role="spinbutton"
+      type="text"
       value="0"
     />
-    <button
-      class="p-inputnumber-button p-inputnumber-button-up p-button p-button-icon-only p-component"
-      tabindex="-1"
-      type="button"
+    <span
+      class="p-inputnumber-button-group"
     >
-      <span
-        class="p-button-icon"
-      />
-    </button>
-    <button
-      class="p-inputnumber-button p-inputnumber-button-down p-button p-button-icon-only p-component"
-      tabindex="-1"
-      type="button"
-    >
-      <span
-        class="p-button-icon"
-      />
-    </button>
+      <button
+        class="p-inputnumber-button p-inputnumber-button-up p-button p-button-icon-only p-component"
+        tabindex="-1"
+        type="button"
+      >
+        <span
+          class="p-button-icon pi pi-angle-up"
+        />
+      </button>
+      <button
+        class="p-inputnumber-button p-inputnumber-button-down p-button p-button-icon-only p-component"
+        tabindex="-1"
+        type="button"
+      >
+        <span
+          class="p-button-icon pi pi-angle-down"
+        />
+      </button>
+    </span>
   </span>
 </div>
 `;
@@ -264,34 +337,40 @@ exports[`IntegerWidget > renders 1`] = `
 exports[`IntegerWidget > renders with value 1`] = `
 <div>
   <span
-    class="p-inputnumber p-component p-inputwrapper p-inputwrapper-filled blong-integer "
+    class="p-inputnumber p-component p-inputwrapper p-inputwrapper-filled p-inputnumber-buttons-stacked blong-integer w-full "
   >
     <input
       aria-valuenow="7"
-      class="p-inputtext p-component p-filled p-inputnumber-input"
+      class="p-inputtext p-component p-filled p-inputnumber-input w-full text-right"
       id="testField"
-      inputmode="decimal"
+      inputmode="numeric"
+      name="testField"
       role="spinbutton"
+      type="text"
       value="7"
     />
-    <button
-      class="p-inputnumber-button p-inputnumber-button-up p-button p-button-icon-only p-component"
-      tabindex="-1"
-      type="button"
+    <span
+      class="p-inputnumber-button-group"
     >
-      <span
-        class="p-button-icon"
-      />
-    </button>
-    <button
-      class="p-inputnumber-button p-inputnumber-button-down p-button p-button-icon-only p-component"
-      tabindex="-1"
-      type="button"
-    >
-      <span
-        class="p-button-icon"
-      />
-    </button>
+      <button
+        class="p-inputnumber-button p-inputnumber-button-up p-button p-button-icon-only p-component"
+        tabindex="-1"
+        type="button"
+      >
+        <span
+          class="p-button-icon pi pi-angle-up"
+        />
+      </button>
+      <button
+        class="p-inputnumber-button p-inputnumber-button-down p-button p-button-icon-only p-component"
+        tabindex="-1"
+        type="button"
+      >
+        <span
+          class="p-button-icon pi pi-angle-down"
+        />
+      </button>
+    </span>
   </span>
 </div>
 `;
@@ -361,6 +440,7 @@ exports[`MultiSelectWidget > renders 1`] = `
 <div>
   <div
     class="p-multiselect p-component p-inputwrapper p-multiselect-chip blong-multiselect w-full "
+    data-testid="testField"
   >
     <div
       class="p-hidden-accessible"
@@ -369,6 +449,7 @@ exports[`MultiSelectWidget > renders 1`] = `
         id="testField"
         readonly=""
         role="listbox"
+        tabindex="0"
         type="text"
       />
     </div>
@@ -383,7 +464,11 @@ exports[`MultiSelectWidget > renders 1`] = `
     </div>
     <div
       class="p-multiselect-trigger"
-    />
+    >
+      <span
+        class="p-multiselect-trigger-icon p-c pi pi-chevron-down"
+      />
+    </div>
   </div>
 </div>
 `;
@@ -391,13 +476,15 @@ exports[`MultiSelectWidget > renders 1`] = `
 exports[`NumberWidget > renders 1`] = `
 <div>
   <span
-    class="p-inputnumber p-component p-inputwrapper blong-number "
+    class="p-inputnumber p-component p-inputwrapper blong-number w-full "
   >
     <input
-      class="p-inputtext p-component p-filled p-inputnumber-input"
+      class="p-inputtext p-component p-filled p-inputnumber-input text-right"
       id="testField"
-      inputmode="decimal"
+      inputmode="numeric"
+      name="testField"
       role="spinbutton"
+      type="text"
       value="0"
     />
   </span>
@@ -407,18 +494,20 @@ exports[`NumberWidget > renders 1`] = `
 exports[`NumberWidget > renders with value and bounds 1`] = `
 <div>
   <span
-    class="p-inputnumber p-component p-inputwrapper p-inputwrapper-filled blong-number "
+    class="p-inputnumber p-component p-inputwrapper p-inputwrapper-filled blong-number w-full "
   >
     <input
       aria-valuemax="100"
       aria-valuemin="0"
       aria-valuenow="42"
-      class="p-inputtext p-component p-filled p-inputnumber-input"
+      class="p-inputtext p-component p-filled p-inputnumber-input text-right"
       id="testField"
-      inputmode="decimal"
+      inputmode="numeric"
       max="100"
       min="0"
+      name="testField"
       role="spinbutton"
+      type="text"
       value="42"
     />
   </span>
@@ -428,11 +517,13 @@ exports[`NumberWidget > renders with value and bounds 1`] = `
 exports[`PasswordWidget > renders 1`] = `
 <div>
   <div
-    class="p-password p-component p-inputwrapper p-input-icon-right blong-password "
+    class="p-password p-component p-inputwrapper p-input-icon-right blong-password w-full "
   >
     <input
-      class="p-inputtext p-component p-password-input"
+      class="p-inputtext p-component p-password-input w-full"
       id="testField"
+      name="testField"
+      role="textbox"
       type="password"
       value=""
     />
@@ -446,11 +537,13 @@ exports[`PasswordWidget > renders 1`] = `
 exports[`PasswordWidget > renders with value 1`] = `
 <div>
   <div
-    class="p-password p-component p-inputwrapper p-inputwrapper-filled p-input-icon-right blong-password "
+    class="p-password p-component p-inputwrapper p-inputwrapper-filled p-input-icon-right blong-password w-full "
   >
     <input
-      class="p-inputtext p-component p-filled p-password-input"
+      class="p-inputtext p-component p-filled p-password-input w-full"
       id="testField"
+      name="testField"
+      role="textbox"
       type="password"
       value="secret"
     />
@@ -464,43 +557,55 @@ exports[`PasswordWidget > renders with value 1`] = `
 exports[`SelectWidget > renders disabled 1`] = `
 <div>
   <div
-    class="p-selectbutton p-buttonset p-component blong-select"
-    role="group"
-  />
+    class="blong-select-wrapper"
+    data-testid="testField"
+    id="testField"
+  >
+    <div
+      class="p-selectbutton p-buttonset p-component blong-select"
+      role="group"
+    />
+  </div>
 </div>
 `;
 
 exports[`SelectWidget > renders with options 1`] = `
 <div>
   <div
-    class="p-selectbutton p-buttonset p-component blong-select"
-    role="group"
+    class="blong-select-wrapper"
+    data-testid="testField"
+    id="testField"
   >
     <div
-      aria-label="A"
-      aria-pressed="true"
-      class="p-button p-component p-highlight"
-      role="button"
-      tabindex="0"
+      class="p-selectbutton p-buttonset p-component blong-select"
+      role="group"
     >
-      <span
-        class="p-button-label p-c"
+      <div
+        aria-label="A"
+        aria-pressed="true"
+        class="p-button p-component p-highlight"
+        role="button"
+        tabindex="0"
       >
-        A
-      </span>
-    </div>
-    <div
-      aria-label="B"
-      aria-pressed="false"
-      class="p-button p-component"
-      role="button"
-      tabindex="0"
-    >
-      <span
-        class="p-button-label p-c"
+        <span
+          class="p-button-label p-c"
+        >
+          A
+        </span>
+      </div>
+      <div
+        aria-label="B"
+        aria-pressed="false"
+        class="p-button p-component"
+        role="button"
+        tabindex="0"
       >
-        B
-      </span>
+        <span
+          class="p-button-label p-c"
+        >
+          B
+        </span>
+      </div>
     </div>
   </div>
 </div>
@@ -610,7 +715,7 @@ exports[`TextareaWidget > renders with value 1`] = `
 exports[`TimeWidget > renders 1`] = `
 <div>
   <span
-    class="p-calendar p-component p-inputwrapper blong-time  p-calendar-w-btn p-calendar-w-btn-undefined p-calendar-timeonly"
+    class="p-calendar p-component p-inputwrapper blong-time w-full  p-calendar-w-btn p-calendar-w-btn-right p-calendar-timeonly"
   >
     <input
       autocomplete="off"
@@ -619,10 +724,13 @@ exports[`TimeWidget > renders 1`] = `
       type="text"
     />
     <button
-      class="p-button p-component p-datepicker-trigger"
+      class="p-button p-component p-datepicker-trigger p-button-icon-only"
       tabindex="-1"
       type="button"
     >
+      <span
+        class="p-button-icon p-c pi pi-calendar"
+      />
       <span
         class="p-button-label p-c"
       >

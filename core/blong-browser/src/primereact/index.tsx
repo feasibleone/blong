@@ -17,7 +17,6 @@ export {addLocale, locale} from 'primereact/api';
 export {confirmDialog} from 'primereact/confirmdialog';
 export {confirmPopup} from 'primereact/confirmpopup';
 export {SplitterPanel} from 'primereact/splitter';
-export {TabPanel} from 'primereact/tabview';
 
 // ── Type re-exports ──────────────────────────────────────────────────────────
 
@@ -57,6 +56,10 @@ export type {SplitterProps} from 'primereact/splitter';
 export type {StepsProps} from 'primereact/steps';
 export type {TabMenuProps} from 'primereact/tabmenu';
 export type {TabViewProps} from 'primereact/tabview';
+/** TabPanelProps extended with the `__TYPE` discriminator PrimeReact TabView uses to identify
+ *  panel children. React 19 removed defaultProps support, so callers pass `__TYPE="TabPanel"`
+ *  explicitly; this type makes that prop valid. */
+export type TabPanelProps = import('primereact/tabview').TabPanelProps & {__TYPE?: string};
 export type {ToastProps} from 'primereact/toast';
 export type {ToolbarProps} from 'primereact/toolbar';
 export type {TreeProps} from 'primereact/tree';
@@ -104,7 +107,8 @@ import {SplitButton as PrimeSplitButton} from 'primereact/splitbutton';
 import {Splitter as PrimeSplitter} from 'primereact/splitter';
 import {Steps as PrimeSteps} from 'primereact/steps';
 import {TabMenu as PrimeTabMenu} from 'primereact/tabmenu';
-import {TabView as PrimeTabView} from 'primereact/tabview';
+import {TabPanel as PrimeTabPanel, TabView as PrimeTabView} from 'primereact/tabview';
+import type {TabPanelProps as PrimeTabPanelProps} from 'primereact/tabview';
 import {Toast as PrimeToast} from 'primereact/toast';
 import {Toolbar as PrimeToolbar} from 'primereact/toolbar';
 import {Tree as PrimeTree} from 'primereact/tree';
@@ -646,6 +650,14 @@ export function TabMenu({
     ...props
 }: TabMenuProps) {
     return <PrimeTabMenu activeIndex={activeIndex} {...props} />;
+}
+
+// TabPanel — thin wrapper that adds `__TYPE` to the prop type.
+// React 19 no longer applies defaultProps, so PrimeReact's TabView cannot auto-inject
+// __TYPE:'TabPanel' onto elements.  Callers pass it explicitly; this wrapper makes that valid.
+// TabView never mounts TabPanel — it only reads element.props — so the wrapper is transparent.
+export function TabPanel({__TYPE: _type, ...props}: TabPanelProps) {
+    return <PrimeTabPanel {...(props as PrimeTabPanelProps)} />;
 }
 
 // TabView — activeIndex:0, renderActiveOnly:true

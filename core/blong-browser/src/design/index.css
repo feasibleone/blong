@@ -1,0 +1,290 @@
+/* Cards in design mode: subtle outline + move cursor */
+.p-card.blong-designable {
+    position: relative;
+    outline: 1px dashed rgba(100, 149, 237, 0.4);
+    cursor: move;
+}
+
+.p-card.blong-designable--selected {
+    outline: 2px solid var(--primary-color);
+}
+
+.p-card.blong-designable--dragging {
+    opacity: 0.4;
+}
+
+/* Suppress text selection while dragging */
+.blong-designable * {
+    user-select: none;
+}
+
+/* ── Field rows in design mode ── */
+.blong-field-row--design {
+    cursor: default;
+    position: relative;
+}
+
+.blong-field-row--design:hover {
+    background: rgba(100, 149, 237, 0.06);
+    border-radius: 0.3rem;
+}
+
+.blong-field-row--design--selected,
+.blong-field-row--design--selected:hover {
+    background: rgba(100, 149, 237, 0.12);
+    border-radius: 0.3rem;
+    outline: 1px solid rgba(100, 149, 237, 0.5);
+}
+
+.blong-field-row--design--dragging {
+    opacity: 0.4;
+}
+
+/* Insert-before indicator when another field is hovered */
+.blong-field-row--design--over {
+    border-top: 2px solid var(--primary-color);
+    border-radius: 0;
+}
+
+/* Drag grip handle */
+.blong-design-handle {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.4rem;
+    cursor: move;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+
+.blong-design-handle:hover {
+    opacity: 1;
+}
+
+.blong-design-handle__grip {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+}
+
+/* Selection highlight overlay — absolutely positioned inside the card */
+.blong-selection-indicator {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--primary-color);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.blong-selection-indicator__badge {
+    position: absolute;
+    top: -0.6rem;
+    left: 1rem;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+}
+
+/* ── Drop zones — always reserve space, no obtrusive border ── */
+
+.blong-drop-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.2rem 0;
+    border-radius: 0.4rem;
+    border: 1px solid transparent;
+    background: rgba(100, 149, 237, 0.04);
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    overflow: hidden;
+}
+
+/* Card-sized zone (column bottom, for dropping cards) */
+.blong-drop-zone--card {
+    min-height: 3.5rem;
+}
+
+/* Field-sized zone (card body bottom, for dropping fields) */
+.blong-drop-zone--field {
+    min-height: 1.8rem;
+}
+
+/* During a drag, invalid zones become invisible (but still occupy space) */
+.blong-drop-zone--hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Valid zone during drag — subtle tint to indicate it's a target */
+.blong-drop-zone--valid {
+    background: rgba(100, 149, 237, 0.1);
+    border-color: rgba(100, 149, 237, 0.25);
+}
+
+/* Hovered + valid — clearly highlighted, shows item label */
+.blong-drop-zone--over {
+    background: rgba(100, 149, 237, 0.25);
+    border-color: var(--primary-color);
+}
+
+.blong-drop-zone__label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 95%;
+}
+
+/* ── Drag ghost (DragOverlay) ── */
+.blong-drag-ghost {
+    background: var(--surface-card);
+    border: 1px solid var(--primary-color);
+    border-radius: 0.5rem;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Property editor (inspector sidebar) ── */
+.blong-property-editor {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface-card);
+    border-left: 1px solid var(--surface-border);
+    padding: 1rem;
+    overflow-y: auto;
+    align-self: stretch;
+}
+
+.blong-property-editor--empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    opacity: 0.55;
+}
+
+.blong-property-editor__icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.blong-property-editor__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-color-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.blong-property-editor__hint {
+    font-size: 0.78rem;
+    color: var(--text-color-secondary);
+    text-align: center;
+    margin: 0;
+}
+
+.blong-property-editor__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.blong-property-editor__field label {
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+}
+
+.blong-property-editor__input {
+    border: 1px solid var(--surface-border);
+    border-radius: 0.3rem;
+    padding: 0.28rem 0.5rem;
+    font-size: 0.85rem;
+    background: var(--surface-ground);
+    color: var(--text-color);
+    width: 100%;
+    outline: none;
+}
+
+.blong-property-editor__input:focus {
+    border-color: var(--primary-color);
+}
+
+.blong-property-editor__check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.blong-property-editor__row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.blong-property-editor__key {
+    min-width: 56px;
+    color: var(--text-color-secondary);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.blong-property-editor__val {
+    color: var(--text-color);
+    font-size: 0.82rem;
+    word-break: break-all;
+}
+
+/* Design-mode toolbar buttons group */
+.blong-design-toolbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Field picker dropdown (Add Field button) */
+.blong-design-field-picker {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 100;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.4rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+
+.blong-design-field-picker__item {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.blong-design-field-picker__item:hover {
+    background: var(--highlight-bg, rgba(100, 149, 237, 0.1));
+}

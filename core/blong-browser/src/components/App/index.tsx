@@ -13,6 +13,7 @@
  * Props mirror IPortalProps so callers can customise the shell (logo, etc.)
  * while the provider wiring is always handled here.
  */
+import './index.css';
 import {ConfirmDialog, ConfirmPopup} from '../../primereact/index.js';
 
 
@@ -22,6 +23,7 @@ import {ErrorDialog} from '../Error/index.js';
 import {ActionHint} from '../Hint/index.js';
 import {Portal, type IPortalProps} from '../Portal/index.js';
 import {Theme, type IThemeConfig} from '../Theme/index.js';
+import {useAppStore} from '../../state/appStore.js';
 
 const DEFAULT_THEME: IThemeConfig = {name: 'lara-light-blue', palette: 'light'};
 
@@ -47,6 +49,30 @@ export interface IAppProps extends IPortalProps {
      * context (BlongUiProvider + Theme) without the full portal UI.
      */
     children?: React.ReactNode;
+    /**
+     * Optional component rendered instead of the portal when the user is not
+     * authenticated (i.e. `auth.isAuthenticated` is false).
+     * Receives `dispatch` as a prop so it can call login handlers.
+     */
+    loginComponent?: React.ComponentType<{dispatch: DispatchFn}>;
+}
+
+function AppShell({
+    loginComponent: LoginComponent,
+    dispatch,
+    children,
+    portalProps,
+}: {
+    loginComponent?: React.ComponentType<{dispatch: DispatchFn}>;
+    dispatch: DispatchFn;
+    children?: React.ReactNode;
+    portalProps: IPortalProps;
+}) {
+    const isAuthenticated = useAppStore(s => s.auth.isAuthenticated);
+    if (LoginComponent && !isAuthenticated) {
+        return <LoginComponent dispatch={dispatch} />;
+    }
+    return <>{children ?? <Portal {...portalProps} />}</>;
 }
 
 export function App({
@@ -57,6 +83,7 @@ export function App({
     loginRoute,
     theme = DEFAULT_THEME,
     children,
+    loginComponent,
     ...portalProps
 }: IAppProps) {
     return (
@@ -68,7 +95,13 @@ export function App({
             loginRoute={loginRoute}
         >
             <Theme theme={theme}>
-                {children ?? <Portal {...portalProps} />}
+                <AppShell
+                    loginComponent={loginComponent}
+                    dispatch={dispatch}
+                    portalProps={portalProps}
+                >
+                    {children}
+                </AppShell>
                 <ErrorDialog />
                 <ConfirmDialog />
                 <ConfirmPopup />

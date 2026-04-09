@@ -121,16 +121,16 @@ function mkProps(overrides: Record<string, unknown> = {}) {
 describe('DateWidget — onChange callback', () => {
     it('calls onChange when date value changes', () => {
         const onChange = vi.fn();
-        const {container} = render(<DateWidget {...mkProps({onChange})} />);
-        const input = container.querySelector('input[type="date"]') as HTMLInputElement;
+        const {getByTestId} = render(<DateWidget {...mkProps({onChange})} />);
+        const input = getByTestId('calendar-input') as HTMLInputElement;
         fireEvent.change(input, {target: {value: '2024-01-15'}});
         expect(onChange).toHaveBeenCalled();
     });
 
     it('calls onBlur when calendar hides', () => {
         const onBlur = vi.fn();
-        const {container} = render(<DateWidget {...mkProps({onBlur})} />);
-        const input = container.querySelector('input[type="date"]') as HTMLInputElement;
+        const {getByTestId} = render(<DateWidget {...mkProps({onBlur})} />);
+        const input = getByTestId('calendar-input') as HTMLInputElement;
         fireEvent.blur(input);
         expect(onBlur).toHaveBeenCalled();
     });

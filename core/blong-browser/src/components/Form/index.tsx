@@ -12,6 +12,7 @@
  *  - Design-mode DnD (card reordering across columns)
  *  - Provides FormContext so Deck and Card can render without prop-drilling
  */
+import './index.css';
 import {
     DndContext,
     DragOverlay,

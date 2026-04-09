@@ -38,7 +38,7 @@ describe('Login', () => {
 
     it('shows validation error when submitting empty form', async () => {
         render(<Login onLogin={vi.fn()} />);
-        const submitBtn = screen.getByRole('button', {name: /sign in/i});
+        const submitBtn = screen.getByRole('button', {name: /^login$/i});
         fireEvent.click(submitBtn);
         await waitFor(() => {
             expect(screen.getByText('Username is required')).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe('Login', () => {
         render(<Login onLogin={vi.fn()} />);
         const usernameInput = screen.getByLabelText(/username/i);
         fireEvent.change(usernameInput, {target: {value: 'alice'}});
-        const submitBtn = screen.getByRole('button', {name: /sign in/i});
+        const submitBtn = screen.getByRole('button', {name: /^login$/i});
         fireEvent.click(submitBtn);
         await waitFor(() => {
             expect(screen.getByText('Password is required')).toBeInTheDocument();
@@ -61,7 +61,7 @@ describe('Login', () => {
         render(<Login onLogin={onLogin} />);
         fireEvent.change(screen.getByLabelText(/username/i), {target: {value: 'alice'}});
         fireEvent.change(screen.getByLabelText(/password/i), {target: {value: 'secret'}});
-        fireEvent.click(screen.getByRole('button', {name: /sign in/i}));
+        fireEvent.click(screen.getByRole('button', {name: /^login$/i}));
         await waitFor(() => {
             expect(onLogin).toHaveBeenCalledWith({username: 'alice', password: 'secret'});
         });
@@ -77,11 +77,11 @@ describe('Login', () => {
         expect(container).toMatchSnapshot();
     });
 
-    it('renders with register link', () => {
+    it('renders with register button', () => {
         const {container} = render(
             <Login
                 onLogin={vi.fn()}
-                register={{label: 'Register', href: '/register'}}
+                registerPage="user.selfRegistration"
             />,
         );
         expect(screen.getByText('Register')).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('Login', () => {
         render(<Login onLogin={onLogin} />);
         fireEvent.change(screen.getByLabelText(/username/i), {target: {value: 'alice'}});
         fireEvent.change(screen.getByLabelText(/password/i), {target: {value: 'wrong'}});
-        fireEvent.click(screen.getByRole('button', {name: /sign in/i}));
+        fireEvent.click(screen.getByRole('button', {name: /^login$/i}));
         await waitFor(() => {
             expect(screen.getByText('Invalid password')).toBeInTheDocument();
         });

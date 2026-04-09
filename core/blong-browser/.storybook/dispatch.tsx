@@ -536,6 +536,36 @@ export const defaultHandlers: Record<string, Handler> = {
         }
         return Promise.resolve(Object.fromEntries(names.map(n => [n, treeDropdownData[n] ?? []])));
     },
+
+    /**
+     * Resolve a page component by name.
+     * Called by Portal's `openByAction` and by Login's `registerPage` mechanism.
+     *
+     * Page names that end in 'Registration' return a simple self-registration
+     * form placeholder — suitable for demonstrating the registration flow in
+     * stories without a real backend.
+     *
+     * Mirrors ut-prime's `componentMiddleware` story pattern.
+     */
+    'portal.component.get': params => {
+        const page = params?.page as string | undefined;
+        if (page?.endsWith('Registration') || page?.endsWith('Register') || page?.endsWith('SelfRegister')) {
+            const SelfRegistrationPlaceholder: React.FC = () => (
+                <div className="blong-login__card" style={{maxWidth: 400, marginTop: '2rem'}}>
+                    <h3 style={{textAlign: 'center', marginBottom: '1rem'}}>Create Account</h3>
+                    <p style={{color: 'var(--text-color-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem'}}>
+                        Registration form placeholder.  Configure a <code>portal.component.get</code> dispatch
+                        handler for page <em>{page}</em> to provide the real registration form.
+                    </p>
+                    <pre style={{fontSize: '0.75rem', background: 'var(--surface-hover)', padding: '0.75rem', borderRadius: '4px', overflow: 'auto'}}>
+                        {`// In your dispatch overrides:\n'portal.component.get': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
+                    </pre>
+                </div>
+            );
+            return Promise.resolve(SelfRegistrationPlaceholder);
+        }
+        return Promise.resolve(null);
+    },
 };
 
 // ── Dispatch function ──────────────────────────────────────────────────────────
@@ -595,10 +625,13 @@ export function withDispatch(
     );
 
     return (Story, context) => {
-        const langArg = (context as {args?: Record<string, unknown>} | undefined)?.args?.lang as
-            | string
-            | undefined;
+        const ctx = context as {args?: Record<string, unknown>; parameters?: Record<string, unknown>} | undefined;
+        const langArg = ctx?.args?.lang as string | undefined;
         const effectiveLang = langArg ?? language;
+        /** Optional login page component passed via `story.parameters.loginComponent`. */
+        const loginComponentParam = ctx?.parameters?.loginComponent as
+            | React.ComponentType<{dispatch: DispatchFn}>
+            | undefined;
 
         // Pass locale data for the active language via theme.languages so Theme registers it.
         const themeLanguages = React.useMemo(() => {
@@ -659,6 +692,7 @@ export function withDispatch(
                 schemaUrl="/schema.json"
                 theme={{name: 'vela-blue', palette: 'dark-compact', languages: themeLanguages}}
                 loginRoute={loginRoute}
+                loginComponent={loginComponentParam}
             >
                 <Story />
                 <Hint />
