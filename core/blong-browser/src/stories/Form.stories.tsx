@@ -25,7 +25,12 @@ type Story = Omit<StoryObj<typeof meta>, 'play'> & {
 const coralSchema: IEnrichedSchema = {
     title: 'Coral Species',
     properties: {
-        speciesName: {title: 'Species Name', type: 'string', required: true, widget: {type: 'input'}},
+        speciesName: {
+            title: 'Species Name',
+            type: 'string',
+            required: true,
+            widget: {type: 'input'},
+        },
         scientificName: {title: 'Scientific Name', type: 'string', widget: {type: 'input'}},
         coralType: {
             title: 'Coral Type',
@@ -48,15 +53,29 @@ const coralSchema: IEnrichedSchema = {
 
 export const Basic: Story = {
     render: () => {
-        const [value, setValue] = useState<Record<string, unknown>>({speciesName: 'Brain Coral', coralType: 'hard'});
-        return <Form schema={coralSchema} value={value} onChange={setValue} />;
+        const [value, setValue] = useState<Record<string, unknown>>({
+            speciesName: 'Brain Coral',
+            coralType: 'hard',
+        });
+        return (
+            <Form
+                schema={coralSchema}
+                value={value}
+                onChange={setValue}
+            />
+        );
     },
 };
 
 export const ReadOnly: Story = {
     args: {
         schema: coralSchema,
-        value: {speciesName: 'Staghorn Coral', scientificName: 'Acropora cervicornis', coralType: 'hard', maxDepth: 30},
+        value: {
+            speciesName: 'Staghorn Coral',
+            scientificName: 'Acropora cervicornis',
+            coralType: 'hard',
+            maxDepth: 30,
+        },
         readOnly: true,
     },
 };
@@ -72,31 +91,48 @@ export const Loading: Story = {
 
 const inputWidgetProperties: IEnrichedSchema['properties'] = {
     // ── left column ──
-    input:     {title: 'Input',      widget: {type: 'input'}},
-    password:  {title: 'Password',   widget: {type: 'password'}},
-    text:      {title: 'Text',       widget: {type: 'textArea'}},
-    mask:      {title: 'Mask',       widget: {type: 'mask', mask: '***.***.***.***'}},
-    chips:     {title: 'Chips',      widget: {type: 'chips'}},
+    input: {title: 'Input', widget: {type: 'input'}},
+    password: {title: 'Password', widget: {type: 'password'}},
+    text: {title: 'Text', widget: {type: 'textArea'}},
+    mask: {title: 'Mask', widget: {type: 'mask', mask: '***.***.***.***'}},
+    chips: {title: 'Chips', widget: {type: 'chips'}},
     autocomplete: {title: 'Autocomplete', widget: {type: 'autocomplete'}},
-    boolean:   {title: 'Boolean',    widget: {type: 'boolean'}},
-    date:      {title: 'Date',       widget: {type: 'date'}},
-    time:      {title: 'Time',       widget: {type: 'time'}},
-    dateTime:  {title: 'Date Time',  widget: {type: 'dateTime'}},
+    boolean: {title: 'Boolean', widget: {type: 'boolean'}},
+    date: {title: 'Date', widget: {type: 'date'}},
+    time: {title: 'Time', widget: {type: 'time'}},
+    dateTime: {title: 'Date Time', widget: {type: 'dateTime'}},
     dateRange: {title: 'Date Range', widget: {type: 'dateRange'}},
-    number:    {title: 'Number',     widget: {type: 'number'}},
-    currency:  {title: 'Currency',   widget: {type: 'currency'}},
-    integer:   {title: 'Integer',    widget: {type: 'integer'}},
+    number: {title: 'Number', widget: {type: 'number'}},
+    currency: {title: 'Currency', widget: {type: 'currency'}},
+    integer: {title: 'Integer', widget: {type: 'integer'}},
     // ── center column ──
-    image:     {title: 'Image',      widget: {type: 'image'}},
+    image: {title: 'Image', widget: {type: 'image'}},
     imageUpload: {title: 'Image Upload', widget: {type: 'imageUpload'}},
-    file:      {title: 'File',       widget: {type: 'file'}},
-    dropdown:  {title: 'Dropdown',   widget: {type: 'dropdown', dropdown: 'dropdown'}},
+    file: {title: 'File', widget: {type: 'file'}},
+    dropdown: {title: 'Dropdown', widget: {type: 'dropdown', dropdown: 'dropdown'}},
     dropdownTree: {
         title: 'Dropdown Tree',
-        widget: {type: 'dropdownTree', options: [
-            {key: '1', label: 'Europe', children: [{key: '1-1', label: 'France'}, {key: '1-2', label: 'Germany'}]},
-            {key: '2', label: 'Asia',   children: [{key: '2-1', label: 'Japan'},  {key: '2-2', label: 'China'}]},
-        ]},
+        widget: {
+            type: 'dropdownTree',
+            options: [
+                {
+                    key: '1',
+                    label: 'Europe',
+                    children: [
+                        {key: '1-1', label: 'France'},
+                        {key: '1-2', label: 'Germany'},
+                    ],
+                },
+                {
+                    key: '2',
+                    label: 'Asia',
+                    children: [
+                        {key: '2-1', label: 'Japan'},
+                        {key: '2-2', label: 'China'},
+                    ],
+                },
+            ],
+        },
     },
     multiSelect: {
         title: 'Multi Select',
@@ -104,10 +140,27 @@ const inputWidgetProperties: IEnrichedSchema['properties'] = {
     },
     multiSelectTree: {
         title: 'Multi Select Tree',
-        widget: {type: 'multiSelectTree', options: [
-            {key: '1', label: 'Europe', children: [{key: '1-1', label: 'France'}, {key: '1-2', label: 'Germany'}]},
-            {key: '2', label: 'Asia',   children: [{key: '2-1', label: 'Japan'},  {key: '2-2', label: 'China'}]},
-        ]},
+        widget: {
+            type: 'multiSelectTree',
+            options: [
+                {
+                    key: '1',
+                    label: 'Europe',
+                    children: [
+                        {key: '1-1', label: 'France'},
+                        {key: '1-2', label: 'Germany'},
+                    ],
+                },
+                {
+                    key: '2',
+                    label: 'Asia',
+                    children: [
+                        {key: '2-1', label: 'Japan'},
+                        {key: '2-2', label: 'China'},
+                    ],
+                },
+            ],
+        },
     },
     select: {
         title: 'Select',
@@ -118,7 +171,7 @@ const inputWidgetProperties: IEnrichedSchema['properties'] = {
         widget: {type: 'table', columns: ['name', 'value']},
         items: {
             properties: {
-                name:  {title: 'Name'},
+                name: {title: 'Name'},
                 value: {title: 'Value'},
             },
         },
@@ -135,10 +188,27 @@ const inputWidgetProperties: IEnrichedSchema['properties'] = {
     },
     multiSelectTreeTable: {
         title: 'Multi Select Tree Table',
-        widget: {type: 'multiSelectTreeTable', options: [
-            {key: '1', label: 'Europe', children: [{key: '1-1', label: 'France'}, {key: '1-2', label: 'Germany'}]},
-            {key: '2', label: 'Asia',   children: [{key: '2-1', label: 'Japan'},  {key: '2-2', label: 'China'}]},
-        ]},
+        widget: {
+            type: 'multiSelectTreeTable',
+            options: [
+                {
+                    key: '1',
+                    label: 'Europe',
+                    children: [
+                        {key: '1-1', label: 'France'},
+                        {key: '1-2', label: 'Germany'},
+                    ],
+                },
+                {
+                    key: '2',
+                    label: 'Asia',
+                    children: [
+                        {key: '2-1', label: 'Japan'},
+                        {key: '2-2', label: 'China'},
+                    ],
+                },
+            ],
+        },
     },
 };
 
@@ -164,12 +234,37 @@ const inputCards: Record<string, ICardConfig> = {
     left: {
         label: undefined,
         className: 'xl:col-4',
-        widgets: ['input.input', 'input.password', 'input.text', 'input.mask', 'input.chips', 'input.autocomplete', 'input.boolean', 'input.date', 'input.time', 'input.dateTime', 'input.dateRange', 'input.number', 'input.currency', 'input.integer'],
+        widgets: [
+            'input.input',
+            'input.password',
+            'input.text',
+            'input.mask',
+            'input.chips',
+            'input.autocomplete',
+            'input.boolean',
+            'input.date',
+            'input.time',
+            'input.dateTime',
+            'input.dateRange',
+            'input.number',
+            'input.currency',
+            'input.integer',
+        ],
     },
     center: {
         label: undefined,
         className: 'xl:col-4',
-        widgets: ['input.image', 'input.imageUpload', 'input.file', 'input.dropdown', 'input.dropdownTree', 'input.multiSelect', 'input.multiSelectTree', 'input.select', 'input.table'],
+        widgets: [
+            'input.image',
+            'input.imageUpload',
+            'input.file',
+            'input.dropdown',
+            'input.dropdownTree',
+            'input.multiSelect',
+            'input.multiSelectTree',
+            'input.select',
+            'input.table',
+        ],
     },
     right: {
         label: undefined,
@@ -180,18 +275,64 @@ const inputCards: Record<string, ICardConfig> = {
         label: undefined,
         className: 'col-12',
         widgets: [
-            {name: 'table', id: 'table1', widgets: ['input', 'password', 'text', 'mask', 'boolean', 'date', 'time', 'dateTime']},
-            {name: 'table', id: 'table2', widgets: ['number', 'currency', 'integer', 'select', 'chips', 'autocomplete', 'dateRange']},
-            {name: 'table', id: 'table3', widgets: ['dropdown', 'dropdownTree', 'multiSelect', 'multiSelectTree']},
-            {name: 'table', id: 'table4', widgets: ['selectTable', 'multiSelectPanel', 'multiSelectTreeTable']},
+            {
+                name: 'table',
+                id: 'table1',
+                widgets: [
+                    'input',
+                    'password',
+                    'text',
+                    'mask',
+                    'boolean',
+                    'date',
+                    'time',
+                    'dateTime',
+                ],
+            },
+            {
+                name: 'table',
+                id: 'table2',
+                widgets: [
+                    'number',
+                    'currency',
+                    'integer',
+                    'select',
+                    'chips',
+                    'autocomplete',
+                    'dateRange',
+                ],
+            },
+            {
+                name: 'table',
+                id: 'table3',
+                widgets: ['dropdown', 'dropdownTree', 'multiSelect', 'multiSelectTree'],
+            },
+            {
+                name: 'table',
+                id: 'table4',
+                widgets: ['selectTable', 'multiSelectPanel', 'multiSelectTreeTable'],
+            },
         ],
     },
 };
 
 const inputDropdowns = {
-    dropdown:    [{value: 1, label: 'EUR'}, {value: 2, label: 'USD'}, {value: 3, label: 'BGN'}, {value: 4, label: 'IQD'}],
-    multiSelect: [{value: 1, label: 'Rome'}, {value: 2, label: 'Cairo'}, {value: 3, label: 'Athens'}],
-    select:      [{value: 1, label: 'One'}, {value: 2, label: 'Two'}, {value: 3, label: 'Three'}],
+    dropdown: [
+        {value: 1, label: 'EUR'},
+        {value: 2, label: 'USD'},
+        {value: 3, label: 'BGN'},
+        {value: 4, label: 'IQD'},
+    ],
+    multiSelect: [
+        {value: 1, label: 'Rome'},
+        {value: 2, label: 'Cairo'},
+        {value: 3, label: 'Athens'},
+    ],
+    select: [
+        {value: 1, label: 'One'},
+        {value: 2, label: 'Two'},
+        {value: 3, label: 'Three'},
+    ],
 };
 
 // ── Input — widget showcase ──────────────────────────────────────────────────
@@ -215,7 +356,9 @@ export const Input: Story = {
 Input.play = async ({canvas, userEvent}) => {
     const body = within(document.body);
     const findId = async (role: string, id: string) =>
-        canvas.findByRole(role as never, {name: (_: string, el: Element) => (el as HTMLElement).id === id});
+        canvas.findByRole(role as never, {
+            name: (_: string, el: Element) => (el as HTMLElement).id === id,
+        });
     const type = async (role: string, id: string, text: string) => {
         const el = await findId(role, id);
         await userEvent.clear(el);
@@ -254,7 +397,9 @@ Input.play = async ({canvas, userEvent}) => {
     await userEvent.click(canvas.getByTestId('input-multiSelectTree'));
     await userEvent.click((await body.findAllByRole('treeitem' as never))[0]);
     await userEvent.keyboard('{Escape}');
-    within(canvas.getByTestId('input-select') as HTMLElement).getAllByRole('button' as never)[0].click();
+    within(canvas.getByTestId('input-select') as HTMLElement)
+        .getAllByRole('button' as never)[0]
+        .click();
     await userEvent.click(canvas.getByTestId('input-table-addButton'));
     await new Promise(r => setTimeout(r, 200));
     await type('textbox', 'input-table-0-name', 'name');
@@ -262,10 +407,16 @@ Input.play = async ({canvas, userEvent}) => {
 
     // ── right column ────────────────────────────────────────────────────────
     await userEvent.click(
-        within(canvas.getByTestId('input-selectTable') as HTMLElement).getAllByRole('row' as never)[1],
+        within(canvas.getByTestId('input-selectTable') as HTMLElement).getAllByRole(
+            'row' as never,
+        )[1],
     );
-    within(canvas.getByTestId('input-multiSelectPanel') as HTMLElement).getAllByRole('option' as never)[0].click();
-    within(canvas.getByTestId('input-multiSelectTreeTable') as HTMLElement).getAllByRole('checkbox' as never)[1].click();
+    within(canvas.getByTestId('input-multiSelectPanel') as HTMLElement)
+        .getAllByRole('option' as never)[0]
+        .click();
+    within(canvas.getByTestId('input-multiSelectTreeTable') as HTMLElement)
+        .getAllByRole('checkbox' as never)[1]
+        .click();
 
     await new Promise(r => setTimeout(r, 300));
 };
@@ -306,9 +457,6 @@ Table.play = async ({canvas}) => {
 
     await new Promise(r => setTimeout(r, 100));
     addRow('table1');
-    addRow('table2');
-    addRow('table3');
-    addRow('table4');
     await new Promise(r => setTimeout(r, 200));
     openEdit('table1');
     openEdit('table2');
@@ -336,9 +484,7 @@ const diffPrevious = {
         'Set Username': 'user',
         'Override User Access Policy': 'Policy 2',
     },
-    'External Credentials': [
-        {'External System': 'cbs', 'User Type': 'login', Username: 'user'},
-    ],
+    'External Credentials': [{'External System': 'cbs', 'User Type': 'login', Username: 'user'}],
 };
 
 const diffCurrent = {
@@ -362,13 +508,13 @@ const diffCurrent = {
 const diffSchema: IEnrichedSchema = {
     properties: {
         previous: {title: '', widget: {type: 'json'}},
-        current:  {title: '', widget: {type: 'json'}},
+        current: {title: '', widget: {type: 'json'}},
     },
 };
 
 const diffCards: Record<string, ICardConfig> = {
     previous: {label: 'Previous', className: 'xl:col-6', widgets: ['previous']},
-    current:  {label: 'Current',  className: 'xl:col-6', widgets: ['current']},
+    current: {label: 'Current', className: 'xl:col-6', widgets: ['current']},
 };
 
 export const Diff: Story = {
@@ -390,5 +536,3 @@ export const DiffBG: Story = {
     ...Diff,
     args: {lang: 'bg'} as FormArgs,
 };
-
-

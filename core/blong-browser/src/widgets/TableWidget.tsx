@@ -1,22 +1,24 @@
-import {Calendar, Checkbox, Column, DataTable, Dropdown, InputMask, InputNumber, InputText, InputTextarea, MultiSelect, Password, SelectButton, Toolbar} from '../primereact/index.js';
-
-
-
-
-
-
-
-
-
-
-
-
+import {
+    Calendar,
+    Checkbox,
+    Column,
+    DataTable,
+    Dropdown,
+    InputMask,
+    InputNumber,
+    InputText,
+    InputTextarea,
+    MultiSelect,
+    Password,
+    SelectButton,
+    Toolbar,
+} from '../primereact/index.js';
 
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {dateIn, dateOut} from './DateWidget.js';
 import {Button} from '../components/Button/index.js';
 import {Text} from '../components/Text/index.js';
 import type {IEnrichedFieldSchema, IWidgetProps} from '../types/widget.js';
+import {dateIn, dateOut} from './DateWidget.js';
 
 type Row = Record<string, unknown>;
 type DropdownOption = {value: unknown; label: string; [k: string]: unknown};
@@ -33,8 +35,12 @@ function resolveWidgetType(schema: IEnrichedFieldSchema): string {
     return 'input';
 }
 
-function getColumnOptions(schema: IEnrichedFieldSchema, dropdowns?: Record<string, unknown[]>): DropdownOption[] {
-    const raw = schema.widget?.options ?? (schema.widget?.dropdown && dropdowns?.[schema.widget.dropdown]);
+function getColumnOptions(
+    schema: IEnrichedFieldSchema,
+    dropdowns?: Record<string, unknown[]>,
+): DropdownOption[] {
+    const raw =
+        schema.widget?.options ?? (schema.widget?.dropdown && dropdowns?.[schema.widget.dropdown]);
     if (!Array.isArray(raw)) return [];
     return raw as DropdownOption[];
 }
@@ -42,7 +48,13 @@ function getColumnOptions(schema: IEnrichedFieldSchema, dropdowns?: Record<strin
 function resolveColumns(
     widget: IWidgetProps['schema']['widget'],
     items: IWidgetProps['schema']['items'],
-): {field: string; header: string; filter?: boolean; sortable?: boolean; fieldSchema: IEnrichedFieldSchema}[] {
+): {
+    field: string;
+    header: string;
+    filter?: boolean;
+    sortable?: boolean;
+    fieldSchema: IEnrichedFieldSchema;
+}[] {
     const properties = items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
     const cols = widget?.columns;
 
@@ -63,9 +75,7 @@ function resolveColumns(
         }));
     }
     const hidden = new Set(widget?.hidden ?? []);
-    const show = cols
-        ? Array.isArray(cols) ? cols : Object.keys(cols)
-        : null;
+    const show = cols ? (Array.isArray(cols) ? cols : Object.keys(cols)) : null;
     if (properties) {
         return Object.entries(properties)
             .filter(([field]) => !hidden.has(field) && (!show || show.includes(field)))
@@ -116,7 +126,11 @@ function renderBody(
             return <span data-testid={cellId}>{value ? '*'.repeat(10) : ''}</span>;
         case 'dropdown': {
             const item = options.find(o => o.value === value);
-            return <span data-testid={cellId}>{item?.label ?? (value != null ? String(value) : '')}</span>;
+            return (
+                <span data-testid={cellId}>
+                    {item?.label ?? (value != null ? String(value) : '')}
+                </span>
+            );
         }
         case 'dropdownTree': {
             function findLabel(nodes: DropdownOption[], v: unknown): string | undefined {
@@ -128,7 +142,11 @@ function renderBody(
                     }
                 }
             }
-            return <span data-testid={cellId}>{findLabel(options, value) ?? (value != null ? String(value) : '')}</span>;
+            return (
+                <span data-testid={cellId}>
+                    {findLabel(options, value) ?? (value != null ? String(value) : '')}
+                </span>
+            );
         }
         case 'multiSelect':
         case 'multiSelectTree': {
@@ -138,29 +156,56 @@ function renderBody(
         }
         case 'select': {
             const item = options.find(o => o.value === value);
-            return <span data-testid={cellId}>{item?.label ?? (value != null ? String(value) : '')}</span>;
+            return (
+                <span data-testid={cellId}>
+                    {item?.label ?? (value != null ? String(value) : '')}
+                </span>
+            );
         }
         case 'date': {
             if (value == null) return <span data-testid={cellId} />;
-            try { const d = dateIn(value as string | Date); return <span data-testid={cellId}>{d instanceof Date ? d.toLocaleDateString() : String(value)}</span>; }
-            catch { return <span data-testid={cellId}>{String(value)}</span>; }
+            try {
+                const d = dateIn(value as string | Date);
+                return (
+                    <span data-testid={cellId}>
+                        {d instanceof Date ? d.toLocaleDateString() : String(value)}
+                    </span>
+                );
+            } catch {
+                return <span data-testid={cellId}>{String(value)}</span>;
+            }
         }
         case 'time': {
             if (value == null) return <span data-testid={cellId} />;
             const d = value instanceof Date ? value : new Date(value as string);
-            return <span data-testid={cellId}>{isNaN(d.getTime()) ? String(value) : d.toLocaleTimeString()}</span>;
+            return (
+                <span data-testid={cellId}>
+                    {isNaN(d.getTime()) ? String(value) : d.toLocaleTimeString()}
+                </span>
+            );
         }
         case 'dateTime': {
             if (value == null) return <span data-testid={cellId} />;
-            try { const d = dateIn(value as string | Date); return <span data-testid={cellId}>{d instanceof Date ? d.toLocaleString() : String(value)}</span>; }
-            catch { return <span data-testid={cellId}>{String(value)}</span>; }
+            try {
+                const d = dateIn(value as string | Date);
+                return (
+                    <span data-testid={cellId}>
+                        {d instanceof Date ? d.toLocaleString() : String(value)}
+                    </span>
+                );
+            } catch {
+                return <span data-testid={cellId}>{String(value)}</span>;
+            }
         }
         case 'number':
         case 'integer':
         case 'currency':
         case 'percent':
             return (
-                <span data-testid={cellId} className="block text-right">
+                <span
+                    data-testid={cellId}
+                    className="block text-right"
+                >
                     {value != null ? String(value) : ''}
                 </span>
             );
@@ -185,42 +230,59 @@ function renderEditor(
         case 'integer':
             return (
                 <InputNumber
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value == null ? null : Number(value)}
                     onValueChange={e => editorCallback(e.value)}
-                    className="w-full" inputClassName="w-full text-right"
+                    className="w-full"
+                    inputClassName="w-full text-right"
                     showButtons
-                    min={fieldSchema.minimum} max={fieldSchema.maximum}
+                    min={fieldSchema.minimum}
+                    max={fieldSchema.maximum}
                 />
             );
         case 'number':
             return (
                 <InputNumber
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value == null ? null : Number(value)}
                     onValueChange={e => editorCallback(e.value)}
-                    className="w-full" inputClassName="w-full text-right"
-                    min={fieldSchema.minimum} max={fieldSchema.maximum}
+                    className="w-full"
+                    inputClassName="w-full text-right"
+                    min={fieldSchema.minimum}
+                    max={fieldSchema.maximum}
                 />
             );
         case 'currency':
         case 'percent':
             return (
                 <InputNumber
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value == null ? null : Number(value)}
                     onValueChange={e => editorCallback(e.value)}
-                    className="w-full" inputClassName="w-full text-right"
-                    mode="decimal" minFractionDigits={2} maxFractionDigits={4}
-                    min={fieldSchema.minimum} max={fieldSchema.maximum}
+                    className="w-full"
+                    inputClassName="w-full text-right"
+                    mode="decimal"
+                    minFractionDigits={2}
+                    maxFractionDigits={4}
+                    min={fieldSchema.minimum}
+                    max={fieldSchema.maximum}
                 />
             );
         case 'dropdown':
         case 'dropdownTree':
             return (
                 <Dropdown
-                    inputId={cellId} name={cellName} data-testid={cellId}
-                    value={value} options={options}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
+                    value={value}
+                    options={options}
                     onChange={e => editorCallback(e.value)}
                     className="w-full blong-dropdown"
                     showClear={!fieldSchema.required}
@@ -232,19 +294,25 @@ function renderEditor(
         case 'multiSelectTree':
             return (
                 <MultiSelect
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={Array.isArray(value) ? value : []}
                     options={options}
                     onChange={e => editorCallback(e.value)}
                     className="w-full blong-multiselect"
-                    display="chip" placeholder="Select…"
+                    display="chip"
+                    placeholder="Select…"
                 />
             );
         case 'select':
             return (
                 <SelectButton
-                    id={cellId} name={cellName} data-testid={cellId}
-                    value={value} options={options}
+                    id={cellId}
+                    name={cellName}
+                    data-testid={cellId}
+                    value={value}
+                    options={options}
                     onChange={e => editorCallback(e.value)}
                     className="white-space-nowrap"
                 />
@@ -252,46 +320,67 @@ function renderEditor(
         case 'password':
             return (
                 <Password
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value != null ? String(value) : ''}
                     onInput={e => editorCallback(e.currentTarget.value)}
-                    className="w-full" inputClassName="w-full" feedback={false}
+                    className="w-full"
+                    inputClassName="w-full"
+                    feedback={false}
                 />
             );
         case 'date':
             return (
                 <Calendar
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     showOnFocus={false}
                     value={value != null ? dateIn(value as string | Date) : null}
-                    onChange={e => editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)}
-                    showIcon className="w-full"
+                    onChange={e =>
+                        editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)
+                    }
+                    showIcon
+                    className="w-full"
                 />
             );
         case 'time':
             return (
                 <Calendar
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     showOnFocus={false}
                     value={value != null ? new Date(value as string) : new Date(1970, 0, 1)}
                     onChange={e => editorCallback(e.value)}
-                    timeOnly showIcon className="w-full"
+                    timeOnly
+                    showIcon
+                    className="w-full"
                 />
             );
         case 'dateTime':
             return (
                 <Calendar
-                    inputId={cellId} name={cellName} data-testid={cellId}
+                    inputId={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     showOnFocus={false}
                     value={value != null ? dateIn(value as string | Date) : null}
-                    onChange={e => editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)}
-                    showTime showIcon className="w-full"
+                    onChange={e =>
+                        editorCallback(e.value instanceof Date ? dateOut(e.value) : e.value)
+                    }
+                    showTime
+                    showIcon
+                    className="w-full"
                 />
             );
         case 'mask':
             return (
                 <InputMask
-                    id={cellId} name={cellName} data-testid={cellId}
+                    id={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value != null ? String(value) : ''}
                     onChange={e => editorCallback(e.value)}
                     mask={fieldSchema.widget?.mask ?? ''}
@@ -302,20 +391,27 @@ function renderEditor(
         case 'textArea':
             return (
                 <InputTextarea
-                    id={cellId} name={cellName} data-testid={cellId}
+                    id={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value != null ? String(value) : ''}
                     onChange={e => editorCallback(e.target.value)}
-                    autoFocus className="w-full" rows={2}
+                    autoFocus
+                    className="w-full"
+                    rows={2}
                 />
             );
         default:
             // input, chips, autocomplete, dateRange, etc.
             return (
                 <InputText
-                    id={cellId} name={cellName} data-testid={cellId}
+                    id={cellId}
+                    name={cellName}
+                    data-testid={cellId}
                     value={value != null ? String(value) : ''}
                     onChange={e => editorCallback(e.target.value)}
-                    autoFocus className="w-full"
+                    autoFocus
+                    className="w-full"
                 />
             );
     }
@@ -384,7 +480,10 @@ export function TableWidget({
 
     const fireSingleSelect = useCallback(
         (row: Row | null) => {
-            if (!row) { onSelect?.(null); return; }
+            if (!row) {
+                onSelect?.(null);
+                return;
+            }
             const {[KEY]: _k, ...clean} = row;
             const originalIndex = rows.findIndex(r => r[KEY] === row[KEY]);
             onSelect?.({row: clean as Record<string, unknown>, index: originalIndex});
@@ -496,15 +595,22 @@ export function TableWidget({
         </>
     ) : null;
 
-    const toolbarLeft = widgetLabel
-        ? <span className="p-card-title"><Text>{widgetLabel}</Text></span>
-        : actionButtons;
+    const toolbarLeft = widgetLabel ? (
+        <span className="p-card-title">
+            <Text>{widgetLabel}</Text>
+        </span>
+    ) : (
+        actionButtons
+    );
     const toolbarRight = widgetLabel ? actionButtons : null;
 
     if (parentFieldName && masterMapping && !parentSelection) return null;
 
     return (
-        <div className="blong-table-widget w-full">
+        <div
+            data-testid={`${tableId}`}
+            className="blong-table-widget w-full"
+        >
             {(editable || widgetLabel) && (
                 <Toolbar
                     left={toolbarLeft}
@@ -536,12 +642,17 @@ export function TableWidget({
                 metaKeySelection={false}
             >
                 {!isSingleSelect && editable && (
-                    <Column selectionMode="multiple" style={{width: '3rem', flexGrow: 0}} />
+                    <Column
+                        selectionMode="multiple"
+                        style={{width: '3rem', flexGrow: 0}}
+                    />
                 )}
                 {cols.map(({field, header, filter, sortable, fieldSchema}) => {
                     const widgetType = resolveWidgetType(fieldSchema);
                     const options = getColumnOptions(fieldSchema, dropdowns);
-                    const isNumeric = ['number', 'integer', 'currency', 'percent'].includes(widgetType);
+                    const isNumeric = ['number', 'integer', 'currency', 'percent'].includes(
+                        widgetType,
+                    );
                     const isBoolType = ['boolean', 'checkbox'].includes(widgetType);
 
                     return (
@@ -557,7 +668,10 @@ export function TableWidget({
                                 const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
                                 if (isBoolType) {
                                     return (
-                                        <span data-testid={cellId} onClick={e => e.stopPropagation()}>
+                                        <span
+                                            data-testid={cellId}
+                                            onClick={e => e.stopPropagation()}
+                                        >
                                             <Checkbox
                                                 checked={Boolean(rowData[field])}
                                                 onChange={e => {
@@ -599,7 +713,10 @@ export function TableWidget({
                     );
                 })}
                 {editable && (
-                    <Column rowEditor style={{width: '7rem', textAlign: 'center'}} />
+                    <Column
+                        rowEditor
+                        style={{width: '7rem', textAlign: 'center'}}
+                    />
                 )}
             </DataTable>
         </div>

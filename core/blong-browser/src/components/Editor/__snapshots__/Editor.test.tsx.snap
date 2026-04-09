@@ -475,6 +475,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                     >
                       <div
                         class="blong-table-widget w-full"
+                        data-testid="links"
                       >
                         <div
                           class="p-toolbar p-component p-0 border-none"
@@ -1361,6 +1362,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="person"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -1645,6 +1647,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="document"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -1981,6 +1984,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="attachment"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -2820,6 +2824,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -3506,6 +3511,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -4192,6 +4198,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -4878,6 +4885,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -5564,6 +5572,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -5910,6 +5919,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="person"
                     >
                       <div
                         class="p-datatable p-component p-datatable-selectable p-datatable-sm"
@@ -6265,6 +6275,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="shape"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -8675,6 +8686,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -9359,6 +9371,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -10045,6 +10058,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -10731,6 +10745,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -11417,6 +11432,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -12563,6 +12579,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -13716,6 +13733,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -14416,6 +14434,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"
@@ -15114,6 +15133,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                   >
                     <div
                       class="blong-table-widget w-full"
+                      data-testid="links"
                     >
                       <div
                         class="p-toolbar p-component p-0 border-none"

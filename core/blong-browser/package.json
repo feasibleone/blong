@@ -74,7 +74,7 @@
         "@types/react-dom": "^19.1.2",
         "@vitejs/plugin-react": "^4.3.4",
         "@vitest/coverage-v8": "^3.0.9",
-        "chromatic": "^15.3.1",
+        "chromatic": "^16.1.0",
         "eslint": "~9.39.2",
         "jsdom": "^26.0.0",
         "primeflex": "^3.3.0",
