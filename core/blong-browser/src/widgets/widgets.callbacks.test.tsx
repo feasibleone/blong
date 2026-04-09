@@ -98,6 +98,7 @@ vi.mock('primereact/inputnumber', () => ({
     ),
 }));
 
+import type {IWidgetProps} from '../types/widget.js';
 import {DateTimeWidget} from './DateTimeWidget.js';
 import {DateWidget} from './DateWidget.js';
 import {IntegerWidget} from './IntegerWidget.js';
@@ -105,7 +106,7 @@ import {NumberWidget} from './NumberWidget.js';
 import {SelectWidget} from './SelectWidget.js';
 import {TimeWidget} from './TimeWidget.js';
 
-function mkProps(overrides: Record<string, unknown> = {}) {
+function mkProps(overrides: Partial<IWidgetProps> = {}): IWidgetProps {
     return {
         name: 'testField',
         schema: {},
@@ -115,7 +116,7 @@ function mkProps(overrides: Record<string, unknown> = {}) {
         readOnly: false,
         disabled: false,
         ...overrides,
-    } as never;
+    } as IWidgetProps;
 }
 
 describe('DateWidget — onChange callback', () => {
@@ -168,6 +169,7 @@ describe('SelectWidget — onChange callback', () => {
                     schema: {
                         enum: ['a', 'b', 'c'],
                         widget: {
+                            type: 'select',
                             options: [
                                 {label: 'A', value: 'a'},
                                 {label: 'B', value: 'b'},
