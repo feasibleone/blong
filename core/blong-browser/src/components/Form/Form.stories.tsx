@@ -2,9 +2,9 @@ import type {Meta, StoryObj} from '@storybook/react';
 import {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import {useState} from 'react';
-import type {IFormProps} from '../components/Form/index.js';
-import {Form} from '../components/Form/index.js';
-import type {ICardConfig, IEnrichedSchema} from '../types/widget.js';
+import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
+import type {IFormProps} from './index.js';
+import {Form} from './index.js';
 
 type FormArgs = Partial<IFormProps> & {lang?: string};
 

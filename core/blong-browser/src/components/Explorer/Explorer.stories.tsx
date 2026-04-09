@@ -1,7 +1,7 @@
 import type {Meta, StoryObj} from '@storybook/react';
 import React from 'react';
-import {Explorer} from '../components/Explorer/index.js';
-import {useAppStore} from '../state/appStore.js';
+import {useAppStore} from '../../state/appStore.js';
+import {Explorer} from './index.js';
 
 const meta: Meta<typeof Explorer> = {
     title: 'Data/Explorer',

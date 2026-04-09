@@ -14,12 +14,12 @@ import type {Meta, StoryObj} from '@storybook/react';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import React, {useEffect} from 'react';
-import {Basic as EditorBasic} from '../Editor/Editor.stories.js';
-import {Explorer} from '../Explorer/index.js';
-import {Portal} from './index.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPortalConfig, ITab} from '../../types/portal.js';
-import {Default as ExplorerDefault} from '../../stories/Explorer.stories.js';
+import {Basic as EditorBasic} from '../Editor/Editor.stories.js';
+import {Default as ExplorerDefault} from '../Explorer/Explorer.stories.js';
+import {Explorer} from '../Explorer/index.js';
+import {Portal} from './index.js';
 
 // ── Story type ─────────────────────────────────────────────────────────────
 
@@ -50,13 +50,7 @@ type Story = Omit<StoryObj<typeof meta>, 'play'> & {
  * Seed the portal Zustand store with tabs (and optional menu config) and
  * clean up on unmount.  Wraps Portal so stories are self-contained.
  */
-function PortalSetup({
-    tabs,
-    menuConfig,
-}: {
-    tabs: ITab[];
-    menuConfig?: IPortalConfig;
-}) {
+function PortalSetup({tabs, menuConfig}: {tabs: ITab[]; menuConfig?: IPortalConfig}) {
     useEffect(() => {
         // Reset first to avoid bleed-through from previous stories
         useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
@@ -131,7 +125,13 @@ export const MultiplePages: Story = {
             tabs={[
                 {id: 'page1', actionName: 'page1', params: {}, title: 'Page 1', component: PageOne},
                 {id: 'page2', actionName: 'page2', params: {}, title: 'Page 2', component: PageTwo},
-                {id: 'page3', actionName: 'page3', params: {}, title: 'Page 3', component: PageThree},
+                {
+                    id: 'page3',
+                    actionName: 'page3',
+                    params: {},
+                    title: 'Page 3',
+                    component: PageThree,
+                },
             ]}
         />
     ),
@@ -254,7 +254,7 @@ export const WithEditor: Story = {
                     params: {},
                     title: 'Edit Tree',
                     component: EditorBasic,
-                }
+                },
             ]}
         />
     ),
@@ -268,7 +268,12 @@ export const WithEditor: Story = {
 export const WithExplorer: Story = {
     render: () => {
         function ExplorerTab(props: Record<string, unknown>) {
-            return <Explorer {...(ExplorerDefault.args as Record<string, unknown>)} {...props} />;
+            return (
+                <Explorer
+                    {...(ExplorerDefault.args as Record<string, unknown>)}
+                    {...props}
+                />
+            );
         }
         return (
             <PortalSetup

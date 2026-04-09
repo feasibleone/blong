@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { Card } from '../components/Card/index.js';
+import type {Meta, StoryObj} from '@storybook/react';
+import {Card} from './index.js';
 
 const meta: Meta<typeof Card> = {
     title: 'Layout/Card',

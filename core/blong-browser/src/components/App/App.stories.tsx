@@ -21,12 +21,12 @@
 import type {Meta, StoryObj} from '@storybook/react';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
-import React, {useEffect} from 'react';
-import type {DispatchFn} from '../context/BlongUiContext.js';
-import {Login as LoginForm} from '../components/Login/index.js';
-import {Portal} from '../components/Portal/index.js';
-import {useAppStore} from '../state/appStore.js';
-import type {IPortalConfig, ITab} from '../types/portal.js';
+import {useEffect} from 'react';
+import type {DispatchFn} from '../../context/BlongUiContext.js';
+import {useAppStore} from '../../state/appStore.js';
+import type {IPortalConfig, ITab} from '../../types/portal.js';
+import {Login as LoginForm} from '../Login/index.js';
+import {Portal} from '../Portal/index.js';
 
 // ── Meta ───────────────────────────────────────────────────────────────────
 
@@ -47,7 +47,9 @@ function DashboardPage() {
     return (
         <div style={{padding: '2rem'}}>
             <h2>Dashboard</h2>
-            <p>Welcome to the Marine Biology Portal. Select an item from the menu to get started.</p>
+            <p>
+                Welcome to the Marine Biology Portal. Select an item from the menu to get started.
+            </p>
         </div>
     );
 }
@@ -169,10 +171,18 @@ function LoginPage(_: {dispatch: DispatchFn}) {
 function MarineOrgComponent() {
     return (
         <div style={{textAlign: 'center', opacity: 0.75}}>
-            <div style={{color: 'var(--text-color-secondary)', fontSize: '0.8rem', marginBottom: '0.25rem'}}>
+            <div
+                style={{
+                    color: 'var(--text-color-secondary)',
+                    fontSize: '0.8rem',
+                    marginBottom: '0.25rem',
+                }}
+            >
                 Powered by
             </div>
-            <div style={{color: 'var(--text-color-secondary)', fontSize: '0.95rem', fontWeight: 500}}>
+            <div
+                style={{color: 'var(--text-color-secondary)', fontSize: '0.95rem', fontWeight: 500}}
+            >
                 FeasibleOne Platform
             </div>
         </div>
@@ -258,14 +268,24 @@ function LoginErrorPage(_: {dispatch: DispatchFn}) {
  * Dashboard tab is open by default; the menu lets the user open Species/Reports.
  */
 export const WithPortal: Story = {
-    render: () => <PortalApp tabs={portalInitialTabs} menuConfig={portalMenuConfig} />,
+    render: () => (
+        <PortalApp
+            tabs={portalInitialTabs}
+            menuConfig={portalMenuConfig}
+        />
+    ),
 };
 
 /**
  * Navigate — play() opens the Data menu and navigates to the Species page.
  */
 export const Navigate: Story = {
-    render: () => <PortalApp tabs={portalInitialTabs} menuConfig={portalMenuConfig} />,
+    render: () => (
+        <PortalApp
+            tabs={portalInitialTabs}
+            menuConfig={portalMenuConfig}
+        />
+    ),
     play: async ({canvas, userEvent}) => {
         // Open the 'Data' sub-menu
         await userEvent.click(await canvas.findByText('Data' as never));
@@ -334,7 +354,9 @@ export const Login: Story = {
 export const LoginWithTitle: Story = {
     parameters: {loginComponent: LoginPageWithTitle},
     render: () => {
-        useEffect(() => { useAppStore.getState().logout(); }, []);
+        useEffect(() => {
+            useAppStore.getState().logout();
+        }, []);
         return <></>;
     },
 };
@@ -350,7 +372,9 @@ LoginWithTitle.storyName = 'Login With Title';
 export const LoginWithRegister: Story = {
     parameters: {loginComponent: LoginPageWithRegister},
     render: () => {
-        useEffect(() => { useAppStore.getState().logout(); }, []);
+        useEffect(() => {
+            useAppStore.getState().logout();
+        }, []);
         return <></>;
     },
 };
@@ -363,7 +387,9 @@ export const BulgarianLogin: Story = {
     args: {lang: 'bg'},
     parameters: {loginComponent: BulgarianLoginPage},
     render: () => {
-        useEffect(() => { useAppStore.getState().logout(); }, []);
+        useEffect(() => {
+            useAppStore.getState().logout();
+        }, []);
         return <></>;
     },
 };
@@ -380,7 +406,9 @@ export const LoginError: Story = {
         await userEvent.click(await canvas.findByRole('button' as never, {name: /^login$/i}));
     },
     render: () => {
-        useEffect(() => { useAppStore.getState().logout(); }, []);
+        useEffect(() => {
+            useAppStore.getState().logout();
+        }, []);
         return <></>;
     },
 };
