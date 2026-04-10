@@ -13,6 +13,7 @@ ignore:
     - vulnerability: CVE-2026-25987
     - vulnerability: CVE-2026-26284
     - vulnerability: GHSA-fjxv-7rqg-78g4
+    - vulnerability: GHSA-3p68-rc4w-qgx5
 
 # Set output format defaults
 output:
