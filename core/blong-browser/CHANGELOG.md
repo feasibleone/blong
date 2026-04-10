@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.1.0...blong-browser-v1.1.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* build ([32951e4](https://github.com/feasibleone/blong/commit/32951e46561648651ee4e032545655007c05e274))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.0.0...blong-browser-v1.1.0) (2026-04-10)
 
 

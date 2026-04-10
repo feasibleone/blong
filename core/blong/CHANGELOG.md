@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/feasibleone/blong/compare/blong-v1.16.0...blong-v1.16.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* build ([32951e4](https://github.com/feasibleone/blong/commit/32951e46561648651ee4e032545655007c05e274))
+
 ## [1.16.0](https://github.com/feasibleone/blong/compare/blong-v1.15.0...blong-v1.16.0) (2026-04-10)
 
 
