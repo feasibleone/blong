@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.17.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.16.0...blong-gogo-v1.17.0) (2026-04-10)
+
+
+### Features
+
+* auto-discover and run blong from a folder with loose handler files ([#120](https://github.com/feasibleone/blong/issues/120)) ([4b407b6](https://github.com/feasibleone/blong/commit/4b407b6d0888eed0bb6cdc8428d82ed15f5152c5))
+* **blong-gogo:** browser compatibility — replace got/tls with ky+undici, add BrowserLog, static tree-shaking split ([#123](https://github.com/feasibleone/blong/issues/123)) ([91b8d1a](https://github.com/feasibleone/blong/commit/91b8d1a159463f9e5a0f4f6d52c4c285989cac43))
+* blong-ui ([9ca1281](https://github.com/feasibleone/blong/commit/9ca1281c0178c69dfc722bc4a5978f649bc1fa0d))
+* improve logging ([5f43391](https://github.com/feasibleone/blong/commit/5f43391a43a99e0dd591401e24c45cd02b3bdba2))
+* simplify api loading ([e6ff342](https://github.com/feasibleone/blong/commit/e6ff34239d7f1f53e3a21d30768ed5ab45042786))
+
+
+### Bug Fixes
+
+* bin deduplicate ([af41171](https://github.com/feasibleone/blong/commit/af41171c0c4dbb0599f7bbe1c82efc4923fd79c8))
+
 ## [1.16.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.15.0...blong-gogo-v1.16.0) (2026-04-01)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.5.2...blong-kopi-v1.6.0) (2026-04-10)
+
+
+### Features
+
+* blong-ui ([9ca1281](https://github.com/feasibleone/blong/commit/9ca1281c0178c69dfc722bc4a5978f649bc1fa0d))
+
 ## [1.5.2](https://github.com/feasibleone/blong/compare/blong-kopi-v1.5.1...blong-kopi-v1.5.2) (2026-03-24)
 
 
