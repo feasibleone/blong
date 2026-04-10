@@ -17,16 +17,21 @@ export default class RealmImpl implements IRealm {
 
     public constructor(
         config: {
-            realm?: {logLevel?: Parameters<ILog['logger']>[0]};
+            server: {realm: {logLevel: Parameters<ILog['logger']>[0]}};
+            browser: {realm: {logLevel: Parameters<ILog['logger']>[0]}};
             name: string;
             pkg: {name: string; version: string};
         },
         {log, registry}: {log?: ILog; registry?: IRegistry},
+        platform: 'server' | 'browser',
     ) {
         this.#config = config;
         this.#registry = registry;
         this.#log = log;
-        this.#logger = this.#log?.logger(config.realm?.logLevel, {name: 'realm'});
+        this.#logger = this.#log?.logger(config[platform]?.realm?.logLevel, {
+            name: config.name,
+            context: `${platform}`,
+        });
     }
 
     private _addModuleInternal(name: string | symbol, mod: IRegistry): void {
@@ -39,7 +44,10 @@ export default class RealmImpl implements IRealm {
     }
 
     public addModule(name: string, mod: IRegistry): void {
-        this.#logger?.debug?.(`Module ${this.#config.name}.${name}`);
+        this.#logger?.debug?.(
+            {$meta: {mtid: 'event', method: 'module.add'}},
+            `${this.#config.name}.${name}`,
+        );
         this._addModuleInternal(name, mod);
     }
 
@@ -58,8 +66,16 @@ export default class RealmImpl implements IRealm {
             }
         });
         if (source.length === 1)
-            this.#logger?.debug?.(`Layer ${this.#config.name}.${layerName} ${source[0]}`);
+            // this.#logger?.debug?.(`Layer ${this.#config.name}.${layerName} ${source[0]}`);
+            this.#logger?.debug?.(
+                {$meta: {mtid: 'event', method: 'layer.add'}},
+                `${this.#config.name}.${layerName} ${source[0]}`,
+            );
         else if (!source.length) this.#logger?.debug?.(`Layer ${this.#config.name}.${layerName}`);
-        else this.#logger?.debug?.({source}, `Layer ${this.#config.name}.${layerName}`);
+        else
+            this.#logger?.debug?.(
+                {$meta: {mtid: 'event', method: 'layer.add'}},
+                `${this.#config.name}.${layerName} ${source}`,
+            );
     }
 }

@@ -12,18 +12,18 @@ import type {
     IRemote,
     IRpcServer,
 } from '@feasibleone/blong/types';
-import { Internal } from '@feasibleone/blong/types';
+import {Internal} from '@feasibleone/blong/types';
 import nodeAssert from 'node:assert';
 import PQueue from 'p-queue';
-import { Type } from 'typebox';
-import { monotonicFactory } from 'ulidx';
+import {Type} from 'typebox';
+import {monotonicFactory} from 'ulidx';
 import merge from 'ut-function.merge';
-import { v4 as uuid4, v7 as uuid7 } from 'uuid';
+import {v4 as uuid4, v7 as uuid7} from 'uuid';
 
-import { createAttachCheckpoint } from './checkpoint.ts';
-import { methodId, methodParts } from './lib.ts';
-import type { IResolution } from './Resolution.ts';
-import type { IWatch } from './Watch.ts';
+import {createAttachCheckpoint} from './checkpoint.ts';
+import {methodId, methodParts} from './lib.ts';
+import type {IResolution} from './Resolution.ts';
+import type {IWatch} from './Watch.ts';
 
 type MatchMethodsCallback = (
     name: string,
@@ -103,7 +103,9 @@ export default class Registry extends Internal implements IRegistry {
         this.#log = log;
         this.#watch = watch;
         this.#apiSchema = apiSchema;
-        this.#attachCheckpoint = createAttachCheckpoint(this.#config.checkpointMode ?? 'production');
+        this.#attachCheckpoint = createAttachCheckpoint(
+            this.#config.checkpointMode ?? 'production',
+        );
         this.#rpcServer?.setAttachCheckpoint?.(this.#attachCheckpoint);
     }
 

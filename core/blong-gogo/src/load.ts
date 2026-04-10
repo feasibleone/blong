@@ -262,7 +262,22 @@ export default async function loadRealm<T extends TSchema>(
         children: [],
         url: '',
         base: '',
-        load: undefined,
+        server: {
+            load: {
+                logLevel: 'warn',
+            },
+            realm: {
+                logLevel: 'warn',
+            },
+        },
+        browser: {
+            load: {
+                logLevel: 'warn',
+            },
+            realm: {
+                logLevel: 'warn',
+            },
+        },
         kopi: undefined,
         watch: undefined,
         configs: undefined,
@@ -297,7 +312,9 @@ export default async function loadRealm<T extends TSchema>(
         });
         items = [
             function log() {
-                return defKind === 'browser' ? import('./BrowserLog.ts') : import('./Log.ts');
+                return defKind === 'browser' && global.window
+                    ? import('./BrowserLog.ts')
+                    : import('./Log.ts');
             },
             function apiSchema() {
                 return import('./ApiSchema.ts');
@@ -317,48 +334,50 @@ export default async function loadRealm<T extends TSchema>(
             function resolution() {
                 return import('./ResolutionLocal.ts');
             },
-            ...(defKind === 'browser' ? [
-                function remote() {
-                    return import('./Remote.ts');
-                },
-                function registry() {
-                    return import('./Registry.ts');
-                },
-                function codec() {
-                    return import('./codec/browser.ts');
-                },
-                function orchestrator() {
-                    return import('./orchestrator/index.ts');
-                },
-                function adapter() {
-                    return import('./adapter/browser.ts');
-                },
-            ] : [
-                function remote() {
-                    return import('./RpcClient.ts');
-                },
-                function rpcServer() {
-                    return import('./RpcServer.ts');
-                },
-                function gateway() {
-                    return import('./Gateway.ts');
-                },
-                function restFs() {
-                    return import('./RestFs.ts');
-                },
-                function registry() {
-                    return import('./Registry.ts');
-                },
-                function codec() {
-                    return import('./codec/server.ts');
-                },
-                function orchestrator() {
-                    return import('./orchestrator/index.ts');
-                },
-                function adapter() {
-                    return import('./adapter/server.ts');
-                },
-            ]),
+            ...(defKind === 'browser'
+                ? [
+                      function remote() {
+                          return import('./Remote.ts');
+                      },
+                      function registry() {
+                          return import('./Registry.ts');
+                      },
+                      function codec() {
+                          return import('./codec/browser.ts');
+                      },
+                      function orchestrator() {
+                          return import('./orchestrator/index.ts');
+                      },
+                      function adapter() {
+                          return import('./adapter/browser.ts');
+                      },
+                  ]
+                : [
+                      function remote() {
+                          return import('./RpcClient.ts');
+                      },
+                      function rpcServer() {
+                          return import('./RpcServer.ts');
+                      },
+                      function gateway() {
+                          return import('./Gateway.ts');
+                      },
+                      function restFs() {
+                          return import('./RestFs.ts');
+                      },
+                      function registry() {
+                          return import('./Registry.ts');
+                      },
+                      function codec() {
+                          return import('./codec/server.ts');
+                      },
+                      function orchestrator() {
+                          return import('./orchestrator/index.ts');
+                      },
+                      function adapter() {
+                          return import('./adapter/server.ts');
+                      },
+                  ]),
         ];
     }
     loadedConfigs.push(...activeConfigs(mod, configNames));
@@ -402,7 +421,10 @@ export default async function loadRealm<T extends TSchema>(
     for (let item of items.concat(mod.children ?? []).concat(extraChildren)) {
         const itemName = typeof item === 'string' ? basename(item) : item.name;
         const config = mergedConfig[itemName];
-        logger?.debug?.(`Loading ${defKind}/${itemName}`);
+        logger?.debug?.(
+            {$meta: {mtid: 'event', method: 'child.load'}},
+            config && (typeof item === 'string' ? item : item.name + '()'),
+        );
         if (config) {
             if (typeof item === 'string') {
                 switch (defKind) {
@@ -463,17 +485,18 @@ export default async function loadRealm<T extends TSchema>(
                     api[itemName] = new (fn as IConstructor)(config, api);
                     await api[itemName].init?.();
                     if (itemName === 'log')
-                        logger = api.log.logger(mergedConfig.load?.logLevel ?? 'warn', {
-                            name: 'load',
+                        logger = api.log.logger(mergedConfig[defKind ?? 'server'].load.logLevel, {
+                            name,
+                            context: `${defKind}`,
                         });
                 } else if (['solution', 'server', 'browser'].includes(kind(fn))) {
-                    realm ||= new RealmImpl(mergedConfig, api);
+                    realm ||= new RealmImpl(mergedConfig, api, rootKind);
                     realm.addModule(
                         itemName,
                         await loadRealm(fn, itemName, config, configNames, api, rootKind),
                     );
                 } else if (typeof fn === 'function') {
-                    realm ||= new RealmImpl(mergedConfig, api);
+                    realm ||= new RealmImpl(mergedConfig, api, rootKind);
                     realm.addLayer(
                         itemName,
                         fn(layerProxy(api.error, api.apiSchema, api.port, mergedConfig)).result,
@@ -488,6 +511,6 @@ export default async function loadRealm<T extends TSchema>(
         api.configRuntime = configRuntime;
         api.watch?.setConfigRuntime?.(configRuntime);
     }
-    realm ||= new RealmImpl(mergedConfig, api);
+    realm ||= new RealmImpl(mergedConfig, api, rootKind);
     return api.registry;
 }
