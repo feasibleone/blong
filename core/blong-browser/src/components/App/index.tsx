@@ -13,17 +13,16 @@
  * Props mirror IPortalProps so callers can customise the shell (logo, etc.)
  * while the provider wiring is always handled here.
  */
+import {ConfirmDialog, ConfirmPopup, PrimeReactProvider} from '../../primereact/index.js';
 import './index.css';
-import {ConfirmDialog, ConfirmPopup} from '../../primereact/index.js';
-
 
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
+import {useAppStore} from '../../state/appStore.js';
 import {ErrorDialog} from '../Error/index.js';
 import {ActionHint} from '../Hint/index.js';
 import {Portal, type IPortalProps} from '../Portal/index.js';
 import {Theme, type IThemeConfig} from '../Theme/index.js';
-import {useAppStore} from '../../state/appStore.js';
 
 const DEFAULT_THEME: IThemeConfig = {name: 'lara-light-blue', palette: 'light'};
 
@@ -94,19 +93,21 @@ export function App({
             debug={debug}
             loginRoute={loginRoute}
         >
-            <Theme theme={theme}>
-                <AppShell
-                    loginComponent={loginComponent}
-                    dispatch={dispatch}
-                    portalProps={portalProps}
-                >
-                    {children}
-                </AppShell>
-                <ErrorDialog />
-                <ConfirmDialog />
-                <ConfirmPopup />
-                <ActionHint />
-            </Theme>
+            <PrimeReactProvider>
+                <Theme theme={theme}>
+                    <AppShell
+                        loginComponent={loginComponent}
+                        dispatch={dispatch}
+                        portalProps={portalProps}
+                    >
+                        {children}
+                    </AppShell>
+                    <ErrorDialog />
+                    <ConfirmDialog />
+                    <ConfirmPopup />
+                    <ActionHint />
+                </Theme>
+            </PrimeReactProvider>
         </BlongUiProvider>
     );
 }

@@ -15,11 +15,14 @@ exports[`Loader > renders overlay when loading is active 1`] = `
       <div
         aria-busy="true"
         class="p-progress-spinner"
-        role="alert"
+        data-pc-name="progressspinner"
+        data-pc-section="root"
+        role="progressbar"
         style="width: 50px; height: 50px;"
       >
         <svg
           class="p-progress-spinner-svg"
+          data-pc-section="spinner"
           style="animation-duration: .8s;"
           viewBox="25 25 50 50"
         >
@@ -27,6 +30,7 @@ exports[`Loader > renders overlay when loading is active 1`] = `
             class="p-progress-spinner-circle"
             cx="50"
             cy="50"
+            data-pc-section="circle"
             fill="none"
             r="20"
             stroke-miterlimit="10"

@@ -86,7 +86,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<CascadedDropdowns />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (CascadedDropdowns.play) {
-            await act(() => CascadedDropdowns.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                CascadedDropdowns.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -102,7 +104,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<CascadedTables />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (CascadedTables.play) {
-            await act(() => CascadedTables.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                CascadedTables.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -130,7 +134,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<MasterDetail />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (MasterDetail.play) {
-            await act(() => MasterDetail.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                MasterDetail.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -145,7 +151,12 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<MasterDetailPolymorphic />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (MasterDetailPolymorphic.play) {
-            await act(() => MasterDetailPolymorphic.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                MasterDetailPolymorphic.play!({
+                    canvas: within(container),
+                    userEvent: userEvent.setup(),
+                }),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -213,7 +224,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<Submit />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (Submit.play) {
-            await act(() => Submit.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                Submit.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -224,7 +237,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(Validation(Validation.args ?? {}), {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (Validation.play) {
-            await act(() => Validation.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                Validation.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -245,7 +260,9 @@ describe('<Editor />', () => {
             });
             await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
             if (ValidationBG.play) {
-                await act(() => ValidationBG.play!({canvas: within(container), userEvent}));
+                await act(() =>
+                    ValidationBG.play!({canvas: within(container), userEvent: userEvent.setup()}),
+                );
             }
             await act(() => new Promise(resolve => setTimeout(resolve, 500)));
             expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -262,7 +279,9 @@ describe('<Editor />', () => {
         });
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (ServerValidation.play) {
-            await act(() => ServerValidation.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                ServerValidation.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -284,7 +303,7 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<Files />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (Files.play) {
-            await act(() => Files.play!({canvas: within(container), userEvent}));
+            await act(() => Files.play!({canvas: within(container), userEvent: userEvent.setup()}));
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -298,7 +317,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<FilesInTab />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (FilesInTab.play) {
-            await act(() => FilesInTab.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                FilesInTab.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -314,7 +335,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<StepsDisabledBack />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (StepsDisabledBack.play) {
-            await act(() => StepsDisabledBack.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                StepsDisabledBack.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -324,7 +347,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<StepsHiddenBack />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (StepsHiddenBack.play) {
-            await act(() => StepsHiddenBack.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                StepsHiddenBack.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -340,7 +365,9 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(<EditorWithExplorer />, {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (EditorWithExplorer.play) {
-            await act(() => EditorWithExplorer.play!({canvas: within(container), userEvent}));
+            await act(() =>
+                EditorWithExplorer.play!({canvas: within(container), userEvent: userEvent.setup()}),
+            );
         }
         await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -363,11 +390,12 @@ describe('<Editor />', () => {
         expect(editBtn).toBeTruthy();
     });
 
-    it('Tabs: role="tablist" is present', async () => {
+    it('Tabs: tab navigation (role="menubar") is present', async () => {
         // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
         const {container} = render(Tabs(Tabs.args ?? {}), {dispatch});
         await act(() => new Promise(resolve => setTimeout(resolve, 200)));
-        expect(container.querySelector('[role="tablist"]')).toBeTruthy();
+        // PrimeReact 10: TabMenu renders role="menubar" (was role="tablist" in v8)
+        expect(container.querySelector('[role="menubar"]')).toBeTruthy();
     });
 
     /**

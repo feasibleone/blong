@@ -14,14 +14,18 @@ exports[`Form > renders card layout with fields 1`] = `
         class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card p-component w-full"
+          class="w-full p-card p-component"
+          data-pc-name="card"
+          data-pc-section="root"
           id="card-edit"
         >
           <div
             class="p-card-body"
+            data-pc-section="body"
           >
             <div
               class="p-card-title"
+              data-pc-section="title"
             >
               <span
                 class="blong-card__label"
@@ -33,6 +37,7 @@ exports[`Form > renders card layout with fields 1`] = `
             </div>
             <div
               class="p-card-content"
+              data-pc-section="content"
             >
               <div
                 class="blong-card__body"
@@ -55,7 +60,9 @@ exports[`Form > renders card layout with fields 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         id="userName"
                         name="userName"
                         value=""
@@ -81,7 +88,9 @@ exports[`Form > renders card layout with fields 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         id="emailAddress"
                         name="emailAddress"
                         value=""
@@ -107,7 +116,9 @@ exports[`Form > renders card layout with fields 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         id="phoneNumber"
                         name="phoneNumber"
                         value=""
@@ -139,14 +150,18 @@ exports[`Form > renders loading skeleton 1`] = `
         class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card p-component blong-card--loading w-full"
+          class="blong-card--loading w-full p-card p-component"
+          data-pc-name="card"
+          data-pc-section="root"
           id="card-edit"
         >
           <div
             class="p-card-body"
+            data-pc-section="body"
           >
             <div
               class="p-card-title"
+              data-pc-section="title"
             >
               <span
                 class="blong-card__label"
@@ -158,6 +173,7 @@ exports[`Form > renders loading skeleton 1`] = `
             </div>
             <div
               class="p-card-content"
+              data-pc-section="content"
             >
               <div
                 class="blong-card__body"
@@ -176,8 +192,11 @@ exports[`Form > renders loading skeleton 1`] = `
                     class="flex align-items-center col-12 md:col-8"
                   >
                     <div
-                      class="p-skeleton p-component p-inputtext w-full"
-                      style="width: 100%; height: 1rem;"
+                      aria-hidden="true"
+                      class="p-inputtext w-full p-skeleton p-component"
+                      data-pc-name="skeleton"
+                      data-pc-section="root"
+                      style="width: 100%; height: 1rem; position: relative;"
                     />
                   </div>
                 </div>
@@ -195,8 +214,11 @@ exports[`Form > renders loading skeleton 1`] = `
                     class="flex align-items-center col-12 md:col-8"
                   >
                     <div
-                      class="p-skeleton p-component p-inputtext w-full"
-                      style="width: 100%; height: 1rem;"
+                      aria-hidden="true"
+                      class="p-inputtext w-full p-skeleton p-component"
+                      data-pc-name="skeleton"
+                      data-pc-section="root"
+                      style="width: 100%; height: 1rem; position: relative;"
                     />
                   </div>
                 </div>
@@ -214,8 +236,11 @@ exports[`Form > renders loading skeleton 1`] = `
                     class="flex align-items-center col-12 md:col-8"
                   >
                     <div
-                      class="p-skeleton p-component p-inputtext w-full"
-                      style="width: 100%; height: 1rem;"
+                      aria-hidden="true"
+                      class="p-inputtext w-full p-skeleton p-component"
+                      data-pc-name="skeleton"
+                      data-pc-section="root"
+                      style="width: 100%; height: 1rem; position: relative;"
                     />
                   </div>
                 </div>
@@ -243,14 +268,18 @@ exports[`Form > renders multiple card groups 1`] = `
         class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card p-component w-full"
+          class="w-full p-card p-component"
+          data-pc-name="card"
+          data-pc-section="root"
           id="card-personal"
         >
           <div
             class="p-card-body"
+            data-pc-section="body"
           >
             <div
               class="p-card-title"
+              data-pc-section="title"
             >
               <span
                 class="blong-card__label"
@@ -262,6 +291,7 @@ exports[`Form > renders multiple card groups 1`] = `
             </div>
             <div
               class="p-card-content"
+              data-pc-section="content"
             >
               <div
                 class="blong-card__body"
@@ -284,7 +314,9 @@ exports[`Form > renders multiple card groups 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         id="userName"
                         name="userName"
                         value=""
@@ -301,14 +333,18 @@ exports[`Form > renders multiple card groups 1`] = `
         class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card p-component w-full"
+          class="w-full p-card p-component"
+          data-pc-name="card"
+          data-pc-section="root"
           id="card-contact"
         >
           <div
             class="p-card-body"
+            data-pc-section="body"
           >
             <div
               class="p-card-title"
+              data-pc-section="title"
             >
               <span
                 class="blong-card__label"
@@ -320,6 +356,7 @@ exports[`Form > renders multiple card groups 1`] = `
             </div>
             <div
               class="p-card-content"
+              data-pc-section="content"
             >
               <div
                 class="blong-card__body"
@@ -342,7 +379,9 @@ exports[`Form > renders multiple card groups 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         id="emailAddress"
                         name="emailAddress"
                         value=""
@@ -368,7 +407,9 @@ exports[`Form > renders multiple card groups 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         id="phoneNumber"
                         name="phoneNumber"
                         value=""
@@ -400,14 +441,18 @@ exports[`Form > renders read-only form with values 1`] = `
         class="blong-deck col-12 xl:col-6"
       >
         <div
-          class="p-card p-component w-full"
+          class="w-full p-card p-component"
+          data-pc-name="card"
+          data-pc-section="root"
           id="card-edit"
         >
           <div
             class="p-card-body"
+            data-pc-section="body"
           >
             <div
               class="p-card-title"
+              data-pc-section="title"
             >
               <span
                 class="blong-card__label"
@@ -419,6 +464,7 @@ exports[`Form > renders read-only form with values 1`] = `
             </div>
             <div
               class="p-card-content"
+              data-pc-section="content"
             >
               <div
                 class="blong-card__body"
@@ -441,7 +487,9 @@ exports[`Form > renders read-only form with values 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component p-disabled p-filled blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component p-disabled p-filled"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         disabled=""
                         id="userName"
                         name="userName"
@@ -468,7 +516,9 @@ exports[`Form > renders read-only form with values 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component p-disabled p-filled blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component p-disabled p-filled"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         disabled=""
                         id="emailAddress"
                         name="emailAddress"
@@ -495,7 +545,9 @@ exports[`Form > renders read-only form with values 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="p-inputtext p-component p-disabled p-filled blong-input w-full "
+                        class="blong-input w-full p-inputtext p-component p-disabled p-filled"
+                        data-pc-name="inputtext"
+                        data-pc-section="root"
                         disabled=""
                         id="phoneNumber"
                         name="phoneNumber"

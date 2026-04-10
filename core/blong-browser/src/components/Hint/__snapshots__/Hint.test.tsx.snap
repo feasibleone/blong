@@ -3,7 +3,10 @@
 exports[`Hint > renders toast container 1`] = `
 <div>
   <div
-    class="p-toast p-component p-toast-top-right"
+    class="p-toast p-component p-toast-top-right p-ripple-disabled"
+    data-pc-name="toast"
+    data-pc-section="root"
+    style="position: fixed; top: 20px; right: 20px;"
   >
     <div />
   </div>

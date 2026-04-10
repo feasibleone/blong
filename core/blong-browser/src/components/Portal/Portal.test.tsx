@@ -40,6 +40,7 @@ describe('Portal', () => {
                 portal: {
                     ...s.portal,
                     menuConfig: {
+                        name: 'app',
                         title: 'My App',
                         menu: [],
                     },
@@ -88,6 +89,7 @@ describe('Portal', () => {
                 portal: {
                     ...s.portal,
                     menuConfig: {
+                        name: 'app',
                         title: 'App',
                         menu: [
                             {title: 'Home', icon: 'pi pi-home', action: 'home.page'},
@@ -137,6 +139,7 @@ describe('Portal', () => {
                 portal: {
                     ...s.portal,
                     menuConfig: {
+                        name: 'app',
                         title: 'App',
                         menu: [{title: 'Home', icon: 'pi pi-home', action: 'home.page'}],
                     },

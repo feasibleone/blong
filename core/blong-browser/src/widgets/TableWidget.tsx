@@ -12,6 +12,7 @@ import {
     Password,
     SelectButton,
     Toolbar,
+    type DataTableSelectionChangeParams,
 } from '../primereact/index.js';
 
 import React, {useCallback, useEffect, useRef, useState} from 'react';
@@ -629,7 +630,7 @@ export function TableWidget({
                 size="small"
                 rowClassName={rowClass}
                 selection={isSingleSelect ? singleSelected : selected}
-                onSelectionChange={e => {
+                onSelectionChange={(e: DataTableSelectionChangeParams) => {
                     if (isSingleSelect) {
                         const row = e.value as Row | null;
                         setSingleSelected(row);

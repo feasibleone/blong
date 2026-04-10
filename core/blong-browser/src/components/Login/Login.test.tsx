@@ -11,7 +11,7 @@ describe('Login', () => {
     it('has username and password fields', () => {
         render(<Login onLogin={vi.fn()} />);
         expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+        expect(screen.getByLabelText('Password')).toBeInTheDocument();
     });
 
     it('renders with custom title', () => {
@@ -60,7 +60,7 @@ describe('Login', () => {
         const onLogin = vi.fn().mockResolvedValue(undefined);
         render(<Login onLogin={onLogin} />);
         fireEvent.change(screen.getByLabelText(/username/i), {target: {value: 'alice'}});
-        fireEvent.change(screen.getByLabelText(/password/i), {target: {value: 'secret'}});
+        fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'secret'}});
         fireEvent.click(screen.getByRole('button', {name: /^login$/i}));
         await waitFor(() => {
             expect(onLogin).toHaveBeenCalledWith({username: 'alice', password: 'secret'});
@@ -92,7 +92,7 @@ describe('Login', () => {
         const onLogin = vi.fn().mockRejectedValue(new Error('Invalid password'));
         render(<Login onLogin={onLogin} />);
         fireEvent.change(screen.getByLabelText(/username/i), {target: {value: 'alice'}});
-        fireEvent.change(screen.getByLabelText(/password/i), {target: {value: 'wrong'}});
+        fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'wrong'}});
         fireEvent.click(screen.getByRole('button', {name: /^login$/i}));
         await waitFor(() => {
             expect(screen.getByText('Invalid password')).toBeInTheDocument();

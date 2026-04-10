@@ -10,31 +10,43 @@ exports[`Explorer > renders DataView in grid layout mode 1`] = `
       .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
     </style>
     <div
-      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      class="blong-explorer-toolbar border-none p-2 flex-nowrap p-toolbar p-component"
+      data-pc-name="toolbar"
+      data-pc-section="root"
       role="toolbar"
       style="background: none;"
     >
       <div
-        class="p-toolbar-group-left"
+        class="p-toolbar-group-start p-toolbar-group-left"
+        data-pc-section="start"
       >
         <div
           class="blong-toolbar-left"
         />
       </div>
       <div
-        class="p-toolbar-group-right"
+        class="p-toolbar-group-center"
+        data-pc-section="center"
+      />
+      <div
+        class="p-toolbar-group-end p-toolbar-group-right"
+        data-pc-section="end"
       >
         <div
           class="blong-toolbar-right"
         >
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
           >
             <span
               class="p-button-icon p-c pi pi-search"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -48,21 +60,27 @@ exports[`Explorer > renders DataView in grid layout mode 1`] = `
               style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
             <input
-              class="p-inputtext p-component blong-explorer-search"
+              class="blong-explorer-search p-inputtext p-component"
+              data-pc-name="inputtext"
+              data-pc-section="root"
               placeholder="Search…"
               style="width: 10rem; padding-left: 1.75rem;"
               value=""
             />
           </span>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-cog"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -78,17 +96,22 @@ exports[`Explorer > renders DataView in grid layout mode 1`] = `
         style="display: flex; flex-direction: column; height: 100%;"
       >
         <div
-          class="p-dataview p-component p-dataview-grid blong-explorer-dv"
+          class="blong-explorer-dv p-dataview p-component p-dataview-grid"
+          data-pc-name="dataview"
+          data-pc-section="root"
           style="flex: 1 1 0%; overflow: auto;"
         >
           <div
             class="p-dataview-content"
+            data-pc-section="content"
           >
             <div
               class="p-grid grid p-nogutter grid-nogutter"
+              data-pc-section="grid"
             >
               <div
-                class="p-col-12 col-12 p-dataview-emptymessage"
+                class="p-dataview-emptymessage"
+                data-pc-section="emptymessage"
               >
                 No records found.
               </div>
@@ -111,44 +134,60 @@ exports[`Explorer > renders empty state with no listAction 1`] = `
       .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
     </style>
     <div
-      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      class="blong-explorer-toolbar border-none p-2 flex-nowrap p-toolbar p-component"
+      data-pc-name="toolbar"
+      data-pc-section="root"
       role="toolbar"
       style="background: none;"
     >
       <div
-        class="p-toolbar-group-left"
+        class="p-toolbar-group-start p-toolbar-group-left"
+        data-pc-section="start"
       >
         <div
           class="blong-toolbar-left"
         />
       </div>
       <div
-        class="p-toolbar-group-right"
+        class="p-toolbar-group-center"
+        data-pc-section="center"
+      />
+      <div
+        class="p-toolbar-group-end p-toolbar-group-right"
+        data-pc-section="end"
       >
         <div
           class="blong-toolbar-right"
         >
           <button
-            class="p-button p-component p-button-text mr-2 ml-2 p-button-icon-only"
+            class="p-button-text mr-2 ml-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-arrows-h"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
           </button>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
           >
             <span
               class="p-button-icon p-c pi pi-search"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -162,21 +201,27 @@ exports[`Explorer > renders empty state with no listAction 1`] = `
               style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
             <input
-              class="p-inputtext p-component blong-explorer-search"
+              class="blong-explorer-search p-inputtext p-component"
+              data-pc-name="inputtext"
+              data-pc-section="root"
               placeholder="Search…"
               style="width: 10rem; padding-left: 1.75rem;"
               value=""
             />
           </span>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-cog"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -192,86 +237,182 @@ exports[`Explorer > renders empty state with no listAction 1`] = `
         style="display: flex; flex-direction: column; height: 100%;"
       >
         <div
-          class="p-datatable p-component p-datatable-selectable p-datatable-sm blong-explorer-dt"
+          class="blong-explorer-dt p-datatable p-component p-datatable-selectable p-datatable-responsive-scroll p-datatable-sm"
+          data-pc-name="datatable"
+          data-pc-section="root"
           data-scrollselectors=".p-datatable-wrapper"
-          pr_id_1=""
+          data-showgridlines="false"
+          pr_id_9=""
           style="flex: 1 1 0%; min-height: 0;"
         >
           <div
             class="p-datatable-wrapper"
+            data-pc-section="wrapper"
+            style="overflow: auto;"
           >
             <table
               class="p-datatable-table"
+              data-pc-section="table"
               role="table"
             >
               <thead
                 class="p-datatable-thead"
+                data-pc-name="datatable"
+                data-pc-section="thead"
+                role="rowgroup"
               >
                 <tr
+                  data-pc-section="headerrow"
                   role="row"
                 >
                   <th
                     class="p-selection-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="false"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     style="width: 40px;"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       />
                     </div>
                   </th>
                   <th
                     aria-sort="none"
                     class="p-sortable-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="true"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       >
                         Name
                       </span>
                       <span
-                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                      />
+                        data-pc-section="sort"
+                      >
+                        <svg
+                          class="p-icon p-sortable-column-icon"
+                          data-pc-section="sorticon"
+                          fill="none"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          width="14"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5.64515 3.61291C5.47353 3.61291 5.30192 3.54968 5.16644 3.4142L3.38708 1.63484L1.60773 3.4142C1.34579 3.67613 0.912244 3.67613 0.650309 3.4142C0.388374 3.15226 0.388374 2.71871 0.650309 2.45678L2.90837 0.198712C3.17031 -0.0632236 3.60386 -0.0632236 3.86579 0.198712L6.12386 2.45678C6.38579 2.71871 6.38579 3.15226 6.12386 3.4142C5.98837 3.54968 5.81676 3.61291 5.64515 3.61291Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M3.38714 14C3.01681 14 2.70972 13.6929 2.70972 13.3226V0.677419C2.70972 0.307097 3.01681 0 3.38714 0C3.75746 0 4.06456 0.307097 4.06456 0.677419V13.3226C4.06456 13.6929 3.75746 14 3.38714 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.4413 14 10.2697 13.9368 10.1342 13.8013L7.87611 11.5432C7.61418 11.2813 7.61418 10.8477 7.87611 10.5858C8.13805 10.3239 8.5716 10.3239 8.83353 10.5858L10.6129 12.3652L12.3922 10.5858C12.6542 10.3239 13.0877 10.3239 13.3497 10.5858C13.6116 10.8477 13.6116 11.2813 13.3497 11.5432L11.0916 13.8013C10.9561 13.9368 10.7845 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.2426 14 9.93552 13.6929 9.93552 13.3226V0.677419C9.93552 0.307097 10.2426 0 10.6129 0C10.9833 0 11.2904 0.307097 11.2904 0.677419V13.3226C11.2904 13.6929 10.9832 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </span>
                     </div>
                   </th>
                   <th
                     aria-sort="none"
                     class="p-sortable-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="true"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       >
                         Size
                       </span>
                       <span
-                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                      />
+                        data-pc-section="sort"
+                      >
+                        <svg
+                          class="p-icon p-sortable-column-icon"
+                          data-pc-section="sorticon"
+                          fill="none"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          width="14"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5.64515 3.61291C5.47353 3.61291 5.30192 3.54968 5.16644 3.4142L3.38708 1.63484L1.60773 3.4142C1.34579 3.67613 0.912244 3.67613 0.650309 3.4142C0.388374 3.15226 0.388374 2.71871 0.650309 2.45678L2.90837 0.198712C3.17031 -0.0632236 3.60386 -0.0632236 3.86579 0.198712L6.12386 2.45678C6.38579 2.71871 6.38579 3.15226 6.12386 3.4142C5.98837 3.54968 5.81676 3.61291 5.64515 3.61291Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M3.38714 14C3.01681 14 2.70972 13.6929 2.70972 13.3226V0.677419C2.70972 0.307097 3.01681 0 3.38714 0C3.75746 0 4.06456 0.307097 4.06456 0.677419V13.3226C4.06456 13.6929 3.75746 14 3.38714 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.4413 14 10.2697 13.9368 10.1342 13.8013L7.87611 11.5432C7.61418 11.2813 7.61418 10.8477 7.87611 10.5858C8.13805 10.3239 8.5716 10.3239 8.83353 10.5858L10.6129 12.3652L12.3922 10.5858C12.6542 10.3239 13.0877 10.3239 13.3497 10.5858C13.6116 10.8477 13.6116 11.2813 13.3497 11.5432L11.0916 13.8013C10.9561 13.9368 10.7845 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.2426 14 9.93552 13.6929 9.93552 13.3226V0.677419C9.93552 0.307097 10.2426 0 10.6129 0C10.9833 0 11.2904 0.307097 11.2904 0.677419V13.3226C11.2904 13.6929 10.9832 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </span>
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody
                 class="p-datatable-tbody"
+                data-pc-section="tbody"
+                role=" rowgroup"
               >
                 <tr
                   class="p-datatable-emptymessage"
+                  data-pc-section="emptymessage"
                   role="row"
                 >
                   <td
                     colspan="3"
+                    data-pc-name="datatable"
+                    data-pc-section="bodycell"
                     role="cell"
                   >
                     No records found.
@@ -297,12 +438,15 @@ exports[`Explorer > renders toolbar 1`] = `
       .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
     </style>
     <div
-      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      class="blong-explorer-toolbar border-none p-2 flex-nowrap p-toolbar p-component"
+      data-pc-name="toolbar"
+      data-pc-section="root"
       role="toolbar"
       style="background: none;"
     >
       <div
-        class="p-toolbar-group-left"
+        class="p-toolbar-group-start p-toolbar-group-left"
+        data-pc-section="start"
       >
         <div
           class="blong-toolbar-left"
@@ -312,13 +456,17 @@ exports[`Explorer > renders toolbar 1`] = `
           >
             <button
               aria-label="Add"
-              class="p-button p-component blong-action-btn mr-2"
+              class="blong-action-btn mr-2 p-button p-component"
+              data-pc-name="button"
+              data-pc-section="root"
             >
               <span
                 class="p-button-icon p-c p-button-icon-left pi-plus"
+                data-pc-section="icon"
               />
               <span
                 class="p-button-label p-c"
+                data-pc-section="label"
               >
                 <span>
                   Add
@@ -329,32 +477,45 @@ exports[`Explorer > renders toolbar 1`] = `
         </div>
       </div>
       <div
-        class="p-toolbar-group-right"
+        class="p-toolbar-group-center"
+        data-pc-section="center"
+      />
+      <div
+        class="p-toolbar-group-end p-toolbar-group-right"
+        data-pc-section="end"
       >
         <div
           class="blong-toolbar-right"
         >
           <button
-            class="p-button p-component p-button-text mr-2 ml-2 p-button-icon-only"
+            class="p-button-text mr-2 ml-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-arrows-h"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
           </button>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
           >
             <span
               class="p-button-icon p-c pi pi-search"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -368,21 +529,27 @@ exports[`Explorer > renders toolbar 1`] = `
               style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
             <input
-              class="p-inputtext p-component blong-explorer-search"
+              class="blong-explorer-search p-inputtext p-component"
+              data-pc-name="inputtext"
+              data-pc-section="root"
               placeholder="Search…"
               style="width: 10rem; padding-left: 1.75rem;"
               value=""
             />
           </span>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-cog"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -398,67 +565,127 @@ exports[`Explorer > renders toolbar 1`] = `
         style="display: flex; flex-direction: column; height: 100%;"
       >
         <div
-          class="p-datatable p-component p-datatable-selectable p-datatable-sm blong-explorer-dt"
+          class="blong-explorer-dt p-datatable p-component p-datatable-selectable p-datatable-responsive-scroll p-datatable-sm"
+          data-pc-name="datatable"
+          data-pc-section="root"
           data-scrollselectors=".p-datatable-wrapper"
-          pr_id_2=""
+          data-showgridlines="false"
+          pr_id_23=""
           style="flex: 1 1 0%; min-height: 0;"
         >
           <div
             class="p-datatable-wrapper"
+            data-pc-section="wrapper"
+            style="overflow: auto;"
           >
             <table
               class="p-datatable-table"
+              data-pc-section="table"
               role="table"
             >
               <thead
                 class="p-datatable-thead"
+                data-pc-name="datatable"
+                data-pc-section="thead"
+                role="rowgroup"
               >
                 <tr
+                  data-pc-section="headerrow"
                   role="row"
                 >
                   <th
                     class="p-selection-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="false"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     style="width: 40px;"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       />
                     </div>
                   </th>
                   <th
                     aria-sort="none"
                     class="p-sortable-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="true"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       >
                         Name
                       </span>
                       <span
-                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                      />
+                        data-pc-section="sort"
+                      >
+                        <svg
+                          class="p-icon p-sortable-column-icon"
+                          data-pc-section="sorticon"
+                          fill="none"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          width="14"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5.64515 3.61291C5.47353 3.61291 5.30192 3.54968 5.16644 3.4142L3.38708 1.63484L1.60773 3.4142C1.34579 3.67613 0.912244 3.67613 0.650309 3.4142C0.388374 3.15226 0.388374 2.71871 0.650309 2.45678L2.90837 0.198712C3.17031 -0.0632236 3.60386 -0.0632236 3.86579 0.198712L6.12386 2.45678C6.38579 2.71871 6.38579 3.15226 6.12386 3.4142C5.98837 3.54968 5.81676 3.61291 5.64515 3.61291Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M3.38714 14C3.01681 14 2.70972 13.6929 2.70972 13.3226V0.677419C2.70972 0.307097 3.01681 0 3.38714 0C3.75746 0 4.06456 0.307097 4.06456 0.677419V13.3226C4.06456 13.6929 3.75746 14 3.38714 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.4413 14 10.2697 13.9368 10.1342 13.8013L7.87611 11.5432C7.61418 11.2813 7.61418 10.8477 7.87611 10.5858C8.13805 10.3239 8.5716 10.3239 8.83353 10.5858L10.6129 12.3652L12.3922 10.5858C12.6542 10.3239 13.0877 10.3239 13.3497 10.5858C13.6116 10.8477 13.6116 11.2813 13.3497 11.5432L11.0916 13.8013C10.9561 13.9368 10.7845 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.2426 14 9.93552 13.6929 9.93552 13.3226V0.677419C9.93552 0.307097 10.2426 0 10.6129 0C10.9833 0 11.2904 0.307097 11.2904 0.677419V13.3226C11.2904 13.6929 10.9832 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </span>
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody
                 class="p-datatable-tbody"
+                data-pc-section="tbody"
+                role=" rowgroup"
               >
                 <tr
                   class="p-datatable-emptymessage"
+                  data-pc-section="emptymessage"
                   role="row"
                 >
                   <td
                     colspan="2"
+                    data-pc-name="datatable"
+                    data-pc-section="bodycell"
                     role="cell"
                   >
                     No records found.
@@ -484,44 +711,60 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
       .blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }
     </style>
     <div
-      class="p-toolbar p-component blong-explorer-toolbar border-none p-2 flex-nowrap"
+      class="blong-explorer-toolbar border-none p-2 flex-nowrap p-toolbar p-component"
+      data-pc-name="toolbar"
+      data-pc-section="root"
       role="toolbar"
       style="background: none;"
     >
       <div
-        class="p-toolbar-group-left"
+        class="p-toolbar-group-start p-toolbar-group-left"
+        data-pc-section="start"
       >
         <div
           class="blong-toolbar-left"
         />
       </div>
       <div
-        class="p-toolbar-group-right"
+        class="p-toolbar-group-center"
+        data-pc-section="center"
+      />
+      <div
+        class="p-toolbar-group-end p-toolbar-group-right"
+        data-pc-section="end"
       >
         <div
           class="blong-toolbar-right"
         >
           <button
-            class="p-button p-component p-button-text mr-2 ml-2 p-button-icon-only"
+            class="p-button-text mr-2 ml-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-arrows-h"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
           </button>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
           >
             <span
               class="p-button-icon p-c pi pi-search"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -535,21 +778,27 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
               style="position: absolute; left: 0.5rem; pointer-events: none;"
             />
             <input
-              class="p-inputtext p-component blong-explorer-search"
+              class="blong-explorer-search p-inputtext p-component"
+              data-pc-name="inputtext"
+              data-pc-section="root"
               placeholder="Search…"
               style="width: 10rem; padding-left: 1.75rem;"
               value=""
             />
           </span>
           <button
-            class="p-button p-component p-button-text mr-2 p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            data-pc-name="button"
+            data-pc-section="root"
             style="opacity: 0.5;"
           >
             <span
               class="p-button-icon p-c pi pi-cog"
+              data-pc-section="icon"
             />
             <span
               class="p-button-label p-c"
+              data-pc-section="label"
             >
                
             </span>
@@ -565,86 +814,182 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
         style="display: flex; flex-direction: column; height: 100%;"
       >
         <div
-          class="p-datatable p-component p-datatable-selectable p-datatable-sm blong-explorer-dt"
+          class="blong-explorer-dt p-datatable p-component p-datatable-selectable p-datatable-responsive-scroll p-datatable-sm"
+          data-pc-name="datatable"
+          data-pc-section="root"
           data-scrollselectors=".p-datatable-wrapper"
-          pr_id_3=""
+          data-showgridlines="false"
+          pr_id_37=""
           style="flex: 1 1 0%; min-height: 0;"
         >
           <div
             class="p-datatable-wrapper"
+            data-pc-section="wrapper"
+            style="overflow: auto;"
           >
             <table
               class="p-datatable-table"
+              data-pc-section="table"
               role="table"
             >
               <thead
                 class="p-datatable-thead"
+                data-pc-name="datatable"
+                data-pc-section="thead"
+                role="rowgroup"
               >
                 <tr
+                  data-pc-section="headerrow"
                   role="row"
                 >
                   <th
                     class="p-selection-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="false"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     style="width: 40px;"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       />
                     </div>
                   </th>
                   <th
                     aria-sort="none"
                     class="p-sortable-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="true"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       >
                         Name
                       </span>
                       <span
-                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                      />
+                        data-pc-section="sort"
+                      >
+                        <svg
+                          class="p-icon p-sortable-column-icon"
+                          data-pc-section="sorticon"
+                          fill="none"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          width="14"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5.64515 3.61291C5.47353 3.61291 5.30192 3.54968 5.16644 3.4142L3.38708 1.63484L1.60773 3.4142C1.34579 3.67613 0.912244 3.67613 0.650309 3.4142C0.388374 3.15226 0.388374 2.71871 0.650309 2.45678L2.90837 0.198712C3.17031 -0.0632236 3.60386 -0.0632236 3.86579 0.198712L6.12386 2.45678C6.38579 2.71871 6.38579 3.15226 6.12386 3.4142C5.98837 3.54968 5.81676 3.61291 5.64515 3.61291Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M3.38714 14C3.01681 14 2.70972 13.6929 2.70972 13.3226V0.677419C2.70972 0.307097 3.01681 0 3.38714 0C3.75746 0 4.06456 0.307097 4.06456 0.677419V13.3226C4.06456 13.6929 3.75746 14 3.38714 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.4413 14 10.2697 13.9368 10.1342 13.8013L7.87611 11.5432C7.61418 11.2813 7.61418 10.8477 7.87611 10.5858C8.13805 10.3239 8.5716 10.3239 8.83353 10.5858L10.6129 12.3652L12.3922 10.5858C12.6542 10.3239 13.0877 10.3239 13.3497 10.5858C13.6116 10.8477 13.6116 11.2813 13.3497 11.5432L11.0916 13.8013C10.9561 13.9368 10.7845 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.2426 14 9.93552 13.6929 9.93552 13.3226V0.677419C9.93552 0.307097 10.2426 0 10.6129 0C10.9833 0 11.2904 0.307097 11.2904 0.677419V13.3226C11.2904 13.6929 10.9832 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </span>
                     </div>
                   </th>
                   <th
                     aria-sort="none"
                     class="p-sortable-column"
+                    data-p-filter-column="false"
+                    data-p-frozen-column="false"
+                    data-p-reorderable-column="false"
+                    data-p-resizable-column="false"
+                    data-p-sortable-column="true"
+                    data-pc-name="datatable"
+                    data-pc-section="headercell"
                     role="columnheader"
                     tabindex="0"
                   >
                     <div
                       class="p-column-header-content"
+                      data-pc-section="headercontent"
                     >
                       <span
                         class="p-column-title"
+                        data-pc-section="headertitle"
                       >
                         Size
                       </span>
                       <span
-                        class="p-sortable-column-icon pi pi-fw pi-sort-alt"
-                      />
+                        data-pc-section="sort"
+                      >
+                        <svg
+                          class="p-icon p-sortable-column-icon"
+                          data-pc-section="sorticon"
+                          fill="none"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          width="14"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5.64515 3.61291C5.47353 3.61291 5.30192 3.54968 5.16644 3.4142L3.38708 1.63484L1.60773 3.4142C1.34579 3.67613 0.912244 3.67613 0.650309 3.4142C0.388374 3.15226 0.388374 2.71871 0.650309 2.45678L2.90837 0.198712C3.17031 -0.0632236 3.60386 -0.0632236 3.86579 0.198712L6.12386 2.45678C6.38579 2.71871 6.38579 3.15226 6.12386 3.4142C5.98837 3.54968 5.81676 3.61291 5.64515 3.61291Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M3.38714 14C3.01681 14 2.70972 13.6929 2.70972 13.3226V0.677419C2.70972 0.307097 3.01681 0 3.38714 0C3.75746 0 4.06456 0.307097 4.06456 0.677419V13.3226C4.06456 13.6929 3.75746 14 3.38714 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.4413 14 10.2697 13.9368 10.1342 13.8013L7.87611 11.5432C7.61418 11.2813 7.61418 10.8477 7.87611 10.5858C8.13805 10.3239 8.5716 10.3239 8.83353 10.5858L10.6129 12.3652L12.3922 10.5858C12.6542 10.3239 13.0877 10.3239 13.3497 10.5858C13.6116 10.8477 13.6116 11.2813 13.3497 11.5432L11.0916 13.8013C10.9561 13.9368 10.7845 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M10.6129 14C10.2426 14 9.93552 13.6929 9.93552 13.3226V0.677419C9.93552 0.307097 10.2426 0 10.6129 0C10.9833 0 11.2904 0.307097 11.2904 0.677419V13.3226C11.2904 13.6929 10.9832 14 10.6129 14Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </span>
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody
                 class="p-datatable-tbody"
+                data-pc-section="tbody"
+                role=" rowgroup"
               >
                 <tr
                   class="p-datatable-emptymessage"
+                  data-pc-section="emptymessage"
                   role="row"
                 >
                   <td
                     colspan="3"
+                    data-pc-name="datatable"
+                    data-pc-section="bodycell"
                     role="cell"
                   >
                     No records found.

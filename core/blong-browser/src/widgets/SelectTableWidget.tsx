@@ -1,5 +1,4 @@
-import {Column, DataTable} from '../primereact/index.js';
-
+import {Column, DataTable, type DataTableSelectionChangeParams} from '../primereact/index.js';
 
 import {useEffect, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
@@ -86,8 +85,8 @@ export function SelectTableWidget({
     // Derive columns from schema.widget.columns or fall back to label
     const cols: string[] = Array.isArray(columns)
         ? (columns as string[])
-        : (columns ? Object.keys(columns as object) : null) ??
-          (schema.items?.properties ? Object.keys(schema.items.properties) : ['label']);
+        : ((columns ? Object.keys(columns as object) : null) ??
+          (schema.items?.properties ? Object.keys(schema.items.properties) : ['label']));
 
     const colHeaders: Record<string, string> = schema.items?.properties
         ? Object.fromEntries(
@@ -105,7 +104,7 @@ export function SelectTableWidget({
             size="small"
             selectionMode={isSingle ? 'single' : 'multiple'}
             selection={selectedRows}
-            onSelectionChange={e => {
+            onSelectionChange={(e: DataTableSelectionChangeParams) => {
                 if (disabled || readOnly) return;
                 if (isSingle) {
                     onChange((e.value as Row | null)?.value ?? null);
@@ -117,7 +116,11 @@ export function SelectTableWidget({
             className={`blong-select-table w-full ${error ? 'p-invalid' : ''}`}
         >
             {cols.map(field => (
-                <Column key={field} field={field} header={colHeaders[field] ?? field} />
+                <Column
+                    key={field}
+                    field={field}
+                    header={colHeaders[field] ?? field}
+                />
             ))}
         </DataTable>
     );

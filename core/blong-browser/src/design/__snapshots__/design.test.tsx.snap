@@ -232,13 +232,17 @@ exports[`DesignToolbar > renders design mode buttons when active 1`] = `
   >
     <button
       aria-label="Done"
-      class="p-button p-component p-button-sm p-button-outlined"
+      class="p-button-sm p-button-outlined p-button p-component"
+      data-pc-name="button"
+      data-pc-section="root"
     >
       <span
         class="p-button-icon p-c p-button-icon-left pi pi-check"
+        data-pc-section="icon"
       />
       <span
         class="p-button-label p-c"
+        data-pc-section="label"
       >
         <span>
           Done
@@ -246,40 +250,52 @@ exports[`DesignToolbar > renders design mode buttons when active 1`] = `
       </span>
     </button>
     <button
-      class="p-button p-component p-button-sm p-button-text p-button-icon-only p-disabled"
+      class="p-button-sm p-button-text p-button p-component p-button-icon-only p-disabled"
+      data-pc-name="button"
+      data-pc-section="root"
       disabled=""
     >
       <span
         class="p-button-icon p-c pi pi-undo"
+        data-pc-section="icon"
       />
       <span
         class="p-button-label p-c"
+        data-pc-section="label"
       >
          
       </span>
     </button>
     <button
-      class="p-button p-component p-button-sm p-button-text p-button-icon-only p-disabled"
+      class="p-button-sm p-button-text p-button p-component p-button-icon-only p-disabled"
+      data-pc-name="button"
+      data-pc-section="root"
       disabled=""
     >
       <span
         class="p-button-icon p-c pi pi-refresh"
+        data-pc-section="icon"
       />
       <span
         class="p-button-label p-c"
+        data-pc-section="label"
       >
          
       </span>
     </button>
     <button
       aria-label="Save layout"
-      class="p-button p-component p-button-sm p-button-success"
+      class="p-button-sm p-button-success p-button p-component"
+      data-pc-name="button"
+      data-pc-section="root"
     >
       <span
         class="p-button-icon p-c p-button-icon-left pi pi-save"
+        data-pc-section="icon"
       />
       <span
         class="p-button-label p-c"
+        data-pc-section="label"
       >
         <span>
           Save layout
@@ -297,13 +313,17 @@ exports[`DesignToolbar > renders toggle button 1`] = `
   >
     <button
       aria-label="Configure"
-      class="p-button p-component p-button-sm p-button-outlined"
+      class="p-button-sm p-button-outlined p-button p-component"
+      data-pc-name="button"
+      data-pc-section="root"
     >
       <span
         class="p-button-icon p-c p-button-icon-left pi pi-cog"
+        data-pc-section="icon"
       />
       <span
         class="p-button-label p-c"
+        data-pc-section="label"
       >
         <span>
           Configure

@@ -4,13 +4,17 @@ exports[`Card > renders collapsible card 1`] = `
 <div>
   <div
     class="p-card p-component"
+    data-pc-name="card"
+    data-pc-section="root"
     id="collapsible-card"
   >
     <div
       class="p-card-body"
+      data-pc-section="body"
     >
       <div
         class="p-card-title"
+        data-pc-section="title"
       >
         <span
           class="blong-card__label"
@@ -26,6 +30,7 @@ exports[`Card > renders collapsible card 1`] = `
       </div>
       <div
         class="p-card-content"
+        data-pc-section="content"
       >
         <div
           class="blong-card__body"
@@ -44,13 +49,17 @@ exports[`Card > renders label and children 1`] = `
 <div>
   <div
     class="p-card p-component"
+    data-pc-name="card"
+    data-pc-section="root"
     id="test-card"
   >
     <div
       class="p-card-body"
+      data-pc-section="body"
     >
       <div
         class="p-card-title"
+        data-pc-section="title"
       >
         <span
           class="blong-card__label"
@@ -62,6 +71,7 @@ exports[`Card > renders label and children 1`] = `
       </div>
       <div
         class="p-card-content"
+        data-pc-section="content"
       >
         <div
           class="blong-card__body"
@@ -80,13 +90,17 @@ exports[`Card > renders without label 1`] = `
 <div>
   <div
     class="p-card p-component"
+    data-pc-name="card"
+    data-pc-section="root"
     id="no-label-card"
   >
     <div
       class="p-card-body"
+      data-pc-section="body"
     >
       <div
         class="p-card-content"
+        data-pc-section="content"
       >
         <div
           class="blong-card__body"
@@ -100,14 +114,18 @@ exports[`Card > renders without label 1`] = `
 exports[`Card > shows loading state 1`] = `
 <div>
   <div
-    class="p-card p-component blong-card--loading"
+    class="blong-card--loading p-card p-component"
+    data-pc-name="card"
+    data-pc-section="root"
     id="loading-card"
   >
     <div
       class="p-card-body"
+      data-pc-section="body"
     >
       <div
         class="p-card-title"
+        data-pc-section="title"
       >
         <span
           class="blong-card__label"
@@ -119,6 +137,7 @@ exports[`Card > shows loading state 1`] = `
       </div>
       <div
         class="p-card-content"
+        data-pc-section="content"
       >
         <div
           class="blong-card__body"

@@ -20,8 +20,8 @@ export function subjectObjectReport(
 
             function ReportPage(props: Record<string, unknown>) {
                 return Report({
-                    schema,
-                    listAction: methods.report,
+                    filterSchema: schema,
+                    dataAction: methods.report,
                     ...props,
                 });
             }

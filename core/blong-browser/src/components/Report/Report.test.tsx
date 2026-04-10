@@ -11,7 +11,7 @@ const schema = {
 
 describe('Report', () => {
     it('renders report layout without data', () => {
-        const {container} = render(<Report schema={schema} />, {
+        const {container} = render(<Report filterSchema={schema} />, {
             dispatch: vi.fn().mockResolvedValue({items: [], total: 0}),
         });
         expect(container).toMatchSnapshot();
@@ -21,7 +21,7 @@ describe('Report', () => {
         const {container} = render(
             <Report
                 title="Monthly Report"
-                schema={schema}
+                filterSchema={schema}
                 exportable
             />,
             {dispatch: vi.fn().mockResolvedValue({items: [], total: 0})},
@@ -33,7 +33,7 @@ describe('Report', () => {
         const {container} = render(
             <Report
                 title="Summary"
-                schema={schema}
+                filterSchema={schema}
                 metrics={[
                     {label: 'Total Amount', field: 'amount', icon: 'pi-dollar', color: 'success'},
                     {label: 'Categories', field: 'categoryCount', icon: 'pi-list', color: 'info'},
@@ -55,13 +55,12 @@ describe('Report', () => {
     it('renders filterSchema as expandable filter panel', () => {
         const filterSchema = {
             properties: {
-                startDate: {title: 'Start Date', widget: {type: 'date'}},
-                endDate: {title: 'End Date', widget: {type: 'date'}},
+                startDate: {title: 'Start Date', widget: {type: 'date' as const}},
+                endDate: {title: 'End Date', widget: {type: 'date' as const}},
             },
         };
         const {container} = render(
             <Report
-                schema={schema}
                 filterSchema={filterSchema}
                 defaultFilter={{startDate: '2024-01-01'}}
             />,
@@ -78,8 +77,8 @@ describe('Report', () => {
         ]);
         const {container} = render(
             <Report
-                schema={schema}
-                listAction="report.report.find"
+                filterSchema={schema}
+                dataAction="report.report.find"
                 columns={[
                     {field: 'category', header: 'Category'},
                     {field: 'amount', header: 'Amount', aggregate: 'sum'},
@@ -93,7 +92,7 @@ describe('Report', () => {
     it('renders with column count aggregate', () => {
         const {container} = render(
             <Report
-                schema={schema}
+                filterSchema={schema}
                 columns={[{field: 'category', header: 'Category', aggregate: 'count'}]}
             />,
             {dispatch: vi.fn().mockResolvedValue([])},
@@ -104,7 +103,7 @@ describe('Report', () => {
     it('calls exportCSV when export button clicked with no rows (early return)', () => {
         const {container} = render(
             <Report
-                schema={schema}
+                filterSchema={schema}
                 exportable
                 columns={[{field: 'category', header: 'Category'}]}
             />,
@@ -132,13 +131,13 @@ describe('Report', () => {
         const {container} = render(
             <Report
                 title="Test"
-                schema={schema}
+                filterSchema={schema}
                 exportable
                 columns={[
                     {field: 'category', header: 'Category'},
                     {field: 'amount', header: 'Amount'},
                 ]}
-                listAction="report.report.find"
+                dataAction="report.report.find"
             />,
             {dispatch},
         );
@@ -162,7 +161,7 @@ describe('Report', () => {
     it('renders metrics with loading skeleton', () => {
         const {container} = render(
             <Report
-                schema={schema}
+                filterSchema={schema}
                 metrics={[{label: 'Count', field: 'count', color: 'success', icon: 'pi-check'}]}
                 columns={[{field: 'count', header: 'Count', aggregate: 'sum'}]}
             />,

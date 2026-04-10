@@ -16,7 +16,9 @@ describe('Hint', () => {
         act(() => {
             useAppStore.setState(s => ({
                 ...s,
-                toasts: [{severity: 'success', summary: 'Done', detail: 'Saved', life: 3000}],
+                toasts: [
+                    {id: '1', severity: 'success', summary: 'Done', detail: 'Saved', life: 3000},
+                ],
             }));
         });
         // The toast container renders (PrimeReact Toast doesn't add DOM in jsdom but code path is hit)

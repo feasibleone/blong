@@ -13,11 +13,10 @@
 
 // ── Re-exported functions / utilities (not affected by defaultProps removal) ─
 
-export {addLocale, locale} from 'primereact/api';
+export {addLocale, locale, PrimeReactProvider} from 'primereact/api';
 export {confirmDialog} from 'primereact/confirmdialog';
 export {confirmPopup} from 'primereact/confirmpopup';
 export {SplitterPanel} from 'primereact/splitter';
-
 // ── Type re-exports ──────────────────────────────────────────────────────────
 
 export type {AutoCompleteProps} from 'primereact/autocomplete';
@@ -30,7 +29,7 @@ export type {ChipsProps} from 'primereact/chips';
 export type {ColumnProps} from 'primereact/column';
 export type {ConfirmDialogProps} from 'primereact/confirmdialog';
 export type {ConfirmPopupProps} from 'primereact/confirmpopup';
-export type {DataTableProps, DataTableSelectionChangeParams} from 'primereact/datatable';
+export type {DataTableProps} from 'primereact/datatable';
 export type {DataViewProps} from 'primereact/dataview';
 export type {DialogProps} from 'primereact/dialog';
 export type {DropdownProps} from 'primereact/dropdown';
@@ -56,25 +55,28 @@ export type {SplitterProps} from 'primereact/splitter';
 export type {StepsProps} from 'primereact/steps';
 export type {TabMenuProps} from 'primereact/tabmenu';
 export type {TabViewProps} from 'primereact/tabview';
+export type {ToastProps} from 'primereact/toast';
+export type {ToolbarProps} from 'primereact/toolbar';
+export type {TreeProps} from 'primereact/tree';
+export type {TreeNode} from 'primereact/treenode';
+export type {TreeSelectProps} from 'primereact/treeselect';
+export type {TreeTableProps} from 'primereact/treetable';
+/** Compatibility alias: renamed/split in PrimeReact 10 — use onSelectionChange event directly for new code. */
+export type DataTableSelectionChangeParams = {value: any; originalEvent?: any};
+/** Sort event type extracted from DataTableProps (DataTableStateEvent is not exported in v10). */
+export type DataTableSortParams = Parameters<
+    NonNullable<import('primereact/datatable').DataTableProps<Record<string, any>[]>['onSort']>
+>[0];
 /** TabPanelProps extended with the `__TYPE` discriminator PrimeReact TabView uses to identify
  *  panel children. React 19 removed defaultProps support, so callers pass `__TYPE="TabPanel"`
  *  explicitly; this type makes that prop valid. */
 export type TabPanelProps = import('primereact/tabview').TabPanelProps & {__TYPE?: string};
-export type {ToastProps} from 'primereact/toast';
-export type {ToolbarProps} from 'primereact/toolbar';
-export type {TreeProps} from 'primereact/tree';
-export type {default as TreeNode} from 'primereact/treenode';
-export type {TreeSelectProps} from 'primereact/treeselect';
-export type {TreeTableProps} from 'primereact/treetable';
 
 // ── Component wrappers ───────────────────────────────────────────────────────
 
-import React from 'react';
 import {AutoComplete as PrimeAutoComplete} from 'primereact/autocomplete';
-import {Button as PrimeButton, type ButtonProps} from 'primereact/button';
 import {BreadCrumb as PrimeBreadCrumb} from 'primereact/breadcrumb';
-import {useAppStore} from '../state/appStore.js';
-import {Text} from '../components/Text/index.js';
+import {Button as PrimeButton, type ButtonProps} from 'primereact/button';
 import {Calendar as PrimeCalendar} from 'primereact/calendar';
 import {Card as PrimeCard} from 'primereact/card';
 import {Checkbox as PrimeCheckbox} from 'primereact/checkbox';
@@ -107,13 +109,16 @@ import {SplitButton as PrimeSplitButton} from 'primereact/splitbutton';
 import {Splitter as PrimeSplitter} from 'primereact/splitter';
 import {Steps as PrimeSteps} from 'primereact/steps';
 import {TabMenu as PrimeTabMenu} from 'primereact/tabmenu';
-import {TabPanel as PrimeTabPanel, TabView as PrimeTabView} from 'primereact/tabview';
 import type {TabPanelProps as PrimeTabPanelProps} from 'primereact/tabview';
+import {TabPanel as PrimeTabPanel, TabView as PrimeTabView} from 'primereact/tabview';
 import {Toast as PrimeToast} from 'primereact/toast';
 import {Toolbar as PrimeToolbar} from 'primereact/toolbar';
 import {Tree as PrimeTree} from 'primereact/tree';
 import {TreeSelect as PrimeTreeSelect} from 'primereact/treeselect';
 import {TreeTable as PrimeTreeTable} from 'primereact/treetable';
+import React from 'react';
+import {Text} from '../components/Text/index.js';
+import {useAppStore} from '../state/appStore.js';
 
 import type {AutoCompleteProps} from 'primereact/autocomplete';
 import type {BreadCrumbProps} from 'primereact/breadcrumb';
@@ -124,7 +129,6 @@ import type {ChipsProps} from 'primereact/chips';
 import type {ColumnProps} from 'primereact/column';
 import type {ConfirmDialogProps} from 'primereact/confirmdialog';
 import type {ConfirmPopupProps} from 'primereact/confirmpopup';
-import type {DataTableProps} from 'primereact/datatable';
 import type {DataViewProps} from 'primereact/dataview';
 import type {DialogProps} from 'primereact/dialog';
 import type {DropdownProps} from 'primereact/dropdown';
@@ -156,16 +160,25 @@ import type {TreeProps} from 'primereact/tree';
 import type {TreeSelectProps} from 'primereact/treeselect';
 import type {TreeTableProps} from 'primereact/treetable';
 
-// AutoComplete — delay:300, minLength:1, scrollHeight:'200px', dropdownIcon:'pi pi-chevron-down', removeIcon:'pi pi-times-circle'
+// AutoComplete — delay:300, minLength:1, scrollHeight:'200px', dropdownIcon:'pi pi-chevron-down', removeTokenIcon:'pi pi-times-circle'
 export function AutoComplete({
     delay = 300,
     minLength = 1,
     scrollHeight = '200px',
     dropdownIcon = 'pi pi-chevron-down',
-    removeIcon = 'pi pi-times-circle',
+    removeTokenIcon = 'pi pi-times-circle',
     ...props
 }: AutoCompleteProps) {
-    return <PrimeAutoComplete delay={delay} minLength={minLength} scrollHeight={scrollHeight} dropdownIcon={dropdownIcon} removeIcon={removeIcon} {...props} />;
+    return (
+        <PrimeAutoComplete
+            delay={delay}
+            minLength={minLength}
+            scrollHeight={scrollHeight}
+            dropdownIcon={dropdownIcon}
+            removeTokenIcon={removeTokenIcon}
+            {...props}
+        />
+    );
 }
 
 // BreadCrumb — no meaningful non-null defaults
@@ -185,12 +198,19 @@ export function Button({'aria-label': ariaLabel, label, iconPos = 'left', ...pro
             <PrimeButton
                 {...props}
                 iconPos={iconPos}
-                label={<Text>{label}</Text> as unknown as string}
+                label={(<Text>{label}</Text>) as unknown as string}
                 aria-label={accessibleName}
             />
         );
     }
-    return <PrimeButton {...props} iconPos={iconPos} label={label} aria-label={ariaLabel} />;
+    return (
+        <PrimeButton
+            {...props}
+            iconPos={iconPos}
+            label={label}
+            aria-label={ariaLabel}
+        />
+    );
 }
 
 // Calendar — showOnFocus:true, selectionMode:'single', iconPos:'right', hourFormat:'24', icon:'pi pi-calendar'
@@ -212,23 +232,25 @@ export function Calendar({
     todayButtonClassName = 'p-button-secondary',
     ...props
 }: CalendarProps) {
-    return <PrimeCalendar
-        showOnFocus={showOnFocus}
-        selectionMode={selectionMode}
-        iconPos={iconPos}
-        hourFormat={hourFormat}
-        icon={icon}
-        numberOfMonths={numberOfMonths}
-        stepHour={stepHour}
-        stepMinute={stepMinute}
-        stepSecond={stepSecond}
-        stepMillisec={stepMillisec}
-        shortYearCutoff={shortYearCutoff}
-        view={view}
-        clearButtonClassName={clearButtonClassName}
-        todayButtonClassName={todayButtonClassName}
-        {...props}
-    />;
+    return (
+        <PrimeCalendar
+            showOnFocus={showOnFocus}
+            selectionMode={selectionMode}
+            iconPos={iconPos}
+            hourFormat={hourFormat}
+            icon={icon}
+            numberOfMonths={numberOfMonths}
+            stepHour={stepHour}
+            stepMinute={stepMinute}
+            stepSecond={stepSecond}
+            stepMillisec={stepMillisec}
+            shortYearCutoff={shortYearCutoff}
+            view={view}
+            clearButtonClassName={clearButtonClassName}
+            todayButtonClassName={todayButtonClassName}
+            {...props}
+        />
+    );
 }
 
 // Card — no meaningful non-null defaults
@@ -243,16 +265,25 @@ export function Checkbox({
     icon = 'pi pi-check',
     ...props
 }: CheckboxProps) {
-    return <PrimeCheckbox trueValue={trueValue} falseValue={falseValue} icon={icon} {...props} />;
+    return (
+        <PrimeCheckbox
+            trueValue={trueValue}
+            falseValue={falseValue}
+            icon={icon}
+            {...props}
+        />
+    );
 }
 
 // Chips — removable:true, allowDuplicate:true
-export function Chips({
-    removable = true,
-    allowDuplicate = true,
-    ...props
-}: ChipsProps) {
-    return <PrimeChips removable={removable} allowDuplicate={allowDuplicate} {...props} />;
+export function Chips({removable = true, allowDuplicate = true, ...props}: ChipsProps) {
+    return (
+        <PrimeChips
+            removable={removable}
+            allowDuplicate={allowDuplicate}
+            {...props}
+        />
+    );
 }
 
 // Column — showFilterMenu:true, showFilterMatchModes:true, showFilterOperator:true, showAddButton:true,
@@ -278,25 +309,27 @@ export function Column({
     resizeable = true,
     ...props
 }: ColumnProps) {
-    return <PrimeColumn
-        showFilterMenu={showFilterMenu}
-        showFilterMatchModes={showFilterMatchModes}
-        showFilterOperator={showFilterOperator}
-        showAddButton={showAddButton}
-        showApplyButton={showApplyButton}
-        showClearButton={showClearButton}
-        showFilterMenuOptions={showFilterMenuOptions}
-        dataType={dataType}
-        filterType={filterType}
-        maxConstraints={maxConstraints}
-        rowReorderIcon={rowReorderIcon}
-        alignFrozen={alignFrozen}
-        cellEditValidatorEvent={cellEditValidatorEvent}
-        exportable={exportable}
-        reorderable={reorderable}
-        resizeable={resizeable}
-        {...props}
-    />;
+    return (
+        <PrimeColumn
+            showFilterMenu={showFilterMenu}
+            showFilterMatchModes={showFilterMatchModes}
+            showFilterOperator={showFilterOperator}
+            showAddButton={showAddButton}
+            showApplyButton={showApplyButton}
+            showClearButton={showClearButton}
+            showFilterMenuOptions={showFilterMenuOptions}
+            dataType={dataType}
+            filterType={filterType}
+            maxConstraints={maxConstraints}
+            rowReorderIcon={rowReorderIcon}
+            alignFrozen={alignFrozen}
+            cellEditValidatorEvent={cellEditValidatorEvent}
+            exportable={exportable}
+            reorderable={reorderable}
+            resizeable={resizeable}
+            {...props}
+        />
+    );
 }
 
 // ConfirmDialog — no meaningful non-null defaults
@@ -305,11 +338,13 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
 }
 
 // ConfirmPopup — dismissable:true
-export function ConfirmPopup({
-    dismissable = true,
-    ...props
-}: ConfirmPopupProps) {
-    return <PrimeConfirmPopup dismissable={dismissable} {...props} />;
+export function ConfirmPopup({dismissable = true, ...props}: ConfirmPopupProps) {
+    return (
+        <PrimeConfirmPopup
+            dismissable={dismissable}
+            {...props}
+        />
+    );
 }
 
 // DataTable — first:0, size:'normal', editMode:'cell', sortMode:'single', columnResizeMode:'fit',
@@ -320,7 +355,10 @@ export function ConfirmPopup({
 //             collapsedRowIcon:'pi pi-chevron-right', tabIndex:0, scrollDirection:'vertical',
 //             stateStorage:'session', compareSelectionBy:'deepEquals'
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type DataTable = PrimeDataTable;
+export type DataTable = PrimeDataTable<any>;
+// Wrapper accepts any DataTable-compatible props. We use a permissive index signature here
+// because DataTableProps<T> is a discriminated union (single/multiple/cell-single/cell-multiple)
+// that rejects mixed props at compile time, which conflicts with dynamic selectionMode usage.
 export function DataTable({
     ref,
     first = 0,
@@ -342,37 +380,40 @@ export function DataTable({
     expandedRowIcon = 'pi pi-chevron-down',
     collapsedRowIcon = 'pi pi-chevron-right',
     tabIndex = 0,
-    scrollDirection = 'vertical',
     stateStorage = 'session',
     compareSelectionBy = 'deepEquals',
     ...props
-}: DataTableProps & {ref?: React.Ref<PrimeDataTable>}) {
-    return <PrimeDataTable
-        first={first}
-        size={size}
-        editMode={editMode}
-        sortMode={sortMode}
-        columnResizeMode={columnResizeMode}
-        defaultSortOrder={defaultSortOrder}
-        filterDelay={filterDelay}
-        filterDisplay={filterDisplay}
-        pageLinkSize={pageLinkSize}
-        csvSeparator={csvSeparator}
-        exportFilename={exportFilename}
-        breakpoint={breakpoint}
-        paginatorPosition={paginatorPosition}
-        paginatorTemplate={paginatorTemplate}
-        currentPageReportTemplate={currentPageReportTemplate}
-        loadingIcon={loadingIcon}
-        expandedRowIcon={expandedRowIcon}
-        collapsedRowIcon={collapsedRowIcon}
-        tabIndex={tabIndex}
-        scrollDirection={scrollDirection}
-        stateStorage={stateStorage}
-        compareSelectionBy={compareSelectionBy}
-        ref={ref}
-        {...props}
-    />;
+}: {
+    ref?: React.Ref<PrimeDataTable<any>>;
+    [key: string]: any;
+}) {
+    return (
+        <PrimeDataTable
+            first={first}
+            size={size}
+            editMode={editMode}
+            sortMode={sortMode}
+            columnResizeMode={columnResizeMode}
+            defaultSortOrder={defaultSortOrder}
+            filterDelay={filterDelay}
+            filterDisplay={filterDisplay}
+            pageLinkSize={pageLinkSize}
+            csvSeparator={csvSeparator}
+            exportFilename={exportFilename}
+            breakpoint={breakpoint}
+            paginatorPosition={paginatorPosition}
+            paginatorTemplate={paginatorTemplate}
+            currentPageReportTemplate={currentPageReportTemplate}
+            loadingIcon={loadingIcon}
+            expandedRowIcon={expandedRowIcon}
+            collapsedRowIcon={collapsedRowIcon}
+            tabIndex={tabIndex}
+            stateStorage={stateStorage}
+            compareSelectionBy={compareSelectionBy}
+            ref={ref}
+            {...props}
+        />
+    );
 }
 
 // DataView — layout:'list', first:0, paginatorPosition:'bottom', pageLinkSize:5,
@@ -387,16 +428,18 @@ export function DataView({
     currentPageReportTemplate = '({currentPage} of {totalPages})',
     ...props
 }: DataViewProps) {
-    return <PrimeDataView
-        layout={layout}
-        first={first}
-        paginatorPosition={paginatorPosition}
-        pageLinkSize={pageLinkSize}
-        loadingIcon={loadingIcon}
-        paginatorTemplate={paginatorTemplate}
-        currentPageReportTemplate={currentPageReportTemplate}
-        {...props}
-    />;
+    return (
+        <PrimeDataView
+            layout={layout}
+            first={first}
+            paginatorPosition={paginatorPosition}
+            pageLinkSize={pageLinkSize}
+            loadingIcon={loadingIcon}
+            paginatorTemplate={paginatorTemplate}
+            currentPageReportTemplate={currentPageReportTemplate}
+            {...props}
+        />
+    );
 }
 
 // Dialog — modal:true, position:'center', draggable:true, resizable:true, closable:true,
@@ -416,21 +459,23 @@ export function Dialog({
     baseZIndex = 0,
     ...props
 }: DialogProps) {
-    return <PrimeDialog
-        modal={modal}
-        position={position}
-        draggable={draggable}
-        resizable={resizable}
-        closable={closable}
-        closeOnEscape={closeOnEscape}
-        focusOnShow={focusOnShow}
-        showHeader={showHeader}
-        keepInViewport={keepInViewport}
-        minX={minX}
-        minY={minY}
-        baseZIndex={baseZIndex}
-        {...props}
-    />;
+    return (
+        <PrimeDialog
+            modal={modal}
+            position={position}
+            draggable={draggable}
+            resizable={resizable}
+            closable={closable}
+            closeOnEscape={closeOnEscape}
+            focusOnShow={focusOnShow}
+            showHeader={showHeader}
+            keepInViewport={keepInViewport}
+            minX={minX}
+            minY={minY}
+            baseZIndex={baseZIndex}
+            {...props}
+        />
+    );
 }
 
 // Dropdown — dropdownIcon:'pi pi-chevron-down', scrollHeight:'200px', filterMatchMode:'contains'
@@ -440,7 +485,14 @@ export function Dropdown({
     filterMatchMode = 'contains',
     ...props
 }: DropdownProps) {
-    return <PrimeDropdown dropdownIcon={dropdownIcon} scrollHeight={scrollHeight} filterMatchMode={filterMatchMode} {...props} />;
+    return (
+        <PrimeDropdown
+            dropdownIcon={dropdownIcon}
+            scrollHeight={scrollHeight}
+            filterMatchMode={filterMatchMode}
+            {...props}
+        />
+    );
 }
 
 // FileUpload — mode:'advanced', previewWidth:50
@@ -452,7 +504,14 @@ export function FileUpload({
     previewWidth = 50,
     ...props
 }: FileUploadProps & {ref?: React.Ref<PrimeFileUpload>}) {
-    return <PrimeFileUpload mode={mode} previewWidth={previewWidth} ref={ref} {...props} />;
+    return (
+        <PrimeFileUpload
+            mode={mode}
+            previewWidth={previewWidth}
+            ref={ref}
+            {...props}
+        />
+    );
 }
 
 // Image — no meaningful non-null defaults
@@ -467,7 +526,14 @@ export function InputMask({
     autoClear = true,
     ...props
 }: InputMaskProps) {
-    return <PrimeInputMask type={type} slotChar={slotChar} autoClear={autoClear} {...props} />;
+    return (
+        <PrimeInputMask
+            type={type}
+            slotChar={slotChar}
+            autoClear={autoClear}
+            {...props}
+        />
+    );
 }
 
 // InputNumber — mode:'decimal', buttonLayout:'stacked', step:1, type:'text',
@@ -482,16 +548,18 @@ export function InputNumber({
     useGrouping = true,
     ...props
 }: InputNumberProps) {
-    return <PrimeInputNumber
-        mode={mode}
-        buttonLayout={buttonLayout}
-        step={step}
-        type={type}
-        incrementButtonIcon={incrementButtonIcon}
-        decrementButtonIcon={decrementButtonIcon}
-        useGrouping={useGrouping}
-        {...props}
-    />;
+    return (
+        <PrimeInputNumber
+            mode={mode}
+            buttonLayout={buttonLayout}
+            step={step}
+            type={type}
+            incrementButtonIcon={incrementButtonIcon}
+            decrementButtonIcon={decrementButtonIcon}
+            useGrouping={useGrouping}
+            {...props}
+        />
+    );
 }
 
 // InputText — no meaningful non-null/non-false defaults (validateOnly:false is the default)
@@ -510,11 +578,13 @@ export function Menubar(props: MenubarProps) {
 }
 
 // Message — severity:'info'
-export function Message({
-    severity = 'info',
-    ...props
-}: MessageProps) {
-    return <PrimeMessage severity={severity} {...props} />;
+export function Message({severity = 'info', ...props}: MessageProps) {
+    return (
+        <PrimeMessage
+            severity={severity}
+            {...props}
+        />
+    );
 }
 
 // MultiSelect — display:'comma', dropdownIcon:'pi pi-chevron-down', scrollHeight:'200px',
@@ -530,16 +600,18 @@ export function MultiSelect({
     tabIndex = 0,
     ...props
 }: MultiSelectProps) {
-    return <PrimeMultiSelect
-        display={display}
-        dropdownIcon={dropdownIcon}
-        scrollHeight={scrollHeight}
-        filterMatchMode={filterMatchMode}
-        removeIcon={removeIcon}
-        selectedItemsLabel={selectedItemsLabel}
-        tabIndex={tabIndex}
-        {...props}
-    />;
+    return (
+        <PrimeMultiSelect
+            display={display}
+            dropdownIcon={dropdownIcon}
+            scrollHeight={scrollHeight}
+            filterMatchMode={filterMatchMode}
+            removeIcon={removeIcon}
+            selectedItemsLabel={selectedItemsLabel}
+            tabIndex={tabIndex}
+            {...props}
+        />
+    );
 }
 
 // OverlayPanel — dismissable:true
@@ -550,7 +622,13 @@ export function OverlayPanel({
     dismissable = true,
     ...props
 }: OverlayPanelProps & {ref?: React.Ref<PrimeOverlayPanel>}) {
-    return <PrimeOverlayPanel dismissable={dismissable} ref={ref} {...props} />;
+    return (
+        <PrimeOverlayPanel
+            dismissable={dismissable}
+            ref={ref}
+            {...props}
+        />
+    );
 }
 
 // Panel — expandIcon:'pi pi-plus', collapseIcon:'pi pi-minus'
@@ -559,7 +637,13 @@ export function Panel({
     collapseIcon = 'pi pi-minus',
     ...props
 }: PanelProps) {
-    return <PrimePanel expandIcon={expandIcon} collapseIcon={collapseIcon} {...props} />;
+    return (
+        <PrimePanel
+            expandIcon={expandIcon}
+            collapseIcon={collapseIcon}
+            {...props}
+        />
+    );
 }
 
 // PanelMenu — no meaningful non-null defaults (multiple:false is default)
@@ -574,7 +658,14 @@ export function Password({
     strongRegex = '^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.{8,})',
     ...props
 }: PasswordProps) {
-    return <PrimePassword feedback={feedback} mediumRegex={mediumRegex} strongRegex={strongRegex} {...props} />;
+    return (
+        <PrimePassword
+            feedback={feedback}
+            mediumRegex={mediumRegex}
+            strongRegex={strongRegex}
+            {...props}
+        />
+    );
 }
 
 // ProgressBar — showValue:true, unit:'%', mode:'determinate'
@@ -584,7 +675,14 @@ export function ProgressBar({
     mode = 'determinate',
     ...props
 }: ProgressBarProps) {
-    return <PrimeProgressBar showValue={showValue} unit={unit} mode={mode} {...props} />;
+    return (
+        <PrimeProgressBar
+            showValue={showValue}
+            unit={unit}
+            mode={mode}
+            {...props}
+        />
+    );
 }
 
 // ProgressSpinner — strokeWidth:'2', fill:'none', animationDuration:'2s'
@@ -594,15 +692,24 @@ export function ProgressSpinner({
     animationDuration = '2s',
     ...props
 }: ProgressSpinnerProps) {
-    return <PrimeProgressSpinner strokeWidth={strokeWidth} fill={fill} animationDuration={animationDuration} {...props} />;
+    return (
+        <PrimeProgressSpinner
+            strokeWidth={strokeWidth}
+            fill={fill}
+            animationDuration={animationDuration}
+            {...props}
+        />
+    );
 }
 
 // SelectButton — unselectable:true
-export function SelectButton({
-    unselectable = true,
-    ...props
-}: SelectButtonProps) {
-    return <PrimeSelectButton unselectable={unselectable} {...props} />;
+export function SelectButton({unselectable = true, ...props}: SelectButtonProps) {
+    return (
+        <PrimeSelectButton
+            unselectable={unselectable}
+            {...props}
+        />
+    );
 }
 
 // Skeleton — shape:'rectangle', width:'100%', height:'1rem', animation:'wave'
@@ -613,7 +720,15 @@ export function Skeleton({
     animation = 'wave',
     ...props
 }: SkeletonProps) {
-    return <PrimeSkeleton shape={shape} width={width} height={height} animation={animation} {...props} />;
+    return (
+        <PrimeSkeleton
+            shape={shape}
+            width={width}
+            height={height}
+            animation={animation}
+            {...props}
+        />
+    );
 }
 
 // SplitButton — dropdownIcon:'pi pi-chevron-down', loadingIcon:'pi pi-spinner pi-spin'
@@ -622,7 +737,13 @@ export function SplitButton({
     loadingIcon = 'pi pi-spinner pi-spin',
     ...props
 }: SplitButtonProps) {
-    return <PrimeSplitButton dropdownIcon={dropdownIcon} loadingIcon={loadingIcon} {...props} />;
+    return (
+        <PrimeSplitButton
+            dropdownIcon={dropdownIcon}
+            loadingIcon={loadingIcon}
+            {...props}
+        />
+    );
 }
 
 // Splitter — gutterSize:4, layout:'horizontal', stateStorage:'session'
@@ -632,24 +753,35 @@ export function Splitter({
     stateStorage = 'session',
     ...props
 }: SplitterProps) {
-    return <PrimeSplitter gutterSize={gutterSize} layout={layout} stateStorage={stateStorage} {...props} />;
+    return (
+        <PrimeSplitter
+            gutterSize={gutterSize}
+            layout={layout}
+            stateStorage={stateStorage}
+            {...props}
+        />
+    );
 }
 
 // Steps — activeIndex:0, readOnly:true
-export function Steps({
-    activeIndex = 0,
-    readOnly = true,
-    ...props
-}: StepsProps) {
-    return <PrimeSteps activeIndex={activeIndex} readOnly={readOnly} {...props} />;
+export function Steps({activeIndex = 0, readOnly = true, ...props}: StepsProps) {
+    return (
+        <PrimeSteps
+            activeIndex={activeIndex}
+            readOnly={readOnly}
+            {...props}
+        />
+    );
 }
 
 // TabMenu — activeIndex:0
-export function TabMenu({
-    activeIndex = 0,
-    ...props
-}: TabMenuProps) {
-    return <PrimeTabMenu activeIndex={activeIndex} {...props} />;
+export function TabMenu({activeIndex = 0, ...props}: TabMenuProps) {
+    return (
+        <PrimeTabMenu
+            activeIndex={activeIndex}
+            {...props}
+        />
+    );
 }
 
 // TabPanel — thin wrapper that adds `__TYPE` to the prop type.
@@ -661,12 +793,14 @@ export function TabPanel({__TYPE: _type, ...props}: TabPanelProps) {
 }
 
 // TabView — activeIndex:0, renderActiveOnly:true
-export function TabView({
-    activeIndex = 0,
-    renderActiveOnly = true,
-    ...props
-}: TabViewProps) {
-    return <PrimeTabView activeIndex={activeIndex} renderActiveOnly={renderActiveOnly} {...props} />;
+export function TabView({activeIndex = 0, renderActiveOnly = true, ...props}: TabViewProps) {
+    return (
+        <PrimeTabView
+            activeIndex={activeIndex}
+            renderActiveOnly={renderActiveOnly}
+            {...props}
+        />
+    );
 }
 
 // Toast — position:'top-right', baseZIndex:0, appendTo:'self'
@@ -679,7 +813,15 @@ export function Toast({
     appendTo = 'self',
     ...props
 }: ToastProps & {ref?: React.Ref<PrimeToast>}) {
-    return <PrimeToast position={position} baseZIndex={baseZIndex} appendTo={appendTo} ref={ref} {...props} />;
+    return (
+        <PrimeToast
+            position={position}
+            baseZIndex={baseZIndex}
+            appendTo={appendTo}
+            ref={ref}
+            {...props}
+        />
+    );
 }
 
 // Toolbar — no meaningful non-null defaults
@@ -698,15 +840,17 @@ export function Tree({
     showHeader = true,
     ...props
 }: TreeProps) {
-    return <PrimeTree
-        filterBy={filterBy}
-        filterMode={filterMode}
-        loadingIcon={loadingIcon}
-        propagateSelectionUp={propagateSelectionUp}
-        propagateSelectionDown={propagateSelectionDown}
-        showHeader={showHeader}
-        {...props}
-    />;
+    return (
+        <PrimeTree
+            filterBy={filterBy}
+            filterMode={filterMode}
+            loadingIcon={loadingIcon}
+            propagateSelectionUp={propagateSelectionUp}
+            propagateSelectionDown={propagateSelectionDown}
+            showHeader={showHeader}
+            {...props}
+        />
+    );
 }
 
 // TreeSelect — display:'comma', dropdownIcon:'pi pi-chevron-down', scrollHeight:'400px',
@@ -720,15 +864,17 @@ export function TreeSelect({
     selectionMode = 'single',
     ...props
 }: TreeSelectProps) {
-    return <PrimeTreeSelect
-        display={display}
-        dropdownIcon={dropdownIcon}
-        scrollHeight={scrollHeight}
-        filterBy={filterBy}
-        filterMode={filterMode}
-        selectionMode={selectionMode}
-        {...props}
-    />;
+    return (
+        <PrimeTreeSelect
+            display={display}
+            dropdownIcon={dropdownIcon}
+            scrollHeight={scrollHeight}
+            filterBy={filterBy}
+            filterMode={filterMode}
+            selectionMode={selectionMode}
+            {...props}
+        />
+    );
 }
 
 // TreeTable — first:0, sortMode:'single', columnResizeMode:'fit', defaultSortOrder:1,
@@ -751,20 +897,22 @@ export function TreeTable({
     tabIndex = 0,
     ...props
 }: TreeTableProps) {
-    return <PrimeTreeTable
-        sortMode={sortMode}
-        columnResizeMode={columnResizeMode}
-        defaultSortOrder={defaultSortOrder}
-        filterDelay={filterDelay}
-        filterMode={filterMode}
-        pageLinkSize={pageLinkSize}
-        loadingIcon={loadingIcon}
-        paginatorPosition={paginatorPosition}
-        paginatorTemplate={paginatorTemplate}
-        currentPageReportTemplate={currentPageReportTemplate}
-        propagateSelectionUp={propagateSelectionUp}
-        propagateSelectionDown={propagateSelectionDown}
-        tabIndex={tabIndex}
-        {...props}
-    />;
+    return (
+        <PrimeTreeTable
+            sortMode={sortMode}
+            columnResizeMode={columnResizeMode}
+            defaultSortOrder={defaultSortOrder}
+            filterDelay={filterDelay}
+            filterMode={filterMode}
+            pageLinkSize={pageLinkSize}
+            loadingIcon={loadingIcon}
+            paginatorPosition={paginatorPosition}
+            paginatorTemplate={paginatorTemplate}
+            currentPageReportTemplate={currentPageReportTemplate}
+            propagateSelectionUp={propagateSelectionUp}
+            propagateSelectionDown={propagateSelectionDown}
+            tabIndex={tabIndex}
+            {...props}
+        />
+    );
 }

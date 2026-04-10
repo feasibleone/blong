@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-browser",
-    "version": "1.1.1",
+    "version": "1.1.0",
     "private": true,
     "description": "React UI component library and portal framework for the Blong ecosystem",
     "keywords": [
@@ -37,12 +37,12 @@
     "main": "./dist/blong-browser.es.js",
     "types": "./dist/index.d.ts",
     "scripts": {
+        ".ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
         "build": "true",
         "build:watch": "vite build --watch",
         "build-storybook": "storybook build -o storybook-static",
         "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
         "ci-chromatic": "../common/chromatic.sh",
-        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
         "storybook": "storybook dev --port 6006",
         "storybook:test": "test-storybook",
         "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
@@ -79,8 +79,8 @@
         "eslint": "~9.39.2",
         "jsdom": "^26.0.0",
         "primeflex": "^3.3.0",
-        "primeicons": "^6.0.1",
-        "primereact": "8.7.3",
+        "primeicons": "^7.0.0",
+        "primereact": "^10.9.7",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "react-hook-form": "^7.54.2",
@@ -92,8 +92,8 @@
     },
     "peerDependencies": {
         "primeflex": "^3.3.0",
-        "primeicons": "^6.0.1",
-        "primereact": "8.7.3",
+        "primeicons": "^7.0.0",
+        "primereact": "^10.9.7",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "react-hook-form": "^7.54.2"
