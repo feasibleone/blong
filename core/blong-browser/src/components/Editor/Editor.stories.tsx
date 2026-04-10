@@ -6,7 +6,7 @@
  * - target `object: 'tree'` with nested schema → blong-browser flat schema (see fixtures/tree.ts)
  * - target Template uses Redux + useToast → blong-browser uses `dispatch` vi.fn() in tests
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import React from 'react';

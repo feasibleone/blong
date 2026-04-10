@@ -5,7 +5,7 @@
  * a single matching card — demonstrating that the same card set can be surfaced
  * selectively per value type: person, existing organisation, new organisation.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 

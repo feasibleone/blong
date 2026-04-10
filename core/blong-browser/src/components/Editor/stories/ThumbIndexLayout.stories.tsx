@@ -2,7 +2,7 @@
  * ThumbIndexLayout story — layout with PanelMenu orientation='left' navigation.
  * Three groups of cards accessible from a vertical accordion sidebar.
  */
-import type { Meta } from '@storybook/react';
+import type { Meta } from '@storybook/react-vite';
 import type { StoryFn } from '../Editor.stories.js';
 import { Editor } from '../index.js';
 

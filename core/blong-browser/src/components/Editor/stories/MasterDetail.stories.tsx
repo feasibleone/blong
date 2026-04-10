@@ -3,7 +3,7 @@
  * The master table uses selectionMode: 'single' with allowEdit: false (no row-edit buttons).
  * The detail card uses watch: '$.selected.person' with '$.edit.person.*' widget names.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 

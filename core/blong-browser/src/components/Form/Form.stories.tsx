@@ -1,4 +1,4 @@
-import type {Meta, StoryObj} from '@storybook/react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 import {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import {useState} from 'react';

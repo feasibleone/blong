@@ -5,7 +5,7 @@
  * detail card (circle, square, triangle, rectangle, ellipse) based on `card.match`.
  * Each detail card uses `card.watch: 'shape'` to display the selected row's fields.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 

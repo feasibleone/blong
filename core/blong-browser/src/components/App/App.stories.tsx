@@ -18,7 +18,7 @@
  *  BulgarianLogin     — login page in Bulgarian
  *  LoginError         — login attempt fails, error message shown in form
  */
-import type {Meta, StoryObj} from '@storybook/react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import {useEffect} from 'react';

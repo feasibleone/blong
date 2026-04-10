@@ -4,7 +4,7 @@
  * Uses `widget.parent` + `widget.master` for cascaded filtering and `autoSelect: true`
  * to automatically select the first row when the parent selection changes.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 

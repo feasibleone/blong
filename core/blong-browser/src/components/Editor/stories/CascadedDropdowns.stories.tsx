@@ -5,7 +5,7 @@
  * the available countries, and selecting a country filters the available cities.
  * Uses `widget.parent` for cascade config and the `dropdowns` prop for static data.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import {within} from '@testing-library/react';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';

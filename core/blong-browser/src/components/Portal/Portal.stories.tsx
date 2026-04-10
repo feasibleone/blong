@@ -10,7 +10,7 @@
  * wraps every story in <App> providing BlongUiProvider + Theme context, so
  * Portal can read from the store and dispatch can be used inside tabs.
  */
-import type {Meta, StoryObj} from '@storybook/react';
+import type {Meta, StoryObj} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import React, {useEffect} from 'react';

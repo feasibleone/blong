@@ -1,7 +1,7 @@
 /**
  * PortalComponent story — tab that renders a dynamic Explorer component.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import {Explorer} from '../../Explorer/index.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Template} from '../Editor.stories.js';

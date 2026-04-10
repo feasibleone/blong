@@ -3,7 +3,7 @@
  *
  * Table-based pivot view: each card renders a DataTable with column groups.
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 

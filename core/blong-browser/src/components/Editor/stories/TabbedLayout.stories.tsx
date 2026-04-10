@@ -3,7 +3,7 @@
  *
  * Three tabs with cards split across them: "A and B", "C and D", "E, F and G".
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 

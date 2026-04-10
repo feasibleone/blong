@@ -4,7 +4,7 @@
  * Demonstrates a table card where the toolbar label acts as the card title
  * and custom actions appear on the right (via widget.label pattern).
  */
-import type { Meta } from '@storybook/react';
+import type { Meta } from '@storybook/react-vite';
 import type { StoryFn } from '../Editor.stories.js';
 import { Editor } from '../index.js';
 

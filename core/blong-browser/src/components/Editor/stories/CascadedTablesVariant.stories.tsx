@@ -7,7 +7,7 @@
  * - permissionRole: filtered by selected permission action, selected inline toggle
  * - The permissionRole card is only shown when roleCategory.hasSettings === true
  */
-import type {Meta} from '@storybook/react';
+import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
