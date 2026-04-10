@@ -60,7 +60,19 @@ const reserved: string[] = [
 ];
 
 export default async function adapter<T, C>(
-    {adapter, utBus, utError, utLog, handlers, remote, rpc, local, registry, type, attachCheckpoint}: IApi,
+    {
+        adapter,
+        utBus,
+        utError,
+        utLog,
+        handlers,
+        remote,
+        rpc,
+        local,
+        registry,
+        type,
+        attachCheckpoint,
+    }: IApi,
     configBase: string,
     activationNames: string[] = [],
 ): Promise<ReturnType<IAdapterFactory>> {
@@ -246,6 +258,10 @@ export default async function adapter<T, C>(
             utBus.subscribe(pub, 'ports', this.config.id, this.config.pkg);
             const {context, ...config} = this.config; // eslint-disable-line @typescript-eslint/no-unused-vars
             return this.event('start', {configBase: this.configBase, config});
+        },
+        async link(patterns: unknown, target: object = {}) {
+            await utBus.attachHandlers(target, patterns, false);
+            return target.imported;
         },
         async handle(...params: unknown[]) {
             const $meta = params && params.length > 1 && (params[params.length - 1] as IMeta);

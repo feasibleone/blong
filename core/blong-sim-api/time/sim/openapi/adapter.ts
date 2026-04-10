@@ -20,11 +20,7 @@ export default handler(proxy => ({
     config: {
         api: {
             namespace: {
-                mocktime: [
-                    new URL('../../api/world-time.yaml', import.meta.url).href,
-                    new URL('../../api/world-time.operations.yaml', import.meta.url).href,
-                    {servers: [{url: 'http://localhost:8082'}]},
-                ],
+                mocktime: 'time.world-time',
             },
         },
     },

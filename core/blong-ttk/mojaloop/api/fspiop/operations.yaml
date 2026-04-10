@@ -6,7 +6,9 @@
 # Subject: The resource/domain (transfer, quote, party)
 # Object: The specific entity being acted upon
 # Predicate: The action (create, get, update, etc.)
-
+servers:
+  - url: http://localhost:4000
+    description: Local development
 paths:
   /transfers:
     post:

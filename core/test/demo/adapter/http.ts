@@ -11,11 +11,7 @@ export default adapter(blong => ({
             logLevel: 'trace',
             'codec.openapi': {
                 namespace: {
-                    k8s: [
-                        '../api/k8s-apps.json',
-                        '../api/k8s-discovery.json',
-                        '../api/k8s-version.json',
-                    ],
+                    k8s: 'demo.k8s',
                 },
             },
         },

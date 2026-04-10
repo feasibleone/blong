@@ -1,7 +1,9 @@
 # Mojaloop Admin API - x-blong-method mappings
 #
 # Semantic triple method names for administrative operations
-
+servers:
+  - url: http://localhost:4001
+    description: Local development
 paths:
   /participants:
     post:

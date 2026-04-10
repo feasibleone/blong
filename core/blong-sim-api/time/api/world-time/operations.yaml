@@ -3,3 +3,5 @@ paths:
     /timezone/{area}/{location}:
         get:
             x-blong-method: get
+servers:
+    - url: http://localhost:8082/rest/mocktime

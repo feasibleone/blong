@@ -1,4 +1,4 @@
-import { realm } from '@feasibleone/blong';
+import {realm} from '@feasibleone/blong';
 
 /**
  * Mojaloop API client realm.
@@ -34,16 +34,8 @@ export default realm(blong => ({
                 logLevel: 'info' as const,
                 api: {
                     namespace: {
-                        fspiop: [
-                            new URL('./api/fspiop.yaml', import.meta.url).href,
-                            new URL('./api/fspiop.operations.yaml', import.meta.url).href,
-                            {servers: [{url: 'http://localhost:4000'}]},
-                        ],
-                        admin: [
-                            new URL('./api/admin.yaml', import.meta.url).href,
-                            new URL('./api/admin.operations.yaml', import.meta.url).href,
-                            {servers: [{url: 'http://localhost:4001'}]},
-                        ],
+                        fspiop: 'mojaloop.fspiop',
+                        admin: 'mojaloop.admin',
                     },
                 },
             },

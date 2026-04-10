@@ -8,7 +8,7 @@ import {handler} from '@feasibleone/blong';
  * instead of calling an external service.
  *
  * The handler name 'mocktimeGet' maps to the operation via x-blong-method: get
- * defined in world-time.operations.yaml for the /timezone/{area}/{location} path.
+ * defined in world-time/operations.yaml for the /timezone/{area}/{location} path.
  */
 export default handler(
     proxy =>

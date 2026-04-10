@@ -2,8 +2,11 @@ import {handler, type IMeta} from '@feasibleone/blong/types';
 
 import {methodId} from '../../../lib.ts';
 
-export default handler(async ({config, lib: {load}, errors}) => {
-    let handlers;
+export default handler<{
+    namespace: {[namespace: string]: unknown};
+}>(async ({config, lib: {load}, errors, utBus}) => {
+    let handlers: {[name: string]: unknown};
+    const assets: {[namespace: string]: unknown} = {};
     return {
         async ready() {
             Object.keys(config.namespace)
@@ -15,7 +18,9 @@ export default handler(async ({config, lib: {load}, errors}) => {
                         });
                     }
                 });
-            handlers = await load(config.namespace, /./, this.configBase);
+            for (const [key, value] of Object.entries(config.namespace))
+                assets[key] = await this.link(`${value}.asset`);
+            handlers = await load(assets, /./, this.configBase);
         },
         requestSend(params: unknown, $meta: IMeta) {
             const handler = handlers?.[methodId($meta.method)];

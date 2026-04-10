@@ -1,4 +1,5 @@
 import {
+    handler,
     Internal,
     kind,
     type IApiSchema,
@@ -34,6 +35,8 @@ export interface IWatch {
     setConfigRuntime?(configRuntime: ConfigRuntime): void;
 }
 
+const isYaml = (filename: string): boolean => /\.ya?ml$/i.test(filename);
+const isJSON = (filename: string): boolean => /\.jsonl?$/i.test(filename);
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
 const isLayerActivation = (filename: string): boolean =>
     /^layer\.(server|browser)\.[mc]?[tj]sx?$/i.test(filename);
@@ -182,6 +185,7 @@ export default class Watch extends Internal implements IWatch {
         const validations = [];
         const apis = [];
         const libs = [];
+        const assets = [];
         const handlerFilenames = [];
         let latest = 0;
         const allFiles = await scan(dir);
@@ -247,6 +251,17 @@ export default class Watch extends Internal implements IWatch {
                 handlerFilenames.push({name, filename});
             }
         }
+        const assetFiles = allFiles.filter(
+            entry => entry.isFile() && (isYaml(entry.name) || isJSON(entry.name)),
+        );
+        for (const assetFile of assetFiles) {
+            const filename = join(dir, assetFile.name);
+            assets.push(
+                handler(() => ({
+                    assets: {[basename(filename)]: `file://${filename}`},
+                })),
+            );
+        }
         this.#handlerFolders.set(dir, config);
         return api => {
             if (validations.length)
@@ -259,6 +274,12 @@ export default class Watch extends Internal implements IWatch {
                 api[basename(dir) + '.api'](
                     [...libs, ...apis],
                     config.name + '.' + basename(dir) + '.api',
+                    relative('.', dir),
+                );
+            if (assets.length)
+                api[basename(dir) + '.asset'](
+                    assets,
+                    config.name + '.' + basename(dir) + '.asset',
                     relative('.', dir),
                 );
             if (handlers.length)

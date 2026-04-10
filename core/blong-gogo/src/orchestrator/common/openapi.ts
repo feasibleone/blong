@@ -1,6 +1,6 @@
 import {orchestrator} from '@feasibleone/blong/types';
 
-export default orchestrator<{api?: {namespace: Record<string, string | string[]>}}>(
+export default orchestrator<{api: {namespace: Record<string, string | string[]>}}>(
     ({remote, registry}) => ({
         activation: {
             default: {
@@ -15,7 +15,10 @@ export default orchestrator<{api?: {namespace: Record<string, string | string[]>
         async start() {
             super.connect();
             const result = await super.start();
-            await registry.loadApi('orchestrator.openapi.api', this.config.api);
+            const assets: {[namespace: string]: unknown} = {};
+            for (const [key, value] of Object.entries(this.config.api.namespace))
+                assets[key] = await this.link(`${value}.asset`);
+            await registry.loadApi('orchestrator.openapi.api', {namespace: assets});
             return result;
         },
     }),

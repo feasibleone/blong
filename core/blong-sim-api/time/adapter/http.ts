@@ -23,11 +23,7 @@ export default adapter<{
         integration: {
             'codec.openapi': {
                 namespace: {
-                    time: [
-                        new URL('../api/world-time.yaml', import.meta.url).href,
-                        new URL('../api/world-time.operations.yaml', import.meta.url).href,
-                        {servers: [{url: 'http://localhost:8082/rest/mocktime'}]},
-                    ],
+                    time: 'time.world-time',
                 },
             },
         },

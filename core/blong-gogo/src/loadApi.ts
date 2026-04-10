@@ -6,11 +6,16 @@ import merge from 'ut-function.merge';
 import yaml from 'yaml';
 
 export default async function loadApi(
-    locations: string | string[] | object | object[],
+    locations: string | string[] | object | object[] | {assets: object},
     source: string = process.cwd(),
 ): ReturnType<typeof parser.dereference> {
     const documents = [];
     source = source.startsWith('file://') ? dirname(source.slice(7)) : source;
+    if (typeof locations === 'object' && 'assets' in locations) {
+        locations = Object.entries(locations.assets)
+            .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+            .map(([key, value]) => value);
+    }
 
     for (const location of [].concat(locations)) {
         if (typeof location === 'object') documents.push(location);
