@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-ttk-v1.0.0...blong-ttk-v1.1.0) (2026-04-10)
+
+
+### Features
+
+* simplify api loading ([e6ff342](https://github.com/feasibleone/blong/commit/e6ff34239d7f1f53e3a21d30768ed5ab45042786))
+
 ## 1.0.0 (2026-03-29)
 
 

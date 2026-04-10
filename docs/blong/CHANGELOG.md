@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.9.0...blong-docs-v1.10.0) (2026-04-10)
+
+
+### Features
+
+* blong-ui ([9ca1281](https://github.com/feasibleone/blong/commit/9ca1281c0178c69dfc722bc4a5978f649bc1fa0d))
+* toolbar and multi-language ([4aea0d8](https://github.com/feasibleone/blong/commit/4aea0d873fc66fb2149746186e192ec00c6dd0e8))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.8.0...blong-docs-v1.9.0) (2026-04-01)
 
 ### Features

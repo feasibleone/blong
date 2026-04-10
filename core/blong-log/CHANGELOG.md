@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-log-v1.0.3...blong-log-v1.1.0) (2026-04-10)
+
+
+### Features
+
+* blong-ui ([9ca1281](https://github.com/feasibleone/blong/commit/9ca1281c0178c69dfc722bc4a5978f649bc1fa0d))
+
+
+### Bug Fixes
+
+* deps ([e89f13d](https://github.com/feasibleone/blong/commit/e89f13daae9a4318a763312423898efa37a28b08))
+
 ## [1.0.3](https://github.com/feasibleone/blong/compare/blong-log-v1.0.2...blong-log-v1.0.3) (2026-03-29)
 
 

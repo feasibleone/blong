@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/test-v1.6.0...test-v1.7.0) (2026-04-10)
+
+
+### Features
+
+* blong-ui ([9ca1281](https://github.com/feasibleone/blong/commit/9ca1281c0178c69dfc722bc4a5978f649bc1fa0d))
+* improve logging ([5f43391](https://github.com/feasibleone/blong/commit/5f43391a43a99e0dd591401e24c45cd02b3bdba2))
+* simplify api loading ([e6ff342](https://github.com/feasibleone/blong/commit/e6ff34239d7f1f53e3a21d30768ed5ab45042786))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/test-v1.5.2...test-v1.6.0) (2026-03-29)
 
 
