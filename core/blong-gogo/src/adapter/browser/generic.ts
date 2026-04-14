@@ -7,5 +7,9 @@ export default adapter(() => {
                 type: 'generic',
             },
         },
+        start() {
+            super.connect();
+            return super.start();
+        },
     };
 });
