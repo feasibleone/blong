@@ -1,7 +1,6 @@
 import {handler, type IMeta} from '@feasibleone/blong/types';
-import timing from 'ut-function.timing';
 
-export default handler(({config}) => {
+export default handler(({config, lib: {timing}}) => {
     let id = 1;
     return {
         send(

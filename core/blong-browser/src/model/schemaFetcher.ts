@@ -10,8 +10,8 @@
  * Also reads server-stored UI customizations from the schema document's
  * x-ui-customizations extension (keyed by {subject}.{object}).
  */
+import type {ISchemaOverlay} from '@feasibleone/blong';
 import {deepMerge} from './defaults.js';
-import type {ISchemaOverlay} from './types.js';
 
 /** Per-operationId schema: params and result JSON Schema objects */
 export interface IOperationSchema {

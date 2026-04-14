@@ -24,12 +24,15 @@ import {
     type TUnknown,
 } from 'typebox';
 // import type {client} from 'node-vault';
-import type {Dirent} from 'node:fs';
+import type {ChokidarOptions, FSWatcherEventMap} from 'chokidar';
+import type {EventEmitter} from 'node:events';
+import type {Dirent, StatSyncFn} from 'node:fs';
 import type {Duplex} from 'node:stream';
 import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
 import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
 import type {Knex} from './knex.js';
+import type {IMock, IModelSpec} from './model.ts';
 
 // export {
 //     AppsV1Api,
@@ -45,6 +48,7 @@ export type * from 'mongodb';
 export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'openapi-types';
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';
 export type {Knex} from './knex.js';
+export type * from './model.ts';
 
 export type ServerContext = {
     queryBuilder?: Knex;
@@ -73,6 +77,77 @@ export type AdapterContext = ServerContext & BrowserContext;
 export interface ILog {
     logger: (level: Level, bindings: object) => ILogger;
     child: PinoLogger['child'];
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/** A flat map of dotted-path → [prev, next] pairs that represent changed keys */
+export type ConfigDiff = Map<string, {prev: unknown; next: unknown}>;
+
+/** Subscriber callback invoked after a successful reload */
+export type ConfigSubscriber = (
+    diff: ConfigDiff,
+    next: object,
+    prev: object,
+) => void | Promise<void>;
+
+export interface IConfigRuntime {
+    /** Current effective config, exposed as a live proxy */
+    readonly snapshot: object;
+    /** Raw (non-proxy) snapshot of the current effective config */
+    readonly rawSnapshot: object;
+    /** Load (or reload) config from all sources; returns the updated snapshot */
+    load(params?: object): Promise<object>;
+    /**
+     * Reload config in-place.  The backing store of the proxy is updated so all
+     * existing proxy references automatically reflect the new values.
+     * Returns the computed diff.
+     */
+    reload(): Promise<ConfigDiff>;
+    /** Compute the diff between two plain config objects without modifying state */
+    diff(prev: object, next: object): ConfigDiff;
+    /** Register a subscriber to be called after every successful reload */
+    subscribe(fn: ConfigSubscriber): () => void;
+}
+
+export interface IWatcher extends EventEmitter<FSWatcherEventMap> {
+    close(): Promise<void>;
+}
+
+export type HRTime = [number, number];
+
+export interface IPlatformApi {
+    platform: 'server' | 'browser';
+    loadConfig: (
+        config: string | object,
+    ) => Promise<{loadedConfig?: object; configRuntime?: IConfigRuntime}>;
+    readdir: (path: string) => Promise<Dirent[]>;
+    scan: (...path: string[]) => Promise<Dirent[]>;
+    existsSync: (path: string) => boolean;
+    createRequire?: (path: string | URL) => NodeJS.Require;
+    join: (...paths: string[]) => string;
+    dirname: (path: string) => string;
+    basename: (path: string, ext?: string) => string;
+    relative: (from: string, to: string) => string;
+    extname: (path: string) => string;
+    resolve: (...paths: string[]) => string;
+    readFileSync: (path: string, options?: {encoding: BufferEncoding}) => string | Buffer;
+    writeFileSync: (
+        path: string,
+        data: string | Buffer,
+        options?: {encoding: BufferEncoding},
+    ) => void;
+    statSync: StatSyncFn;
+    watch?: (path: string | string[], options?: ChokidarOptions) => IWatcher;
+    timing: {
+        diff: (time: HRTime, newTime: HRTime) => number;
+        after: (milliseconds: number) => HRTime;
+        now: (previous?: HRTime) => HRTime;
+        isAfter: (time: HRTime, timeout: HRTime) => boolean;
+        spare: (time: HRTime, latency?: number) => number;
+    };
 }
 
 export interface IErrorFactory {
@@ -160,6 +235,10 @@ export interface IApiSchema {
     ): Promise<Record<string, GatewaySchema>>;
     generateFile(file: string): Promise<boolean>;
     generateDir(dir: string, files: Dirent[]): Promise<boolean>;
+    loadApi(
+        locations: string | string[] | object | object[] | {assets: object},
+        source: string,
+    ): unknown;
 }
 
 export interface IGateway {
@@ -179,6 +258,7 @@ export type Handlers = ((params: {
     local: object;
     literals: object[];
     gateway: IGateway;
+    apiSchema: IApiSchema;
 }) => void)[];
 
 export interface IRegistry {
@@ -422,8 +502,6 @@ export interface IMeta {
     checkpoints?: Array<{name: string; data?: unknown; timestamp: number}>;
 }
 
-export type HRTime = [number, number];
-
 export interface IContext {
     trace: number;
     session?: {
@@ -493,6 +571,7 @@ export interface IModuleConfig<T extends TSchema = TNever> {
     config?: IActivationConfig<Partial<Static<T>> & Partial<Static<IBaseConfig>>>;
     validation?: T;
     children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
+    glob?: Record<string, () => Promise<object>>;
 }
 
 export interface ILogger {
@@ -570,6 +649,7 @@ export interface ILib {
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;
+    timing: IPlatformApi['timing'];
     setProperty: (obj: Record<string, unknown>, path: string, value: unknown) => void;
     merge<T, S1>(target: T, source: S1): T & S1;
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
@@ -639,6 +719,7 @@ export interface IHandlerProxy<T> {
     gateway: {
         config: () => {public: {sign: object; encrypt: object}};
     };
+    apiSchema: IApiSchema;
 }
 
 export type ImportProxyCallback<T, C> = (
@@ -737,7 +818,9 @@ export interface IActionDef {
     /** Action names whose query caches should be invalidated on success. */
     invalidates?: string[];
     /** Static params merged into every invocation. */
-    params?: Record<string, unknown> | ((params: Record<string, unknown>) => Record<string, unknown>);
+    params?:
+        | Record<string, unknown>
+        | ((params: Record<string, unknown>) => Record<string, unknown>);
 }
 
 /**
@@ -764,9 +847,7 @@ export const defineActions = (
 ): ((_blong: unknown) => Record<string, () => IActionDef>) =>
     Object.defineProperty(
         (_blong: unknown) =>
-            Object.fromEntries(
-                Object.entries(actions).map(([key, value]) => [key, () => value]),
-            ),
+            Object.fromEntries(Object.entries(actions).map(([key, value]) => [key, () => value])),
         Kind,
         {value: 'handler'},
     );
@@ -777,6 +858,10 @@ export const validation = (validation: ValidationDefinition): ValidationDefiniti
     Object.defineProperty(validation, Kind, {value: 'validation'});
 export const api = (api: ApiDefinition): ApiDefinition =>
     Object.defineProperty(api, Kind, {value: 'api'});
+export const model = <T extends IModelSpec>(definition: () => T): (() => T) =>
+    Object.defineProperty(definition, Kind, {value: 'model'});
+export const mock = <T extends IMock>(definition: () => T): (() => T) =>
+    Object.defineProperty(definition, Kind, {value: 'mock'});
 
 export const validationHandlers: (
     handlers: Record<string, TFunction<[ApiSchema]>>,
@@ -813,6 +898,7 @@ export const adapter = <T, C = AdapterContext>(
 export const orchestrator = <T, C = AdapterContext>(
     definition: IAdapterFactory<T, C>,
 ): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'orchestrator'});
+
 export type Kinds =
     | 'lib'
     | 'validation'
@@ -822,8 +908,11 @@ export type Kinds =
     | 'browser'
     | 'adapter'
     | 'orchestrator'
-    | 'handler';
-export const kind = (what: {[Kind]: Kinds | undefined}): Kinds | undefined => what[Kind];
+    | 'handler'
+    | 'model'
+    | 'mock'
+    | '';
+export const kind = (what: {[Kind]: Kinds | undefined}): Kinds => what[Kind] || '';
 
 export default {
     handler,

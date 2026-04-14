@@ -1,16 +1,17 @@
 import type {
     Errors,
+    HRTime,
     IErrorFactory,
     IErrorMap,
     ILocal,
     ILog,
     IMeta,
+    IPlatformApi,
     IRemote,
     ITypedError,
     RemoteMethod,
 } from '@feasibleone/blong/types';
-import { Internal } from '@feasibleone/blong/types';
-import hrtime from 'browser-process-hrtime';
+import {Internal} from '@feasibleone/blong/types';
 
 const errorMap: IErrorMap = {
     'remote.bindingFailed': 'Method binding failed for {typeName} {methodType} {methodName}',
@@ -34,17 +35,24 @@ export default class Remote extends Internal implements IRemote {
     #requireMeta: (method: string) => void;
     #errors: Errors<typeof errorMap>;
     #local: ILocal;
+    #platform: IPlatformApi;
 
     #brokerRequest: RemoteMethod;
     #brokerPublish: RemoteMethod;
 
     public constructor(
         config: {logLevel?: Parameters<ILog['logger']>[0]},
-        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal},
+        {
+            log,
+            error,
+            local,
+            platform,
+        }: {log: ILog; error: IErrorFactory; local: ILocal; platform: IPlatformApi},
     ) {
         super({log});
         config = this.merge(this.#config, config);
         this.#local = local;
+        this.#platform = platform;
         this.#errors = error.register(errorMap);
         switch (this.#config.requireMeta) {
             case 'trace':
@@ -78,6 +86,9 @@ export default class Remote extends Internal implements IRemote {
     }
 
     protected gateway(meta: object, method: string): object | void {}
+    protected spare(time: HRTime, latency?: number): number {
+        return this.#platform.timing.spare(time, latency);
+    }
 
     protected sender(methodType: 'request' | 'publish', typeName: 'req' | 'pub'): unknown {
         return async (...rest) => {
@@ -170,7 +181,7 @@ export default class Remote extends Internal implements IRemote {
                 };
             }
             if (options && options.timeout && !$applyMeta.timeout) {
-                $applyMeta.timeout = hrtime();
+                $applyMeta.timeout = this.#platform.hrtime();
                 $applyMeta.timeout[1] += timeoutNSec;
                 $applyMeta.timeout[0] += timeoutSec;
                 if ($applyMeta.timeout[1] >= 1000000000) {

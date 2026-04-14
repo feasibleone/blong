@@ -1,5 +1,5 @@
+import type {IResolvedModelSpec} from '@feasibleone/blong';
 import type {IEnrichedSchema} from '../../types/widget.js';
-import type {IResolvedModelSpec} from '../types.js';
 
 export function subjectObjectBrowse(
     model: IResolvedModelSpec,

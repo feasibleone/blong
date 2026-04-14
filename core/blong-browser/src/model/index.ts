@@ -13,11 +13,6 @@
  *   import {setupModelMock} from '@feasibleone/blong-browser/src/model/mock.js';
  *   setupModelMock({subjects: {...}, dropdowns: {...}});
  */
-export {createModelHandlers} from './createModelHandlers.js';
-export {deepMerge, withDefaults} from './defaults.js';
-export {dropdownRegistry} from './dropdownRegistry.js';
-export {setupModelMock, teardownModelMock} from './mock.js';
-export {getObjectSchema, getSubjectApi, setBaseUrl, setFetchFn} from './schemaFetcher.js';
 export type {
     IBrowserConfig,
     IBrowserPermissions,
@@ -33,4 +28,9 @@ export type {
     IResolvedModelSpec,
     ISchemaOverlay,
     IWidgetOverride,
-} from './types.js';
+} from '@feasibleone/blong';
+export {createModelHandlers} from './createModelHandlers.js';
+export {deepMerge, withDefaults} from './defaults.js';
+export {dropdownRegistry} from './dropdownRegistry.js';
+export {setupModelMock, teardownModelMock} from './mock.js';
+export {getObjectSchema, getSubjectApi, setBaseUrl, setFetchFn} from './schemaFetcher.js';

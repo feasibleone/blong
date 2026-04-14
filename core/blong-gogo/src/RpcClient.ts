@@ -5,10 +5,10 @@ import type {
     ILocal,
     ILog,
     IMeta,
+    IPlatformApi,
     IRemote,
 } from '@feasibleone/blong/types';
 import got, {type HttpsOptions} from 'got';
-import timing from 'ut-function.timing';
 
 import GatewayCodecImpl, {
     type IConfig as IConfigGatewayCodec,
@@ -61,6 +61,7 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
     #gatewayCodec: IGatewayCodec;
     #resolution: IResolution;
     #errors: Errors<typeof errorMap>;
+    #platform: IPlatformApi;
 
     public constructor(
         config: IConfig,
@@ -69,11 +70,19 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
             error,
             resolution,
             local,
-        }: {log: ILog; error: IErrorFactory; resolution: IResolution; local: ILocal},
+            platform,
+        }: {
+            log: ILog;
+            error: IErrorFactory;
+            resolution: IResolution;
+            local: ILocal;
+            platform: IPlatformApi;
+        },
     ) {
         super(config, {log, error, local});
         config = this.merge(this.#config, config);
         this.#resolution = resolution;
+        this.#platform = platform;
         this.#errors = error.register(errorMap);
         this.#https = tls(config, true);
         this.#gatewayCodec = new GatewayCodecImpl(
@@ -127,7 +136,10 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                                 id: 1,
                                 ...($meta.timeout &&
                                     $meta.timeout[0] && {
-                                        timeout: timing.spare($meta.timeout, this.#config.latency),
+                                        timeout: this.#platform.timing.spare(
+                                            $meta.timeout,
+                                            this.#config.latency,
+                                        ),
                                     }),
                                 params,
                             },

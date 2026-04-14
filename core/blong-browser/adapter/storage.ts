@@ -1,7 +1,7 @@
-import { adapter } from '@feasibleone/blong';
+import {adapter} from '@feasibleone/blong';
 
 export default adapter(blong => ({
-    extends: 'adapter.dispatch',
+    extends: 'adapter.generic',
     activation: {
         default: {
             namespace: 'storage',

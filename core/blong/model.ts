@@ -174,3 +174,28 @@ export interface IResolvedModelSpec extends Required<IModelSpec> {
     report: Required<IReportConfig>;
     methods: Required<IMethodsConfig>;
 }
+
+/** Mock OpenAPI document (minimal shape used by schemaFetcher) */
+export interface IMockOpenApiDoc {
+    paths?: Record<
+        string,
+        Record<
+            string,
+            {
+                operationId?: string;
+                requestBody?: {content?: {'application/json'?: {schema?: Record<string, unknown>}}};
+                responses?: {
+                    '200'?: {content?: {'application/json'?: {schema?: Record<string, unknown>}}};
+                };
+            }
+        >
+    >;
+    'x-ui-customizations'?: Record<string, Record<string, unknown>>;
+}
+
+export interface IMock {
+    /** Mock OpenAPI documents keyed by subject name */
+    subjects?: Record<string, object[]>;
+    /** Pre-populated dropdown data keyed by dropdown name */
+    dropdowns?: Record<string, IDropdownOption[]>;
+}

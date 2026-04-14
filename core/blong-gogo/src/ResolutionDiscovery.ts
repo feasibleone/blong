@@ -1,5 +1,10 @@
-import {Internal, type Errors, type IErrorFactory, type IErrorMap} from '@feasibleone/blong/types';
-import hrtime from 'browser-process-hrtime';
+import {
+    Internal,
+    type Errors,
+    type IErrorFactory,
+    type IErrorMap,
+    type IPlatformApi,
+} from '@feasibleone/blong/types';
 import {hostname} from 'os';
 import multicastResolver from 'ut-bus/resolver.ts';
 import discovery from 'ut-dns-discovery';
@@ -31,7 +36,10 @@ export default class ResolutionDiscovery extends Internal implements IResolution
 
     public resolve: IResolution['resolve'];
 
-    public constructor(config: IConfig, {error}: {error: IErrorFactory}) {
+    public constructor(
+        config: IConfig,
+        {error, platform}: {error: IErrorFactory; platform: IPlatformApi},
+    ) {
         super();
         this.merge(this.#config, config);
         this.#announce = discovery();
@@ -39,14 +47,14 @@ export default class ResolutionDiscovery extends Internal implements IResolution
         const cache = {};
         this.resolve = async (service, invalidate, namespace) => {
             try {
-                const now = hrtime();
+                const now = platform.timing.now();
                 const hostName = `${this._serviceId(service)}.dns-discovery.local`;
                 if (invalidate) {
                     delete cache[hostName];
                 } else {
                     const cached = cache[hostName];
                     if (cached) {
-                        if (hrtime(cached[0])[0] < 3) {
+                        if (platform.timing.now(cached[0])[0] < 3) {
                             cached[0] = now;
                             return {...cached[1], cache: service, namespace};
                         } else {

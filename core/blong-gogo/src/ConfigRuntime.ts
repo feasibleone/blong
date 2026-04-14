@@ -18,6 +18,7 @@
  */
 
 import loadBlong from '@feasibleone/blong-config';
+import type {ConfigDiff, ConfigSubscriber, IConfigRuntime} from '@feasibleone/blong/types';
 
 // ---------------------------------------------------------------------------
 // Factory phase guard
@@ -62,39 +63,6 @@ export function exitConfigFactoryPhase(): Error[] {
     const errors = _factoryPhase.errors.slice();
     _factoryPhase.errors = [];
     return errors;
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** A flat map of dotted-path → [prev, next] pairs that represent changed keys */
-export type ConfigDiff = Map<string, {prev: unknown; next: unknown}>;
-
-/** Subscriber callback invoked after a successful reload */
-export type ConfigSubscriber = (
-    diff: ConfigDiff,
-    next: object,
-    prev: object,
-) => void | Promise<void>;
-
-export interface IConfigRuntime {
-    /** Current effective config, exposed as a live proxy */
-    readonly snapshot: object;
-    /** Raw (non-proxy) snapshot of the current effective config */
-    readonly rawSnapshot: object;
-    /** Load (or reload) config from all sources; returns the updated snapshot */
-    load(params?: object): Promise<object>;
-    /**
-     * Reload config in-place.  The backing store of the proxy is updated so all
-     * existing proxy references automatically reflect the new values.
-     * Returns the computed diff.
-     */
-    reload(): Promise<ConfigDiff>;
-    /** Compute the diff between two plain config objects without modifying state */
-    diff(prev: object, next: object): ConfigDiff;
-    /** Register a subscriber to be called after every successful reload */
-    subscribe(fn: ConfigSubscriber): () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,8 +130,7 @@ export function createConfigProxy<T extends object>(
         const pathProxy = new Proxy({} as T, {
             get(_target, prop, _receiver) {
                 const container = getNode(path);
-                const val =
-                    container == null ? undefined : Reflect.get(container as object, prop);
+                const val = container == null ? undefined : Reflect.get(container as object, prop);
                 if (val === undefined || val === null || typeof val !== 'object') {
                     if (
                         _factoryPhase.active &&
@@ -271,30 +238,6 @@ export function deepDiff(prev: unknown, next: unknown, path = ''): ConfigDiff {
 
     visit(prev, next, path);
     return result;
-}
-
-// ---------------------------------------------------------------------------
-// affectedNamespaces
-// ---------------------------------------------------------------------------
-
-/**
- * Given a diff and the set of known port names (e.g. `"realm.adapter.db"`),
- * return the subset of port names whose config sub-tree changed.
- *
- * A port named `"realm.adapter.db"` is considered affected if any diff key
- * starts with `"realm.adapter.db."` or equals `"realm.adapter.db"`.
- */
-export function affectedNamespaces(diff: ConfigDiff, portNames: Iterable<string>): Set<string> {
-    const affected = new Set<string>();
-    for (const portName of portNames) {
-        for (const diffKey of diff.keys()) {
-            if (diffKey === portName || diffKey.startsWith(portName + '.')) {
-                affected.add(portName);
-                break;
-            }
-        }
-    }
-    return affected;
 }
 
 // ---------------------------------------------------------------------------

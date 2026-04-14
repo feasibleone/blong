@@ -18,7 +18,6 @@ export default function loop(
     const checkDeadlock = deadlockChecker(handlers);
     context.requests = new Map();
     context.waiting = new Set();
-    context.buffer = Buffer.alloc(0);
     if (typeof fn === 'function') {
         return (params: unknown[], promise) =>
             async ({signal}) => {
@@ -370,6 +369,7 @@ async function decodeReceive(
 ): Promise<unknown[]> {
     // frame
     if (adapter.imported.unpack) {
+        context.buffer ||= Buffer.alloc(0);
         if (dataPacket) {
             adapter.bytesReceived?.(dataPacket.length);
             if (!adapter.imported.decode)

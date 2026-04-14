@@ -1,7 +1,7 @@
 import {orchestrator} from '@feasibleone/blong/types';
 
 export default orchestrator<{api: {namespace: Record<string, string | string[]>}}>(
-    ({remote, registry}) => ({
+    ({registry}) => ({
         activation: {
             default: {
                 type: 'openapi',

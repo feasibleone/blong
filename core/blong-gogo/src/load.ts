@@ -5,26 +5,22 @@ import {
     kind,
     server as serverFactory,
     type IApiSchema,
+    type IConfigRuntime,
     type IErrorFactory,
     type ILog,
     type ILogger,
     type IModuleConfig,
+    type IPlatformApi,
     type IRegistry,
     type Kind,
     type Kinds,
     type SolutionFactory,
 } from '@feasibleone/blong/types';
-import {existsSync} from 'fs';
-import {readdir} from 'fs/promises';
-import {createRequire} from 'node:module';
-import {basename, dirname, extname, join} from 'path';
 
 import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
-import type {Dirent} from 'fs';
-import ConfigRuntime from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
@@ -59,6 +55,7 @@ const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
  * Returns a map of folderName -> activation config.
  */
 async function discoverLayerFolders(
+    {existsSync, join}: IPlatformApi,
     base: string,
     kind_: 'server' | 'browser',
     explicitChildren: Set<string>,
@@ -86,7 +83,10 @@ async function discoverLayerFolders(
  * Discover test method names from a realm's test/test/ folder.
  * Imports each handler file with a null proxy to extract method names.
  */
-async function discoverRealmTestMethods(base: string): Promise<string[]> {
+async function discoverRealmTestMethods(
+    {existsSync, readdir, join, basename, extname}: IPlatformApi,
+    base: string,
+): Promise<string[]> {
     const testDir = join(base, 'test', 'test');
     if (!existsSync(testDir)) return [];
     const nullFn: unknown = new Proxy(
@@ -103,7 +103,7 @@ async function discoverRealmTestMethods(base: string): Promise<string[]> {
             },
         },
     );
-    const files = (await readdir(testDir, {withFileTypes: true})).filter(
+    const files = (await readdir(testDir)).filter(
         f => f.isFile() && /\.(ts|mts|js|mjs)$/i.test(f.name) && !f.name.startsWith('~'),
     );
     const methods: string[] = [];
@@ -136,13 +136,9 @@ async function discoverRealmTestMethods(base: string): Promise<string[]> {
     return methods;
 }
 
-const scan = async (...path: string[]): Promise<Dirent[]> =>
-    (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
-        a < b ? -1 : a > b ? 1 : 0,
-    );
 const System: symbol = Symbol('system');
 
-export function system(original: object): void {
+export function system(original: {[key: symbol]: boolean}): void {
     original[System] = true;
 }
 
@@ -172,18 +168,22 @@ async function loadConfig(config: string | object): Promise<object> {
 }
 
 export default async function loadRealm<T extends TSchema>(
+    platformApi: IPlatformApi,
     def: SolutionFactory<T> & {[symbol: Kind]: Kinds},
     name: string,
     parentConfig: object | string,
     configNames: string[],
     api?: {
+        platform: IPlatformApi;
         watch?: IWatch;
         apiSchema?: IApiSchema;
         error?: IErrorFactory;
         port?: () => void;
         log?: ILog;
         registry?: IRegistry;
-        configRuntime?: ConfigRuntime;
+        configRuntime?: IConfigRuntime;
+    } & {
+        [key: string]: {init?: () => Promise<unknown>};
     },
     rootKind?: 'server' | 'browser',
 ): Promise<IRegistry> {
@@ -195,16 +195,22 @@ export default async function loadRealm<T extends TSchema>(
             const realmMod = await def({type: Type});
             const realmUrl = realmMod.url as string;
             const realmFilePath = realmUrl.startsWith('file://') ? realmUrl.slice(7) : realmUrl;
-            const realmBase = dirname(realmFilePath);
-            const realmFileName = basename(realmFilePath);
-            const realmName = basename(realmBase);
-            let pkg: {name: string; version: string};
-            try {
-                pkg = createRequire(realmUrl)('./package.json') as {name: string; version: string};
-            } catch {
-                pkg = {name: realmName, version: '0.0.0'};
+            const realmBase = platformApi.dirname(realmFilePath);
+            const realmFileName = platformApi.basename(realmFilePath);
+            const realmName = platformApi.basename(realmBase);
+            let pkg: {name: string; version: string} = realmMod.pkg || {
+                name: realmName,
+                version: '0.0.0',
+            };
+            if (platformApi.createRequire) {
+                try {
+                    pkg = platformApi.createRequire(realmUrl)('./package.json') as {
+                        name: string;
+                        version: string;
+                    };
+                } catch {}
             }
-            const testMethods = await discoverRealmTestMethods(realmBase);
+            const testMethods = await discoverRealmTestMethods(platformApi, realmBase);
             const realmChild = Object.defineProperty(
                 async function () {
                     return {default: def};
@@ -224,10 +230,12 @@ export default async function loadRealm<T extends TSchema>(
                     },
                 })) as () => any);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return loadRealm(wrapper as any, name, parentConfig, configNames);
+                return loadRealm(platformApi, wrapper as any, name, parentConfig, configNames);
             } else {
                 // Server realm — single platform if no browser.ts alongside, else two-platform server half
-                const hasBrowser = existsSync(join(realmBase, 'browser.ts'));
+                const hasBrowser = platformApi.existsSync(
+                    platformApi.join(realmBase, 'browser.ts'),
+                );
                 const wrapper = serverFactory((() => ({
                     url: '',
                     pkg,
@@ -248,52 +256,68 @@ export default async function loadRealm<T extends TSchema>(
                     },
                 })) as () => any);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return loadRealm(wrapper as any, name, parentConfig, configNames);
+                return loadRealm(platformApi, wrapper as any, name, parentConfig, configNames);
             }
         } else {
             throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
         }
     }
     const mod = await def({type: Type});
-    if (!('pkg' in mod)) mod.pkg = createRequire(mod.url)('./package.json');
-    const mergedConfig = {
+    if (!('pkg' in mod) && platformApi.platform === 'server')
+        mod.pkg = platformApi.createRequire?.(mod.url)('./package.json');
+    const mergedConfig: {
+        name: string;
+        pkg: {name: string; version: string};
+        children: unknown[];
+        url: string;
+        base: string;
+        server: {
+            load: {logLevel: Parameters<ILog['logger']>[0]};
+            realm: {logLevel: Parameters<ILog['logger']>[0]};
+        };
+        browser: {
+            load: {logLevel: Parameters<ILog['logger']>[0]};
+            realm: {logLevel: Parameters<ILog['logger']>[0]};
+        };
+        kopi?: {realm?: unknown};
+        watch?: {configs?: object};
+        configs?: object;
+        configNames: string[];
+    } & {
+        [key: string]: unknown;
+    } = {
         name,
-        pkg: {name, version: '0.0'},
+        pkg: {name, version: '0.0.0'},
         children: [],
         url: '',
         base: '',
         server: {
             load: {
-                logLevel: 'warn',
+                logLevel: 'warn' as Parameters<ILog['logger']>[0],
             },
             realm: {
-                logLevel: 'warn',
+                logLevel: 'warn' as Parameters<ILog['logger']>[0],
             },
         },
         browser: {
             load: {
-                logLevel: 'warn',
+                logLevel: 'warn' as Parameters<ILog['logger']>[0],
             },
             realm: {
-                logLevel: 'warn',
+                logLevel: 'warn' as Parameters<ILog['logger']>[0],
             },
         },
         kopi: undefined,
-        watch: undefined,
+        watch: undefined as {configs?: object} | undefined,
         configs: undefined,
         configNames: [] as string[],
     };
     const loadedConfigs = [];
-    let items = [];
-    // ConfigRuntime is created only at the root call (when no api is provided)
-    // and only when parentConfig is a string (suite name) so blong-config can
-    // load external files that may change at runtime.
-    let configRuntime: ConfigRuntime | undefined;
+    let items: IModuleConfig['children'] = [];
     if (!api) {
-        api = {};
-        if (typeof parentConfig === 'string') {
-            configRuntime = new ConfigRuntime({config: {suite: parentConfig}});
-        }
+        api = {
+            platform: platformApi,
+        };
         loadedConfigs.push({
             watch: {},
             log: {},
@@ -312,7 +336,7 @@ export default async function loadRealm<T extends TSchema>(
         });
         items = [
             function log() {
-                return defKind === 'browser' && global.window
+                return rootKind === 'browser' && globalThis.window
                     ? import('./BrowserLog.ts')
                     : import('./Log.ts');
             },
@@ -334,7 +358,7 @@ export default async function loadRealm<T extends TSchema>(
             function resolution() {
                 return import('./ResolutionLocal.ts');
             },
-            ...(defKind === 'browser'
+            ...(rootKind === 'browser'
                 ? [
                       function remote() {
                           return import('./Remote.ts');
@@ -381,30 +405,42 @@ export default async function loadRealm<T extends TSchema>(
         ];
     }
     loadedConfigs.push(...activeConfigs(mod, configNames));
-    // Use ConfigRuntime for the external file/env config at the root level so
-    // that the runtime can later reload() in-place and diff the new snapshot.
-    if (configRuntime) {
-        loadedConfigs.push(await configRuntime.load());
-    } else {
-        loadedConfigs.push(await loadConfig(parentConfig));
-    }
+    const {loadedConfig, configRuntime} = await platformApi.loadConfig(parentConfig);
+    if (loadedConfig) loadedConfigs.push(loadedConfig);
+
     merge(mergedConfig, ...loadedConfigs.filter(Boolean));
     mergedConfig.configNames = configNames;
-    let logger: ILogger;
+    let logger: ILogger | undefined = api?.log?.logger(
+        mergedConfig[rootKind === 'browser' ? 'browser' : 'server']?.load?.logLevel,
+        {
+            name,
+            context: `${defKind}`,
+        },
+    );
     if (typeof parentConfig === 'string' && mergedConfig.watch)
         mergedConfig.watch.configs = mergedConfig.configs;
 
     // Auto-discover layer folders not already listed in mod.children
     const base = mergedConfig.url.startsWith('file://')
-        ? dirname(mergedConfig.url.slice(7))
-        : mergedConfig.url;
+        ? platformApi.dirname(mergedConfig.url.slice(7))
+        : platformApi.dirname(mergedConfig.url);
     mergedConfig.base = base;
-    const extraChildren: string[] = [];
-    if (base) {
+    const children = Array.isArray(mod.children) ? mod.children : [];
+    const extraChildren: (
+        | string
+        | {
+              path: string;
+              name: string;
+              isFile?: () => Promise<unknown>;
+              isDirectory?: Record<string, () => Promise<unknown>>;
+          }
+    )[] = [];
+    if (base && platformApi.platform === 'server') {
         const explicitChildren = new Set(
-            (mod.children ?? []).filter(c => typeof c === 'string').map(c => basename(c as string)),
+            children.filter(c => typeof c === 'string').map(c => platformApi.basename(c as string)),
         );
         const discoveredFolders = await discoverLayerFolders(
+            platformApi,
             base,
             rootKind,
             explicitChildren,
@@ -412,18 +448,47 @@ export default async function loadRealm<T extends TSchema>(
         );
         for (const [folderName, activation] of discoveredFolders) {
             if (!(folderName in mergedConfig))
-                merge(mergedConfig, {[basename(folderName)]: activation});
+                merge(mergedConfig, {[platformApi.basename(folderName)]: activation});
             extraChildren.push(`./${folderName}`);
         }
     }
+    if (mod.children && !Array.isArray(mod.children)) {
+        const globFolders: Record<string, Record<string, () => Promise<unknown>>> = {};
+        Object.entries(mod.children)
+            .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+            .forEach(([path, value]) => {
+                let segments = path.split('/');
+                if (segments[0] === '.') segments.shift();
+                if (segments.length >= 2) {
+                    if (segments.length === 2) {
+                        extraChildren.push({
+                            name: segments[0],
+                            path,
+                            isFile: value,
+                        });
+                    } else {
+                        const target = (globFolders[`${segments[0]}/${segments[1]}`] ||= {});
+                        target[segments.join('/')] = value;
+                    }
+                }
+            });
+        Object.entries(globFolders).forEach(([path, isDirectory]) => {
+            extraChildren.push({
+                name: path.split('/')[0],
+                path,
+                isDirectory,
+            });
+        });
+    }
 
     let realm: IRealm;
-    for (let item of items.concat(mod.children ?? []).concat(extraChildren)) {
-        const itemName = typeof item === 'string' ? basename(item) : item.name;
-        const config = mergedConfig[itemName];
+    for (let item of items.concat(children).concat(extraChildren)) {
+        if (typeof item === 'string' && platformApi.platform !== 'server') continue;
+        const itemName = typeof item === 'string' ? platformApi.basename(item) : item.name;
+        const config: Record<string, unknown> = mergedConfig[itemName] as Record<string, unknown>;
         logger?.debug?.(
-            {$meta: {mtid: 'event', method: 'child.load'}},
-            config && (typeof item === 'string' ? item : item.name + '()'),
+            {$meta: {mtid: 'event', method: config ? 'child.load' : 'child.skip'}},
+            typeof item === 'string' ? item : item.name + '()',
         );
         if (config) {
             if (typeof item === 'string') {
@@ -432,7 +497,7 @@ export default async function loadRealm<T extends TSchema>(
                     case 'browser': {
                         const folderPath = item;
                         const fileName = folderPath.startsWith('.')
-                            ? join(base, folderPath, `${defKind}.ts`)
+                            ? platformApi.join(base, folderPath, `${defKind}.ts`)
                             : folderPath;
                         item = async () => {
                             try {
@@ -449,9 +514,13 @@ export default async function loadRealm<T extends TSchema>(
                                 if (mergedConfig?.kopi?.realm) {
                                     let destUrl = import.meta.resolve(fileName);
                                     destUrl = destUrl.startsWith('file://')
-                                        ? dirname(destUrl.slice(7))
+                                        ? platformApi.dirname(destUrl.slice(7))
                                         : destUrl;
-                                    if (!existsSync(join(destUrl, 'package.json'))) {
+                                    if (
+                                        !platformApi.existsSync(
+                                            platformApi.join(destUrl, 'package.json'),
+                                        )
+                                    ) {
                                         const {createRealm} = await import('./kopi.ts');
                                         await createRealm(destUrl, logger);
                                         const mod = await import(fileName);
@@ -463,10 +532,10 @@ export default async function loadRealm<T extends TSchema>(
                         break;
                     }
                     default:
-                        const loaded = [];
-                        for (const dirEntry of await scan(base, item))
+                        const loaded: unknown[] = [];
+                        for (const dirEntry of await platformApi.scan(base, item))
                             loaded.push(
-                                await api.watch.load(
+                                await api.watch?.load(
                                     mergedConfig,
                                     dirEntry.isDirectory(),
                                     dirEntry.isFile(),
@@ -477,29 +546,48 @@ export default async function loadRealm<T extends TSchema>(
                             );
                         item = async () => loaded.filter(Boolean);
                 }
+            } else if (platformApi.platform === 'browser' && (item.isDirectory || item.isFile)) {
+                const loaded: unknown[] = [];
+                loaded.push(
+                    await api.watch?.load(mergedConfig, item.isDirectory, item.isFile, item.path),
+                );
+                item = async () => loaded.filter(Boolean);
             }
-            for (const module of [].concat(await item())) {
+            const loadedModules = await item();
+            for (const module of Array.isArray(loadedModules) ? loadedModules : [loadedModules]) {
                 const item = await module;
                 const fn = item?.default ?? item;
                 if (typeof fn === 'function' && (fn.prototype instanceof Internal || fn[System])) {
                     api[itemName] = new (fn as IConstructor)(config, api);
                     await api[itemName].init?.();
                     if (itemName === 'log')
-                        logger = api.log.logger(mergedConfig[defKind ?? 'server'].load.logLevel, {
-                            name,
-                            context: `${defKind}`,
-                        });
+                        logger = api.log?.logger(
+                            mergedConfig[rootKind === 'browser' ? 'browser' : 'server']?.load
+                                ?.logLevel,
+                            {
+                                name,
+                                context: `${defKind}`,
+                            },
+                        );
                 } else if (['solution', 'server', 'browser'].includes(kind(fn))) {
                     realm ||= new RealmImpl(mergedConfig, api, rootKind);
                     realm.addModule(
                         itemName,
-                        await loadRealm(fn, itemName, config, configNames, api, rootKind),
+                        await loadRealm(
+                            platformApi,
+                            fn,
+                            itemName,
+                            {[platformApi.platform]: mergedConfig[platformApi.platform], ...config},
+                            configNames,
+                            api,
+                            rootKind,
+                        ),
                     );
                 } else if (typeof fn === 'function') {
                     realm ||= new RealmImpl(mergedConfig, api, rootKind);
                     realm.addLayer(
                         itemName,
-                        fn(layerProxy(api.error, api.apiSchema, api.port, mergedConfig)).result,
+                        fn(layerProxy(api?.error, api?.apiSchema, api?.port, mergedConfig)).result,
                     );
                 }
             }
@@ -509,8 +597,9 @@ export default async function loadRealm<T extends TSchema>(
     // reload via ConfigRuntime.reload() instead of restarting the process.
     if (configRuntime) {
         api.configRuntime = configRuntime;
-        api.watch?.setConfigRuntime?.(configRuntime);
+        api?.watch?.setConfigRuntime?.(configRuntime);
     }
     realm ||= new RealmImpl(mergedConfig, api, rootKind);
+    if (!api?.registry) throw new Error('Registry not found in loaded modules');
     return api.registry;
 }

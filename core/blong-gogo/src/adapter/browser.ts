@@ -6,10 +6,11 @@ export default realm(blong => ({
         http: blong.type.Boolean(),
         browser: blong.type.Boolean(),
     }),
-    children: ['./browser'],
+    children: globalThis.window ? import.meta.glob(['./browser/*.ts']) : ['./browser'],
     config: {
         default: {
             http: false,
+            generic: false,
             browser: true,
         },
     },

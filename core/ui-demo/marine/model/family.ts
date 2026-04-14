@@ -1,6 +1,6 @@
-import type {IModelSpec} from '@feasibleone/blong-browser';
+import {model} from '@feasibleone/blong';
 
-export const family: IModelSpec = {
+export default model(() => ({
     subject: 'marine',
     object: 'family',
     objectTitle: 'Family',
@@ -32,4 +32,4 @@ export const family: IModelSpec = {
         title: 'Family List',
         icon: 'pi pi-sitemap',
     },
-};
+}));

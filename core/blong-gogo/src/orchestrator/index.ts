@@ -7,7 +7,7 @@ export default realm(blong => ({
         dispatch: blong.type.Boolean(),
         common: blong.type.Boolean(),
     }),
-    children: ['./common'],
+    children: globalThis.window ? import.meta.glob(['./common/*.ts']) : ['./common'],
     config: {
         default: {
             openapi: false,

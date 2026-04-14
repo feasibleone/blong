@@ -1,6 +1,6 @@
-import type {IModelSpec} from '@feasibleone/blong-browser';
+import {model} from '@feasibleone/blong';
 
-export const coral: IModelSpec = {
+export default model(() => ({
     subject: 'marine',
     object: 'coral',
     objectTitle: 'Coral',
@@ -49,4 +49,4 @@ export const coral: IModelSpec = {
         title: 'Coral List',
         icon: 'pi pi-list',
     },
-};
+}));

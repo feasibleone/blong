@@ -6,6 +6,7 @@ export default defineConfig({
     resolve: {
         alias: {
             // @feasibleone/blong has no dist in the monorepo; point directly at source
+            '@feasibleone/blong/types': new URL('../blong/types.ts', import.meta.url).href,
             '@feasibleone/blong': new URL('../blong/types.ts', import.meta.url).pathname,
         },
     },

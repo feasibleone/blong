@@ -1,73 +1,48 @@
-import {type SolutionFactory} from '@feasibleone/blong/types';
-import {existsSync} from 'node:fs';
-import {basename, resolve} from 'node:path';
-import {analyzeFolder, synthesizeServerFromHandlers} from './folderAnalysis.ts';
+import {watch} from 'chokidar';
+import type {Dirent} from 'fs';
+import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';
+import {readdir} from 'fs/promises';
+import {createRequire} from 'node:module';
+import {hrtime} from 'node:process';
+import {basename, dirname, extname, join, relative, resolve} from 'path';
+import ConfigRuntime from './ConfigRuntime.ts';
 import load from './load.ts';
+import timing from './timing.ts';
 
-/**
- * Runs the standard platform lifecycle: start → test → (CI) stop.
- */
-export async function runPlatform(serverDef: SolutionFactory, name: string): Promise<void> {
-    const platform = await load(serverDef as Parameters<typeof load>[0], name, name, [
-        'microservice',
-        'integration',
-        'dev',
-    ]);
-    await platform.start();
-    await platform.test();
-    if (process.env.CI) await platform.stop();
-}
+const scan = async (...path: string[]): Promise<Dirent[]> =>
+    (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>
+        a < b ? -1 : a > b ? 1 : 0,
+    );
 
-/**
- * Auto-detects and runs the appropriate platform from the given working directory.
- *
- * Resolution order:
- *   1. Explicit `target` path (loaded directly).
- *   2. `index.ts` — suite / realm with a custom runner.
- *   3. `server.ts` + `browser.ts` — two-platform suite.
- *   4. `server.ts` alone — server-only suite or realm.
- *   5. Folder contains handler files — synthesize a server suite on the fly.
- *   6. Throws if nothing matched.
- */
-export async function autoRun(options: {cwd: string; target?: string}): Promise<void> {
-    const {cwd, target} = options;
+const loadConfig = async (parentConfig: string | object) => {
+    // ConfigRuntime is created only at the root call (when no api is provided)
+    // and only when parentConfig is a string (suite name) so blong-config can
+    // load external files that may change at runtime.
+    let configRuntime: ConfigRuntime | undefined;
+    let loadedConfig: object;
+    if (typeof parentConfig === 'string') {
+        configRuntime = new ConfigRuntime({config: {suite: parentConfig}});
+        loadedConfig = await configRuntime.load();
+    } else loadedConfig = parentConfig;
+    return {loadedConfig, configRuntime};
+};
 
-    if (target) {
-        (await import(target)).default(load);
-        return;
-    }
-
-    const name = basename(cwd);
-    const indexFile = resolve(cwd, 'index.ts');
-    const serverFile = resolve(cwd, 'server.ts');
-    const browserFile = resolve(cwd, 'browser.ts');
-
-    if (existsSync(indexFile)) {
-        (await import(indexFile)).default(load);
-    } else if (existsSync(serverFile) && existsSync(browserFile)) {
-        const {default: serverDef} = await import(serverFile);
-        const {default: browserDef} = await import(browserFile);
-        const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
-            load(serverDef, name, name, ['microservice', 'integration', 'dev']),
-            load(browserDef, name, name, ['microservice', 'integration', 'dev']),
-        ]);
-        for (const platform of platforms) await platform.start();
-        await platforms[1].test();
-        if (process.env.CI) for (const platform of platforms) await platform.stop();
-    } else if (existsSync(serverFile)) {
-        const {default: serverDef} = await import(serverFile);
-        await runPlatform(serverDef, name);
-    } else {
-        const analysis = await analyzeFolder(cwd);
-        if (analysis.kind === 'handlers' || analysis.kind === 'mixed') {
-            await runPlatform(await synthesizeServerFromHandlers(cwd, analysis), name);
-        } else {
-            throw new Error(
-                `No entry point found in ${cwd}. ` +
-                    'Run blong from a folder that contains a suite (server.ts / browser.ts / index.ts), ' +
-                    'a realm (realm.ts), or handler files (e.g. helloHello.ts). ' +
-                    'You can also provide a file path as an argument.',
-            );
-        }
-    }
-}
+export default load.bind(null, {
+    platform: 'server',
+    readdir: async (path: string) => readdir(path, {withFileTypes: true}),
+    existsSync,
+    createRequire,
+    scan,
+    join,
+    basename,
+    extname,
+    dirname,
+    loadConfig,
+    resolve,
+    relative,
+    readFileSync,
+    writeFileSync,
+    statSync,
+    watch,
+    timing: timing(hrtime),
+});

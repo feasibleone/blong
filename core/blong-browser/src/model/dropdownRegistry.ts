@@ -13,7 +13,7 @@
  * The naming convention for the backend handler is:
  *   {subject}.dropdown.list({name: 'marine.species'}) → [{value, label}]
  */
-import type {IDropdownOption} from './types.js';
+import type {IDropdownOption} from '@feasibleone/blong';
 
 type LoaderFn = (name: string) => Promise<IDropdownOption[]>;
 type BatchLoaderFn = (names: string[]) => Promise<Record<string, IDropdownOption[]>>;

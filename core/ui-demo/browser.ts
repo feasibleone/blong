@@ -6,9 +6,14 @@
  * browser registry during development and integration tests.
  */
 import {browser} from '@feasibleone/blong';
+import pkg from './package.json' with {type: 'json'};
 
 export default browser(blong => ({
     url: import.meta.url,
+    pkg: {
+        name: pkg.name,
+        version: pkg.version,
+    },
     validation: blong.type.Object({
         blongUi: blong.type.Object({}),
         marine: blong.type.Object({}),
@@ -19,7 +24,9 @@ export default browser(blong => ({
             return import('@feasibleone/blong-browser/browser.ts');
         },
         /** Marine biology demonstration realm */
-        './marine',
+        async function marine() {
+            return import('./marine/browser.ts');
+        },
     ],
     config: {
         default: {

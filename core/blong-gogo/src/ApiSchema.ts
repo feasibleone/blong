@@ -2,17 +2,15 @@ import type {
     GatewaySchema,
     IApiSchema,
     ILog,
+    IPlatformApi,
     PathItemObject,
     SchemaObject,
 } from '@feasibleone/blong/types';
 import {Internal} from '@feasibleone/blong/types';
-import {createReadStream, statSync, writeFileSync, type Dirent} from 'node:fs';
-import path, {basename, dirname, extname} from 'node:path';
+import {type Dirent} from 'node:fs';
 
-import {join} from 'path';
 import {identifier} from './lib.ts';
 import loadApi from './loadApi.ts';
-import scan from './scan.ts';
 
 interface IConfig {
     logLevel?: Parameters<ILog['logger']>[0];
@@ -24,6 +22,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
         logLevel: 'debug',
         generate: true,
     };
+    #platform: IPlatformApi;
 
     #loaded: Record<string, GatewaySchema> = {};
     #namespace: Record<string, Record<string, GatewaySchema>> = {};
@@ -36,13 +35,21 @@ export default class ApiSchema extends Internal implements IApiSchema {
         }
     > = {};
 
-    public constructor(config: IConfig, {log}: {log: ILog}) {
+    public constructor(config: IConfig, {log, platform}: {log: ILog; platform: IPlatformApi}) {
         super({log});
+        this.#platform = platform;
         this.merge(this.#config, config);
     }
 
     public method(operation: {operationId?: string}): string {
         return operation?.['x-blong-method'] || operation.operationId;
+    }
+
+    public loadApi(
+        locations: string | string[] | object | object[] | {assets: object},
+        source: string = process.cwd(),
+    ): ReturnType<typeof loadApi> {
+        return loadApi(locations, source, this.#platform);
     }
 
     public async schema(
@@ -57,8 +64,8 @@ export default class ApiSchema extends Internal implements IApiSchema {
     ): Promise<Record<string, GatewaySchema>> {
         const result: Record<string, GatewaySchema> = {};
         if (url) {
-            const dir = dirname(url.startsWith('file://') ? url.slice(7) : url);
-            const files = await scan(dir);
+            const dir = this.#platform.dirname(url.startsWith('file://') ? url.slice(7) : url);
+            const files = await this.#platform.scan(dir);
             namespace = namespace || {};
             for (const file of files) {
                 if (
@@ -67,9 +74,9 @@ export default class ApiSchema extends Internal implements IApiSchema {
                         file.name.endsWith('.yml') ||
                         file.name.endsWith('.json'))
                 ) {
-                    const [name] = basename(file.name).split('.');
+                    const [name] = this.#platform.basename(file.name).split('.');
                     namespace[name] ||= [];
-                    namespace[name].push(join(dir, file.name));
+                    namespace[name].push(this.#platform.join(dir, file.name));
                 }
             }
         }
@@ -83,7 +90,7 @@ export default class ApiSchema extends Internal implements IApiSchema {
             );
 
         for (const [name, locations] of Object.entries(namespace)) {
-            const bundle = await loadApi(locations, source);
+            const bundle = await loadApi(locations, source, this.#platform);
             const {namespace = name, destination} = bundle['x-blong'] ?? {};
             this.#namespace[namespace] ||= {};
             Object.entries(bundle.paths).forEach(([path, methods]: [string, PathItemObject]) => {
@@ -132,17 +139,17 @@ export default class ApiSchema extends Internal implements IApiSchema {
             for (const [method, operation] of Object.entries(this.#loaded)) {
                 const filename = operation.subject + this.method(operation.operation) + '.ts';
                 if (method.startsWith(prefix) && !record.existing.has(filename.toLowerCase())) {
-                    generate.push(path.join(record.dir, filename));
+                    generate.push(this.#platform.join(record.dir, filename));
                 }
             }
         }
         for (const filename of generate.concat(Array.from(this.#generateFile))) {
-            const method = basename(filename, extname(filename));
+            const method = this.#platform.basename(filename, this.#platform.extname(filename));
             const schema = this.#loaded[method.toLowerCase()];
             if (schema) {
                 // console.log(schema.operation.responses);
                 this.log?.warn?.(`Writing ${filename}`);
-                writeFileSync(
+                this.#platform.writeFileSync(
                     filename,
                     `import unchanged from '@feasibleone/blong';
 import {type IMeta, handler} from '@feasibleone/blong/types';
@@ -256,16 +263,8 @@ export default handler(
 
     public async generateFile(filename: string): Promise<boolean> {
         if (this.#config.generate === false) return false;
-        if (statSync(filename).size !== 0) return false;
-        let content = '';
-        await new Promise<void>((resolve, reject) => {
-            createReadStream(filename, {end: 50, encoding: 'utf-8'})
-                .on('data', chunk => {
-                    content += chunk;
-                })
-                .on('error', reject)
-                .on('close', resolve);
-        });
+        if (this.#platform.statSync(filename).size !== 0) return false;
+        let content = this.#platform.readFileSync(filename, {encoding: 'utf-8'}).toString('utf-8');
         if (content.includes('import unchanged from')) {
             this.#generateFile.add(filename);
             return false;
@@ -288,6 +287,8 @@ export default handler(
                 existing: new Set(),
             };
         }
-        files.forEach(file => record.existing.add(basename(file.name).toLowerCase()));
+        files.forEach(file =>
+            record.existing.add(this.#platform.basename(file.name).toLowerCase()),
+        );
     }
 }

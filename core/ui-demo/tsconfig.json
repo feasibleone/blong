@@ -5,15 +5,10 @@
         "moduleResolution": "NodeNext",
         "lib": ["ES2022", "DOM", "DOM.Iterable"],
         "jsx": "react-jsx",
+        "allowImportingTsExtensions": true,
         "strict": true,
         "noEmit": true,
         "skipLibCheck": true
     },
-    "include": [
-        "index.ts",
-        "vite.config.ts",
-        "browser.ts",
-        "marine/**/*.ts",
-        "marine/**/*.tsx"
-    ]
+    "include": ["index.ts", "vite.config.ts", "browser.ts", "marine/**/*.ts", "marine/**/*.tsx"]
 }

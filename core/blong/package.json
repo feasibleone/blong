@@ -39,6 +39,7 @@
         "@types/request": "^2.48.13",
         "@types/ut-function.merge": "file:./types/ut-function.merge",
         "bson": "^7.2.0",
+        "chokidar": "^5.0.0",
         "dts-bundle-generator": "^9.5.1",
         "eslint": "~9.39.2",
         "knex": "^3.1.0",

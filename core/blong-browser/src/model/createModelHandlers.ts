@@ -23,6 +23,7 @@
  * orchestrator.  The orchestrator caches the per-subject backend call so
  * all widgets on the same page share a single request.
  */
+import type {IModelSpec} from '@feasibleone/blong';
 import {componentHandler} from '@feasibleone/blong';
 import {enrichSchema} from '../schema/registry.js';
 import type {IEnrichedSchema} from '../types/widget.js';
@@ -32,7 +33,6 @@ import {subjectObjectNew} from './entries/subjectObjectNew.js';
 import {subjectObjectOpen} from './entries/subjectObjectOpen.js';
 import {subjectObjectReport} from './entries/subjectObjectReport.js';
 import {getObjectSchema} from './schemaFetcher.js';
-import type {IModelSpec} from './types.js';
 
 /**
  * Creates a componentHandler that registers all pages for all provided models.

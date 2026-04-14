@@ -1,6 +1,6 @@
+import type {IResolvedModelSpec} from '@feasibleone/blong';
 import type {LayoutConfig} from '../../hooks/useLayout.js';
 import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
-import type {IResolvedModelSpec} from '../types.js';
 
 export function subjectObjectNew(
     model: IResolvedModelSpec,

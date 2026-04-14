@@ -1,36 +1,47 @@
-import {Internal, type ILog} from '@feasibleone/blong/types';
-import {pino, type Level, type Logger, type LoggerOptions} from 'pino';
+import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
+import type {Level, Logger as PinoLogger} from 'pino';
 
-// ── level constants (pino uses numeric levels matching bunyan) ──────────────
-const TRACE = 10, DEBUG = 20, INFO = 30, WARN = 40, ERROR = 50, FATAL = 60;
+// ── level constants (bunyan numeric levels) ──────────────────────────────────
+const LEVEL_VALUES: Record<string, number> = {
+    trace: 10,
+    debug: 20,
+    info: 30,
+    warn: 40,
+    error: 50,
+    fatal: 60,
+    silent: Infinity,
+};
 
-const nameFromLevel: Record<number, string> = {
-    [TRACE]: 'trace', [DEBUG]: 'debug', [INFO]: 'info',
-    [WARN]: 'warn', [ERROR]: 'error', [FATAL]: 'fatal',
+const NAME_FROM_VALUE: Record<number, string> = {
+    10: 'trace',
+    20: 'debug',
+    30: 'info',
+    40: 'warn',
+    50: 'error',
+    60: 'fatal',
 };
 
 const LEVEL_CSS: Record<string, string> = {
     trace: 'color: grey',
     debug: 'color: blue',
-    info:  'color: cyan',
-    warn:  'color: magenta',
+    info: 'color: cyan',
+    warn: 'color: magenta',
     error: 'color: red',
     fatal: 'color: red; font-weight: bold',
 };
+
 const DEFAULT_CSS = {
-    def:     'color: black',
-    msg:     'color: darkblue',
+    def: 'color: black',
+    msg: 'color: cyan',
     service: 'color: darkorange',
-    mtid:    'color: Magenta',
-    src:     'color: DimGray; font-style: italic; font-size: 0.9em',
+    context: 'color: lightgreen',
+    mtid: 'color: magenta',
+    method: 'color: gold',
+    src: 'color: DimGray; font-style: italic; font-size: 0.9em',
 };
 
-// Fields written separately; everything else goes into the `details` object
-const SKIP = new Set([
-    'name', 'hostname', 'pid', 'level', 'component', 'msg', 'time', 'v',
-    'src', 'error', 'clientReq', 'clientRes', 'req', 'res',
-    '$meta', 'mtid', 'jsException', 'service',
-]);
+// Fields rendered separately; everything else becomes the expandable details object
+const SKIP = new Set(['time', 'level', 'name', 'context', 'prefix', '$meta', 'msg']);
 
 export interface IBrowserLogConfig {
     level?: Level;
@@ -39,28 +50,31 @@ export interface IBrowserLogConfig {
     logByLevel?: boolean;
 }
 
+interface ISimpleLogger {
+    level: string;
+    child(bindings: Record<string, unknown>, options?: {level?: string}): ISimpleLogger;
+    trace(obj: unknown, msg?: string): void;
+    debug(obj: unknown, msg?: string): void;
+    info(obj: unknown, msg?: string): void;
+    warn(obj: unknown, msg?: string): void;
+    error(obj: unknown, msg?: string): void;
+    fatal(obj: unknown, msg?: string): void;
+}
+
 function write(rec: Record<string, unknown>, logByLevel: boolean): void {
-    const level = rec.level as number;
-    const levelKey = nameFromLevel[level] ?? 'info';
+    const levelNum = rec.level as number;
+    const levelKey = NAME_FROM_VALUE[levelNum] ?? 'info';
     const paddedLevel = levelKey.toUpperCase().padStart(5);
 
-    // Choose the console method
     let consoleMethod: (...a: unknown[]) => void = console.log; // eslint-disable-line no-console
     if (logByLevel) {
-        const mapped = level <= TRACE ? 'debug' : level >= FATAL ? 'error' : levelKey;
-        consoleMethod = (typeof (console as Record<string, unknown>)[mapped] === 'function'
-            ? (console as Record<string, (...a: unknown[]) => void>)[mapped]
-            : console.log); // eslint-disable-line no-console
+        const mapped = levelNum <= 10 ? 'debug' : levelNum >= 60 ? 'error' : levelKey;
+        const c = console as unknown as Record<string, (...a: unknown[]) => void>; // eslint-disable-line no-console
+        consoleMethod = typeof c[mapped] === 'function' ? c[mapped] : console.log; // eslint-disable-line no-console
     }
 
-    const levelCss =
-        level < DEBUG ? LEVEL_CSS.trace :
-        level < INFO  ? LEVEL_CSS.debug :
-        level < WARN  ? LEVEL_CSS.info  :
-        level < ERROR ? LEVEL_CSS.warn  :
-        level < FATAL ? LEVEL_CSS.error : LEVEL_CSS.fatal;
+    const levelCss = LEVEL_CSS[levelKey] ?? LEVEL_CSS.info;
 
-    // any fields not in the skip list become the expandable details object
     const details: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(rec)) {
         if (v != null && !SKIP.has(k)) details[k] = v;
@@ -69,75 +83,121 @@ function write(rec: Record<string, unknown>, logByLevel: boolean): void {
 
     const loggerName = rec.childName
         ? `${rec.name}/${rec.childName}`
-        : (rec.name as string | undefined) ?? '';
+        : ((rec.name as string | undefined) ?? '');
 
-    const time = rec.time instanceof Date
-        ? rec.time.toISOString().slice(11, 23)
-        : new Date().toISOString().slice(11, 23);
+    const time = new Date((rec.time as number) ?? Date.now()).toISOString().slice(11, 23);
 
-    const label =
-        (rec.$meta as Record<string, string> | undefined)?.method ??
-        (rec.$meta as Record<string, string> | undefined)?.opcode ??
-        (rec.msg as string | undefined) ?? '';
-
-    const fmt = `[%s] %c%s%c %s%c %s: %c%s %c%s${hasDetails ? ' %c%o' : ''}`;
+    const fmt = `[%s] %c%s %c(%s): %c%s%s%c%s%c%s%c%s${hasDetails ? ' %c%o' : ''}`;
+    const pad = (s: unknown) => (s ? s + ' ' : '');
     const args: unknown[] = [
         fmt,
         time,
-        levelCss,    paddedLevel,
-        DEFAULT_CSS.service,  rec.service ?? '',
-        DEFAULT_CSS.def,      loggerName,
-        DEFAULT_CSS.mtid,     (rec.mtid as string | undefined) ?? '',
-        DEFAULT_CSS.msg,      label,
+        levelCss,
+        paddedLevel,
+        DEFAULT_CSS.service,
+        loggerName,
+        DEFAULT_CSS.context,
+        pad(rec.context),
+        pad(rec.prefix),
+        DEFAULT_CSS.mtid,
+        pad(rec.$meta?.mtid),
+        DEFAULT_CSS.method,
+        pad(rec.$meta?.method),
+        DEFAULT_CSS.msg,
+        rec.msg,
     ];
     if (hasDetails) args.push(DEFAULT_CSS.src, details);
 
     consoleMethod(...args);
 
-    if (rec.error && (rec.error as {stack?: string}).stack)
-        console.error(rec.error); // eslint-disable-line no-console
+    if (rec.error && (rec.error as {stack?: string}).stack) console.error(rec.error); // eslint-disable-line no-console
+}
+
+function createLogger(
+    level: string,
+    bindings: Record<string, unknown>,
+    logByLevel: boolean,
+): ISimpleLogger {
+    const levelNum = LEVEL_VALUES[level] ?? LEVEL_VALUES.info;
+
+    function log(methodLevel: string, obj: unknown, msg?: string): void {
+        const methodNum = LEVEL_VALUES[methodLevel] ?? LEVEL_VALUES.info;
+        if (methodNum < levelNum) return;
+        const rec: Record<string, unknown> = {
+            ...bindings,
+            level: methodNum,
+            time: Date.now(),
+            msg: typeof obj === 'string' ? obj : (msg ?? ''),
+        };
+        if (typeof obj === 'object' && obj !== null) Object.assign(rec, obj);
+        write(rec, logByLevel);
+    }
+
+    return {
+        level,
+        child: (childBindings, options) =>
+            createLogger(options?.level ?? level, {...bindings, ...childBindings}, logByLevel),
+        trace: (obj, msg) => log('trace', obj, msg),
+        debug: (obj, msg) => log('debug', obj, msg),
+        info: (obj, msg) => log('info', obj, msg),
+        warn: (obj, msg) => log('warn', obj, msg),
+        error: (obj, msg) => log('error', obj, msg),
+        fatal: (obj, msg) => log('fatal', obj, msg),
+    };
 }
 
 export default class BrowserLog extends Internal implements ILog {
-    #logger: Logger;
     #config: IBrowserLogConfig = {level: 'info', logByLevel: false};
+    #logger: ISimpleLogger;
 
     public constructor(config: IBrowserLogConfig) {
         super();
         this.merge(this.#config, config);
-        const logByLevel = this.#config.logByLevel ?? false;
-        this.#logger = pino({
-            level: this.#config.level ?? 'info',
-            browser: {
-                asObject: true,
-                write: (rec: Record<string, unknown>) => write(rec, logByLevel),
-            },
-        });
+        this.#logger = createLogger(
+            this.#config.level ?? 'info',
+            {},
+            this.#config.logByLevel ?? false,
+        );
     }
 
-    public child<T extends string>(...params: Parameters<Logger<never>['child']>): Logger<T> {
-        return this.#logger.child(...params) as Logger<T>;
+    public child<T extends string = never>(
+        ...params: Parameters<PinoLogger['child']>
+    ): PinoLogger<T> {
+        const [bindings, options] = params;
+        return this.#logger.child(
+            bindings as Record<string, unknown>,
+            options as {level?: string} | undefined,
+        ) as unknown as PinoLogger<T>;
     }
 
-    public logger(
-        level: LoggerOptions['level'] = this.#config.level,
-        bindings: object,
-    ): ReturnType<ILog['logger']> {
-        const child = this.#logger.child(bindings, {level});
-        const result = {trace: null, debug: null, info: null, warn: null, error: null, fatal: null};
+    public logger(level: Level = this.#config.level ?? 'info', bindings: object): ILogger {
+        const child = this.#logger.child(bindings as Record<string, unknown>, {level});
+        const result: ILogger = {
+            trace: undefined,
+            debug: undefined,
+            info: undefined,
+            warn: undefined,
+            error: undefined,
+            fatal: undefined,
+        };
         switch (level) {
             case 'trace':
-                result.trace = child.trace.bind(child);
-            case 'debug': // eslint-disable-line no-fallthrough
-                result.debug = child.debug.bind(child);
-            case 'info': // eslint-disable-line no-fallthrough
-                result.info = child.info.bind(child);
-            case 'warn': // eslint-disable-line no-fallthrough
-                result.warn = child.warn.bind(child);
-            case 'error': // eslint-disable-line no-fallthrough
-                result.error = child.error.bind(child);
-            case 'fatal': // eslint-disable-line no-fallthrough
-                result.fatal = child.fatal.bind(child);
+                result.trace = child.trace.bind(child) as ILogger['trace'];
+            // eslint-disable-next-line no-fallthrough
+            case 'debug':
+                result.debug = child.debug.bind(child) as ILogger['debug'];
+            // eslint-disable-next-line no-fallthrough
+            case 'info':
+                result.info = child.info.bind(child) as ILogger['info'];
+            // eslint-disable-next-line no-fallthrough
+            case 'warn':
+                result.warn = child.warn.bind(child) as ILogger['warn'];
+            // eslint-disable-next-line no-fallthrough
+            case 'error':
+                result.error = child.error.bind(child) as ILogger['error'];
+            // eslint-disable-next-line no-fallthrough
+            case 'fatal':
+                result.fatal = child.fatal.bind(child) as ILogger['fatal'];
         }
         return result;
     }

@@ -1,8 +1,8 @@
 import type {IAdapterFactory, ILog, IRegistry} from '@feasibleone/blong/types';
 
 export interface IRealm {
-    addModule: (name: string | symbol, mod: IRegistry) => void;
-    addLayer: (name: string | symbol, layer: IRealm) => void;
+    addModule: (name: string, mod: IRegistry) => void;
+    addLayer: (name: string, layer: IRealm) => void;
 }
 
 export default class RealmImpl implements IRealm {
@@ -17,8 +17,8 @@ export default class RealmImpl implements IRealm {
 
     public constructor(
         config: {
-            server: {realm: {logLevel: Parameters<ILog['logger']>[0]}};
-            browser: {realm: {logLevel: Parameters<ILog['logger']>[0]}};
+            server: {realm?: {logLevel: Parameters<ILog['logger']>[0]}};
+            browser: {realm?: {logLevel: Parameters<ILog['logger']>[0]}};
             name: string;
             pkg: {name: string; version: string};
         },
@@ -43,7 +43,7 @@ export default class RealmImpl implements IRealm {
         module.push(mod);
     }
 
-    public addModule(name: string, mod: IRegistry): void {
+    public addModule(name: string | symbol, mod: IRegistry): void {
         this.#logger?.debug?.(
             {$meta: {mtid: 'event', method: 'module.add'}},
             `${this.#config.name}.${name}`,

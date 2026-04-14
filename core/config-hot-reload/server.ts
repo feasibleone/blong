@@ -4,7 +4,10 @@ export default server(blong => ({
     url: import.meta.url,
     children: ['./configReload'],
     config: {
-        default: {},
+        default: {
+            rpcServer: {port: 0},
+            gateway: {port: 0},
+        },
         microservice: {},
         dev: {
             configReload: {},

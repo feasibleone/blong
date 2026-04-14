@@ -12,8 +12,13 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-    validation: blong.type.Object({}),
+    children: globalThis.window
+        ? import.meta.glob(['./model/*.ts', './orchestrator/*.ts'])
+        : ['./model', './orchestrator'],
     config: {
-        default: {},
+        default: {
+            model: true,
+            orchestrator: true,
+        },
     },
 }));

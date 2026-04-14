@@ -13,7 +13,7 @@ export default server(blong => ({
         './ctp',
         './parking',
         './demo',
-        './db',
+        // './db',
     ],
     config: {
         default: {},

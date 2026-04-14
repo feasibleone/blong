@@ -8,6 +8,7 @@ import type {
     ILocal,
     ILog,
     IMeta,
+    IPlatformApi,
     IRegistry,
     IRemote,
     IRpcServer,
@@ -65,6 +66,7 @@ export default class Registry extends Internal implements IRegistry {
     #watch: IWatch;
     #log: ILog;
     #apiSchema: IApiSchema;
+    #platform: IPlatformApi;
     #config: IConfig = {};
     #attachCheckpoint?: (meta: IMeta) => void;
 
@@ -80,6 +82,7 @@ export default class Registry extends Internal implements IRegistry {
             resolution,
             watch,
             apiSchema,
+            platform,
         }: {
             log?: ILog;
             error?: IErrorFactory;
@@ -90,6 +93,7 @@ export default class Registry extends Internal implements IRegistry {
             resolution?: IResolution;
             watch?: IWatch;
             apiSchema?: IApiSchema;
+            platform?: IPlatformApi;
         },
     ) {
         super({log});
@@ -103,6 +107,7 @@ export default class Registry extends Internal implements IRegistry {
         this.#log = log;
         this.#watch = watch;
         this.#apiSchema = apiSchema;
+        this.#platform = platform;
         this.#attachCheckpoint = createAttachCheckpoint(
             this.#config.checkpointMode ?? 'production',
         );
@@ -306,6 +311,7 @@ export default class Registry extends Internal implements IRegistry {
                     enumerable: false,
                     writable: true,
                 }),
+            timing: this.#platform.timing,
             setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
                 if (!path) return;
                 const parts = path.split('.');
@@ -335,6 +341,7 @@ export default class Registry extends Internal implements IRegistry {
                 remote: name => this.#remote.remote(methodParts(name)),
                 port,
                 attachCheckpoint,
+                apiSchema: this.#apiSchema,
             });
         }
         return {local, literals};

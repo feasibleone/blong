@@ -3,10 +3,10 @@
  * Each factory returns an async function that resolves to a page entry
  * (title, permission, icon, component).
  */
+import type {IResolvedModelSpec} from '@feasibleone/blong';
 import React from 'react';
 import {beforeAll, describe, expect, it, vi} from 'vitest';
 import {render} from '../../test/render.js';
-import type {IResolvedModelSpec} from '../types.js';
 
 // Mock dynamic component imports used inside the entry factories
 vi.mock('../../components/Explorer/index.js', () => ({

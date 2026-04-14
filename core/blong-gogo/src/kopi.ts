@@ -1,6 +1,6 @@
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
-import {globSync} from 'glob';
 import {basename, dirname, join} from 'path';
+import {globSync} from 'tinyglobby';
 
 export async function createRealm(
     destUrl: string,

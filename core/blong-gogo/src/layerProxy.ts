@@ -10,20 +10,20 @@ import {
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.ts';
-import { enterConfigFactoryPhase, exitConfigFactoryPhase } from './ConfigRuntime.ts';
-import { camelToSentence, methodId, parseAnnotatedKey } from './lib.ts';
-import type { IPort } from './Port.ts';
+import {enterConfigFactoryPhase, exitConfigFactoryPhase} from './ConfigRuntime.ts';
+import {camelToSentence, methodId, parseAnnotatedKey} from './lib.ts';
+import type {IPort} from './Port.ts';
 
 export default function layerProxy(
-    errors: IErrorFactory,
-    apiSchema: IApiSchema,
-    port: () => void,
+    errors: IErrorFactory | undefined,
+    apiSchema: IApiSchema | undefined,
+    port: (() => void) | undefined,
     moduleConfig: {pkg: IModuleConfig['pkg']; base: string; configNames?: string[]},
 ): {result: unknown} {
     return new Proxy(
         {
-            error: errors.register.bind(errors),
-            result: {error: errors.get()},
+            error: errors?.register.bind(errors),
+            result: {error: errors?.get()},
             feature() {},
         },
         {
@@ -161,10 +161,7 @@ export default function layerProxy(
                                                     if (typeof handlerName !== 'string')
                                                         return undefined;
 
-                                                    function rename<T>(
-                                                        value: string,
-                                                        fn: T,
-                                                    ): T {
+                                                    function rename<T>(value: string, fn: T): T {
                                                         Object.defineProperty(fn, 'name', {
                                                             value,
                                                             configurable: true,
@@ -175,21 +172,15 @@ export default function layerProxy(
 
                                                     function resolveHandler(
                                                         resolvedName: string,
-                                                    ): (
-                                                        ...params: unknown[]
-                                                    ) => unknown {
+                                                    ): (...params: unknown[]) => unknown {
                                                         let fn: () => unknown;
                                                         const sentence =
-                                                            camelToSentence(
-                                                                resolvedName,
-                                                            );
+                                                            camelToSentence(resolvedName);
                                                         function nameSteps(
                                                             result: unknown,
                                                         ): unknown {
                                                             if (
-                                                                Array.isArray(
-                                                                    result,
-                                                                ) &&
+                                                                Array.isArray(result) &&
                                                                 !(result as {name?: string}).name
                                                             ) {
                                                                 Object.defineProperty(
@@ -197,21 +188,16 @@ export default function layerProxy(
                                                                     'name',
                                                                     {
                                                                         value: sentence,
-                                                                        configurable:
-                                                                            true,
+                                                                        configurable: true,
                                                                     },
                                                                 );
                                                             }
                                                             return result;
                                                         }
-                                                        if (
-                                                            port.handles?.(resolvedName)
-                                                        ) {
+                                                        if (port.handles?.(resolvedName)) {
                                                             return rename(
                                                                 resolvedName,
-                                                                function (
-                                                                    ...params: unknown[]
-                                                                ) {
+                                                                function (...params: unknown[]) {
                                                                     fn ||=
                                                                         port.findHandler(
                                                                             resolvedName,
@@ -226,18 +212,12 @@ export default function layerProxy(
                                                                             : undefined;
                                                                     if (
                                                                         $meta &&
-                                                                        typeof $meta ===
-                                                                            'object'
+                                                                        typeof $meta === 'object'
                                                                     ) {
-                                                                        attachCheckpoint?.(
-                                                                            $meta,
-                                                                        );
+                                                                        attachCheckpoint?.($meta);
                                                                     }
                                                                     return nameSteps(
-                                                                        fn.apply(
-                                                                            port,
-                                                                            params,
-                                                                        ),
+                                                                        fn.apply(port, params),
                                                                     );
                                                                 },
                                                             );
@@ -246,38 +226,24 @@ export default function layerProxy(
                                                     }
 
                                                     function wrapWithMeta(
-                                                        baseFn: (
-                                                            ...params: unknown[]
-                                                        ) => unknown,
-                                                        metaOverrides: Record<
-                                                            string,
-                                                            unknown
-                                                        >,
+                                                        baseFn: (...params: unknown[]) => unknown,
+                                                        metaOverrides: Record<string, unknown>,
                                                         aliasName?: string,
-                                                    ): (
-                                                        ...params: unknown[]
-                                                    ) => unknown {
+                                                    ): (...params: unknown[]) => unknown {
                                                         return rename(
                                                             aliasName || baseFn.name,
-                                                            function (
-                                                                ...params: unknown[]
-                                                            ) {
+                                                            function (...params: unknown[]) {
                                                                 const $meta =
                                                                     params.length > 1
                                                                         ? (params[1] as IMeta)
                                                                         : undefined;
                                                                 if (
                                                                     $meta &&
-                                                                    typeof $meta ===
-                                                                        'object'
+                                                                    typeof $meta === 'object'
                                                                 ) {
-                                                                    merge(
-                                                                        $meta,
-                                                                        metaOverrides,
-                                                                    );
+                                                                    merge($meta, metaOverrides);
                                                                 }
-                                                                const result =
-                                                                    baseFn(...params);
+                                                                const result = baseFn(...params);
                                                                 if (
                                                                     Array.isArray(result) &&
                                                                     metaOverrides.name
@@ -287,8 +253,7 @@ export default function layerProxy(
                                                                         'name',
                                                                         {
                                                                             value: metaOverrides.name,
-                                                                            configurable:
-                                                                                true,
+                                                                            configurable: true,
                                                                         },
                                                                     );
                                                                 }
@@ -298,98 +263,70 @@ export default function layerProxy(
                                                     }
 
                                                     // Approach 2: Annotation syntax
-                                                    if (
-                                                        handlerName.startsWith('@')
-                                                    ) {
+                                                    if (handlerName.startsWith('@')) {
                                                         const parsed =
-                                                            parseAnnotatedKey(
-                                                                handlerName,
-                                                            );
-                                                        const baseFn =
-                                                            resolveHandler(
-                                                                parsed.handlerName,
-                                                            );
+                                                            parseAnnotatedKey(handlerName);
+                                                        const baseFn = resolveHandler(
+                                                            parsed.handlerName,
+                                                        );
                                                         const metaOverrides: Record<
                                                             string,
                                                             unknown
                                                         > = {};
                                                         for (const ann of parsed.annotations) {
-                                                            const hasKeyValue =
-                                                                ann.params.some(p =>
-                                                                    p.includes('='),
-                                                                );
+                                                            const hasKeyValue = ann.params.some(p =>
+                                                                p.includes('='),
+                                                            );
                                                             if (
                                                                 ann.params.length > 0 &&
                                                                 !hasKeyValue
                                                             ) {
                                                                 // Mode A: $meta injection
-                                                                metaOverrides[
-                                                                    ann.name
-                                                                ] =
-                                                                    ann.params.join(
-                                                                        ' ',
-                                                                    );
+                                                                metaOverrides[ann.name] =
+                                                                    ann.params.join(' ');
                                                             } else {
                                                                 // Mode B: config-object reference with deep merge
                                                                 const handlerConfig =
                                                                     mergedConfig?.handler as
-                                                                        | Record<
-                                                                              string,
-                                                                              unknown
-                                                                          >
+                                                                        | Record<string, unknown>
                                                                         | undefined;
                                                                 const configObj =
-                                                                    handlerConfig?.[
-                                                                        ann.name
-                                                                    ];
+                                                                    handlerConfig?.[ann.name];
                                                                 if (
                                                                     configObj &&
-                                                                    typeof configObj ===
-                                                                        'object'
+                                                                    typeof configObj === 'object'
                                                                 ) {
                                                                     merge(
                                                                         metaOverrides,
-                                                                        configObj as Record<string, unknown>,
+                                                                        configObj as Record<
+                                                                            string,
+                                                                            unknown
+                                                                        >,
                                                                     );
                                                                 }
                                                                 for (const p of ann.params) {
-                                                                    const eqIdx =
-                                                                        p.indexOf('=');
+                                                                    const eqIdx = p.indexOf('=');
                                                                     if (eqIdx > 0) {
                                                                         lib.setProperty(
                                                                             metaOverrides,
-                                                                            p.slice(
-                                                                                0,
-                                                                                eqIdx,
-                                                                            ),
-                                                                            p.slice(
-                                                                                eqIdx + 1,
-                                                                            ),
+                                                                            p.slice(0, eqIdx),
+                                                                            p.slice(eqIdx + 1),
                                                                         );
                                                                     }
                                                                 }
                                                             }
                                                         }
-                                                        return wrapWithMeta(
-                                                            baseFn,
-                                                            metaOverrides,
-                                                        );
+                                                        return wrapWithMeta(baseFn, metaOverrides);
                                                     }
 
                                                     // Resolve handler (local or remote)
-                                                    const resolved =
-                                                        resolveHandler(handlerName);
+                                                    const resolved = resolveHandler(handlerName);
 
                                                     // Approach 1: Wrap with naming proxy for sub-property destructuring
                                                     return new Proxy(resolved, {
-                                                        get(
-                                                            proxyTarget,
-                                                            prop,
-                                                            receiver,
-                                                        ) {
+                                                        get(proxyTarget, prop, receiver) {
                                                             if (
-                                                                typeof prop !==
-                                                                    'string' ||
+                                                                typeof prop !== 'string' ||
                                                                 prop in proxyTarget
                                                             ) {
                                                                 return Reflect.get(
@@ -403,18 +340,12 @@ export default function layerProxy(
                                                                     ...params: unknown[]
                                                                 ) => unknown,
                                                                 {
-                                                                    name: camelToSentence(
-                                                                        prop,
-                                                                    ),
+                                                                    name: camelToSentence(prop),
                                                                 },
                                                                 prop,
                                                             );
                                                         },
-                                                        apply(
-                                                            proxyTarget,
-                                                            thisArg,
-                                                            args,
-                                                        ) {
+                                                        apply(proxyTarget, thisArg, args) {
                                                             return Reflect.apply(
                                                                 proxyTarget,
                                                                 thisArg,

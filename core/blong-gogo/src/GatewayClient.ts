@@ -1,6 +1,5 @@
 import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta} from '@feasibleone/blong/types';
 import ky from 'ky';
-import {spare} from 'ut-function.timing';
 
 import Remote from './Remote.ts';
 
@@ -70,7 +69,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
                         id: 1,
                         ...($meta.timeout &&
                             $meta.timeout[0] && {
-                                timeout: spare($meta.timeout, this.#config.latency),
+                                timeout: this.spare($meta.timeout, this.#config.latency),
                             }),
                         params,
                     },

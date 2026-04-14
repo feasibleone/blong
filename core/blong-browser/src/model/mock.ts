@@ -19,40 +19,15 @@
  *   });
  *
  */
+import type {IMock} from '@feasibleone/blong';
 import {dropdownRegistry} from './dropdownRegistry.js';
 import {setFetchFn} from './schemaFetcher.js';
-import type {IDropdownOption} from './types.js';
-
-/** Mock OpenAPI document (minimal shape used by schemaFetcher) */
-export interface IMockOpenApiDoc {
-    paths?: Record<
-        string,
-        Record<
-            string,
-            {
-                operationId?: string;
-                requestBody?: {content?: {'application/json'?: {schema?: Record<string, unknown>}}};
-                responses?: {
-                    '200'?: {content?: {'application/json'?: {schema?: Record<string, unknown>}}};
-                };
-            }
-        >
-    >;
-    'x-ui-customizations'?: Record<string, Record<string, unknown>>;
-}
-
-export interface IModelMockOptions {
-    /** Mock OpenAPI documents keyed by subject name */
-    subjects?: Record<string, IMockOpenApiDoc>;
-    /** Pre-populated dropdown data keyed by dropdown name */
-    dropdowns?: Record<string, IDropdownOption[]>;
-}
 
 /**
  * Configure the model system to use mock data instead of HTTP fetches.
  * Call once during Storybook or test setup.
  */
-export function setupModelMock(options: IModelMockOptions = {}): void {
+export function setupModelMock(options: IMock = {}): void {
     const {subjects = {}, dropdowns = {}} = options;
 
     // Override the schema fetcher with a synchronous mock

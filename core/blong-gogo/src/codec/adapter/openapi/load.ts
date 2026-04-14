@@ -1,7 +1,5 @@
 import {library} from '@feasibleone/blong/types';
 
-import loadApi from '../../../loadApi.ts';
-
 const httpVerbs: string[] = ['post', 'put', 'patch', 'get', 'delete', 'options', 'head', 'trace'];
 const responseTypes = {
     'application/json': 'json',
@@ -9,13 +7,13 @@ const responseTypes = {
     'text/html': 'text',
 };
 export default library(
-    ({lib: {request}}) =>
+    ({lib: {request}, apiSchema}) =>
         async function load(config: object, pattern: RegExp | string, source: string) {
             const test =
                 pattern instanceof RegExp ? key => pattern.test(key) : key => key.includes(pattern);
             const handlers = {};
             for (const [namespace, locations] of Object.entries(config)) {
-                const bundle = await loadApi(locations, source);
+                const bundle = await apiSchema.loadApi(locations, source);
                 Object.entries(bundle.paths).forEach(
                     ([path, methods]: [string, typeof bundle.paths.foo]) =>
                         Object.entries(methods)

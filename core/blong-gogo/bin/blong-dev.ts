@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --watch --inspect
 
 import minimist from 'minimist';
-import {autoRun} from '../src/loadServer.ts';
+import {autoRun} from '../src/runServer.ts';
 
 const argv: {_: string[]} = minimist(process.argv.slice(2));
 

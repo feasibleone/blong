@@ -1,10 +1,10 @@
 import {MultiSelect} from '../primereact/index.js';
 
-import { useEffect, useState } from 'react';
-import { useBlongUi } from '../context/BlongUiContext.js';
-import { dropdownRegistry } from '../model/dropdownRegistry.js';
-import type { IDropdownOption } from '../model/types.js';
-import type { IWidgetProps } from '../types/widget.js';
+import type {IDropdownOption} from '@feasibleone/blong';
+import {useEffect, useState} from 'react';
+import {useBlongUi} from '../context/BlongUiContext.js';
+import {dropdownRegistry} from '../model/dropdownRegistry.js';
+import type {IWidgetProps} from '../types/widget.js';
 
 type SelectOption = IDropdownOption;
 
@@ -27,7 +27,12 @@ export function MultiSelectWidget({
     readOnly,
     disabled,
 }: IWidgetProps) {
-    const {fetch: fetchAction, options: staticOptions, dropdown: dropdownKey, type: widgetType} = schema.widget ?? {};
+    const {
+        fetch: fetchAction,
+        options: staticOptions,
+        dropdown: dropdownKey,
+        type: widgetType,
+    } = schema.widget ?? {};
     const {dispatch} = useBlongUi();
     const [options, setOptions] = useState<SelectOption[]>(
         staticOptions ? toOptions(staticOptions) : [],

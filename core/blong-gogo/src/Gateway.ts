@@ -8,13 +8,13 @@ import type {
     ILocal,
     ILog,
     IMeta,
+    IPlatformApi,
 } from '@feasibleone/blong/types';
 import {Internal} from '@feasibleone/blong/types';
 import fastify, {type FastifyRequest, type RouteOptions} from 'fastify';
 import os from 'os';
 import type {LevelWithSilent} from 'pino';
 import {Type, type TSchema} from 'typebox';
-import {after} from 'ut-function.timing';
 import {v4} from 'uuid';
 
 import type {IResolution} from './Resolution.ts';
@@ -154,6 +154,7 @@ export default class Gateway extends Internal implements IGateway {
     #local: ILocal;
     #errorFields: [string, unknown][] = [];
     #plugins: {plugin: unknown; options: unknown}[] = [];
+    #platform: IPlatformApi;
 
     public constructor(
         config: IConfig,
@@ -163,16 +164,20 @@ export default class Gateway extends Internal implements IGateway {
             error,
             resolution,
             local,
+            platform,
         }: {
             log?: ILog;
             error?: IErrorFactory;
             remote?: IRpcClient;
             local?: ILocal;
             resolution?: IResolution;
+            platform?: IPlatformApi;
         },
     ) {
         super({log});
         this.#log = log;
+        this.#platform = platform;
+
         this.merge(this.#config, config);
         this.#errorFields = Object.entries({
             type: true,
@@ -340,7 +345,9 @@ export default class Gateway extends Internal implements IGateway {
                                                           Type.Number(),
                                                       ]),
                                                       result: value.result,
-                                                      checkpoints: Type.Optional(Type.Array(Type.Any())),
+                                                      checkpoints: Type.Optional(
+                                                          Type.Array(Type.Any()),
+                                                      ),
                                                   }),
                                                   Type.Object({
                                                       // notification
@@ -402,7 +409,7 @@ export default class Gateway extends Internal implements IGateway {
                             mtid: !id ? 'notification' : 'request',
                             method: methodName,
                             opcode: methodName.split('.').pop(),
-                            ...(timeout && {timeout: after(timeout)}),
+                            ...(timeout && {timeout: this.#platform.timing.after(timeout)}),
                             ...(expect && {expect: [].concat(expect)}),
                             ...this._meta(request, pkg?.version, methodName.split('.')[0]),
                         };
@@ -441,11 +448,16 @@ export default class Gateway extends Internal implements IGateway {
                                 jsonrpc: '2.0',
                                 id,
                                 result,
-                                ...(resultMeta?.checkpoints?.length && {checkpoints: resultMeta.checkpoints}),
+                                ...(resultMeta?.checkpoints?.length && {
+                                    checkpoints: resultMeta.checkpoints,
+                                }),
                             };
                         }
                     } catch (error) {
-                        request.log.error({err: error, method: methodName}, 'gateway handler error');
+                        request.log.error(
+                            {err: error, method: methodName},
+                            'gateway handler error',
+                        );
                         this._applyMeta(
                             reply
                                 .header('x-envoy-decorator-operation', methodName)

@@ -2,7 +2,7 @@
  * Model defaults — fills in standard values for unspecified ModelSpec fields.
  *
  */
-import type {IModelSpec, IResolvedModelSpec} from './types.js';
+import type {IModelSpec, IResolvedModelSpec} from '@feasibleone/blong';
 
 /** Capitalise the first character of a string */
 function capital(s: string): string {
