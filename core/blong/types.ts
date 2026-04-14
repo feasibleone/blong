@@ -25,7 +25,7 @@ import {
 } from 'typebox';
 // import type {client} from 'node-vault';
 import type {ChokidarOptions, FSWatcherEventMap} from 'chokidar';
-import type {EventEmitter} from 'node:events';
+import type {EventEmitter} from 'events';
 import type {Dirent, StatSyncFn} from 'node:fs';
 import type {Duplex} from 'node:stream';
 import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
