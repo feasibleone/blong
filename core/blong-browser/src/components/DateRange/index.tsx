@@ -1,12 +1,10 @@
 /**
  * DateRange — date range picker with relative presets.
- * Matches ut-prime DateRange: button → OverlayPanel with calendars + preset list.
  *
  * value format: JSON string "[dateFrom, dateTo]" or a relative string like "now-1h".
  * onChange fires: { value: [Date, Date] }
  */
 import {Calendar, OverlayPanel} from '../../primereact/index.js';
-
 
 import React, {useRef, useState} from 'react';
 import {Button} from '../Button/index.js';
@@ -31,18 +29,18 @@ export interface IDateRangeProps {
 
 const PRESETS = [
     {from: 'now-30m', display: 'Last 30 minutes'},
-    {from: 'now-1h',  display: 'Last hour'},
+    {from: 'now-1h', display: 'Last hour'},
     {from: 'now-12h', display: 'Last 12 hours'},
     {from: 'now-24h', display: 'Last 24 hours'},
-    {from: 'now-1d',  display: 'Today'},
-    {from: 'now-2d',  display: 'Since yesterday'},
-    {from: 'now-7d',  display: 'Last 7 days'},
-    {from: 'now-1M',  display: 'Last month'},
-    {from: 'now-3M',  display: 'Last 3 months'},
-    {from: 'now-6M',  display: 'Last 6 months'},
-    {from: 'now-1y',  display: 'Last 12 months'},
-    {from: 'now-2y',  display: 'Last 2 years'},
-    {from: 'now-5y',  display: 'Last 5 years'},
+    {from: 'now-1d', display: 'Today'},
+    {from: 'now-2d', display: 'Since yesterday'},
+    {from: 'now-7d', display: 'Last 7 days'},
+    {from: 'now-1M', display: 'Last month'},
+    {from: 'now-3M', display: 'Last 3 months'},
+    {from: 'now-6M', display: 'Last 6 months'},
+    {from: 'now-1y', display: 'Last 12 months'},
+    {from: 'now-2y', display: 'Last 2 years'},
+    {from: 'now-5y', display: 'Last 5 years'},
 ];
 
 const RELATIVE_RE = /^now-(\d+)(m|h|d|M|y)$/;
@@ -95,10 +93,18 @@ function computeRelative(relVal: string, exclusive: boolean, timeOnly: boolean):
 
 function formatDate(date: Date | undefined, timeOnly: boolean): string {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '---';
-    if (timeOnly) return date.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    if (timeOnly)
+        return date.toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
     return date.toLocaleString(undefined, {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
     });
 }
 
@@ -131,8 +137,8 @@ export function DateRange({
             setDisplayTo(t);
             onChange?.({value: [f, t]});
         }
-    // Only run when `value` identity changes (not on every render)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Only run when `value` identity changes (not on every render)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
 
     const openPanel = React.useCallback(
@@ -172,10 +178,15 @@ export function DateRange({
     const buttonLabel = (() => {
         if (!storedFrom && !storedTo) return 'Select period';
         if (
-            displayFrom && storedFrom && displayFrom.getTime() === storedFrom.getTime() &&
-            displayTo   && storedTo   && displayTo.getTime()   === storedTo.getTime()   &&
+            displayFrom &&
+            storedFrom &&
+            displayFrom.getTime() === storedFrom.getTime() &&
+            displayTo &&
+            storedTo &&
+            displayTo.getTime() === storedTo.getTime() &&
             displayText
-        ) return displayText;
+        )
+            return displayText;
         return 'Custom period';
     })();
 
@@ -196,7 +207,10 @@ export function DateRange({
             >
                 {buttonLabel}
             </Button>
-            <OverlayPanel ref={panelRef} showCloseIcon>
+            <OverlayPanel
+                ref={panelRef}
+                showCloseIcon
+            >
                 <div className="flex gap-3">
                     <div className="card">
                         <div className="field">
@@ -224,7 +238,11 @@ export function DateRange({
                                 showIcon
                             />
                         </div>
-                        <Button type="button" onClick={applyRange} disabled={!from || !to}>
+                        <Button
+                            type="button"
+                            onClick={applyRange}
+                            disabled={!from || !to}
+                        >
                             Apply Time Range
                         </Button>
                     </div>
@@ -234,7 +252,9 @@ export function DateRange({
                                 <div
                                     key={preset.from}
                                     className="blong-date-range__preset-item cursor-pointer p-2"
-                                    onClick={e => applyPreset(preset, e as unknown as React.SyntheticEvent)}
+                                    onClick={e =>
+                                        applyPreset(preset, e as unknown as React.SyntheticEvent)
+                                    }
                                 >
                                     {preset.display}
                                 </div>

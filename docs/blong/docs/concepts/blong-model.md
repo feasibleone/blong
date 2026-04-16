@@ -14,20 +14,15 @@ For usage patterns see [Schema based UI](../patterns/blong-model.md).
 
 ## Role in the Architecture
 
-```
+```text
 Realm
   └── model/
         ├── coral.ts        ← IModelSpec declaration
         ├── family.ts
-        ├── index.ts        ← exports array of all models
         └── mock.ts         ← Storybook/test mock data
-  └── component/
-        └── index.ts        ← createModelHandlers(models) ← one line
 ```
 
-The `createModelHandlers()` factory consumes the model array and returns
-a `componentHandler` compatible with the blong portal orchestrator. Each
-model entry produces four discoverable page handlers:
+Each model entry produces four discoverable page handlers:
 
 | Handler name                | Page type | Component |
 | --------------------------- | --------- | --------- |
@@ -48,9 +43,9 @@ It has three concerns:
 
 ### 1. Identity
 
-```
+```text
 subject.object   →  "marine.coral"
-objectTitle      →  "Coral"    (defaults to capitalised object)
+objectTitle      →  "Coral"    (defaults to capitalized object)
 keyField         →  "coralId"  (defaults to ${object}Id)
 ```
 
@@ -85,7 +80,7 @@ Fields not mentioned in the overlay receive server-schema defaults.
 
 ## Schema Flow
 
-```
+```text
 Server TypeBox schema
        │
        ▼
@@ -138,7 +133,7 @@ mock OpenAPI schema and dropdown data for that realm's entities.
 
 The model system is a *convenience layer* built on top of the same components
 that are available for direct use. When a page requires custom logic that the
-model cannot express, a realm can bypass `createModelHandlers()` and write a
+model cannot express, a realm can bypass `modelFactory()` and write a
 component handler that uses `Editor`, `Explorer`, or `Report` directly.
 
 The model handles the 80 % case. The remaining 20 % uses the underlying

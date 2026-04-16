@@ -1,6 +1,6 @@
 # Schema based UI
 
-How to define model specs and use `createModelHandlers` in a realm.
+How to define model specs in a realm.
 
 See [Model System](../concepts/blong-model.md) for the concept overview
 and the blong-model skill for agent assistance with model development.
@@ -11,16 +11,13 @@ and the blong-model skill for agent assistance with model development.
 
 Each realm that uses the model system organises its model in a dedicated folder:
 
-```
+```text
 marine/
-  component/
-    index.ts          ← createModelHandlers(models)
   model/
     coral.ts          ← IModelSpec for coral entity
     family.ts
     habitat.ts
     species.ts
-    index.ts          ← export default [coral, family, habitat, species]
     mock.ts           ← Storybook / test mock data
 ```
 
@@ -30,12 +27,12 @@ marine/
 
 ```typescript
 // marine/model/coral.ts
-import type {IModelSpec} from '@feasibleone/blong-browser';
+import {model} from '@feasibleone/blong';
 
-const coral: IModelSpec = {
+export default model(() => ({
     subject: 'marine',
     object:  'coral',
-    objectTitle: 'Coral',   // defaults to capitalised 'object'
+    objectTitle: 'Coral',   // defaults to capitalized 'object'
     keyField: 'coralId',    // defaults to '${object}Id'
 
     // Browser-side schema overlay (merged on top of server OpenAPI schema)
@@ -89,39 +86,8 @@ const coral: IModelSpec = {
             delete: 'marine.coral.remove',
         },
     },
-};
-
-export default coral;
+}));
 ```
-
----
-
-## Model Index
-
-```typescript
-// marine/model/index.ts
-import coral   from './coral.js';
-import family  from './family.js';
-import habitat from './habitat.js';
-import species from './species.js';
-
-export default [coral, family, habitat, species];
-```
-
----
-
-## Component Handler
-
-```typescript
-// marine/component/index.ts
-import {createModelHandlers} from '@feasibleone/blong-browser';
-import models from '../model/index.js';
-
-export default createModelHandlers(models);
-```
-
-This single line registers all Browse / New / Open / Report page handlers
-for all entities in the model array.
 
 ---
 
@@ -174,25 +140,6 @@ export const marineMock: IModelMockOptions = {
     },
 };
 ```
-
-### Using the mock in a Storybook story
-
-```typescript
-// marine/component/CoralBrowse.stories.tsx
-import {setupModelMock, teardownModelMock} from '@feasibleone/blong-browser';
-import {marineMock} from '../model/mock.js';
-import {createModelHandlers} from '@feasibleone/blong-browser';
-import models from '../model/index.js';
-
-// Setup once per Storybook run (e.g. in .storybook/preview.ts)
-setupModelMock(marineMock);
-
-// Or in a beforeAll / afterAll for tests
-beforeAll(() => setupModelMock(marineMock));
-afterAll(() => teardownModelMock());
-```
-
----
 
 ## Schema Overlay Reference
 
@@ -251,7 +198,7 @@ browser: {
 
 ## Method Name Overrides
 
-By default, `createModelHandlers` infers method names from
+By default, `modelFactory` infers method names from
 `{subject}.{object}.{verb}`. To override:
 
 ```typescript

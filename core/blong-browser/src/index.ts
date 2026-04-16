@@ -109,9 +109,9 @@ export type {ILayoutResult, IResolvedCard, LayoutConfig} from './hooks/useLayout
 
 // ── Model system ─────────────────────────────────────────────────────────────
 export {
-    createModelHandlers,
     dropdownRegistry,
     getObjectSchema,
+    modelFactory,
     setupModelMock,
     teardownModelMock,
     withDefaults,
@@ -132,3 +132,5 @@ export type {
     ISchemaOverlay,
     IWidgetOverride,
 } from './model/index.js';
+
+export {Model} from './model/Model.js';

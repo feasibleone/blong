@@ -129,7 +129,7 @@ export interface IMethodsConfig {
 /**
  * ModelSpec — the browser-side description of one "subject.object" domain entity.
  *
- * Used by createModelHandlers() to auto-generate Browse/New/Open/Report pages.
+ * Used by modelFactory() to auto-generate Browse/New/Open/Report pages.
  */
 export interface IModelSpec {
     /** Namespace / subject, e.g. 'marine', 'rule' */
@@ -161,7 +161,7 @@ export interface IModelSpec {
     methods?: IMethodsConfig;
 }
 
-/** Model spec as accepted by createModelHandlers — objectTitle/keyField/nameField are optional */
+/** Model spec as accepted by modelFactory — objectTitle/keyField/nameField are optional */
 export type IPartialModelSpec = IModelSpec;
 
 /** Fully resolved model spec — all defaults filled in */

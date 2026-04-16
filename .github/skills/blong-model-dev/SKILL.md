@@ -2,9 +2,9 @@
 name: blong-model-dev
 description: >
     Develop, extend, debug, or improve the blong-browser model system internals. The model system
-    lives in `core/blong-browser/src/model/` and provides the `createModelHandlers()` factory that
+    lives in `core/blong-browser/src/model/` and provides the `modelFactory()` factory that
     auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill when
-    working on the model system itself: createModelHandlers, entry files
+    working on the model system itself: modelFactory, entry files
     (subjectObjectBrowse/New/Open/Report), IModelSpec types, withDefaults, schemaFetcher,
     dropdownRegistry, or the mock system. For using the model to build realm pages, use the
     blong-model skill instead.
@@ -34,7 +34,7 @@ core/blong-browser/src/model/
   defaults.ts             ← withDefaults() — fills in standard values for partial specs
   schemaFetcher.ts        ← Per-subject OpenAPI fetch + overlay merge + cache
   dropdownRegistry.ts     ← On-demand dropdown load + deduplication + cache
-  createModelHandlers.ts  ← componentHandler factory — the public entry point
+  modelFactory.ts         ← model factory — the public entry point
   mock.ts                 ← setupModelMock() / teardownModelMock() for Storybook/tests
   index.ts                ← Public re-exports
   entries/
@@ -238,12 +238,12 @@ export function subjectObjectBrowse(
 
 ---
 
-## `createModelHandlers.ts`
+## `modelFactory.ts`
 
 The public factory exported from `@feasibleone/blong-browser`.
 
 ```typescript
-createModelHandlers(models: IModelSpec[]): ReturnType<typeof componentHandler>
+modelFactory(models: IModelSpec[]): ReturnType<typeof componentHandler>
 ```
 
 For each model:
@@ -289,7 +289,7 @@ these, implement it as part of the model:
 
 3. **Dropdown preload on browse** — The browse page does not preload dropdowns for filter fields
    (only the old `browseEntry.ts` version did; the current `subjectObjectBrowse.ts` does not). The
-   `dropdownNames` discovery should be re-added to `createModelHandlers.ts` and passed to
+   `dropdownNames` discovery should be re-added to `modelFactory.ts` and passed to
    `subjectObjectBrowse`.
 
 4. **Custom browse columns configuration** — The `IBrowserConfig.columns` property exists in types
@@ -309,7 +309,7 @@ these, implement it as part of the model:
    extracted by `schemaFetcher` but not yet merged into the cards/layouts on the model pages.
 
 9. **Storybook stories for model pages** — No Storybook stories exist that use `setupModelMock` +
-   `createModelHandlers` to render the generated pages. These are needed for visual verification and
+   `modelFactory` to render the generated pages. These are needed for visual verification and
    regression testing.
 
 ---

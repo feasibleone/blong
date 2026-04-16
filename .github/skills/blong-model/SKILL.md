@@ -4,7 +4,7 @@ description: >
     Use the blong-browser model system to implement CRUD pages in a blong realm or suite. The model
     system generates Browse/New/Open/Report pages automatically from IModelSpec declarations. Use
     this skill whenever a realm needs to contribute UI pages for domain entities using
-    createModelHandlers — even if the user just says "add list and edit pages for this entity" or
+    modelFactory — even if the user just says "add list and edit pages for this entity" or
     "wire up the UI for this API". For developing or improving the model system internals, use
     blong-model-dev instead.
 ---
@@ -29,17 +29,12 @@ For developing the model system internals, use the **blong-model-dev** skill.
 
 ## Quick Summary
 
-Add `model/` + `component/index.ts` to your realm. One `createModelHandlers(models)` call registers
-all Browse / New / Open / Report pages for all entities.
+Add a model folder with model definitions to a realm:
 
 ```
 realm/
   model/
-    entity.ts          ← IModelSpec
-    index.ts           ← export default [entity, ...]
-    mock.ts            ← Storybook/test mock data
-  component/
-    index.ts           ← createModelHandlers(models)  ← single line
+    coral.ts        <-- IModelSpec for the "coral" entity
 ```
 
 ---
@@ -48,9 +43,9 @@ realm/
 
 ```typescript
 // marine/model/coral.ts
-import type {IModelSpec} from '@feasibleone/blong-browser';
+import {model} from '@feasibleone/blong';
 
-const coral: IModelSpec = {
+export default model(() => ({
     subject: 'marine',
     object: 'coral',
 
@@ -91,9 +86,7 @@ const coral: IModelSpec = {
             delete: 'marine.coral.remove',
         },
     },
-};
-
-export default coral;
+}));
 ```
 
 Minimal valid spec — only `subject` and `object` are required; everything else falls back to
@@ -101,34 +94,7 @@ defaults based on the naming convention.
 
 ---
 
-## Step 2 — Index File
-
-```typescript
-// marine/model/index.ts
-import coral from './coral.js';
-import family from './family.js';
-
-export default [coral, family];
-```
-
----
-
-## Step 3 — Component Handler
-
-```typescript
-// marine/component/index.ts
-import {createModelHandlers} from '@feasibleone/blong-browser';
-import models from '../model/index.js';
-
-export default createModelHandlers(models);
-```
-
-This file is the complete component handler for the realm. The portal orchestrator discovers it
-automatically (file is in the `component/` layer).
-
----
-
-## Step 4 — Menu Wiring
+## Step 2 — Menu Wiring
 
 Add a `.portal` file to register menu items:
 
@@ -155,7 +121,7 @@ export default handler(({handler: {portalMenuItem}}) => ({
 
 ---
 
-## Step 5 — Mock for Storybook / Tests
+## Step 3 — Mock for Storybook / Tests
 
 ```typescript
 // marine/model/mock.ts

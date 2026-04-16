@@ -20,7 +20,7 @@ export default handler(
 
             const dispatch = (method: string, rpcParams: Record<string, unknown> = {}) =>
                 (proxy as unknown as Record<string, (p: unknown) => Promise<unknown>>)[method](
-                    rpcParams,
+                    rpcParams ?? {},
                 );
 
             const root = ReactDOM.createRoot(rootEl);

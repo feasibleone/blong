@@ -21,7 +21,7 @@
  * Product area (above) and org brand area (below) both receive `1fr` height,
  * keeping the card centred regardless of their content size.
  *
- * Registration mechanism — mirrors ut-prime's `registrationPage` pattern:
+ * Registration mechanism:
  *   Pass `registerPage` (an action name) and the framework dispatches
  *   `portal.component.get` when the Register button is clicked.
  *   The resolved component replaces the login form.
@@ -57,7 +57,6 @@ export interface ILoginProps {
     /**
      * Pluggable React component rendered above the brand area,
      * e.g. for tenant banners, announcements, or extra branding.
-     * Mirrors ut-prime's `loginTitleComponent` prop.
      */
     titleComponent?: React.ComponentType;
     /**
@@ -77,7 +76,6 @@ export interface ILoginProps {
     /**
      * Action name dispatched as `portal.component.get` when the Register button is
      * clicked.  The resolved component is shown in place of the login form.
-     * Mirrors ut-prime's `registrationPage` prop.
      *
      * When set, a "Register" button appears in the top-right corner.
      */
@@ -126,30 +124,54 @@ export function Login({
     const handleCredentials = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!username.trim()) { setError('Username is required'); return; }
-        if (!password.trim()) { setError('Password is required'); return; }
+        if (!username.trim()) {
+            setError('Username is required');
+            return;
+        }
+        if (!password.trim()) {
+            setError('Password is required');
+            return;
+        }
         setLoading(true);
-        try { await onLogin({username, password}); }
-        catch (err) { setError(String((err as Error).message ?? err)); }
-        finally { setLoading(false); }
+        try {
+            await onLogin({username, password});
+        } catch (err) {
+            setError(String((err as Error).message ?? err));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleOtp = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!otp.trim()) { setError('OTP is required'); return; }
+        if (!otp.trim()) {
+            setError('OTP is required');
+            return;
+        }
         setLoading(true);
-        try { await onOtp?.(otp); }
-        catch (err) { setError(String((err as Error).message ?? err)); }
-        finally { setLoading(false); }
+        try {
+            await onOtp?.(otp);
+        } catch (err) {
+            setError(String((err as Error).message ?? err));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleNewPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (newPassword !== confirmPassword) { setError('Passwords do not match'); return; }
+        if (newPassword !== confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
         setLoading(true);
-        try { await onNewPassword?.({newPassword, confirmPassword}); }
-        catch (err) { setError(String((err as Error).message ?? err)); }
-        finally { setLoading(false); }
+        try {
+            await onNewPassword?.({newPassword, confirmPassword});
+        } catch (err) {
+            setError(String((err as Error).message ?? err));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleRegister = async () => {
@@ -157,7 +179,9 @@ export function Login({
         try {
             const comp = await dispatch('portal.component.get', {page: registerPage});
             if (comp) setRegisterComp(() => comp as React.ComponentType);
-        } catch { /* ignore — dispatch may show its own error */ }
+        } catch {
+            /* ignore — dispatch may show its own error */
+        }
     };
 
     // ── Registration view ────────────────────────────────────────────────────
@@ -210,10 +234,8 @@ export function Login({
                         ) : (
                             <i className={`blong-login__brand-icon ${logoIcon}`} />
                         )}
-                        {title && (
-                            <span className="blong-login__brand-name">{title}</span>
-                    )}
-                </div>
+                        {title && <span className="blong-login__brand-name">{title}</span>}
+                    </div>
                 )}
             </div>
 
@@ -235,7 +257,10 @@ export function Login({
                         onSubmit={e => void handleCredentials(e)}
                     >
                         <div className="blong-field">
-                            <label htmlFor="login-username" className="blong-field__label">
+                            <label
+                                htmlFor="login-username"
+                                className="blong-field__label"
+                            >
                                 Username
                             </label>
                             <InputText
@@ -249,7 +274,10 @@ export function Login({
                             />
                         </div>
                         <div className="blong-field">
-                            <label htmlFor="login-password" className="blong-field__label">
+                            <label
+                                htmlFor="login-password"
+                                className="blong-field__label"
+                            >
                                 Password
                             </label>
                             <Password
@@ -281,7 +309,10 @@ export function Login({
                             Enter the one-time password sent to your device.
                         </p>
                         <div className="blong-field">
-                            <label htmlFor="login-otp" className="blong-field__label">
+                            <label
+                                htmlFor="login-otp"
+                                className="blong-field__label"
+                            >
                                 One-Time Password
                             </label>
                             <InputText
@@ -310,7 +341,10 @@ export function Login({
                             Your password has expired. Please set a new password.
                         </p>
                         <div className="blong-field">
-                            <label htmlFor="login-new-pass" className="blong-field__label">
+                            <label
+                                htmlFor="login-new-pass"
+                                className="blong-field__label"
+                            >
                                 New Password
                             </label>
                             <Password
@@ -322,7 +356,10 @@ export function Login({
                             />
                         </div>
                         <div className="blong-field">
-                            <label htmlFor="login-confirm-pass" className="blong-field__label">
+                            <label
+                                htmlFor="login-confirm-pass"
+                                className="blong-field__label"
+                            >
                                 Confirm Password
                             </label>
                             <Password
@@ -340,14 +377,14 @@ export function Login({
                             className="blong-login__submit"
                         />
                     </form>
-                    )}
+                )}
             </div>
 
             {/* Org brand area — 1fr row below the card, same height as product area */}
             <div className="blong-login__bottom">
                 {OrgComponent ? (
                     <OrgComponent />
-                ) : (orgTitle || orgLogoUrl || orgIcon) ? (
+                ) : orgTitle || orgLogoUrl || orgIcon ? (
                     <div className="blong-login__org-brand">
                         {orgLogoUrl ? (
                             <img

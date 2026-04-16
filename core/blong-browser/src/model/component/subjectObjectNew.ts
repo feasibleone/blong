@@ -1,20 +1,17 @@
-import type {IResolvedModelSpec} from '@feasibleone/blong';
+import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
 import type {LayoutConfig} from '../../hooks/useLayout.js';
 import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
 
-export function subjectObjectNew(
-    model: IResolvedModelSpec,
-    loadSchema: () => Promise<IEnrichedSchema>,
-) {
-    const {objectTitle, browser, methods} = model;
+export function subjectObjectNew(model: IResolvedModelSpec) {
+    const {objectTitle, browser, methods, subject, object} = model;
 
-    return async () => ({
+    return async (blong: Pick<IHandlerProxy<{}>, 'handler'>) => ({
         title: `Create ${objectTitle}`,
         permission: browser.permission.add,
         icon: 'pi pi-plus',
-        component: async () => {
+        component: async (params: object) => {
             const [schema, {Editor}] = await Promise.all([
-                loadSchema(),
+                blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Editor/index.js'),
             ]);
 

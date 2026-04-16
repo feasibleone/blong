@@ -132,7 +132,6 @@ function PortalApp({tabs, menuConfig}: {tabs: ITab[]; menuConfig?: IPortalConfig
 
 /**
  * MarineTitleComponent — pluggable header slot above the brand area.
- * Mirrors ut-prime's ExtraTitleComponent / loginTitleComponent.
  */
 function MarineTitleComponent() {
     return (
@@ -192,7 +191,6 @@ function MarineOrgComponent() {
 /**
  * LoginPageWithTitle — demonstrates the `titleComponent` slot (product area) above the brand
  * and the `orgComponent` slot (org brand area) below — both equal-height to keep the card centred.
- * Mirrors ut-prime's "Register With Title" / BasicWithExtraTitleComponent stories.
  */
 function LoginPageWithTitle(_: {dispatch: DispatchFn}) {
     return (
@@ -215,7 +213,6 @@ function LoginPageWithTitle(_: {dispatch: DispatchFn}) {
  * - Clicking it dispatches `portal.component.get` with page `'user.selfRegistration'`.
  * - The global dispatch mock returns a placeholder registration form for page names
  *   ending in 'Registration' / 'Register' / 'SelfRegister'.
- * Mirrors ut-prime's `registrationPage` + componentMiddleware story pattern.
  */
 function LoginPageWithRegister(_: {dispatch: DispatchFn}) {
     return (
@@ -348,8 +345,7 @@ export const Login: Story = {
 
 /**
  * LoginWithTitle — login screen with the pluggable `titleComponent` slot above
- * the brand area.  Mirrors ut-prime's "Register With Title" story pattern:
- * pass `loginTitleComponent` to show tenant-specific content above the logo.
+ * the brand area.
  */
 export const LoginWithTitle: Story = {
     parameters: {loginComponent: LoginPageWithTitle},
@@ -367,7 +363,6 @@ LoginWithTitle.storyName = 'Login With Title';
  * Clicking Register dispatches `portal.component.get` with page `'user.selfRegistration'`.
  * The global mock returns a placeholder registration component for page names
  * ending with 'Registration', 'Register', or 'SelfRegister'.
- * Mirrors ut-prime's `registrationPage` + `componentMiddleware` pattern.
  */
 export const LoginWithRegister: Story = {
     parameters: {loginComponent: LoginPageWithRegister},

@@ -1,32 +1,8 @@
-import type { Preview } from '@storybook/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import 'primeicons/primeicons.css';
-import { PrimeReactProvider } from 'primereact/api';
-import 'primereact/resources/primereact.min.css';
-import 'primereact/resources/themes/lara-light-blue/theme.css';
+import {makePreview} from '@feasibleone/blong-browser/storybook.ts';
 
-const queryClient = new QueryClient({
-    defaultOptions: {queries: {retry: false}},
-});
+import coral from '../marine/model/coral.js';
+import family from '../marine/model/family.js';
+import habitat from '../marine/model/habitat.js';
+import species from '../marine/model/species.js';
 
-const preview: Preview = {
-    decorators: [
-        Story => (
-            <QueryClientProvider client={queryClient}>
-                <PrimeReactProvider>
-                    <div style={{padding: '1rem'}}>
-                        <Story />
-                    </div>
-                </PrimeReactProvider>
-            </QueryClientProvider>
-        ),
-    ],
-    parameters: {
-        actions: {argTypesRegex: '^on[A-Z].*'},
-        controls: {
-            matchers: {color: /(background|color)$/i, date: /Date$/},
-        },
-    },
-};
-
-export default preview;
+export default makePreview({models: [coral(), family(), habitat(), species()]});

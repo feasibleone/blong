@@ -6,8 +6,8 @@ description: >
     whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal
     navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser
     adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show
-    this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill.
-    For developing or improving the model system itself, use the blong-browser-model-dev skill. For
+    this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For
+    developing or improving the model system itself, use the blong-browser-model-dev skill. For
     using the model to implement CRUD pages in a realm, use the blong-browser-model skill.
 ---
 
@@ -210,12 +210,13 @@ a popup anchored to the Save button.
 states. The widget enters an error visual state.
 
 **Validation message translation:** Validation messages use `{field}` placeholder templates. The
-field name is resolved to its translated label at render time. For full details, see the **blong-i18n** skill.
+field name is resolved to its translated label at render time. For full details, see the
+**blong-i18n** skill.
 
 ### Internationalisation (i18n)
 
-blong-browser has a lightweight string-translation system built on `appStore`. For the full
-details — Text component, Button auto-translation, setTranslations/setLanguage, PrimeReact locale
+blong-browser has a lightweight string-translation system built on `appStore`. For the full details
+— Text component, Button auto-translation, setTranslations/setLanguage, PrimeReact locale
 registration, Storybook `lang` arg, and test patterns — see the **blong-i18n** skill.
 
 **Key rule:** Wrap every user-visible string in `<Text>` so it participates in translation. Always
@@ -416,9 +417,12 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 
 ## Adapters and orchestrators
 
-- **`adapter/backend.ts`** (`backend` namespace) — HTTP JSON-RPC via `adapter.http` + `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go through this adapter.
+- **`adapter/backend.ts`** (`backend` namespace) — HTTP JSON-RPC via `adapter.http` +
+  `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go through this adapter.
 - **`adapter/storage.ts`** (`storage` namespace) — browser storage via `adapter.dispatch`.
-- **`orchestrator/portal.ts`** (`portal.*`) — imports handlers matching `/\.component$/`, `/\.portal$/`, `/\.actions?$/`. Realms contribute pages and actions by naming files with these suffixes.
+- **`orchestrator/portal.ts`** (`portal.*`) — imports handlers matching `/\.component$/`,
+  `/\.portal$/`, `/\.actions?$/`. Realms contribute pages and actions by naming files with these
+  suffixes.
 - **`orchestrator/auth.ts`** (`auth.*`) — `authLogin`, `authLogout`, `authSessionGet`.
 
 ---
@@ -458,9 +462,9 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 ## Schema registry
 
 `schemaRegistry` fetches `/openapi.json` on first use and caches enriched schemas per component
-name. `useBlongUi().schemaRegistry.resolve('ModelName')` returns an `IEnrichedSchema`. Widget
-config (`x-widget`) drives: widget type resolution, validation rules, label display, required
-marker, and layout inference.
+name. `useBlongUi().schemaRegistry.resolve('ModelName')` returns an `IEnrichedSchema`. Widget config
+(`x-widget`) drives: widget type resolution, validation rules, label display, required marker, and
+layout inference.
 
 ---
 
@@ -511,14 +515,14 @@ ToolbarBG.args = {lang: 'bg'};
 
 **Toast notifications:** The global `withDispatch` decorator shows a success toast after mutations
 (excludes `portal.dropdown.list` and methods ending with `Get/Load/Find/List/Fetch`). Control per
-story via `decorators: [withDispatch({}, {notify: false})]` (suppress),
-`{notify: ['method.name']}` (specific), or `{notify: true}` (all).
+story via `decorators: [withDispatch({}, {notify: false})]` (suppress), `{notify: ['method.name']}`
+(specific), or `{notify: true}` (all).
 `NotifyConfig = boolean | string[] | ((method: string) => boolean)`.
 
 **`play()` functions:** Use the modern Storybook 10 pattern — `canvas` and `userEvent` are provided
 as play context args (`canvas` is pre-scoped, no need for `within`). Run play functions in unit
-tests by passing `{canvas: within(container), userEvent}`. For translated stories, see **blong-i18n**
-for which labels are translated and which aren't.
+tests by passing `{canvas: within(container), userEvent}`. For translated stories, see
+**blong-i18n** for which labels are translated and which aren't.
 
 ```ts
 MyStory.play = async ({canvas, userEvent}) => {
@@ -570,17 +574,17 @@ way.
 ## Related skills and documentation
 
 - **blong-browser-model-dev** — Use when developing or improving `src/model/` internals
-  (createModelHandlers, entry files, schemaFetcher, dropdownRegistry, types, defaults, mock).
+  (modelFactory, entry files, schemaFetcher, dropdownRegistry, types, defaults, mock).
 - **blong-browser-model** — Use when a realm needs to define `IModelSpec` objects and use
-  `createModelHandlers` to generate CRUD pages.
+  `modelFactory` to generate CRUD pages.
 - **blong-i18n** — Use when adding multi-language support, translating labels or validation
   messages, wiring PrimeReact locale, or adding a `lang` story arg.
 
 Documentation:
 
-- [Browser UI concept](../../docs/blong/docs/concepts/browser-ui.md)
-- [blong-browser Model concept](../../docs/blong/docs/concepts/blong-browser-model.md)
-- [Editor Features](../../docs/blong/docs/concepts/editor-features.md)
-- [blong-browser Pattern](../../docs/blong/docs/patterns/blong-browser.md)
-- [blong-browser Model Pattern](../../docs/blong/docs/patterns/blong-browser-model.md)
-- [Metadata-Driven UI rationale](../../docs/blong/docs/rationale/metadata-driven-ui.md)
+- [Browser UI concept](../../../docs/blong/docs/concepts/browser-ui.md)
+- [blong-browser Model concept](../../../docs/blong/docs/concepts/blong-model.md)
+- [Editor Features](../../../docs/blong/docs/concepts/editor-features.md)
+- [blong-browser Pattern](../../../docs/blong/docs/patterns/blong-browser.md)
+- [blong-browser Model Pattern](../../../docs/blong/docs/patterns/blong-model.md)
+- [Metadata-Driven UI rationale](../../../docs/blong/docs/rationale/metadata-driven-ui.md)

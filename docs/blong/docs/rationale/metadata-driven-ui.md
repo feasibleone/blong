@@ -297,7 +297,7 @@ for server-side inter-realm communication.
 
 ### 8. Model-Driven CRUD Factory
 
-For the common 80 % of CRUD screens, the `createModelHandlers()`
+For the common 80 % of CRUD screens, the `modelFactory()`
 function accepts an array of `IModelSpec` objects and automatically
 generates Browse / New / Open / Report pages for each entity.
 This eliminates the need to write individual page components for standard

@@ -32,6 +32,7 @@
             "types": "./dist/storybook.d.ts",
             "development": "./src/storybook.ts"
         },
+        "./storybook.ts": "./storybook.ts",
         "./package.json": "./package.json"
     },
     "main": "./dist/blong-browser.es.js",

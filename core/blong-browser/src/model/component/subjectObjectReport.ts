@@ -1,20 +1,17 @@
-import type {IResolvedModelSpec} from '@feasibleone/blong';
+import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
 import type {IEnrichedSchema} from '../../types/widget.js';
 
-export function subjectObjectReport(
-    model: IResolvedModelSpec,
-    loadSchema: () => Promise<IEnrichedSchema>,
-) {
-    const {methods} = model;
+export function subjectObjectReport(model: IResolvedModelSpec) {
+    const {methods, subject, object} = model;
     const {title, permission} = model.report!;
 
-    return async () => ({
+    return async (blong: Pick<IHandlerProxy<{}>, 'handler'>) => ({
         title,
         permission,
         icon: 'pi pi-chart-bar',
         component: async () => {
             const [schema, {Report}] = await Promise.all([
-                loadSchema(),
+                blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Report/index.js'),
             ]);
 

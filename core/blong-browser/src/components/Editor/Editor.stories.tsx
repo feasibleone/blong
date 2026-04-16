@@ -192,7 +192,7 @@ ServerValidation.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 500));
 };
 
-/** Toolbar — custom buttons on the LEFT side beside save/reset; matches ut-prime pattern */
+/** Toolbar — custom buttons on the LEFT side beside save/reset */
 export const Toolbar: StoryFn = Template.bind({});
 Toolbar.args = {
     loadAction: 'treeTreeGet',

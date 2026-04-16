@@ -786,23 +786,15 @@ export const handler = <T = Record<string, unknown>, C = AdapterContext>(
  * The inner function should return a map whose keys are dot-notation method names
  * (e.g. `'coral.browse'`) and values are async functions that return component
  * metadata `{title, permission, icon, component: async () => ReactComponent}`.
- *
- * @example
- * ```ts
- * export default componentHandler(blong => function coralBrowse() {
- *   return {
- *     'coral.browse': async () => ({
- *       title: 'Browse Corals',
- *       permission: 'marine.coral.browse',
- *       component: async () => (await import('./CoralBrowse.js')).default,
- *     }),
- *   };
- * });
- * ```
  */
-export const componentHandler = <T = Record<string, unknown>, C = AdapterContext>(
-    definition: Definition<T, C>,
-): Definition<T, C> => Object.defineProperty(definition, Kind, {value: 'handler'});
+export interface IComponent {
+    [name: string]: {
+        title?: string;
+        permission?: string;
+        icon?: string;
+        component: (params: Record<string, unknown>) => Promise<unknown>;
+    };
+}
 
 /** Action definition for use with `defineActions`. */
 export interface IActionDef {
@@ -916,7 +908,6 @@ export const kind = (what: {[Kind]: Kinds | undefined}): Kinds => what[Kind] || 
 
 export default {
     handler,
-    componentHandler,
     defineActions,
     library,
     validation,

@@ -178,7 +178,6 @@ export const Children: Story = {
 
 /**
  * Grid — DataView card layout; useful for image-heavy or rich-content rows.
- * Mirrors ut-prime Explorer `Grid` story.
  */
 export const Grid: Story = {
     args: {
@@ -190,7 +189,6 @@ export const Grid: Story = {
 
 /**
  * GridFlex — compact horizontal cards (icon + fields side by side).
- * Mirrors ut-prime Explorer `GridFlex` story — 4 cards per row on desktop.
  */
 export const GridFlex: Story = {
     args: {
@@ -248,7 +246,6 @@ export const WithStaticData: Story = {
 };
 
 // ── Submit ─────────────────────────────────────────────────────────────────
-// Mirrors ut-prime's Submit story.
 // Demonstrates:
 //   • ${id}            — passes the keyField value of the current row
 //   • ${current}       — passes the entire current row

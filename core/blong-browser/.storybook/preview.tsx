@@ -1,9 +1,10 @@
-import type { Preview } from '@storybook/react-vite';
+import {IModelSpec} from '@feasibleone/blong';
+import type {Preview} from '@storybook/react-vite';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import 'primereact/resources/primereact.min.css';
 import 'primereact/resources/themes/vela-blue/theme.css';
-import { withDispatch } from './dispatch.js';
+import {withDispatch, type Handler} from './dispatch.js';
 
 // Ensure proper height propagation for fullscreen stories
 const style = document.createElement('style');
@@ -35,8 +36,14 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-const preview: Preview = {
-    decorators: [withDispatch()],
+export const makePreview = ({
+    overrides,
+    models,
+}: {
+    overrides?: Record<string, Handler>;
+    models?: IModelSpec[];
+}) => ({
+    decorators: [withDispatch(overrides, models)],
     parameters: {
         actions: {argTypesRegex: '^on[A-Z].*'},
         layout: 'fullscreen',
@@ -47,6 +54,7 @@ const preview: Preview = {
             },
         },
     },
-};
+});
 
+const preview: Preview = makePreview({});
 export default preview;

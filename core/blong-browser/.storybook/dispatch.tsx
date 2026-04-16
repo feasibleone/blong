@@ -27,12 +27,14 @@
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
 import React from 'react';
-import {App} from '../src/components/App/index.js';
-import {Hint} from '../src/components/Hint/index.js';
-import type {DispatchFn} from '../src/context/BlongUiContext.js';
-import {blongEvents} from '../src/lib/eventBus.js';
-import {useAppStore} from '../src/state/appStore.js';
-import type {IBlongError} from '../src/types/action.js';
+import { App } from '../src/components/App/index.js';
+import { Hint } from '../src/components/Hint/index.js';
+import type { DispatchFn } from '../src/context/BlongUiContext.js';
+import type { IModelSpec } from '../src/index.js';
+import { blongEvents } from '../src/lib/eventBus.js';
+import { modelFactoryMock } from '../src/model/modelFactoryMock.js';
+import { useAppStore } from '../src/state/appStore.js';
+import type { IBlongError } from '../src/types/action.js';
 
 /**
  * Controls which dispatch calls show a Storybook toast on success:
@@ -545,19 +547,40 @@ export const defaultHandlers: Record<string, Handler> = {
      * form placeholder — suitable for demonstrating the registration flow in
      * stories without a real backend.
      *
-     * Mirrors ut-prime's `componentMiddleware` story pattern.
      */
     'portal.component.get': params => {
         const page = params?.page as string | undefined;
-        if (page?.endsWith('Registration') || page?.endsWith('Register') || page?.endsWith('SelfRegister')) {
+        if (
+            page?.endsWith('Registration') ||
+            page?.endsWith('Register') ||
+            page?.endsWith('SelfRegister')
+        ) {
             const SelfRegistrationPlaceholder: React.FC = () => (
-                <div className="blong-login__card" style={{maxWidth: 400, marginTop: '2rem'}}>
+                <div
+                    className="blong-login__card"
+                    style={{maxWidth: 400, marginTop: '2rem'}}
+                >
                     <h3 style={{textAlign: 'center', marginBottom: '1rem'}}>Create Account</h3>
-                    <p style={{color: 'var(--text-color-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem'}}>
-                        Registration form placeholder.  Configure a <code>portal.component.get</code> dispatch
-                        handler for page <em>{page}</em> to provide the real registration form.
+                    <p
+                        style={{
+                            color: 'var(--text-color-secondary)',
+                            fontSize: '0.9rem',
+                            marginBottom: '1.5rem',
+                        }}
+                    >
+                        Registration form placeholder. Configure a <code>portal.component.get</code>{' '}
+                        dispatch handler for page <em>{page}</em> to provide the real registration
+                        form.
                     </p>
-                    <pre style={{fontSize: '0.75rem', background: 'var(--surface-hover)', padding: '0.75rem', borderRadius: '4px', overflow: 'auto'}}>
+                    <pre
+                        style={{
+                            fontSize: '0.75rem',
+                            background: 'var(--surface-hover)',
+                            padding: '0.75rem',
+                            borderRadius: '4px',
+                            overflow: 'auto',
+                        }}
+                    >
                         {`// In your dispatch overrides:\n'portal.component.get': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
                     </pre>
                 </div>
@@ -575,14 +598,36 @@ export const defaultHandlers: Record<string, Handler> = {
  * `overrides`.  Used internally by `withDispatch`; also exported for unit tests
  * that need a standalone dispatch without a React tree.
  */
-export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchFn {
+export function makeDispatch(
+    overrides: Record<string, Handler> = {},
+    models?: IModelSpec[],
+): DispatchFn {
     const handlers = {...defaultHandlers, ...overrides};
-    return async (method, params) => {
+    let modelHandlers: Promise<Record<string, unknown>>;
+    const result = async (method: string, params?: Record<string, unknown>) => {
+        debugger;
+        if (modelHandlers) {
+            const result = (await modelHandlers)[method.replace('component/', '')];
+            if (result) return result;
+        }
         const handler = handlers[method];
         if (handler) return handler(params);
         console.info('[storybook dispatch] unhandled:', method, params);
         return undefined;
     };
+    if (models)
+        modelHandlers = modelFactoryMock(models)({
+            handler: new Proxy(
+                {},
+                {
+                    get(target, prop) {
+                        return (params: Record<string, unknown>) => result(String(prop), params);
+                    },
+                },
+            ),
+        });
+
+    return result;
 }
 
 // ── Global decorator ───────────────────────────────────────────────────────────
@@ -599,6 +644,7 @@ export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchF
  */
 export function withDispatch(
     overrides: Record<string, Handler> = {},
+    models?: IModelSpec[],
     {
         loginRoute = '/login',
         notify = DEFAULT_NOTIFY,
@@ -611,7 +657,7 @@ export function withDispatch(
         translations?: Record<string, string>;
     } = {},
 ): (Story: React.ComponentType, context?: unknown) => React.ReactElement {
-    const dispatch = makeDispatch(overrides);
+    const dispatch = makeDispatch(overrides, models);
     // Register query (read) actions so TanStack Query can show loading state.
     // Register mutation (write) actions with mutates:true so they are NOT
     // auto-fetched by TanStack Query — only called when explicitly invoked.
@@ -625,7 +671,9 @@ export function withDispatch(
     );
 
     return (Story, context) => {
-        const ctx = context as {args?: Record<string, unknown>; parameters?: Record<string, unknown>} | undefined;
+        const ctx = context as
+            | {args?: Record<string, unknown>; parameters?: Record<string, unknown>}
+            | undefined;
         const langArg = ctx?.args?.lang as string | undefined;
         const effectiveLang = langArg ?? language;
         /** Optional login page component passed via `story.parameters.loginComponent`. */
