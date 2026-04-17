@@ -18,52 +18,12 @@
  */
 
 import loadBlong from '@feasibleone/blong-config';
-import type {ConfigDiff, ConfigSubscriber, IConfigRuntime} from '@feasibleone/blong/types';
-
-// ---------------------------------------------------------------------------
-// Factory phase guard
-// ---------------------------------------------------------------------------
-
-/**
- * Mode used when the config proxy is queried during handler factory initialisation.
- *
- * - `'throw'`   — throw immediately (default; keeps misuse from going unnoticed)
- * - `'collect'` — accumulate errors and return them from exitConfigFactoryPhase()
- *                 (useful in tests that explicitly verify the anti-pattern is caught)
- */
-export type FactoryPhaseMode = 'throw' | 'collect';
-
-const _factoryPhase: {active: boolean; mode: FactoryPhaseMode; errors: Error[]} = {
-    active: false,
-    mode: 'throw',
-    errors: [],
-};
-
-/**
- * Mark the start of a handler factory call.  Any primitive value read from a
- * createConfigProxy proxy while the guard is active will either throw (mode =
- * 'throw', the default) or be recorded (mode = 'collect').
- *
- * Call exitConfigFactoryPhase() in a finally-block to restore safe state.
- */
-export function enterConfigFactoryPhase(mode: FactoryPhaseMode = 'throw'): void {
-    _factoryPhase.active = true;
-    _factoryPhase.mode = mode;
-    _factoryPhase.errors = [];
-}
-
-/**
- * Mark the end of a handler factory call.
- *
- * Returns the list of collected errors (non-empty only when the phase was
- * entered with mode = 'collect').
- */
-export function exitConfigFactoryPhase(): Error[] {
-    _factoryPhase.active = false;
-    const errors = _factoryPhase.errors.slice();
-    _factoryPhase.errors = [];
-    return errors;
-}
+import type {
+    ConfigDiff,
+    ConfigSubscriber,
+    FactoryPhaseMode,
+    IConfigRuntime,
+} from '@feasibleone/blong/types';
 
 // ---------------------------------------------------------------------------
 // createConfigProxy
@@ -82,7 +42,12 @@ export function exitConfigFactoryPhase(): Error[] {
  */
 export function createConfigProxy<T extends object>(
     store: T,
-): {proxy: T; update: (next: T) => void} {
+): {
+    proxy: T;
+    update: (next: T) => void;
+    enterConfig: (mode?: FactoryPhaseMode) => void;
+    exitConfig: () => Error[];
+} {
     // We keep a single mutable cell that holds the "current" backing object.
     // All proxy traps delegate through this cell so that replacing `current`
     // via update() is automatically reflected by every existing proxy reference.
@@ -97,6 +62,42 @@ export function createConfigProxy<T extends object>(
     // same description do not collide in the path-key string.
     const symbolIds = new Map<symbol, number>();
     let symbolIdCounter = 0;
+
+    // ---------------------------------------------------------------------------
+    // Factory phase guard
+    // ---------------------------------------------------------------------------
+
+    const _factoryPhase: {active: boolean; mode: FactoryPhaseMode; errors: Error[]} = {
+        active: false,
+        mode: 'throw',
+        errors: [],
+    };
+
+    /**
+     * Mark the start of a handler factory call.  Any primitive value read from a
+     * createConfigProxy proxy while the guard is active will either throw (mode =
+     * 'throw', the default) or be recorded (mode = 'collect').
+     *
+     * Call exitConfigFactoryPhase() in a finally-block to restore safe state.
+     */
+    function enterConfig(mode: FactoryPhaseMode = 'throw'): void {
+        _factoryPhase.active = true;
+        _factoryPhase.mode = mode;
+        _factoryPhase.errors = [];
+    }
+
+    /**
+     * Mark the end of a handler factory call.
+     *
+     * Returns the list of collected errors (non-empty only when the phase was
+     * entered with mode = 'collect').
+     */
+    function exitConfig(): Error[] {
+        _factoryPhase.active = false;
+        const errors = _factoryPhase.errors.slice();
+        _factoryPhase.errors = [];
+        return errors;
+    }
 
     function makePathKey(path: (string | symbol)[]): string {
         // Use a separator unlikely to appear in property names.
@@ -201,7 +202,12 @@ export function createConfigProxy<T extends object>(
         current = next;
     }
 
-    return {proxy, update};
+    return {
+        proxy,
+        update,
+        enterConfig,
+        exitConfig,
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -252,11 +258,16 @@ export default class ConfigRuntime implements IConfigRuntime {
     #proxy: object;
     #updateProxy: (next: object) => void;
 
+    readonly enterConfig: (mode?: FactoryPhaseMode) => void;
+    readonly exitConfig: () => Error[];
+
     public constructor(loadParams: object = {}) {
         this.#loadParams = loadParams;
-        const {proxy, update} = createConfigProxy(this.#rawSnapshot);
+        const {proxy, update, enterConfig, exitConfig} = createConfigProxy(this.#rawSnapshot);
         this.#proxy = proxy;
         this.#updateProxy = update;
+        this.enterConfig = enterConfig;
+        this.exitConfig = exitConfig;
     }
 
     // -----------------------------------------------------------------------

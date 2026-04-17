@@ -93,6 +93,14 @@ export type ConfigSubscriber = (
     prev: object,
 ) => void | Promise<void>;
 
+/**
+ * Mode used when the config proxy is queried during handler factory initialisation.
+ *
+ * - `'throw'`   — throw immediately (default; keeps misuse from going unnoticed)
+ * - `'collect'` — accumulate errors and return them from exitConfigFactoryPhase()
+ *                 (useful in tests that explicitly verify the anti-pattern is caught)
+ */
+export type FactoryPhaseMode = 'throw' | 'collect';
 export interface IConfigRuntime {
     /** Current effective config, exposed as a live proxy */
     readonly snapshot: object;
@@ -110,6 +118,10 @@ export interface IConfigRuntime {
     diff(prev: object, next: object): ConfigDiff;
     /** Register a subscriber to be called after every successful reload */
     subscribe(fn: ConfigSubscriber): () => void;
+    /** Enter the config factory phase */
+    enterConfig(mode?: FactoryPhaseMode): void;
+    /** Exit the config factory phase */
+    exitConfig(): Error[];
 }
 
 export interface IWatcher extends EventEmitter<FSWatcherEventMap> {

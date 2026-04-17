@@ -19,9 +19,7 @@ const start = async (load: Load): Promise<void> => {
                     logLevel: 'debug',
                 },
             },
-            apiSchema: {
-                generate: false,
-            },
+            apiSchema: false,
         },
         ['microservice', 'integration', 'dev'],
     );

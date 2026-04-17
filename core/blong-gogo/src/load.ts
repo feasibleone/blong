@@ -1,4 +1,3 @@
-import load from '@feasibleone/blong-config';
 import {
     Internal,
     browser as browserFactory,
@@ -155,16 +154,6 @@ function activeConfigs<T extends TSchema>(
         .map(name => mod.config?.[name])
         .filter(Boolean)
         .concat({pkg: mod.pkg, children: mod.children, url: mod.url});
-}
-
-async function loadConfig(config: string | object): Promise<object> {
-    return typeof config === 'string'
-        ? load({
-              config: {
-                  suite: config,
-              },
-          })
-        : config;
 }
 
 export default async function loadRealm<T extends TSchema>(
@@ -587,7 +576,15 @@ export default async function loadRealm<T extends TSchema>(
                     realm ||= new RealmImpl(mergedConfig, api, rootKind);
                     realm.addLayer(
                         itemName,
-                        fn(layerProxy(api?.error, api?.apiSchema, api?.port, mergedConfig)).result,
+                        fn(
+                            layerProxy(
+                                api?.error,
+                                api?.apiSchema,
+                                api?.port,
+                                mergedConfig,
+                                api?.configRuntime,
+                            ),
+                        ).result,
                     );
                 }
             }

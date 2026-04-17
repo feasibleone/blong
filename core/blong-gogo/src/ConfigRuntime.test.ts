@@ -17,12 +17,7 @@
 
 import {test} from 'tap';
 
-import {
-    createConfigProxy,
-    deepDiff,
-    enterConfigFactoryPhase,
-    exitConfigFactoryPhase,
-} from './ConfigRuntime.ts';
+import {createConfigProxy, deepDiff} from './ConfigRuntime.ts';
 
 // ---------------------------------------------------------------------------
 // deepDiff
@@ -238,27 +233,26 @@ test('root proxy access — always reflects current values regardless of nesting
 // ---------------------------------------------------------------------------
 
 test('factory phase guard — throws on primitive read in default throw mode', async t => {
-    const {proxy} = createConfigProxy({host: 'localhost', port: 5432});
+    const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost', port: 5432});
     const p = proxy as any;
 
-    enterConfigFactoryPhase(); // default mode = 'throw'
+    enterConfig(); // default mode = 'throw'
     t.throws(
         () => p.host,
         /anti-pattern/,
         'reading a primitive during factory phase throws by default',
     );
-    exitConfigFactoryPhase(); // always clean up
+    exitConfig(); // always clean up
 });
 
 test('factory phase guard — collects errors in collect mode without throwing', async t => {
-    const {proxy} = createConfigProxy({host: 'localhost', port: 5432});
+    const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost', port: 5432});
     const p = proxy as any;
 
-    enterConfigFactoryPhase('collect');
+    enterConfig('collect');
     t.doesNotThrow(() => p.host, 'no throw in collect mode');
     t.doesNotThrow(() => p.port, 'no throw for second read in collect mode');
-    const errors = exitConfigFactoryPhase();
-
+    const errors = exitConfig();
     t.equal(errors.length, 2, 'two primitive reads were recorded');
     t.match(errors[0].message, /anti-pattern/, 'first error mentions anti-pattern');
     t.match(errors[0].message, /host/, 'first error names the offending key');
@@ -266,49 +260,49 @@ test('factory phase guard — collects errors in collect mode without throwing',
 });
 
 test('factory phase guard — sub-object read is NOT flagged (safe partial destructuring)', async t => {
-    const {proxy} = createConfigProxy({theme: {name: 'light'}});
+    const {proxy, enterConfig, exitConfig} = createConfigProxy({theme: {name: 'light'}});
     const p = proxy as any;
 
-    enterConfigFactoryPhase(); // throw mode
+    enterConfig(); // throw mode
     t.doesNotThrow(
         () => p.theme, // returns a sub-proxy (object), not a primitive
         'accessing a nested object during factory phase is safe',
     );
-    exitConfigFactoryPhase();
+    exitConfig();
 });
 
 test('factory phase guard — undefined read is NOT flagged', async t => {
-    const {proxy} = createConfigProxy({a: 1});
+    const {proxy, enterConfig, exitConfig} = createConfigProxy({a: 1});
     const p = proxy as any;
 
-    enterConfigFactoryPhase();
+    enterConfig();
     t.doesNotThrow(
         () => p.nonExistent, // undefined is safe to read (nothing to capture)
         'undefined key access during factory phase does not throw',
     );
-    exitConfigFactoryPhase();
+    exitConfig();
 });
 
 test('factory phase guard — guard is inactive after exitConfigFactoryPhase', async t => {
-    const {proxy} = createConfigProxy({host: 'localhost'});
+    const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost'});
     const p = proxy as any;
 
-    enterConfigFactoryPhase();
-    exitConfigFactoryPhase(); // exit immediately
+    enterConfig();
+    exitConfig(); // exit immediately
 
     t.doesNotThrow(() => p.host, 'primitive read after exit is safe again');
 });
 
 test('factory phase guard — exitConfigFactoryPhase returns empty array in throw mode', async t => {
-    const {proxy} = createConfigProxy({host: 'localhost'});
+    const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost'});
     const p = proxy as any;
 
-    enterConfigFactoryPhase(); // throw mode — errors are not collected
+    enterConfig(); // throw mode — errors are not collected
     try {
         p.host; // would throw
     } catch (_) {
         // expected
     }
-    const errors = exitConfigFactoryPhase();
+    const errors = exitConfig();
     t.equal(errors.length, 0, 'no errors collected in throw mode (they were thrown)');
 });

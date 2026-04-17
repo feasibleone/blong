@@ -13,7 +13,6 @@ import {
     type IRemote,
     type IWatcher,
 } from '@feasibleone/blong/types';
-import {Formatter, TypeScriptToTypeBox} from '@sinclair/typebox-codegen';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
@@ -173,6 +172,7 @@ export default class Watch extends Internal implements IWatch {
             },
             [[], []],
         );
+        const {Formatter, TypeScriptToTypeBox} = await import('@sinclair/typebox-codegen');
         if (schema.length)
             this.#platform.writeFileSync(
                 join(dir, '~.schema.ts'),
@@ -261,7 +261,7 @@ export default class Watch extends Internal implements IWatch {
                     !isLayerActivation(entry.name) &&
                     !isConfig(entry.name),
             );
-        await this.#apiSchema.generateDir(dir, handlerFiles);
+        await this.#apiSchema?.generateDir(dir, handlerFiles);
         for (const handlerEntry of handlerFiles) {
             const filename = this.#platform.join(dir, handlerEntry.name);
             if (

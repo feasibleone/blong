@@ -2,6 +2,7 @@ import {
     kind,
     type IAdapterFactory,
     type IApiSchema,
+    type IConfigRuntime,
     type IErrorFactory,
     type ILib,
     type IMeta,
@@ -10,7 +11,6 @@ import {
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.ts';
-import {enterConfigFactoryPhase, exitConfigFactoryPhase} from './ConfigRuntime.ts';
 import {camelToSentence, methodId, parseAnnotatedKey} from './lib.ts';
 import type {IPort} from './Port.ts';
 
@@ -19,6 +19,7 @@ export default function layerProxy(
     apiSchema: IApiSchema | undefined,
     port: (() => void) | undefined,
     moduleConfig: {pkg: IModuleConfig['pkg']; base: string; configNames?: string[]},
+    configRuntime?: IConfigRuntime,
 ): {result: unknown} {
     return new Proxy(
         {
@@ -386,11 +387,11 @@ export default function layerProxy(
                                                     break;
                                                 case 'function:handler':
                                                 case 'function:validation':
-                                                    enterConfigFactoryPhase();
+                                                    configRuntime?.enterConfig();
                                                     try {
                                                         what = await what(layerApi);
                                                     } finally {
-                                                        exitConfigFactoryPhase();
+                                                        configRuntime?.exitConfig();
                                                     }
                                                     if (typeof what === 'function')
                                                         local[methodId(what.name)] = what;
