@@ -35,14 +35,14 @@ export interface CacacheTransportOptions {
     retentionCount?: number;
 }
 
-const RETENTION_KEY = '__blong_retention_state__';
+const RETENTION_STATE_KEY = '__blong_retention_state__';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-async function runRetentionCleanup(cachePath: string, retentionCount: number): Promise<void> {
+async function pruneOldEntries(cachePath: string, retentionCount: number): Promise<void> {
     const index = await cacache.ls(cachePath);
 
     // Collect all real log entries (skip the retention-state entry itself)
-    const entries = Object.values(index).filter(e => e.key !== RETENTION_KEY);
+    const entries = Object.values(index).filter(e => e.key !== RETENTION_STATE_KEY);
 
     if (entries.length <= retentionCount) {
         return;
@@ -64,11 +64,11 @@ async function runRetentionCleanup(cachePath: string, retentionCount: number): P
     await cacache.verify(cachePath);
 }
 
-async function maybeRunRetention(cachePath: string, retentionCount: number): Promise<void> {
+async function retentionCheckRun(cachePath: string, retentionCount: number): Promise<void> {
     let lastCleanup = 0;
 
     try {
-        const stateEntry = await cacache.get(cachePath, RETENTION_KEY);
+        const stateEntry = await cacache.get(cachePath, RETENTION_STATE_KEY);
         const state = JSON.parse(stateEntry.data.toString()) as {lastCleanup: number};
         lastCleanup = state.lastCleanup;
     } catch {
@@ -79,17 +79,17 @@ async function maybeRunRetention(cachePath: string, retentionCount: number): Pro
         return;
     }
 
-    await runRetentionCleanup(cachePath, retentionCount);
+    await pruneOldEntries(cachePath, retentionCount);
 
     const state = JSON.stringify({lastCleanup: Date.now()});
-    await cacache.put(cachePath, RETENTION_KEY, Buffer.from(state));
+    await cacache.put(cachePath, RETENTION_STATE_KEY, Buffer.from(state));
 }
 
 export default async function transport(options: CacacheTransportOptions) {
     const {cachePath, stripKeys = ['id', 'time'], retentionCount = 10000} = options;
 
     // Run retention check once on transport startup (at most once per day)
-    maybeRunRetention(cachePath, retentionCount).catch(() => {
+    retentionCheckRun(cachePath, retentionCount).catch(() => {
         // Retention errors must not crash the transport
     });
 

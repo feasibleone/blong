@@ -62,7 +62,7 @@ export default class Log extends Internal implements ILog {
         }
 
         // Remove the cacache option before passing to pino — it is not a pino option
-        const {cacache: _cacache, ...pinoConfig} = this.#config;
+        const {cacache: _cacacheConfig, ...pinoConfig} = this.#config;
         this.#logger = pino(pinoConfig);
     }
 

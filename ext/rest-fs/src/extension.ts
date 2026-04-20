@@ -211,10 +211,10 @@ export function activate(context: vscode.ExtensionContext) {
 
         async handleTerminalLink(link: BlongLogTerminalLink): Promise<void> {
             const cfg = vscode.workspace.getConfiguration('restfs');
-            const rawCachePath: string = cfg.get('blongLogCachePath', '~/.blong/log-cache');
-            const cachePath = rawCachePath.startsWith('~')
-                ? path.join(os.homedir(), rawCachePath.slice(1))
-                : rawCachePath;
+            const cachePathRaw: string = cfg.get('blongLogCachePath', '~/.blong/log-cache');
+            const cachePath = cachePathRaw.startsWith('~')
+                ? path.join(os.homedir(), cachePathRaw.slice(1))
+                : cachePathRaw;
 
             let content: string;
             try {
