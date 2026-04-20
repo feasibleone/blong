@@ -3,7 +3,7 @@ import type {IPlatformApi} from '@feasibleone/blong/types';
 /**
  * Generate a `~.schema.ts` file from handler `type Handler` signatures.
  *
- * Reads each handler file, extracts the `type Handler = (…) => …` signature,
+ * Reads each handler file, extracts the `type Handler = (...) => ...` signature,
  * converts it to a TypeBox schema via `@sinclair/typebox-codegen`, and writes
  * a single barrel file that exports `validationHandlers({…})`.
  */
