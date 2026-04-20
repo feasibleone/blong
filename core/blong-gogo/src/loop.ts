@@ -216,19 +216,10 @@ function traceMeta(
     get: string,
     time?: Parameters<IMeta['timer']>[1],
 ): IMeta {
-    // if ($meta && !$meta.timer && $meta.mtid === 'request') {
-    //     $meta.timer = packetTimer(adapter.bus.getPath($meta.method), '*', adapter.config.id, $meta.timeout);
-    // }
     if ($meta?.trace && context) {
         if ($meta.mtid === 'request') {
-            // todo improve what needs to be tracked
             context.requests.set(set + $meta.trace, {
                 $meta,
-                // end: !time && timeoutManager.startRequest($meta, adapter.errors['adapter.timeout'], error => {
-                //     context.requests.delete(set + $meta.trace);
-                //     $meta.mtid = 'error';
-                //     $meta.dispatch && $meta.dispatch(error, $meta);
-                // })
             });
             return $meta;
         } else if ($meta.mtid === 'response' || $meta.mtid === 'error') {
@@ -388,7 +379,7 @@ async function decodeReceive(
         } else return;
     }
     // decode
-    const time = false; // timing.now();
+    const time = false;
     let result: unknown[];
     adapter.msgReceived?.(1);
     if (adapter.imported.decode) {
@@ -457,7 +448,6 @@ async function dispatch(
         ((dispatchPacket.length > 1 && dispatchPacket[dispatchPacket.length - 1]) as IMeta) ||
         ({} as IMeta);
     if ($meta.dispatch) {
-        // reportTimes(adapter, $meta);
         return $meta.dispatch.apply(adapter, dispatchPacket);
     }
     if (!dispatchPacket || !dispatchPacket[0]) {
@@ -547,7 +537,6 @@ async function event(
             mtid: 'event',
             method: event,
             conId: context && context.conId,
-            // timer: packetTimer('event.' + event, false, adapter.config.id),
             forward: {
                 'x-b3-traceid': v4().replace(/-/g, ''),
                 'x-ut-stack': undefined,
@@ -559,8 +548,3 @@ async function event(
     const dispatchedPacket = await dispatch(adapter, receivedPacket);
     if (dispatchedPacket) stream?.write(dispatchedPacket as Buffer);
 }
-
-// todo drain on connect
-// todo timing
-// todo packet tracing
-// todo abort signal

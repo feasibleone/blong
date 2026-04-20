@@ -218,7 +218,6 @@ export default async function adapter<T, C>(
                     }
                     break;
             }
-            // await(this.bus && typeof this.bus.portEvent instanceof Function && this.bus.portEvent(event, this));
             return result;
         },
         drain() {},

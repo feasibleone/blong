@@ -1,5 +1,4 @@
 import type {
-    ApiSchema,
     Errors,
     GatewaySchema,
     IErrorFactory,
@@ -17,10 +16,12 @@ import type {LevelWithSilent} from 'pino';
 import {Type, type TSchema} from 'typebox';
 import {v4} from 'uuid';
 
+import {createErrorFormatter} from './formatError.ts';
+import {operationParams} from './gatewayParams.ts';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
 import jwt from './jwt.ts';
-import {methodParts, snakeToCamel} from './lib.ts';
+import {methodParts} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
 import swagger from './swagger.ts';
 
@@ -67,64 +68,6 @@ interface IConfig extends IConfigMLE {
     };
 }
 
-function operationParams(
-    operation: GatewaySchema['operation'],
-    bodySchema: ApiSchema,
-    request: GatewayRequest,
-): unknown {
-    const result =
-        operation?.parameters?.reduce((result, parameter) => {
-            if ('in' in parameter && 'name' in parameter) {
-                let where;
-                switch (parameter.in) {
-                    case 'header':
-                        where = request.headers;
-                        break;
-                    case 'query':
-                        where = request.query;
-                        break;
-                    case 'path':
-                        where = request.params;
-                        break;
-                    case 'cookie':
-                        where = request.cookies;
-                        break;
-                    case 'body':
-                        if (request.body) {
-                            if (parameter.schema?.additionalProperties)
-                                Object.assign(result, request.body);
-                            else if (parameter.schema?.properties)
-                                Object.entries(parameter.schema.properties).forEach(
-                                    ([name, value]) => {
-                                        if (name in (request.body as {}))
-                                            result[snakeToCamel(name)] = request.body[name];
-                                    },
-                                );
-                        }
-                        break;
-                }
-                if (where && parameter.name in where)
-                    result[snakeToCamel(parameter.name)] = where[parameter.name];
-            }
-            return result;
-        }, {}) ?? {};
-    if (
-        bodySchema &&
-        'type' in bodySchema &&
-        bodySchema?.type === 'object' &&
-        (bodySchema.properties ||
-            ('additionalProperties' in bodySchema && bodySchema?.additionalProperties))
-    ) {
-        if ('additionalProperties' in bodySchema && bodySchema.additionalProperties)
-            Object.assign(result, request.body);
-        else if (bodySchema.properties)
-            Object.entries(bodySchema.properties).forEach(([name, value]) => {
-                if (name in (request.body as {})) result[snakeToCamel(name)] = request.body[name];
-            });
-    }
-    return result;
-}
-
 export default class Gateway extends Internal implements IGateway {
     #server: ReturnType<typeof fastify> = null;
     #resolution: IResolution;
@@ -152,7 +95,7 @@ export default class Gateway extends Internal implements IGateway {
     #rpcClient: IRpcClient;
     #routes: RouteOptions[];
     #local: ILocal;
-    #errorFields: [string, unknown][] = [];
+    #formatError: (error: Error) => object;
     #plugins: {plugin: unknown; options: unknown}[] = [];
     #platform: IPlatformApi;
 
@@ -179,7 +122,7 @@ export default class Gateway extends Internal implements IGateway {
         this.#platform = platform;
 
         this.merge(this.#config, config);
-        this.#errorFields = Object.entries({
+        this.#formatError = createErrorFormatter(Object.entries({
             type: true,
             message: true,
             print: true,
@@ -190,7 +133,7 @@ export default class Gateway extends Internal implements IGateway {
                 cause: 'error',
             }),
             ...this.#config.errorFields,
-        });
+        }));
         this.#errors = error.register(errorMap);
         this.#resolution = resolution;
         this.#rpcClient = remote;
@@ -467,7 +410,7 @@ export default class Gateway extends Internal implements IGateway {
                         return {
                             jsonrpc: '2.0',
                             id,
-                            error: this._formatError(error),
+                            error: this.#formatError(error),
                         };
                     }
                 },
@@ -493,7 +436,7 @@ export default class Gateway extends Internal implements IGateway {
                 return reply.status(500).send({
                     jsonrpc: '2.0',
                     id: (request.body as {id?: unknown})?.id,
-                    error: this._formatError(error),
+                    error: this.#formatError(error),
                 });
             });
             await this.#server.register(jwt, {
@@ -543,21 +486,4 @@ export default class Gateway extends Internal implements IGateway {
         await this.start();
     }
 
-    private _formatError(error: Error): object {
-        return this.#errorFields.reduce((e, [key, value]) => {
-            if (value && typeof error[key] !== 'undefined') {
-                switch (value) {
-                    case true:
-                        e[key] = error[key];
-                        break;
-                    case 'error':
-                        e[key] = this._formatError(error[key]);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            return e;
-        }, {});
-    }
 }

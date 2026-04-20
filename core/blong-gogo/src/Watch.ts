@@ -16,6 +16,7 @@ import {
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
+import {generateSchemaFile} from './schemaGen.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
@@ -155,53 +156,7 @@ export default class Watch extends Internal implements IWatch {
     }
 
     private async _generate(files: {filename: string; name: string}[], dir: string): Promise<void> {
-        const [schema, names] = files.reduce(
-            (prev, {filename, name}) => {
-                const schema = this.#platform
-                    .readFileSync(filename)
-                    .toString()
-                    .match(
-                        /^(\/\*\*((?!\*\/\n).)*\*\/\n)?type Handler = \(((?!(>|}|>});?\n).)*(>|}|>});?\n/ms,
-                    )?.[0];
-                return schema
-                    ? [
-                          [...prev[0], schema.replace('type Handler = (', `type ${name} = (`)],
-                          [...prev[1], name],
-                      ]
-                    : prev;
-            },
-            [[], []],
-        );
-        const {Formatter, TypeScriptToTypeBox} = await import('@sinclair/typebox-codegen');
-        if (schema.length)
-            this.#platform.writeFileSync(
-                join(dir, '~.schema.ts'),
-                Formatter.Format(`/* eslint-disable indent,semi */
-            /* eslint-disable @typescript-eslint/naming-convention */
-            /* eslint-disable @rushstack/typedef-var */
-
-            import {validationHandlers} from '@feasibleone/blong';
-            import { Type, type Static } from 'typebox';
-
-            ${TypeScriptToTypeBox.Generate(schema.sort().join('\n'), {useTypeBoxImport: false}).trim()}
-
-            export default validationHandlers({
-                ${names.sort().join(',\n')}
-            });
-
-            declare module '@feasibleone/blong' {
-                interface ISchema {
-                    ${names
-                        .map(
-                            name =>
-                                `${name}(params: Parameters<${name}>[0], $meta: IMeta): ReturnType<${name}>;`,
-                        )
-                        .join('\n')}
-                }
-            }
-
-        `),
-            );
+        return generateSchemaFile(this.#platform, files, dir);
     }
 
     private async _loadHandlers(
@@ -227,7 +182,6 @@ export default class Watch extends Internal implements IWatch {
                       isFile,
                       isDirectory,
                   }));
-        // if (directory !== true) debugger;
         const configFile = allFiles.find(entry => entry.isFile() && isConfig(entry.name));
         if (configFile) {
             const configFilePath = this.#platform.join(dir, configFile.name);
@@ -347,7 +301,6 @@ export default class Watch extends Internal implements IWatch {
         if (isDirectory) {
             return this._loadHandlers(isDirectory, config, ...path);
         } else if (isFile) {
-            // if (isFile !== true) debugger;
             const filename = this.#platform.join(...path);
             if (isCode(filename) && !isLayerActivation(this.#platform.basename(filename))) {
                 const item =
@@ -473,7 +426,7 @@ export default class Watch extends Internal implements IWatch {
         fsWatcher.on('error', error => this.log?.error?.(error));
         fsWatcher.on('all', async (event, filename) => {
             try {
-                filename = resolve(filename);
+                filename = this.#platform.resolve(filename);
                 this.log?.info?.(
                     {
                         $meta: {mtid: 'event', method: `watch.reload.${event}`},
@@ -507,20 +460,20 @@ export default class Watch extends Internal implements IWatch {
                             ).result[name].methods,
                         );
                     } else {
-                        const dir = dirname(filename);
+                        const dir = this.#platform.dirname(filename);
                         config = this.#handlerFolders.get(dir);
                         if (config) {
                             const handlers = (await this._loadHandlers(true, config, dir))(
                                 layerProxy(this.#error, this.#apiSchema, this.#port, config),
                             );
                             await registry.replaceHandlers(
-                                config.name + '.' + basename(dir),
-                                handlers.result[basename(dir)].methods,
+                                config.name + '.' + this.#platform.basename(dir),
+                                handlers.result[this.#platform.basename(dir)].methods,
                             );
-                            if (handlers.result[basename(dir) + '.validation'])
+                            if (handlers.result[this.#platform.basename(dir) + '.validation'])
                                 await registry.replaceHandlers(
-                                    config.name + '.' + basename(dir) + '.validation',
-                                    handlers.result[basename(dir) + '.validation'].methods,
+                                    config.name + '.' + this.#platform.basename(dir) + '.validation',
+                                    handlers.result[this.#platform.basename(dir) + '.validation'].methods,
                                 );
                         }
                     }
@@ -578,7 +531,6 @@ export default class Watch extends Internal implements IWatch {
 
     public async test(framework: unknown): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            // this.#emit.emit('test', error => (error ? reject(error) : resolve()), framework);
             this.#emit.dispatchEvent(
                 new CustomEvent('test', {
                     detail: {

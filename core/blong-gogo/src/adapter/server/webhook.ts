@@ -63,7 +63,6 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                             readable.push([params, $meta]);
                         }),
                     [`${this.config.namespace}Webhook.publish`]: async (...params: unknown[]) => {
-                        // console.log('publish', params);
                         readable.push(params);
                     },
                 },

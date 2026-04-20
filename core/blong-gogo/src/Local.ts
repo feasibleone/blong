@@ -42,7 +42,6 @@ export default class Local extends Internal implements ILocal {
     }
 
     public get(name: string): ReturnType<ILocal['get']> {
-        // if (!this.#mapLocal[name]) console.log({name, local: this.#mapLocal});
         return this.#mapLocal[name];
     }
 }

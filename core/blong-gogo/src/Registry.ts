@@ -364,9 +364,6 @@ export default class Registry extends Internal implements IRegistry {
         await this.#gateway?.start();
         await this.#watch?.start(this, this.#remote, configOverride);
         return this;
-        // console.dir(this.ports.entries());
-        // console.dir(this.#validations);
-        // console.dir(created);
     }
 
     public async connected(): Promise<boolean> {

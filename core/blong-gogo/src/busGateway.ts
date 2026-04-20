@@ -1,5 +1,3 @@
-// const request = (process.type === 'renderer') ? require('ut-browser-request') : require('request');
-// const [httpPost] = [request.post].map(require('util').promisify);
 import ky from 'ky';
 
 const decode = (result, method, unpack) => (unpack ? result : [result, {method, mtid: 'response'}]);

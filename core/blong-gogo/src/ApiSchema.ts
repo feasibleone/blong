@@ -147,7 +147,6 @@ export default class ApiSchema extends Internal implements IApiSchema {
             const method = this.#platform.basename(filename, this.#platform.extname(filename));
             const schema = this.#loaded[method.toLowerCase()];
             if (schema) {
-                // console.log(schema.operation.responses);
                 this.log?.warn?.(`Writing ${filename}`);
                 this.#platform.writeFileSync(
                     filename,
