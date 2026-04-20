@@ -1,4 +1,7 @@
+import * as path from 'node:path';
+import * as os from 'node:os';
 import * as vscode from 'vscode';
+import * as cacache from 'cacache';
 import {RestFileSystemProvider} from './restFileSystemProvider';
 import {RestShellTaskProvider} from './restShellTaskProvider';
 
@@ -9,6 +12,14 @@ type RestFsWorkspaceConfig = Record<
         headers?: Record<string, string>;
     }
 >;
+
+/** A terminal link that carries the ULID of the associated log entry. */
+interface BlongLogTerminalLink extends vscode.TerminalLink {
+    logId: string;
+}
+
+/** Regex matching the ULID embedded in blong://log/<ULID> OSC 8 link text. */
+const LOG_LINK_REGEX = /blong:\/\/log\/([0-9A-Z]+)/;
 
 /**
  * This method is called when your extension is activated
@@ -178,6 +189,52 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(shellTaskProviderRegistration);
+
+    // Register terminal link provider for blong://log/<ULID> links emitted by pino-cacache
+    const logLinkProvider = vscode.window.registerTerminalLinkProvider({
+        provideTerminalLinks(
+            terminalContext: vscode.TerminalLinkContext,
+        ): BlongLogTerminalLink[] {
+            const match = LOG_LINK_REGEX.exec(terminalContext.line);
+            if (!match) {
+                return [];
+            }
+            return [
+                {
+                    startIndex: match.index,
+                    length: match[0].length,
+                    tooltip: 'Open log entry details',
+                    logId: match[1],
+                },
+            ];
+        },
+
+        async handleTerminalLink(link: BlongLogTerminalLink): Promise<void> {
+            const cfg = vscode.workspace.getConfiguration('restfs');
+            const rawCachePath: string = cfg.get('blongLogCachePath', '~/.blong/log-cache');
+            const cachePath = rawCachePath.startsWith('~')
+                ? path.join(os.homedir(), rawCachePath.slice(1))
+                : rawCachePath;
+
+            let content: string;
+            try {
+                const result = await cacache.get(cachePath, link.logId);
+                const entry = JSON.parse(result.data.toString()) as unknown;
+                content = JSON.stringify(entry, null, 2);
+            } catch (err) {
+                vscode.window.showErrorMessage(`Failed to read log entry ${link.logId}: ${err}`);
+                return;
+            }
+
+            const doc = await vscode.workspace.openTextDocument({
+                content,
+                language: 'json',
+            });
+            await vscode.window.showTextDocument(doc);
+        },
+    });
+
+    context.subscriptions.push(logLinkProvider);
 }
 
 export function deactivate() {}

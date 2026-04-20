@@ -5,6 +5,7 @@ export default options =>
         ...options,
         messageFormat(
             log: {
+                id?: string;
                 context?: string;
                 prefix?: string;
                 [messageKey: string]: unknown;
@@ -33,6 +34,7 @@ export default options =>
             {colors},
         ) {
             const {
+                id,
                 context,
                 prefix,
                 [messageKey]: message,
@@ -43,6 +45,10 @@ export default options =>
                 $meta,
             } = log;
             return [
+                id &&
+                    colors.dim(
+                        `\u001B]8;;blong://log/${id}\u001B\\${id}\u001B]8;;\u001B\\`,
+                    ),
                 context && colors.greenBright(context),
                 prefix,
                 $meta?.mtid && colors.magenta($meta.mtid),
