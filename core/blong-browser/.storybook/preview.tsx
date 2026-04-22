@@ -1,4 +1,3 @@
-import {IModelSpec} from '@feasibleone/blong';
 import type {Preview} from '@storybook/react-vite';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
@@ -36,14 +35,8 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-export const makePreview = ({
-    overrides,
-    models,
-}: {
-    overrides?: Record<string, Handler>;
-    models?: IModelSpec[];
-}) => ({
-    decorators: [withDispatch(overrides, models)],
+export const makePreview = ({overrides}: {overrides?: Record<string, Handler>}) => ({
+    decorators: [withDispatch(overrides)],
     parameters: {
         actions: {argTypesRegex: '^on[A-Z].*'},
         layout: 'fullscreen',

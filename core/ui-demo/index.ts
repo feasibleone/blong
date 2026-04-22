@@ -1,10 +1,7 @@
 import load from '@feasibleone/blong-gogo';
 import browser from './browser.ts';
 
-type Load = (...params: unknown[]) => Promise<{
-    start: () => Promise<unknown>;
-    stop: () => Promise<unknown>;
-}>;
+type Load = typeof load;
 
 const start = async (load: Load): Promise<void> => {
     const platform = await load(

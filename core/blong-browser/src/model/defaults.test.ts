@@ -35,12 +35,12 @@ describe('deepMerge', () => {
 
 describe('withDefaults', () => {
     it('fills in keyField default', () => {
-        const result = withDefaults({subject: 'user', object: 'user', properties: {}});
+        const result = withDefaults({subject: 'user', object: 'user'});
         expect(result.keyField).toBe('userId');
     });
 
-    it('fills in objectTitle from capitalised object', () => {
-        const result = withDefaults({subject: 'product', object: 'product', properties: {}});
+    it('fills in objectTitle from capitalized object', () => {
+        const result = withDefaults({subject: 'product', object: 'product'});
         expect(result.objectTitle).toBe('Product');
     });
 
@@ -49,7 +49,6 @@ describe('withDefaults', () => {
             subject: 'user',
             object: 'user',
             objectTitle: 'System User',
-            properties: {},
         });
         expect(result.objectTitle).toBe('System User');
     });
@@ -59,13 +58,12 @@ describe('withDefaults', () => {
             subject: 'order',
             object: 'order',
             keyField: 'orderId',
-            properties: {},
         });
         expect(result.keyField).toBe('orderId');
     });
 
     it('generates default method names', () => {
-        const result = withDefaults({subject: 'auth', object: 'user', properties: {}});
+        const result = withDefaults({subject: 'auth', object: 'user'});
         expect(result.methods.find).toBe('auth.user.find');
         expect(result.methods.add).toBe('auth.user.add');
         expect(result.methods.get).toBe('auth.user.get');
@@ -74,7 +72,7 @@ describe('withDefaults', () => {
     });
 
     it('generates browser permission defaults', () => {
-        const result = withDefaults({subject: 'finance', object: 'payment', properties: {}});
+        const result = withDefaults({subject: 'finance', object: 'payment'});
         expect(result.browser.permission.browse).toBe('finance.payment.browse');
         expect(result.browser.permission.add).toBe('finance.payment.add');
     });
@@ -84,14 +82,13 @@ describe('withDefaults', () => {
             subject: 'auth',
             object: 'user',
             methods: {find: 'custom.find.method'},
-            properties: {},
         });
         expect(result.methods.find).toBe('custom.find.method');
         expect(result.methods.add).toBe('auth.user.add'); // others still default
     });
 
     it('fills in browser configuration', () => {
-        const result = withDefaults({subject: 'catalog', object: 'item', properties: {}});
+        const result = withDefaults({subject: 'catalog', object: 'item'});
         expect(result.browser).toBeDefined();
         expect(result.browser.title).toBeDefined();
         expect(result.browser.icon).toBeDefined();

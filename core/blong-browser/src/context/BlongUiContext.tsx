@@ -11,7 +11,10 @@ import type {IBlongError} from '../types/action.js';
 import type {ISchemaRegistry} from '../types/schema.js';
 
 /** Handler dispatch function — calls a method on the browser registry */
-export type DispatchFn = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+export type DispatchFn = <T>(
+    method: string,
+    params?: Record<string, unknown>,
+) => Promise<T> | undefined;
 
 /** Context value shape */
 export interface IBlongUiContextValue {

@@ -32,8 +32,11 @@ export default realm(blong => ({
         : ['./adapter', './orchestrator'],
     config: {
         default: {
-            adapter: true,
             orchestrator: true,
+            backend: false,
+        },
+        microservice: {
+            backend: true,
         },
     },
 }));

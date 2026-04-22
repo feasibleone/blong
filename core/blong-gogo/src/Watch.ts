@@ -282,7 +282,7 @@ export default class Watch extends Internal implements IWatch {
                 filename,
                 this.#platform.extname(filename),
             );
-            const name = this._validateAndSetHandlerName(item, filename, expectedName);
+            const name = expectedName;
             (kind(item) === 'validation'
                 ? validations
                 : kind(item) === 'api'
@@ -473,7 +473,7 @@ export default class Watch extends Internal implements IWatch {
         fsWatcher.on('error', error => this.log?.error?.(error));
         fsWatcher.on('all', async (event, filename) => {
             try {
-                filename = resolve(filename);
+                filename = this.#platform.resolve(filename);
                 this.log?.info?.(
                     {
                         $meta: {mtid: 'event', method: `watch.reload.${event}`},
@@ -507,20 +507,24 @@ export default class Watch extends Internal implements IWatch {
                             ).result[name].methods,
                         );
                     } else {
-                        const dir = dirname(filename);
+                        const dir = this.#platform.dirname(filename);
                         config = this.#handlerFolders.get(dir);
                         if (config) {
                             const handlers = (await this._loadHandlers(true, config, dir))(
                                 layerProxy(this.#error, this.#apiSchema, this.#port, config),
                             );
                             await registry.replaceHandlers(
-                                config.name + '.' + basename(dir),
-                                handlers.result[basename(dir)].methods,
+                                config.name + '.' + this.#platform.basename(dir),
+                                handlers.result[this.#platform.basename(dir)].methods,
                             );
-                            if (handlers.result[basename(dir) + '.validation'])
+                            if (handlers.result[this.#platform.basename(dir) + '.validation'])
                                 await registry.replaceHandlers(
-                                    config.name + '.' + basename(dir) + '.validation',
-                                    handlers.result[basename(dir) + '.validation'].methods,
+                                    config.name +
+                                        '.' +
+                                        this.#platform.basename(dir) +
+                                        '.validation',
+                                    handlers.result[this.#platform.basename(dir) + '.validation']
+                                        .methods,
                                 );
                         }
                     }

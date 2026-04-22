@@ -1,3 +1,4 @@
+import type {IComponent} from '@feasibleone/blong';
 import {useEffect} from 'react';
 import {Portal} from '../components/Portal/index.js';
 import {useBlongUi} from '../index.js';
@@ -19,16 +20,13 @@ export function Model({
 
         void (async () => {
             try {
-                let component: React.ComponentType<Record<string, unknown>>;
-                component = (await dispatch(`component/${componentName}`)) as React.ComponentType<
-                    Record<string, unknown>
-                >;
+                const component = await dispatch<IComponent>(`component/${componentName}`);
                 const tab: ITab = {
                     id: 'test-tab',
                     actionName: 'test-action',
                     params,
                     title: componentName,
-                    component: await component.component(params),
+                    component: (await component?.component(params)) as React.ComponentType,
                 };
                 store.openTab(tab);
             } catch {}

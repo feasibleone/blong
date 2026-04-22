@@ -1,14 +1,17 @@
 import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
 import type {IEnrichedSchema} from '../../types/widget.js';
 
-export function subjectObjectBrowse(model: IResolvedModelSpec) {
+export async function subjectObjectBrowse(
+    model: IResolvedModelSpec,
+    blong: IHandlerProxy<unknown>,
+) {
     const {subject, object, browser, methods} = model;
 
-    return async (blong: Pick<IHandlerProxy<{}>, 'handler'>) => ({
+    return async () => ({
         title: browser.title,
         permission: browser.permission.browse,
         icon: browser.icon,
-        component: async (params: object) => {
+        component: async (params?: object) => {
             const [schema, {Explorer}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Explorer/index.js'),

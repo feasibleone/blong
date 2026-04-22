@@ -136,7 +136,7 @@ export interface IModelSpec {
     subject: string;
     /** Entity name, e.g. 'coral', 'condition' */
     object: string;
-    /** Human-readable title, e.g. 'Coral'. Defaults to capitalised object. */
+    /** Human-readable title, e.g. 'Coral'. Defaults to capitalized object. */
     objectTitle?: string;
     /** Primary key field path, e.g. 'coralId'. Defaults to `${object}Id`. */
     keyField?: string;

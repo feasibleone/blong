@@ -1,8 +1,16 @@
-import {makePreview} from '@feasibleone/blong-browser/storybook.ts';
+import withBlong from '@feasibleone/blong-browser/storybook.tsx';
+import browser from '../browser.ts';
 
-import coral from '../marine/model/coral.js';
-import family from '../marine/model/family.js';
-import habitat from '../marine/model/habitat.js';
-import species from '../marine/model/species.js';
-
-export default makePreview({models: [coral(), family(), habitat(), species()]});
+export default {
+    decorators: [withBlong(browser)],
+    parameters: {
+        actions: {argTypesRegex: '^on[A-Z].*'},
+        layout: 'fullscreen',
+        controls: {
+            matchers: {
+                color: /(background|color)$/i,
+                date: /Date$/,
+            },
+        },
+    },
+};

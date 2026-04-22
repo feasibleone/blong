@@ -16,6 +16,3 @@ export type {
 } from '@feasibleone/blong';
 export {deepMerge, withDefaults} from './defaults.js';
 export {dropdownRegistry} from './dropdownRegistry.js';
-export {setupModelMock, teardownModelMock} from './mock.js';
-export {modelFactory} from './modelFactory.js';
-export {getObjectSchema, getSubjectApi, setBaseUrl, setFetchFn} from './schemaFetcher.js';

@@ -9,14 +9,14 @@
  *   ServerValidation.args = {saveAction: 'treeTreeEditError'};
  *
  * Per-story `decorators` with `withDispatch` overrides are only needed for
- * behaviour that cannot be expressed as a named action (rare).
+ * behavior that cannot be expressed as a named action (rare).
  *
  * ## Toast notifications
  *
  * `makeDispatch` and `withDispatch` accept a `notify` option that controls which
  * handler calls show a success toast after resolving. By default, read-only and
  * background handlers are excluded; all mutation handlers show a toast with the
- * method name and the JSON-serialised result.
+ * method name and the JSON-serialized result.
  *
  * To see toasts for specific actions in a per-story decorator:
  *
@@ -27,14 +27,13 @@
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
 import React from 'react';
-import { App } from '../src/components/App/index.js';
-import { Hint } from '../src/components/Hint/index.js';
-import type { DispatchFn } from '../src/context/BlongUiContext.js';
-import type { IModelSpec } from '../src/index.js';
-import { blongEvents } from '../src/lib/eventBus.js';
-import { modelFactoryMock } from '../src/model/modelFactoryMock.js';
-import { useAppStore } from '../src/state/appStore.js';
-import type { IBlongError } from '../src/types/action.js';
+import {App} from '../src/components/App/index.js';
+import {Hint} from '../src/components/Hint/index.js';
+import type {DispatchFn} from '../src/context/BlongUiContext.js';
+import type {IModelSpec} from '../src/index.js';
+import {blongEvents} from '../src/lib/eventBus.js';
+import {useAppStore} from '../src/state/appStore.js';
+import type {IBlongError} from '../src/types/action.js';
 
 /**
  * Controls which dispatch calls show a Storybook toast on success:
@@ -598,35 +597,14 @@ export const defaultHandlers: Record<string, Handler> = {
  * `overrides`.  Used internally by `withDispatch`; also exported for unit tests
  * that need a standalone dispatch without a React tree.
  */
-export function makeDispatch(
-    overrides: Record<string, Handler> = {},
-    models?: IModelSpec[],
-): DispatchFn {
+export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchFn {
     const handlers = {...defaultHandlers, ...overrides};
-    let modelHandlers: Promise<Record<string, unknown>>;
     const result = async (method: string, params?: Record<string, unknown>) => {
-        debugger;
-        if (modelHandlers) {
-            const result = (await modelHandlers)[method.replace('component/', '')];
-            if (result) return result;
-        }
         const handler = handlers[method];
         if (handler) return handler(params);
         console.info('[storybook dispatch] unhandled:', method, params);
         return undefined;
     };
-    if (models)
-        modelHandlers = modelFactoryMock(models)({
-            handler: new Proxy(
-                {},
-                {
-                    get(target, prop) {
-                        return (params: Record<string, unknown>) => result(String(prop), params);
-                    },
-                },
-            ),
-        });
-
     return result;
 }
 
@@ -639,7 +617,7 @@ export function makeDispatch(
  *   TanStack Query path, which exposes `loading: true` while a promise is pending.
  * - Wraps every story in `<App>` with the shared dispatch.
  *
- * Per-story decorators with overrides are only needed when behaviour cannot be
+ * Per-story decorators with overrides are only needed when behavior cannot be
  * expressed as a named action.
  */
 export function withDispatch(
@@ -657,7 +635,7 @@ export function withDispatch(
         translations?: Record<string, string>;
     } = {},
 ): (Story: React.ComponentType, context?: unknown) => React.ReactElement {
-    const dispatch = makeDispatch(overrides, models);
+    const dispatch = makeDispatch(overrides);
     // Register query (read) actions so TanStack Query can show loading state.
     // Register mutation (write) actions with mutates:true so they are NOT
     // auto-fetched by TanStack Query — only called when explicitly invoked.
@@ -670,7 +648,7 @@ export function withDispatch(
         ]),
     );
 
-    return (Story, context) => {
+    return function WithDispatch(Story, context) {
         const ctx = context as
             | {args?: Record<string, unknown>; parameters?: Record<string, unknown>}
             | undefined;
@@ -718,7 +696,7 @@ export function withDispatch(
         }, []);
 
         // Clear stale error/toast state each time a different story is rendered.
-        // The decorator is a stable React component instance across navigations, so
+        // The decorator is a stable React component instance across navigation, so
         // only a Story-dependent effect re-runs on navigation.
         React.useEffect(() => {
             useAppStore.getState().clearError();

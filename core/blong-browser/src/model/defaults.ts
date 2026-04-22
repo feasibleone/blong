@@ -4,16 +4,39 @@
  */
 import type {IModelSpec, IResolvedModelSpec} from '@feasibleone/blong';
 
-/** Capitalise the first character of a string */
+/** Capitalize the first character of a string */
 function capital(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// Core logic to merge two types (T is target, U is source/override)
+type DeepMerge<T, U> = T extends object
+    ? U extends object
+        ? {
+              [K in keyof T | keyof U]: K extends keyof T
+                  ? K extends keyof U
+                      ? DeepMerge<T[K], U[K]> // Recursively merge shared keys
+                      : T[K]
+                  : K extends keyof U
+                    ? U[K]
+                    : never;
+          }
+        : U
+    : U;
+
+// Variadic type to process N arguments
+type DeepMergeAll<Ts extends readonly unknown[]> = Ts extends readonly [infer Head, ...infer Tail]
+    ? Tail extends readonly []
+        ? Head
+        : DeepMerge<Head, DeepMergeAll<Tail>>
+    : any;
 
 /**
  * Merge source into target deeply, returning a new object.
  * Only plain objects are merged; arrays and primitives are overwritten.
  */
-export function deepMerge<T extends object>(target: T, ...sources: Partial<T>[]): T {
+export function deepMerge<T extends object[]>(...args: T): DeepMergeAll<T> {
+    const [target, ...sources] = args;
     for (const source of sources) {
         if (!source) continue;
         for (const [key, value] of Object.entries(source)) {
@@ -35,7 +58,7 @@ export function deepMerge<T extends object>(target: T, ...sources: Partial<T>[])
             }
         }
     }
-    return target;
+    return target as DeepMergeAll<T>;
 }
 
 /**
@@ -126,23 +149,23 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             defaultSchemaOverlay,
             (spec.schema as object) ?? {},
         ),
-        cards: deepMerge({} as NonNullable<IModelSpec['cards']>, defaultCards, spec.cards ?? {}),
+        cards: deepMerge(
+            {} as NonNullable<IModelSpec['cards']>,
+            defaultCards,
+            spec.cards ?? {},
+        ) as IResolvedModelSpec['cards'],
         browser: deepMerge(
-            {} as Required<IModelSpec['browser']> & {permission: typeof defaultBrowserPermissions},
+            {},
             defaultBrowser,
             spec.browser ?? {},
-        ) as IResolvedModelSpec['browser'],
-        editor: deepMerge({} as Required<IModelSpec['editor']>, defaultEditor, spec.editor ?? {}),
-        report: deepMerge({} as Required<IModelSpec['report']>, defaultReport, spec.report ?? {}),
+        ) as unknown as IResolvedModelSpec['browser'],
+        editor: deepMerge({}, defaultEditor, spec.editor ?? {}) as IResolvedModelSpec['editor'],
+        report: deepMerge({}, defaultReport, spec.report ?? {}) as IResolvedModelSpec['report'],
         layouts: deepMerge(
             {} as NonNullable<IModelSpec['layouts']>,
             defaultLayouts,
             spec.layouts ?? {},
         ),
-        methods: deepMerge(
-            {} as Required<IModelSpec['methods']>,
-            defaultMethods,
-            spec.methods ?? {},
-        ),
-    } as IResolvedModelSpec;
+        methods: deepMerge({}, defaultMethods, spec.methods ?? {}) as IResolvedModelSpec['methods'],
+    };
 }

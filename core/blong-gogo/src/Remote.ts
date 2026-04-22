@@ -371,8 +371,8 @@ export default class Remote extends Internal implements IRemote {
         const key = ['ports', methodName, type].join('.');
         let result = this.#local.get(key) || this.#local.get(methodName);
         if (!result) {
-            const names = methodName.split('.');
-            while (names.length) {
+            const names = methodName.split('/')[0].split('.');
+            while (!result && names.length) {
                 result = this.#local.get(['ports', names.join('.'), type].join('.'));
                 names.pop();
             }

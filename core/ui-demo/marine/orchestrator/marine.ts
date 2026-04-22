@@ -18,7 +18,7 @@ export default orchestrator(() => ({
     activation: {
         default: {
             namespace: ['marine'],
-            appendNamespace: 'backend',
+            destination: 'backend',
         },
     },
 }));

@@ -12,7 +12,6 @@
  *  - Design-mode DnD (card reordering across columns)
  *  - Provides FormContext so Deck and Card can render without prop-drilling
  */
-import './index.css';
 import {
     DndContext,
     DragOverlay,
@@ -23,17 +22,16 @@ import {
     type DragEndEvent,
 } from '@dnd-kit/core';
 import {PanelMenu, Steps, TabMenu} from '../../primereact/index.js';
+import './index.css';
 
-
-
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
-import { useForm, type FieldErrors, type SubmitHandler } from 'react-hook-form';
-import { useDesignMode } from '../../design/useDesignMode.js';
-import { useLayout, type FlatLayoutConfig, type LayoutConfig } from '../../hooks/useLayout.js';
-import { useAppStore } from '../../state/appStore.js';
-import type { ICardConfig, IEnrichedFieldSchema, IEnrichedSchema } from '../../types/widget.js';
-import { Deck } from '../Deck/index.js';
-import { FormContext } from './FormContext.js';
+import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
+import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
+import {useDesignMode} from '../../design/useDesignMode.js';
+import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
+import {useAppStore} from '../../state/appStore.js';
+import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
+import {Deck} from '../Deck/index.js';
+import {FormContext} from './FormContext.js';
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -291,7 +289,7 @@ export function Form({
                         model={tabItems}
                         activeIndex={activeTabIndex}
                         onTabChange={e => setActiveTabIndex(e.index)}
-                        className="blong-form-tabmenu"
+                        className="blong-form-tab-menu"
                     />
                     <div className="blong-form-tab-content">{tabContent}</div>
                 </div>
@@ -407,8 +405,7 @@ export function Form({
                     if (!from || !to) return;
                     const newRows = rows.map(col => [...col]);
                     newRows[from.ci].splice(from.idx, 1);
-                    const insertIdx =
-                        from.ci === to.ci && to.idx > from.idx ? to.idx - 1 : to.idx;
+                    const insertIdx = from.ci === to.ci && to.idx > from.idx ? to.idx - 1 : to.idx;
                     newRows[to.ci].splice(insertIdx, 0, activeCardName);
                     applyNewRows(newRows);
                 }
@@ -427,9 +424,7 @@ export function Form({
 
                     const fromFields = [...fromCardResolved.fields];
                     const toFields =
-                        fromCard === targetCard
-                            ? fromFields
-                            : [...(toCardResolved?.fields ?? [])];
+                        fromCard === targetCard ? fromFields : [...(toCardResolved?.fields ?? [])];
 
                     const fromIdx = fromFields.indexOf(fromField);
                     if (fromIdx === -1) return;
@@ -452,8 +447,7 @@ export function Form({
                             },
                         });
                     } else {
-                        const insertIdx =
-                            targetField !== null ? toFields.indexOf(targetField) : -1;
+                        const insertIdx = targetField !== null ? toFields.indexOf(targetField) : -1;
                         toFields.splice(
                             insertIdx === -1 ? toFields.length : insertIdx,
                             0,

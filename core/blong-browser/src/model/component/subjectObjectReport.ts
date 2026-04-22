@@ -1,11 +1,14 @@
 import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
 import type {IEnrichedSchema} from '../../types/widget.js';
 
-export function subjectObjectReport(model: IResolvedModelSpec) {
+export async function subjectObjectReport(
+    model: IResolvedModelSpec,
+    blong: IHandlerProxy<unknown>,
+) {
     const {methods, subject, object} = model;
     const {title, permission} = model.report!;
 
-    return async (blong: Pick<IHandlerProxy<{}>, 'handler'>) => ({
+    return async () => ({
         title,
         permission,
         icon: 'pi pi-chart-bar',

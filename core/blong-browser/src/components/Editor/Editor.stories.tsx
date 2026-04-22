@@ -215,7 +215,7 @@ Toolbar.args = {
  * ToolbarBG — same as Toolbar but with Bulgarian translations applied.
  * Demonstrates multi-language support: card titles, field labels, column headers,
  * and built-in toolbar/widget button labels are all translated.
- * PrimeReact UI (e.g. Calendar month names) is also localised.
+ * PrimeReact UI (e.g. Calendar month names) is also localized.
  */
 export const ToolbarBG: StoryFn = Template.bind({});
 ToolbarBG.args = {

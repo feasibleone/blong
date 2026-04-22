@@ -32,7 +32,7 @@
             "types": "./dist/storybook.d.ts",
             "development": "./src/storybook.ts"
         },
-        "./storybook.ts": "./storybook.ts",
+        "./storybook.tsx": "./storybook.tsx",
         "./package.json": "./package.json"
     },
     "main": "./dist/blong-browser.es.js",
@@ -62,6 +62,7 @@
         "zustand": "^5.0.4"
     },
     "devDependencies": {
+        "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@rushstack/eslint-config": "^4.6.4",
         "@storybook/addon-a11y": "^10.3.5",
         "@storybook/addon-docs": "^10.3.5",
@@ -73,10 +74,9 @@
         "@types/node": "^24",
         "@types/react": "^19.1.2",
         "@types/react-dom": "^19.1.2",
-        "@vitejs/plugin-react": "^4.3.4",
+        "@vitejs/plugin-react": "^6.0.1",
         "@vitest/coverage-v8": "^3.0.9",
         "chromatic": "^16.1.0",
-        "eslint": "~9.39.2",
         "jsdom": "^26.0.0",
         "primeflex": "^3.3.0",
         "primeicons": "^7.0.0",
@@ -86,9 +86,9 @@
         "react-hook-form": "^7.54.2",
         "storybook": "^10.3.5",
         "typescript": "^5.9.3",
-        "vite": "^6.4.2",
-        "vite-plugin-dts": "^4.5.3",
-        "vitest": "^3.0.9"
+        "vite": "^8.0.8",
+        "vite-plugin-dts": "^4.5.4",
+        "vitest": "^4.1.4"
     },
     "peerDependencies": {
         "primeflex": "^3.3.0",

@@ -406,7 +406,7 @@ async function decodeReceive(
                 result = [decodeError, $meta];
             }
         }
-    } else if (dataPacket instanceof Buffer) {
+    } else if (typeof Buffer !== 'undefined' && dataPacket instanceof Buffer) {
         result = [
             {payload: result},
             metaFromContext(context, {mtid: 'notification', opcode: 'payload'}),

@@ -362,6 +362,7 @@ export interface IAdapter<T, C> {
     log?: ILogger;
     errors?: Errors<IErrorMap>;
     imported?: ReturnType<IAdapterFactory<T, C>>;
+    importedMap?: Map<string, IRemoteHandler>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
     activeConfig?: (this: ReturnType<IAdapterFactory<T, C>>) => Partial<Config<T, C>>;
     init?: (
@@ -388,7 +389,7 @@ export interface IAdapter<T, C> {
     ) => Buffer;
     encode?: (data: unknown, $meta: IMeta, context: object, log: ILogger) => string | Buffer;
     decode?: (buff: string | Buffer, $meta: IMeta, context: object, log: ILogger) => object[];
-    request?: () => Promise<unknown>;
+    request?: (...params: unknown[]) => Promise<unknown>;
     publish?: () => Promise<unknown>;
     drain?: () => void;
     findValidation?: (this: ReturnType<IAdapterFactory<T, C>>, $meta: IMeta) => () => object;
@@ -800,12 +801,10 @@ export const handler = <T = Record<string, unknown>, C = AdapterContext>(
  * metadata `{title, permission, icon, component: async () => ReactComponent}`.
  */
 export interface IComponent {
-    [name: string]: {
-        title?: string;
-        permission?: string;
-        icon?: string;
-        component: (params: Record<string, unknown>) => Promise<unknown>;
-    };
+    title?: string;
+    permission?: string;
+    icon?: string;
+    component: (params?: Record<string, unknown>) => Promise<unknown>;
 }
 
 /** Action definition for use with `defineActions`. */
@@ -862,8 +861,9 @@ export const validation = (validation: ValidationDefinition): ValidationDefiniti
     Object.defineProperty(validation, Kind, {value: 'validation'});
 export const api = (api: ApiDefinition): ApiDefinition =>
     Object.defineProperty(api, Kind, {value: 'api'});
-export const model = <T extends IModelSpec>(definition: () => T): (() => T) =>
-    Object.defineProperty(definition, Kind, {value: 'model'});
+export const model = <T extends IModelSpec>(
+    definition: () => () => Promise<T>,
+): (() => () => Promise<T>) => Object.defineProperty(definition, Kind, {value: 'model'});
 export const mock = <T extends IMock>(definition: () => T): (() => T) =>
     Object.defineProperty(definition, Kind, {value: 'mock'});
 

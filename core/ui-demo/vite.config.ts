@@ -10,4 +10,13 @@ export default defineConfig({
             '@feasibleone/blong': new URL('../blong/types.ts', import.meta.url).pathname,
         },
     },
+    build: {
+        minify: false,
+        rollupOptions: {
+            output: {
+                // Keep function names for better debugging in Storybook
+                keepNames: true,
+            },
+        },
+    },
 });

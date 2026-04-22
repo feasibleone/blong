@@ -431,6 +431,13 @@
         // },
         //
         {
+            "packageName": "@feasibleone/eslint",
+            "projectFolder": "core/eslint",
+            "reviewCategory": "core",
+            "shouldPublish": false,
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong",
             "projectFolder": "core/blong",
             "reviewCategory": "core",

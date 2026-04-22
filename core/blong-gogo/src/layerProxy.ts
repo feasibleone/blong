@@ -371,7 +371,8 @@ export default function layerProxy(
                                             }
                                         }
                                         for (let what of others) {
-                                            switch (`${typeof what}:${kind(what)}`) {
+                                            const kindOfWhat = kind(what);
+                                            switch (`${typeof what}:${kindOfWhat}`) {
                                                 case 'object:handler':
                                                 case 'object:validation':
                                                     merge(local, what);
@@ -387,19 +388,29 @@ export default function layerProxy(
                                                     break;
                                                 case 'function:handler':
                                                 case 'function:validation':
+                                                case 'function:model':
                                                     configRuntime?.enterConfig();
                                                     try {
                                                         what = await what(layerApi);
                                                     } finally {
                                                         configRuntime?.exitConfig();
                                                     }
-                                                    if (typeof what === 'function')
+                                                    const created = await port?.createHandlers?.({
+                                                        handlers:
+                                                            typeof what === 'function'
+                                                                ? [what]
+                                                                : what,
+                                                        layerApi,
+                                                        kind: kindOfWhat,
+                                                    });
+                                                    if (typeof what === 'function') {
                                                         local[methodId(what.name)] = what;
-                                                    else {
+                                                    } else {
                                                         literals.push(what);
                                                         what = methodId(what);
                                                         merge(local, what);
                                                     }
+                                                    Object.assign(local, methodId(created));
                                             }
                                         }
                                     });

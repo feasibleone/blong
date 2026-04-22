@@ -1,6 +1,6 @@
 import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
 
-export async function subjectObjectSchema(
+export async function subjectDropdownList(
     model: IResolvedModelSpec,
     blong: IHandlerProxy<unknown>,
 ) {

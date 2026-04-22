@@ -9,13 +9,13 @@ export interface ITab {
     /** The action name that opened this tab */
     actionName: string;
     /** Parameters that were passed to the action */
-    params: Record<string, unknown>;
+    params?: Record<string, unknown>;
     /** Resolved display title */
     title: string;
     /** Whether the tab has unsaved changes */
     dirty?: boolean;
     /** The loaded React component (after phase 2 resolution) */
-    component?: React.ComponentType<Record<string, unknown>>;
+    component?: React.ComponentType;
 }
 
 /** Menu item — can be a group or a leaf */
