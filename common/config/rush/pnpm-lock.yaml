@@ -435,6 +435,9 @@ importers:
       browser-process-hrtime:
         specifier: ^1.0.0
         version: 1.0.0
+      cacache:
+        specifier: ^20.0.4
+        version: 20.0.4
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -486,6 +489,9 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      pino-abstract-transport:
+        specifier: ^3.0.0
+        version: 3.0.0
       pino-pretty:
         specifier: ^13.1.3
         version: 13.1.3
@@ -535,6 +541,9 @@ importers:
       '@rushstack/heft-typescript-plugin':
         specifier: ^1.3.1
         version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@types/cacache':
+        specifier: ^20.0.1
+        version: 20.0.1
       '@types/node':
         specifier: ^24
         version: 24.12.0
@@ -1258,10 +1267,16 @@ importers:
 
   ../../ext/rest-fs:
     dependencies:
+      cacache:
+        specifier: ^20.0.4
+        version: 20.0.4
       ws:
         specifier: ^8.18.0
         version: 8.20.0
     devDependencies:
+      '@types/cacache':
+        specifier: ^20.0.1
+        version: 20.0.1
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
@@ -4978,6 +4993,9 @@ packages:
 
   '@types/bonjour@3.5.13':
     resolution: {integrity: sha512-z9fJ5Im06zvUL548KvYNecEVlA7cVDkGUi6kZusb04mpyEFKCIZJvloCcmpmLaIahDpOQGHaHmG6imtPMmPXGQ==}
+
+  '@types/cacache@20.0.1':
+    resolution: {integrity: sha512-QlKW3AFoFr/hvPHwFHMIVUH/ZCYeetBNou3PCmxu5LaNDvrtBlPJtIA6uhmU9JRt9oxj7IYoqoLcpxtzpPiTcw==}
 
   '@types/caseless@0.12.5':
     resolution: {integrity: sha512-hWtVTC2q7hc7xZ/RLbxapMvDMgUnDvKvMOpKal4DrMyfGBUfB1oKaZlIRr6mJL+If3bAP6sV/QneGzF6tJjZDg==}
@@ -18617,6 +18635,11 @@ snapshots:
   '@types/bonjour@3.5.13':
     dependencies:
       '@types/node': 24.12.0
+
+  '@types/cacache@20.0.1':
+    dependencies:
+      '@types/node': 24.12.0
+      minipass: 7.1.3
 
   '@types/caseless@0.12.5': {}
 
