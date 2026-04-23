@@ -352,10 +352,11 @@ Suite factory
 
 ---
 
-## 7  Questions Requiring Clarification
+## 7  Questions and Answers
 
-Before proceeding with simplification, the following questions should be
-answered:
+The following questions were raised during initial analysis. Answers were
+provided by the framework author and inform the simplification plan in
+Section 8.
 
 ### Architectural / Conceptual
 
@@ -365,16 +366,26 @@ answered:
    Port class in `Port.ts` appears to be a thin stub with no real
    implementation. Can the Port subclass path be removed?
 
+   > **Answer: Yes** — both paths are still needed. Do not remove the Port
+   > subclass path.
+
 2. **`utBus` compatibility surface:** `Registry.createPort()` assembles a
    large `utBus` API object with `register`, `unregister`, `subscribe`,
    `unsubscribe`, `attachHandlers`, `getPath`, `importMethod`, `dispatch`,
    `methodId`, `config`. This mirrors the old `ut-bus` API. Is there still
    code that depends on this exact shape, or can it be simplified?
 
+   > **Answer: No** — nothing depends on this exact shape any more. The
+   > `utBus` compatibility surface can be simplified.
+
 3. **Dual registration (Local + RpcServer):** Every method is registered in
    both `Local` and `RpcServer`. When `canSkipSocket` is true, RpcServer
    registration is essentially dead code for that deployment. Can this be
    deferred or made conditional?
+
+   > **Answer:** Registration in the RPC server is likely to be conditional
+   > in the future, as some methods will be private to the local process.
+   > This should be prepared for but does not need to change immediately.
 
 4. **Prototype-chain wiring vs. Map:** The handler attachment uses a
    prototype chain (`Object.setPrototypeOf`) for hot-reload. This is clever
@@ -382,10 +393,20 @@ answered:
    an explicit `replace()` method achieve the same hot-reload semantics more
    transparently?
 
+   > **Answer:** The intent of the prototype chain is to make it possible
+   > for handlers to call the "super" handler when overridden via attaching.
+   > This is a deliberate design choice and should be preserved. Do not
+   > replace with a Map.
+
 5. **`_matchMethods` extend vs. merge:** The `extend` mode chains all handlers
    for a pattern into one prototype chain, while `merge` mode creates them
    individually. Is there a use case where multiple handler groups match the
    same adapter import pattern? If not, `extend` may be unnecessary.
+
+   > **Answer: Yes** — some adapters/orchestrators are singleton in a
+   > dedicated realm and import handler groups from other realms. For
+   > example the db adapter in the server and the http adapter in the
+   > browser. The `extend` mode is necessary.
 
 ### Implementation / Code-Level
 
@@ -394,15 +415,23 @@ answered:
    Remote, etc.). This is fragile. Should this be made explicit through a
    dependency declaration?
 
+   > **Answer: Yes** — this should be made explicit through dependency
+   > declarations.
+
 7. **`layerProxy` Proxy complexity:** The `layerProxy` function is ~425 lines
    with deeply nested closures and 4+ levels of proxying (the returned proxy,
    the `lib` proxy, the `handler` proxy, the sub-property naming proxy). Can
    the handler proxy be extracted into its own named function/class?
 
+   > **Answer: Yes** — the handler proxy should be extracted.
+
 8. **Watch re-load path duplication:** `Watch._watch()` has three code paths
    for layer files, config files, and handler files/folders. Each path
    reimplements parts of the load→layerProxy→registry flow. Can these share
    a common "reload unit" abstraction?
+
+   > **Answer: Probably yes** — these can likely share a common abstraction,
+   > though care is needed to preserve hot-reload semantics.
 
 9. **`adapter.ts` base object:** The adapter base is a large plain object
    literal (~300 lines) with methods that close over `utBus`, `utError`,
@@ -410,19 +439,36 @@ answered:
    reduce the closure scope. Is there a reason it must remain a plain object
    (e.g., prototype-chain inheritance from custom adapter definitions)?
 
+   > **Answer:** Realms and solutions should not depend on blong-gogo.
+   > Adapters and orchestrators should have some way of extending a base
+   > one without importing it. The conversion to a class must respect this
+   > constraint — the base class should be provided through the runtime, not
+   > via direct import.
+
 10. **`folderAnalysis.ts` and `discoverRealmTestMethods()`:** Both exist to
     support "bare handler" mode (running a folder of handlers without a suite).
     This is a developer convenience feature. Should it be a core concern or
     moved to a separate CLI helper?
+
+    > **Answer:** This is a core concern which is likely to be extended.
+    > Keep it in blong-gogo.
 
 11. **Config merging happens in multiple places:** `loadRealm()` merges module
     configs, `loadConfig()` merges external files, `layerProxy` merges namespace
     configs, `adapter.activeConfig()` merges activation configs. Can these be
     unified into a single config resolution pass?
 
+    > **Answer: Yes** — this would be a great improvement. See
+    > `core/blong-gogo/src/ConfigRuntime.ts` which already centralises
+    > config lifecycle (load, merge, proxy, diff, notify). The remaining
+    > merge sites in `loadRealm()`, `layerProxy`, and `adapter.activeConfig()`
+    > should be consolidated into `ConfigRuntime`.
+
 ---
 
 ## 8  Simplification Plan
+
+Revised based on the answers in Section 7.
 
 ### 8.1  Extract handler proxy into its own module
 
@@ -431,7 +477,7 @@ answered:
 
 **Why:** This is the most important abstraction in the framework (it's the IoC
 mechanism). Having it as a named, testable module will make it easier to
-understand, debug, and extend.
+understand, debug, and extend. (Confirmed by answer 7.)
 
 **Impact:** Low risk. Pure extraction, no behavior change.
 
@@ -447,41 +493,45 @@ named functions makes the flow explicit.
 
 **Impact:** Low risk. Refactoring with no behavior change.
 
-### 8.3  Simplify adapter base by converting to a class
-
-**What:** Convert the plain-object literal in `adapter.ts` to a class
-`AdapterBase`.
-
-**Why:** The current object uses closure-captured variables (`utBus`,
-`utError`, etc.) that could be instance properties. A class gives better
-TypeScript inference and enables subclassing without `Object.setPrototypeOf`.
-
-**Constraint:** Custom adapters currently use prototype chain inheritance
-(`Object.setPrototypeOf(current, base)`) — the class approach must preserve
-this pattern.
-
-**Impact:** Medium risk. Need to verify all adapter/orchestrator definitions
-still work with class-based inheritance.
-
-### 8.4  Replace `utBus` compatibility layer with direct Registry calls
+### 8.3  Replace `utBus` compatibility layer with direct Registry calls
 
 **What:** The `utBus` object assembled in `Registry.createPort()` wraps
 `rpcServer`, `local`, `remote`, and `registry` methods. Replace it with
 passing the actual objects (or a slim facade) directly.
 
-**Why:** The indirection exists for backward compatibility with `ut-bus`. Since
-blong-gogo is the only consumer, the wrapping is unnecessary.
+**Why:** Nothing depends on this exact shape any more (answer 2). The
+indirection exists for backward compatibility with `ut-bus`. Since blong-gogo
+is the only consumer, the wrapping is unnecessary.
 
 **Impact:** Medium risk. Need to update `adapter.ts` and any code that
 references `utBus.*`.
+
+### 8.4  Convert adapter base to a runtime-provided class
+
+**What:** Convert the plain-object literal in `adapter.ts` to a class
+`AdapterBase`, exposed through the runtime rather than via direct import.
+
+**Why:** The current object uses closure-captured variables (`utBus`,
+`utError`, etc.) that could be instance properties. A class gives better
+TypeScript inference and enables subclassing without `Object.setPrototypeOf`.
+
+**Constraint:** Realms and solutions must not depend on blong-gogo (answer 9).
+The base class must be provided through the runtime injection mechanism (e.g.
+via `runtime.base` or a similar factory), not via direct import. Custom
+adapters currently use prototype chain inheritance
+(`Object.setPrototypeOf(current, base)`) — the class approach must preserve
+this pattern.
+
+**Impact:** Medium risk. Need to verify all adapter/orchestrator definitions
+still work with the runtime-provided class-based inheritance.
 
 ### 8.5  Make infrastructure instantiation order explicit
 
 **What:** Instead of a flat ordered array of items, declare dependencies:
 `Registry` depends on `[Error, Remote, Gateway, Local, Watch]`.
 
-**Why:** The current approach is fragile. Adding a new infrastructure object
-requires finding the right position in the array.
+**Why:** The current approach is fragile (confirmed by answer 6). Adding a new
+infrastructure object requires finding the right position in the array.
 
 **Impact:** Low risk but broad scope. Requires a small dependency resolution
 mechanism.
@@ -492,45 +542,83 @@ mechanism.
 re-wrap via layerProxy → replace in registry → signal test".
 
 **Why:** The three paths (handler folder, handler file, layer file) duplicate
-the load→proxy→register flow with slight variations.
+the load→proxy→register flow with slight variations. Likely unifiable
+(answer 8), though care is needed to preserve all hot-reload semantics.
 
 **Impact:** Medium risk. Touches Watch.ts and must preserve all hot-reload
 semantics.
 
-### 8.7  Simplify prototype-chain wiring with consideration
+### 8.7  Unify config merging into ConfigRuntime
 
-**What:** Evaluate replacing `Object.setPrototypeOf` chains with a
-`Map<string, Function>` that supports `get(name)` and `replace(name, fn)`.
+**What:** Consolidate the scattered config-merge sites — `loadRealm()` module
+config merging, `layerProxy` namespace config merging, and
+`adapter.activeConfig()` activation config merging — into `ConfigRuntime`
+(`core/blong-gogo/src/ConfigRuntime.ts`).
 
-**Why:** Prototype chains are hard to debug. The hot-reload benefit can be
-achieved with a reactive map that invalidates lookups.
+**Why:** Config merging is currently duplicated in four places (answer 11).
+`ConfigRuntime` already centralises the config lifecycle (load, merge, proxy,
+diff, notify). Routing all merge operations through it will eliminate
+duplication and ensure a single source of truth for the resolved config.
 
-**Constraint:** The current approach allows natural property resolution for
-deeply nested handler lookups (e.g., `this.imported.send`). A Map-based
-approach would need an explicit lookup wrapper.
+**Approach:** Extend `ConfigRuntime` with layer-scoped and activation-scoped
+merge methods. Each merge site currently assembling config from parent +
+local + environment sources would instead call a ConfigRuntime API that
+returns the resolved config slice. The existing `createConfigProxy` system
+ensures hot-reload semantics are preserved.
 
-**Recommendation:** Do not change this in the first pass. The prototype chain
-is well-tested and the debugging cost may not justify the rewrite. Document it
-thoroughly instead.
+**Impact:** Medium risk but high value. Need to trace all merge call sites and
+verify the merge order is preserved.
 
-### 8.8  Consider deferring RpcServer registration for monolith mode
+### 8.8  Prepare RpcServer registration for conditional methods
 
-**What:** When running as a monolith (`canSkipSocket: true`), skip registering
-methods in `RpcServer`.
+**What:** Add a mechanism to mark methods as "local-only" so that RpcServer
+registration can be made conditional. When running as a monolith
+(`canSkipSocket: true`), skip registering local-only methods in `RpcServer`.
 
-**Why:** Reduces initialization overhead and removes dead code paths.
+**Why:** Some methods will be private to the local process (answer 3).
+Currently every method is registered in both `Local` and `RpcServer`
+unconditionally. This prepares for future selective exposure.
 
-**Impact:** Low risk. Conditional based on config.
+**Impact:** Low risk. Conditional based on config or method metadata.
+
+### ~~8.x  Simplify prototype-chain wiring~~ (Removed)
+
+**Status:** Removed from plan based on answer 4. The prototype chain is a
+deliberate design choice that enables handlers to call the "super" handler
+when overridden via attaching. Do not replace with a Map. Document the
+pattern thoroughly instead.
+
+### ~~8.x  Remove `extend` mode from `_matchMethods`~~ (Removed)
+
+**Status:** Removed from plan based on answer 5. The `extend` mode is
+necessary — some adapters/orchestrators are singletons in a dedicated realm
+that import handler groups from other realms (e.g. the db adapter on the
+server and the http adapter in the browser).
+
+### ~~8.x  Move `folderAnalysis.ts` to CLI helper~~ (Removed)
+
+**Status:** Removed from plan based on answer 10. Bare handler mode is a core
+concern likely to be extended. Keep `folderAnalysis.ts` and
+`discoverRealmTestMethods()` in blong-gogo.
 
 ---
 
 ## 9  Recommended Execution Order
 
+Revised based on the answers in Section 7. Items are ordered from safest/most
+impactful to riskiest.
+
 1. **8.1** — Extract handler proxy (safe, immediate clarity win)
 2. **8.2** — Extract handler closure (safe, complements 8.1)
-3. **8.4** — Replace utBus with direct calls (removes indirection)
-4. **8.6** — Unify Watch reload paths (reduces duplication)
-5. **8.5** — Make infra instantiation order explicit (structural improvement)
-6. **8.3** — Convert adapter base to class (bigger change, do after cleanup)
-7. **8.8** — Defer RpcServer registration (optimization)
-8. **8.7** — Evaluate prototype chain replacement (low priority, high risk)
+3. **8.3** — Replace utBus with direct calls (removes unnecessary indirection;
+   unblocked by answer 2 confirming nothing depends on the exact shape)
+4. **8.5** — Make infra instantiation order explicit (structural improvement;
+   confirmed by answer 6)
+5. **8.6** — Unify Watch reload paths (reduces duplication; tentatively
+   confirmed by answer 8)
+6. **8.7** — Unify config merging into ConfigRuntime (high value; confirmed by
+   answer 11)
+7. **8.4** — Convert adapter base to runtime-provided class (bigger change;
+   constrained by answer 9 — must not require blong-gogo import)
+8. **8.8** — Prepare conditional RpcServer registration (future-proofing;
+   informed by answer 3)
