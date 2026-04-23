@@ -16,12 +16,6 @@
                         // This task will invoke the TypeScript plugin
                         "pluginPackage": "@rushstack/heft-typescript-plugin"
                     }
-                },
-                "lint": {
-                    "taskDependencies": ["typescript"],
-                    "taskPlugin": {
-                        "pluginPackage": "@rushstack/heft-lint-plugin"
-                    }
                 }
             }
         }
