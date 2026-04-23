@@ -808,6 +808,9 @@ importers:
       '@types/ut-function.cbc':
         specifier: file:./types/ut-function.cbc
         version: file:../../core/blong-login/types/ut-function.cbc
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   ../../core/blong-openapi:
     dependencies:
