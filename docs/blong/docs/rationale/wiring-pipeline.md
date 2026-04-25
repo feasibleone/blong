@@ -5,6 +5,8 @@ runtime that loads solutions, realms, layers, and handlers without any direct
 imports between them. It is intended for review prior to a simplification
 refactoring.
 
+Note: the word "port" comes from a legacy terminology. In Blong, the preferred terms are "adapters" and "orchestrators".
+
 ---
 
 ## 1  High-Level Overview
@@ -280,9 +282,9 @@ After any change, `emit('test')` triggers test re-runs.
 2. **Kind annotations drive classification.** Every factory function is tagged
    with a `Symbol` (`Kind`) that determines how the framework processes it:
    `handler`, `lib`, `validation`, `api`, `model`, `adapter`, `orchestrator`,
-   `solution`, `server`, `browser`.
+   `solution`, `server`, `browser`. They also help with type checking the factory functions.
 
-3. **Layers are activation boundaries.** A layer groups handlers that
+3. **Layers are activation boundaries.** A layer groups handlers, adapters and orchestrators that
    activate/deactivate together. Well-known folders auto-activate per their
    default environment.
 
@@ -366,8 +368,7 @@ Section 8.
    Port class in `Port.ts` appears to be a thin stub with no real
    implementation. Can the Port subclass path be removed?
 
-   > **Answer: Yes** — both paths are still needed. Do not remove the Port
-   > subclass path.
+   > **Answer: Port can be removed**.
 
 2. **`utBus` compatibility surface:** `Registry.createPort()` assembles a
    large `utBus` API object with `register`, `unregister`, `subscribe`,
