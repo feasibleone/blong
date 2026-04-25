@@ -1,50 +1,103 @@
 # Wiring Pipeline — How blong-gogo Loads and Wires the Framework
 
+Note: the word "port" comes from legacy terminology. In Blong, the preferred
+terms are "adapters" and "orchestrators".
+
 ## Problem
 
-`core/blong-gogo/` — the runtime that loads solutions, realms, layers, and
-handlers — had accumulated several structural issues that made it harder to
-understand, extend, and test:
+`core/blong-gogo/` is responsible for wiring a declarative suite definition —
+a tree of `server()` / `browser()` / `realm()` factory calls — into a running
+system where adapters, orchestrators, gateways, and handlers are all connected
+without any direct imports between them. This wiring goal creates several
+hard constraints that must all be satisfied simultaneously:
 
-- The adapter base object was a ~300-line plain-object literal closing over a
-  large `utBus` compatibility surface (a legacy `ut-bus` API wrapper). The
-  indirection added noise and obscured the actual dependencies.
-- The `layerProxy.ts` file was ~425 lines with the handler proxy (the
-  framework's IoC mechanism) buried inside deeply nested closures.
-- Infrastructure objects were instantiated in a hard-coded ordered array,
-  making dependency relationships implicit and fragile.
-- `Watch.ts` had three near-identical paths for hot-reloading handler folders,
-  individual handler files, and layer files.
-- Config merging was scattered across four sites: `loadRealm()`, `layerProxy`,
-  `adapter.activeConfig()`, and `Watch._loadHandlers()`.
+1. **Zero-import IoC.** Handler files must never import each other. Yet every
+   handler needs to call other handlers. Something has to resolve those calls
+   at runtime without the caller knowing where the callee lives.
+
+2. **Transparent monolith / microservice topology.** The same handler code must
+   work whether the callee is in the same process or on a different Kubernetes
+   pod. The routing layer must be invisible to handler authors.
+
+3. **Hot reload without connection loss.** Handler code changes during
+   development must be applied immediately without restarting the process,
+   dropping in-flight requests, or breaking established database / TCP
+   connections.
+
+4. **Environment-scoped activation.** Layers and handler groups must
+   automatically activate or deactivate based on the runtime environment
+   (`dev`, `test`, `integration`, `prod`). Authors should not have to register
+   or unregister them manually.
+
+5. **Platform independence.** The same recursive loader must run in Node.js
+   (server) and in the browser, driving both server-side adapters and
+   browser-side components.
+
+6. **Hierarchical, live configuration.** Config flows from suite to realm to
+   layer to handler, merges environment overrides, and must stay live so that
+   a config-file change can reconfigure a running adapter without a full
+   process restart.
 
 ## Solution
 
-A focused simplification refactoring addressed each issue:
+Each constraint above is addressed by a specific design rule in the pipeline:
 
-1. **Extracted `handlerProxy.ts`** — the handler proxy (the IoC mechanism) is
-   now a standalone, testable, named module.
-2. **Extracted `createHandlerClosure`** — the handler-closure assembly is a
-   named function, making the flow explicit.
-3. **Replaced `utBus` with direct calls** — `Registry.createPort()` now passes
-   the actual API objects directly to adapters; the legacy wrapper is gone.
-4. **Converted the adapter base to `AdapterBase` class** — provided through
-   the runtime rather than via direct import, preserving the constraint that
-   realms never depend on `blong-gogo`.
-5. **Made infrastructure instantiation order explicit** — each infrastructure
-   item declares its dependencies; `load.ts` performs a topological sort before
-   instantiation.
-6. **Unified Watch reload paths** — a single `_reloadUnit` abstraction handles
-   the re-import → re-proxy → replace-in-registry flow, eliminating duplicated
-   code across the three hot-reload paths.
-7. **Unified config merging into `ConfigRuntime`** — all merge operations now
-   go through `ConfigRuntime`, which owns the full config lifecycle.
-8. **Prepared `RpcServer` registration for conditional methods** — a `localOnly`
-   config map allows methods to be excluded from RpcServer registration when
-   running as a monolith.
+1. **No direct imports between handlers** — the `handler` proxy in
+   `handlerProxy.ts` is the IoC mechanism. `runtime.handler.someMethod` is
+   a `Proxy` over the local registry that resolves at call time, not at import
+   time. Replacing the underlying function pointer (on hot reload) automatically
+   updates all callers.
 
-Note: the word "port" comes from legacy terminology. In Blong, the preferred
-terms are "adapters" and "orchestrators".
+2. **Kind annotations drive all classification** — every factory is tagged with
+   a `Symbol` (`Kind`): `handler`, `lib`, `validation`, `api`, `model`,
+   `adapter`, `orchestrator`, `solution`, `server`, `browser`. The loader
+   (`layerProxy.ts`) reads the tag and decides whether to create a port factory,
+   a method closure, a schema, or a handler chain — no branching on file names
+   or folder position.
+
+3. **Layers are activation boundaries** — a layer groups handlers, adapters,
+   and orchestrators that activate or deactivate together. Well-known folder
+   names (`error`, `adapter`, `orchestrator`, `gateway`, `sim`, `test`,
+   `backend`, `component`) are auto-discovered and activated per their default
+   environment without any registration call.
+
+4. **Dual registration (Local + RpcServer)** — every method is registered in
+   both `Local` (in-process) and `RpcServer` (inter-process). `Remote` checks
+   `Local` first; a network hop only happens when the target is genuinely on a
+   different pod. Handler code is topology-agnostic.
+
+5. **Prototype-chain wiring enables hot reload** — instead of copying handler
+   functions into a flat map, they are chained via `Object.setPrototypeOf()`.
+   Replacing one link (`Object.setPrototypeOf(pointer, newLocal)`) propagates
+   to every existing reference immediately. The chain also allows a handler to
+   call the "super" implementation when overriding a method from another group.
+
+6. **Adapters own their handlers** — handler groups are *attached* to adapters
+   via `imports` patterns at start time. The adapter's `imported` prototype
+   chain is the lookup scope for `findHandler()`. This scoping is what makes
+   the same handler name resolvable differently in different adapters.
+
+7. **The gateway builds routes from validations** — validation schemas collected
+   from all `.validation` and `.api` groups are used to generate Fastify routes
+   with JSON Schema validation and OpenAPI documentation. No route is registered
+   manually.
+
+8. **Platform API injection** — `loadServer.ts` and `loadBrowser.ts` inject
+   platform-specific implementations of filesystem operations (fs, path,
+   chokidar vs. browser stubs). The recursive loader `load.ts` is
+   platform-agnostic and runs identically in both environments.
+
+9. **Realms never import `blong-gogo`** — the `AdapterBase` class and all other
+   runtime objects are provided through the dependency injection mechanism.
+   This is what makes the same realm code deployable as a monolith or as an
+   independent microservice without modification.
+
+10. **Configuration is hierarchical and live** — config keys match the
+    hierarchy `{realmName}.{layerGroup}`. All merge operations go through
+    `ConfigRuntime`, which exposes the merged result as a stable proxy object.
+    Handlers always read the current value at call time; adapters can implement
+    a `configChanged` hook for zero-downtime reconfiguration when a config file
+    changes.
 
 ---
 
@@ -321,54 +374,6 @@ file) share this abstraction with slight variations:
   `port.configChanged()` (zero-downtime) or stop+start.
 
 After any change, `emit('test')` triggers test re-runs.
-
----
-
-## Key Design Rules
-
-1. **No direct imports between handlers.** All handler-to-handler dependencies
-   are resolved at runtime through the handler proxy (`handlerProxy.ts`).
-
-2. **Kind annotations drive classification.** Every factory function is tagged
-   with a `Symbol` (`Kind`) that determines how the framework processes it:
-   `handler`, `lib`, `validation`, `api`, `model`, `adapter`, `orchestrator`,
-   `solution`, `server`, `browser`. They also help with type checking the factory functions.
-
-3. **Layers are activation boundaries.** A layer groups handlers, adapters and orchestrators that
-   activate/deactivate together. Well-known folders auto-activate per their
-   default environment.
-
-4. **Configuration is hierarchical and namespaced.** Config keys match the
-   hierarchy: `{realmName}.{layerGroup}`. Config from parent, module defaults,
-   environment overrides, and external files are merged through `ConfigRuntime`
-   in a single pipeline.
-
-5. **Adapters own their handlers.** Handler groups are "attached" to adapters
-   via `imports` patterns. The adapter's `imported` object provides the lookup
-   scope for `findHandler()`.
-
-6. **Prototype-chain wiring enables hot-reload.** Instead of copying handlers
-   into a flat map, they are chained via `Object.setPrototypeOf()`. Replacing
-   one link in the chain updates all lookups without touching other links. This
-   also allows handlers to call the "super" implementation when overriding.
-
-7. **Method registration is dual.** Methods are registered in both `Local`
-   (in-process dispatch) and `RpcServer` (inter-process dispatch). The
-   `Remote` class checks `Local` first. Methods marked as `localOnly` are
-   excluded from `RpcServer` registration.
-
-8. **The gateway builds routes from validations.** Validation schemas collected
-   from all `.validation` and `.api` groups are used to generate Fastify routes
-   with JSON Schema validation and OpenAPI documentation.
-
-9. **Platform abstraction.** `loadServer.ts` and `loadBrowser.ts` inject
-   platform-specific implementations of filesystem operations, enabling the
-   same `load.ts` code to run in both environments.
-
-10. **Realms never import `blong-gogo`.** The `AdapterBase` class and other
-    runtime objects are provided through the dependency injection mechanism,
-    not via direct import. This is enforced by keeping `blong-gogo` out of
-    realm/suite dependencies.
 
 ---
 
