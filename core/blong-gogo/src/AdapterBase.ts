@@ -79,19 +79,25 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     log: unknown = null;
     importedMap?: Map<string, object>;
 
-    #register: IApi['register'];
-    #subscribe: IApi['subscribe'];
-    #dispatch: IApi['dispatch'];
-    #methodId: IApi['methodId'];
-    #getPath: IApi['getPath'];
-    #attachHandlers: IApi['attachHandlers'];
-    #createLog: IApi['createLog'];
-    #attachCheckpoint: IApi['attachCheckpoint'];
-    #activationNames: string[];
-    #queue: PQueue;
-    #portLoop: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    #resolveConnected: (value: boolean) => void;
-    #connected: Promise<boolean>;
+    // These are prefixed with _ rather than using # private class fields.
+    // The adapter uses Object.setPrototypeOf(current, base) to set the base as
+    // the prototype of the plain handler-result object.  When prototype methods
+    // are then called on `current`, `this` is `current` (not `base`), so
+    // JavaScript's brand-checking on # private fields throws.  Regular
+    // properties are found via normal prototype-chain lookup, which works.
+    _register: IApi['register'];
+    _subscribe: IApi['subscribe'];
+    _dispatch: IApi['dispatch'];
+    _methodId: IApi['methodId'];
+    _getPath: IApi['getPath'];
+    _attachHandlers: IApi['attachHandlers'];
+    _createLog: IApi['createLog'];
+    _attachCheckpoint: IApi['attachCheckpoint'];
+    _activationNames: string[];
+    _queue: PQueue;
+    _portLoop: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    _resolveConnected: (value: boolean) => void;
+    _connected: Promise<boolean>;
 
     constructor(
         api: Pick<
@@ -109,36 +115,36 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         activationNames: string[] = [],
     ) {
         this.configBase = configBase;
-        this.#register = api.register;
-        this.#subscribe = api.subscribe;
-        this.#dispatch = api.dispatch;
-        this.#methodId = api.methodId;
-        this.#getPath = api.getPath;
-        this.#attachHandlers = api.attachHandlers;
-        this.#createLog = api.createLog;
-        this.#attachCheckpoint = api.attachCheckpoint;
-        this.#activationNames = activationNames;
+        this._register = api.register;
+        this._subscribe = api.subscribe;
+        this._dispatch = api.dispatch;
+        this._methodId = api.methodId;
+        this._getPath = api.getPath;
+        this._attachHandlers = api.attachHandlers;
+        this._createLog = api.createLog;
+        this._attachCheckpoint = api.attachCheckpoint;
+        this._activationNames = activationNames;
         let resolveConnected: (value: boolean) => void;
-        this.#connected = new Promise<boolean>(resolve => {
+        this._connected = new Promise<boolean>(resolve => {
             resolveConnected = resolve;
         });
-        this.#resolveConnected = resolveConnected;
+        this._resolveConnected = resolveConnected;
     }
 
     activeConfig(): object {
-        return ConfigRuntime.mergeActivationConfig(this, this.#activationNames);
+        return ConfigRuntime.mergeActivationConfig(this, this._activationNames);
     }
 
     async init(...configs: object[]): Promise<void> {
         this.config = merge(this.activeConfig(), ...configs) as Config<T, C>;
-        this.log = this.#createLog?.(this.config.logLevel || 'info', {
+        this.log = this._createLog?.(this.config.logLevel || 'info', {
             ...this.config.log,
             name: this.config.id,
             context: this.config.type ?? 'dispatch',
         });
         const id = this.config.id.replace(/\./g, '-');
-        this.#queue = new PQueue({concurrency: this.config.concurrency || 100});
-        this.#register(
+        this._queue = new PQueue({concurrency: this.config.concurrency || 100});
+        this._register(
             {
                 [`${id}.start`]: this.start.bind(this),
                 [`${id}.stop`]: this.stop.bind(this),
@@ -147,7 +153,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
             this.config.id,
             this.config.pkg,
         );
-        this.#subscribe(
+        this._subscribe(
             {
                 [`${id}.drain`]: this.drain.bind(this),
             },
@@ -190,7 +196,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         let name: string;
         if ($meta) {
             if ($meta.method) {
-                const path = this.#getPath($meta.method);
+                const path = this._getPath($meta.method);
                 name = [path, $meta.mtid, type].join('.');
                 fn = this.findHandler(name);
                 if (!fn) {
@@ -215,7 +221,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     }
 
     async dispatch(...args: unknown[]): Promise<unknown> {
-        const result = this.#dispatch(...args);
+        const result = this._dispatch(...args);
         if (!result)
             (this.log as {error?: (...args: unknown[]) => void})?.error?.(
                 this.errors['adapter.dispatchFailure']({args}),
@@ -254,16 +260,16 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     drain(): void {}
 
     findHandler(methodName: string): unknown {
-        methodName = this.#methodId(methodName);
+        methodName = this._methodId(methodName);
         return this.imported[methodName];
     }
 
     async request(...params: unknown[]): Promise<unknown> {
-        return this.#queue.add(this.#portLoop(params, true));
+        return this._queue.add(this._portLoop(params, true));
     }
 
     async publish(...params: unknown[]): Promise<unknown> {
-        await this.#queue.add(this.#portLoop(params, false));
+        await this._queue.add(this._portLoop(params, false));
         return [true, params[params.length - 1]];
     }
 
@@ -279,7 +285,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     }
 
     async start(): Promise<unknown> {
-        await this.#attachHandlers(this, this.config.imports, true);
+        await this._attachHandlers(this, this.config.imports, true);
         const {req, pub} = this.forNamespaces(
             (prev, next) => {
                 if (typeof next === 'string') {
@@ -290,20 +296,20 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
             },
             {req: {}, pub: {}},
         );
-        this.#register(req, 'ports', this.config.id, this.config.pkg);
-        this.#subscribe(pub, 'ports', this.config.id, this.config.pkg);
+        this._register(req, 'ports', this.config.id, this.config.pkg);
+        this._subscribe(pub, 'ports', this.config.id, this.config.pkg);
         const {context, ...config} = this.config; // eslint-disable-line @typescript-eslint/no-unused-vars
         return this.event('start', {configBase: this.configBase, config});
     }
 
     async link(patterns: unknown, target: {imported?: object} = {}): Promise<object> {
-        await this.#attachHandlers(target, patterns, false);
+        await this._attachHandlers(target, patterns, false);
         return target.imported;
     }
 
     async handle(...params: unknown[]): Promise<unknown> {
         const $meta = params && params.length > 1 && (params[params.length - 1] as IMeta);
-        if ($meta && typeof $meta === 'object') this.#attachCheckpoint?.($meta);
+        if ($meta && typeof $meta === 'object') this._attachCheckpoint?.($meta);
         const method = ($meta && $meta.method) || 'exec';
         const handler = this.findHandler(method) || this.imported['exec'];
         if (handler instanceof Function) {
@@ -319,12 +325,12 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     ): void {
         what ??= this.handle.bind(this);
         context ??= this.config.context;
-        this.#portLoop = loop(what, this as any, context); // eslint-disable-line @typescript-eslint/no-explicit-any
-        this.#resolveConnected(true);
+        this._portLoop = loop(what, this as any, context); // eslint-disable-line @typescript-eslint/no-explicit-any
+        this._resolveConnected(true);
     }
 
     async connected(): Promise<boolean> {
-        return this.#connected;
+        return this._connected;
     }
 
     async stop(): Promise<unknown> {
