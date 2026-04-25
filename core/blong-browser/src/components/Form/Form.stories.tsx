@@ -378,9 +378,9 @@ Input.play = async ({canvas, userEvent}) => {
     await userEvent.keyboard('{Enter}');
     await type('combobox', 'input-autocomplete', 'auto');
     await userEvent.click(await canvas.findByLabelText('Boolean'));
-    await type('textbox', 'input-date', '01/31/2022');
-    await type('textbox', 'input-time', '20:00');
-    await type('textbox', 'input-dateTime', '01/31/2022 20:00:00');
+    await type('combobox', 'input-date', '01/31/2022');
+    await type('combobox', 'input-time', '20:00');
+    await type('combobox', 'input-dateTime', '01/31/2022 20:00:00');
     await type('spinbutton', 'input-number', '1234567890');
     await type('spinbutton', 'input-currency', '1234567.89');
     await type('spinbutton', 'input-integer', '1234567890');
