@@ -364,7 +364,7 @@ export default class ConfigRuntime implements IConfigRuntime {
     /**
      * Merge activation-scoped config for an adapter.
      *
-     * Previously done inline in `adapter.ts` `activeConfig()`:
+     * Previously done inline in `AdapterBase.ts` `activeConfig()`:
      *   Walk the prototype chain collecting `activation[envName]` from each
      *   level, then merge `['default', ...activationNames]` in order.
      *

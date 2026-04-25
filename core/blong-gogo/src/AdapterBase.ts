@@ -1,0 +1,364 @@
+import type {
+    Config,
+    Errors,
+    IAdapterFactory,
+    IApi,
+    IErrorMap,
+    IMeta,
+    ITypedError,
+} from '@feasibleone/blong/types';
+import type net from 'node:net';
+import PQueue from 'p-queue';
+import merge from 'ut-function.merge';
+
+import ConfigRuntime from './ConfigRuntime.ts';
+import loop from './loop.ts';
+
+const errorMap: IErrorMap = {
+    'adapter.configValidation': 'Adapter config validation:\r\n{message}',
+    'adapter.missingParameters': 'Missing parameters',
+    'adapter.missingMeta': 'Missing metadata',
+    'adapter.notConnected': 'No connection',
+    'adapter.disconnect': 'Adapter disconnected',
+    'adapter.disconnectBeforeResponse': 'Disconnect before response received',
+    'adapter.stream': 'Adapter stream error',
+    'adapter.timeout': 'Timeout',
+    'adapter.echoTimeout': 'Echo retries limit exceeded',
+    'adapter.unhandled': 'Unhandled adapter error',
+    'adapter.bufferOverflow': 'Message size of {size} exceeds the maximum of {max}',
+    'adapter.socketTimeout': 'Socket timeout',
+    'adapter.receiveTimeout': 'Receive timeout',
+    'adapter.dispatchFailure': 'Cannot dispatch message to bus',
+    'adapter.methodNotFound': 'Method {method} not found',
+    'adapter.queueNotFound': 'Queue not found',
+    'adapter.invalidPullStream': 'Invalid pull stream',
+    'adapter.paramsValidation': 'Method {method} parameters failed validation for: {fields}',
+    'adapter.resultValidation': 'Method {method} result failed validation for: {fields}',
+    'adapter.deadlock':
+        'Method {method} was recursively called, which may cause a deadlock!\nx-b3-traceid: {traceId}\nx-ut-stack: {sequence}',
+    'adapter.noMeta': '$meta not passed',
+    'adapter.noMetaForward': '$meta.forward not passed to method {method}',
+    'adapter.noTraceId': "$meta.forward['x-b3-traceid'] not passed to method {method}",
+};
+
+let _errors: Errors<typeof errorMap>;
+
+const reserved: string[] = [
+    'reducer',
+    'start',
+    'stop',
+    'ready',
+    'init',
+    'namespace',
+    'send',
+    'requestSend',
+    'responseSend',
+    'errorSend',
+    'receive',
+    'requestReceive',
+    'responseReceive',
+    'errorReceive',
+];
+
+/**
+ * AdapterBase — the runtime-provided base class for all adapters.
+ *
+ * This class replaces the plain-object literal that was previously defined
+ * inline in `adapter()`.  It is exposed through the runtime injection
+ * mechanism — realms and solutions never import it directly.  Custom
+ * adapters extend it via prototype-chain inheritance
+ * (`Object.setPrototypeOf(current, baseInstance)`), preserving the existing
+ * hot-reload semantics.
+ */
+export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown>> {
+    errors = _errors;
+    exec: unknown = null;
+    imported: object = {};
+    config: Config<T, C> = {} as Config<T, C>;
+    configBase: string;
+    log: unknown = null;
+    importedMap?: Map<string, object>;
+
+    #register: IApi['register'];
+    #subscribe: IApi['subscribe'];
+    #dispatch: IApi['dispatch'];
+    #methodId: IApi['methodId'];
+    #getPath: IApi['getPath'];
+    #attachHandlers: IApi['attachHandlers'];
+    #createLog: IApi['createLog'];
+    #attachCheckpoint: IApi['attachCheckpoint'];
+    #activationNames: string[];
+    #queue: PQueue;
+    #portLoop: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    #resolveConnected: (value: boolean) => void;
+    #connected: Promise<boolean>;
+
+    constructor(
+        api: Pick<
+            IApi,
+            | 'register'
+            | 'subscribe'
+            | 'dispatch'
+            | 'methodId'
+            | 'getPath'
+            | 'attachHandlers'
+            | 'createLog'
+            | 'attachCheckpoint'
+        >,
+        configBase: string,
+        activationNames: string[] = [],
+    ) {
+        this.configBase = configBase;
+        this.#register = api.register;
+        this.#subscribe = api.subscribe;
+        this.#dispatch = api.dispatch;
+        this.#methodId = api.methodId;
+        this.#getPath = api.getPath;
+        this.#attachHandlers = api.attachHandlers;
+        this.#createLog = api.createLog;
+        this.#attachCheckpoint = api.attachCheckpoint;
+        this.#activationNames = activationNames;
+        let resolveConnected: (value: boolean) => void;
+        this.#connected = new Promise<boolean>(resolve => {
+            resolveConnected = resolve;
+        });
+        this.#resolveConnected = resolveConnected;
+    }
+
+    activeConfig(): object {
+        return ConfigRuntime.mergeActivationConfig(this, this.#activationNames);
+    }
+
+    async init(...configs: object[]): Promise<void> {
+        this.config = merge(this.activeConfig(), ...configs) as Config<T, C>;
+        this.log = this.#createLog?.(this.config.logLevel || 'info', {
+            ...this.config.log,
+            name: this.config.id,
+            context: this.config.type ?? 'dispatch',
+        });
+        const id = this.config.id.replace(/\./g, '-');
+        this.#queue = new PQueue({concurrency: this.config.concurrency || 100});
+        this.#register(
+            {
+                [`${id}.start`]: this.start.bind(this),
+                [`${id}.stop`]: this.stop.bind(this),
+            },
+            'ports',
+            this.config.id,
+            this.config.pkg,
+        );
+        this.#subscribe(
+            {
+                [`${id}.drain`]: this.drain.bind(this),
+            },
+            'ports',
+            this.config.id,
+            this.config.pkg,
+        );
+    }
+
+    error(error: ITypedError, $meta: IMeta): void {
+        if ((this.log as {error?: (...args: unknown[]) => void})?.error) {
+            if (error.type && $meta?.expect?.includes?.(error.type)) return;
+            if ($meta) error.method = $meta.method;
+            (this.log as {error: (...args: unknown[]) => void}).error(error);
+        }
+    }
+
+    findValidation($meta: IMeta): unknown {
+        return null;
+    }
+
+    handles(name: string): boolean {
+        if (reserved.includes(name)) return true;
+        const id = this.config.id.replace(/\./g, '-');
+        return []
+            .concat(this.config.namespace || this.config.imports || id)
+            .some(namespace => name.startsWith(namespace));
+    }
+
+    methodPath(methodName: string): string {
+        const afterSlash = methodName.split('/', 2)[1];
+        if (afterSlash !== undefined) return afterSlash;
+        const strip = this.config?.stripNamespace;
+        if (strip) return methodName.split('.').slice(strip).join('.');
+        return methodName;
+    }
+
+    getConversion($meta: IMeta, type: 'send' | 'receive'): {fn: unknown; name: string} {
+        let fn;
+        let name: string;
+        if ($meta) {
+            if ($meta.method) {
+                const path = this.#getPath($meta.method);
+                name = [path, $meta.mtid, type].join('.');
+                fn = this.findHandler(name);
+                if (!fn) {
+                    name = [this.methodPath(path), $meta.mtid, type].join('.');
+                    fn = this.findHandler(name);
+                }
+            }
+            if (!fn) {
+                name = [$meta.opcode, $meta.mtid, type].join('.');
+                fn = this.findHandler(name);
+            }
+            if (!fn) {
+                name = [$meta.mtid, type].join('.');
+                fn = this.findHandler(name);
+            }
+        }
+        if (!fn && (!$meta || $meta.mtid !== 'event')) {
+            name = type;
+            fn = this.findHandler(name);
+        }
+        return {fn, name};
+    }
+
+    async dispatch(...args: unknown[]): Promise<unknown> {
+        const result = this.#dispatch(...args);
+        if (!result)
+            (this.log as {error?: (...args: unknown[]) => void})?.error?.(
+                this.errors['adapter.dispatchFailure']({args}),
+            );
+        return result;
+    }
+
+    async event(event: string, data?: object, mapper?: string): Promise<unknown> {
+        (this.log as {info?: (...args: unknown[]) => void})?.info?.({
+            $meta: {mtid: 'event', method: `adapter.${event}`},
+            ...data,
+        });
+        const eventHandlers = [];
+        this.importedMap?.forEach(
+            imp =>
+                Object.prototype.hasOwnProperty.call(imp, event) &&
+                eventHandlers.push(imp[event]),
+        );
+        let result: unknown = data;
+        switch (mapper) {
+            case 'asyncMap':
+                result = await Promise.all(
+                    eventHandlers.map(handler => handler.call(this, data)),
+                );
+                break;
+            case 'reduce':
+            default:
+                for (const eventHandler of eventHandlers) {
+                    result = await eventHandler.call(this, result);
+                }
+                break;
+        }
+        return result;
+    }
+
+    drain(): void {}
+
+    findHandler(methodName: string): unknown {
+        methodName = this.#methodId(methodName);
+        return this.imported[methodName];
+    }
+
+    async request(...params: unknown[]): Promise<unknown> {
+        return this.#queue.add(this.#portLoop(params, true));
+    }
+
+    async publish(...params: unknown[]): Promise<unknown> {
+        await this.#queue.add(this.#portLoop(params, false));
+        return [true, params[params.length - 1]];
+    }
+
+    async ready(): Promise<unknown> {
+        return this.event('ready');
+    }
+
+    forNamespaces<R>(reducer: (prev: R, current: unknown) => R, initial: R): R {
+        const id = this.config.id.replace(/\./g, '-');
+        return []
+            .concat(this.config.namespace || this.config.imports || id)
+            .reduce(reducer.bind(this), initial);
+    }
+
+    async start(): Promise<unknown> {
+        await this.#attachHandlers(this, this.config.imports, true);
+        const {req, pub} = this.forNamespaces(
+            (prev, next) => {
+                if (typeof next === 'string') {
+                    prev.req[`${next}.request`] = this.request.bind(this);
+                    prev.pub[`${next}.publish`] = this.publish.bind(this);
+                }
+                return prev;
+            },
+            {req: {}, pub: {}},
+        );
+        this.#register(req, 'ports', this.config.id, this.config.pkg);
+        this.#subscribe(pub, 'ports', this.config.id, this.config.pkg);
+        const {context, ...config} = this.config; // eslint-disable-line @typescript-eslint/no-unused-vars
+        return this.event('start', {configBase: this.configBase, config});
+    }
+
+    async link(patterns: unknown, target: {imported?: object} = {}): Promise<object> {
+        await this.#attachHandlers(target, patterns, false);
+        return target.imported;
+    }
+
+    async handle(...params: unknown[]): Promise<unknown> {
+        const $meta = params && params.length > 1 && (params[params.length - 1] as IMeta);
+        if ($meta && typeof $meta === 'object') this.#attachCheckpoint?.($meta);
+        const method = ($meta && $meta.method) || 'exec';
+        const handler = this.findHandler(method) || this.imported['exec'];
+        if (handler instanceof Function) {
+            return handler.apply(this, params);
+        } else {
+            throw this.errors['adapter.methodNotFound']({params: {method}});
+        }
+    }
+
+    connect(
+        what?: net.Socket | (() => void),
+        context?: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    ): void {
+        what ??= this.handle.bind(this);
+        context ??= this.config.context;
+        this.#portLoop = loop(what, this as any, context); // eslint-disable-line @typescript-eslint/no-explicit-any
+        this.#resolveConnected(true);
+    }
+
+    async connected(): Promise<boolean> {
+        return this.#connected;
+    }
+
+    async stop(): Promise<unknown> {
+        return this.event('stop');
+    }
+}
+
+/**
+ * Create an adapter instance from the API and handler definitions.
+ *
+ * The `AdapterBase` class is instantiated here (not imported by realms) and
+ * placed at the end of the handler prototype chain.  This preserves the
+ * constraint that realms/solutions never depend on blong-gogo.
+ */
+export default async function adapter<T, C>(
+    api: IApi,
+    configBase: string,
+    activationNames: string[] = [],
+): Promise<ReturnType<IAdapterFactory>> {
+    const {adapter: adapterFactory, utError, handlers, remote, rpc, local, registry, type} = api;
+    _errors ||= utError.register(errorMap);
+
+    const base = new AdapterBase<T, C>(api, configBase, activationNames);
+
+    const result = handlers({utError, remote, type});
+    let current = result;
+    while (current.extends) {
+        const parent = await (typeof current.extends === 'string'
+            ? adapterFactory(current.extends)({utError, remote, rpc, local, registry})
+            : current.extends({utError, remote, rpc, local, registry}));
+        Object.setPrototypeOf(current, parent);
+        current = parent;
+    }
+    Object.setPrototypeOf(current, base);
+
+    return result as ReturnType<IAdapterFactory>;
+}

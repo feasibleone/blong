@@ -10,7 +10,7 @@ import {
 } from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
-import createPort from './adapter.ts';
+import createPort from './AdapterBase.ts';
 import ConfigRuntime from './ConfigRuntime.ts';
 import createHandlerProxy from './handlerProxy.ts';
 import {methodId} from './lib.ts';
