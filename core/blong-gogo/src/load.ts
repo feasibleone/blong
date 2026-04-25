@@ -26,6 +26,50 @@ import type {IWatch} from './Watch.ts';
 
 const LAYER_FILE = 'layer' as const;
 
+/**
+ * An infrastructure item declaration with explicit dependencies.
+ * Items are topologically sorted before instantiation so that each item's
+ * dependencies are guaranteed to be available when it is created.
+ */
+interface InfraItem {
+    /** Infrastructure item name (becomes the key in the `api` object). */
+    name: string;
+    /** Names of other infrastructure items this one depends on. */
+    deps: string[];
+    /** Factory that returns the module (via dynamic import). */
+    load: () => Promise<unknown>;
+}
+
+/**
+ * Topological sort of infrastructure items by their declared dependencies.
+ * Throws if a cycle is detected.
+ */
+function topoSort(items: InfraItem[]): InfraItem[] {
+    const byName = new Map(items.map(item => [item.name, item]));
+    const sorted: InfraItem[] = [];
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+
+    function visit(item: InfraItem): void {
+        if (visited.has(item.name)) return;
+        if (visiting.has(item.name))
+            throw new Error(
+                `Circular infrastructure dependency: ${item.name}`,
+            );
+        visiting.add(item.name);
+        for (const dep of item.deps) {
+            const depItem = byName.get(dep);
+            if (depItem) visit(depItem);
+        }
+        visiting.delete(item.name);
+        visited.add(item.name);
+        sorted.push(item);
+    }
+
+    for (const item of items) visit(item);
+    return sorted;
+}
+
 /** Well-known layer folder names and their default activation per kind */
 const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     api: {server: {default: true}, browser: {default: true}},
@@ -323,75 +367,129 @@ export default async function loadRealm<T extends TSchema>(
             gateway: {},
             restFs: {},
         });
-        items = [
-            function log() {
-                return rootKind === 'browser' && globalThis.window
-                    ? import('./BrowserLog.ts')
-                    : import('./Log.ts');
+        items = topoSort([
+            {
+                name: 'log',
+                deps: [],
+                load: () =>
+                    rootKind === 'browser' && globalThis.window
+                        ? import('./BrowserLog.ts')
+                        : import('./Log.ts'),
             },
-            function apiSchema() {
-                return import('./ApiSchema.ts');
+            {
+                name: 'apiSchema',
+                deps: ['log'],
+                load: () => import('./ApiSchema.ts'),
             },
-            function port() {
-                return import('./Port.ts');
+            {
+                name: 'port',
+                deps: ['log'],
+                load: () => import('./Port.ts'),
             },
-            function error() {
-                return import('./ErrorFactory.ts');
+            {
+                name: 'error',
+                deps: ['log'],
+                load: () => import('./ErrorFactory.ts'),
             },
-            function watch() {
-                return import('./Watch.ts');
+            {
+                name: 'watch',
+                deps: ['log'],
+                load: () => import('./Watch.ts'),
             },
-            function local() {
-                return import('./Local.ts');
+            {
+                name: 'local',
+                deps: ['log'],
+                load: () => import('./Local.ts'),
             },
-            function resolution() {
-                return import('./ResolutionLocal.ts');
+            {
+                name: 'resolution',
+                deps: ['log'],
+                load: () => import('./ResolutionLocal.ts'),
             },
             ...(rootKind === 'browser'
                 ? [
-                      function remote() {
-                          return import('./Remote.ts');
+                      {
+                          name: 'remote',
+                          deps: ['log', 'local'],
+                          load: () => import('./Remote.ts'),
                       },
-                      function registry() {
-                          return import('./Registry.ts');
+                      {
+                          name: 'registry',
+                          deps: ['log', 'error', 'remote', 'local', 'watch', 'apiSchema'],
+                          load: () => import('./Registry.ts'),
                       },
-                      function codec() {
-                          return import('./codec/browser.ts');
+                      {
+                          name: 'codec',
+                          deps: ['log'],
+                          load: () => import('./codec/browser.ts'),
                       },
-                      function orchestrator() {
-                          return import('./orchestrator/index.ts');
+                      {
+                          name: 'orchestrator',
+                          deps: ['log'],
+                          load: () => import('./orchestrator/index.ts'),
                       },
-                      function adapter() {
-                          return import('./adapter/browser.ts');
+                      {
+                          name: 'adapter',
+                          deps: ['log'],
+                          load: () => import('./adapter/browser.ts'),
                       },
                   ]
                 : [
-                      function remote() {
-                          return import('./RpcClient.ts');
+                      {
+                          name: 'remote',
+                          deps: ['log', 'local'],
+                          load: () => import('./RpcClient.ts'),
                       },
-                      function rpcServer() {
-                          return import('./RpcServer.ts');
+                      {
+                          name: 'rpcServer',
+                          deps: ['log'],
+                          load: () => import('./RpcServer.ts'),
                       },
-                      function gateway() {
-                          return import('./Gateway.ts');
+                      {
+                          name: 'gateway',
+                          deps: ['log'],
+                          load: () => import('./Gateway.ts'),
                       },
-                      function restFs() {
-                          return import('./RestFs.ts');
+                      {
+                          name: 'restFs',
+                          deps: ['log', 'gateway'],
+                          load: () => import('./RestFs.ts'),
                       },
-                      function registry() {
-                          return import('./Registry.ts');
+                      {
+                          name: 'registry',
+                          deps: [
+                              'log',
+                              'error',
+                              'remote',
+                              'rpcServer',
+                              'gateway',
+                              'local',
+                              'watch',
+                              'apiSchema',
+                          ],
+                          load: () => import('./Registry.ts'),
                       },
-                      function codec() {
-                          return import('./codec/server.ts');
+                      {
+                          name: 'codec',
+                          deps: ['log'],
+                          load: () => import('./codec/server.ts'),
                       },
-                      function orchestrator() {
-                          return import('./orchestrator/index.ts');
+                      {
+                          name: 'orchestrator',
+                          deps: ['log'],
+                          load: () => import('./orchestrator/index.ts'),
                       },
-                      function adapter() {
-                          return import('./adapter/server.ts');
+                      {
+                          name: 'adapter',
+                          deps: ['log'],
+                          load: () => import('./adapter/server.ts'),
                       },
                   ]),
-        ];
+        ]).map(({name, load}) => {
+            const fn = load;
+            Object.defineProperty(fn, 'name', {value: name});
+            return fn;
+        });
     }
     loadedConfigs.push(...activeConfigs(mod, configNames));
     const {loadedConfig, configRuntime} = await platformApi.loadConfig(parentConfig);
