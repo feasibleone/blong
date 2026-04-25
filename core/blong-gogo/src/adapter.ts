@@ -62,9 +62,16 @@ const reserved: string[] = [
 export default async function adapter<T, C>(
     {
         adapter,
-        utBus,
+        register,
+        unregister,
+        subscribe,
+        unsubscribe,
+        dispatch: apiDispatch,
+        methodId: apiMethodId,
+        getPath,
+        attachHandlers,
         utError,
-        utLog,
+        createLog,
         handlers,
         remote,
         rpc,
@@ -112,14 +119,14 @@ export default async function adapter<T, C>(
         },
         async init(...configs: object[]) {
             base.config = merge(this.activeConfig(), ...configs);
-            base.log = utLog?.createLog(this.config.logLevel || 'info', {
+            base.log = createLog?.(this.config.logLevel || 'info', {
                 ...this.config.log,
                 name: this.config.id,
                 context: this.config.type ?? 'dispatch',
             });
             const id = this.config.id.replace(/\./g, '-');
             queue = new PQueue({concurrency: this.config.concurrency || 100});
-            utBus.register(
+            register(
                 {
                     [`${id}.start`]: this.start,
                     [`${id}.stop`]: this.stop,
@@ -128,7 +135,7 @@ export default async function adapter<T, C>(
                 this.config.id,
                 this.config.pkg,
             );
-            utBus.subscribe(
+            subscribe(
                 {
                     [`${id}.drain`]: this.drain,
                 },
@@ -168,7 +175,7 @@ export default async function adapter<T, C>(
             let name;
             if ($meta) {
                 if ($meta.method) {
-                    const path = utBus.getPath($meta.method);
+                    const path = getPath($meta.method);
                     name = [path, $meta.mtid, type].join('.');
                     fn = this.findHandler(name);
                     if (!fn) {
@@ -192,7 +199,7 @@ export default async function adapter<T, C>(
             return {fn, name};
         },
         async dispatch(...args: unknown[]) {
-            const result = utBus.dispatch(...args);
+            const result = apiDispatch(...args);
             if (!result) this.log?.error?.(this.errors['adapter.dispatchFailure']({args}));
             return result;
         },
@@ -223,7 +230,7 @@ export default async function adapter<T, C>(
         },
         drain() {},
         findHandler(methodName: string) {
-            methodName = utBus.methodId(methodName);
+            methodName = apiMethodId(methodName);
             return this.imported[methodName];
         },
         async request(...params: unknown[]) {
@@ -243,7 +250,7 @@ export default async function adapter<T, C>(
                 .reduce(reducer.bind(this), initial);
         },
         async start() {
-            await utBus.attachHandlers(this, this.config.imports, true);
+            await attachHandlers(this, this.config.imports, true);
             const {req, pub} = this.forNamespaces(
                 (prev, next) => {
                     if (typeof next === 'string') {
@@ -254,13 +261,13 @@ export default async function adapter<T, C>(
                 },
                 {req: {}, pub: {}},
             );
-            utBus.register(req, 'ports', this.config.id, this.config.pkg);
-            utBus.subscribe(pub, 'ports', this.config.id, this.config.pkg);
+            register(req, 'ports', this.config.id, this.config.pkg);
+            subscribe(pub, 'ports', this.config.id, this.config.pkg);
             const {context, ...config} = this.config; // eslint-disable-line @typescript-eslint/no-unused-vars
             return this.event('start', {configBase: this.configBase, config});
         },
         async link(patterns: unknown, target: object = {}) {
-            await utBus.attachHandlers(target, patterns, false);
+            await attachHandlers(target, patterns, false);
             return target.imported;
         },
         async handle(...params: unknown[]) {

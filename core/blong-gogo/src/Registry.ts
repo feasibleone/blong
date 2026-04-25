@@ -141,40 +141,35 @@ export default class Registry extends Internal implements IRegistry {
             rpc: this.#rpcServer,
             local: this.#local,
             registry: this,
-            utBus: {
-                config: {},
-                methodId,
-                register: (methods, namespace, port, pkg) => {
-                    this.#rpcServer?.register(methods, namespace, true, pkg);
-                    this.#local?.register(methods, namespace, true, pkg);
-                },
-                unregister: (methods, namespace) => {
-                    this.#rpcServer?.unregister(methods, namespace, true);
-                    this.#local?.unregister(methods, namespace);
-                },
-                subscribe: (methods, namespace, port, pkg) => {
-                    this.#rpcServer?.register(methods, namespace, false, pkg);
-                    this.#local?.register(methods, namespace, false, pkg);
-                },
-                unsubscribe: (methods, namespace) => {
-                    this.#rpcServer?.unregister(methods, namespace, false);
-                    this.#local?.unregister(methods, namespace);
-                },
-                getPath(method: string) {
-                    return method.match(/^[^[#?]*/)[0];
-                },
-                importMethod: (methodName, options) => this.#remote.remote(methodName, options),
-                dispatch: (...params) => this.#remote.dispatch(...params),
-                attachHandlers: undefined,
+            register: (methods, namespace, port, pkg) => {
+                this.#rpcServer?.register(methods, namespace, true, pkg);
+                this.#local?.register(methods, namespace, true, pkg);
             },
-            utLog: {
-                createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
+            unregister: (methods, namespace) => {
+                this.#rpcServer?.unregister(methods, namespace, true);
+                this.#local?.unregister(methods, namespace);
             },
+            subscribe: (methods, namespace, port, pkg) => {
+                this.#rpcServer?.register(methods, namespace, false, pkg);
+                this.#local?.register(methods, namespace, false, pkg);
+            },
+            unsubscribe: (methods, namespace) => {
+                this.#rpcServer?.unregister(methods, namespace, false);
+                this.#local?.unregister(methods, namespace);
+            },
+            getPath(method: string) {
+                return method.match(/^[^[#?]*/)[0];
+            },
+            methodId,
+            importMethod: (methodName, options) => this.#remote.remote(methodName, options),
+            dispatch: (...params) => this.#remote.dispatch(...params),
+            attachHandlers: undefined,
+            createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
         };
         const result = await port(api);
         this.#ports.set(id, result);
-        api.utBus.attachHandlers = this._attachHandlers(result);
+        api.attachHandlers = this._attachHandlers(result);
         return result;
     }
 

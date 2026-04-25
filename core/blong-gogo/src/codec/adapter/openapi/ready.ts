@@ -4,7 +4,7 @@ import {methodId} from '../../../lib.ts';
 
 export default handler<{
     namespace: {[namespace: string]: unknown};
-}>(async ({config, lib: {load}, errors, utBus}) => {
+}>(async ({config, lib: {load}, errors}) => {
     let handlers: {[name: string]: unknown};
     const assets: {[namespace: string]: unknown} = {};
     return {
