@@ -10,7 +10,6 @@
  */
 import {confirmDialog, SplitButton} from '../../primereact/index.js';
 
-
 import {useRef, useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import {usePermission} from '../../hooks/usePermission.js';
@@ -63,7 +62,7 @@ export function ActionButton({
             ? mergedParams
             : ((extraParams as Record<string, unknown> | undefined) ?? mergedParams);
     const directMethod = method ?? actionName ?? '';
-    const {call} = useAction(directMethod, mergedParams);
+    const {call} = useAction(directMethod, 'mutation', mergedParams);
     const clearError = useAppStore(s => s.clearError);
     const showHint = useAppStore(s => s.showHint);
     const hintTargetRef = useRef<HTMLSpanElement>(null);

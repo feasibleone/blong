@@ -6,10 +6,6 @@
  */
 import {Column, DataTable, Panel, Skeleton, Toolbar} from '../../primereact/index.js';
 
-
-
-
-
 import {useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import type {IEnrichedSchema} from '../../types/widget.js';
@@ -75,7 +71,7 @@ export function Report({
     const {data, loading, refetch} = useAction<{
         rows: ReportRow[];
         summary?: Record<string, unknown>;
-    }>(dataAction, filter);
+    }>(dataAction, 'query', filter);
 
     const rows: ReportRow[] = data?.rows ?? [];
     const summary = data?.summary ?? {};

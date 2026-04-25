@@ -10,13 +10,14 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
         permission: browser.permission.edit,
         icon: 'pi pi-pencil',
         component: async (params?: Record<string, unknown>) => {
-            const [schema, {Editor}] = await Promise.all([
+            const [schemaOverride, {Editor}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Editor/index.js'),
             ]);
 
+            const schema = blong.lib.merge({}, model.schema, schemaOverride);
+            const loadParams = params ? {[keyField]: params[keyField]} : undefined;
             function OpenPage(props: Record<string, unknown>) {
-                const loadParams = params ? {[keyField]: params[keyField]} : undefined;
                 return Editor({
                     schema,
                     cards: model.cards as Record<string, ICardConfig>,
@@ -25,6 +26,7 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
                     loadAction: methods.get,
                     loadParams,
                     saveAction: methods.edit,
+                    editMode: true,
                     editable: true,
                     ...props,
                 });
@@ -34,5 +36,3 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
         },
     });
 }
-
-declare const React: typeof import('react');

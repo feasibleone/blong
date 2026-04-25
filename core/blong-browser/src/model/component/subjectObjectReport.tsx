@@ -5,7 +5,7 @@ export async function subjectObjectReport(
     model: IResolvedModelSpec,
     blong: IHandlerProxy<unknown>,
 ) {
-    const {methods, subject, object} = model;
+    const {methods, subject, object, nameField, keyField} = model;
     const {title, permission} = model.report!;
 
     return async () => ({
@@ -19,16 +19,20 @@ export async function subjectObjectReport(
             ]);
 
             function ReportPage(props: Record<string, unknown>) {
-                return Report({
-                    filterSchema: schema,
-                    dataAction: methods.report,
-                    ...props,
-                });
+                return (
+                    <Report
+                        filterSchema={schema}
+                        dataAction={methods.report}
+                        columns={[keyField, nameField].map(field => ({
+                            field: field.split('.').pop()!,
+                            header: schema.properties?.[field]?.title || field,
+                        }))}
+                        {...props}
+                    />
+                );
             }
 
             return ReportPage as unknown as React.ComponentType;
         },
     });
 }
-
-declare const React: typeof import('react');

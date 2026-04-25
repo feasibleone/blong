@@ -9,6 +9,7 @@ import {useAppStore} from '../state/appStore.js';
  */
 export function usePermission(permission: string | boolean | undefined | null): boolean {
     const permissions = useAppStore(s => s.auth.permissions);
+    if (typeof permissions === 'boolean') return permissions;
     if (permission == null) return true;
     if (typeof permission === 'boolean') return permission;
     return permissions[permission] === true;

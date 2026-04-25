@@ -5,13 +5,13 @@ export async function subjectObjectBrowse(
     model: IResolvedModelSpec,
     blong: IHandlerProxy<unknown>,
 ) {
-    const {subject, object, browser, methods} = model;
+    const {subject, object, browser, methods, keyField} = model;
 
     return async () => ({
         title: browser.title,
         permission: browser.permission.browse,
         icon: browser.icon,
-        component: async (params?: object) => {
+        component: async () => {
             const [schema, {Explorer}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Explorer/index.js'),
@@ -23,15 +23,16 @@ export async function subjectObjectBrowse(
                     .map(w => ({field: w.includes('.') ? w.split('.').pop()! : w}));
 
                 return Explorer({
-                    schema,
+                    schema: blong.lib.merge({}, model.schema, schema),
                     columns,
                     listAction: methods.find,
                     selectionMode: 'single',
+                    keyField,
                     toolbar: [
                         {
                             label: 'Create',
                             icon: 'pi pi-plus',
-                            action: `${subject}.${object}.new`,
+                            action: `component/${subject}.${object}.new`,
                             permission: browser.permission.add,
                         },
                     ],
@@ -44,5 +45,3 @@ export async function subjectObjectBrowse(
         },
     });
 }
-
-declare const React: typeof import('react');

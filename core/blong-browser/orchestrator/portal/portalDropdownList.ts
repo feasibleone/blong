@@ -27,7 +27,7 @@ export default handler(
                                 // {family: [...]} → {'marine.family': [...]}
                                 const out: Record<string, unknown> = {};
                                 for (const [k, v] of Object.entries(raw)) {
-                                    out[`${subject}.${k}`] = v;
+                                    out[k] = v;
                                 }
                                 return out;
                             })

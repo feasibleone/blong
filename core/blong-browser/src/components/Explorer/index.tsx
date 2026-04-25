@@ -287,7 +287,7 @@ export function Explorer({
     ]);
 
     type ListResponse = Record<string, unknown> | RowData[];
-    const {data, loading, refetch} = useAction<ListResponse>(listAction, mergedParams);
+    const {data, loading, refetch} = useAction<ListResponse>(listAction, 'query', mergedParams);
     const rows: RowData[] = Array.isArray(data)
         ? (data as RowData[])
         : resultSet && Array.isArray((data as Record<string, unknown>)?.[resultSet])

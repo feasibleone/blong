@@ -6,7 +6,7 @@ export default adapter(blong => ({
     activation: {
         default: {
             namespace: 'backend',
-            imports: [/\.model$/],
+            imports: [/\.model$/, /\.fixture$/],
             url: 'http://localhost:8080',
         },
     },

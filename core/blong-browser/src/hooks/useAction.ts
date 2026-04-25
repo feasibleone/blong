@@ -17,14 +17,14 @@ import type {
 } from '../types/action.js';
 import type {ITab} from '../types/portal.js';
 
-function isPageAction(a: IAction): a is IPageAction {
-    return 'component' in a;
+function isComponentAction(a?: IAction): a is IPageAction {
+    return !a || 'component' in a;
 }
 function isMutationAction(a: IAction): a is IMutationAction {
-    return 'mutates' in a && a.mutates === true;
+    return a && 'mutates' in a && a.mutates === true;
 }
 function isQueryAction(a: IAction): a is IQueryAction {
-    return 'method' in a && !('mutates' in a);
+    return a && 'method' in a && !('mutates' in a);
 }
 
 /**
@@ -35,6 +35,7 @@ function isQueryAction(a: IAction): a is IQueryAction {
  */
 export function useAction<TResult = unknown>(
     actionName: string,
+    type?: 'page' | 'query' | 'mutation',
     params?: Record<string, unknown>,
 ): IUseActionResult<TResult> {
     const {dispatch} = useBlongUi();
@@ -42,19 +43,26 @@ export function useAction<TResult = unknown>(
     const actions = useAppStore(s => s.actions);
     const openTab = useAppStore(s => s.openTab);
     const showError = useAppStore(s => s.showError);
-    const action = actions[actionName];
+    const action =
+        actions[actionName] ??
+        (actionName &&
+            !actionName.startsWith('component') &&
+            ({
+                method: actionName,
+                type: type || 'query',
+                ...(type === 'mutation' && {mutates: true}),
+            } as IAction));
 
     // Resolve method name for query/mutation actions
-    const method =
-        action && !isPageAction(action)
-            ? (action.method ?? (action as IQueryAction).handler ?? actionName)
-            : actionName;
+    const method = !isComponentAction(action)
+        ? (action.method ?? (action as IQueryAction).handler ?? actionName)
+        : actionName;
 
     // Merge params: action-level static params then call-time params
     const mergedParams = useCallback(
         (callParams?: Record<string, unknown>) => {
             const actionParams =
-                action && !isPageAction(action) && action.params
+                !isComponentAction(action) && action.params
                     ? typeof action.params === 'function'
                         ? action.params(callParams ?? {})
                         : action.params
@@ -73,14 +81,16 @@ export function useAction<TResult = unknown>(
     const open = useCallback(
         async (callParams?: Record<string, unknown>) => {
             const resolved = mergedParams(callParams);
-            if (action && isPageAction(action)) {
+            const componentAction: IAction | undefined =
+                action || (await dispatch(actionName, resolved));
+            if (componentAction && isComponentAction(componentAction)) {
                 try {
-                    const component = await action.component();
+                    const component = await componentAction.component();
                     const tab: ITab = {
                         id: ulid(),
                         actionName,
                         params: resolved,
-                        title: action.title,
+                        title: componentAction.title,
                         component,
                     };
                     openTab(tab);
@@ -88,8 +98,10 @@ export function useAction<TResult = unknown>(
                     showError({type: 'error.component.load', message: String(err)});
                 }
             } else {
-                // No action definition — dispatch directly
-                await dispatch(`component/${actionName}`, resolved);
+                showError({
+                    type: 'error.action.notfound',
+                    message: `Action "${actionName}" not found`,
+                });
             }
         },
         [action, actionName, mergedParams, openTab, showError, dispatch],
@@ -128,7 +140,7 @@ export function useAction<TResult = unknown>(
                 for (const name of invalidates) {
                     const invalidAction = actions[name];
                     const invalidMethod =
-                        invalidAction && !isPageAction(invalidAction)
+                        invalidAction && !isComponentAction(invalidAction)
                             ? (invalidAction.method ??
                               (invalidAction as IQueryAction).handler ??
                               name)
@@ -145,7 +157,7 @@ export function useAction<TResult = unknown>(
     );
 
     // ── Return based on action type ────────────────────────────────────────
-    if (!action || isPageAction(action)) {
+    if (actionName && isComponentAction(action)) {
         return {call: open, open, loading: false};
     }
 

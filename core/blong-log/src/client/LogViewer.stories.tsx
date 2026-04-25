@@ -448,6 +448,11 @@ export const SearchHighlightingHTTPAndErrors: Story = {
  * Watch for smooth scrolling, filtering, and search while messages stream in.
  */
 export const PerformanceTest: Story = {
+    parameters: {
+        chromatic: {
+            delay: 21000,
+        },
+    },
     render: () => {
         const mockWsUrl = React.useMemo(
             () => `ws://storybook-mock-perf-${Math.random()}.local`,

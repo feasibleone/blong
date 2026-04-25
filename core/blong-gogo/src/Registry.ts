@@ -20,6 +20,7 @@ import {Type} from 'typebox';
 import {monotonicFactory} from 'ulidx';
 import merge from 'ut-function.merge';
 import {v4 as uuid4, v7 as uuid7} from 'uuid';
+import yaml from 'yaml';
 
 import {createAttachCheckpoint} from './checkpoint.ts';
 import {methodId, methodParts} from './lib.ts';
@@ -302,6 +303,7 @@ export default class Registry extends Internal implements IRegistry {
             ulid,
             uuid4,
             uuid7,
+            yaml,
             assert: attachCheckpoint ? nodeAssert : undefined,
             rename: (object: object, value: string) =>
                 Object.defineProperty<unknown>(object, 'name', {value}),

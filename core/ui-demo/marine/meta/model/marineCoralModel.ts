@@ -35,8 +35,8 @@ export default model(
                         label: 'Coral',
                         widgets: [
                             'coral.coralName',
-                            'coral.familyId',
-                            'coral.habitatId',
+                            'coral.familyName',
+                            'coral.habitatName',
                             'coral.maxDepth',
                         ],
                     },

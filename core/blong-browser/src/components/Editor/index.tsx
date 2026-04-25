@@ -6,8 +6,6 @@
  */
 import {confirmPopup, OverlayPanel, Toolbar} from '../../primereact/index.js';
 
-
-
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import {DesignModeProvider} from '../../design/DesignModeContext.js';
 import {
@@ -128,12 +126,13 @@ export function Editor({
     // Load action (skipped when static value is provided)
     const loader = useAction<Record<string, unknown>>(
         staticValue ? '' : (loadAction ?? ''),
+        'query',
         loadParams,
     );
     const entityValue = localValue ?? staticValue ?? loader.data ?? undefined;
 
     // Save action invoked via form submit (formId wired to ActionButton)
-    const saver = useAction(saveAction ?? '');
+    const saver = useAction(saveAction ?? '', 'mutation');
 
     // Show/hide the validation hint overlay when validationHint changes
     useEffect(() => {

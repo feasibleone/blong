@@ -17,6 +17,7 @@ export function Model({
         // Reset first to avoid bleed-through from previous stories
         useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
         const store = useAppStore.getState();
+        store.setPermissions(true);
 
         void (async () => {
             try {

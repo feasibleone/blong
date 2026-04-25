@@ -659,6 +659,12 @@ export interface ILib {
     /** @deprecated The framework now auto-names step arrays from handler names. */
     group: (name: string) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
     assert: typeof Assert | undefined;
+    yaml: {
+        parse: <T>(source: string, options?: unknown) => T;
+        parseAllDocuments: <T>(source: string, options?: unknown) => T;
+        parseDocument: <T>(source: string, options?: unknown) => T;
+        stringify: (value: unknown, options?: unknown) => string;
+    };
     ulid: () => string;
     uuid4: () => string;
     uuid7: () => string;
@@ -864,8 +870,8 @@ export const api = (api: ApiDefinition): ApiDefinition =>
 export const model = <T extends IModelSpec>(
     definition: () => () => Promise<T>,
 ): (() => () => Promise<T>) => Object.defineProperty(definition, Kind, {value: 'model'});
-export const mock = <T extends IMock>(definition: () => T): (() => T) =>
-    Object.defineProperty(definition, Kind, {value: 'mock'});
+export const fixture = <T extends IMock>(definition: () => T): (() => T) =>
+    Object.defineProperty(definition, Kind, {value: 'fixture'});
 
 export const validationHandlers: (
     handlers: Record<string, TFunction<[ApiSchema]>>,
@@ -914,7 +920,7 @@ export type Kinds =
     | 'orchestrator'
     | 'handler'
     | 'model'
-    | 'mock'
+    | 'fixture'
     | '';
 export const kind = (what: {[Kind]: Kinds | undefined}): Kinds => what[Kind] || '';
 
@@ -929,5 +935,6 @@ export default {
     browser,
     adapter,
     orchestrator,
+    fixture,
     kind,
 };

@@ -9,19 +9,22 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
         title: `Create ${objectTitle}`,
         permission: browser.permission.add,
         icon: 'pi pi-plus',
-        component: async (params?: object) => {
-            const [schema, {Editor}] = await Promise.all([
+        component: async () => {
+            const [schemaOverride, {Editor}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Editor/index.js'),
             ]);
 
+            const schema = blong.lib.merge({}, model.schema, schemaOverride);
             function NewPage(props: Record<string, unknown>) {
                 return Editor({
                     schema,
                     cards: model.cards as Record<string, ICardConfig>,
                     layout: 'edit',
                     layouts: model.layouts as Record<string, LayoutConfig>,
+                    loadAction: methods.get,
                     saveAction: methods.add,
+                    value: {},
                     editMode: true,
                     editable: false,
                     ...props,
@@ -32,5 +35,3 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
         },
     });
 }
-
-declare const React: typeof import('react');

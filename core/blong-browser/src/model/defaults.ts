@@ -29,7 +29,7 @@ type DeepMergeAll<Ts extends readonly unknown[]> = Ts extends readonly [infer He
     ? Tail extends readonly []
         ? Head
         : DeepMerge<Head, DeepMergeAll<Tail>>
-    : any;
+    : unknown;
 
 /**
  * Merge source into target deeply, returning a new object.
@@ -135,37 +135,24 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     };
 
     const defaultLayouts = {
-        edit: ['hidden', 'edit'],
+        edit: ['edit', 'hidden'],
     };
 
-    return {
-        subject,
-        object,
-        objectTitle,
-        keyField,
-        nameField,
-        schema: deepMerge(
-            {} as IModelSpec['schema'] & object,
-            defaultSchemaOverlay,
-            (spec.schema as object) ?? {},
-        ),
-        cards: deepMerge(
-            {} as NonNullable<IModelSpec['cards']>,
-            defaultCards,
-            spec.cards ?? {},
-        ) as IResolvedModelSpec['cards'],
-        browser: deepMerge(
-            {},
-            defaultBrowser,
-            spec.browser ?? {},
-        ) as unknown as IResolvedModelSpec['browser'],
-        editor: deepMerge({}, defaultEditor, spec.editor ?? {}) as IResolvedModelSpec['editor'],
-        report: deepMerge({}, defaultReport, spec.report ?? {}) as IResolvedModelSpec['report'],
-        layouts: deepMerge(
-            {} as NonNullable<IModelSpec['layouts']>,
-            defaultLayouts,
-            spec.layouts ?? {},
-        ),
-        methods: deepMerge({}, defaultMethods, spec.methods ?? {}) as IResolvedModelSpec['methods'],
-    };
+    return deepMerge<IResolvedModelSpec[]>(
+        {
+            subject,
+            object,
+            objectTitle,
+            keyField,
+            nameField,
+            schema: defaultSchemaOverlay,
+            cards: defaultCards,
+            browser: defaultBrowser,
+            editor: defaultEditor,
+            report: defaultReport,
+            layouts: defaultLayouts,
+            methods: defaultMethods,
+        },
+        spec,
+    );
 }

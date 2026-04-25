@@ -12,7 +12,12 @@ export const CoralBrowse: StoryObj = {
 };
 
 export const CoralOpen: StoryObj = {
-    render: () => <Model componentName="marine.coral.open" />,
+    render: () => (
+        <Model
+            componentName="marine.coral.open"
+            params={{coralId: 1}}
+        />
+    ),
 };
 
 export const CoralNew: StoryObj = {

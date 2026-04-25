@@ -3,7 +3,7 @@
  */
 
 /** Permission map — key is permission string, value is whether granted */
-export type PermissionMap = Record<string, boolean>;
+export type PermissionMap = Record<string, boolean> | boolean;
 
 /** User profile shape */
 export interface IUserProfile {
