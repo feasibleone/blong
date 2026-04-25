@@ -20,6 +20,7 @@ import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
+import ConfigRuntime from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
@@ -495,7 +496,7 @@ export default async function loadRealm<T extends TSchema>(
     const {loadedConfig, configRuntime} = await platformApi.loadConfig(parentConfig);
     if (loadedConfig) loadedConfigs.push(loadedConfig);
 
-    merge(mergedConfig, ...loadedConfigs.filter(Boolean));
+    ConfigRuntime.mergeModuleConfig(mergedConfig, ...loadedConfigs);
     mergedConfig.configNames = configNames;
     let logger: ILogger | undefined = api?.log?.logger(
         mergedConfig[rootKind === 'browser' ? 'browser' : 'server']?.load?.logLevel,

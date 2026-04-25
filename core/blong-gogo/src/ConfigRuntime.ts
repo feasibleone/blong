@@ -24,6 +24,7 @@ import type {
     FactoryPhaseMode,
     IConfigRuntime,
 } from '@feasibleone/blong/types';
+import merge from 'ut-function.merge';
 
 // ---------------------------------------------------------------------------
 // createConfigProxy
@@ -334,5 +335,73 @@ export default class ConfigRuntime implements IConfigRuntime {
     public subscribe(fn: ConfigSubscriber): () => void {
         this.#subscribers.add(fn);
         return () => this.#subscribers.delete(fn);
+    }
+
+    // -----------------------------------------------------------------------
+    // Centralised config merge methods
+    //
+    // These replace the scattered merge operations in loadRealm(), layerProxy,
+    // and adapter.activeConfig().  Each method encapsulates a specific merge
+    // scope so the merge order is documented and testable in one place.
+    // -----------------------------------------------------------------------
+
+    /**
+     * Merge layer-scoped config for a handler closure.
+     *
+     * Previously done inline in `layerProxy.ts` / `createHandlerClosure()`:
+     *   `merge({}, moduleConfig[name], port?.config?.[namespace])`
+     *
+     * @param moduleConfigSlice - config slice from the module (e.g. `moduleConfig[name]`)
+     * @param portNamespaceConfig - namespace-specific config from the port (e.g. `port.config[namespace]`)
+     */
+    static mergeLayerConfig(
+        moduleConfigSlice: unknown,
+        portNamespaceConfig?: unknown,
+    ): Record<string, unknown> {
+        return merge({}, moduleConfigSlice, portNamespaceConfig) as Record<string, unknown>;
+    }
+
+    /**
+     * Merge activation-scoped config for an adapter.
+     *
+     * Previously done inline in `adapter.ts` `activeConfig()`:
+     *   Walk the prototype chain collecting `activation[envName]` from each
+     *   level, then merge `['default', ...activationNames]` in order.
+     *
+     * @param target - the adapter instance (prototype chain is walked)
+     * @param activationNames - active environment names (e.g. `['dev']`)
+     */
+    static mergeActivationConfig(
+        target: object,
+        activationNames: string[] = [],
+    ): object {
+        return merge([
+            {},
+            ...['default', ...activationNames]
+                .map(name => {
+                    const result = [];
+                    let current = target;
+                    while (current) {
+                        const config = current?.['activation']?.[name];
+                        if (config) result.push(config);
+                        current = Object.getPrototypeOf(current);
+                    }
+                    return result.reverse();
+                })
+                .flat(),
+        ]);
+    }
+
+    /**
+     * Merge module configs from multiple sources in the standard order.
+     *
+     * Previously done in `loadRealm()`:
+     *   `merge(mergedConfig, ...loadedConfigs.filter(Boolean))`
+     *
+     * @param base - the base config object (mutated in place)
+     * @param sources - config objects to merge, in priority order
+     */
+    static mergeModuleConfig(base: object, ...sources: unknown[]): object {
+        return merge(base, ...sources.filter(Boolean));
     }
 }

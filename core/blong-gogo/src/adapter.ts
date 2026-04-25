@@ -11,6 +11,7 @@ import type net from 'node:net';
 import PQueue from 'p-queue';
 import merge from 'ut-function.merge';
 
+import ConfigRuntime from './ConfigRuntime.ts';
 import loop from './loop.ts';
 
 const errorMap: IErrorMap = {
@@ -101,21 +102,7 @@ export default async function adapter<T, C>(
         configBase,
         log: null,
         activeConfig() {
-            return merge([
-                {},
-                ...['default', ...activationNames]
-                    .map(name => {
-                        const result = [];
-                        let current = this;
-                        while (current) {
-                            const config = current.activation?.[name];
-                            if (config) result.push(config);
-                            current = Object.getPrototypeOf(current);
-                        }
-                        return result.reverse();
-                    })
-                    .flat(),
-            ]);
+            return ConfigRuntime.mergeActivationConfig(this, activationNames);
         },
         async init(...configs: object[]) {
             base.config = merge(this.activeConfig(), ...configs);

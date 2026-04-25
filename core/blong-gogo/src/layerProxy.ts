@@ -11,6 +11,7 @@ import {
 import merge from 'ut-function.merge';
 
 import createPort from './adapter.ts';
+import ConfigRuntime from './ConfigRuntime.ts';
 import createHandlerProxy from './handlerProxy.ts';
 import {methodId} from './lib.ts';
 import type {IPort} from './Port.ts';
@@ -54,11 +55,10 @@ function createHandlerClosure(
         port: ReturnType<IAdapterFactory>;
         attachCheckpoint?: (meta: IMeta) => void;
     }) {
-        const mergedConfig = merge(
-            {},
+        const mergedConfig = ConfigRuntime.mergeLayerConfig(
             moduleConfigSlice,
             port?.config?.[namespace],
-        ) as Record<string, unknown>;
+        );
         const layerApi = {
             ...rest,
             config: mergedConfig,
