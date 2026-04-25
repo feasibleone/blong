@@ -36,6 +36,14 @@ const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
 interface IConfig {
     api?: Record<string, {source: string; def: {namespace: Record<string, string | string[]>}}>;
     checkpointMode?: 'test' | 'debug' | 'production';
+    /**
+     * Map of namespace → true for methods that should be registered in
+     * `Local` only (in-process dispatch) and skipped in `RpcServer`
+     * (inter-process dispatch).  When running as a monolith with
+     * `canSkipSocket: true`, local-only methods avoid unnecessary RPC
+     * registration overhead.
+     */
+    localOnly?: Record<string, boolean>;
 }
 
 export default class Registry extends Internal implements IRegistry {
@@ -142,19 +150,27 @@ export default class Registry extends Internal implements IRegistry {
             local: this.#local,
             registry: this,
             register: (methods, namespace, port, pkg) => {
-                this.#rpcServer?.register(methods, namespace, true, pkg);
+                if (!this.#config.localOnly?.[namespace]) {
+                    this.#rpcServer?.register(methods, namespace, true, pkg);
+                }
                 this.#local?.register(methods, namespace, true, pkg);
             },
             unregister: (methods, namespace) => {
-                this.#rpcServer?.unregister(methods, namespace, true);
+                if (!this.#config.localOnly?.[namespace]) {
+                    this.#rpcServer?.unregister(methods, namespace, true);
+                }
                 this.#local?.unregister(methods, namespace);
             },
             subscribe: (methods, namespace, port, pkg) => {
-                this.#rpcServer?.register(methods, namespace, false, pkg);
+                if (!this.#config.localOnly?.[namespace]) {
+                    this.#rpcServer?.register(methods, namespace, false, pkg);
+                }
                 this.#local?.register(methods, namespace, false, pkg);
             },
             unsubscribe: (methods, namespace) => {
-                this.#rpcServer?.unregister(methods, namespace, false);
+                if (!this.#config.localOnly?.[namespace]) {
+                    this.#rpcServer?.unregister(methods, namespace, false);
+                }
                 this.#local?.unregister(methods, namespace);
             },
             getPath(method: string) {
