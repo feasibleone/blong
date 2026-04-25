@@ -450,7 +450,7 @@ export const SearchHighlightingHTTPAndErrors: Story = {
 export const PerformanceTest: Story = {
     parameters: {
         chromatic: {
-            delay: 21000,
+            delay: 11000,
         },
     },
     render: () => {
@@ -532,7 +532,7 @@ export const PerformanceTest: Story = {
                                 }),
                             );
                         }
-                    }, 100); // 100ms = 10 messages per second
+                    }, 50); // 50ms = 20 messages per second
                 }
 
                 private stopStreaming(): void {
