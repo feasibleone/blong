@@ -44,7 +44,6 @@ export default defineConfig({
             },
         },
         sourcemap: true,
-        target: 'ES2022',
     },
     resolve: {
         alias: {
