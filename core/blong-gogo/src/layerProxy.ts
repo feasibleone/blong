@@ -218,18 +218,21 @@ export default function layerProxy(
                                         where.port.config = moduleConfig?.[name];
                                     } else if (['adapter', 'orchestrator'].includes(kind(what))) {
                                         where.port = async (
-                                            {
-                                                id,
-                                                ...portApi
-                                            }: Parameters<IAdapterFactory>[0] & {id: string},
+                                            api: Parameters<IAdapterFactory>[0] & {id: string},
                                             configOverride: object,
                                         ) => {
-                                            if (!id) return what(portApi);
+                                            const {id} = api;
+                                            if (!id) return what(api);
+                                            // Assign `handlers` directly onto the api object rather
+                                            // than creating a spread copy.  AdapterBase stores
+                                            // `_api = api`, and Registry.ts sets
+                                            // `api.attachHandlers = fn` *after* this factory
+                                            // returns.  Keeping the same object reference ensures
+                                            // that assignment is visible to `_api.attachHandlers`
+                                            // when `start()` is called later.
+                                            api.handlers = what;
                                             const port = await createPort(
-                                                {
-                                                    ...portApi,
-                                                    handlers: what,
-                                                },
+                                                api,
                                                 moduleConfig.base,
                                                 moduleConfig.configNames,
                                             );

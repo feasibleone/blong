@@ -90,7 +90,11 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     _dispatch: IApi['dispatch'];
     _methodId: IApi['methodId'];
     _getPath: IApi['getPath'];
-    _attachHandlers: IApi['attachHandlers'];
+    // _api is stored (not _attachHandlers directly) because Registry.ts sets
+    // api.attachHandlers = ... only *after* the port factory returns.  Storing
+    // the api object and reading api.attachHandlers lazily (at call time)
+    // ensures we always see the real function rather than the initial undefined.
+    _api: Pick<IApi, 'attachHandlers'>;
     _createLog: IApi['createLog'];
     _attachCheckpoint: IApi['attachCheckpoint'];
     _activationNames: string[];
@@ -120,7 +124,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         this._dispatch = api.dispatch;
         this._methodId = api.methodId;
         this._getPath = api.getPath;
-        this._attachHandlers = api.attachHandlers;
+        this._api = api;
         this._createLog = api.createLog;
         this._attachCheckpoint = api.attachCheckpoint;
         this._activationNames = activationNames;
@@ -285,7 +289,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     }
 
     async start(): Promise<unknown> {
-        await this._attachHandlers(this, this.config.imports, true);
+        await this._api.attachHandlers(this, this.config.imports, true);
         const {req, pub} = this.forNamespaces(
             (prev, next) => {
                 if (typeof next === 'string') {
@@ -303,7 +307,7 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     }
 
     async link(patterns: unknown, target: {imported?: object} = {}): Promise<object> {
-        await this._attachHandlers(target, patterns, false);
+        await this._api.attachHandlers(target, patterns, false);
         return target.imported;
     }
 
