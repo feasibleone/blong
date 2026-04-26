@@ -12,13 +12,27 @@ export interface LogConfig extends LoggerOptions {
 
 const ulid = monotonicFactory();
 
+const ignoreArgPatterns = [
+    '--tls-cipher-list=',
+    '--v8-pool-size=',
+    '--trace-event-file-pattern=',
+    '--secure-heap-min=',
+    '--node-snapshot',
+    '--use-largepages=',
+    '--secure-heap=',
+    '--stack-trace-limit=',
+];
 // Pino transports run in worker threads. When the entry-point is ESM,
 // `require.main` is undefined in CommonJS modules (including pino's transport
 // loader). Pino interprets this as a "preload phase" and resets the worker's
 // execArgv to [], stripping the TypeScript loader.  We work around this by
 // explicitly forwarding process.execArgv so the TypeScript loader is available
 // inside the transport worker thread.
-const WORKER_OPTS = {execArgv: process.execArgv};
+const WORKER_OPTS = {
+    execArgv: process.execArgv.filter(
+        arg => !ignoreArgPatterns.some(pattern => arg.startsWith(pattern)),
+    ),
+};
 
 const PRETTY_TRANSPORT = {
     target: './pino-pretty.ts',
@@ -54,9 +68,9 @@ export default class Log extends Internal implements ILog {
         this.merge(this.#config, config);
 
         // Inject a monotonic ULID `id` into every log entry before it reaches any transport
-        this.#config.mixin = () => ({id: ulid()});
 
         if (this.#config.cacache) {
+            this.#config.mixin = () => ({id: ulid()});
             // Multi-target transport: pretty console + cacache storage
             const cacacheOptions = this.#config.cacache;
             this.#config.transport = {

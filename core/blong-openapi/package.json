@@ -23,7 +23,6 @@
         "@feasibleone/blong": "workspace:^1.0.0"
     },
     "devDependencies": {
-        "@rushstack/eslint-config": "^4.6.4",
         "@rushstack/heft": "^1.2.6",
         "@rushstack/heft-lint-plugin": "^1.2.6",
         "@rushstack/heft-typescript-plugin": "^1.3.1",

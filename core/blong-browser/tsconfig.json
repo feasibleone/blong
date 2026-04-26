@@ -12,6 +12,7 @@
         "declarationMap": true,
         "resolveJsonModule": true,
         "strict": true,
+        "strictNullChecks": true,
         "skipLibCheck": true,
         "lib": ["ES2022", "DOM", "DOM.Iterable"]
     },

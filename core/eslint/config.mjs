@@ -1,6 +1,6 @@
+import eslintReact from '@eslint-react/eslint-plugin';
 import json from '@eslint/json';
 import markdown from '@eslint/markdown';
-import pluginReact from 'eslint-plugin-react';
 import {defineConfig} from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -22,6 +22,5 @@ export default defineConfig([
         extends: ['markdown/recommended'],
     },
     tseslint.configs.recommended,
-    pluginReact.configs.flat.recommended,
-    pluginReact.configs.flat['jsx-runtime'],
+    eslintReact.configs.recommended,
 ]);

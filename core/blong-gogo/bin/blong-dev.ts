@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node --watch --inspect
+#!/usr/bin/env -S node --watch --conditions=development --inspect
 
 import minimist from 'minimist';
 import {autoRun} from '../src/runServer.ts';

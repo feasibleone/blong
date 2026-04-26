@@ -80,14 +80,7 @@ function createHandlerClosure(
                     );
                 },
             }),
-            handler: createHandlerProxy(
-                local,
-                port,
-                remote,
-                attachCheckpoint,
-                lib,
-                mergedConfig,
-            ),
+            handler: createHandlerProxy(local, port, remote, attachCheckpoint, lib, mergedConfig),
             errors: target.result.error,
         };
         for (let what of others) {
@@ -97,8 +90,7 @@ function createHandlerClosure(
                     break;
                 case 'function:lib':
                     what = await what(layerApi);
-                    if (typeof what === 'function')
-                        lib[what.name] = what;
+                    if (typeof what === 'function') lib[what.name] = what;
                     else merge(lib, what);
             }
         }
@@ -110,17 +102,12 @@ function createHandlerClosure(
                     merge(local, what);
                     break;
                 case 'function:api':
-                    merge(
-                        local,
-                        await apiSchema.schema(
-                            what(layerApi),
-                            source,
-                        ),
-                    );
+                    merge(local, await apiSchema.schema(what(layerApi), source));
                     break;
                 case 'function:handler':
                 case 'function:validation':
                 case 'function:model':
+                case 'function:fixture':
                     configRuntime?.enterConfig();
                     try {
                         what = await what(layerApi);
@@ -128,10 +115,7 @@ function createHandlerClosure(
                         configRuntime?.exitConfig();
                     }
                     const created = await port?.createHandlers?.({
-                        handlers:
-                            typeof what === 'function'
-                                ? [what]
-                                : what,
+                        handlers: typeof what === 'function' ? [what] : what,
                         layerApi,
                         kind: kindOfWhat,
                     });

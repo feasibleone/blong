@@ -15,13 +15,12 @@
         "typebox": "^1.1.5"
     },
     "devDependencies": {
-        "@rushstack/eslint-config": "^4.6.4",
         "@rushstack/heft": "^1.2.6",
         "@rushstack/heft-lint-plugin": "^1.2.6",
         "@rushstack/heft-typescript-plugin": "^1.3.1",
         "@swc/core": "^1.7.14",
         "@types/node": "^24",
-        "tap": "^21.6.2",
+        "tap": "^21.6.3",
         "typescript": "^5.9.3"
     }
 }

@@ -46,10 +46,7 @@ export default (options: PinoPretty.PrettyOptions) =>
                 $meta,
             } = log;
             return [
-                id &&
-                    colors.dim(
-                        `\u001B]8;;blong://log/${id}\u001B\\${id}\u001B]8;;\u001B\\`,
-                    ),
+                id && colors.dim(`blong://log/${id}`),
                 context && colors.greenBright(context),
                 prefix,
                 $meta?.mtid && colors.magenta($meta.mtid),
