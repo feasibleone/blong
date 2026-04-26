@@ -37,6 +37,14 @@ const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
 interface IConfig {
     api?: Record<string, {source: string; def: {namespace: Record<string, string | string[]>}}>;
     checkpointMode?: 'test' | 'debug' | 'production';
+    /**
+     * Map of namespace → true for methods that should be registered in
+     * `Local` only (in-process dispatch) and skipped in `RpcServer`
+     * (inter-process dispatch).  When running as a monolith with
+     * `canSkipSocket: true`, local-only methods avoid unnecessary RPC
+     * registration overhead.
+     */
+    localOnly?: Record<string, boolean>;
 }
 
 export default class Registry extends Internal implements IRegistry {
@@ -142,40 +150,43 @@ export default class Registry extends Internal implements IRegistry {
             rpc: this.#rpcServer,
             local: this.#local,
             registry: this,
-            utBus: {
-                config: {},
-                methodId,
-                register: (methods, namespace, port, pkg) => {
+            register: (methods, namespace, port, pkg) => {
+                if (!this.#config.localOnly?.[namespace]) {
                     this.#rpcServer?.register(methods, namespace, true, pkg);
-                    this.#local?.register(methods, namespace, true, pkg);
-                },
-                unregister: (methods, namespace) => {
+                }
+                this.#local?.register(methods, namespace, true, pkg);
+            },
+            unregister: (methods, namespace) => {
+                if (!this.#config.localOnly?.[namespace]) {
                     this.#rpcServer?.unregister(methods, namespace, true);
-                    this.#local?.unregister(methods, namespace);
-                },
-                subscribe: (methods, namespace, port, pkg) => {
+                }
+                this.#local?.unregister(methods, namespace);
+            },
+            subscribe: (methods, namespace, port, pkg) => {
+                if (!this.#config.localOnly?.[namespace]) {
                     this.#rpcServer?.register(methods, namespace, false, pkg);
-                    this.#local?.register(methods, namespace, false, pkg);
-                },
-                unsubscribe: (methods, namespace) => {
+                }
+                this.#local?.register(methods, namespace, false, pkg);
+            },
+            unsubscribe: (methods, namespace) => {
+                if (!this.#config.localOnly?.[namespace]) {
                     this.#rpcServer?.unregister(methods, namespace, false);
-                    this.#local?.unregister(methods, namespace);
-                },
-                getPath(method: string) {
-                    return method.match(/^[^[#?]*/)[0];
-                },
-                importMethod: (methodName, options) => this.#remote.remote(methodName, options),
-                dispatch: (...params) => this.#remote.dispatch(...params),
-                attachHandlers: undefined,
+                }
+                this.#local?.unregister(methods, namespace);
             },
-            utLog: {
-                createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
+            getPath(method: string) {
+                return method.match(/^[^[#?]*/)[0];
             },
+            methodId,
+            importMethod: (methodName, options) => this.#remote.remote(methodName, options),
+            dispatch: (...params) => this.#remote.dispatch(...params),
+            attachHandlers: undefined,
+            createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
         };
         const result = await port(api);
         this.#ports.set(id, result);
-        api.utBus.attachHandlers = this._attachHandlers(result);
+        api.attachHandlers = this._attachHandlers(result);
         return result;
     }
 

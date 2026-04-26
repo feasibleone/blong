@@ -449,6 +449,79 @@ export default class Watch extends Internal implements IWatch {
         this.#emit.dispatchEvent(new Event('test'));
     }
 
+    /**
+     * Common reload unit: re-import a changed file, re-wrap via layerProxy,
+     * replace in registry, and signal tests.
+     *
+     * This unifies the three reload paths (layer file, single handler file,
+     * handler folder) into a single abstraction.
+     */
+    private async _reloadUnit(
+        registry: IRegistry,
+        configOverride: object,
+        filename: string,
+    ): Promise<void> {
+        // Path 1: Layer file changed — recreate and restart the port
+        const layerConfig = this.#layerFiles.get(filename);
+        if (layerConfig) {
+            const id = this.#platform.basename(filename, this.#platform.extname(filename));
+            const item = (await this.load(layerConfig, false, true, filename))(
+                layerProxy(this.#error, this.#apiSchema, this.#port, layerConfig),
+            ).result[id];
+            registry.ports.set(layerConfig.name + '.' + id, item.port);
+            const port = await registry.createPort(layerConfig.name + '.' + id);
+            if (!port) return;
+            await port.start(configOverride);
+            await port.ready();
+            await registry.connected();
+            this.#emit.dispatchEvent(new Event('test'));
+            return;
+        }
+
+        // Path 2: Config file changed
+        if (this.#config.configs.includes(filename)) {
+            await this._reloadConfig(registry, configOverride);
+            return;
+        }
+
+        // Path 3a: Single handler file changed
+        let config = this.#handlerFiles.get(filename);
+        if (config) {
+            const importProxyCallback = await this.load(config, false, true, filename);
+            const name = importProxyCallback.name;
+            await registry.replaceHandlers(
+                config.name + '.' + name,
+                importProxyCallback(
+                    layerProxy(this.#error, this.#apiSchema, this.#port, config),
+                ).result[name].methods,
+            );
+        } else {
+            // Path 3b: Handler folder changed — reload entire folder
+            const dir = this.#platform.dirname(filename);
+            config = this.#handlerFolders.get(dir);
+            if (config) {
+                const handlers = (await this._loadHandlers(true, config, dir))(
+                    layerProxy(this.#error, this.#apiSchema, this.#port, config),
+                );
+                await registry.replaceHandlers(
+                    config.name + '.' + this.#platform.basename(dir),
+                    handlers.result[this.#platform.basename(dir)].methods,
+                );
+                if (handlers.result[this.#platform.basename(dir) + '.validation'])
+                    await registry.replaceHandlers(
+                        config.name +
+                            '.' +
+                            this.#platform.basename(dir) +
+                            '.validation',
+                        handlers.result[this.#platform.basename(dir) + '.validation']
+                            .methods,
+                    );
+            }
+        }
+        await registry.connected();
+        this.#emit.dispatchEvent(new Event('test'));
+    }
+
     private _watch(registry: IRegistry, configOverride: object): void {
         const fsWatcher = this.#platform.watch?.(
             Array.from(this.#handlerFolders.keys())
@@ -480,57 +553,7 @@ export default class Watch extends Internal implements IWatch {
                     },
                     filename,
                 );
-                const layerConfig = this.#layerFiles.get(filename);
-                if (layerConfig) {
-                    const id = this.#platform.basename(filename, this.#platform.extname(filename));
-                    const item = (await this.load(layerConfig, false, true, filename))(
-                        layerProxy(this.#error, this.#apiSchema, this.#port, layerConfig),
-                    ).result[id];
-                    registry.ports.set(layerConfig.name + '.' + id, item.port);
-                    const port = await registry.createPort(layerConfig.name + '.' + id);
-                    if (!port) return;
-                    await port.start(configOverride);
-                    await port.ready();
-                    await registry.connected();
-                    this.#emit.dispatchEvent(new Event('test'));
-                } else if (this.#config.configs.includes(filename)) {
-                    await this._reloadConfig(registry, configOverride);
-                } else {
-                    let config = this.#handlerFiles.get(filename);
-                    if (config) {
-                        const importProxyCallback = await this.load(config, false, true, filename);
-                        const name = importProxyCallback.name;
-                        await registry.replaceHandlers(
-                            config.name + '.' + name,
-                            importProxyCallback(
-                                layerProxy(this.#error, this.#apiSchema, this.#port, config),
-                            ).result[name].methods,
-                        );
-                    } else {
-                        const dir = this.#platform.dirname(filename);
-                        config = this.#handlerFolders.get(dir);
-                        if (config) {
-                            const handlers = (await this._loadHandlers(true, config, dir))(
-                                layerProxy(this.#error, this.#apiSchema, this.#port, config),
-                            );
-                            await registry.replaceHandlers(
-                                config.name + '.' + this.#platform.basename(dir),
-                                handlers.result[this.#platform.basename(dir)].methods,
-                            );
-                            if (handlers.result[this.#platform.basename(dir) + '.validation'])
-                                await registry.replaceHandlers(
-                                    config.name +
-                                        '.' +
-                                        this.#platform.basename(dir) +
-                                        '.validation',
-                                    handlers.result[this.#platform.basename(dir) + '.validation']
-                                        .methods,
-                                );
-                        }
-                    }
-                    await registry.connected();
-                    this.#emit.dispatchEvent(new Event('test'));
-                }
+                await this._reloadUnit(registry, configOverride, filename);
             } catch (error) {
                 this.log?.error?.(error);
             }

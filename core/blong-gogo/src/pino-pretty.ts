@@ -1,6 +1,7 @@
+import type PinoPretty from 'pino-pretty';
 import pretty from 'pino-pretty';
 
-export default options =>
+export default (options: PinoPretty.PrettyOptions) =>
     pretty({
         ...options,
         messageFormat(

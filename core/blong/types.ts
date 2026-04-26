@@ -312,24 +312,19 @@ export interface IApi {
     rpc: IRpcServer;
     local: ILocal;
     registry: IRegistry;
-    utBus: {
-        config: object;
-        register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
-        unregister: (methods: string[], namespace: string) => void;
-        subscribe: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
-        unsubscribe: (methods: string[], namespace: string) => void;
-        dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
-        methodId: (name: string) => string;
-        getPath: (name: string) => string;
-        importMethod: (
-            methodName: string,
-            options?: object,
-        ) => (...params: unknown[]) => Promise<unknown>;
-        attachHandlers: (target: object, patterns: unknown, adapter?: boolean) => unknown;
-    };
-    utLog: {
-        createLog: ILog['logger'];
-    };
+    register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
+    unregister: (methods: string[], namespace: string) => void;
+    subscribe: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
+    unsubscribe: (methods: string[], namespace: string) => void;
+    dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
+    methodId: (name: string) => string;
+    getPath: (name: string) => string;
+    importMethod: (
+        methodName: string,
+        options?: object,
+    ) => (...params: unknown[]) => Promise<unknown>;
+    attachHandlers: (target: object, patterns: unknown, adapter?: boolean) => unknown;
+    createLog: ILog['logger'];
     attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {utError: IError; remote: IRemote; type: typeof Type}) => {
         extends?:

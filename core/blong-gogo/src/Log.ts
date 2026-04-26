@@ -12,8 +12,17 @@ export interface LogConfig extends LoggerOptions {
 
 const ulid = monotonicFactory();
 
+// Pino transports run in worker threads. When the entry-point is ESM,
+// `require.main` is undefined in CommonJS modules (including pino's transport
+// loader). Pino interprets this as a "preload phase" and resets the worker's
+// execArgv to [], stripping the TypeScript loader.  We work around this by
+// explicitly forwarding process.execArgv so the TypeScript loader is available
+// inside the transport worker thread.
+const WORKER_OPTS = {execArgv: process.execArgv};
+
 const PRETTY_TRANSPORT = {
     target: './pino-pretty.ts',
+    worker: WORKER_OPTS,
     options: {
         singleLine: true,
         colorizeObjects: true,
@@ -55,6 +64,7 @@ export default class Log extends Internal implements ILog {
                     PRETTY_TRANSPORT,
                     {
                         target: './pino-cacache.ts',
+                        worker: WORKER_OPTS,
                         options: cacacheOptions,
                     },
                 ],
