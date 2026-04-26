@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.18.0...blong-gogo-v1.18.1) (2026-04-26)
+
+
+### Bug Fixes
+
+* build ([cdcdec3](https://github.com/feasibleone/blong/commit/cdcdec3722cbd994321a9d1d5a6dd76ceb8062ec))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.17.1...blong-gogo-v1.18.0) (2026-04-26)
 
 
