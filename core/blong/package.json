@@ -30,7 +30,7 @@
         "ut-function.merge": "^1.5.6"
     },
     "devDependencies": {
-        "@aws-sdk/client-s3": "^3.1028.0",
+        "@aws-sdk/client-s3": "^3.1037.0",
         "@keycloak/keycloak-admin-client": "^26.5.4",
         "@kubernetes/client-node": "^1.4.0",
         "@rushstack/heft": "^1.2.6",
