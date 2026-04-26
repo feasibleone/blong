@@ -15,7 +15,7 @@
         ".": {
             "blong-dev": "./types.ts",
             "types": "./types.ts",
-            "default": "./dist/index.js"
+            "default": "./dist/types.js"
         },
         "./types": "./types.ts"
     },
