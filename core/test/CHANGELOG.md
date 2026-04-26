@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/test-v1.7.0...test-v1.8.0) (2026-04-26)
+
+
+### Features
+
+* add support for the browser platform ([f483e14](https://github.com/feasibleone/blong/commit/f483e149711acdeebcf9ee5afa3bf7ac7a6b669c))
+
+
+### Bug Fixes
+
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* remove heft lint ([c4d0eaa](https://github.com/feasibleone/blong/commit/c4d0eaa81714c04e9f9adec01c6ae7fa068f1948))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/test-v1.6.0...test-v1.7.0) (2026-04-10)
 
 

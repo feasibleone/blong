@@ -1,7 +1,7 @@
 {
     "name": "rest-fs",
     "displayName": "REST Filesystem",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "A filesystem provider backed by REST API",
     "categories": [
         "Other"

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.1.1...blong-browser-v1.2.0) (2026-04-26)
+
+
+### Features
+
+* add support for the browser platform ([f483e14](https://github.com/feasibleone/blong/commit/f483e149711acdeebcf9ee5afa3bf7ac7a6b669c))
+* model handling ([168e77e](https://github.com/feasibleone/blong/commit/168e77ec3284bbcebf5d7d6bb07cc624d0d1a56e))
+* model init ([7e18e00](https://github.com/feasibleone/blong/commit/7e18e002e3d9d9d2e996762d3ce7dd70d6a7d0be))
+* model mocks ([118a142](https://github.com/feasibleone/blong/commit/118a14254f87b8d1cf0b4d217939a9d49942f93e))
+* upgrade primereact ([1b6bc0b](https://github.com/feasibleone/blong/commit/1b6bc0b9e91ffcda51bd59428dc88e3ec730b25f))
+
+
+### Bug Fixes
+
+* build ([4a55e55](https://github.com/feasibleone/blong/commit/4a55e55ce6eda5116baa2da9b5d9b6f4816d446f))
+* build ([72d305a](https://github.com/feasibleone/blong/commit/72d305a08ae5295c2e3f6520c604311458b96719))
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.1.0...blong-browser-v1.1.1) (2026-04-10)
 
 

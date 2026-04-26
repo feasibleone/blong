@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.0.0...ui-demo-v1.1.0) (2026-04-26)
+
+
+### Features
+
+* add support for the browser platform ([f483e14](https://github.com/feasibleone/blong/commit/f483e149711acdeebcf9ee5afa3bf7ac7a6b669c))
+* model handling ([168e77e](https://github.com/feasibleone/blong/commit/168e77ec3284bbcebf5d7d6bb07cc624d0d1a56e))
+* model init ([7e18e00](https://github.com/feasibleone/blong/commit/7e18e002e3d9d9d2e996762d3ce7dd70d6a7d0be))
+* model mocks ([118a142](https://github.com/feasibleone/blong/commit/118a14254f87b8d1cf0b4d217939a9d49942f93e))
+
+
+### Bug Fixes
+
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* optimize browser loading ([0aac985](https://github.com/feasibleone/blong/commit/0aac985a24520810dc05eb34d314ed7dec4f1962))
+
 ## 1.0.0 (2026-04-10)
 
 

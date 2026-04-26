@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.17.1...blong-gogo-v1.18.0) (2026-04-26)
+
+
+### Features
+
+* add support for the browser platform ([f483e14](https://github.com/feasibleone/blong/commit/f483e149711acdeebcf9ee5afa3bf7ac7a6b669c))
+* implement wiring pipeline simplifications ([0a3dc01](https://github.com/feasibleone/blong/commit/0a3dc01e97c158d30491e8b76bef7d6bb4987529))
+* model handling ([168e77e](https://github.com/feasibleone/blong/commit/168e77ec3284bbcebf5d7d6bb07cc624d0d1a56e))
+* model mocks ([118a142](https://github.com/feasibleone/blong/commit/118a14254f87b8d1cf0b4d217939a9d49942f93e))
+* pino cacache log transport with ULID-linked terminal entries and VSCode click-to-inspect ([#126](https://github.com/feasibleone/blong/issues/126)) ([b3a91f5](https://github.com/feasibleone/blong/commit/b3a91f5d8e6fab1eaf02b81bbd20f2136e5ef267))
+
+
+### Bug Fixes
+
+* dependencies ([a21d8eb](https://github.com/feasibleone/blong/commit/a21d8ebe4ce9b476060dec8eeb9017a5eb7f07b5))
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* generic adapter ([e5ac7e7](https://github.com/feasibleone/blong/commit/e5ac7e7073aaf0e12258830585a38b055e2905ae))
+* optimize browser loading ([0aac985](https://github.com/feasibleone/blong/commit/0aac985a24520810dc05eb34d314ed7dec4f1962))
+* remove heft lint ([c4d0eaa](https://github.com/feasibleone/blong/commit/c4d0eaa81714c04e9f9adec01c6ae7fa068f1948))
+
 ## [1.17.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.17.0...blong-gogo-v1.17.1) (2026-04-10)
 
 

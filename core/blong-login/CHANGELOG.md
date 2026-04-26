@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.8](https://github.com/feasibleone/blong/compare/blong-login-v1.6.7...blong-login-v1.6.8) (2026-04-26)
+
+
+### Bug Fixes
+
+* build ([9ea9fca](https://github.com/feasibleone/blong/commit/9ea9fca9b3dfe58aaf82ce96572c0796cf7fb9f4))
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* remove heft lint ([c4d0eaa](https://github.com/feasibleone/blong/commit/c4d0eaa81714c04e9f9adec01c6ae7fa068f1948))
+
 ## [1.6.7](https://github.com/feasibleone/blong/compare/blong-login-v1.6.6...blong-login-v1.6.7) (2026-03-17)
 
 

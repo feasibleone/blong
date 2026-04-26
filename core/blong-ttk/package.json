@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-ttk",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Testing Toolkit for Mojaloop and other services - TypeScript test execution with Blong patterns",
     "keywords": [
         "blong",
