@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-log-v1.1.0...blong-log-v1.2.0) (2026-04-26)
+
+
+### Features
+
+* model mocks ([118a142](https://github.com/feasibleone/blong/commit/118a14254f87b8d1cf0b4d217939a9d49942f93e))
+
+
+### Bug Fixes
+
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* optimize performance test delays for chromatic delay limit ([fc23d82](https://github.com/feasibleone/blong/commit/fc23d82ac9e98cfa74809f35dd248e80063c91ca))
+* remove heft lint ([c4d0eaa](https://github.com/feasibleone/blong/commit/c4d0eaa81714c04e9f9adec01c6ae7fa068f1948))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-log-v1.0.3...blong-log-v1.1.0) (2026-04-10)
 
 

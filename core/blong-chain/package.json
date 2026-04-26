@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-chain",
-    "version": "1.5.0",
+    "version": "1.5.1",
     "description": "Parallel testing with automatic dependencies",
     "keywords": [
         "blong",

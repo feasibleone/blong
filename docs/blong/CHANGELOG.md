@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.10.0...blong-docs-v1.11.0) (2026-04-26)
+
+
+### Features
+
+* implement wiring pipeline simplifications ([0a3dc01](https://github.com/feasibleone/blong/commit/0a3dc01e97c158d30491e8b76bef7d6bb4987529))
+* model init ([7e18e00](https://github.com/feasibleone/blong/commit/7e18e002e3d9d9d2e996762d3ce7dd70d6a7d0be))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.9.0...blong-docs-v1.10.0) (2026-04-10)
 
 

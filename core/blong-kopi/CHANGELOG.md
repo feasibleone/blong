@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.6.0...blong-kopi-v1.7.0) (2026-04-26)
+
+
+### Features
+
+* add schema sync and schema bind library functions for TypeBox/Knex integration ([#129](https://github.com/feasibleone/blong/issues/129)) ([0df0364](https://github.com/feasibleone/blong/commit/0df036414caac0f686a7c93f41127df911740e8c))
+
+
+### Bug Fixes
+
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* remove heft lint ([c4d0eaa](https://github.com/feasibleone/blong/commit/c4d0eaa81714c04e9f9adec01c6ae7fa068f1948))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.5.2...blong-kopi-v1.6.0) (2026-04-10)
 
 

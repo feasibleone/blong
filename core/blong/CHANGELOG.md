@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.17.0](https://github.com/feasibleone/blong/compare/blong-v1.16.1...blong-v1.17.0) (2026-04-26)
+
+
+### Features
+
+* add support for the browser platform ([f483e14](https://github.com/feasibleone/blong/commit/f483e149711acdeebcf9ee5afa3bf7ac7a6b669c))
+* implement wiring pipeline simplifications ([0a3dc01](https://github.com/feasibleone/blong/commit/0a3dc01e97c158d30491e8b76bef7d6bb4987529))
+* model handling ([168e77e](https://github.com/feasibleone/blong/commit/168e77ec3284bbcebf5d7d6bb07cc624d0d1a56e))
+* model init ([7e18e00](https://github.com/feasibleone/blong/commit/7e18e002e3d9d9d2e996762d3ce7dd70d6a7d0be))
+* model mocks ([118a142](https://github.com/feasibleone/blong/commit/118a14254f87b8d1cf0b4d217939a9d49942f93e))
+
+
+### Bug Fixes
+
+* dependencies ([dd785c4](https://github.com/feasibleone/blong/commit/dd785c49c20045a804df0527638191f5d7d32a49))
+* dependencies ([a21d8eb](https://github.com/feasibleone/blong/commit/a21d8ebe4ce9b476060dec8eeb9017a5eb7f07b5))
+* dependencies ([705b2f7](https://github.com/feasibleone/blong/commit/705b2f7a72ac2dc93aea0f586394dde71192c1b6))
+* eslint ([a3b9f2b](https://github.com/feasibleone/blong/commit/a3b9f2bed4f958abfb378d97d372b3e7a6cd5a21))
+* optimize browser loading ([0aac985](https://github.com/feasibleone/blong/commit/0aac985a24520810dc05eb34d314ed7dec4f1962))
+* remove heft lint ([c4d0eaa](https://github.com/feasibleone/blong/commit/c4d0eaa81714c04e9f9adec01c6ae7fa068f1948))
+* types ([b7f0b57](https://github.com/feasibleone/blong/commit/b7f0b57159019dbeb80b9021b04e04eee57468ba))
+
 ## [1.16.1](https://github.com/feasibleone/blong/compare/blong-v1.16.0...blong-v1.16.1) (2026-04-10)
 
 
