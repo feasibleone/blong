@@ -1,4 +1,4 @@
-import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong/types';
+import type {Errors, IErrorMap, IMeta, Adapter} from '@feasibleone/blong/types';
 import {adapter} from '@feasibleone/blong/types';
 import ky, {type Options as KyOptions} from 'ky';
 
@@ -66,7 +66,7 @@ export default adapter<IConfig>(({utError}) => {
             return super.start();
         },
         async exec(
-            this: import('@feasibleone/blong/types').Adapter<IConfig>,
+            this: Adapter<IConfig>,
             {
                 path,
                 query: searchParams,

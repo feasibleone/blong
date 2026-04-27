@@ -1,6 +1,6 @@
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import mongoUriBuilder from 'mongo-uri-builder';
-import {MongoClient, type Sort} from 'mongodb';
+import {type BSON, MongoClient, type OptionalId, type UpdateFilter, type Filter, type Sort} from 'mongodb';
 
 export interface IConfig {
     mongodb: object;
@@ -81,7 +81,7 @@ export default adapter<IConfig>(({utError}) => {
                         .collection(table)
                         .findOne(
                             {
-                                ...(_id != null ? {_id: _id as import('mongodb').BSON.ObjectId} : {}),
+                                ...(_id != null ? {_id: _id as BSON.ObjectId} : {}),
                                 ...(where as Record<string, unknown>),
                             },
                             {
@@ -107,7 +107,7 @@ export default adapter<IConfig>(({utError}) => {
                         .mongodb!.db()
                         .collection(table)
                         .find(
-                            {_id: _id as import('mongodb').BSON.ObjectId | undefined, ...where},
+                            {_id: _id as BSON.ObjectId | undefined, ...where},
                             {
                                 projection:
                                     select === '*'
@@ -154,14 +154,14 @@ export default adapter<IConfig>(({utError}) => {
                     return this.config.context
                         .mongodb!.db()
                         .collection(table)
-                        .updateOne({_id: _id as import('mongodb').BSON.ObjectId | undefined, ...where}, {$set: rest, ...(operators as object)});
+                        .updateOne({_id: _id as BSON.ObjectId | undefined, ...where}, {$set: rest, ...(operators as object)});
                 }
                 case 'remove': // remove single document
                     if (!(key in params)) throw _errors['mongodb.missingKey']({key});
                     return this.config.context
                         .mongodb!.db()
                         .collection(table)
-                        .deleteOne({_id: (params as Record<string, unknown>)[key] as import('mongodb').BSON.ObjectId | undefined});
+                        .deleteOne({_id: (params as Record<string, unknown>)[key] as BSON.ObjectId | undefined});
 
                 case 'merge': {
                     // edit single document with partial update
@@ -170,12 +170,12 @@ export default adapter<IConfig>(({utError}) => {
                     return this.config.context
                         .mongodb!.db()
                         .collection(table)
-                        .updateMany({_id: _id as import('mongodb').BSON.ObjectId | undefined}, {$set: rest}, {upsert: true});
+                        .updateMany({_id: _id as BSON.ObjectId | undefined}, {$set: rest}, {upsert: true});
                 }
                 case 'insert': {
                     // insert multiple documents
                     if (!Array.isArray(params)) throw _errors['mongodb.invalid']();
-                    return this.config.context.mongodb!.db().collection(table).insertMany(params as import('mongodb').OptionalId<import('mongodb').BSON.Document>[]);
+                    return this.config.context.mongodb!.db().collection(table).insertMany(params as OptionalId<BSON.Document>[]);
                 }
                 case 'update': {
                     if (Array.isArray(params)) throw _errors['mongodb.invalid']();
@@ -183,10 +183,10 @@ export default adapter<IConfig>(({utError}) => {
                     return this.config.context
                         .mongodb!.db()
                         .collection(table)
-                        .updateMany({_id: _id as import('mongodb').BSON.ObjectId | undefined, ...where}, update as import('mongodb').UpdateFilter<import('mongodb').BSON.Document>);
+                        .updateMany({_id: _id as BSON.ObjectId | undefined, ...where}, update as UpdateFilter<BSON.Document>);
                 }
                 case 'delete': // delete multiple documents
-                    return this.config.context.mongodb!.db().collection(table).deleteMany(params as import('mongodb').Filter<import('mongodb').BSON.Document>);
+                    return this.config.context.mongodb!.db().collection(table).deleteMany(params as Filter<BSON.Document>);
             }
             throw _errors['mongodb.generic']();
         },

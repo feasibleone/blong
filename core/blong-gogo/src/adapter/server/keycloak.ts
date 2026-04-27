@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
+import {adapter, type Adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import KcAdminClient from '@keycloak/keycloak-admin-client';
 import GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation.js';
 import got from 'got';
@@ -66,7 +66,7 @@ export default adapter<IConfig>(({utError}) => {
             return super.start();
         },
         async authenticate(
-            this: import('@feasibleone/blong/types').Adapter<IConfig>,
+            this: Adapter<IConfig>,
             {
             grantType = this.config.keycloak.grantType || 'password',
             clientId = this.config.keycloak.clientId || 'admin-cli',

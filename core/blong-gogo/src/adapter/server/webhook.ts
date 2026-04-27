@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
+import {adapter, type Adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import got, {type HttpsOptions, type Options} from 'got';
 import {Duplex, Readable, Writable} from 'stream';
 
@@ -44,7 +44,7 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                 );
         },
 
-        async start(this: import('@feasibleone/blong/types').Adapter<IConfig>) {
+        async start(this: Adapter<IConfig>) {
             const result = await super.start();
             const readable = new Readable({
                 objectMode: true,

@@ -58,12 +58,13 @@ export default adapter<IConfig>(api => {
         }
         streams.push(stream);
 
-        const cfg = this.config as unknown as IConfig & {maxConnections: number; connectionDropPolicy: string; conCount: number};
-        if (streams.length > cfg.maxConnections) {
+        const maxConnections = this.config.maxConnections ?? 1000;
+        const connectionDropPolicy = this.config.connectionDropPolicy ?? 'oldest';
+        if (streams.length > maxConnections) {
             this.log?.warn?.(
-                `Connection limit exceeded (max ${cfg.maxConnections}). Closing ${cfg.connectionDropPolicy} connection.`,
+                `Connection limit exceeded (max ${maxConnections}). Closing ${connectionDropPolicy} connection.`,
             );
-            switch (cfg.connectionDropPolicy) {
+            switch (connectionDropPolicy) {
                 case 'oldest':
                     streams.shift()!.destroy();
                     break;
@@ -124,7 +125,7 @@ export default adapter<IConfig>(api => {
                 },
             },
         },
-        async start(this: import('@feasibleone/blong/types').Adapter<IConfig, AdapterContext>) {
+        async start(this: Adapter<IConfig, AdapterContext>) {
             const result = await super.start();
             const format = this.config.format;
             if (format?.codec) {

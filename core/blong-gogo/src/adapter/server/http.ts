@@ -1,4 +1,4 @@
-import type {IMeta} from '@feasibleone/blong/types';
+import type {IMeta, Adapter} from '@feasibleone/blong/types';
 import {adapter, type Errors, type IErrorMap} from '@feasibleone/blong/types';
 import got, {type HttpsOptions, type Options} from 'got';
 
@@ -59,7 +59,7 @@ export default adapter<IConfig>(({utError}) => {
             https = tls(this.config, true) as HttpsOptions;
         },
         async exec(
-            this: import('@feasibleone/blong/types').Adapter<IConfig>,
+            this: Adapter<IConfig>,
             {
                 path,
                 query: searchParams,
