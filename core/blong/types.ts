@@ -446,7 +446,7 @@ export interface IAdapter<T, C> {
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
     config?: Config<T, C> | false;
-    (api: IApi): Partial<IAdapter<T, C>>;
+    (api: IApi): IAdapter<T, C>;
 }
 
 export interface IAdapterRegistry {
