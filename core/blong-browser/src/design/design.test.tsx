@@ -12,7 +12,7 @@ function ContextFnTester() {
     const ctx = useDesignModeContext();
     return (
         <div>
-            <button onClick={() => ctx.updateConfig({cards: {x: []}, layouts: {}})}>
+            <button onClick={() => ctx.updateConfig({cards: {x: {}}, layouts: {}})}>
                 updateConfig
             </button>
             <button onClick={() => ctx.pushHistory('step 1')}>pushHistory</button>
@@ -228,12 +228,12 @@ describe('PropertyEditor', () => {
     });
 });
 
+const BadConsumer = () => {
+    useDesignModeContext();
+    return null;
+};
 describe('DesignModeContext — context functions', () => {
     it('useDesignModeContext throws when used outside provider', () => {
-        const BadConsumer = () => {
-            useDesignModeContext();
-            return null;
-        };
         expect(() => render(<BadConsumer />)).toThrow(/useDesignModeContext/);
     });
 

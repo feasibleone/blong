@@ -32,7 +32,7 @@ export default class Remote extends Internal implements IRemote {
     };
 
     #importCache: object = {};
-    #requireMeta: (method: string) => void;
+    #requireMeta: ((method: string) => void) | null;
     #errors: Errors<typeof errorMap>;
     #local: ILocal;
     #platform: IPlatformApi;
@@ -60,7 +60,7 @@ export default class Remote extends Internal implements IRemote {
             case 'info':
             case 'warn': {
                 this.#requireMeta = method =>
-                    this.log?.[this.#config.requireMeta.toString()]?.(
+                    this.log?.[this.#config.requireMeta as 'trace' | 'debug' | 'info' | 'warn']?.(
                         this.#errors['remote.noMeta']({params: {method}}),
                     );
                 break;
@@ -85,14 +85,14 @@ export default class Remote extends Internal implements IRemote {
         this.#brokerPublish = this._getMethod('pub', 'publish', undefined, {returnMeta: true});
     }
 
-    protected gateway(meta: object, method: string): object | void {}
+    protected gateway(): object | void {}
     protected spare(time: HRTime, latency?: number): number {
         return this.#platform.timing.spare(time, latency);
     }
 
-    protected sender(methodType: 'request' | 'publish', typeName: 'req' | 'pub'): unknown {
-        return async (...rest) => {
-            const $meta = rest.pop();
+    protected sender(methodType: 'request' | 'publish', typeName: 'req' | 'pub'): RemoteMethod {
+        return async (...rest: unknown[]) => {
+            const $meta = rest.pop() as IMeta;
             throw this.#errors['remote.bindingFailed']({
                 params: {
                     methodName: $meta.method,
@@ -115,7 +115,7 @@ export default class Remote extends Internal implements IRemote {
                 const attempt = (): void =>
                     fn()
                         .then(resolve)
-                        .catch(error => {
+                        .catch((error: {params?: {method: string}}) => {
                             // todo maybe log these errors
                             if (Date.now() > timeout) {
                                 if (error) error.params = {method: 'methodName'};
@@ -152,7 +152,7 @@ export default class Remote extends Internal implements IRemote {
     private _getMethod(
         typeName: 'req' | 'pub',
         methodType: 'request' | 'publish',
-        methodName: string,
+        methodName: string | undefined,
         options: {
             fallback?: boolean;
             returnMeta?: boolean;
@@ -160,17 +160,17 @@ export default class Remote extends Internal implements IRemote {
             cache?: IMeta['cache'];
         },
     ): RemoteMethod {
-        let fn = null;
+        let fn: RemoteMethod | null = null;
         let unpack = true;
         const fallback = options && options.fallback;
-        const timeoutSec = options && options.timeout && Math.floor(options.timeout / 1000);
-        const timeoutNSec = options && options.timeout && (options.timeout % 1000) * 1000000;
-        let fnCache = null;
+        const timeoutSec = (options && options.timeout && Math.floor(options.timeout / 1000)) || 0;
+        const timeoutNSec = (options && options.timeout && (options.timeout % 1000) * 1000000) || 0;
+        let fnCache: RemoteMethod | null = null;
         const cache = options && options.cache;
 
         const busMethod: RemoteMethod = async (...params) => {
             const $meta = (params.length > 1 && params[params.length - 1]) as IMeta;
-            let $applyMeta;
+            let $applyMeta: IMeta;
             if (!$meta) {
                 this.#requireMeta?.(methodName);
                 params.push(($applyMeta = {method: methodName}));
@@ -181,7 +181,7 @@ export default class Remote extends Internal implements IRemote {
                 };
             }
             if (options && options.timeout && !$applyMeta.timeout) {
-                $applyMeta.timeout = this.#platform.hrtime();
+                $applyMeta.timeout = this.#platform.timing.now();
                 $applyMeta.timeout[1] += timeoutNSec;
                 $applyMeta.timeout[0] += timeoutSec;
                 if ($applyMeta.timeout[1] >= 1000000000) {
@@ -287,15 +287,14 @@ export default class Remote extends Internal implements IRemote {
                 }
                 let applyFn;
                 try {
-                    const cached =
-                        fnCache &&
+                    const cached = (fnCache &&
                         $metaBefore &&
                         $metaBefore.cache.key &&
-                        (await fnCache.call(this, params[0], $metaBefore));
+                        (await fnCache.call(this, params[0], $metaBefore))) as unknown[];
                     if (cached && cached[0] !== null) return cached[0];
                     if (cache && cache.instead) return cached && cached[0];
                     applyFn = fn;
-                    const result = await fn.apply(this, params);
+                    const result = (await fn.apply(this, params)) as unknown[];
                     if (
                         fnCache &&
                         $metaAfter &&
@@ -359,11 +358,11 @@ export default class Remote extends Internal implements IRemote {
     }
 
     private _getPath(method: string): string {
-        return method.match(/^[^[#?]*/)[0];
+        return method.match(/^[^[#?]*/)?.[0] || method;
     }
 
     private _getOpcode(name: string): string {
-        return this._getPath(name).split('.').pop();
+        return this._getPath(name).split('.').pop()!;
     }
 
     private _findMethod(methodName: string, type: 'request' | 'publish'): RemoteMethod {

@@ -20,12 +20,12 @@ export interface IConfig {
         namespace?: string;
     };
     context: {
-        coreV1Api: k8s.CoreV1Api;
-        appsV1Api: k8s.AppsV1Api;
-        networkingV1Api: k8s.NetworkingV1Api;
-        rbacV1Api: k8s.RbacAuthorizationV1Api;
-        customObjectsApi: k8s.CustomObjectsApi;
-        watcher: k8s.Watch;
+        coreV1Api?: k8s.CoreV1Api;
+        appsV1Api?: k8s.AppsV1Api;
+        networkingV1Api?: k8s.NetworkingV1Api;
+        rbacV1Api?: k8s.RbacAuthorizationV1Api;
+        customObjectsApi?: k8s.CustomObjectsApi;
+        watcher?: k8s.Watch;
     };
 }
 
@@ -117,7 +117,7 @@ export default adapter<IConfig>(({utError}) => {
             try {
                 // No specific cleanup needed for k8s clients
             } finally {
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;
@@ -420,7 +420,7 @@ export default adapter<IConfig>(({utError}) => {
                         if (resourceType === 'deployment' || resourceType === 'deployments') {
                             // First get the current deployment
                             const current =
-                                await this.config.context.appsV1Api.readNamespacedDeployment({
+                                await this.config.context.appsV1Api!.readNamespacedDeployment({
                                     name,
                                     namespace,
                                 });
@@ -435,7 +435,7 @@ export default adapter<IConfig>(({utError}) => {
                             };
 
                             const result =
-                                await this.config.context.appsV1Api.replaceNamespacedDeployment({
+                                await this.config.context.appsV1Api!.replaceNamespacedDeployment({
                                     name,
                                     namespace,
                                     body: updatedDeployment,
@@ -491,11 +491,11 @@ export default adapter<IConfig>(({utError}) => {
                         };
                         createEventPromise();
 
-                        const watch = await this.config.context.watcher.watch(
+                        const watch = await this.config.context.watcher!.watch(
                             watchPath,
                             {fieldSelector, resourceVersion, labelSelector},
                             (type, object) => {
-                                this.log.debug?.({object}, `Event: ${type}`);
+                                this.log?.debug?.({object}, `Event: ${type}`);
                                 if (type === 'ERROR') {
                                     eventReject(new Error(object.message || 'Watch error event'));
                                 } else eventResolve({type, object});

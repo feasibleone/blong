@@ -36,7 +36,7 @@ export default adapter<IConfig>(({utError}) => {
             return super.start();
         },
         async stop(...params: unknown[]) {
-            this.config.context = null;
+            this.config.context = {};
             return await super.stop(...params);
         },
         async exec(
@@ -92,7 +92,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (unfurlMedia !== undefined) payload.unfurl_media = unfurlMedia;
 
                     try {
-                        return await this.config.context.slack.send(payload);
+                        return await this.config.context.slack!.send(payload);
                     } catch (error) {
                         throw _errors['slack.generic'](error);
                     }

@@ -2,7 +2,7 @@ import {readFileSync} from 'fs';
 
 export default function tls(
     config: {tls?: {ca?: string | string[]; key?: string; cert?: string; crl?: string}},
-    got: boolean
+    got: boolean,
 ):
     | {
           minVersion: 'TLSv1.3';
@@ -17,11 +17,12 @@ export default function tls(
           key?: Buffer;
           certificate?: Buffer;
           certificateRevocationLists?: Buffer;
-      } {
+      }
+    | undefined {
     if (config?.tls) {
         return {
             minVersion: 'TLSv1.3',
-            ...config.tls,
+            ...(config.tls as ReturnType<typeof tls>),
             ...(config.tls.ca && {
                 [got ? 'certificateAuthority' : 'ca']: Array.isArray(config.tls.ca)
                     ? config.tls.ca.map(file => readFileSync(file))

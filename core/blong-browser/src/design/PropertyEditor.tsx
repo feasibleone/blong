@@ -4,15 +4,37 @@
  * Card properties: label, collapsible, hidden, className.
  * Field properties: title, widget.type, required, readOnly (all editable).
  */
-import { useState } from 'react';
-import { useBlongForm } from '../components/Form/FormContext.js';
-import type { ICardConfig } from '../types/widget.js';
-import { useDesignMode } from './useDesignMode.js';
+import {useState} from 'react';
+import {useBlongForm} from '../components/Form/FormContext.js';
+import type {ICardConfig, IEnrichedFieldSchema} from '../types/widget.js';
+import {useDesignMode} from './useDesignMode.js';
 
 const WIDGET_TYPES = [
-    'input', 'text', 'textArea', 'password', 'number', 'integer', 'boolean', 'checkbox',
-    'switch', 'date', 'time', 'dateTime', 'dropdown', 'multiSelect', 'select', 'selectTable',
-    'chips', 'file', 'image', 'table', 'json', 'code', 'label', 'link', 'divider',
+    'input',
+    'text',
+    'textArea',
+    'password',
+    'number',
+    'integer',
+    'boolean',
+    'checkbox',
+    'switch',
+    'date',
+    'time',
+    'dateTime',
+    'dropdown',
+    'multiSelect',
+    'select',
+    'selectTable',
+    'chips',
+    'file',
+    'image',
+    'table',
+    'json',
+    'code',
+    'label',
+    'link',
+    'divider',
 ] as const;
 
 const FIELD_TYPES = ['string', 'number', 'boolean', 'object', 'array'] as const;
@@ -112,13 +134,14 @@ export function PropertyEditor() {
             updateConfig({
                 schema: {
                     ...(config.schema ?? {}),
-                    [fieldName]: {...schemaOverride, ...patch},
+                    [fieldName]: {...schemaOverride, ...patch} as Partial<IEnrichedFieldSchema>,
                 },
             });
 
         const currentTitle = schemaOverride.title ?? baseSchema?.title ?? fieldName;
         const currentType = schemaOverride.type ?? baseSchema?.type ?? '';
-        const currentWidgetType = schemaOverride.widget?.type ?? baseSchema?.widget?.type ?? 'input';
+        const currentWidgetType =
+            schemaOverride.widget?.type ?? baseSchema?.widget?.type ?? 'input';
         const currentRequired = schemaOverride.required ?? baseSchema?.required ?? false;
         const currentReadOnly = schemaOverride.readOnly ?? baseSchema?.readOnly ?? false;
 
@@ -149,7 +172,12 @@ export function PropertyEditor() {
                     >
                         <option value="">—</option>
                         {FIELD_TYPES.map(t => (
-                            <option key={t} value={t}>{t}</option>
+                            <option
+                                key={t}
+                                value={t}
+                            >
+                                {t}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -160,11 +188,18 @@ export function PropertyEditor() {
                         className="blong-property-editor__input"
                         value={currentWidgetType}
                         onChange={e =>
-                            updateField({widget: {...(schemaOverride.widget ?? {}), type: e.target.value}})
+                            updateField({
+                                widget: {...(schemaOverride.widget ?? {}), type: e.target.value},
+                            })
                         }
                     >
                         {WIDGET_TYPES.map(t => (
-                            <option key={t} value={t}>{t}</option>
+                            <option
+                                key={t}
+                                value={t}
+                            >
+                                {t}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -233,7 +268,7 @@ export function DesignAddCardButton({onCardAdded}: {onCardAdded: (name: string) 
 
 export function DesignAddFieldButton({
     schema: schemaProp,
-    cards: cardsProp,
+    // cards: cardsProp,
 }: {
     schema?: Record<string, unknown>;
     cards?: Record<string, unknown>;
@@ -269,9 +304,7 @@ export function DesignAddFieldButton({
         const baseCard = formCtx?.cards[cardName];
         const designCard = config.cards[cardName];
         const existing: string[] =
-            (designCard?.widgets as string[] | undefined) ??
-            baseCard?.fields ??
-            [];
+            (designCard?.widgets as string[] | undefined) ?? baseCard?.fields ?? [];
 
         updateConfig({
             cards: {
@@ -317,5 +350,3 @@ export function DesignAddFieldButton({
         </span>
     );
 }
-
-

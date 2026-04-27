@@ -7,7 +7,7 @@ import {orchestrator} from '@feasibleone/blong';
  * - clockGet: pure local implementation (reads system time directly)
  * - timeGet: calls the external world-time API via the HTTP adapter
  */
-export default orchestrator(blong => ({
+export default orchestrator(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {

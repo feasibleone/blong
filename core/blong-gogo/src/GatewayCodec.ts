@@ -31,9 +31,9 @@ export interface IGatewayCodec {
         };
     }>;
     verify: (
-        token,
+        token: string,
         flags: {nonce?: string; audience: string},
-        isId?,
+        isId?: boolean,
     ) => Promise<JWTPayload & {per?: string}>;
 }
 
@@ -161,7 +161,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
             const mleClient = await jose(config.client || {});
             return busGateway({
                 errorPrefix: 'rpc.',
-                serverInfo: key => ({protocol, port})[key],
+                serverInfo: (key: 'protocol' | 'port') => ({protocol, port})[key],
                 mleClient,
                 errors,
                 get,

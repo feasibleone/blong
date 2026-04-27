@@ -18,7 +18,7 @@ export interface IConfig {
         };
     };
     context: {
-        kcAdminClient: KcAdminClient;
+        kcAdminClient?: KcAdminClient;
     };
 }
 
@@ -107,7 +107,7 @@ export default adapter<IConfig>(({utError}) => {
                 // No specific cleanup needed for Keycloak admin client
                 _authenticated = false;
             } finally {
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;

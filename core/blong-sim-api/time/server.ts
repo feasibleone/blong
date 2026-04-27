@@ -14,6 +14,6 @@ import {realm} from '@feasibleone/blong';
  * This demonstrates how to simulate OpenAPI-based backends without
  * requiring an internet connection or external services.
  */
-export default realm(blong => ({
+export default realm(() => ({
     url: import.meta.url,
 }));

@@ -16,7 +16,7 @@ import {handler} from '@feasibleone/blong';
  * The namespace 'mocktime' under the openapi orchestrator is how blong-openapi
  * identifies this API instance.
  */
-export default handler(proxy => ({
+export default handler(() => ({
     config: {
         api: {
             namespace: {

@@ -4,7 +4,7 @@ import Knex from 'knex';
 export interface IConfig {
     knex: object;
     context: {
-        queryBuilder: Knex.Knex;
+        queryBuilder?: Knex.Knex;
     };
 }
 
@@ -44,7 +44,7 @@ export default adapter<IConfig>(({utError}) => {
             try {
                 await this.config.context.queryBuilder?.destroy();
             } finally {
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;

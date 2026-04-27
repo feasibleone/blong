@@ -7,15 +7,15 @@ beforeEach(() => {
     // Reset auth state
     useAppStore.setState(s => ({
         ...s,
-        auth: {token: null, userId: null, userName: null, permissions: []},
-    }));
+        auth: {token: null, profile: null, permissions: {}, isAuthenticated: false},
+    } as typeof s));
 });
 
 describe('useAuth', () => {
     it('returns null token/userId when not authenticated', () => {
         const {result} = renderHook(() => useAuth());
         expect(result.current.token).toBeNull();
-        expect(result.current.userId).toBeNull();
+        expect(result.current.profile).toBeNull();
     });
 
     it('setToken updates the auth token', () => {
@@ -38,8 +38,8 @@ describe('useAuth', () => {
     });
 
     it('exposes permissions array from the store', () => {
-        useAppStore.setState(s => ({...s, auth: {...s.auth, permissions: ['admin', 'edit']}}));
+        useAppStore.setState(s => ({...s, auth: {...s.auth, permissions: {admin: true, edit: true}}} as typeof s));
         const {result} = renderHook(() => useAuth());
-        expect(result.current.permissions).toContain('admin');
+        expect((result.current.permissions as Record<string, boolean>)['admin']).toBe(true);
     });
 });

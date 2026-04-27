@@ -23,8 +23,8 @@ export interface IWatch {
     stop: () => Promise<void>;
     load: <T extends {result: unknown}>(
         config: {name: string; pkg: IModuleConfig['pkg']; base: string},
-        isDirectory: boolean | Record<string, () => Promise<unknown>>,
-        isFile: boolean | (() => Promise<unknown>),
+        isDirectory: boolean | Record<string, () => Promise<unknown>> | undefined,
+        isFile: boolean | (() => Promise<unknown>) | undefined,
         ...path: string[]
     ) => Promise<(api: T) => T>;
     /** Attach a ConfigRuntime so config-file changes trigger in-process reloads */
@@ -129,7 +129,11 @@ export default class Watch extends Internal implements IWatch {
      * @param expectedName The expected handler name based on filename
      * @returns The handler name (either explicit or derived from filename)
      */
-    private _validateAndSetHandlerName(item: {}, filename: string, expectedName: string): string {
+    private _validateAndSetHandlerName(
+        item: {name?: string},
+        filename: string,
+        expectedName?: string,
+    ): string {
         const actualName = item['name'] && item['name'] !== 'default' ? item['name'] : null;
 
         // For files defining a single handler, report error on name mismatch
@@ -170,12 +174,12 @@ export default class Watch extends Internal implements IWatch {
                       ]
                     : prev;
             },
-            [[], []],
+            [[] as string[], [] as string[]],
         );
         const {Formatter, TypeScriptToTypeBox} = await import('@sinclair/typebox-codegen');
         if (schema.length)
             this.#platform.writeFileSync(
-                join(dir, '~.schema.ts'),
+                this.#platform.join(dir, '~.schema.ts'),
                 Formatter.Format(`/* eslint-disable indent,semi */
             /* eslint-disable @typescript-eslint/naming-convention */
             /* eslint-disable @rushstack/typedef-var */
@@ -205,17 +209,24 @@ export default class Watch extends Internal implements IWatch {
     }
 
     private async _loadHandlers(
-        directory: true | Record<string, () => Promise<unknown>>,
-        config: {name: string; pkg: IModuleConfig['pkg']; base: string},
+        directory: true | Record<string, () => Promise<unknown>> | undefined,
+        config: {
+            name: string;
+            pkg: IModuleConfig['pkg'];
+            base: string;
+            configNames?: string[];
+            namespace?: Record<string, object>;
+            [other: string]: unknown;
+        },
         ...path: string[]
     ): Promise<<T>(api: T) => T> {
         const dir = this.#platform.join(...path);
-        const handlers = [];
-        const validations = [];
-        const apis = [];
-        const libs = [];
-        const assets = [];
-        const handlerFilenames = [];
+        const handlers: unknown[] = [];
+        const validations: unknown[] = [];
+        const apis: unknown[] = [];
+        const libs: unknown[] = [];
+        const assets: unknown[] = [];
+        const handlerFilenames: string[] = [];
         let latest = 0;
         const isFile = () => true;
         const isDirectory = () => false;
@@ -237,8 +248,8 @@ export default class Watch extends Internal implements IWatch {
                 )
             ).default;
             const folderName = this.#platform.basename(dir);
-            const mutableConfig = config as Record<string, unknown>;
-            const configNames = (mutableConfig.configNames as string[]) ?? [];
+            const mutableConfig = config;
+            const configNames = mutableConfig.configNames ?? [];
             const folderConfig =
                 loaded &&
                 typeof loaded === 'object' &&
@@ -340,8 +351,8 @@ export default class Watch extends Internal implements IWatch {
 
     public async load<T extends {result: unknown}>(
         config: {name: string; pkg: IModuleConfig['pkg']; base: string},
-        isDirectory: boolean | `Record<string, () => Promise<unknown>>`,
-        isFile: boolean | object,
+        isDirectory: boolean | `Record<string, () => Promise<unknown>>` | undefined,
+        isFile: boolean | object | undefined,
         ...path: string[]
     ): Promise<(api: T) => T> {
         if (isDirectory) {
@@ -491,9 +502,8 @@ export default class Watch extends Internal implements IWatch {
             const name = importProxyCallback.name;
             await registry.replaceHandlers(
                 config.name + '.' + name,
-                importProxyCallback(
-                    layerProxy(this.#error, this.#apiSchema, this.#port, config),
-                ).result[name].methods,
+                importProxyCallback(layerProxy(this.#error, this.#apiSchema, this.#port, config))
+                    .result[name].methods,
             );
         } else {
             // Path 3b: Handler folder changed — reload entire folder
@@ -509,12 +519,8 @@ export default class Watch extends Internal implements IWatch {
                 );
                 if (handlers.result[this.#platform.basename(dir) + '.validation'])
                     await registry.replaceHandlers(
-                        config.name +
-                            '.' +
-                            this.#platform.basename(dir) +
-                            '.validation',
-                        handlers.result[this.#platform.basename(dir) + '.validation']
-                            .methods,
+                        config.name + '.' + this.#platform.basename(dir) + '.validation',
+                        handlers.result[this.#platform.basename(dir) + '.validation'].methods,
                     );
             }
         }
@@ -578,9 +584,9 @@ export default class Watch extends Internal implements IWatch {
                     const chain = await (await import('./chain.ts')).default(test, this.log);
 
                     const steps = await Promise.all(
-                        [].concat(this.#config.test).map(async method => {
+                        ([] as string[]).concat(this.#config.test).map(async method => {
                             const result = await remote.remote(method)({}, {});
-                            if (Array.isArray(result) && !result.name) {
+                            if (Array.isArray(result) && !('name' in result)) {
                                 Object.defineProperty(result, 'name', {
                                     value: method.replace(/^test\./, '').replace(/\./g, ' '),
                                     configurable: true,

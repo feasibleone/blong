@@ -19,7 +19,7 @@ export default class ErrorFactory extends Internal implements IErrorFactory {
         this.merge(this.#config, config);
         this.#error = Errors({
             logFactory: {
-                createLog: (logLevel, bindings) => log?.logger(logLevel, bindings) || {},
+                createLog: (...params: Parameters<ILog['logger']>) => log?.logger(...params) || {},
             },
             logLevel: this.#config.logLevel,
             errorPrint: this.#config.errorPrint,

@@ -1,9 +1,9 @@
-import type {IErrorFactory, IMeta, ITypedError} from '@feasibleone/blong/types';
+import type {IApi, IErrorFactory, ILog, IMeta, ITypedError} from '@feasibleone/blong/types';
 
 const typeRegex: RegExp = /^[$a-z]\w*(\.!?\w+)*$/;
 const paramsRegex: RegExp = /\{([^}]*)\}/g;
 
-const interpolate = (string: string, params = {}): string => {
+const interpolate = (string: string, params: Record<string, string> = {}): string => {
     return string.replace(paramsRegex, (placeholder, label) => {
         return typeof params[label] === 'undefined' ? `?${label}?` : params[label];
     });
@@ -11,36 +11,50 @@ const interpolate = (string: string, params = {}): string => {
 const getWarnHandler = ({
     logFactory,
     logLevel,
-}): ((msg: unknown, context: {method: string; args: unknown}) => void) => {
+}: {
+    logFactory?: IApi;
+    logLevel: Parameters<ILog['logger']>[0];
+}): ((msg: string | undefined, context: {method: string; args: unknown}) => void) => {
     if (logFactory) {
         const log = logFactory.createLog(logLevel, {name: 'utError', context: 'utError'});
         if (log.warn) {
             return (msg, context) => {
                 const e = new Error();
-                log.warn(msg, {
-                    $meta: {
-                        mtid: 'deprecation',
-                        method: context.method,
+                log.warn?.(
+                    {
+                        $meta: {
+                            mtid: 'deprecation',
+                            method: context.method,
+                        },
+                        args: context.args,
+                        error: {
+                            type: 'utError.deprecation',
+                            stack: e.stack?.split('\n').splice(3).join('\n'),
+                        },
                     },
-                    args: context.args,
-                    error: {
-                        type: 'utError.deprecation',
-                        stack: e.stack.split('\n').splice(3).join('\n'),
-                    },
-                });
+                    msg,
+                );
             };
         }
     }
     return () => {};
 };
 
-export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
+export default ({
+    logFactory,
+    logLevel,
+    errorPrint,
+}: {
+    logFactory?: IApi;
+    logLevel: Parameters<ILog['logger']>[0];
+    errorPrint?: string | boolean;
+}): IErrorFactory => {
     const warn = getWarnHandler({logFactory, logLevel});
-    const errors = {
+    const errors: Record<string | symbol, {message: string; print?: string}> = {
         source: '',
     };
     // Mapping from lowercase no-dot keys to original error keys for case-insensitive lookup
-    const errorLookup = {};
+    const errorLookup: Record<string, string> = {};
 
     // Create the proxy once upfront for reuse
     const errorsProxy = new Proxy(errors, {
@@ -119,7 +133,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
             return type ? errors[type] : errorsProxy;
         },
         fetch(type: string) {
-            const result = {};
+            const result = {} as Record<string, string | {message: string; print?: string}>;
             Object.keys(errors).forEach(key => {
                 if (key.startsWith(type)) {
                     result[key] = errors[key];
@@ -136,7 +150,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
                 .join('.');
             return api.register({[type]: message})[type];
         },
-        register<T>(
+        register<T extends Record<string, string | {message: string; print?: string}>>(
             errorsMap: T,
         ): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError> {
             const result = {} as Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
@@ -147,7 +161,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
                         method: 'utError.register',
                     });
                 }
-                const props =
+                const props: {message: string; print?: string} =
                     typeof message === 'string'
                         ? {message, print: undefined}
                         : Array.isArray(message)
@@ -170,7 +184,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
 
                 const handler = (
                     params = {params: undefined},
-                    $meta,
+                    $meta: unknown,
                 ): ITypedError | ITypedError[] => {
                     const error = new Error() as ITypedError;
                     if (params instanceof Error) {

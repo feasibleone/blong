@@ -1,15 +1,67 @@
 // const request = (process.type === 'renderer') ? require('ut-browser-request') : require('request');
 // const [httpPost] = [request.post].map(require('util').promisify);
+import type {Errors, IMeta, ITypedError} from '@feasibleone/blong';
 import ky from 'ky';
 
-const decode = (result, method, unpack) => (unpack ? result : [result, {method, mtid: 'response'}]);
+const decode = (result: unknown, method: string, unpack: boolean) =>
+    unpack ? result : [result, {method, mtid: 'response'}];
 
-export default ({serverInfo, mleClient, errors, get}) => {
-    const localCache = {};
-    const localKeys = mleClient.keys.sign &&
-        mleClient.keys.encrypt && {mlsk: mleClient.keys.sign, mlek: mleClient.keys.encrypt};
+export default ({
+    serverInfo,
+    mleClient,
+    errors,
+    get,
+}: {
+    serverInfo: (key: 'protocol' | 'port') => string;
+    mleClient: {
+        keys: {sign?: string; encrypt?: string};
+        signEncrypt: (
+            params: unknown,
+            encryptKey: string,
+            localKeys?: {mlsk: string; mlek: string},
+        ) => Promise<unknown>;
+        decryptVerify: (result: unknown, signKey: string) => Promise<unknown>;
+    };
+    errors: Errors<{
+        'bus.jsonRpcHttp': unknown;
+        'bus.jsonRpcEmpty': unknown;
+    }>;
+    get: (
+        url: string,
+        httpErrorType: (params?: unknown, $meta?: IMeta) => ITypedError,
+        emptyErrorType: (params?: unknown, $meta?: IMeta) => ITypedError,
+    ) => Promise<{
+        sign: string;
+        encrypt: string;
+    }>;
+}) => {
+    const localCache: Record<
+        string,
+        {
+            auth: {
+                access_token: string;
+                refresh_token: string;
+                expires_in: number;
+                refresh_token_expires_in: number;
+                sign?: string;
+                encrypt?: string;
+            };
+            tokenInfo: {
+                tokenExpire: number;
+                refreshTokenExpire: number;
+            };
+            remoteKeys: {
+                sign: string;
+                encrypt: string;
+            };
+        }
+    > = {};
+    const localKeys =
+        mleClient.keys.sign && mleClient.keys.encrypt
+            ? {mlsk: mleClient.keys.sign, mlek: mleClient.keys.encrypt}
+            : undefined;
 
-    function tokenInfo(auth) {
+    function tokenInfo(auth: {expires_in: number; refresh_token_expires_in: number}) {
         const now = Date.now() - 5000; // latency tolerance of 5 seconds
         return {
             tokenExpire: now + auth.expires_in * 1000,
@@ -17,9 +69,15 @@ export default ({serverInfo, mleClient, errors, get}) => {
         };
     }
 
-    async function login(cache, url, username, password, channel) {
+    async function login(
+        cache: (typeof localCache)[string],
+        url: string,
+        username?: string,
+        password?: string,
+        channel?: string,
+    ) {
         const {sign, encrypt} = (localKeys && (cache.auth || cache.remoteKeys)) || {};
-        if (sign && encrypt) {
+        if (sign && encrypt && localKeys) {
             const {result, error} = await ky
                 .post<{result: unknown; error: unknown}>(`${url}/rpc/login/identity/exchange`, {
                     json: {
@@ -35,7 +93,15 @@ export default ({serverInfo, mleClient, errors, get}) => {
                 })
                 .json();
             if (error) throw Object.assign(new Error(), await mleClient.decryptVerify(error, sign));
-            else if (result) cache.auth = await mleClient.decryptVerify(result, sign);
+            else if (result)
+                cache.auth = (await mleClient.decryptVerify(result, sign)) as {
+                    access_token: string;
+                    refresh_token: string;
+                    expires_in: number;
+                    refresh_token_expires_in: number;
+                    sign?: string;
+                    encrypt?: string;
+                };
             else throw errors['bus.jsonRpcEmpty']();
         } else {
             const {result, error} = await ky
@@ -49,7 +115,15 @@ export default ({serverInfo, mleClient, errors, get}) => {
                 })
                 .json();
             if (error) throw Object.assign(new Error(), error);
-            else if (result) cache.auth = result;
+            else if (result)
+                cache.auth = result as {
+                    access_token: string;
+                    refresh_token: string;
+                    expires_in: number;
+                    refresh_token_expires_in: number;
+                    sign?: string;
+                    encrypt?: string;
+                };
             else throw errors['bus.jsonRpcEmpty']();
         }
         cache.tokenInfo = tokenInfo(cache.auth);
@@ -63,10 +137,27 @@ export default ({serverInfo, mleClient, errors, get}) => {
         host: hostname = 'localhost',
         port = serverInfo('port'),
         url,
-        tls,
         auth,
-        encrypt = true,
         method,
+    }: {
+        username?: string;
+        password?: string;
+        channel?: string;
+        protocol?: string;
+        host?: string;
+        port?: number | string;
+        url?: string;
+        tls?: boolean;
+        auth?: {
+            access_token: string;
+            refresh_token: string;
+            expires_in: number;
+            refresh_token_expires_in: number;
+            sign?: string;
+            encrypt?: string;
+        };
+        encrypt?: boolean;
+        method: string;
     }) {
         // don't put a default value for uri in arguments as it can be empty string or null
         if (url) {
@@ -81,7 +172,16 @@ export default ({serverInfo, mleClient, errors, get}) => {
             url = `${protocol}://${hostname}:${port}`;
         }
 
-        const codec = {
+        const codec: {
+            encode?: (params: unknown) => Promise<unknown> | unknown;
+            decode?: (result: unknown, unpack: boolean) => Promise<unknown> | unknown;
+            requestParams?: {
+                protocol: string;
+                hostname: string;
+                port: number | string;
+                path: string;
+            };
+        } = {
             requestParams: {
                 protocol,
                 hostname,
@@ -138,7 +238,7 @@ export default ({serverInfo, mleClient, errors, get}) => {
                 await login(cache, url, username, password, channel);
             } else {
                 const {body} = await ky
-                    .post<{body: {access_token: string; refresh_token: string}}>(
+                    .post<{body: {expires_in: number; refresh_token_expires_in: number}}>(
                         `${url}/rpc/login/token`,
                         {
                             json: {
@@ -155,14 +255,14 @@ export default ({serverInfo, mleClient, errors, get}) => {
 
         if (cache.auth.sign && cache.auth.encrypt) {
             codec.encode = async params => ({
-                params: await mleClient.signEncrypt(params, cache.auth.encrypt),
+                params: await mleClient.signEncrypt(params, cache.auth.encrypt!),
                 headers: {
                     authorization: 'Bearer ' + cache.auth.access_token,
                 },
                 method,
             });
             codec.decode = async (result, unpack) =>
-                decode(await mleClient.decryptVerify(result, cache.auth.sign), method, unpack);
+                decode(await mleClient.decryptVerify(result, cache.auth.sign!), method, unpack);
         } else {
             codec.encode = params => ({
                 params,

@@ -15,7 +15,7 @@ export interface IConfig {
         password?: string;
     };
     context: {
-        vault: vault.client;
+        vault?: vault.client;
     };
 }
 
@@ -40,31 +40,31 @@ async function authenticateVault(this: {config: IConfig}): Promise<void> {
             case 'approle': {
                 if (!roleId || !secretId)
                     throw _errors['vault.missingKey']({key: 'roleId or secretId'});
-                const result = await this.config.context.vault.approleLogin({
+                const result = await this.config.context.vault!.approleLogin({
                     role_id: roleId,
                     secret_id: secretId,
                 });
-                this.config.context.vault.token = result.auth.client_token;
+                this.config.context.vault!.token = result.auth.client_token;
                 break;
             }
             case 'userpass': {
                 if (!username || !password)
                     throw _errors['vault.missingKey']({key: 'username or password'});
-                const result = await this.config.context.vault.userpassLogin({
+                const result = await this.config.context.vault!.userpassLogin({
                     username,
                     password,
                 });
-                this.config.context.vault.token = result.auth.client_token;
+                this.config.context.vault!.token = result.auth.client_token;
                 break;
             }
             case 'ldap': {
                 if (!username || !password)
                     throw _errors['vault.missingKey']({key: 'username or password'});
-                const result = await this.config.context.vault.ldapLogin({
+                const result = await this.config.context.vault!.ldapLogin({
                     username,
                     password,
                 });
-                this.config.context.vault.token = result.auth.client_token;
+                this.config.context.vault!.token = result.auth.client_token;
                 break;
             }
             default:
@@ -108,12 +108,12 @@ export default adapter<IConfig>(({utError}) => {
             try {
                 // Revoke token if we authenticated
                 if (this.config.context?.vault?.token && this.config.vault.authMethod) {
-                    await this.config.context.vault.tokenRevokeSelf();
+                    await this.config.context.vault!.tokenRevokeSelf();
                 }
             } catch {
                 // Ignore revocation errors during shutdown
             } finally {
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;
@@ -152,7 +152,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (!secretPath) throw _errors['vault.missingPath']();
 
                     try {
-                        const result = await this.config.context.vault.read(secretPath);
+                        const result = await this.config.context.vault!.read(secretPath);
                         return result.data;
                     } catch (error: unknown) {
                         if (
@@ -175,7 +175,7 @@ export default adapter<IConfig>(({utError}) => {
 
                     try {
                         const writeParams = metadata ? {data, metadata} : data;
-                        return await this.config.context.vault.write(secretPath, writeParams);
+                        return await this.config.context.vault!.write(secretPath, writeParams);
                     } catch (error: unknown) {
                         throw _errors['vault.generic']();
                     }
@@ -191,12 +191,12 @@ export default adapter<IConfig>(({utError}) => {
                     try {
                         if (version !== undefined) {
                             // Delete specific version for KV v2
-                            return await this.config.context.vault.delete(`${secretPath}`, {
+                            return await this.config.context.vault!.delete(`${secretPath}`, {
                                 versions: [version],
                             });
                         } else {
                             // Delete latest version or entire secret
-                            return await this.config.context.vault.delete(secretPath);
+                            return await this.config.context.vault!.delete(secretPath);
                         }
                     } catch (error: unknown) {
                         throw _errors['vault.generic']();
@@ -208,7 +208,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (!secretPath) throw _errors['vault.missingPath']();
 
                     try {
-                        const result = await this.config.context.vault.list(secretPath);
+                        const result = await this.config.context.vault!.list(secretPath);
                         return result.data;
                     } catch (error: unknown) {
                         if (
@@ -228,7 +228,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (!type) throw _errors['vault.missingKey']({key: 'type'});
 
                     try {
-                        return await this.config.context.vault.mount({
+                        return await this.config.context.vault!.mount({
                             mount_point,
                             type,
                             description,
@@ -245,7 +245,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (!mount_point) throw _errors['vault.missingKey']({key: 'mount_point'});
 
                     try {
-                        return await this.config.context.vault.unmount({mount_point});
+                        return await this.config.context.vault!.unmount({mount_point});
                     } catch (error: unknown) {
                         throw _errors['vault.generic']();
                     }
@@ -253,7 +253,7 @@ export default adapter<IConfig>(({utError}) => {
                 case 'health': {
                     // Check Vault health
                     try {
-                        return await this.config.context.vault.health();
+                        return await this.config.context.vault!.health();
                     } catch (error: unknown) {
                         throw _errors['vault.generic']();
                     }
@@ -261,7 +261,7 @@ export default adapter<IConfig>(({utError}) => {
                 case 'status': {
                     // Get Vault status
                     try {
-                        return await this.config.context.vault.status();
+                        return await this.config.context.vault!.status();
                     } catch (error: unknown) {
                         throw _errors['vault.generic']();
                     }

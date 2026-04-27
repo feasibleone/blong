@@ -1,7 +1,9 @@
 import type {
+    Adapter,
     GatewaySchema,
     Handlers,
     IAdapterFactory,
+    IAdapterRegistry,
     IApiSchema,
     IErrorFactory,
     IGateway,
@@ -49,10 +51,10 @@ interface IConfig {
 
 export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();
-    public ports: Map<string, IAdapterFactory> = new Map();
+    public ports: Map<string, IAdapterRegistry> = new Map();
     public methods: Map<string, Handlers> = new Map();
     #reload: PQueue = new PQueue({concurrency: 1});
-    #ports: Map<string, ReturnType<IAdapterFactory>> = new Map();
+    #ports: Map<string, Adapter> = new Map();
     #error: IErrorFactory;
     #portAttachments: Map<
         string,
@@ -107,30 +109,30 @@ export default class Registry extends Internal implements IRegistry {
     ) {
         super({log});
         this.merge(this.#config, config);
-        this.#resolution = resolution;
-        this.#rpcServer = rpcServer;
-        this.#error = error;
-        this.#remote = remote;
-        this.#gateway = gateway;
-        this.#local = local;
-        this.#log = log;
-        this.#watch = watch;
-        this.#apiSchema = apiSchema;
-        this.#platform = platform;
+        this.#resolution = resolution!;
+        this.#rpcServer = rpcServer!;
+        this.#error = error!;
+        this.#remote = remote!;
+        this.#gateway = gateway!;
+        this.#local = local!;
+        this.#log = log!;
+        this.#watch = watch!;
+        this.#apiSchema = apiSchema!;
+        this.#platform = platform!;
         this.#attachCheckpoint = createAttachCheckpoint(
             this.#config.checkpointMode ?? 'production',
         );
         this.#rpcServer?.setAttachCheckpoint?.(this.#attachCheckpoint);
     }
 
-    public getPort(id: string): ReturnType<IAdapterFactory> | undefined {
+    public getPort(id: string): Adapter | undefined {
         return this.#ports.get(id);
     }
 
-    public async createPort(id: string): Promise<ReturnType<IAdapterFactory>> {
+    public async createPort(id: string): Promise<Adapter | undefined> {
         const port = this.ports.get(id);
         await this.#ports.get(id)?.stop();
-        if (port.config === false) {
+        if (port!.config === false) {
             this.#ports.delete(id);
             return;
         }
@@ -175,16 +177,16 @@ export default class Registry extends Internal implements IRegistry {
                 this.#local?.unregister(methods, namespace);
             },
             getPath(method: string) {
-                return method.match(/^[^[#?]*/)[0];
+                return method.match(/^[^[#?]*/)?.[0] || method;
             },
             methodId,
             importMethod: (methodName, options) => this.#remote.remote(methodName, options),
             dispatch: (...params) => this.#remote.dispatch(...params),
-            attachHandlers: undefined,
+            attachHandlers: undefined!,
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
         };
-        const result = await port(api);
+        const result = await port!(api);
         this.#ports.set(id, result);
         api.attachHandlers = this._attachHandlers(result);
         return result;
@@ -193,7 +195,7 @@ export default class Registry extends Internal implements IRegistry {
     private async _matchMethods(
         mode: 'extend' | 'merge',
         patterns: (string | RegExp)[] | string | RegExp,
-        port: object | MatchMethodsCallback,
+        port: object | MatchMethodsCallback | undefined,
         callback?: MatchMethodsCallback,
     ): Promise<void> {
         if (typeof port === 'function' && !callback) {
@@ -202,7 +204,7 @@ export default class Registry extends Internal implements IRegistry {
         }
         for (const [name, value] of this.methods.entries()) {
             if (
-                []
+                ([] as (string | RegExp)[])
                     .concat(patterns)
                     .some(
                         pattern =>
@@ -212,18 +214,18 @@ export default class Registry extends Internal implements IRegistry {
                 if (mode === 'merge') {
                     for (const item of value) {
                         const {local, literals} = await this._createHandlers([item], port);
-                        callback(name, local, literals);
+                        callback!(name, local, literals);
                     }
                 } else {
                     const {local, literals} = await this._createHandlers(value, port);
-                    callback(name, local, literals);
+                    callback!(name, local, literals);
                 }
             }
         }
     }
 
     private async _validations(): Promise<Record<string, GatewaySchema>> {
-        await this._matchMethods('merge', API, (name, local, literals) => {
+        await this._matchMethods('merge', API, (name, local) => {
             Object.entries(local).forEach(([name, validation]) => {
                 const schema =
                     typeof validation === 'function'
@@ -240,7 +242,14 @@ export default class Registry extends Internal implements IRegistry {
         return this.#validations;
     }
 
-    private _attachHandlers(port: object): (target: object, patterns: unknown) => unknown {
+    private _attachHandlers(port: object): (
+        target: {
+            importedMap: Map<string, object>;
+            imported: object;
+            config: {namespace?: string | string[]};
+        },
+        patterns: (string | RegExp)[] | string | RegExp,
+    ) => unknown {
         return (
             target: {
                 importedMap: Map<string, object>;
@@ -266,7 +275,7 @@ export default class Registry extends Internal implements IRegistry {
                         if (local.config) merge(target.config, local.config);
                         if (local.namespace)
                             target.config.namespace = target.config.namespace
-                                ? [].concat(target.config.namespace, local.namespace)
+                                ? ([] as string[]).concat(target.config.namespace, local.namespace)
                                 : local.namespace;
                     }
                     literals.forEach(literal => Object.setPrototypeOf(literal, target.imported));
@@ -301,7 +310,7 @@ export default class Registry extends Internal implements IRegistry {
 
     private async _createHandlers(
         handlers: Handlers,
-        port: object,
+        port: object | undefined,
     ): Promise<{local: object; literals: object[]}> {
         const attachCheckpoint = this.#attachCheckpoint;
         function isSafeKey(key: string): boolean {
@@ -344,14 +353,14 @@ export default class Registry extends Internal implements IRegistry {
             },
         };
         const local = {};
-        const literals = [];
+        const literals: object[] = [];
         for (const fn of handlers) {
             await fn({
                 lib,
                 local,
                 literals,
                 gateway: this.#gateway,
-                remote: name => this.#remote.remote(methodParts(name)),
+                remote: (name: string) => this.#remote.remote(methodParts(name)),
                 port,
                 attachCheckpoint,
                 apiSchema: this.#apiSchema,
@@ -366,7 +375,7 @@ export default class Registry extends Internal implements IRegistry {
         return this;
     }
 
-    public async start(configOverride?: object): Promise<IRegistry> {
+    public async start(configOverride: object): Promise<IRegistry> {
         for (const id of Array.from(this.ports.keys())) await this.createPort(id);
         for (const port of this.#ports.values()) await port.start(configOverride);
         for (const port of this.#ports.values()) await port.ready();

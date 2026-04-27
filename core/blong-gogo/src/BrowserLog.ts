@@ -61,16 +61,29 @@ interface ISimpleLogger {
     fatal(obj: unknown, msg?: string): void;
 }
 
-function write(rec: Record<string, unknown>, logByLevel: boolean): void {
+function write(
+    rec: {
+        time?: number;
+        level?: number | string;
+        name?: string;
+        childName?: string;
+        context?: string;
+        prefix?: string;
+        $meta?: {mtid?: string; method?: string};
+        msg?: string;
+        error?: unknown;
+    },
+    logByLevel: boolean,
+): void {
     const levelNum = rec.level as number;
     const levelKey = NAME_FROM_VALUE[levelNum] ?? 'info';
     const paddedLevel = levelKey.toUpperCase().padStart(5);
 
-    let consoleMethod: (...a: unknown[]) => void = console.log; // eslint-disable-line no-console
+    let consoleMethod: (...a: unknown[]) => void = console.log;
     if (logByLevel) {
         const mapped = levelNum <= 10 ? 'debug' : levelNum >= 60 ? 'error' : levelKey;
-        const c = console as unknown as Record<string, (...a: unknown[]) => void>; // eslint-disable-line no-console
-        consoleMethod = typeof c[mapped] === 'function' ? c[mapped] : console.log; // eslint-disable-line no-console
+        const c = console as unknown as Record<string, (...a: unknown[]) => void>;
+        consoleMethod = typeof c[mapped] === 'function' ? c[mapped] : console.log;
     }
 
     const levelCss = LEVEL_CSS[levelKey] ?? LEVEL_CSS.info;
@@ -110,7 +123,7 @@ function write(rec: Record<string, unknown>, logByLevel: boolean): void {
 
     consoleMethod(...args);
 
-    if (rec.error && (rec.error as {stack?: string}).stack) console.error(rec.error); // eslint-disable-line no-console
+    if (rec.error && (rec.error as {stack?: string}).stack) console.error(rec.error);
 }
 
 function createLogger(
@@ -183,19 +196,14 @@ export default class BrowserLog extends Internal implements ILog {
         switch (level) {
             case 'trace':
                 result.trace = child.trace.bind(child) as ILogger['trace'];
-            // eslint-disable-next-line no-fallthrough
             case 'debug':
                 result.debug = child.debug.bind(child) as ILogger['debug'];
-            // eslint-disable-next-line no-fallthrough
             case 'info':
                 result.info = child.info.bind(child) as ILogger['info'];
-            // eslint-disable-next-line no-fallthrough
             case 'warn':
                 result.warn = child.warn.bind(child) as ILogger['warn'];
-            // eslint-disable-next-line no-fallthrough
             case 'error':
                 result.error = child.error.bind(child) as ILogger['error'];
-            // eslint-disable-next-line no-fallthrough
             case 'fatal':
                 result.fatal = child.fatal.bind(child) as ILogger['fatal'];
         }

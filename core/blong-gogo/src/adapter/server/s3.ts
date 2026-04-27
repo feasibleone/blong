@@ -27,7 +27,7 @@ export interface IConfig {
     };
     url?: string;
     context: {
-        s3: S3Client;
+        s3?: S3Client;
     };
 }
 
@@ -64,9 +64,9 @@ export default adapter<IConfig>(({utError}) => {
         async stop(...params: unknown[]) {
             let result;
             try {
-                this.config.context.s3.destroy();
+                this.config.context.s3!.destroy();
             } finally {
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;
@@ -113,7 +113,7 @@ export default adapter<IConfig>(({utError}) => {
                         ...(bucket && {Bucket: bucket}),
                         Key: key,
                     });
-                    const response = await this.config.context.s3.send(command);
+                    const response = await this.config.context.s3!.send(command);
                     return {
                         body: await response.Body?.transformToByteArray(),
                         contentType: response.ContentType,
@@ -164,7 +164,7 @@ export default adapter<IConfig>(({utError}) => {
                         ...(contentLength > 0 && {ContentLength: contentLength}),
                         Metadata: metadata,
                     });
-                    await this.config.context.s3.send(command);
+                    await this.config.context.s3!.send(command);
                     return this.config.url?.replace?.('{key}', key);
                 }
                 case 'delete':
@@ -179,7 +179,7 @@ export default adapter<IConfig>(({utError}) => {
                         ...(bucket && {Bucket: bucket}),
                         Key: key,
                     });
-                    return this.config.context.s3.send(command);
+                    return this.config.context.s3!.send(command);
                 }
                 case 'list':
                 case 'find': {
@@ -193,7 +193,7 @@ export default adapter<IConfig>(({utError}) => {
                         Prefix: prefix,
                         MaxKeys: maxKeys,
                     });
-                    return this.config.context.s3.send(command);
+                    return this.config.context.s3!.send(command);
                 }
                 case 'head':
                 case 'metadata': {
@@ -207,7 +207,7 @@ export default adapter<IConfig>(({utError}) => {
                         ...(bucket && {Bucket: bucket}),
                         Key: key,
                     });
-                    return this.config.context.s3.send(command);
+                    return this.config.context.s3!.send(command);
                 }
                 case 'copy': {
                     // Copy object within S3
@@ -223,7 +223,7 @@ export default adapter<IConfig>(({utError}) => {
                         Key: key,
                         CopySource: `${sourceBucket}/${sourceKey}`,
                     });
-                    return this.config.context.s3.send(command);
+                    return this.config.context.s3!.send(command);
                 }
             }
             throw _errors['s3.generic']();

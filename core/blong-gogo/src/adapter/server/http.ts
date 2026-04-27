@@ -41,7 +41,7 @@ export default adapter<IConfig>(({utError}) => {
          * configChanged hook: only recreate TLS options when the `tls` or `url`
          * sub-key changed.  Unrelated config changes are ignored.
          */
-        async configChanged(diff, next, _prev) {
+        async configChanged(diff, next) {
             const tlsOrUrlChanged = Array.from(diff.keys()).some(
                 key =>
                     key === this.config.id + '.tls' ||
@@ -49,9 +49,9 @@ export default adapter<IConfig>(({utError}) => {
                     key === this.config.id + '.url',
             );
             if (!tlsOrUrlChanged) return;
-            const newAdapterConfig = (next as Record<string, unknown>)?.[
-                this.config.id
-            ] as Partial<IConfig> | undefined;
+            const newAdapterConfig = (next as Record<string, unknown>)?.[this.config.id] as
+                | Partial<IConfig>
+                | undefined;
             if (newAdapterConfig) {
                 this.config.tls = newAdapterConfig.tls ?? this.config.tls;
                 this.config.url = newAdapterConfig.url ?? this.config.url;

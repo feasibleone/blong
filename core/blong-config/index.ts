@@ -8,12 +8,12 @@ import yaml from 'yaml';
 
 function parse(content: string): object {
     if (/^\s*{/.test(content)) return JSON.parse(stripJsonComments(content));
-    let result: {};
-    let yamlError: Error & {source?: string};
+    let result: object | undefined;
+    let yamlError: (Error & {source?: string}) | undefined;
     try {
         result = yaml.parse(content);
     } catch (error) {
-        yamlError = error;
+        yamlError = error as Error & {source?: string};
         delete yamlError.source;
     }
     if (result && typeof result !== 'string') return result;
@@ -46,7 +46,11 @@ function load({
     context?: object;
     defaultConfig?: Config;
 } = {}) {
-    const argv = merge([{}, minimist(process.argv.slice(2))], {convert: true});
+    const argv = merge([{}, minimist(process.argv.slice(2))], {convert: true}) as unknown as {
+        _: string[];
+        env?: string;
+        [key: string]: unknown;
+    };
     const platform = process.env.BLONG_PLATFORM || app || argv._[0] || 'server';
     const baseConfig = {
         version,
@@ -69,8 +73,8 @@ function load({
         configName,
         mergeOptions = {},
         suite = 'blong',
-    } = merge(
-        {},
+    } = merge<{configName?: string; mergeOptions?: object; suite?: string}>(
+        {} as {configName?: string; mergeOptions?: object; suite?: string},
         ...configs.map((config = {}) => {
             return {
                 configName: config?.configName,

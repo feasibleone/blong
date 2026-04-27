@@ -11,7 +11,7 @@ import type {
     IPlatformApi,
 } from '@feasibleone/blong/types';
 import {Internal} from '@feasibleone/blong/types';
-import fastify, {type FastifyRequest, type RouteOptions} from 'fastify';
+import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 import os from 'os';
 import type {LevelWithSilent} from 'pino';
 import {Type, type TSchema} from 'typebox';
@@ -152,7 +152,7 @@ export default class Gateway extends Internal implements IGateway {
     #rpcClient: IRpcClient;
     #routes: RouteOptions[];
     #local: ILocal;
-    #errorFields: [string, unknown][] = [];
+    #errorFields: [string, boolean | 'error'][] = [];
     #plugins: {plugin: unknown; options: unknown}[] = [];
     #platform: IPlatformApi;
 
@@ -175,8 +175,8 @@ export default class Gateway extends Internal implements IGateway {
         },
     ) {
         super({log});
-        this.#log = log;
-        this.#platform = platform;
+        this.#log = log!;
+        this.#platform = platform!;
 
         this.merge(this.#config, config);
         this.#errorFields = Object.entries({
@@ -191,10 +191,10 @@ export default class Gateway extends Internal implements IGateway {
             }),
             ...this.#config.errorFields,
         });
-        this.#errors = error.register(errorMap);
-        this.#resolution = resolution;
-        this.#rpcClient = remote;
-        this.#local = local;
+        this.#errors = error!.register(errorMap);
+        this.#resolution = resolution!;
+        this.#rpcClient = remote!;
+        this.#local = local!;
     }
 
     protected config(): object {
@@ -385,8 +385,8 @@ export default class Gateway extends Internal implements IGateway {
                             ? (request.body as {
                                   id: string;
                                   params: unknown;
-                                  timeout: unknown;
-                                  expect: unknown;
+                                  timeout: number;
+                                  expect: string | string[];
                               })
                             : {
                                   id: 1,
@@ -410,7 +410,7 @@ export default class Gateway extends Internal implements IGateway {
                             method: methodName,
                             opcode: methodName.split('.').pop(),
                             ...(timeout && {timeout: this.#platform.timing.after(timeout)}),
-                            ...(expect && {expect: [].concat(expect)}),
+                            ...(expect && {expect: ([] as string[]).concat(expect)}),
                             ...this._meta(request, pkg?.version, methodName.split('.')[0]),
                         };
                         const notfound = (): unknown =>
@@ -488,17 +488,20 @@ export default class Gateway extends Internal implements IGateway {
                     },
                 },
             });
-            this.#server.setErrorHandler((error, request: FastifyRequest, reply) => {
-                request.log.error({err: error}, 'gateway unhandled error');
-                return reply.status(500).send({
-                    jsonrpc: '2.0',
-                    id: (request.body as {id?: unknown})?.id,
-                    error: this._formatError(error),
-                });
-            });
+            this.#server.setErrorHandler(
+                (error: Record<string, unknown>, request: FastifyRequest, reply: FastifyReply) => {
+                    request.log.error({err: error}, 'gateway unhandled error');
+                    return reply.status(500).send({
+                        jsonrpc: '2.0',
+                        id: (request.body as {id?: unknown})?.id,
+                        error: this._formatError(error),
+                    });
+                },
+            );
             await this.#server.register(jwt, {
                 cache: this.#config.jwt?.cache,
-                verify: (token, options) => this.#rpcClient.verify(token, options),
+                verify: (token: string, options: {nonce?: string; audience: string}) =>
+                    this.#rpcClient.verify(token, options),
                 errors: this.#errors,
                 audience: this.#config.jwt.audience,
             });
@@ -543,21 +546,24 @@ export default class Gateway extends Internal implements IGateway {
         await this.start();
     }
 
-    private _formatError(error: Error): object {
-        return this.#errorFields.reduce((e, [key, value]) => {
-            if (value && typeof error[key] !== 'undefined') {
-                switch (value) {
-                    case true:
-                        e[key] = error[key];
-                        break;
-                    case 'error':
-                        e[key] = this._formatError(error[key]);
-                        break;
-                    default:
-                        break;
+    private _formatError(error: Record<string, unknown>): object {
+        return this.#errorFields.reduce(
+            (e, [key, value]) => {
+                if (value && typeof error[key] !== 'undefined') {
+                    switch (value) {
+                        case true:
+                            e[key] = error[key];
+                            break;
+                        case 'error':
+                            e[key] = this._formatError(error[key]);
+                            break;
+                        default:
+                            break;
+                    }
                 }
-            }
-            return e;
-        }, {});
+                return e;
+            },
+            {} as Record<string, unknown>,
+        );
     }
 }

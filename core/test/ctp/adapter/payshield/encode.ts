@@ -6,10 +6,10 @@ export default handler(({config, lib: {errors, commands, lmk, upperCaseObject, m
     const nonCorrectableFields = Object.assign(
         {},
         createRequire(import.meta.url)('./fields.json'),
-        config.nonCorrectableFields
+        config.nonCorrectableFields,
     );
     const headerPattern = bitsyntax.parse(
-        'headerNo:' + config.headerFormat + ', code:2/string, body/binary'
+        'headerNo:' + config.headerFormat + ', code:2/string, body/binary',
     );
 
     if (headerPattern === false) {
@@ -20,7 +20,7 @@ export default handler(({config, lib: {errors, commands, lmk, upperCaseObject, m
     const maxTrace = parseInt('9'.repeat(headerNoSize));
 
     return function encode(data: object, $meta: IMeta, context: IContext, log: ILogger) {
-        const commandName = $meta.method.split('.').pop() + ':' + $meta.mtid;
+        const commandName = $meta.method!.split('.').pop() + ':' + $meta.mtid;
 
         if (commands[commandName] === undefined)
             throw errors['payshield.notImplemented']({params: {opcode: commandName}});
@@ -28,7 +28,7 @@ export default handler(({config, lib: {errors, commands, lmk, upperCaseObject, m
         let headerNo = $meta.mtid === 'request' ? null : $meta.trace;
         if (headerNo === undefined || headerNo === null) {
             headerNo = $meta.trace = ('0'.repeat(headerNoSize) + context.trace).substr(
-                -headerNoSize
+                -headerNoSize,
             );
             context.trace += 1;
             if (context.trace > maxTrace) {

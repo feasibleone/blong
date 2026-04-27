@@ -37,7 +37,7 @@ import merge from 'ut-function.merge';
  * are path-based views over the same root backing cell.
  *
  * IMPORTANT: the proxy is transparent — `typeof proxy`, `Array.isArray`, JSON
- * serialisation, and property enumeration all behave as they would on the
+ * serialization, and property enumeration all behave as they would on the
  * underlying plain object.  This means existing code that treats `config` as a
  * plain object continues to work without modification.
  */
@@ -130,7 +130,7 @@ export function createConfigProxy<T extends object>(
         }
 
         const pathProxy = new Proxy({} as T, {
-            get(_target, prop, _receiver) {
+            get(_target, prop) {
                 const container = getNode(path);
                 const val = container == null ? undefined : Reflect.get(container as object, prop);
                 if (val === undefined || val === null || typeof val !== 'object') {
@@ -142,7 +142,7 @@ export function createConfigProxy<T extends object>(
                     ) {
                         const error = new Error(
                             `Config hot-reload anti-pattern: '${prop}' is a primitive read from the config ` +
-                                `proxy during handler factory initialisation. The value will be captured once ` +
+                                `proxy during handler factory initialization. The value will be captured once ` +
                                 `and will NOT reflect future config reloads.\n` +
                                 `Fix: read the value inside the handler body instead:\n` +
                                 `  ✅  handler(({config}) => ({ fn: () => config.${prop} }))\n` +
@@ -165,7 +165,7 @@ export function createConfigProxy<T extends object>(
                 if (container == null) return false;
                 return Reflect.has(container as object, prop);
             },
-            ownKeys(_target) {
+            ownKeys() {
                 const container = getNode(path);
                 if (container == null) return [];
                 return Reflect.ownKeys(container as object);
@@ -175,7 +175,7 @@ export function createConfigProxy<T extends object>(
                 if (container == null) return undefined;
                 return Object.getOwnPropertyDescriptor(container as object, prop);
             },
-            getPrototypeOf(_target) {
+            getPrototypeOf() {
                 const container = getNode(path);
                 if (container == null) return Object.getPrototypeOf({});
                 return Object.getPrototypeOf(container as object);
@@ -316,7 +316,6 @@ export default class ConfigRuntime implements IConfigRuntime {
                     await subscriber(diff, next, prev);
                 } catch (error) {
                     // Subscriber errors must not break the reload pipeline
-                    // eslint-disable-next-line no-console
                     console.error('[ConfigRuntime] subscriber error:', error);
                 }
             }
@@ -338,7 +337,7 @@ export default class ConfigRuntime implements IConfigRuntime {
     }
 
     // -----------------------------------------------------------------------
-    // Centralised config merge methods
+    // Centralized config merge methods
     //
     // These replace the scattered merge operations in loadRealm(), layerProxy,
     // and adapter.activeConfig().  Each method encapsulates a specific merge
@@ -372,7 +371,7 @@ export default class ConfigRuntime implements IConfigRuntime {
      * @param activationNames - active environment names (e.g. `['dev']`)
      */
     static mergeActivationConfig(
-        target: object,
+        target: {activation?: Record<string, unknown>},
         activationNames: string[] = [],
     ): object {
         return merge([

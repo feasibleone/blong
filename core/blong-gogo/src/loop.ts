@@ -1,38 +1,29 @@
-import type {IAdapterFactory, IMeta, ITypedError} from '@feasibleone/blong/types';
+import type {Adapter, HRTime, IContext, IMeta} from '@feasibleone/blong/types';
 import type net from 'node:net';
 import {v4} from 'uuid';
 
-interface IContext {
-    requests: Map<string, {end?: () => void; $meta: IMeta}>;
-    waiting: Set<unknown>;
-    buffer: Buffer;
-    conId?: number;
-    session?: {log?: unknown};
-}
-
 export default function loop(
     fn: net.Socket | (() => void),
-    handlers: ReturnType<IAdapterFactory>,
-    context: IContext = {requests: undefined, waiting: undefined, buffer: undefined},
+    handlers: Adapter,
+    context: IContext | undefined = {requests: new Map(), waiting: new Set(), buffer: undefined},
 ): unknown {
     const checkDeadlock = deadlockChecker(handlers);
-    context.requests = new Map();
-    context.waiting = new Set();
+    context.requests ||= new Map();
+    context.waiting ||= new Set();
     if (typeof fn === 'function') {
-        return (params: unknown[], promise) =>
-            async ({signal}) => {
-                const $meta = getMeta(params, handlers);
-                const encodedPacket = await sendEncode(handlers, context, params, checkDeadlock);
-                if (!encodedPacket) return [encodedPacket, $meta];
-                const frame = await exec(
-                    handlers,
-                    fn,
-                    handlers.pack ? encodedPacket[0] : encodedPacket,
-                );
-                return checkError(await decodeReceive(handlers, context, frame, checkDeadlock));
-            };
+        return (params: unknown[]) => async () => {
+            const $meta = getMeta(params, handlers);
+            const encodedPacket = await sendEncode(handlers, context, params, checkDeadlock);
+            if (!encodedPacket) return [encodedPacket, $meta];
+            const frame = await exec(
+                handlers,
+                fn,
+                handlers.pack ? encodedPacket[0] : encodedPacket,
+            );
+            return checkError(await decodeReceive(handlers, context, frame, checkDeadlock));
+        };
     } else if (fn.readable && fn.writable) {
-        const streamData = async (frame): Promise<void> => {
+        const streamData = async (frame: Buffer): Promise<void> => {
             try {
                 let receivedPacket = await decodeReceive(handlers, context, frame, checkDeadlock);
                 while (receivedPacket) {
@@ -47,7 +38,7 @@ export default function loop(
                         if (encodedPacket)
                             fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
                     }
-                    if (!handlers.imported.unpack) break;
+                    if (!handlers.imported!.unpack) break;
                     receivedPacket = await decodeReceive(
                         handlers,
                         context,
@@ -56,7 +47,7 @@ export default function loop(
                     );
                 }
             } catch (error) {
-                fn.destroy(error);
+                fn.destroy(error as Error);
             }
         };
         const cleanup = (): void => {
@@ -87,37 +78,31 @@ export default function loop(
                         }),
                     );
                 });
-        return (params: unknown[], promise) =>
-            async ({signal}) => {
-                const $meta = getMeta(params, handlers);
-                const result = new Promise((resolve, reject) => {
-                    $meta.dispatch = (...params) => {
-                        delete $meta.dispatch;
-                        if ($meta.mtid !== 'error') {
-                            resolve(params);
-                        } else {
-                            reject(params[0]);
-                        }
-                    };
-                });
-                try {
-                    const encodedPacket = await sendEncode(
-                        handlers,
-                        context,
-                        params,
-                        checkDeadlock,
-                    );
-                    if (!encodedPacket) return [encodedPacket, $meta];
-                    fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
-                    return result;
-                } catch (error) {
-                    return handleError(handlers, error, $meta);
-                }
-            };
+        return (params: unknown[]) => async () => {
+            const $meta = getMeta(params, handlers);
+            const result = new Promise((resolve, reject) => {
+                $meta.dispatch = (...params) => {
+                    delete $meta.dispatch;
+                    if ($meta.mtid !== 'error') {
+                        resolve(params);
+                    } else {
+                        reject(params[0]);
+                    }
+                };
+            });
+            try {
+                const encodedPacket = await sendEncode(handlers, context, params, checkDeadlock);
+                if (!encodedPacket) return [encodedPacket, $meta];
+                fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
+                return result;
+            } catch (error) {
+                return handleError(handlers, error as Error, $meta);
+            }
+        };
     }
 }
 
-function getMeta(params: unknown[], handlers: ReturnType<IAdapterFactory>): IMeta {
+function getMeta(params: unknown[], handlers: Adapter): IMeta {
     if (!params.length) throw handlers.errors['adapter.missingParameters']();
     else if (params.length === 1 || !params[params.length - 1])
         throw handlers.errors['adapter.missingMeta']();
@@ -130,8 +115,8 @@ function getMeta(params: unknown[], handlers: ReturnType<IAdapterFactory>): IMet
 }
 
 function handleError(
-    handlers: ReturnType<IAdapterFactory>,
-    error: ITypedError,
+    handlers: Adapter,
+    error: Error & {code?: string | undefined},
     $meta: IMeta,
 ): [Error, IMeta] {
     handlers.error(error, $meta);
@@ -143,21 +128,22 @@ function handleError(
     return [error, $meta];
 }
 
-function checkError(dataPacket: unknown[]): typeof dataPacket {
-    const $meta = dataPacket.length > 1 && (dataPacket[dataPacket.length - 1] as IMeta);
+function checkError(dataPacket: unknown[] | undefined): typeof dataPacket {
+    if (!dataPacket) return dataPacket;
+    const $meta = dataPacket.length > 1 ? (dataPacket[dataPacket.length - 1] as IMeta) : {};
     if ($meta.mtid === 'error' || dataPacket[0] instanceof Error) throw dataPacket[0];
     return dataPacket;
 }
 
 async function sendEncode(
-    adapter: ReturnType<IAdapterFactory>,
+    adapter: Adapter,
     context: IContext,
     dataPacket: unknown[],
-    checkDeadlock: (dataPacket: unknown) => void,
-): Promise<unknown> {
+    checkDeadlock: (dataPacket: unknown[]) => void,
+): Promise<object[] | object> {
     checkDeadlock(dataPacket);
     // send
-    const $meta = dataPacket.length > 1 && (dataPacket[dataPacket.length - 1] as IMeta);
+    const $meta = dataPacket.length > 1 ? (dataPacket[dataPacket.length - 1] as IMeta) : {};
     const validate = adapter.findValidation($meta);
     if (validate) dataPacket[0] = validate.apply(adapter, dataPacket);
     const {fn, name} = adapter.getConversion($meta, 'send');
@@ -177,19 +163,22 @@ async function sendEncode(
         ...(context?.session && {log: context.session.log}),
     });
     let encodeBuffer = adapter.imported.encode
-        ? await adapter.imported.encode(dataPacket[0], $meta, context, adapter.log)
+        ? await adapter.imported.encode(dataPacket[0], $meta, context, adapter.log!)
         : dataPacket;
     traceMeta(adapter, context, $meta, 'out/', 'in/');
     if (adapter.imported.pack) {
         const sizeAdjust =
             adapter.imported.encode && adapter.imported.unpackSize
-                ? adapter.config.format.sizeAdjust
+                ? adapter.config.format!.sizeAdjust
                 : 0;
-        encodeBuffer = adapter.imported.pack({
-            size: encodeBuffer?.length + sizeAdjust,
-            data: encodeBuffer as Buffer,
-        });
-        encodeBuffer = encodeBuffer.slice(0, encodeBuffer.length - sizeAdjust);
+        encodeBuffer = adapter.imported.pack(
+            {
+                size: encodeBuffer?.length + sizeAdjust!,
+                data: encodeBuffer as Buffer,
+            },
+            {},
+        );
+        encodeBuffer = encodeBuffer.slice(0, encodeBuffer.length - sizeAdjust!);
         adapter.bytesSent?.(encodeBuffer.length);
     }
     if (encodeBuffer) {
@@ -209,12 +198,12 @@ async function sendEncode(
 }
 
 function traceMeta(
-    adapter: ReturnType<IAdapterFactory>,
+    adapter: unknown,
     context: IContext,
     $meta: IMeta,
     set: string,
     get: string,
-    time?: Parameters<IMeta['timer']>[1],
+    time?: HRTime | undefined,
 ): IMeta {
     // if ($meta && !$meta.timer && $meta.mtid === 'request') {
     //     $meta.timer = packetTimer(adapter.bus.getPath($meta.method), '*', adapter.config.id, $meta.timeout);
@@ -242,45 +231,41 @@ function traceMeta(
                 return $meta;
             }
         }
-    } else {
-        return $meta;
     }
+    return $meta;
 }
 
 async function exec(
-    adapter: ReturnType<IAdapterFactory>,
-    fn: (this: ReturnType<IAdapterFactory>) => unknown,
+    adapter: Adapter,
+    fn: (this: Adapter, ...args: unknown[]) => unknown,
     execPacket: unknown[],
 ): Promise<[unknown, IMeta]> {
-    const $meta = execPacket.length > 1 && (execPacket[execPacket.length - 1] as IMeta);
+    const $meta = execPacket.length > 1 ? (execPacket[execPacket.length - 1] as IMeta) : {};
     try {
         const result = await fn.apply(adapter, execPacket);
         if ($meta?.mtid === 'request') $meta.mtid = 'response';
         if ($meta?.mtid === 'notification') $meta.mtid = 'discard';
         return [result, $meta];
     } catch (error) {
-        return handleError(adapter, error, $meta);
+        return handleError(adapter, error as Error, $meta);
     }
 }
 
-function getFrame(
-    adapter: ReturnType<IAdapterFactory>,
-    buffer: Buffer,
-): {rest: Buffer; data: Buffer} {
+function getFrame(adapter: Adapter, buffer: Buffer): {rest: Buffer; data: Buffer} {
     let result;
     let size;
     if (adapter.imported.unpackSize) {
-        const tmp = adapter.imported.unpackSize(buffer);
+        const tmp = adapter.imported.unpackSize(buffer, {});
         if (tmp) {
             size = tmp.size;
-            result = adapter.imported.unpack(tmp.data, {
-                size: tmp.size - adapter.config.format.sizeAdjust,
+            result = adapter.imported.unpack!(tmp.data, {
+                size: tmp.size - adapter.config.format!.sizeAdjust!,
             });
         } else {
             result = false;
         }
     } else {
-        result = adapter.imported.unpack(buffer);
+        result = adapter.imported.unpack!(buffer, {});
     }
     if (adapter.config.maxReceiveBuffer) {
         if (!result && buffer.length > adapter.config.maxReceiveBuffer) {
@@ -298,7 +283,7 @@ function getFrame(
     return result;
 }
 
-const metaFromContext = (context, rest?): IMeta => ({
+const metaFromContext = (context: IContext, rest?: Partial<IMeta>): IMeta => ({
     ...(context && {
         conId: context.conId,
     }),
@@ -308,11 +293,11 @@ const metaFromContext = (context, rest?): IMeta => ({
     ...rest,
 });
 
-function deadlockChecker(adapter: ReturnType<IAdapterFactory>): (packet: unknown[]) => unknown {
+function deadlockChecker(adapter: Adapter): (packet: unknown[]) => unknown {
     const stackId = '->' + (adapter.config.stackId || adapter.config.id) + '(';
     const extendStack = adapter.config.debug
-        ? (stack, method) => stack + stackId + method + ')'
-        : stack => stack + stackId + ')';
+        ? (stack: string, method: string | undefined) => stack + stackId + method + ')'
+        : (stack: string) => stack + stackId + ')';
     const {noRecursion} = adapter.config;
     let observe;
     switch (noRecursion) {
@@ -320,7 +305,7 @@ function deadlockChecker(adapter: ReturnType<IAdapterFactory>): (packet: unknown
         case 'debug':
         case 'info':
         case 'warn': {
-            observe = (error, params) => {
+            observe = (error: string, params?: unknown) => {
                 adapter.log?.[noRecursion]?.(adapter.errors[error]({params}));
                 return true;
             };
@@ -328,7 +313,7 @@ function deadlockChecker(adapter: ReturnType<IAdapterFactory>): (packet: unknown
         }
         case 'error':
         case true:
-            observe = (error, params) => {
+            observe = (error: string, params?: unknown) => {
                 throw adapter.errors[error]({params});
             };
             break;
@@ -362,17 +347,17 @@ function deadlockChecker(adapter: ReturnType<IAdapterFactory>): (packet: unknown
 }
 
 async function decodeReceive(
-    adapter: ReturnType<IAdapterFactory>,
+    adapter: Adapter,
     context: IContext,
-    dataPacket: Buffer | unknown[],
+    dataPacket: Buffer | unknown[] | undefined,
     checkDeadlock: (packet: unknown[]) => unknown,
-): Promise<unknown[]> {
+): Promise<unknown[] | undefined> {
     // frame
-    if (adapter.imported.unpack) {
+    if (adapter.imported!.unpack) {
         context.buffer ||= Buffer.alloc(0);
         if (dataPacket) {
             adapter.bytesReceived?.(dataPacket.length);
-            if (!adapter.imported.decode)
+            if (!adapter.imported!.decode)
                 adapter.log?.trace?.({
                     $meta: {mtid: 'payload', method: 'adapter.decode'},
                     message: dataPacket,
@@ -388,19 +373,23 @@ async function decodeReceive(
         } else return;
     }
     // decode
-    const time = false; // timing.now();
+    const time = undefined; // timing.now();
     let result: unknown[];
     adapter.msgReceived?.(1);
-    if (adapter.imported.decode) {
+    if (adapter.imported!.decode) {
         const $meta = metaFromContext(context);
         try {
             result = [
-                await adapter.imported.decode(dataPacket as Buffer, $meta, context, adapter.log),
+                await adapter.imported!.decode(dataPacket as Buffer, $meta, context, adapter.log),
                 traceMeta(adapter, context, $meta, 'in/', 'out/', time),
             ];
         } catch (decodeError) {
             $meta.mtid = 'error';
-            if (!decodeError || !decodeError.keepConnection) {
+            if (
+                !decodeError ||
+                typeof decodeError !== 'object' ||
+                ('keepConnection' in decodeError && !decodeError.keepConnection)
+            ) {
                 throw adapter.errors['adapter.disconnect'](decodeError);
             } else {
                 result = [decodeError, $meta];
@@ -423,7 +412,7 @@ async function decodeReceive(
 }
 
 async function receive(
-    adapter: ReturnType<IAdapterFactory>,
+    adapter: Adapter,
     context: IContext,
     dataPacket: unknown[],
 ): Promise<unknown[]> {
@@ -449,10 +438,7 @@ async function receive(
 
 const CONNECTED: symbol = Symbol('adapter.pull.CONNECTED');
 
-async function dispatch(
-    adapter: ReturnType<IAdapterFactory>,
-    dispatchPacket: unknown[],
-): Promise<unknown> {
+async function dispatch(adapter: Adapter, dispatchPacket: unknown[]): Promise<unknown> {
     const $meta =
         ((dispatchPacket.length > 1 && dispatchPacket[dispatchPacket.length - 1]) as IMeta) ||
         ({} as IMeta);
@@ -470,7 +456,10 @@ async function dispatch(
     const opcode = $meta.opcode;
     const method = $meta.method;
 
-    const portDispatchResult = (isError: boolean, dispatchResult: Error | unknown[]): unknown[] => {
+    const portDispatchResult = (
+        isError: boolean,
+        dispatchResult: Error | unknown[],
+    ): unknown[] | undefined => {
         const $metaResult =
             ((!isError &&
                 (dispatchResult as []).length > 1 &&
@@ -505,16 +494,16 @@ async function dispatch(
     try {
         result = await adapter.dispatch(...dispatchPacket);
     } catch (error) {
-        return portDispatchResult(true, error);
+        return portDispatchResult(true, error as Error);
     }
-    return portDispatchResult(false, result);
+    return portDispatchResult(false, result as unknown[]);
 }
 
 async function event(
-    adapter: ReturnType<IAdapterFactory>,
+    adapter: Adapter,
     context: IContext,
     event: string,
-    logger: (info: unknown) => void,
+    logger?: (info: unknown) => void,
     stream?: net.Socket,
 ): Promise<void> {
     if (context && typeof logger === 'function')
@@ -536,7 +525,7 @@ async function event(
             context.requests.clear();
         }
         if (context?.waiting?.size) {
-            Array.from(context.waiting.values()).forEach((end: (error: Error) => void) => {
+            Array.from(context.waiting.values()).forEach(end => {
                 end(adapter.errors['adapter.disconnectBeforeResponse']());
             });
         }

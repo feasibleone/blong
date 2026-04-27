@@ -4,6 +4,7 @@
  */
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render} from '../test/render.js';
+import type {IWidgetProps} from '../types/widget.js';
 
 import {BooleanWidget} from './BooleanWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
@@ -46,7 +47,7 @@ function mkProps(overrides: WidgetProps = {}) {
         readOnly: false,
         disabled: false,
         ...overrides,
-    } as never;
+    } as unknown as IWidgetProps;
 }
 
 describe('TextWidget', () => {

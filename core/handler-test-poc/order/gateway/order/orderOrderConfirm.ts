@@ -7,7 +7,7 @@ export default validation(({lib: {type}}) =>
                 orderId: type.String(),
                 paymentMethod: type.String(),
             }),
-            result: type.Any(),
+            result: type.Unknown(),
         };
     },
 );

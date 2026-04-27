@@ -8,7 +8,11 @@ interface ITestContext {
 }
 
 const runSteps =
-    (steps: Steps, log?: ITestLogger, results = {$meta: {}}): ((t: ITestContext) => Promise<void>) =>
+    (
+        steps: Steps,
+        log?: ITestLogger,
+        results = {$meta: {}},
+    ): ((t: ITestContext) => Promise<void>) =>
     async (t: ITestContext) => {
         // Use new parallel TestExecutor for improved performance
         const executor = new TestExecutor({concurrency: 10, log});
@@ -59,7 +63,10 @@ const runStepsSerial =
         }
     };
 
-export default async (test: ITestContext, log?: ITestLogger): Promise<(steps: Steps) => unknown> => {
+export default async (
+    test: ITestContext,
+    log?: ITestLogger,
+): Promise<(steps: Steps) => unknown> => {
     const context = test || (await import('node:test')).default;
     return steps => context.test(steps.name, runSteps(steps, log));
 };

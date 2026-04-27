@@ -1,7 +1,7 @@
 import {act, renderHook, waitFor} from '@testing-library/react';
 import React from 'react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {BlongUiProvider} from '../context/BlongUiContext.js';
+import {BlongUiProvider, type DispatchFn} from '../context/BlongUiContext.js';
 import {useAppStore} from '../state/appStore.js';
 import {useAction} from './useAction.js';
 
@@ -11,7 +11,7 @@ function makeWrapper(
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
             <BlongUiProvider
-                dispatch={dispatch}
+                dispatch={dispatch as DispatchFn}
                 schemaUrl="/test.json"
             >
                 {children}
@@ -166,7 +166,9 @@ describe('useAction — with static params', () => {
             });
         });
         const wrapper = makeWrapper(dispatch);
-        const {result} = renderHook(() => useAction('paramAction', {extra: 'base'}), {wrapper});
+        const {result} = renderHook(() => useAction('paramAction', 'query', {extra: 'base'}), {
+            wrapper,
+        });
         await act(async () => {
             await result.current.call({dynamic: 'value'});
         });

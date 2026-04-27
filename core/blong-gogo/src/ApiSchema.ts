@@ -41,7 +41,10 @@ export default class ApiSchema extends Internal implements IApiSchema {
         this.merge(this.#config, config);
     }
 
-    public method(operation: {operationId?: string}): string {
+    public method(operation: {
+        operationId?: string;
+        'x-blong-method'?: string;
+    }): string | undefined {
         return operation?.['x-blong-method'] || operation.operationId;
     }
 

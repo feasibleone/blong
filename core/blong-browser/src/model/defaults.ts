@@ -73,71 +73,6 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     const keyField = spec.keyField ?? `${object}Id`;
     const nameField = spec.nameField ?? `${object}.${object}Name`;
 
-    const defaultSchemaOverlay = {
-        properties: {
-            [object]: {
-                properties: {
-                    [keyField]: {},
-                    [nameField.split('.').pop()!]: {
-                        title: `${objectTitle} Name`,
-                        filter: true,
-                        sort: true,
-                    },
-                },
-            },
-        },
-    };
-
-    const defaultCards = {
-        edit: {
-            label: objectTitle,
-            widgets: [nameField],
-        },
-        hidden: {
-            hidden: true,
-            label: 'Hidden fields',
-            widgets: [`${object}.${keyField}`],
-        },
-    };
-
-    const defaultBrowserPermissions = {
-        browse: `${subject}.${object}.browse`,
-        add: `${subject}.${object}.add`,
-        edit: `${subject}.${object}.edit`,
-        delete: `${subject}.${object}.remove`,
-    };
-
-    const defaultBrowser = {
-        title: `${objectTitle} List`,
-        icon: 'pi pi-list',
-        permission: defaultBrowserPermissions,
-        resultSet: object,
-        create: [{title: 'Create'}],
-        toolbar: [],
-    };
-
-    const defaultEditor = {
-        resultSet: object,
-    };
-
-    const defaultReport = {
-        title: `${objectTitle} Report`,
-        permission: `${subject}.${object}.report`,
-    };
-
-    const defaultMethods: Required<IModelSpec['methods'] & object> = {
-        find: `${subject}.${object}.find`,
-        get: `${subject}.${object}.get`,
-        add: `${subject}.${object}.add`,
-        edit: `${subject}.${object}.edit`,
-        remove: `${subject}.${object}.remove`,
-        report: `${subject}.${object}.report`,
-    };
-
-    const defaultLayouts = {
-        edit: ['edit', 'hidden'],
-    };
-
     return deepMerge<IResolvedModelSpec[]>(
         {
             subject,
@@ -145,13 +80,63 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             objectTitle,
             keyField,
             nameField,
-            schema: defaultSchemaOverlay,
-            cards: defaultCards,
-            browser: defaultBrowser,
-            editor: defaultEditor,
-            report: defaultReport,
-            layouts: defaultLayouts,
-            methods: defaultMethods,
+            schema: {
+                properties: {
+                    [object]: {
+                        properties: {
+                            [keyField]: {},
+                            [nameField.split('.').pop()!]: {
+                                title: `${objectTitle} Name`,
+                                filter: true,
+                                sort: true,
+                            },
+                        },
+                    },
+                },
+            },
+            cards: {
+                edit: {
+                    label: objectTitle,
+                    widgets: [nameField],
+                },
+                hidden: {
+                    hidden: true,
+                    label: 'Hidden fields',
+                    widgets: [`${object}.${keyField}`],
+                },
+            },
+            browser: {
+                title: `${objectTitle} List`,
+                icon: 'pi pi-list',
+                permission: {
+                    browse: `${subject}.${object}.browse`,
+                    add: `${subject}.${object}.add`,
+                    edit: `${subject}.${object}.edit`,
+                    delete: `${subject}.${object}.remove`,
+                },
+                resultSet: object,
+                create: [{title: 'Create'}],
+                toolbar: [],
+                filter: {},
+            },
+            editor: {
+                resultSet: object,
+            },
+            report: {
+                title: `${objectTitle} Report`,
+                permission: `${subject}.${object}.report`,
+            },
+            layouts: {
+                edit: ['edit', 'hidden'],
+            },
+            methods: {
+                find: `${subject}.${object}.find`,
+                get: `${subject}.${object}.get`,
+                add: `${subject}.${object}.add`,
+                edit: `${subject}.${object}.edit`,
+                remove: `${subject}.${object}.remove`,
+                report: `${subject}.${object}.report`,
+            },
         },
         spec,
     );

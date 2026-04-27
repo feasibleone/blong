@@ -21,7 +21,7 @@ export interface IConfig {
 }
 
 export default adapter<IConfig>(api => {
-    let stream: Duplex = null;
+    let stream: Duplex | null = null;
 
     return {
         activation: {
@@ -71,7 +71,7 @@ export default adapter<IConfig>(api => {
                 stream?.destroy();
             } finally {
                 stream = null;
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;

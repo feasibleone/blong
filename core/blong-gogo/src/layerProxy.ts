@@ -136,9 +136,15 @@ export default function layerProxy(
     errors: IErrorFactory | undefined,
     apiSchema: IApiSchema | undefined,
     port: (() => void) | undefined,
-    moduleConfig: {pkg: IModuleConfig['pkg']; base: string; configNames?: string[]},
+    moduleConfig: {
+        pkg: IModuleConfig['pkg'];
+        base: string;
+        configNames?: string[];
+    } & {
+        [name: string]: object;
+    },
     configRuntime?: IConfigRuntime,
-): {result: unknown} {
+): {result: {error: unknown}; feature: unknown} {
     return new Proxy(
         {
             error: errors?.register.bind(errors),
@@ -164,7 +170,7 @@ export default function layerProxy(
                             if (target[name]) merge(where, target[name](fn));
                             else {
                                 const [ports, others] = [].concat(fn).reduce(
-                                    (prev, item) => {
+                                    (prev, item: () => unknown) => {
                                         if (
                                             item.prototype instanceof port ||
                                             ['adapter', 'orchestrator'].includes(kind(item))
@@ -173,7 +179,7 @@ export default function layerProxy(
                                         else prev[1].push(item);
                                         return prev;
                                     },
-                                    [[], []],
+                                    [[] as (typeof port)[], [] as unknown[]],
                                 );
                                 ports.forEach(what => {
                                     if (what.prototype instanceof port) {
