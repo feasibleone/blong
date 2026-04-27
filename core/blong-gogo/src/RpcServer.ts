@@ -65,7 +65,7 @@ export default class RpcServer extends Internal implements IRpcServer {
                 opcode: method.split('.').pop(),
             };
             attachCheckpoint?.(newMeta as IMeta);
-            const result = await callback.apply(object, [
+            const result = await (callback as Function).apply(object, [
                 ...params,
                 newMeta,
             ]);
@@ -73,7 +73,7 @@ export default class RpcServer extends Internal implements IRpcServer {
                 jsonrpc: '2.0',
                 id,
                 result,
-                ...(newMeta.checkpoints?.length && {checkpoints: newMeta.checkpoints}),
+                ...(((newMeta as {checkpoints?: unknown[]}).checkpoints?.length) && {checkpoints: (newMeta as {checkpoints?: unknown[]}).checkpoints}),
             };
         }
         const prevHandler = this.#handlers.get(url);
@@ -102,13 +102,13 @@ export default class RpcServer extends Internal implements IRpcServer {
         if (methods instanceof Array) {
             methods.forEach(fn => {
                 if (fn instanceof Function && fn.name) {
-                    this._register(namespace, fn.name, fn, null, pkg);
+                    this._register(namespace, fn.name, fn, null as unknown as object, pkg);
                 }
             });
         } else {
             Object.keys(methods).forEach(key => {
-                if (methods[key] instanceof Function) {
-                    this._register(namespace, key, methods[key], methods, pkg);
+                if ((methods as Record<string, unknown>)[key] instanceof Function) {
+                    this._register(namespace, key, (methods as Record<string, unknown>)[key] as () => unknown, methods, pkg);
                 }
             });
         }
