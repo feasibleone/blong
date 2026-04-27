@@ -1,37 +1,49 @@
-import {adapter, type ITypedError} from '@feasibleone/blong/types';
-import {Socket} from 'net';
+import {adapter, type Adapter, type ITypedError} from '@feasibleone/blong/types';
+import type {AdapterContext} from '@feasibleone/blong/types';
+import {type Server, Socket} from 'net';
 import createReconnect from 'reconnect-core';
 import bitSyntax from 'ut-bitsyntax';
 
 import tls from '../../tls.ts';
 
+type CodecInstance = {
+    encode: (...args: unknown[]) => unknown;
+    decode: (...args: unknown[]) => unknown;
+    frameReducer?: (...args: unknown[]) => unknown;
+    frameBuilder?: (...args: unknown[]) => unknown;
+};
+
 export interface IConfig {
     tls?: object;
     client?: {connect: (...params: unknown[]) => Socket};
     host?: string;
-    port?: number;
-    localPort?: number;
+    port?: number | null;
+    localPort?: number | null;
     listen?: boolean;
     connection?: object;
-    maxReceiveBuffer: number;
+    maxReceiveBuffer?: number;
+    maxConnections?: number;
+    connectionDropPolicy?: string;
+    socketTimeOut?: number;
     format?: {
-        size: number;
-        sizeAdjust: number;
-        prefix: string;
-        codec: {
-            new (config: object);
-            encode: (data: object[], $meta, context, log) => string | Buffer;
-            decode: (buff: string | Buffer, $meta, context, log) => object[];
-        };
-    };
+        size?: number | null;
+        sizeAdjust?: number;
+        prefix?: string;
+        codec?: {
+            new (config: object): CodecInstance;
+            encode: (data: object[], $meta: unknown, context: unknown, log: unknown) => string | Buffer;
+            decode: (buff: string | Buffer, $meta: unknown, context: unknown, log: unknown) => object[];
+        } | null;
+        id?: unknown;
+    } | null;
 }
 
 export default adapter<IConfig>(api => {
     let conCount = 0;
-    const streams = [];
+    const streams: Socket[] = [];
 
-    const onError = (type: string): ((error: Error) => void) =>
-        function (err: Error): void {
+    const onError = (type: string) =>
+        function (this: Adapter<IConfig, AdapterContext>, err: Error): void {
             if (this.log?.error) {
                 const error = new Error(`TCP ${type}`) as ITypedError;
                 error.cause = err;
@@ -39,23 +51,24 @@ export default adapter<IConfig>(api => {
                 this.log.error(error);
             }
         };
-    function connect(stream: Socket): void {
+    function connect(this: Adapter<IConfig, AdapterContext>, stream: Socket): void {
         conCount += 1;
         if (conCount > 0x1fffffffffffff) {
             conCount = 1;
         }
         streams.push(stream);
 
-        if (streams.length > this.config.maxConnections) {
+        const cfg = this.config as IConfig & {maxConnections: number; connectionDropPolicy: string; conCount: number};
+        if (streams.length > cfg.maxConnections) {
             this.log?.warn?.(
-                `Connection limit exceeded (max ${this.config.maxConnections}). Closing ${this.config.connectionDropPolicy} connection.`,
+                `Connection limit exceeded (max ${cfg.maxConnections}). Closing ${cfg.connectionDropPolicy} connection.`,
             );
-            switch (this.config.connectionDropPolicy) {
+            switch (cfg.connectionDropPolicy) {
                 case 'oldest':
-                    streams.shift().destroy();
+                    streams.shift()!.destroy();
                     break;
                 case 'newest':
-                    streams.pop().destroy();
+                    streams.pop()!.destroy();
                     return;
             }
         }
@@ -68,7 +81,7 @@ export default adapter<IConfig>(api => {
         });
 
         const context = {
-            conId: undefined,
+            conId: undefined as number | undefined,
             trace: 0,
             callbacks: {},
             created: new Date(),
@@ -79,15 +92,15 @@ export default adapter<IConfig>(api => {
         };
 
         if (this.config.listen) {
-            context.conId = this.conCount;
+            context.conId = conCount;
         }
 
-        this.connect(stream, context);
+        this.connect!(stream, context);
     }
 
-    let server;
-    let reconnect;
-    let codec;
+    let server: Server | null = null;
+    let reconnect: ReturnType<ReturnType<typeof createReconnect>> | null = null;
+    let codec: CodecInstance | null = null;
 
     return {
         activation: {
@@ -113,52 +126,52 @@ export default adapter<IConfig>(api => {
         },
         async start() {
             const result = await super.start();
-            if (this.config.format.codec) {
-                const Codec = this.config.format.codec;
-                codec = new Codec({...api.utError, ...this.config.format});
-                this.encode = (...params) => codec.encode(...params);
-                this.decode = (...params) => codec.decode(...params);
+            const format = this.config.format;
+            if (format?.codec) {
+                const Codec = format.codec;
+                codec = new Codec({...(api.utError as object), ...format});
+                this.encode = (...params) => codec!.encode(...params) as Promise<string | Buffer>;
+                this.decode = (...params) => codec!.decode(...params) as Promise<object[]>;
             } else codec = null;
-            if (codec && codec.frameReducer && codec.frameBuilder) {
-                this.pack = codec.frameBuilder;
-                this.unpack = codec.frameReducer;
-            } else if (this.config.format.size) {
-                const {size, sizeAdjust, prefix} = this.config.format;
+            if (codec && (codec as {frameReducer?: unknown}).frameReducer && (codec as {frameBuilder?: unknown}).frameBuilder) {
+                this.pack = (codec as {frameBuilder: (...args: unknown[]) => unknown}).frameBuilder as typeof this.pack;
+                this.unpack = (codec as {frameReducer: (...args: unknown[]) => unknown}).frameReducer as typeof this.unpack;
+            } else if (format?.size) {
+                const {size, sizeAdjust = 0, prefix = ''} = format;
                 this.pack = bitSyntax.builder(
                     `${prefix}${prefix && ', '}size:${size}, data:size/binary`,
-                );
+                ) as typeof this.pack;
                 if (sizeAdjust || this.config.maxReceiveBuffer) {
                     this.unpackSize = bitSyntax.matcher(
                         `${prefix}${prefix && ', '}size:${size}, data/binary`,
-                    );
-                    this.unpack = bitSyntax.matcher('data:size/binary, rest/binary');
+                    ) as typeof this.unpackSize;
+                    this.unpack = bitSyntax.matcher('data:size/binary, rest/binary') as typeof this.unpack;
                 } else {
                     this.unpack = bitSyntax.matcher(
                         `${prefix}${prefix && ', '}size:${size}, data:size/binary, rest/binary`,
-                    );
+                    ) as typeof this.unpack;
                 }
             }
 
             if (this.config.listen) {
                 server = this.config.tls
                     ? (await import('node:tls')).createServer(
-                          tls(this.config, false),
+                          tls(this.config as Parameters<typeof tls>[0], false) as Parameters<(typeof import('node:tls'))['createServer']>[0],
                           connect.bind(this),
                       )
                     : (await import('node:net')).createServer(connect.bind(this));
 
-                server.on('error', onError('server').bind(this)).listen(this.config.port);
+                server.on('error', onError('server').bind(this)).listen(this.config.port ?? undefined);
             } else {
-                const client: {connect: (...args: unknown[]) => unknown} =
-                    this.config.client ||
-                    (await (this.config.tls ? import('node:tls') : import('node:net')));
+                const client = (this.config.client ||
+                    (await (this.config.tls ? import('node:tls') : import('node:net')))) as {connect: (...args: unknown[]) => unknown};
                 reconnect = createReconnect((...args: unknown[]) => client.connect(...args))(
-                    connect.bind(this),
+                    connect.bind(this) as (...args: unknown[]) => void,
                 )
-                    .on('error', onError('client').bind(this))
+                    .on('error', onError('client').bind(this) as (...args: unknown[]) => void)
                     .connect({
                         rejectUnauthorized: false,
-                        ...tls(this.config, false),
+                        ...tls(this.config as Parameters<typeof tls>[0], false),
                         ...Object.fromEntries(
                             [
                                 ['host', this.config.host],
@@ -177,7 +190,7 @@ export default adapter<IConfig>(api => {
                 if (reconnect) {
                     reconnect.removeAllListeners();
                     const e = reconnect.disconnect();
-                    e?._connection?.unref();
+                    (e as {_connection?: {unref(): void}})?._connection?.unref();
                     reconnect = null;
                 }
                 if (server) {

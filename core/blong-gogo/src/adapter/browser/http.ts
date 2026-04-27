@@ -66,6 +66,7 @@ export default adapter<IConfig>(({utError}) => {
             return super.start();
         },
         async exec(
+            this: import('@feasibleone/blong/types').Adapter<IConfig>,
             {
                 path,
                 query: searchParams,
@@ -90,7 +91,7 @@ export default adapter<IConfig>(({utError}) => {
             _meta: IMeta,
         ) {
             try {
-                this.log.debug?.({
+                this.log?.debug?.({
                     req: {
                         method: (method || 'POST').toUpperCase(),
                         url,
@@ -122,7 +123,7 @@ export default adapter<IConfig>(({utError}) => {
                     headers: Object.fromEntries(res.headers.entries()),
                     body: resolvedBody,
                 };
-                this.log.debug?.({
+                this.log?.debug?.({
                     req: {
                         url,
                         method: (method || 'POST').toUpperCase(),

@@ -374,57 +374,41 @@ export interface IAdapter<T, C> {
     imported?: Record<string, PortHandlerBound>;
     importedMap?: Map<string, IRemoteHandler>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
-    activeConfig?: (this: Adapter<T, C>) => Partial<Config<T, C>>;
-    init?: (this: Adapter<T, C>, ...config: Partial<Config<T, C>>[]) => Promise<void>;
-    start?: (this: Adapter<T, C>, configOverride: object) => Promise<object>;
-    ready?: (this: Adapter<T, C>) => Promise<object>;
-    stop?: (this: Adapter<T, C>) => Promise<object>;
-    connected?: (this: Adapter<T, C>) => Promise<boolean>;
-    error?: (error: Error, $meta: IMeta) => void;
-    pack?: (this: Adapter<T, C>, packet: {size: number; data: Buffer}) => Buffer;
-    unpackSize?: (this: Adapter<T, C>, buffer: Buffer) => {size: number; data: Buffer};
-    unpack?: (this: Adapter<T, C>, buffer: Buffer, options?: {size: number}) => Buffer;
-    encode?: (
-        data: unknown,
-        $meta: IMeta,
-        context: object,
-        log: ILogger | undefined,
-    ) => Promise<string | Buffer>;
-    decode?: (
-        buff: string | Buffer,
-        $meta: IMeta,
-        context: object,
-        log: ILogger | undefined,
-    ) => Promise<object[]>;
-    request?: (...params: unknown[]) => Promise<unknown>;
-    publish?: () => Promise<unknown>;
-    drain?: () => void;
-    findValidation?: (
+    activeConfig?(this: Adapter<T, C>): Partial<Config<T, C>>;
+    init?(this: Adapter<T, C>, ...config: unknown[]): Promise<unknown>;
+    start?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    ready?(this: Adapter<T, C>): Promise<unknown>;
+    stop?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    connected?(this: Adapter<T, C>): Promise<boolean>;
+    error?(error: unknown, $meta: unknown): void;
+    pack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
+    unpackSize?(this: Adapter<T, C>, ...params: unknown[]): unknown;
+    unpack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
+    encode?(data: unknown, $meta: unknown, context: unknown, log: unknown): Promise<string | Buffer>;
+    decode?(buff: string | Buffer, $meta: unknown, context: unknown, log: unknown): Promise<object[]>;
+    request?(...params: unknown[]): Promise<unknown>;
+    publish?(): Promise<unknown>;
+    drain?(): void;
+    findValidation?(this: Adapter<T, C>, $meta: unknown): (...params: unknown[]) => object;
+    getConversion?(
         this: Adapter<T, C>,
-        $meta: IMeta | false,
-    ) => (...params: unknown[]) => object;
-    getConversion?: (
-        this: Adapter<T, C>,
-        $meta: IMeta | false,
-        type: 'send' | 'receive',
-    ) => {name: string; fn: (...params: unknown[]) => Promise<object>};
-    findHandler?: (this: Adapter<T, C>, name: string) => () => unknown;
-    handles?: (this: Adapter<T, C>, name: string) => boolean;
-    forNamespaces?: <T>(reducer: (prev: T, current: unknown) => T, initial: T) => T;
-    methodPath?: (name: string) => string;
-    dispatch?: (...params: unknown[]) => Promise<unknown>;
-    exec?: (this: Adapter<T, C>, ...params: unknown[]) => Promise<unknown>;
-    bytesSent?: (count: number) => void;
-    bytesReceived?: (count: number) => void;
-    msgSent?: (count: number) => void;
-    msgReceived?: (count: number) => void;
+        $meta: unknown,
+        type: string,
+    ): {name: string; fn: (...params: unknown[]) => Promise<object>};
+    findHandler?(this: Adapter<T, C>, name: string): () => unknown;
+    handles?(this: Adapter<T, C>, name: string): boolean;
+    forNamespaces?<U>(reducer: (prev: U, current: unknown) => U, initial: U): U;
+    methodPath?(name: string): string;
+    dispatch?(...params: unknown[]): Promise<unknown>;
+    exec?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    bytesSent?(count: number): void;
+    bytesReceived?(count: number): void;
+    msgSent?(count: number): void;
+    msgReceived?(count: number): void;
     isConnected?: Promise<boolean>;
-    event?: (name: string, params?: unknown) => Promise<object>;
-    handle?: (...params: unknown[]) => Promise<unknown>;
-    connect?: (
-        what: unknown,
-        context: {requests: unknown; waiting: unknown; buffer: unknown},
-    ) => void;
+    event?(name: string, params?: unknown): Promise<object>;
+    handle?(...params: unknown[]): Promise<unknown>;
+    connect?(what: unknown, context: unknown): void;
     /**
      * Optional lifecycle hook called when configuration changes.
      * When present, the framework calls this instead of a full stop+start cycle.
@@ -436,12 +420,14 @@ export interface IAdapter<T, C> {
      * @param next   The full new effective config snapshot (via proxy)
      * @param prev   The full previous effective config snapshot
      */
-    configChanged?: (
+    configChanged?(
         this: Adapter<T, C>,
-        diff: Map<string, {prev: unknown; next: unknown}>,
-        next: object,
-        prev: object,
-    ) => Promise<void>;
+        diff: unknown,
+        next: unknown,
+        prev?: unknown,
+    ): Promise<void>;
+    /** Allow arbitrary extra methods on adapter definitions (e.g. authenticate) */
+    [key: string]: unknown;
 }
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
