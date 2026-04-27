@@ -65,7 +65,7 @@ export default class RpcServer extends Internal implements IRpcServer {
                 opcode: method.split('.').pop(),
             };
             attachCheckpoint?.(newMeta as IMeta);
-            const result = await (callback as Function).apply(object, [
+            const result = await (callback as (...args: unknown[]) => Promise<unknown>).apply(object, [
                 ...params,
                 newMeta,
             ]);

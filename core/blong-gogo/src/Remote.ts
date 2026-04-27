@@ -313,7 +313,7 @@ export default class Remote extends Internal implements IRemote {
                     }
                     return result[0];
                 } catch (error) {
-                    if (typeof fallback === 'function' && fallback !== applyFn) {
+                    if (typeof fallback === 'function' && fallback !== applyFn && (error as {type?: string}).type === 'bus.methodNotFound') {
                         if (fn) fn = fallback as unknown as RemoteMethod;
                         unpack = false;
                         return fn!.apply(this, params);

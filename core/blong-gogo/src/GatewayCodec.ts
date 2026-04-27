@@ -10,7 +10,7 @@ import tls from './tls.ts';
 
 type Protocol = 'http' | 'https';
 export interface IGatewayCodec {
-    gateway: ($meta: object, methodName: string) => object;
+    gateway: ($meta: object, methodName: string) => object | void;
     codec: (
         $meta: object,
         methodType: 'request' | 'publish',
@@ -171,7 +171,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         this.verify = verify as unknown as IGatewayCodec['verify'];
     }
 
-    public gateway($meta: IMeta, methodName: string = $meta.method!): object {
+    public gateway($meta: IMeta, methodName: string = $meta.method!): object | void {
         if (this.#config.gateway && methodName !== 'identity.checkInternal') {
             const gw = this.#config.gateway as Record<string, unknown>;
             const [prefix, method] = methodName.split('/');
@@ -186,7 +186,6 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         }
 
         if ($meta.gateway) return {...$meta.gateway, method: methodName};
-        return {};
     }
 
     public async codec(
