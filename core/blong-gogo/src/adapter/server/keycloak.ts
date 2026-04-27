@@ -1,6 +1,6 @@
 import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import KcAdminClient from '@keycloak/keycloak-admin-client';
-import type {GroupRepresentation} from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation.js';
+import GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation.js';
 import got from 'got';
 
 export interface IConfig {

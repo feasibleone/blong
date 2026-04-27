@@ -14,7 +14,7 @@ type CodecInstance = {
 };
 
 export interface IConfig {
-    tls?: object;
+    tls?: object | null;
     client?: {connect: (...params: unknown[]) => Socket};
     host?: string;
     port?: number | null;
@@ -58,7 +58,7 @@ export default adapter<IConfig>(api => {
         }
         streams.push(stream);
 
-        const cfg = this.config as IConfig & {maxConnections: number; connectionDropPolicy: string; conCount: number};
+        const cfg = this.config as unknown as IConfig & {maxConnections: number; connectionDropPolicy: string; conCount: number};
         if (streams.length > cfg.maxConnections) {
             this.log?.warn?.(
                 `Connection limit exceeded (max ${cfg.maxConnections}). Closing ${cfg.connectionDropPolicy} connection.`,
@@ -124,7 +124,7 @@ export default adapter<IConfig>(api => {
                 },
             },
         },
-        async start() {
+        async start(this: import('@feasibleone/blong/types').Adapter<IConfig, AdapterContext>) {
             const result = await super.start();
             const format = this.config.format;
             if (format?.codec) {
@@ -134,22 +134,22 @@ export default adapter<IConfig>(api => {
                 this.decode = (...params) => codec!.decode(...params) as Promise<object[]>;
             } else codec = null;
             if (codec && (codec as {frameReducer?: unknown}).frameReducer && (codec as {frameBuilder?: unknown}).frameBuilder) {
-                this.pack = (codec as {frameBuilder: (...args: unknown[]) => unknown}).frameBuilder as typeof this.pack;
-                this.unpack = (codec as {frameReducer: (...args: unknown[]) => unknown}).frameReducer as typeof this.unpack;
+                this.pack = (codec as {frameBuilder: unknown}).frameBuilder as Adapter<IConfig, AdapterContext>['pack'];
+                this.unpack = (codec as {frameReducer: unknown}).frameReducer as Adapter<IConfig, AdapterContext>['unpack'];
             } else if (format?.size) {
                 const {size, sizeAdjust = 0, prefix = ''} = format;
                 this.pack = bitSyntax.builder(
                     `${prefix}${prefix && ', '}size:${size}, data:size/binary`,
-                ) as typeof this.pack;
+                ) as Adapter<IConfig, AdapterContext>['pack'];
                 if (sizeAdjust || this.config.maxReceiveBuffer) {
                     this.unpackSize = bitSyntax.matcher(
                         `${prefix}${prefix && ', '}size:${size}, data/binary`,
-                    ) as typeof this.unpackSize;
-                    this.unpack = bitSyntax.matcher('data:size/binary, rest/binary') as typeof this.unpack;
+                    ) as Adapter<IConfig, AdapterContext>['unpackSize'];
+                    this.unpack = bitSyntax.matcher('data:size/binary, rest/binary') as Adapter<IConfig, AdapterContext>['unpack'];
                 } else {
                     this.unpack = bitSyntax.matcher(
                         `${prefix}${prefix && ', '}size:${size}, data:size/binary, rest/binary`,
-                    ) as typeof this.unpack;
+                    ) as Adapter<IConfig, AdapterContext>['unpack'];
                 }
             }
 
