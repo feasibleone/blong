@@ -446,7 +446,7 @@ export interface IAdapter<T, C> {
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
     config?: Config<T, C> | false;
-    (api: IApi): Adapter<T, C>;
+    (api: IApi): Partial<IAdapter<T, C>>;
 }
 
 export interface IAdapterRegistry {
@@ -457,7 +457,7 @@ export interface IAdapterRegistry {
         rpc: IRpcServer;
         local: ILocal;
         registry: IRegistry;
-    }): object;
+    }): Promise<Adapter>;
 }
 
 export interface IMeta {
@@ -606,7 +606,7 @@ export interface IModuleConfig<T extends TSchema = TNever> {
     url: string;
     config?: IActivationConfig<Partial<Static<T>> & Partial<Static<IBaseConfig>>>;
     validation?: T;
-    children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
+    children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[] | Record<string, () => Promise<unknown>>;
     glob?: Record<string, () => Promise<object>>;
 }
 

@@ -24,7 +24,7 @@ export async function findRealm(layerPath: string): Promise<IRealmInfo | null> {
         ? dirname(layerPath)
         : layerPath;
 
-    if (cache.has(startDir)) return cache.get(startDir);
+    if (cache.has(startDir)) return cache.get(startDir) ?? null;
 
     let current = startDir;
     while (true) {

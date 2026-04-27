@@ -1,7 +1,7 @@
 import {type ILocal, Internal} from '@feasibleone/blong/types';
 
 export default class Local extends Internal implements ILocal {
-    #mapLocal: object = {};
+    #mapLocal: Record<string, {method: unknown}> = {};
 
     private _localRegister(namespace: string, name: string, method: string): void {
         const local = this.#mapLocal[namespace + '.' + name];
@@ -26,8 +26,8 @@ export default class Local extends Internal implements ILocal {
             });
         } else {
             Object.keys(methods).forEach(key => {
-                if (methods[key] instanceof Function) {
-                    this._localRegister(namespace, key, methods[key].bind(methods));
+                if ((methods as Record<string, unknown>)[key] instanceof Function) {
+                    this._localRegister(namespace, key, (methods as Record<string, {bind: (ctx: object) => string}>)[key].bind(methods));
                 }
             });
         }
@@ -43,6 +43,6 @@ export default class Local extends Internal implements ILocal {
 
     public get(name: string): ReturnType<ILocal['get']> {
         // if (!this.#mapLocal[name]) console.log({name, local: this.#mapLocal});
-        return this.#mapLocal[name];
+        return this.#mapLocal[name] as ReturnType<ILocal['get']>;
     }
 }

@@ -291,7 +291,7 @@ export class AdapterBase<T, C extends IContext> {
     }
 
     async start(): Promise<unknown> {
-        await this._api.attachHandlers(this, this.config.imports);
+        await this._api.attachHandlers(this as unknown as {importedMap: Map<string, object>; imported: object; config: {namespace?: string | string[]}}, this.config.imports);
         const {req, pub} = this.forNamespaces(
             (
                 prev: {
@@ -320,7 +320,7 @@ export class AdapterBase<T, C extends IContext> {
             importedMap: Map<string, object>;
             imported: object;
             config: {namespace?: string | string[]};
-        } = {},
+        } = {} as unknown as {importedMap: Map<string, object>; imported: object; config: {namespace?: string | string[]}},
     ): Promise<object | undefined> {
         await this._api.attachHandlers(target, patterns);
         return target.imported;
@@ -342,7 +342,7 @@ export class AdapterBase<T, C extends IContext> {
         what ??= this.handle.bind(this);
         context ??= this.config.context;
         this._portLoop = loop(what, this as any, context); // eslint-disable-line @typescript-eslint/no-explicit-any
-        this._resolveConnected!(true);
+        this._resolveConnected?.(true);
     }
 
     async connected(): Promise<boolean> {
@@ -375,7 +375,7 @@ export default async function adapter<T, C extends IContext>(
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapterFactory(current.extends)({utError, remote, rpc, local, registry})
+            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry})
             : current.extends({utError, remote, rpc, local, registry}));
         Object.setPrototypeOf(current, parent);
         current = parent;
