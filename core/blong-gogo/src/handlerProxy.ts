@@ -55,7 +55,8 @@ export default function createHandlerProxy(
                     return rename(
                         resolvedName,
                         function (...params: unknown[]) {
-                            fn ||= port.findHandler?.(resolvedName) as (() => unknown) | undefined;                            if (!fn)
+                            fn ||= port.findHandler?.(resolvedName) as (() => unknown) | undefined;
+                            if (!fn)
                                 throw new Error(
                                     `Handler '${resolvedName}' not found`,
                                 );

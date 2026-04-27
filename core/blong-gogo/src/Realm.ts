@@ -28,7 +28,7 @@ export default class RealmImpl implements IRealm {
         this.#config = config;
         this.#registry = registry!;
         this.#log = log!;
-        this.#logger = this.#log?.logger(config[platform]?.realm?.logLevel!, {
+        this.#logger = this.#log?.logger(config[platform]?.realm?.logLevel ?? 'info', {
             name: config.name,
             context: `${platform}`,
         });

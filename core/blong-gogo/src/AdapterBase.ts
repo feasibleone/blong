@@ -72,6 +72,12 @@ const reserved: string[] = [
  * (`Object.setPrototypeOf(current, baseInstance)`), preserving the existing
  * hot-reload semantics.
  */
+type AdapterHandlerContext = {
+    importedMap: Map<string, object>;
+    imported: object;
+    config: {namespace?: string | string[]};
+};
+
 export class AdapterBase<T, C extends IContext> {
     errors = _errors;
     exec: unknown = null;
@@ -291,7 +297,7 @@ export class AdapterBase<T, C extends IContext> {
     }
 
     async start(): Promise<unknown> {
-        await this._api.attachHandlers(this as unknown as {importedMap: Map<string, object>; imported: object; config: {namespace?: string | string[]}}, this.config.imports);
+        await this._api.attachHandlers(this as unknown as AdapterHandlerContext, this.config.imports);
         const {req, pub} = this.forNamespaces(
             (
                 prev: {
@@ -316,11 +322,7 @@ export class AdapterBase<T, C extends IContext> {
 
     async link(
         patterns: (string | RegExp)[] | string | RegExp,
-        target: {
-            importedMap: Map<string, object>;
-            imported: object;
-            config: {namespace?: string | string[]};
-        } = {} as unknown as {importedMap: Map<string, object>; imported: object; config: {namespace?: string | string[]}},
+        target: AdapterHandlerContext = {} as unknown as AdapterHandlerContext,
     ): Promise<object | undefined> {
         await this._api.attachHandlers(target, patterns);
         return target.imported;

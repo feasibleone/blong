@@ -8,21 +8,21 @@
 declare module 'reconnect-core' {
     type Connect = (...args: unknown[]) => unknown;
     type Reconnect = {
-        on(event: string, handler: (...args: any[]) => void): Reconnect;
+        on(event: string, handler: (...args: unknown[]) => void): Reconnect;
         connect(opts?: object): Reconnect;
         disconnect(): unknown;
         removeAllListeners(): void;
     };
     function reconnectCore(
         factory: (...args: unknown[]) => unknown,
-    ): (connect: (...args: any[]) => void) => Reconnect;
+    ): (connect: (...args: unknown[]) => void) => Reconnect;
     export default reconnectCore;
 }
 
 declare module 'ut-bitsyntax' {
     const bitSyntax: {
         builder(pattern: string): (data: object) => Buffer;
-        matcher(pattern: string): (...args: any[]) => any;
+        matcher(pattern: string): (...args: unknown[]) => unknown;
     };
     export default bitSyntax;
 }

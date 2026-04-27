@@ -27,7 +27,7 @@ export default class Local extends Internal implements ILocal {
         } else {
             Object.keys(methods).forEach(key => {
                 if ((methods as Record<string, unknown>)[key] instanceof Function) {
-                    this._localRegister(namespace, key, (methods as Record<string, {bind: (ctx: object) => string}>)[key].bind(methods));
+                    this._localRegister(namespace, key, (methods as Record<string, Function>)[key].bind(methods));
                 }
             });
         }
