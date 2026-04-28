@@ -1,19 +1,30 @@
 #!/bin/bash
-set -
+set -e
 
-# wait for up to 1 minute for all deployments in the blong-integration namespace to be ready
-timeout=60
-interval=1
+# wait for up to 3 minutes for all deployments in the blong-integration namespace to be ready
+timeout=180
+interval=5
 elapsed=0
 
+echo "Waiting for all deployments in blong-integration to be ready (timeout: ${timeout}s)..."
+
 while [ $elapsed -lt $timeout ]; do
-  if kubectl -n blong-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' | grep -q "False"; then
-    echo "Waiting for all deployments to be ready..."
-    sleep $interval
-    elapsed=$((elapsed + interval))
-  else
+  not_ready=$(kubectl -n blong-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' 2>/dev/null | grep -c "False" || true)
+  total=$(kubectl -n blong-integration get deployments --no-headers 2>/dev/null | wc -l | tr -d ' ')
+  available=$(kubectl -n blong-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' 2>/dev/null | tr ' ' '\n' | grep -c "True" || true)
+  if [ "$not_ready" -eq 0 ] && [ "$total" -gt 0 ]; then
+    echo "All ${total} deployments are ready (${available} available)."
     break
   fi
+  echo "Waiting for deployments to be ready... ${elapsed}s elapsed (${available}/${total} available)"
+  sleep $interval
+  elapsed=$((elapsed + interval))
 done
+
+if [ $elapsed -ge $timeout ]; then
+  echo "Timeout waiting for deployments after ${timeout}s. Current status:"
+  kubectl -n blong-integration get deployments
+  exit 1
+fi
 
 # kubectl logs deployment/mysql --namespace blong-integration

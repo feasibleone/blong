@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0 (2026-04-28)
+
+### Features
+
+* Renamed from `blong-int-sql` to `blong-int-adapter`
+* Added adapter realms: mongodb, http, s3, kafka, vault, keycloak, k8s
+* Stub realms: slack, github (manual activation only)
+* Opt-in activation model: each realm uses `adapter.*` config name via `BLONG_ENV`
+* Framework auto-provision: `testDispatch` is auto-wired when absent
+* CI backends added: MinIO, Kafka (KRaft), Vault (dev mode)
+
 ## [1.0.1](https://github.com/feasibleone/blong/compare/blong-int-sql-v1.0.0...blong-int-sql-v1.0.1) (2026-04-26)
 
 

@@ -7,3 +7,6 @@ resources:
   - mongodb-deployment.yaml
   - keycloak-deployment.yaml
   - keycloak-init-job.yaml
+  - minio-deployment.yaml
+  - kafka-deployment.yaml
+  - vault-deployment.yaml
