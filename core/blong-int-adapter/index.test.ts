@@ -3,8 +3,7 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const adapterEnv = process.env.BLONG_ENV ?? 'adapter.mysql';
-const platform = await load(server, 'int-adapter', 'int-adapter', [adapterEnv]);
+const platform = await load(server, 'int-adapter', 'int-adapter', []);
 await platform.start();
 await tap.test('blong int-adapter', async test => {
     await platform.test(test);
