@@ -24,19 +24,19 @@ describe('appStore — auth', () => {
     });
 
     it('sets a user profile', () => {
-        const profile = {userId: 'u1', userName: 'Alice', emailAddress: 'alice@example.com'};
+        const profile = {actorId: 'u1', name: 'Alice'};
         useAppStore.getState().setProfile(profile);
         expect(useAppStore.getState().auth.profile).toEqual(profile);
     });
 
     it('sets permissions', () => {
         useAppStore.getState().setPermissions({'portal.design': true, 'user.admin': false});
-        expect(useAppStore.getState().auth.permissions['portal.design']).toBe(true);
-        expect(useAppStore.getState().auth.permissions['user.admin']).toBe(false);
+        expect((useAppStore.getState().auth.permissions as Record<string, boolean>)['portal.design']).toBe(true);
+        expect((useAppStore.getState().auth.permissions as Record<string, boolean>)['user.admin']).toBe(false);
     });
 
     it('clears profile and permissions on logout', () => {
-        useAppStore.getState().setProfile({userId: 'u1', userName: 'Bob', emailAddress: ''});
+        useAppStore.getState().setProfile({actorId: 'u1', name: 'Bob'});
         useAppStore.getState().setPermissions({'portal.design': true});
         useAppStore.getState().logout();
         expect(useAppStore.getState().auth.profile).toBeNull();
@@ -153,7 +153,7 @@ describe('appStore — actions', () => {
 
 describe('appStore — menu config', () => {
     it('sets menu config', () => {
-        const config = {menu: [], tabs: [], home: ''};
+        const config = {name: 'test', title: 'Test', menu: [], home: ''};
         useAppStore.getState().setMenuConfig(config);
         expect(useAppStore.getState().portal.menuConfig).toEqual(config);
     });

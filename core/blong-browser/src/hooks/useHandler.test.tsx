@@ -1,14 +1,15 @@
 import {act, renderHook, waitFor} from '@testing-library/react';
 import React from 'react';
 import {describe, expect, it, vi} from 'vitest';
-import {BlongUiProvider} from '../context/BlongUiContext.js';
+import {BlongUiProvider, type DispatchFn} from '../context/BlongUiContext.js';
 import {useHandler, useHandlerCall, useHandlerMutation} from './useHandler.js';
 
 function makeWrapper(dispatch: (m: string, p?: Record<string, unknown>) => Promise<unknown>) {
+    // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
             <BlongUiProvider
-                dispatch={dispatch}
+                dispatch={dispatch as DispatchFn}
                 schemaUrl="/test.json"
             >
                 {children}

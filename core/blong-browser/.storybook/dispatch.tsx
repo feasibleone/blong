@@ -605,7 +605,7 @@ export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchF
         console.info('[storybook dispatch] unhandled:', method, params);
         return undefined;
     };
-    return result;
+    return result as DispatchFn;
 }
 
 // ── Global decorator ───────────────────────────────────────────────────────────

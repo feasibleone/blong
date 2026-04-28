@@ -14,10 +14,14 @@ import type Assert from 'node:assert';
  *   5. Response is returned and verified
  */
 export default handler(({lib: {group}, handler: {clockGet, clockTimeGet}}) => ({
-    testTimeClock: ({name = 'local clock'}, $meta) =>
+    testTimeClock: ({name = 'local clock'}: {name: string}) =>
         group(name)([
             async function clockResult(assert: typeof Assert, {$meta}) {
-                const result = await clockGet({}, $meta);
+                const result = await clockGet<{
+                    datetime: string;
+                    utc_datetime: string;
+                    unixtime: number;
+                }>({}, $meta);
                 assert.ok(result.datetime, 'Return datetime');
                 assert.ok(result.utc_datetime, 'Return utc_datetime');
                 assert.ok(typeof result.unixtime === 'number', 'Return unixtime');
@@ -25,10 +29,13 @@ export default handler(({lib: {group}, handler: {clockGet, clockTimeGet}}) => ({
             },
         ]),
 
-    testTimeGet: ({name = 'world time api via sim'}, $meta) =>
+    testTimeGet: ({name = 'world time api via sim'}: {name: string}) =>
         group(name)([
             async function timeResult(assert: typeof Assert, {$meta}) {
-                const result = await clockTimeGet({area: 'Europe', location: 'Sofia'}, $meta);
+                const result = await clockTimeGet<{
+                    datetime: string;
+                    timezone: string;
+                }>({area: 'Europe', location: 'Sofia'}, $meta);
                 assert.ok(result.datetime, 'Return datetime');
                 assert.ok(result.timezone, 'Return timezone');
                 assert.strictEqual(

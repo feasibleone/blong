@@ -1,4 +1,9 @@
-import {orchestrator, server, type Definition, type SolutionFactory} from '@feasibleone/blong/types';
+import {
+    orchestrator,
+    server,
+    type Definition,
+    type SolutionFactory,
+} from '@feasibleone/blong/types';
 import {existsSync} from 'fs';
 import {readdir} from 'fs/promises';
 import type {Dirent} from 'node:fs';
@@ -26,14 +31,7 @@ const WELL_KNOWN_LAYER_DIRS = new Set([
 ]);
 
 /** Structural file names that are NOT handlers. */
-const STRUCTURAL_NAMES = new Set([
-    'server',
-    'browser',
-    'index',
-    'config',
-    'realm',
-    'layer',
-]);
+const STRUCTURAL_NAMES = new Set(['server', 'browser', 'index', 'config', 'realm', 'layer']);
 
 /** Returns true if the filename is a TypeScript/JavaScript source file. */
 const isCode = (name: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(name);
@@ -152,12 +150,15 @@ export async function synthesizeServerFromHandlers(
     const realmName = basename(cwd);
 
     // ── 1. Import handlers and group by namespace ──────────────────────────────
-    const namespaceGroups = new Map<string, Array<Definition<Record<string, unknown>>>>();
+    const namespaceGroups = new Map<
+        string,
+        Array<Definition<Record<string, unknown>, Record<string, unknown>>>
+    >();
 
     for (const filePath of analysis.handlerFiles ?? []) {
         const handlerName = basename(filePath, extname(filePath));
         const namespace = handlerName.replace(/^([a-z]+).*$/, '$1');
-        let handlerDef: Definition<Record<string, unknown>> | undefined;
+        let handlerDef: Definition<Record<string, unknown>, Record<string, unknown>> | undefined;
         try {
             const mod = await import(filePath);
             handlerDef = mod?.default;
@@ -288,6 +289,8 @@ export async function synthesizeServerFromHandlers(
                 },
             },
             userConfig,
-        ) as ReturnType<SolutionFactory>;
-    return server(factoryFn);
+        ) as unknown as ReturnType<SolutionFactory>;
+    return server(
+        factoryFn as unknown as Parameters<typeof server>[0],
+    ) as unknown as SolutionFactory;
 }

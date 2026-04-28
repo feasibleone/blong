@@ -18,13 +18,13 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                 request.routeOptions.config.auth &&
                 request.headers['content-type'] === 'application/json'
             ) {
-                const [where, what] = request.body?.jsonrpc
-                    ? [request.body, 'params']
-                    : [request, 'body'];
+                const [where, what]: [Record<string, unknown>, string] = (
+                    request.body?.jsonrpc ? [request.body, 'params'] : [request, 'body']
+                ) as [Record<string, unknown>, string];
                 if (where[what] && request.routeOptions.config.mle !== false) {
                     const credentials = request.auth?.credentials;
                     if (!credentials) {
-                        reply.code(401); // eslint-disable-line @typescript-eslint/no-floating-promises
+                        reply.code(401);
                         throw new Error('Missing authorization');
                     }
                     try {
@@ -32,25 +32,33 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                             const {
                                 protectedHeader: {mlsk, mlek},
                                 plaintext,
-                            } = (await mle.decrypt(where[what], {complete: true})) as {
+                            } = (await mle.decrypt(where[what] as string, {complete: true})) as {
                                 plaintext: string | Uint8Array;
                                 protectedHeader: {mlek?: {type: string}; mlsk?: {type: string}};
                             };
                             credentials.mlsk = mlsk;
                             credentials.mlek = mlek;
-                            where[what] = await mle.verify(plaintext, mlsk);
+                            where[what] = await mle.verify(
+                                plaintext,
+                                mlsk as unknown as Parameters<typeof mle.verify>[1],
+                            );
                         } else {
-                            where[what] = await mle.decryptVerify(where[what], credentials.mlsk);
+                            where[what] = await mle.decryptVerify(
+                                where[what] as string,
+                                credentials.mlsk as Parameters<typeof mle.decryptVerify>[1],
+                            );
                         }
                     } catch (error) {
-                        reply.code(400); // eslint-disable-line @typescript-eslint/no-floating-promises
-                        throw new Error('Decryption failed');
+                        reply.code(400);
+                        const newError = new Error('Decryption failed');
+                        newError.cause = error instanceof Error ? error : String(error);
+                        throw newError;
                     }
                 }
             }
         },
     );
-    fastify.addHook<unknown, unknown, {auth: unknown; mle: unknown}>(
+    fastify.addHook(
         'preSerialization',
         async (
             request,
@@ -62,6 +70,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                       jsonrpc?: unknown;
                       result?: Record<string, unknown>;
                       error?: Record<string, unknown>;
+                      checkpoints?: unknown;
                   },
         ) => {
             if (payload instanceof Error) return payload;
@@ -79,24 +88,37 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                           );
                 const where = payload.jsonrpc
                     ? payload
-                    : {result: payload, id: undefined, jsonrpc: undefined};
-                let result, error: string;
+                    : {
+                          result: payload,
+                          id: undefined,
+                          jsonrpc: undefined,
+                          error: undefined,
+                          checkpoints: undefined,
+                      };
+                let result,
+                    error = undefined as string | undefined;
                 const code = reply.statusCode.toString().slice(0, 1) + 'xx';
-                if ('result' in where) result = reply.serializeInput(where.result, code) as string;
+                if ('result' in where)
+                    result = reply.serializeInput(
+                        where.result as Record<string, unknown>,
+                        code,
+                    ) as string;
                 if (payload.jsonrpc && 'error' in where)
-                    error = reply.serializeInput(payload.error, code) as string;
-                reply.serializer(x => x); // eslint-disable-line @typescript-eslint/no-floating-promises
+                    error = reply.serializeInput(
+                        payload.error as Record<string, unknown>,
+                        code,
+                    ) as string;
+                reply.serializer(x => x);
                 try {
                     return JSON.stringify({
                         id: where.id,
                         jsonrpc: where.jsonrpc,
                         result: result && (await encrypt(Buffer.from(result))),
                         error: error && (await encrypt(Buffer.from(error))),
-                        ...('checkpoints' in where &&
-                            where.checkpoints && {checkpoints: where.checkpoints}),
+                        checkpoints: where.checkpoints,
                     });
                 } catch (error) {
-                    reply.code(400); // eslint-disable-line @typescript-eslint/no-floating-promises
+                    reply.code(400);
                     throw error;
                 }
             }

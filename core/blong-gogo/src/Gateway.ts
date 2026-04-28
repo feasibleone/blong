@@ -11,7 +11,7 @@ import type {
     IPlatformApi,
 } from '@feasibleone/blong/types';
 import {Internal} from '@feasibleone/blong/types';
-import fastify, {type FastifyRequest, type RouteOptions} from 'fastify';
+import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 import os from 'os';
 import type {LevelWithSilent} from 'pino';
 import {Type, type TSchema} from 'typebox';
@@ -69,45 +69,50 @@ interface IConfig extends IConfigMLE {
 
 function operationParams(
     operation: GatewaySchema['operation'],
-    bodySchema: ApiSchema,
+    bodySchema: ApiSchema | undefined,
     request: GatewayRequest,
 ): unknown {
-    const result =
-        operation?.parameters?.reduce((result, parameter) => {
-            if ('in' in parameter && 'name' in parameter) {
-                let where;
-                switch (parameter.in) {
-                    case 'header':
-                        where = request.headers;
-                        break;
-                    case 'query':
-                        where = request.query;
-                        break;
-                    case 'path':
-                        where = request.params;
-                        break;
-                    case 'cookie':
-                        where = request.cookies;
-                        break;
-                    case 'body':
-                        if (request.body) {
-                            if (parameter.schema?.additionalProperties)
-                                Object.assign(result, request.body);
-                            else if (parameter.schema?.properties)
-                                Object.entries(parameter.schema.properties).forEach(
-                                    ([name, value]) => {
-                                        if (name in (request.body as {}))
-                                            result[snakeToCamel(name)] = request.body[name];
-                                    },
-                                );
-                        }
-                        break;
+    const result: Record<string, unknown> =
+        operation?.parameters?.reduce(
+            (result: Record<string, unknown>, parameter) => {
+                if ('in' in parameter && 'name' in parameter) {
+                    let where: Record<string, unknown> | undefined;
+                    switch (parameter.in) {
+                        case 'header':
+                            where = request.headers as Record<string, unknown>;
+                            break;
+                        case 'query':
+                            where = request.query as Record<string, unknown>;
+                            break;
+                        case 'path':
+                            where = request.params as Record<string, unknown>;
+                            break;
+                        case 'cookie':
+                            where = request.cookies as Record<string, unknown>;
+                            break;
+                        case 'body':
+                            if (request.body) {
+                                if (parameter.schema?.additionalProperties)
+                                    Object.assign(result, request.body);
+                                else if (parameter.schema?.properties)
+                                    Object.entries(parameter.schema.properties).forEach(
+                                        ([name, value]) => {
+                                            if (name in (request.body as Record<string, unknown>))
+                                                result[snakeToCamel(name)] = (
+                                                    request.body as Record<string, unknown>
+                                                )[name];
+                                        },
+                                    );
+                            }
+                            break;
+                    }
+                    if (where && parameter.name in where)
+                        result[snakeToCamel(parameter.name)] = where[parameter.name];
                 }
-                if (where && parameter.name in where)
-                    result[snakeToCamel(parameter.name)] = where[parameter.name];
-            }
-            return result;
-        }, {}) ?? {};
+                return result;
+            },
+            {} as Record<string, unknown>,
+        ) ?? {};
     if (
         bodySchema &&
         'type' in bodySchema &&
@@ -119,14 +124,15 @@ function operationParams(
             Object.assign(result, request.body);
         else if (bodySchema.properties)
             Object.entries(bodySchema.properties).forEach(([name, value]) => {
-                if (name in (request.body as {})) result[snakeToCamel(name)] = request.body[name];
+                if (name in (request.body as Record<string, unknown>))
+                    result[snakeToCamel(name)] = (request.body as Record<string, unknown>)[name];
             });
     }
     return result;
 }
 
 export default class Gateway extends Internal implements IGateway {
-    #server: ReturnType<typeof fastify> = null;
+    #server: ReturnType<typeof fastify> | null = null;
     #resolution: IResolution;
     #log: ILog;
     #config: IConfig = {
@@ -134,8 +140,8 @@ export default class Gateway extends Internal implements IGateway {
         port: 8080,
         logLevel: 'trace',
         cors: undefined,
-        sign: undefined,
-        encrypt: undefined,
+        sign: undefined as unknown as IConfig['sign'],
+        encrypt: undefined as unknown as IConfig['encrypt'],
         public: {
             sign: undefined,
             encrypt: undefined,
@@ -150,7 +156,7 @@ export default class Gateway extends Internal implements IGateway {
 
     #errors: Errors<typeof errorMap>;
     #rpcClient: IRpcClient;
-    #routes: RouteOptions[];
+    #routes: RouteOptions[] = [];
     #local: ILocal;
     #errorFields: [string, unknown][] = [];
     #plugins: {plugin: unknown; options: unknown}[] = [];
@@ -175,8 +181,8 @@ export default class Gateway extends Internal implements IGateway {
         },
     ) {
         super({log});
-        this.#log = log;
-        this.#platform = platform;
+        this.#log = log!;
+        this.#platform = platform!;
 
         this.merge(this.#config, config);
         this.#errorFields = Object.entries({
@@ -191,10 +197,10 @@ export default class Gateway extends Internal implements IGateway {
             }),
             ...this.#config.errorFields,
         });
-        this.#errors = error.register(errorMap);
-        this.#resolution = resolution;
-        this.#rpcClient = remote;
-        this.#local = local;
+        this.#errors = error!.register(errorMap);
+        this.#resolution = resolution!;
+        this.#rpcClient = remote!;
+        this.#local = local!;
     }
 
     protected config(): object {
@@ -205,19 +211,21 @@ export default class Gateway extends Internal implements IGateway {
         this.#plugins.push({plugin, options});
     }
 
-    // https://github.com/openzipkin/b3-propagation
-    private _forward(headers: object): object {
-        return [
-            ['x-request-id'],
-            ['x-b3-traceid', () => v4().replace(/-/g, '')],
-            ['x-b3-spanid'],
-            ['x-b3-parentspanid'],
-            ['x-b3-sampled'],
-            ['x-b3-flags'],
-            ['x-ot-span-context'],
-            ['x-ut-stack'],
-        ].reduce(function (object: object, [key, value]: [string, () => string]) {
-            if (typeof key === 'string' && key in headers) object[key] = headers[key];
+    private _forward(headers: object): Record<string, string> {
+        return (
+            [
+                ['x-request-id'],
+                ['x-b3-traceid', () => v4().replace(/-/g, '')],
+                ['x-b3-spanid'],
+                ['x-b3-parentspanid'],
+                ['x-b3-sampled'],
+                ['x-b3-flags'],
+                ['x-ot-span-context'],
+                ['x-ut-stack'],
+            ] as [string, (() => string)?][]
+        ).reduce(function (object: Record<string, string>, [key, value]) {
+            if (typeof key === 'string' && key in (headers as Record<string, unknown>))
+                object[key] = (headers as Record<string, unknown>)[key] as string;
             else if (value) object[key] = value();
             return object;
         }, {});
@@ -246,22 +254,28 @@ export default class Gateway extends Internal implements IGateway {
             localAddress,
             localPort,
             ...(req.auth?.credentials && {auth, language}),
-            hostName: forwardedHost || req.hostname,
-            ipAddress: ([].concat(forwardedIp)[0] || req.socket.remoteAddress).split(',')[0],
+            hostName: (forwardedHost || req.hostname) as string,
+            ipAddress: (
+                ([] as string[]).concat(forwardedIp as string | string[])[0] ||
+                req.socket.remoteAddress ||
+                ''
+            ).split(',')[0],
             machineName: hostName,
             os: osName,
             version,
             serviceName,
             httpRequest: {
                 url: req.protocol + '://' + req.host + req.url,
-                state: req.cookies,
-                headers: req.headers,
+                state: req.cookies as Record<string, string>,
+                headers: req.headers as Record<string, string | string[]>,
             },
-        };
+        } as Partial<IMeta>;
     }
 
     private _applyMeta(response: object, {httpResponse}: {httpResponse?: unknown}): object {
-        if (httpResponse)
+        if (httpResponse) {
+            const httpResp = httpResponse as Record<string, unknown>;
+            const resp = response as Record<string, (...args: unknown[]) => void>;
             [
                 'code',
                 'redirect',
@@ -276,16 +290,19 @@ export default class Gateway extends Internal implements IGateway {
                 'unstate', // todo
                 'header',
             ].forEach(method => {
-                if (Object.prototype.hasOwnProperty.call(httpResponse, method)) {
-                    const params = httpResponse[method];
-                    if (Array.isArray(params?.[0])) {
+                if (Object.prototype.hasOwnProperty.call(httpResp, method)) {
+                    const params = httpResp[method];
+                    if (Array.isArray((params as unknown[])?.[0])) {
                         // setting multiple headers and cookies require nested arrays
-                        params.forEach(param => response[method](...[].concat(param)));
+                        (params as unknown[][]).forEach(param =>
+                            resp[method](...([] as unknown[]).concat(param)),
+                        );
                     } else {
-                        response[method](...[].concat(params));
+                        resp[method](...([] as unknown[]).concat(params));
                     }
                 }
             });
+        }
         return response;
     }
 
@@ -298,7 +315,10 @@ export default class Gateway extends Internal implements IGateway {
             const reqName = `ports.${value.destination ?? method.split('.', 1)[0]}.request`;
             const pubName = `ports.${value.destination ?? method.split('.', 1)[0]}.publish`;
             const isWildcard = method.endsWith('.*');
-            this.#resolution?.announce(method.split('.')[0].replace(/\//g, '-'), this.#config.port);
+            this.#resolution?.announce(
+                method.split('.')[0].replace(/\//g, '-'),
+                this.#config.port!,
+            );
             this.#routes.push({
                 method: 'method' in value ? value.method : 'POST',
                 url:
@@ -385,8 +405,8 @@ export default class Gateway extends Internal implements IGateway {
                             ? (request.body as {
                                   id: string;
                                   params: unknown;
-                                  timeout: unknown;
-                                  expect: unknown;
+                                  timeout: number;
+                                  expect: string | string[];
                               })
                             : {
                                   id: 1,
@@ -409,8 +429,10 @@ export default class Gateway extends Internal implements IGateway {
                             mtid: !id ? 'notification' : 'request',
                             method: methodName,
                             opcode: methodName.split('.').pop(),
-                            ...(timeout && {timeout: this.#platform.timing.after(timeout)}),
-                            ...(expect && {expect: [].concat(expect)}),
+                            ...(timeout && {
+                                timeout: this.#platform.timing.after(timeout as number),
+                            }),
+                            ...(expect && {expect: ([] as string[]).concat(expect)}),
                             ...this._meta(request, pkg?.version, methodName.split('.')[0]),
                         };
                         const notfound = (): unknown =>
@@ -429,7 +451,7 @@ export default class Gateway extends Internal implements IGateway {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
                             const [result, resultMeta] = (await req.method(params, meta)) ?? null;
-                            this._applyMeta(reply, resultMeta);
+                            this._applyMeta(reply, resultMeta as {httpResponse?: unknown});
                             return result;
                         } else if (id == null) {
                             const pub = this.#local.get(pubName);
@@ -443,17 +465,24 @@ export default class Gateway extends Internal implements IGateway {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
                             const [result, resultMeta] = (await req.method(params, meta)) ?? null;
-                            this._applyMeta(reply, resultMeta);
+                            this._applyMeta(reply, resultMeta as {httpResponse?: unknown});
                             return {
                                 jsonrpc: '2.0',
                                 id,
                                 result,
-                                ...(resultMeta?.checkpoints?.length && {
-                                    checkpoints: resultMeta.checkpoints,
+                                ...((resultMeta as {checkpoints?: unknown[]})?.checkpoints
+                                    ?.length && {
+                                    checkpoints: (resultMeta as {checkpoints?: unknown[]})
+                                        .checkpoints,
                                 }),
                             };
                         }
                     } catch (error) {
+                        const typedError = error as {
+                            statusCode?: number;
+                            httpResponse?: unknown;
+                            [key: string]: unknown;
+                        };
                         request.log.error(
                             {err: error, method: methodName},
                             'gateway handler error',
@@ -461,13 +490,13 @@ export default class Gateway extends Internal implements IGateway {
                         this._applyMeta(
                             reply
                                 .header('x-envoy-decorator-operation', methodName)
-                                .code(error?.statusCode || 500),
-                            {httpResponse: error.httpResponse},
+                                .code(typedError?.statusCode || 500),
+                            {httpResponse: typedError.httpResponse},
                         );
                         return {
                             jsonrpc: '2.0',
                             id,
-                            error: this._formatError(error),
+                            error: this._formatError(typedError),
                         };
                     }
                 },
@@ -488,17 +517,20 @@ export default class Gateway extends Internal implements IGateway {
                     },
                 },
             });
-            this.#server.setErrorHandler((error, request: FastifyRequest, reply) => {
-                request.log.error({err: error}, 'gateway unhandled error');
-                return reply.status(500).send({
-                    jsonrpc: '2.0',
-                    id: (request.body as {id?: unknown})?.id,
-                    error: this._formatError(error),
-                });
-            });
+            this.#server.setErrorHandler(
+                (error: Record<string, unknown>, request: FastifyRequest, reply: FastifyReply) => {
+                    request.log.error({err: error}, 'gateway unhandled error');
+                    return reply.status(500).send({
+                        jsonrpc: '2.0',
+                        id: (request.body as {id?: unknown})?.id,
+                        error: this._formatError(error),
+                    });
+                },
+            );
             await this.#server.register(jwt, {
                 cache: this.#config.jwt?.cache,
-                verify: (token, options) => this.#rpcClient.verify(token, options),
+                verify: (token: string, options: {nonce?: string; audience: string}) =>
+                    this.#rpcClient.verify(token, options),
                 errors: this.#errors,
                 audience: this.#config.jwt.audience,
             });
@@ -521,7 +553,7 @@ export default class Gateway extends Internal implements IGateway {
             });
             for (const {plugin, options} of this.#plugins)
                 await this.#server.register(plugin, options);
-            this.#routes.forEach(route => this.#server.route(route));
+            this.#routes.forEach(route => this.#server!.route(route));
         } finally {
             await old?.close();
         }
@@ -543,21 +575,24 @@ export default class Gateway extends Internal implements IGateway {
         await this.start();
     }
 
-    private _formatError(error: Error): object {
-        return this.#errorFields.reduce((e, [key, value]) => {
-            if (value && typeof error[key] !== 'undefined') {
-                switch (value) {
-                    case true:
-                        e[key] = error[key];
-                        break;
-                    case 'error':
-                        e[key] = this._formatError(error[key]);
-                        break;
-                    default:
-                        break;
+    private _formatError(error: Record<string, unknown>): object {
+        return this.#errorFields.reduce(
+            (e, [key, value]) => {
+                if (value && typeof error[key] !== 'undefined') {
+                    switch (value) {
+                        case true:
+                            e[key] = error[key];
+                            break;
+                        case 'error':
+                            e[key] = this._formatError(error[key] as Record<string, unknown>);
+                            break;
+                        default:
+                            break;
+                    }
                 }
-            }
-            return e;
-        }, {});
+                return e;
+            },
+            {} as Record<string, unknown>,
+        );
     }
 }

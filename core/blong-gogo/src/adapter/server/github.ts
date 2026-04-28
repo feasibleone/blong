@@ -8,7 +8,7 @@ export interface IConfig {
         userAgent?: string;
     };
     context?: {
-        octokit: Octokit;
+        octokit?: Octokit;
     };
 }
 
@@ -47,7 +47,7 @@ export default adapter<IConfig>(({utError}) => {
             return super.start();
         },
         async stop(...params: unknown[]) {
-            this.config.context = null;
+            this.config.context = {};
             return await super.stop(...params);
         },
         async exec(
@@ -68,7 +68,7 @@ export default adapter<IConfig>(({utError}) => {
             } & Record<string, unknown>,
             {method}: IMeta,
         ) {
-            const [, , operation] = method.split('.');
+            const [, , operation] = method!.split('.');
             const {octokit} = this.config.context;
 
             switch (operation) {
@@ -83,7 +83,7 @@ export default adapter<IConfig>(({utError}) => {
                     try {
                         if (releaseId) {
                             // Get release by ID
-                            const response = await octokit.repos.getRelease({
+                            const response = await octokit!.repos.getRelease({
                                 owner,
                                 repo,
                                 release_id: releaseId,
@@ -91,7 +91,7 @@ export default adapter<IConfig>(({utError}) => {
                             return response.data;
                         } else if (tag) {
                             // Get release by tag
-                            const response = await octokit.repos.getReleaseByTag({
+                            const response = await octokit!.repos.getReleaseByTag({
                                 owner,
                                 repo,
                                 tag,
@@ -99,7 +99,7 @@ export default adapter<IConfig>(({utError}) => {
                             return response.data;
                         } else {
                             // Get latest release
-                            const response = await octokit.repos.getLatestRelease({
+                            const response = await octokit!.repos.getLatestRelease({
                                 owner,
                                 repo,
                             });
@@ -124,7 +124,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (!repo) throw _errors['github.missingParameter']({parameter: 'repo'});
 
                     try {
-                        const response = await octokit.repos.listReleases({
+                        const response = await octokit!.repos.listReleases({
                             owner,
                             repo,
                             page,
@@ -162,7 +162,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (!tagName) throw _errors['github.missingParameter']({parameter: 'tagName'});
 
                     try {
-                        const response = await octokit.repos.createRelease({
+                        const response = await octokit!.repos.createRelease({
                             owner,
                             repo,
                             tag_name: tagName,
@@ -210,7 +210,7 @@ export default adapter<IConfig>(({utError}) => {
                         throw _errors['github.missingParameter']({parameter: 'releaseId'});
 
                     try {
-                        const response = await octokit.repos.updateRelease({
+                        const response = await octokit!.repos.updateRelease({
                             owner,
                             repo,
                             release_id: releaseId,
@@ -244,7 +244,7 @@ export default adapter<IConfig>(({utError}) => {
                         throw _errors['github.missingParameter']({parameter: 'releaseId'});
 
                     try {
-                        await octokit.repos.deleteRelease({
+                        await octokit!.repos.deleteRelease({
                             owner,
                             repo,
                             release_id: releaseId,

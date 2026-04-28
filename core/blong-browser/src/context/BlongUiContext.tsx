@@ -3,7 +3,7 @@
  * infrastructure: method registry dispatch, schema fetching, QueryClient, etc.
  */
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
-import {createContext, useContext, useMemo, type ReactNode} from 'react';
+import {createContext, use, useMemo, type ReactNode} from 'react';
 import {blongEvents} from '../lib/eventBus.js';
 import {schemaRegistry as defaultSchemaRegistry} from '../schema/registry.js';
 import {useAppStore} from '../state/appStore.js';
@@ -42,7 +42,7 @@ const BlongUiContext = createContext<IBlongUiContextValue | null>(null);
 
 /** Hook to access the context value — throws if used outside provider */
 export function useBlongUi(): IBlongUiContextValue {
-    const ctx = useContext(BlongUiContext);
+    const ctx = use(BlongUiContext);
     if (!ctx) throw new Error('[blong-browser] useBlongUi must be used inside <BlongUiProvider>');
     return ctx;
 }
@@ -100,25 +100,26 @@ export function BlongUiProvider({
      * The error is always re-thrown so callers can still react if needed.
      */
     const wrappedDispatch = useMemo<DispatchFn>(
-        () => async (method, params) => {
-            blongEvents.emit('action:before', {method, params});
-            try {
-                const result = await dispatch(method, params);
-                blongEvents.emit('action:success', {method, params, result});
-                return result;
-            } catch (err) {
-                blongEvents.emit('action:error', {method, params, error: err});
-                const blongErr = err as Partial<IBlongError>;
-                if (!blongErr.validation?.length) {
-                    useAppStore.getState().showError({
-                        type: blongErr.type ?? 'error',
-                        message: blongErr.message ?? 'An unexpected error occurred.',
-                        print: blongErr.print,
-                    } as IBlongError);
+        () =>
+            (async (method, params) => {
+                blongEvents.emit('action:before', {method, params});
+                try {
+                    const result = await dispatch(method, params);
+                    blongEvents.emit('action:success', {method, params, result});
+                    return result;
+                } catch (err) {
+                    blongEvents.emit('action:error', {method, params, error: err});
+                    const blongErr = err as Partial<IBlongError>;
+                    if (!blongErr.validation?.length) {
+                        useAppStore.getState().showError({
+                            type: blongErr.type ?? 'error',
+                            message: blongErr.message ?? 'An unexpected error occurred.',
+                            print: blongErr.print,
+                        } as IBlongError);
+                    }
+                    throw err;
                 }
-                throw err;
-            }
-        },
+            }) as DispatchFn,
         [dispatch],
     );
 
@@ -136,8 +137,8 @@ export function BlongUiProvider({
     );
 
     return (
-        <BlongUiContext.Provider value={value}>
+        <BlongUiContext value={value}>
             <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        </BlongUiContext.Provider>
+        </BlongUiContext>
     );
 }

@@ -20,22 +20,31 @@ export default library(
             responseType: string;
         }) {
             return (
-                msg = {
-                    body: undefined,
-                    baseUrl: '',
-                    params: {},
-                    payload: undefined,
-                    headers: undefined,
-                    responseType: undefined,
-                },
+                msg: {
+                    body?: unknown;
+                    baseUrl?: string;
+                    params?: Record<string, unknown>;
+                    payload?: unknown;
+                    headers?: Record<string, unknown>;
+                    responseType?: string;
+                } = {},
             ) => {
                 const {params = msg, body, baseUrl, headers, payload} = msg;
-                const result = {
+                const result: {
+                    url: string;
+                    method: string;
+                    body: unknown;
+                    responseType: string | undefined;
+                    headers: Record<string, unknown> | undefined;
+                    form: Record<string, unknown> | undefined;
+                    query: Record<string, unknown> | undefined;
+                    json: unknown;
+                } = {
                     url: baseUrl ? baseUrl + path : url,
                     method,
                     body,
                     responseType: msg.responseType || responseType,
-                    headers,
+                    headers: headers as Record<string, unknown> | undefined,
                     form: undefined,
                     query: undefined,
                     json: undefined,
@@ -43,9 +52,9 @@ export default library(
                 schemas.forEach(schema => {
                     const identifier = snakeToCamel(schema.name);
                     const param =
-                        typeof params[identifier] === 'undefined'
+                        typeof (params as Record<string, unknown>)[identifier] === 'undefined'
                             ? schema.default
-                            : params[identifier];
+                            : (params as Record<string, unknown>)[identifier];
                     switch (schema.in) {
                         case 'header':
                             if (schema.name.toLocaleLowerCase() === 'content-length') return;
@@ -68,17 +77,26 @@ export default library(
                                 result.json = schema.schema.additionalProperties
                                     ? payload
                                     : Object.fromEntries(
-                                          Object.entries(schema.schema.properties)
+                                          Object.entries(
+                                              schema.schema.properties as Record<
+                                                  string,
+                                                  {default?: unknown}
+                                              >,
+                                          )
                                               .map(
-                                                  ([name, value]: [string, {default: unknown}]) =>
+                                                  ([name, value]) =>
                                                       name in params && [
                                                           name,
-                                                          typeof params[name] === 'undefined'
+                                                          typeof (
+                                                              params as Record<string, unknown>
+                                                          )[name] === 'undefined'
                                                               ? value.default
-                                                              : params[name],
+                                                              : (params as Record<string, unknown>)[
+                                                                    name
+                                                                ],
                                                       ],
                                               )
-                                              .filter(Boolean),
+                                              .filter(Boolean) as [string, unknown][],
                                       );
                             break;
                         default:

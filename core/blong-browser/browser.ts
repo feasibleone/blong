@@ -26,6 +26,7 @@ export default realm(blong => ({
     validation: blong.type.Object({
         adapter: blong.type.Boolean(),
         orchestrator: blong.type.Boolean(),
+        backend: blong.type.Boolean(),
     }),
     children: globalThis.window
         ? import.meta.glob(['./adapter/**/*.ts', './orchestrator/**/*.ts'])

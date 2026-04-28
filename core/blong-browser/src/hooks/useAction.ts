@@ -3,7 +3,7 @@
  * Abstracts page actions, query actions, and mutation actions behind one API.
  */
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {useCallback} from 'react';
+import {useCallback, useMemo} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {ulid} from '../lib/ulid.js';
 import {useAppStore} from '../state/appStore.js';
@@ -43,15 +43,18 @@ export function useAction<TResult = unknown>(
     const actions = useAppStore(s => s.actions);
     const openTab = useAppStore(s => s.openTab);
     const showError = useAppStore(s => s.showError);
-    const action =
-        actions[actionName] ??
-        (actionName &&
-            !actionName.startsWith('component') &&
-            ({
-                method: actionName,
-                type: type || 'query',
-                ...(type === 'mutation' && {mutates: true}),
-            } as IAction));
+    const action = useMemo(
+        () =>
+            actions[actionName] ??
+            (actionName &&
+                !actionName.startsWith('component') &&
+                ({
+                    method: actionName,
+                    type: type || 'query',
+                    ...(type === 'mutation' && {mutates: true}),
+                } as IAction)),
+        [actionName, actions, type],
+    );
 
     // Resolve method name for query/mutation actions
     const method = !isComponentAction(action)

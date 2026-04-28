@@ -1,4 +1,4 @@
-import { handler, type IMeta } from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 /**
@@ -132,7 +132,7 @@ export default handler(
                 const order = await premium;
                 $meta.checkpoints = [];
                 delete $meta.name;
-                delete $meta.tag;
+                delete ($meta as Record<string, unknown>).tag;
 
                 const result = (await quickConfirm(
                     {orderId: order.orderId, paymentMethod: 'card'},
@@ -256,16 +256,8 @@ export default handler(
 
                 assert.ok(result.orderId, 'Named cached order created');
                 assert.equal(result.total, 180, 'Named cached order total');
-                assert.equal(
-                    $meta.name,
-                    'cached order',
-                    'Mixed: Mode A @name injected into $meta',
-                );
-                assert.equal(
-                    meta.ttl,
-                    '5000',
-                    'Mixed: Mode B @cache ttl=5000 override applied',
-                );
+                assert.equal($meta.name, 'cached order', 'Mixed: Mode A @name injected into $meta');
+                assert.equal(meta.ttl, '5000', 'Mixed: Mode B @cache ttl=5000 override applied');
                 assert.equal(
                     meta.maxSize,
                     '1000',

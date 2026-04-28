@@ -4,7 +4,7 @@ import hrtime from 'browser-process-hrtime';
 type HRTime = ReturnType<typeof hrtime>;
 const now = (): HRTime => hrtime();
 
-const isAfter = (time: HRTime, timeout: number): boolean =>
+const isAfter = (time: HRTime, timeout: HRTime): boolean =>
     Array.isArray(timeout) &&
     (time[0] > timeout[0] || (time[0] === timeout[0] && time[1] > timeout[1]));
 
@@ -15,7 +15,7 @@ interface IEnd {
 
 class Timeout {
     #calls: Set<IEnd> = new Set();
-    #interval: NodeJS.Timeout;
+    #interval: NodeJS.Timeout | undefined;
 
     protected clean(): void {
         Array.from(this.#calls).forEach((end: {checkTimeout: (time: HRTime) => void}) =>
@@ -25,7 +25,7 @@ class Timeout {
 
     protected startWait(
         onTimeout: (error: Error) => void,
-        timeout: number,
+        timeout: HRTime,
         createTimeoutError: () => Error,
         set?: Set<IEnd>,
     ): IEnd {
@@ -44,7 +44,7 @@ class Timeout {
         this.#calls.delete(end);
         if (set) set.delete(end);
         if (this.#calls.size <= 0 && this.#interval) {
-            clearInterval(this.#interval);
+            clearInterval(this.#interval as NodeJS.Timeout);
             this.#interval = undefined;
         }
     }
@@ -68,7 +68,7 @@ class Timeout {
                             resolve([waitError, $meta]);
                         }
                     },
-                    $meta.timeout,
+                    $meta.timeout as HRTime,
                     error,
                     set,
                 );
@@ -89,9 +89,14 @@ class Timeout {
         }
     }
 
-    public startRequest($meta: IMeta, error: () => Error, onTimeout: (error: Error) => void): IEnd {
+    public startRequest(
+        $meta: IMeta,
+        error: () => Error,
+        onTimeout: (error: Error) => void,
+    ): IEnd | false {
         return (
-            Array.isArray($meta && $meta.timeout) && this.startWait(onTimeout, $meta.timeout, error)
+            Array.isArray($meta && $meta.timeout) &&
+            this.startWait(onTimeout, $meta.timeout as HRTime, error)
         );
     }
 }

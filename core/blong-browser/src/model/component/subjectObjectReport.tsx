@@ -18,7 +18,7 @@ export async function subjectObjectReport(
                 import('../../components/Report/index.js'),
             ]);
 
-            function ReportPage(props: Record<string, unknown>) {
+            return function ReportPage(props: Record<string, unknown>) {
                 return (
                     <Report
                         filterSchema={schema}
@@ -30,9 +30,7 @@ export async function subjectObjectReport(
                         {...props}
                     />
                 );
-            }
-
-            return ReportPage as unknown as React.ComponentType;
+            };
         },
     });
 }

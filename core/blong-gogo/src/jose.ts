@@ -10,8 +10,8 @@ import {
     compactVerify,
     exportJWK,
     flattenedDecrypt,
-    generateKeyPair,
     generalDecrypt,
+    generateKeyPair,
     importJWK,
     type CompactDecryptResult,
     type FlattenedDecryptResult,
@@ -22,8 +22,9 @@ import {
     type GeneralJWS,
     type JWEHeaderParameters,
     type JWK,
-    type KeyLike,
 } from 'jose';
+
+type KeyLike = CryptoKey | {type: string};
 
 /**
  * Spec for a JWK key that can be:
@@ -37,10 +38,20 @@ export type KeySpec =
     | JWK
     | KeyLike
     | Uint8Array
-    | {generate: {alg: string; crv?: string; modulusLength?: number; use?: string; [k: string]: unknown}}
+    | {
+          generate: {
+              alg: string;
+              crv?: string;
+              modulusLength?: number;
+              use?: string;
+              [k: string]: unknown;
+          };
+      }
     | {env: string};
 
-async function resolveKeySpec(spec: KeySpec | undefined): Promise<JWK | KeyLike | Uint8Array | undefined> {
+async function resolveKeySpec(
+    spec: KeySpec | undefined,
+): Promise<JWK | KeyLike | Uint8Array | undefined> {
     if (!spec) return undefined;
     if ('generate' in spec) {
         const {alg, crv, modulusLength, ...rest} = spec.generate;
@@ -58,7 +69,9 @@ async function resolveKeySpec(spec: KeySpec | undefined): Promise<JWK | KeyLike 
         try {
             return JSON.parse(value) as JWK;
         } catch {
-            throw new Error(`Gateway key env var "${spec.env}" is set but does not contain valid JSON`);
+            throw new Error(
+                `Gateway key env var "${spec.env}" is set but does not contain valid JSON`,
+            );
         }
     }
     return spec as JWK | KeyLike | Uint8Array;
@@ -66,13 +79,16 @@ async function resolveKeySpec(spec: KeySpec | undefined): Promise<JWK | KeyLike 
 
 const isBrowser: boolean = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
-const isKey = async (o): Promise<boolean> => {
+const isKey = async (o: unknown): Promise<boolean> => {
     if (isBrowser) {
         return (
             typeof o === 'object' &&
-            typeof o.extractable === 'boolean' &&
-            typeof o.algorithm?.name === 'string' &&
-            typeof o.type === 'string'
+            o !== null &&
+            typeof (o as Record<string, unknown>).extractable === 'boolean' &&
+            typeof (o as Record<string, unknown>)?.algorithm === 'object' &&
+            typeof ((o as Record<string, unknown>)?.algorithm as Record<string, unknown>)?.name ===
+                'string' &&
+            typeof (o as Record<string, unknown>).type === 'string'
         );
     } else {
         const {
@@ -85,7 +101,10 @@ const isKey = async (o): Promise<boolean> => {
               ? o instanceof KeyObject
               : isCryptoKey
                 ? isCryptoKey(o)
-                : typeof o === 'object' && o.constructor !== Object && typeof o.type === 'string';
+                : typeof o === 'object' &&
+                  o !== null &&
+                  (o as Record<string, unknown>).constructor !== Object &&
+                  typeof (o as Record<string, unknown>).type === 'string';
     }
 };
 
@@ -96,8 +115,8 @@ async function importKey(
     const {alg} = is ? await exportKey(jwk as KeyLike | Uint8Array) : (jwk as JWK);
 
     return {
-        key: is ? (jwk as KeyLike | Uint8Array) : await importJWK(jwk as JWK, alg),
-        alg,
+        key: is ? (jwk as KeyLike | Uint8Array) : await importJWK(jwk as JWK, alg ?? ''),
+        alg: alg ?? '',
     };
 }
 
@@ -105,7 +124,7 @@ async function exportKey(key: KeyLike | Uint8Array | JWK, priv: boolean = false)
     const jwk: JWK = (await isKey(key))
         ? await exportJWK(key as KeyLike | Uint8Array)
         : (key as JWK);
-    if (!jwk.kid) jwk.kid = await calculateJwkThumbprint(jwk);
+    if (!jwk.kid) jwk.kid = ((await calculateJwkThumbprint(jwk)) as string) ?? undefined;
     if (priv) return jwk;
     const {d, p, q, dp, dq, qi, ...publicJwk} = jwk; // eslint-disable-line @typescript-eslint/no-unused-vars
     return publicJwk;
@@ -194,11 +213,11 @@ async function signEncrypt(
     options?: {encrypt?: Parameters<typeof encrypt>[4]; sign?: Parameters<typeof sign>[2]},
 ): ReturnType<typeof encrypt> {
     return encrypt(
-        (await sign(message, mlsk, options?.sign)) as string,
-        mlekPub,
-        protectedHeader,
-        unprotectedHeader,
-        options?.encrypt,
+        (await sign(message, mlsk, options?.sign!)) as string,
+        mlekPub!,
+        protectedHeader!,
+        unprotectedHeader!,
+        options?.encrypt!,
     );
 }
 
@@ -207,7 +226,7 @@ async function decryptVerify(
     mlskPub: Parameters<typeof verify>[1],
     mlek?: Parameters<typeof decrypt>[1],
 ): ReturnType<typeof verify> {
-    return verify((await decrypt(message, mlek)) as Uint8Array, mlskPub);
+    return verify((await decrypt(message, mlek!)) as Uint8Array, mlskPub);
 }
 
 export default async function jose({sign, encrypt}: {sign: KeySpec; encrypt: KeySpec}): Promise<{
@@ -219,7 +238,10 @@ export default async function jose({sign, encrypt}: {sign: KeySpec; encrypt: Key
         unprotectedHeader?: Parameters<typeof signEncrypt>[4],
         options?: Parameters<typeof signEncrypt>[5],
     ) => unknown;
-    decryptVerify: (msg, key) => unknown;
+    decryptVerify: (
+        msg: Parameters<typeof decryptVerify>[0],
+        key: Parameters<typeof importKey>[0],
+    ) => unknown;
     decrypt: (
         msg: string | GeneralJWE,
         options: unknown,
@@ -232,8 +254,9 @@ export default async function jose({sign, encrypt}: {sign: KeySpec; encrypt: Key
     const mlek = resolvedEncrypt && (await importKey(resolvedEncrypt));
     return {
         keys: {
-            sign: resolvedSign && (await exportKey(resolvedSign)),
-            encrypt: resolvedEncrypt && (await exportKey(resolvedEncrypt)),
+            sign: (resolvedSign && ((await exportKey(resolvedSign)) as JWK)) || ({} as JWK),
+            encrypt:
+                (resolvedEncrypt && ((await exportKey(resolvedEncrypt)) as JWK)) || ({} as JWK),
         },
         signEncrypt: async (
             msg: Parameters<typeof signEncrypt>[0],
@@ -247,14 +270,17 @@ export default async function jose({sign, encrypt}: {sign: KeySpec; encrypt: Key
                       msg,
                       mlsk,
                       await importKey(key),
-                      protectedHeader,
-                      unprotectedHeader,
+                      protectedHeader!,
+                      unprotectedHeader!,
                       options,
                   )
                 : msg,
-        decryptVerify: async (msg, key) =>
-            mlek ? decryptVerify(msg, await importKey(key), mlek) : msg,
-        decrypt: (msg, options) => (mlek ? decrypt(msg, mlek, options) : msg),
+        decryptVerify: async (
+            msg: Parameters<typeof decryptVerify>[0],
+            key: Parameters<typeof importKey>[0],
+        ) => (mlek ? decryptVerify(msg, await importKey(key), mlek!) : msg),
+        decrypt: (msg, options) =>
+            mlek ? decrypt(msg, mlek!, options as {complete?: unknown} | undefined) : msg,
         verify: async (msg, key) => verify(msg, await importKey(key)),
     };
 }

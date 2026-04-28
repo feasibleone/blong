@@ -8,14 +8,14 @@ import load from './loadServer.ts';
  * Runs the standard platform lifecycle: start → test → (CI) stop.
  */
 export async function runPlatform(serverDef: SolutionFactory, name: string): Promise<void> {
-    const platform = await load(serverDef as Parameters<typeof load>[0], name, name, [
+    const platform = await load(serverDef as unknown as Parameters<typeof load>[0], name, name, [
         'microservice',
         'integration',
         'dev',
     ]);
-    await platform.start();
-    await platform.test();
-    if (process.env.CI) await platform.stop();
+    await platform.start!({});
+    await platform.test!(undefined);
+    if (process.env.CI) await platform.stop!();
 }
 
 /**
@@ -51,8 +51,8 @@ export async function autoRun(options: {cwd: string; target?: string}): Promise<
             load(serverDef, name, name, ['microservice', 'integration', 'dev']),
             load(browserDef, name, name, ['microservice', 'integration', 'dev']),
         ]);
-        for (const platform of platforms) await platform.start();
-        await platforms[1].test();
+        for (const platform of platforms) await platform.start({});
+        await platforms[1].test!(undefined);
         if (process.env.CI) for (const platform of platforms) await platform.stop();
     } else if (existsSync(serverFile)) {
         const {default: serverDef} = await import(serverFile);

@@ -4,7 +4,7 @@ export default handler(({config, lib: {timing}}) => {
     let id = 1;
     return {
         send(
-            msg: {$http: {method?: string; headers?: unknown; path?: unknown}},
+            msg: {$http?: {method?: string; headers?: unknown; path?: unknown}},
             $meta: IMeta,
             context: unknown,
         ) {
@@ -16,7 +16,7 @@ export default handler(({config, lib: {timing}}) => {
                 headers: $http?.headers,
                 path:
                     $http?.path ??
-                    `/rpc/${$meta.method.replace(/\//gi, '%2F').replace(/\./g, '/')}`,
+                    `/rpc/${$meta.method!.replace(/\//gi, '%2F').replace(/\./g, '/')}`,
                 responseType: 'json',
                 // body,
                 // form,
@@ -27,7 +27,7 @@ export default handler(({config, lib: {timing}}) => {
                     params,
                     expect: $meta.expect,
                     ...($meta.timeout &&
-                        $meta.timeout[0] && {timeout: timing.spare($meta.timeout, config.latency)}),
+                        $meta.timeout[0] && {timeout: timing.spare($meta.timeout, config.latency as number | undefined)}),
                 },
             };
             return super.send ? super.send(result, $meta, context) : result;

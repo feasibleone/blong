@@ -54,7 +54,7 @@ export default fp<{
                         request.auth = {credentials: {mlek: 'header', mlsk: 'header'}};
                         done();
                     } else {
-                        return this.verifyBearerAuth(request, reply, done);
+                        return this?.verifyBearerAuth?.(request, reply, done);
                     }
                 } else done();
             },
@@ -109,28 +109,24 @@ export default fp<{
         fastify.decorateReply('unstate', function (name: string) {
             return this.clearCookie(name);
         });
-        fastify.decorateReply(
+        (fastify.decorateReply as (name: string, fn: unknown) => void)(
             'state',
-            function (
-                name: string,
-                value: string,
-                {
-                    // https://hapi.dev/api/?v=21.3.2#server.state()
+            function (this: FastifyReply, name: string, value: string, options: unknown) {
+                const {
                     ttl: maxAge,
                     isSecure: secure,
                     isHttpOnly: httpOnly,
                     isSameSite: sameSite,
                     path,
                     domain,
-                }: {
+                } = options as {
                     ttl?: number;
                     isSecure?: boolean;
                     isHttpOnly?: boolean;
                     isSameSite?: boolean;
                     path?: string;
                     domain?: string;
-                },
-            ) {
+                };
                 return this.setCookie(
                     name,
                     value,

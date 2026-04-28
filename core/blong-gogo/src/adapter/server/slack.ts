@@ -30,13 +30,13 @@ export default adapter<IConfig>(({utError}) => {
         },
         start() {
             this.config.context = {
-                slack: new IncomingWebhook(this.config.slack.webhookUrl) as any,
+                slack: new IncomingWebhook(this.config.slack.webhookUrl!) as any,
             };
             super.connect();
             return super.start();
         },
         async stop(...params: unknown[]) {
-            this.config.context = null;
+            this.config.context = {};
             return await super.stop(...params);
         },
         async exec(
@@ -54,7 +54,7 @@ export default adapter<IConfig>(({utError}) => {
             } & Record<string, unknown>,
             {method}: IMeta,
         ) {
-            const [, , operation] = method.split('.');
+            const [, , operation] = method!.split('.');
             switch (operation) {
                 case 'send':
                 case 'post':
@@ -92,7 +92,7 @@ export default adapter<IConfig>(({utError}) => {
                     if (unfurlMedia !== undefined) payload.unfurl_media = unfurlMedia;
 
                     try {
-                        return await this.config.context.slack.send(payload);
+                        return await this.config.context.slack!.send(payload);
                     } catch (error) {
                         throw _errors['slack.generic'](error);
                     }

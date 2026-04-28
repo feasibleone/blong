@@ -11,7 +11,7 @@ export default validation(({lib: {type}}) =>
                 })),
                 customerId: type.String(),
             }),
-            result: type.Any(),
+            result: type.Unknown(),
         };
     },
 );

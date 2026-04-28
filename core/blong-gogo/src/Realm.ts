@@ -1,4 +1,4 @@
-import type {IAdapterFactory, ILog, IRegistry} from '@feasibleone/blong/types';
+import type {IAdapterFactory, IAdapterRegistry, ILog, IRegistry} from '@feasibleone/blong/types';
 
 export interface IRealm {
     addModule: (name: string, mod: IRegistry) => void;
@@ -26,9 +26,9 @@ export default class RealmImpl implements IRealm {
         platform: 'server' | 'browser',
     ) {
         this.#config = config;
-        this.#registry = registry;
-        this.#log = log;
-        this.#logger = this.#log?.logger(config[platform]?.realm?.logLevel, {
+        this.#registry = registry!;
+        this.#log = log!;
+        this.#logger = this.#log?.logger(config[platform]?.realm?.logLevel ?? 'info', {
             name: config.name,
             context: `${platform}`,
         });
@@ -46,19 +46,19 @@ export default class RealmImpl implements IRealm {
     public addModule(name: string | symbol, mod: IRegistry): void {
         this.#logger?.debug?.(
             {$meta: {mtid: 'event', method: 'module.add'}},
-            `${this.#config.name}.${name}`,
+            `${this.#config.name}.${String(name)}`,
         );
         this._addModuleInternal(name, mod);
     }
 
     public addLayer(layerName: string, layer: IRealm): void {
         // this._addModuleInternal(this.#config.name, layer);
-        const source = [];
+        const source: string[] = [];
         Object.entries(layer).forEach(([itemName, item]) => {
             if (item.source) source.push(item.source);
             const id = `${this.#config.name}.${itemName}`;
             if (typeof item === 'object' && 'port' in item)
-                this.#registry.ports.set(id, item.port as IAdapterFactory);
+                this.#registry.ports.set(id, item.port as unknown as IAdapterRegistry);
             else if (typeof item === 'object' && 'methods' in item) {
                 const methods = this.#registry.methods.get(id);
                 if (methods) methods.push(...item.methods);

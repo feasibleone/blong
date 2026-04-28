@@ -20,12 +20,12 @@ export interface IConfig {
         namespace?: string;
     };
     context: {
-        coreV1Api: k8s.CoreV1Api;
-        appsV1Api: k8s.AppsV1Api;
-        networkingV1Api: k8s.NetworkingV1Api;
-        rbacV1Api: k8s.RbacAuthorizationV1Api;
-        customObjectsApi: k8s.CustomObjectsApi;
-        watcher: k8s.Watch;
+        coreV1Api?: k8s.CoreV1Api;
+        appsV1Api?: k8s.AppsV1Api;
+        networkingV1Api?: k8s.NetworkingV1Api;
+        rbacV1Api?: k8s.RbacAuthorizationV1Api;
+        customObjectsApi?: k8s.CustomObjectsApi;
+        watcher?: k8s.Watch;
     };
 }
 
@@ -117,7 +117,7 @@ export default adapter<IConfig>(({utError}) => {
             try {
                 // No specific cleanup needed for k8s clients
             } finally {
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;
@@ -143,7 +143,7 @@ export default adapter<IConfig>(({utError}) => {
                 | unknown[],
             {method}: IMeta,
         ) {
-            const [, _resourceType, operation] = method.split('.');
+            const [, _resourceType, operation] = method!.split('.');
             const namespace =
                 (!Array.isArray(params) && params.namespace) ||
                 this.config.k8s.namespace ||
@@ -170,7 +170,7 @@ export default adapter<IConfig>(({utError}) => {
                     case 'persistentvolumes':
                     case 'persistentvolumeclaim':
                     case 'persistentvolumeclaims':
-                        return this.config.context.coreV1Api;
+                        return this.config.context.coreV1Api!;
                     case 'deployment':
                     case 'deployments':
                     case 'replicaset':
@@ -179,12 +179,12 @@ export default adapter<IConfig>(({utError}) => {
                     case 'daemonsets':
                     case 'statefulset':
                     case 'statefulsets':
-                        return this.config.context.appsV1Api;
+                        return this.config.context.appsV1Api!;
                     case 'ingress':
                     case 'ingresses':
                     case 'networkpolicy':
                     case 'networkpolicies':
-                        return this.config.context.networkingV1Api;
+                        return this.config.context.networkingV1Api!;
                     case 'role':
                     case 'roles':
                     case 'rolebinding':
@@ -193,9 +193,9 @@ export default adapter<IConfig>(({utError}) => {
                     case 'clusterroles':
                     case 'clusterrolebinding':
                     case 'clusterrolebindings':
-                        return this.config.context.rbacV1Api;
+                        return this.config.context.rbacV1Api!;
                     default:
-                        return this.config.context.coreV1Api;
+                        return this.config.context.coreV1Api!;
                 }
             };
             const getResourceType = (resource: string): string => {
@@ -299,8 +299,9 @@ export default adapter<IConfig>(({utError}) => {
                 options: Record<string, unknown> = {},
             ): Promise<unknown> => {
                 const methodName = getMethodName(verb);
-                if (typeof api[methodName] === 'function') {
-                    return await api[methodName](buildOptions(options));
+                const apiRecord = api as unknown as Record<string, unknown>;
+                if (typeof apiRecord[methodName] === 'function') {
+                    return await (apiRecord[methodName] as (opts: unknown) => Promise<unknown>)(buildOptions(options));
                 }
                 throw _errors['k8s.invalid']();
             };
@@ -420,22 +421,22 @@ export default adapter<IConfig>(({utError}) => {
                         if (resourceType === 'deployment' || resourceType === 'deployments') {
                             // First get the current deployment
                             const current =
-                                await this.config.context.appsV1Api.readNamespacedDeployment({
+                                await this.config.context.appsV1Api!.readNamespacedDeployment({
                                     name,
                                     namespace,
                                 });
 
                             // Update replicas and replace
-                            const updatedDeployment = {
+                            const updatedDeployment: k8s.V1Deployment = {
                                 ...current,
                                 spec: {
                                     ...current.spec,
                                     replicas: replicas as number,
-                                },
+                                } as k8s.V1DeploymentSpec,
                             };
 
                             const result =
-                                await this.config.context.appsV1Api.replaceNamespacedDeployment({
+                                await this.config.context.appsV1Api!.replaceNamespacedDeployment({
                                     name,
                                     namespace,
                                     body: updatedDeployment,
@@ -491,11 +492,11 @@ export default adapter<IConfig>(({utError}) => {
                         };
                         createEventPromise();
 
-                        const watch = await this.config.context.watcher.watch(
+                        const watch = await this.config.context.watcher!.watch(
                             watchPath,
                             {fieldSelector, resourceVersion, labelSelector},
                             (type, object) => {
-                                this.log.debug?.({object}, `Event: ${type}`);
+                                this.log?.debug?.({object}, `Event: ${type}`);
                                 if (type === 'ERROR') {
                                     eventReject(new Error(object.message || 'Watch error event'));
                                 } else eventResolve({type, object});

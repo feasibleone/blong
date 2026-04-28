@@ -5,7 +5,7 @@ import joseFactory from '../../../jose.ts';
 
 const isBrowser: boolean = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
-const key = async (alg, options): Promise<object> => ({
+const key = async (alg: string, options?: object): Promise<object> => ({
     alg,
     ...(await exportJWK((await generateKeyPair(alg, options)).privateKey)),
 });
@@ -21,31 +21,41 @@ export default handler<{
     token: unknown;
     tokenExpire: number;
 }>(({config: {token, tokenExpire}}) => {
-    let jose,
+    let jose: Awaited<ReturnType<typeof joseFactory>> | undefined,
         serverKey: {encrypt: unknown; sign: unknown},
-        pending: {body?: unknown},
-        refreshToken: string,
+        pending: Promise<{body?: unknown}> | null,
+        refreshToken: string | null,
         refreshTokenExpire: number;
 
-    const encrypt = (msg, protectedHeader?): unknown => {
+    const encrypt = (msg: unknown, protectedHeader?: object): unknown => {
         return jose
-            ? global.window && msg && msg.formData instanceof window.FormData
+            ? global.window &&
+              msg &&
+              (msg as Record<string, unknown>).formData instanceof window.FormData
                 ? msg
-                : jose.signEncrypt(msg, serverKey.encrypt, protectedHeader)
+                : jose.signEncrypt(
+                      msg as object,
+                      serverKey.encrypt as Parameters<typeof jose.signEncrypt>[1],
+                      protectedHeader,
+                  )
             : msg;
     };
 
     const decrypt = async (object: object, property: string): Promise<void> => {
-        if (object?.[property] && typeof object[property] !== 'string') {
+        const rec = object as Record<string, unknown>;
+        if (rec?.[property] && typeof rec[property] !== 'string') {
             if (
                 typeof window === 'object' &&
-                'result' in object &&
-                object.result instanceof window.Blob
+                'result' in rec &&
+                rec.result instanceof window.Blob
             ) {
-                object[property] = object.result;
+                rec[property] = rec.result;
             } else if (jose) {
-                const decrypted = await jose.decryptVerify(object[property], serverKey.sign);
-                if (object) object[property] = decrypted;
+                const decrypted = await jose.decryptVerify(
+                    rec[property] as Parameters<typeof jose.decryptVerify>[0],
+                    serverKey.sign as Parameters<typeof jose.decryptVerify>[1],
+                );
+                if (rec) rec[property] = decrypted;
             }
         }
     };
@@ -54,7 +64,7 @@ export default handler<{
         token = where.access_token;
         if (where.refresh_token) {
             refreshToken = where.refresh_token;
-            refreshTokenExpire = Date.now() + where.refresh_token_expires_in * 1000 + 5000; // give it extra 5 seconds validity
+            refreshTokenExpire = Date.now() + where.refresh_token_expires_in! * 1000 + 5000; // give it extra 5 seconds validity
         }
     }
 
@@ -65,14 +75,17 @@ export default handler<{
         refreshTokenExpire = 0;
     }
 
-    async function refresh(): Promise<void> {
+    async function refresh(this: {
+        exec?(...params: unknown[]): Promise<unknown>;
+        error?(error: unknown, $meta?: unknown): void;
+    }): Promise<void> {
         const now = Date.now();
         if (token && tokenExpire < now) {
             if (refreshToken && refreshTokenExpire > now) {
                 try {
                     pending =
                         pending ||
-                        this.exec(
+                        (this.exec!(
                             {
                                 path: '/rpc/login/token',
                                 method: 'POST',
@@ -82,14 +95,14 @@ export default handler<{
                                 },
                             },
                             {},
-                        );
-                    const result = await pending;
+                        ) as Promise<{body?: unknown}>);
+                    const result = await pending!;
                     if (pending !== null) pending = null;
                     readToken(result.body as IToken);
                 } catch (error) {
                     pending = null;
                     clearTokens();
-                    this.error(error);
+                    this.error!(error);
                 }
             } else clearTokens();
         }
@@ -97,17 +110,17 @@ export default handler<{
 
     return {
         async ready() {
-            let mleKey = isBrowser && JSON.parse(window.localStorage.getItem('mle-jose'));
+            let mleKey = isBrowser && JSON.parse(window.localStorage.getItem('mle-jose') || 'null');
             if (!mleKey) {
                 const {body: {sign, encrypt} = {}}: {body?: {sign?: unknown; encrypt?: unknown}} =
-                    await this.exec(
+                    (await (this as {exec?(...params: unknown[]): Promise<unknown>}).exec!(
                         {
                             method: 'GET',
                             responseType: 'json',
                             path: '/rpc/login/.well-known/mle',
                         },
                         {},
-                    );
+                    )) as {body?: {sign?: unknown; encrypt?: unknown}};
                 if (sign && encrypt) {
                     const signKey = await key('ES384', {crv: 'P-384', extractable: true});
                     const encryptKey = await key('ECDH-ES+A256KW', {
@@ -149,7 +162,7 @@ export default handler<{
             $meta: unknown,
         ) {
             let {$http, ...rest} = params; // eslint-disable-line prefer-const
-            params = await encrypt(params instanceof Array ? params : rest);
+            params = (await encrypt(params instanceof Array ? params : rest)) as typeof params;
             await refresh.call(this);
             if (token) {
                 $http = $http || {};
@@ -180,13 +193,13 @@ export default handler<{
         async loginTokenCreateRequestSend(params: {$http?: unknown}, $meta: unknown) {
             if (jose) {
                 const {$http, ...rest} = params;
-                params = await encrypt(
+                params = (await encrypt(
                     rest,
                     jose && {
                         mlsk: jose.keys.sign,
                         mlek: jose.keys.encrypt,
                     },
-                );
+                )) as typeof params;
                 if ($http && params) params.$http = $http;
             }
             return super.send(params, $meta);

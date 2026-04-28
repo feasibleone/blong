@@ -1,11 +1,13 @@
 import type {
+    Adapter,
     Config,
     Errors,
-    IAdapterFactory,
     IApi,
+    IContext,
     IErrorMap,
     IMeta,
     ITypedError,
+    PortHandlerBound,
 } from '@feasibleone/blong/types';
 import type net from 'node:net';
 import PQueue from 'p-queue';
@@ -70,14 +72,20 @@ const reserved: string[] = [
  * (`Object.setPrototypeOf(current, baseInstance)`), preserving the existing
  * hot-reload semantics.
  */
-export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown>> {
+type AdapterHandlerContext = {
+    importedMap: Map<string, object>;
+    imported: object;
+    config: {namespace?: string | string[]};
+};
+
+export class AdapterBase<T, C extends IContext> {
     errors = _errors;
     exec: unknown = null;
-    imported: object = {};
+    imported: Record<string, PortHandlerBound> = {};
     config: Config<T, C> = {} as Config<T, C>;
     configBase: string;
     log: unknown = null;
-    importedMap?: Map<string, object>;
+    importedMap?: Map<string, Record<string, (...args: unknown[]) => unknown>>;
 
     // These are prefixed with _ rather than using # private class fields.
     // The adapter uses Object.setPrototypeOf(current, base) to set the base as
@@ -98,9 +106,9 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     _createLog: IApi['createLog'];
     _attachCheckpoint: IApi['attachCheckpoint'];
     _activationNames: string[];
-    _queue: PQueue;
+    _queue?: PQueue;
     _portLoop: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    _resolveConnected: (value: boolean) => void;
+    _resolveConnected?: (value: boolean) => void;
     _connected: Promise<boolean>;
 
     constructor(
@@ -128,15 +136,16 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         this._createLog = api.createLog;
         this._attachCheckpoint = api.attachCheckpoint;
         this._activationNames = activationNames;
-        let resolveConnected: (value: boolean) => void;
         this._connected = new Promise<boolean>(resolve => {
-            resolveConnected = resolve;
+            this._resolveConnected = resolve;
         });
-        this._resolveConnected = resolveConnected;
     }
 
     activeConfig(): object {
-        return ConfigRuntime.mergeActivationConfig(this, this._activationNames);
+        return ConfigRuntime.mergeActivationConfig(
+            this as {activation?: Record<string, unknown>},
+            this._activationNames,
+        );
     }
 
     async init(...configs: object[]): Promise<void> {
@@ -175,16 +184,18 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         }
     }
 
-    findValidation($meta: IMeta): unknown {
+    findValidation(): unknown {
         return null;
     }
 
     handles(name: string): boolean {
         if (reserved.includes(name)) return true;
         const id = this.config.id.replace(/\./g, '-');
-        return []
+        return ([] as (string | RegExp)[])
             .concat(this.config.namespace || this.config.imports || id)
-            .some(namespace => name.startsWith(namespace));
+            .some(namespace =>
+                typeof namespace === 'string' ? name.startsWith(namespace) : namespace.test(name),
+            );
     }
 
     methodPath(methodName: string): string {
@@ -195,9 +206,9 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         return methodName;
     }
 
-    getConversion($meta: IMeta, type: 'send' | 'receive'): {fn: unknown; name: string} {
+    getConversion($meta: IMeta | false, type: 'send' | 'receive'): {fn: unknown; name: string} {
         let fn;
-        let name: string;
+        let name: string = '';
         if ($meta) {
             if ($meta.method) {
                 const path = this._getPath($meta.method);
@@ -238,18 +249,15 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
             $meta: {mtid: 'event', method: `adapter.${event}`},
             ...data,
         });
-        const eventHandlers = [];
+        const eventHandlers: Array<(...args: unknown[]) => unknown> = [];
         this.importedMap?.forEach(
             imp =>
-                Object.prototype.hasOwnProperty.call(imp, event) &&
-                eventHandlers.push(imp[event]),
+                Object.prototype.hasOwnProperty.call(imp, event) && eventHandlers.push(imp[event]),
         );
         let result: unknown = data;
         switch (mapper) {
             case 'asyncMap':
-                result = await Promise.all(
-                    eventHandlers.map(handler => handler.call(this, data)),
-                );
+                result = await Promise.all(eventHandlers.map(handler => handler.call(this, data)));
                 break;
             case 'reduce':
             default:
@@ -269,11 +277,11 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
     }
 
     async request(...params: unknown[]): Promise<unknown> {
-        return this._queue.add(this._portLoop(params, true));
+        return this._queue!.add(this._portLoop(params, true));
     }
 
     async publish(...params: unknown[]): Promise<unknown> {
-        await this._queue.add(this._portLoop(params, false));
+        await this._queue!.add(this._portLoop(params, false));
         return [true, params[params.length - 1]];
     }
 
@@ -283,15 +291,25 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
 
     forNamespaces<R>(reducer: (prev: R, current: unknown) => R, initial: R): R {
         const id = this.config.id.replace(/\./g, '-');
-        return []
+        return ([] as (string | RegExp)[])
             .concat(this.config.namespace || this.config.imports || id)
             .reduce(reducer.bind(this), initial);
     }
 
     async start(): Promise<unknown> {
-        await this._api.attachHandlers(this, this.config.imports, true);
+        await this._api.attachHandlers(
+            this as unknown as AdapterHandlerContext,
+            this.config.imports,
+            true,
+        );
         const {req, pub} = this.forNamespaces(
-            (prev, next) => {
+            (
+                prev: {
+                    req: Record<string, (...args: unknown[]) => unknown>;
+                    pub: Record<string, (...args: unknown[]) => unknown>;
+                },
+                next,
+            ) => {
                 if (typeof next === 'string') {
                     prev.req[`${next}.request`] = this.request.bind(this);
                     prev.pub[`${next}.publish`] = this.publish.bind(this);
@@ -306,8 +324,11 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         return this.event('start', {configBase: this.configBase, config});
     }
 
-    async link(patterns: unknown, target: {imported?: object} = {}): Promise<object> {
-        await this._api.attachHandlers(target, patterns, false);
+    async link(
+        patterns: (string | RegExp)[] | string | RegExp,
+        target: AdapterHandlerContext = {} as unknown as AdapterHandlerContext,
+    ): Promise<object> {
+        await this._api.attachHandlers(target, patterns);
         return target.imported;
     }
 
@@ -323,14 +344,11 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
         }
     }
 
-    connect(
-        what?: net.Socket | (() => void),
-        context?: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-    ): void {
+    connect(what?: net.Socket | (() => void), context?: C): void {
         what ??= this.handle.bind(this);
         context ??= this.config.context;
         this._portLoop = loop(what, this as any, context); // eslint-disable-line @typescript-eslint/no-explicit-any
-        this._resolveConnected(true);
+        this._resolveConnected?.(true);
     }
 
     async connected(): Promise<boolean> {
@@ -349,26 +367,26 @@ export class AdapterBase<T = Record<string, unknown>, C = Record<string, unknown
  * placed at the end of the handler prototype chain.  This preserves the
  * constraint that realms/solutions never depend on blong-gogo.
  */
-export default async function adapter<T, C>(
+export default async function adapter<T, C extends IContext>(
     api: IApi,
     configBase: string,
     activationNames: string[] = [],
-): Promise<ReturnType<IAdapterFactory>> {
+): Promise<Adapter<T, C>> {
     const {adapter: adapterFactory, utError, handlers, remote, rpc, local, registry, type} = api;
     _errors ||= utError.register(errorMap);
 
     const base = new AdapterBase<T, C>(api, configBase, activationNames);
 
-    const result = handlers({utError, remote, type});
+    const result = handlers!({utError, remote, type});
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapterFactory(current.extends)({utError, remote, rpc, local, registry})
+            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry})
             : current.extends({utError, remote, rpc, local, registry}));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }
     Object.setPrototypeOf(current, base);
 
-    return result as ReturnType<IAdapterFactory>;
+    return result as Adapter<T, C>;
 }

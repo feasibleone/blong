@@ -32,7 +32,7 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
                 });
             }
 
-            return OpenPage as unknown as React.ComponentType;
+            return OpenPage;
         },
     });
 }

@@ -6,10 +6,10 @@
  * - No automatic sort animation happens (explicit, predictable UX).
  * - Drag data (type, label, sourceId, ...) can be passed to DropZone for validation.
  */
-import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { useCallback, useMemo } from 'react';
-import type { DesignElementType, IDesignElement } from './DesignModeContext.js';
-import { useDesignMode } from './useDesignMode.js';
+import {useDraggable, useDroppable} from '@dnd-kit/core';
+import {useCallback, useMemo} from 'react';
+import type {DesignElementType, IDesignElement} from './DesignModeContext.js';
+import {useDesignMode} from './useDesignMode.js';
 
 export interface IDesignableResult {
     isSelected: boolean;
@@ -45,7 +45,7 @@ export function useDesignable(
 
     const data = useMemo(
         () => ({type, ...extraData}),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line @eslint-react/exhaustive-deps
         [type, JSON.stringify(extraData)],
     );
 
@@ -68,7 +68,7 @@ export function useDesignable(
     const setRef = useCallback(
         (node: Element | null) => {
             setDragRef(node as HTMLElement | null);
-            setDropRef(node);
+            setDropRef(node as HTMLElement | null);
         },
         [setDragRef, setDropRef],
     );

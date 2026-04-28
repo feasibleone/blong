@@ -10,10 +10,10 @@ export interface IConfig {
         topics: string[];
         groupId: string;
     };
-    codec: {
-        new (config: object);
-        encode: (data: object[], $meta, context, log) => string | Buffer;
-        decode: (buff: string | Buffer, $meta, context, log) => object[];
+    codec?: {
+        new (config: object): object;
+        encode: (data: object[], $meta: unknown, context: unknown, log: unknown) => string | Buffer;
+        decode: (buff: string | Buffer, $meta: unknown, context: unknown, log: unknown) => object[];
     };
     context: {
         kafkaStream?: Duplex;
@@ -21,7 +21,7 @@ export interface IConfig {
 }
 
 export default adapter<IConfig>(api => {
-    let stream: Duplex = null;
+    let stream: Duplex | null = null;
 
     return {
         activation: {
@@ -71,7 +71,7 @@ export default adapter<IConfig>(api => {
                 stream?.destroy();
             } finally {
                 stream = null;
-                this.config.context = null;
+                this.config.context = {};
                 result = await super.stop(...params);
             }
             return result;

@@ -266,29 +266,30 @@ export interface IGateway {
 export type Handlers = ((params: {
     remote: unknown;
     lib: object;
-    port: object;
+    port: object | undefined;
     local: object;
     literals: object[];
     gateway: IGateway;
     apiSchema: IApiSchema;
+    attachCheckpoint?: (meta: IMeta) => void;
 }) => void)[];
 
 export interface IRegistry {
-    start: (configOverride?: object) => Promise<IRegistry>;
+    start: (configOverride: object) => Promise<IRegistry>;
     test: (tester?: unknown) => Promise<void>;
     stop: () => Promise<IRegistry>;
-    ports: Map<string, IAdapterFactory>;
+    ports: Map<string, IAdapterRegistry>;
     methods: Map<string, Handlers>;
     modules: Map<string | symbol, IRegistry[]>;
-    createPort: (id: string) => Promise<ReturnType<IAdapterFactory>>;
-    getPort: (id: string) => ReturnType<IAdapterFactory> | undefined;
-    replaceHandlers: (id: string, handlers: object) => Promise<void>;
+    createPort: (id: string) => Promise<Adapter | undefined>;
+    getPort: (id: string) => Adapter | undefined;
+    replaceHandlers: (id: string, handlers: Handlers) => Promise<void>;
     loadApi: (
         id: string,
         def: {
             namespace: Record<string, string | string[]>;
         },
-        source?: string,
+        source: string,
     ) => Promise<void>;
     connected: () => Promise<boolean>;
 }
@@ -296,15 +297,7 @@ export interface IRegistry {
 export interface IApi {
     id?: string;
     type: typeof Type;
-    adapter: (
-        id: string,
-    ) => (api: {
-        utError: IError;
-        remote: IRemote;
-        rpc: IRpcServer;
-        local: ILocal;
-        registry: IRegistry;
-    }) => object;
+    adapter: (id: string) => IAdapterRegistry | undefined;
     utError: IError;
     errors: IErrorFactory;
     gateway: unknown;
@@ -323,7 +316,15 @@ export interface IApi {
         methodName: string,
         options?: object,
     ) => (...params: unknown[]) => Promise<unknown>;
-    attachHandlers: (target: object, patterns: unknown, adapter?: boolean) => unknown;
+    attachHandlers: (
+        target: {
+            importedMap: Map<string, object>;
+            imported: object;
+            config: {namespace?: string | string[]};
+        },
+        patterns: (string | RegExp)[] | string | RegExp,
+        adapter?: boolean,
+    ) => unknown;
     createLog: ILog['logger'];
     attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {utError: IError; remote: IRemote; type: typeof Type}) => {
@@ -349,6 +350,21 @@ export interface IErrorMap {
           };
 }
 
+export type Adapter<T = Record<string, unknown>, C = Record<string, unknown>> = IAdapter<T, C> &
+    Pick<
+        Required<IAdapter<T, C>>,
+        | 'init'
+        | 'start'
+        | 'stop'
+        | 'ready'
+        | 'config'
+        | 'imported'
+        | 'errors'
+        | 'error'
+        | 'findValidation'
+        | 'getConversion'
+        | 'dispatch'
+    >;
 export interface IAdapter<T, C> {
     validation?: TSchema;
     config?: Config<T, C>;
@@ -356,60 +372,63 @@ export interface IAdapter<T, C> {
     configBase?: string;
     log?: ILogger;
     errors?: Errors<IErrorMap>;
-    imported?: ReturnType<IAdapterFactory<T, C>>;
+    imported?: Record<string, PortHandlerBound>;
     importedMap?: Map<string, IRemoteHandler>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
-    activeConfig?: (this: ReturnType<IAdapterFactory<T, C>>) => Partial<Config<T, C>>;
-    init?: (
-        this: ReturnType<IAdapterFactory<T, C>>,
-        ...config: Partial<Config<T, C>>[]
-    ) => Promise<void>;
-    start?: (this: ReturnType<IAdapterFactory<T, C>>, configOverride: object) => Promise<object>;
-    ready?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
-    stop?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<object>;
-    connected?: (this: ReturnType<IAdapterFactory<T, C>>) => Promise<boolean>;
-    error?: (error: Error, $meta: IMeta) => void;
-    pack?: (
-        this: ReturnType<IAdapterFactory<T, C>>,
-        packet: {size: number; data: Buffer},
-    ) => Buffer;
-    unpackSize?: (
-        this: ReturnType<IAdapterFactory<T, C>>,
-        buffer: Buffer,
-    ) => {size: number; data: Buffer};
-    unpack?: (
-        this: ReturnType<IAdapterFactory<T, C>>,
-        buffer: Buffer,
-        options?: {size: number},
-    ) => Buffer;
-    encode?: (data: unknown, $meta: IMeta, context: object, log: ILogger) => string | Buffer;
-    decode?: (buff: string | Buffer, $meta: IMeta, context: object, log: ILogger) => object[];
-    request?: (...params: unknown[]) => Promise<unknown>;
-    publish?: () => Promise<unknown>;
-    drain?: () => void;
-    findValidation?: (this: ReturnType<IAdapterFactory<T, C>>, $meta: IMeta) => () => object;
-    getConversion?: (
-        this: ReturnType<IAdapterFactory<T, C>>,
-        $meta: IMeta,
-        type: 'send' | 'receive',
-    ) => {name: string; fn: () => object};
-    findHandler?: (this: ReturnType<IAdapterFactory<T, C>>, name: string) => () => unknown;
-    handles?: (this: ReturnType<IAdapterFactory<T, C>>, name: string) => boolean;
-    forNamespaces?: <T>(reducer: (prev: T, current: unknown) => T, initial: T) => T;
-    methodPath?: (name: string) => string;
-    dispatch?: (...params: unknown[]) => Promise<unknown>;
-    exec?: (this: ReturnType<IAdapterFactory<T, C>>, ...params: unknown[]) => Promise<unknown>;
-    bytesSent?: (count: number) => void;
-    bytesReceived?: (count: number) => void;
-    msgSent?: (count: number) => void;
-    msgReceived?: (count: number) => void;
+    activeConfig?(this: Adapter<T, C>): Partial<Config<T, C>>;
+    init?(this: Adapter<T, C>, ...config: unknown[]): Promise<unknown>;
+    start?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    ready?(this: Adapter<T, C>): Promise<unknown>;
+    stop?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    link?(
+        this: Adapter<T, C>,
+        patterns: (string | RegExp)[] | string | RegExp,
+        target: object,
+    ): Promise<{
+        importedMap?: Map<string, object>;
+        imported?: object;
+        config?: {namespace?: string | string[]};
+    }>;
+    connected?(this: Adapter<T, C>): Promise<boolean>;
+    error?(error: unknown, $meta: unknown): void;
+    pack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
+    unpackSize?(this: Adapter<T, C>, ...params: unknown[]): unknown;
+    unpack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
+    encode?(
+        data: unknown,
+        $meta: unknown,
+        context: unknown,
+        log: unknown,
+    ): Promise<string | Buffer>;
+    decode?(
+        buff: string | Buffer,
+        $meta: unknown,
+        context: unknown,
+        log: unknown,
+    ): Promise<object[]>;
+    request?(...params: unknown[]): Promise<unknown>;
+    publish?(): Promise<unknown>;
+    drain?(): void;
+    findValidation?(this: Adapter<T, C>, $meta: unknown): (...params: unknown[]) => object;
+    getConversion?(
+        this: Adapter<T, C>,
+        $meta: unknown,
+        type: string,
+    ): {name: string; fn: (...params: unknown[]) => Promise<object>};
+    findHandler?(this: Adapter<T, C>, name: string): () => unknown;
+    handles?(this: Adapter<T, C>, name: string): boolean;
+    forNamespaces?<U>(reducer: (prev: U, current: unknown) => U, initial: U): U;
+    methodPath?(name: string): string;
+    dispatch?(...params: unknown[]): Promise<unknown>;
+    exec?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    bytesSent?(count: number): void;
+    bytesReceived?(count: number): void;
+    msgSent?(count: number): void;
+    msgReceived?(count: number): void;
     isConnected?: Promise<boolean>;
-    event?: (name: string, params?: unknown) => Promise<object>;
-    handle?: (...params: unknown[]) => Promise<unknown>;
-    connect?: (
-        what: unknown,
-        context: {requests: unknown; waiting: unknown; buffer: unknown},
-    ) => void;
+    event?(name: string, params?: unknown): Promise<object>;
+    handle?(...params: unknown[]): Promise<unknown>;
+    connect?(what: unknown, context: unknown): void;
     /**
      * Optional lifecycle hook called when configuration changes.
      * When present, the framework calls this instead of a full stop+start cycle.
@@ -421,16 +440,30 @@ export interface IAdapter<T, C> {
      * @param next   The full new effective config snapshot (via proxy)
      * @param prev   The full previous effective config snapshot
      */
-    configChanged?: (
-        diff: Map<string, {prev: unknown; next: unknown}>,
-        next: object,
-        prev: object,
-    ) => Promise<void>;
+    configChanged?(
+        this: Adapter<T, C>,
+        diff: unknown,
+        next: unknown,
+        prev?: unknown,
+    ): Promise<void>;
+    /** Allow arbitrary extra methods on adapter definitions (e.g. authenticate) */
+    [key: string]: unknown;
 }
 
 export interface IAdapterFactory<T = Record<string, unknown>, C = Record<string, unknown>> {
     config?: Config<T, C> | false;
     (api: IApi): IAdapter<T, C>;
+}
+
+export interface IAdapterRegistry {
+    config: unknown;
+    (api: {
+        utError: IError;
+        remote: IRemote;
+        rpc: IRpcServer;
+        local: ILocal;
+        registry: IRegistry;
+    }): Promise<Adapter>;
 }
 
 export interface IMeta {
@@ -444,7 +477,7 @@ export interface IMeta {
     expect?: string[] | string;
     opcode?: string;
     source?: string;
-    forward?: object;
+    forward?: Record<string, string>;
     httpResponse?: {
         type?: string;
         redirect?: string;
@@ -490,16 +523,16 @@ export interface IMeta {
     deviceId?: string | string[];
     latitude?: string | string[];
     longitude?: string | string[];
-    conId?: number;
+    conId?: string | number;
     dispatch?: (
         msg?: object,
         $meta?: IMeta,
     ) => [msg: object, $meta: IMeta] | boolean | void | Promise<boolean>;
     reply?: unknown;
-    timeout?: number;
+    timeout?: HRTime;
     timer?: (
         name?: string,
-        newTime?: HRTime | false,
+        newTime?: HRTime | undefined,
     ) => {
         [name: string]: number;
     };
@@ -511,16 +544,17 @@ export interface IMeta {
 }
 
 export interface IContext {
-    trace: number;
+    // trace: number;
     session?: {
         [name: string]: unknown;
     };
-    conId?: string;
+    conId?: string | number;
     requests: Map<
         string,
-        {$meta: IMeta; end: (error: Error) => {local: object; literals: object[]}}
+        {$meta: IMeta; end?: (error: Error) => {local: object; literals: object[]}}
     >;
     waiting: Set<(error: Error) => void>;
+    buffer?: Buffer;
 }
 
 export interface ITypedError extends Error {
@@ -578,7 +612,10 @@ export interface IModuleConfig<T extends TSchema = TNever> {
     url: string;
     config?: IActivationConfig<Partial<Static<T>> & Partial<Static<IBaseConfig>>>;
     validation?: T;
-    children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[];
+    children?:
+        | (string | (() => Promise<object>))[]
+        | ((layer: ModuleApi) => unknown)[]
+        | Record<string, () => Promise<unknown>>;
     glob?: Record<string, () => Promise<object>>;
 }
 
@@ -702,17 +739,24 @@ export type ApiDefinition = (blong: IValidationProxy) =>
       };
 
 export type PortHandler<T, C> = <R>(
-    this: ReturnType<IAdapterFactory<T, C>>,
-    params: {},
+    this: Adapter<T, C>,
+    params: object,
     $meta: IMeta,
     context?: IContext,
 ) => Promise<R> | R;
-export type PortHandlerBound = <T>(params: {}, $meta: IMeta, context?: IContext) => Promise<T> | T;
+export type PortHandlerBound = (<T>(
+    params: object,
+    $meta: IMeta,
+    context?: IContext,
+) => Promise<T> | T) & {
+    [name: string]: PortHandlerBound;
+};
 export type LibFn = <T>(...params: unknown[]) => T;
 export interface IRemoteHandler {
     [name: string]: PortHandlerBound;
 }
-export interface ISchema {}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ISchema {} // this is being extended via ambient declarations in ~.schema.ts
 export interface IHandlerProxy<T> {
     config: T;
     handler: {
@@ -769,9 +813,9 @@ const Kind: symbol = Symbol.for('blong:kind');
 export type Kind = typeof Kind;
 
 export abstract class Internal {
-    #log?: ILog;
+    #log?: ILog | undefined;
     protected log?: ReturnType<ILog['logger']>;
-    public constructor(api?: {log: ILog}) {
+    public constructor(api?: {log?: ILog}) {
         this.#log = api?.log;
     }
     protected merge: ILib['merge'] = (...args: Parameters<ILib['merge']>) => {
@@ -783,7 +827,8 @@ export abstract class Internal {
     public async stop(): Promise<unknown> {
         return this;
     }
-    public async start(...params: unknown[]): Promise<unknown> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public async start(..._args: unknown[]): Promise<unknown> {
         return this;
     }
 }
@@ -850,8 +895,7 @@ export const defineActions = (
     actions: Record<string, IActionDef>,
 ): ((_blong: unknown) => Record<string, () => IActionDef>) =>
     Object.defineProperty(
-        (_blong: unknown) =>
-            Object.fromEntries(Object.entries(actions).map(([key, value]) => [key, () => value])),
+        () => Object.fromEntries(Object.entries(actions).map(([key, value]) => [key, () => value])),
         Kind,
         {value: 'handler'},
     );

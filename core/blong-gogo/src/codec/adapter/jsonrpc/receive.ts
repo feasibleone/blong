@@ -27,7 +27,7 @@ export default handler(({errors}) => ({
                 });
             error.req = response.request && {
                 httpVersion: response.httpVersion,
-                url: response.request.requestUrl,
+                url: response.request.requestUrl as URL,
                 method: response.request.options.method,
                 // ...config.debug && this.sanitize(params, $meta)
             };

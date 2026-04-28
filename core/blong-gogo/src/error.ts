@@ -1,9 +1,9 @@
-import type {IErrorFactory, IMeta, ITypedError} from '@feasibleone/blong/types';
+import type {IApi, IErrorFactory, ILog, IMeta, ITypedError} from '@feasibleone/blong/types';
 
 const typeRegex: RegExp = /^[$a-z]\w*(\.!?\w+)*$/;
 const paramsRegex: RegExp = /\{([^}]*)\}/g;
 
-const interpolate = (string: string, params = {}): string => {
+const interpolate = (string: string, params: Record<string, string> = {}): string => {
     return string.replace(paramsRegex, (placeholder, label) => {
         return typeof params[label] === 'undefined' ? `?${label}?` : params[label];
     });
@@ -11,36 +11,50 @@ const interpolate = (string: string, params = {}): string => {
 const getWarnHandler = ({
     logFactory,
     logLevel,
-}): ((msg: unknown, context: {method: string; args: unknown}) => void) => {
+}: {
+    logFactory?: IApi;
+    logLevel: Parameters<ILog['logger']>[0];
+}): ((msg: string | undefined, context: {method: string; args: unknown}) => void) => {
     if (logFactory) {
         const log = logFactory.createLog(logLevel, {name: 'utError', context: 'utError'});
         if (log.warn) {
             return (msg, context) => {
                 const e = new Error();
-                log.warn(msg, {
-                    $meta: {
-                        mtid: 'deprecation',
-                        method: context.method,
+                log.warn?.(
+                    {
+                        $meta: {
+                            mtid: 'deprecation',
+                            method: context.method,
+                        },
+                        args: context.args,
+                        error: {
+                            type: 'utError.deprecation',
+                            stack: e.stack?.split('\n').splice(3).join('\n'),
+                        },
                     },
-                    args: context.args,
-                    error: {
-                        type: 'utError.deprecation',
-                        stack: e.stack.split('\n').splice(3).join('\n'),
-                    },
-                });
+                    msg,
+                );
             };
         }
     }
     return () => {};
 };
 
-export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
+export default ({
+    logFactory,
+    logLevel,
+    errorPrint,
+}: {
+    logFactory?: IApi;
+    logLevel: Parameters<ILog['logger']>[0];
+    errorPrint?: string | boolean;
+}): IErrorFactory => {
     const warn = getWarnHandler({logFactory, logLevel});
-    const errors = {
+    const errors: Record<string | symbol, {message: string; print?: string} | string> = {
         source: '',
     };
     // Mapping from lowercase no-dot keys to original error keys for case-insensitive lookup
-    const errorLookup = {};
+    const errorLookup: Record<string, string> = {};
 
     // Create the proxy once upfront for reuse
     const errorsProxy = new Proxy(errors, {
@@ -104,7 +118,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
             }
 
             // Check both direct and via lookup
-            if (prop in target || this.has(target, prop)) {
+            if (prop in target || this.has!(target, prop)) {
                 return {
                     enumerable: true,
                     configurable: true,
@@ -119,7 +133,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
             return type ? errors[type] : errorsProxy;
         },
         fetch(type: string) {
-            const result = {};
+            const result = {} as Record<string, string | {message: string; print?: string}>;
             Object.keys(errors).forEach(key => {
                 if (key.startsWith(type)) {
                     result[key] = errors[key];
@@ -136,7 +150,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
                 .join('.');
             return api.register({[type]: message})[type];
         },
-        register<T>(
+        register<T extends Record<string, string | {message: string; print?: string}>>(
             errorsMap: T,
         ): Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError> {
             const result = {} as Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
@@ -147,21 +161,23 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
                         method: 'utError.register',
                     });
                 }
-                const props =
+                const props: {message: string; print?: string} =
                     typeof message === 'string'
                         ? {message, print: undefined}
                         : Array.isArray(message)
                           ? {message: message[0], print: message[1]}
                           : message;
                 if (!props.message) throw new Error(`Missing message for error '${type}'`);
-                const error = errors[type];
+                const error = errors[type] as {message?: string; print?: string} | undefined;
                 if (error) {
                     if (error.message !== props.message) {
                         throw new Error(
                             `Error '${type}' is already defined with different message!`,
                         );
                     }
-                    result[type] = error;
+                    (result as Record<string, (params?: unknown, $meta?: IMeta) => ITypedError>)[
+                        type
+                    ] = error as unknown as (params?: unknown, $meta?: IMeta) => ITypedError;
                     return;
                 }
 
@@ -170,7 +186,7 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
 
                 const handler = (
                     params = {params: undefined},
-                    $meta,
+                    $meta: unknown,
                 ): ITypedError | ITypedError[] => {
                     const error = new Error() as ITypedError;
                     if (params instanceof Error) {
@@ -195,7 +211,9 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
                 handler.params = handler.message
                     .match(paramsRegex)
                     ?.map(param => param.substring(1, param.length - 1));
-                result[type] = errors[type] = handler;
+                (result as Record<string, unknown>)[type] = (errors as Record<string, unknown>)[
+                    type
+                ] = handler;
 
                 // Add to lookup map (lowercase, no dots)
                 const lookupKey = type.toLowerCase().replace(/\./g, '');
@@ -204,5 +222,5 @@ export default ({logFactory, logLevel, errorPrint}): IErrorFactory => {
             return result;
         },
     };
-    return api;
+    return api as IErrorFactory;
 };

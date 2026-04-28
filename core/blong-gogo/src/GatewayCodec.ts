@@ -10,7 +10,7 @@ import tls from './tls.ts';
 
 type Protocol = 'http' | 'https';
 export interface IGatewayCodec {
-    gateway: ($meta: object, methodName: string) => object;
+    gateway: ($meta: object, methodName: string) => object | void;
     codec: (
         $meta: object,
         methodType: 'request' | 'publish',
@@ -31,9 +31,9 @@ export interface IGatewayCodec {
         };
     }>;
     verify: (
-        token,
+        token: string,
         flags: {nonce?: string; audience: string},
-        isId?,
+        isId?: boolean,
     ) => Promise<JWTPayload & {per?: string}>;
 }
 
@@ -51,14 +51,14 @@ export interface IConfig {
 type Sender = (a: unknown, b: unknown) => Promise<unknown>;
 
 export default class GatewayCodecImpl implements IGatewayCodec {
-    #gatewayCodec: Promise<ReturnType<busGateway>>;
+    #gatewayCodec: Promise<ReturnType<typeof busGateway>>;
     #protocol: Protocol;
     #port: string;
     #config: IConfig;
     #tlsClient: object;
     #resolution: IResolution;
 
-    public verify: IGatewayCodec['verify'] = undefined;
+    public verify!: IGatewayCodec['verify'];
 
     public constructor(
         config: IConfig,
@@ -71,7 +71,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         this.#config = config;
         this.#protocol = protocol;
         this.#port = port;
-        this.#tlsClient = tls(this.#config.client, true);
+        this.#tlsClient = tls(this.#config.client ?? {}, true) as object;
         this.#resolution = resolution;
 
         async function session(token: {
@@ -142,45 +142,45 @@ export default class GatewayCodecImpl implements IGatewayCodec {
                         responseType: json ? 'json' : undefined,
                     });
                     if (response.request) Object.assign(response.request, {method, href: url});
-                    callback(null, response, response.body);
+                    callback(null as unknown as Error, response, response.body);
                 } catch (error) {
-                    callback(error);
+                    callback(error as Error);
                 }
             },
-            discoverService: this._discoverService.bind(this),
+            discoverService: this._discoverService.bind(this) as unknown as boolean,
             errorPrefix: 'rpc.',
-            errors,
+            errors: errors as never,
             session,
             tls: this.#tlsClient,
-            issuers: config.openId || {
+            issuers: (config.openId || {
                 ...(config.blongLogin !== false && {'blong-login': {audience: 'blong'}}),
-            },
-        });
+            }) as unknown as Record<string, false | {[key: string]: unknown}>,
+        } as unknown as Parameters<typeof oidc>[0]);
 
         this.#gatewayCodec = (async () => {
-            const mleClient = await jose(config.client || {});
+            const mleClient = await jose((config.client || {}) as Parameters<typeof jose>[0]);
             return busGateway({
                 errorPrefix: 'rpc.',
-                serverInfo: key => ({protocol, port})[key],
-                mleClient,
-                errors,
-                get,
-            });
+                serverInfo: (key: 'protocol' | 'port') => ({protocol, port})[key],
+                mleClient: mleClient as never,
+                errors: errors as never,
+                get: get as never,
+            } as never) as unknown as ReturnType<typeof busGateway>;
         })();
 
-        this.verify = verify;
+        this.verify = verify as unknown as IGatewayCodec['verify'];
     }
 
-    public gateway($meta: IMeta, methodName: string = $meta.method): object {
+    public gateway($meta: IMeta, methodName: string = $meta.method!): object | void {
         if (this.#config.gateway && methodName !== 'identity.checkInternal') {
+            const gw = this.#config.gateway as Record<string, unknown>;
             const [prefix, method] = methodName.split('/');
             if (method) {
-                if (this.#config.gateway[prefix])
-                    return {...this.#config.gateway[prefix], ...$meta.gateway, method};
+                if (gw[prefix]) return {...(gw[prefix] as object), ...$meta.gateway, method};
             } else {
                 const [namespace] = prefix.split('.');
-                const gw = this.#config.gateway[namespace] || this.#config.gateway[prefix];
-                if (gw) return {...gw, ...$meta.gateway, method: prefix};
+                const gwEntry = gw[namespace] || gw[prefix];
+                if (gwEntry) return {...(gwEntry as object), ...$meta.gateway, method: prefix};
             }
         }
 
@@ -193,9 +193,12 @@ export default class GatewayCodecImpl implements IGatewayCodec {
     ): ReturnType<IGatewayCodec['codec']> {
         const gatewayConfig = this.gateway($meta);
 
-        if (gatewayConfig) return (await this.#gatewayCodec)(gatewayConfig);
+        if (gatewayConfig)
+            return (await this.#gatewayCodec)(gatewayConfig as never) as unknown as Awaited<
+                ReturnType<IGatewayCodec['codec']>
+            >;
 
-        const [namespace, event] = $meta.method.split('.');
+        const [namespace, event] = $meta.method!.split('.');
 
         const op = ['start', 'stop', 'drain'].includes(event) ? event : methodType;
 
@@ -220,7 +223,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
             protocol: this.#config.protocol || this.#protocol,
             hostname: this.#config.host || serviceName,
             port: this.#config.port || this.#port,
-            service: this.#config.service,
+            service: this.#config.service!,
         };
         const requestParams = Object.assign({}, params);
         if (this.#resolution)

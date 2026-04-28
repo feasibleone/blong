@@ -11,7 +11,7 @@ import {handler} from '@feasibleone/blong';
  * defined in world-time/operations.yaml for the /timezone/{area}/{location} path.
  */
 export default handler(
-    proxy =>
+    () =>
         async function mocktimeGet({area, location}: {area: string; location: string}) {
             const date = new Date();
             const dayOfYear = Math.floor(

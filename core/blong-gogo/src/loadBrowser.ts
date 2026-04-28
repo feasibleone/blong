@@ -2,6 +2,15 @@ import type {HRTime} from '@feasibleone/blong';
 import load from './load.ts';
 import timing from './timing.ts';
 
+declare global {
+    interface Performance {
+        mozNow?: () => number;
+        msNow?: () => number;
+        oNow?: () => number;
+        webkitNow?: () => number;
+    }
+}
+
 var performance = globalThis.performance || {};
 var performanceNow =
     performance.now ||
@@ -68,6 +77,6 @@ export default load.bind(null, {
     writeFileSync: () => {
         throw new Error('writeFileSync is not supported in the browser');
     },
-    statSync: () => undefined,
+    statSync: (() => undefined) as unknown as import('node:fs').StatSyncFn,
     timing: timing(hrtime),
 });

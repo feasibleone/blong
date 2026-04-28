@@ -12,7 +12,7 @@ import {adapter} from '@feasibleone/blong';
  */
 export default adapter<{
     'codec.openapi': unknown;
-}>(blong => ({
+}>(() => ({
     extends: 'adapter.http',
     activation: {
         default: {

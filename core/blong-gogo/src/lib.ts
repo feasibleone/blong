@@ -66,13 +66,15 @@ export function parseAnnotatedKey(key: string): {
     return {annotations, handlerName};
 }
 
-let loginCache: unknown;
-export async function loginService(discovery) {
+let loginCache: Promise<{protocol: string; hostname: string; port: number}> | null = null;
+export async function loginService(
+    discovery: (service: string) => Promise<{protocol: string; hostname: string; port: number}>,
+): Promise<{protocol: string; hostname: string; port: number}> {
     if (!loginCache) loginCache = discovery('login');
     try {
         return await loginCache;
     } catch (error) {
-        loginCache = false;
+        loginCache = null;
         throw error;
     }
 }
@@ -97,7 +99,7 @@ export async function requestGet(
     });
 
     const responseText = await response.text();
-    let body: unknown;
+    let body: {[key: string]: unknown} | undefined;
     try {
         body = responseText ? JSON.parse(responseText) : undefined;
     } catch {
@@ -109,8 +111,8 @@ export async function requestGet(
             statusCode: response.status,
             statusText: response.statusText,
             statusMessage: response.statusText,
-            validation: (body as any)?.validation,
-            debug: (body as any)?.debug,
+            validation: body?.validation,
+            debug: body?.debug,
             params: {
                 code: response.status,
             },
@@ -160,7 +162,7 @@ export async function requestPostForm(
     });
 
     const responseText = await response.text();
-    let responseJson: any;
+    let responseJson: {[key: string]: unknown} | undefined;
     try {
         responseJson = responseText ? JSON.parse(responseText) : undefined;
     } catch {

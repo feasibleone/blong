@@ -9,7 +9,7 @@ const UtPort = (config: unknown) =>
     };
 
 export interface IPort {
-    new (portApi: Parameters<IAdapterFactory>[0] & {config: unknown; configBase: string});
+    new (portApi: Parameters<IAdapterFactory>[0] & {config: unknown; configBase: string}): unknown;
 }
 
 export default class Port extends Internal {
@@ -20,6 +20,6 @@ export default class Port extends Internal {
         result.prototype.findHandler = function (name: string) {
             return findHandler.call(this, name.replaceAll('.', '').toLowerCase());
         };
-        return result;
+        return result as unknown as Port;
     }
 }

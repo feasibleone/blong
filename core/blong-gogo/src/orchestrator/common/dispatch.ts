@@ -21,10 +21,10 @@ export default orchestrator<{destination?: string; appendNamespace?: string}>(({
             const $meta = params.pop() as IMeta;
             if ($meta?.method) {
                 return (
-                    await remote.dispatch(...params, {
+                    (await remote.dispatch(...params, {
                         ...$meta,
                         method: prefix + separator + $meta.method,
-                    })
+                    })) as unknown[]
                 )?.[0];
             }
         }

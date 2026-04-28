@@ -14,16 +14,16 @@ describe('enrichSchema', () => {
         });
         expect(schema.name).toBe('user');
         expect(schema.title).toBe('User');
-        expect(schema.properties.userName.required).toBe(true);
-        expect(schema.properties.age.required).toBe(false);
-        expect(schema.properties.userName.widget?.type).toBe('input');
-        expect(schema.properties.age.widget?.type).toBe('integer');
-        expect(schema.properties.active.widget?.type).toBe('boolean');
+        expect(schema.properties!.userName.required).toBe(true);
+        expect(schema.properties!.age.required).toBe(false);
+        expect(schema.properties!.userName.widget?.type).toBe('input');
+        expect(schema.properties!.age.widget?.type).toBe('integer');
+        expect(schema.properties!.active.widget?.type).toBe('boolean');
     });
 
     it('falls back to field name as title', () => {
         const schema = enrichSchema('item', {properties: {itemName: {type: 'string'}}});
-        expect(schema.properties.itemName.title).toBe('Item Name');
+        expect(schema.properties!.itemName.title).toBe('Item Name');
     });
 
     it('infers date widget from date-related field name', () => {
@@ -33,22 +33,22 @@ describe('enrichSchema', () => {
                 startDateTime: {type: 'string'},
             },
         });
-        expect(schema.properties.createdDate.widget?.type).toBe('date');
-        expect(schema.properties.startDateTime.widget?.type).toBe('dateTime');
+        expect(schema.properties!.createdDate.widget?.type).toBe('date');
+        expect(schema.properties!.startDateTime.widget?.type).toBe('dateTime');
     });
 
     it('infers password widget', () => {
         const schema = enrichSchema('auth', {
             properties: {newPassword: {type: 'string'}},
         });
-        expect(schema.properties.newPassword.widget?.type).toBe('password');
+        expect(schema.properties!.newPassword.widget?.type).toBe('password');
     });
 
     it('infers textarea widget for description fields', () => {
         const schema = enrichSchema('note', {
             properties: {description: {type: 'string'}},
         });
-        expect(schema.properties.description.widget?.type).toBe('textArea');
+        expect(schema.properties!.description.widget?.type).toBe('textArea');
     });
 
     it('uses x-widget override', () => {
@@ -57,7 +57,7 @@ describe('enrichSchema', () => {
                 amount: {type: 'number', 'x-widget': {type: 'currency'} as never},
             },
         });
-        expect(schema.properties.amount.widget?.type).toBe('currency');
+        expect(schema.properties!.amount.widget?.type).toBe('currency');
     });
 
     it('uses enum to infer select widget', () => {
@@ -66,7 +66,7 @@ describe('enrichSchema', () => {
                 status: {type: 'string', enum: ['pending', 'paid', 'shipped']},
             },
         });
-        expect(schema.properties.status.widget?.type).toBe('select');
+        expect(schema.properties!.status.widget?.type).toBe('select');
     });
 
     it('handles schema with no properties', () => {

@@ -23,15 +23,15 @@ interface IConfig {
     tls: string;
 }
 export default class ResolutionDiscovery extends Internal implements IResolution {
-    #announce: ReturnType<discovery>;
+    #announce: ReturnType<typeof discovery>;
     #services: Set<string> = new Set();
     #errors: Errors<typeof errorMap>;
     #config: IConfig = {
         domain: true,
         prefix: '',
         suffix: '',
-        tls: undefined,
-        channel: undefined,
+        tls: '',
+        channel: '',
     };
 
     public resolve: IResolution['resolve'];
@@ -44,7 +44,8 @@ export default class ResolutionDiscovery extends Internal implements IResolution
         this.merge(this.#config, config);
         this.#announce = discovery();
         this.#errors = error.register(errorMap);
-        const cache = {};
+        type HRTime = [number, number];
+        const cache: Record<string, [HRTime, {hostname: string; port: string}]> = {};
         this.resolve = async (service, invalidate, namespace) => {
             try {
                 const now = platform.timing.now();
@@ -71,7 +72,7 @@ export default class ResolutionDiscovery extends Internal implements IResolution
                 return result;
             } catch (e) {
                 const err = this.#errors['mdns.notFound']({params: {namespace}});
-                err.cause = e;
+                err.cause = e as Error | undefined;
                 throw err;
             }
         };
@@ -95,7 +96,7 @@ export default class ResolutionDiscovery extends Internal implements IResolution
                 serviceId =>
                     new Promise((resolve, reject) => {
                         const [service, port] = serviceId.split(':');
-                        this.#announce.announce(service, port, error =>
+                        this.#announce.announce(service, port, (error: Error | null | undefined) =>
                             error ? reject(error) : resolve(true),
                         );
                     }),
@@ -109,7 +110,7 @@ export default class ResolutionDiscovery extends Internal implements IResolution
                 serviceId =>
                     new Promise((resolve, reject) => {
                         const [service, port] = serviceId.split(':');
-                        this.#announce.unannounce(service, port, error =>
+                        this.#announce.unannounce(service, port, (error: Error | null | undefined) =>
                             error ? reject(error) : this.#services.delete(service),
                         );
                     }),

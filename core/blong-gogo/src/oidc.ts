@@ -1,3 +1,4 @@
+import type {Errors} from '@feasibleone/blong';
 import {createLocalJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify} from 'jose';
 import {requestGet as get, loginService} from './lib.ts';
 
@@ -5,7 +6,7 @@ export default ({
     issuers,
     tls = {},
     discoverService = false,
-    session = false,
+    session,
     errorPrefix,
     errors: {
         [`${errorPrefix}oidcEmpty`]: errorOidcEmpty,
@@ -18,50 +19,86 @@ export default ({
         [`${errorPrefix}oidcBadIssuer`]: errorBadIssuer,
         [`${errorPrefix}jwtInvalid`]: errorInvalid,
     },
+}: {
+    issuers: Record<
+        string,
+        {configuration?: string; url?: string; audience?: string; [key: string]: unknown} | false
+    >;
+    tls?: {
+        rejectUnauthorized?: boolean;
+        ca?: string | Buffer | Array<string | Buffer>;
+        cert?: string | Buffer;
+        key?: string | Buffer;
+    };
+    discoverService?: boolean;
+    session?: (decoded: object) => Promise<void>;
+    errorPrefix: string;
+    errors: Errors<{
+        [key: string]: unknown;
+    }>;
 }) => {
-    async function openIdConfig(issuer, headers, protocol) {
+    async function openIdConfig(
+        issuer: string,
+        headers?: Record<string, string | undefined> | undefined,
+        protocol?: string,
+    ) {
         if (issuer === 'blong-login') {
-            const {protocol: loginProtocol, hostname, port} = await loginService(discoverService);
+            const {
+                protocol: loginProtocol,
+                hostname,
+                port,
+            } = await loginService(
+                discoverService as unknown as (
+                    service: string,
+                ) => Promise<{protocol: string; hostname: string; port: number}>,
+            );
             issuer = `${loginProtocol}://${hostname}:${port}/rpc/login/.well-known/openid-configuration`;
         } else {
-            headers = false;
+            headers = undefined;
         }
-        return await get(issuer, errorOidcHttp, errorOidcEmpty, headers, protocol, tls);
+        return await get(issuer, errorOidcHttp, errorOidcEmpty, headers, protocol ?? '', tls);
     }
 
-    let actionsCache;
-    async function actions(method) {
+    let actionsCache: Record<string, number[] | number>;
+    async function actions(method: string) {
         if (actionsCache) return actionsCache[method];
-        const {protocol, hostname, port} = await loginService(discoverService);
-        const actionsMap = await get(
+        const {protocol, hostname, port} = await loginService(
+            discoverService as unknown as (
+                service: string,
+            ) => Promise<{protocol: string; hostname: string; port: number}>,
+        );
+        const actionsMap = (await get(
             `${protocol}://${hostname}:${port}/rpc/login/action`,
             errorActionHttp,
             errorActionEmpty,
             {},
-            undefined,
+            protocol,
             tls,
+        )) as Record<string, number>;
+        const fuzzyMap = Object.entries(actionsMap).reduce(
+            (all, [action, bit]) => {
+                for (let i = 1, segments = action.split('.'), n = segments.length; i < n; i += 1) {
+                    const key = segments.slice(0, i).concat('%').join('.');
+                    if (!all[key]) all[key] = [];
+                    all[key].push(bit);
+                }
+                return all;
+            },
+            {} as Record<string, number[]>,
         );
-        const fuzzyMap = Object.entries(actionsMap).reduce((all, [action, bit]) => {
-            for (let i = 1, segments = action.split('.'), n = segments.length; i < n; i += 1) {
-                const key = segments.slice(0, i).concat('%').join('.');
-                if (!all[key]) all[key] = [];
-                all[key].push(bit);
-            }
-            return all;
-        }, {});
 
         actionsCache = {...fuzzyMap, ...actionsMap};
 
         return actionsCache[method];
     }
 
-    function checkPermission(bit, map) {
+    function checkPermission(bit: number, map: number[]) {
         bit -= 1;
         const index = Math.floor(bit / 8);
         return Number.isInteger(index) && index < map.length && map[index] & (1 << (bit % 8));
     }
 
-    async function checkAuthSingle(method, map) {
+    async function checkAuthSingle(method: string, map: number[]) {
         if (Array.isArray(method)) {
             for (const m of method) {
                 if (!(await checkAuthSingle(m, map))) return false;
@@ -74,7 +111,7 @@ export default ({
             : checkPermission(bit, map);
     }
 
-    async function checkAuth(method, map, dontThrow) {
+    async function checkAuth(method: string, map: number[], dontThrow: boolean) {
         if (!(await checkAuthSingle(method, map)) && !(await checkAuthSingle('%', map))) {
             if (dontThrow) return false;
             throw errorUnauthorized({params: {method}});
@@ -82,13 +119,25 @@ export default ({
         return true;
     }
 
-    const issuerUrl = (base, url) =>
+    const issuerUrl = (base: string, url: string) =>
         base === 'blong-login' ? 'blong-login' : new URL(url, base.replace(/\/?$/, '/')).href;
 
     const loadIssuers = () =>
         Promise.all(
             Object.entries(issuers)
-                .filter(([, config]) => config)
+                .filter(
+                    (
+                        entry,
+                    ): entry is [
+                        string,
+                        {
+                            configuration?: string;
+                            url?: string;
+                            audience?: string;
+                            [key: string]: unknown;
+                        },
+                    ] => !!entry[1],
+                )
                 .map(
                     ([
                         issuerId,
@@ -102,7 +151,9 @@ export default ({
                         (async () => [
                             issuerId,
                             {
-                                ...(await openIdConfig(configuration || issuerUrl(issuerId, url))),
+                                ...((await openIdConfig(
+                                    configuration || issuerUrl(issuerId, url),
+                                )) as object),
                                 audience,
                                 issuerId,
                                 ...rest,
@@ -113,82 +164,134 @@ export default ({
 
     async function cache() {
         return (await loadIssuers()).reduce(
-            (prev, [issuer, config]) => ({...prev, [config.issuer]: config, [issuer]: config}),
-            {},
+            (prev, [issuer, config]) => {
+                const key = (config as {issuer?: string}).issuer;
+                return {...prev, ...(key ? {[key]: config} : {}), [issuer as string]: config};
+            },
+            {} as Record<string, unknown>,
         );
     }
 
-    const getIssuers = (headers, protocol) =>
+    const getIssuers = (headers: object, protocol: string) =>
         Promise.all(
             Object.entries(issuers)
-                .filter(([, config]) => config)
+                .filter(
+                    (
+                        entry,
+                    ): entry is [
+                        string,
+                        {configuration?: string; url?: string; [key: string]: unknown},
+                    ] => !!entry[1],
+                )
                 .map(([issuer, {configuration, url = '.well-known/openid-configuration'}]) =>
-                    openIdConfig(configuration || issuerUrl(issuer, url), headers, protocol),
+                    openIdConfig(
+                        configuration || issuerUrl(issuer, url),
+                        headers as Record<string, string | undefined>,
+                        protocol,
+                    ),
                 ),
         );
 
-    let issuersCache;
+    let issuersCache: Promise<Record<string, unknown>> | null = null;
 
-    async function issuerConfig(issuerId) {
-        if (issuerId === 'blong-login') return openIdConfig('blong-login');
-        issuersCache = issuersCache || cache();
-        const result = (await issuersCache)[issuerId];
+    async function issuerConfig(issuerId: string): Promise<{
+        issuer: string;
+        jwks_uri: string;
+        audience: string;
+        [key: string]: unknown;
+    }> {
+        if (issuerId === 'blong-login')
+            return openIdConfig('blong-login') as unknown as {
+                issuer: string;
+                jwks_uri: string;
+                audience: string;
+                [key: string]: unknown;
+            };
+        issuersCache = issuersCache ?? cache();
+        const result = (await issuersCache)[issuerId] as
+            | {issuer: string; jwks_uri: string; audience: string; [key: string]: unknown}
+            | undefined;
         if (!result) {
             throw errorBadIssuer({params: {issuerId}});
         }
         return result;
     }
 
-    async function jwks(issuerId) {
+    async function jwks(issuerId: string) {
         return get(
             (await issuerConfig(issuerId)).jwks_uri,
             errorOidcHttp,
             errorOidcEmpty,
             {},
-            undefined,
+            '',
             tls,
         );
     }
 
-    const keys = {};
+    const keys: Record<string, ReturnType<typeof createLocalJWKSet>> = {};
 
-    async function getKey(decoded, protectedHeader) {
+    async function getKey(decoded: {iss?: string}, protectedHeader: {kid?: string}) {
         const issuerId = decoded?.iss;
         if (!issuerId) throw errorNoIssuer();
         const kid = protectedHeader?.kid;
         if (!kid) throw errorNoKid();
-        if (!keys[issuerId]) keys[issuerId] = createLocalJWKSet(await jwks(issuerId));
-        const result = await keys[issuerId](protectedHeader, decoded);
+        if (!keys[issuerId])
+            keys[issuerId] = createLocalJWKSet(
+                (await jwks(issuerId)) as Parameters<typeof createLocalJWKSet>[0],
+            );
+        const result = await keys[issuerId](
+            protectedHeader as Parameters<(typeof keys)[string]>[0],
+            decoded as Parameters<(typeof keys)[string]>[1],
+        );
         if (!result) throw errorInvalid({params: {message: 'Invalid OIDC key id'}});
         return result;
     }
 
-    async function verify(token, {nonce, audience = 'blong'}, isId) {
+    async function verify(
+        token: string,
+        {nonce, audience = 'blong'}: {nonce?: string; audience?: string},
+        isId: boolean,
+    ) {
         let decoded;
         let protectedHeader;
         try {
             decoded = decodeJwt(token);
             protectedHeader = decodeProtectedHeader(token);
         } catch (error) {
-            throw errorInvalid({params: {message: error.message}, cause: error});
+            throw errorInvalid({
+                params: {message: (error as Error).message},
+                cause: error as Error,
+            });
         }
         const config = (decoded.iss &&
             decoded.iss !== 'blong-login' &&
             (await issuerConfig(decoded.iss))) || {audience};
         try {
             if (isId) {
-                await jwtVerify(token, await getKey(decoded, protectedHeader), {
-                    audience: config.audience,
-                    issuer: decoded.iss,
-                    nonce,
-                });
+                await jwtVerify(
+                    token,
+                    (await getKey(decoded, protectedHeader)) as unknown as Parameters<
+                        typeof jwtVerify
+                    >[1],
+                    {
+                        audience: (config as {audience?: string}).audience ?? audience,
+                        issuer: decoded.iss as string,
+                        ...(nonce ? {nonce} : {}),
+                    } as Parameters<typeof jwtVerify>[2],
+                );
             } else {
-                await jwtVerify(token, await getKey(decoded, protectedHeader), {
-                    audience: config.audience,
-                });
+                await jwtVerify(
+                    token,
+                    (await getKey(decoded, protectedHeader)) as unknown as Parameters<
+                        typeof jwtVerify
+                    >[1],
+                    {
+                        audience: (config as {audience?: string}).audience,
+                    },
+                );
             }
         } catch (error) {
-            throw errorInvalid({params: {message: error.message}, cause: error});
+            throw errorInvalid({params: {message: (error as Error).message}, cause: error});
         }
         if (session && audience === 'blong' && !decoded.ses) await session(decoded);
         return {
@@ -198,8 +301,13 @@ export default ({
     }
 
     return {
-        get: (url, errorHttp, errorEmpty, headers, protocol) =>
-            get(url, errorHttp, errorEmpty, headers, protocol, tls),
+        get: (
+            url: string,
+            errorHttp: (params: Record<string, unknown>) => unknown,
+            errorEmpty: () => unknown,
+            headers: Record<string, string | undefined> | undefined,
+            protocol: string,
+        ) => get(url, errorHttp, errorEmpty, headers, protocol, tls),
         verify,
         getIssuers,
         checkAuth,
