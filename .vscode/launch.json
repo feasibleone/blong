@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Blong Dev",
+            "program": "${workspaceFolder}/core/blong-gogo/bin/blong-dev.ts",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/core/${input:blong-package}",
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal",
+            "type": "node"
+        },
+        {
             "name": "Attach",
             "port": 9229,
             "request": "attach",
@@ -61,6 +70,27 @@
             ],
             "outFiles": ["${workspaceFolder}/ext/rest-fs/out/test/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "blong-package",
+            "type": "pickString",
+            "description": "Select a blong package to run",
+            "options": [
+                "blong-cucumber",
+                "blong-eip",
+                "blong-hello",
+                "blong-int-sql",
+                "blong-sim-api",
+                "blong-sim-tcp",
+                "blong-test",
+                "config-hot-reload",
+                "handler-test-poc",
+                "test",
+                "ui-demo"
+            ],
+            "default": "test"
         }
     ]
 }

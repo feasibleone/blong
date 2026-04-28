@@ -47,7 +47,7 @@ function mkProps(overrides: WidgetProps = {}) {
         readOnly: false,
         disabled: false,
         ...overrides,
-    } as unknown as IWidgetProps;
+    } as IWidgetProps;
 }
 
 describe('TextWidget', () => {

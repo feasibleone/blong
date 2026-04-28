@@ -18,9 +18,16 @@ export default function loop(
             const frame = await exec(
                 handlers,
                 fn,
-                handlers.pack ? encodedPacket[0] : encodedPacket,
+                (handlers.pack ? (encodedPacket as unknown[])[0] : encodedPacket) as unknown[],
             );
-            return checkError(await decodeReceive(handlers, context, frame, checkDeadlock));
+            return checkError(
+                await decodeReceive(
+                    handlers,
+                    context,
+                    frame as unknown[] | undefined,
+                    checkDeadlock,
+                ),
+            );
         };
     } else if (fn.readable && fn.writable) {
         const streamData = async (frame: Buffer): Promise<void> => {
@@ -36,7 +43,11 @@ export default function loop(
                             checkDeadlock,
                         );
                         if (encodedPacket)
-                            fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
+                            fn.write(
+                                (handlers.pack
+                                    ? (encodedPacket as unknown[])[0]
+                                    : encodedPacket) as Parameters<typeof fn.write>[0],
+                            );
                     }
                     if (!handlers.imported!.unpack) break;
                     receivedPacket = await decodeReceive(
@@ -93,7 +104,11 @@ export default function loop(
             try {
                 const encodedPacket = await sendEncode(handlers, context, params, checkDeadlock);
                 if (!encodedPacket) return [encodedPacket, $meta];
-                fn.write(handlers.pack ? encodedPacket[0] : encodedPacket);
+                fn.write(
+                    (handlers.pack ? (encodedPacket as unknown[])[0] : encodedPacket) as Parameters<
+                        typeof fn.write
+                    >[0],
+                );
                 return result;
             } catch (error) {
                 return handleError(handlers, error as Error, $meta);
@@ -162,8 +177,15 @@ async function sendEncode(
         $meta,
         ...(context?.session && {log: context.session.log}),
     });
-    let encodeBuffer = adapter.imported.encode
-        ? await adapter.imported.encode(dataPacket[0], $meta, context, adapter.log!)
+    let encodeBuffer: unknown = adapter.imported.encode
+        ? await (
+              adapter.imported.encode as unknown as (
+                  d: unknown,
+                  m: unknown,
+                  c: unknown,
+                  l: unknown,
+              ) => Promise<unknown>
+          )(dataPacket[0], $meta, context, adapter.log!)
         : dataPacket;
     traceMeta(adapter, context, $meta, 'out/', 'in/');
     if (adapter.imported.pack) {
@@ -171,15 +193,18 @@ async function sendEncode(
             adapter.imported.encode && adapter.imported.unpackSize
                 ? adapter.config.format!.sizeAdjust
                 : 0;
-        encodeBuffer = adapter.imported.pack(
+        encodeBuffer = (adapter.imported.pack as unknown as (...args: unknown[]) => unknown)(
             {
-                size: encodeBuffer?.length + sizeAdjust!,
+                size: (encodeBuffer as {length?: number})?.length! + sizeAdjust!,
                 data: encodeBuffer as Buffer,
             },
             {},
         );
-        encodeBuffer = encodeBuffer.slice(0, encodeBuffer.length - sizeAdjust!);
-        adapter.bytesSent?.(encodeBuffer.length);
+        encodeBuffer = (encodeBuffer as Buffer).slice(
+            0,
+            (encodeBuffer as Buffer).length - sizeAdjust!,
+        );
+        adapter.bytesSent?.((encodeBuffer as Buffer).length);
     }
     if (encodeBuffer) {
         adapter.msgSent?.(1);
@@ -224,7 +249,7 @@ function traceMeta(
             const request = context.requests.get(get + $meta.trace);
             if (request) {
                 context.requests.delete(get + $meta.trace);
-                request.end?.();
+                request.end?.(undefined as unknown as Error);
                 if (request.$meta?.timer && time) request.$meta.timer('exec', time);
                 return Object.assign(request.$meta, $meta);
             } else {
@@ -251,21 +276,32 @@ async function exec(
     }
 }
 
-function getFrame(adapter: Adapter, buffer: Buffer): {rest: Buffer; data: Buffer} {
-    let result;
-    let size;
+function getFrame(
+    adapter: Adapter,
+    buffer: Buffer,
+): {rest: Buffer; data: Buffer} | false | undefined {
+    let result: {rest: Buffer; data: Buffer} | false | undefined;
+    let size: number | undefined;
     if (adapter.imported.unpackSize) {
-        const tmp = adapter.imported.unpackSize(buffer, {});
+        const tmp = (
+            adapter.imported.unpackSize as unknown as (
+                ...args: unknown[]
+            ) => {size?: number; data?: Buffer} | false | undefined
+        )(buffer, {});
         if (tmp) {
             size = tmp.size;
-            result = adapter.imported.unpack!(tmp.data, {
-                size: tmp.size - adapter.config.format!.sizeAdjust!,
+            result = (adapter.imported.unpack as unknown as (
+                ...args: unknown[]
+            ) => {rest: Buffer; data: Buffer} | false | undefined)!(tmp.data, {
+                size: tmp.size! - adapter.config.format!.sizeAdjust!,
             });
         } else {
             result = false;
         }
     } else {
-        result = adapter.imported.unpack!(buffer, {});
+        result = (adapter.imported.unpack as unknown as (
+            ...args: unknown[]
+        ) => {rest: Buffer; data: Buffer} | false | undefined)!(buffer, {});
     }
     if (adapter.config.maxReceiveBuffer) {
         if (!result && buffer.length > adapter.config.maxReceiveBuffer) {
@@ -273,14 +309,14 @@ function getFrame(adapter: Adapter, buffer: Buffer): {rest: Buffer; data: Buffer
                 params: {max: adapter.config.maxReceiveBuffer, size: buffer.length},
             });
         }
-        if (!result && size > adapter.config.maxReceiveBuffer) {
+        if (!result && size !== undefined && size > adapter.config.maxReceiveBuffer) {
             // fail early
             throw adapter.errors['adapter.bufferOverflow']({
                 params: {max: adapter.config.maxReceiveBuffer, size},
             });
         }
     }
-    return result;
+    return result as {rest: Buffer; data: Buffer};
 }
 
 const metaFromContext = (context: IContext, rest?: Partial<IMeta>): IMeta => ({
@@ -380,7 +416,14 @@ async function decodeReceive(
         const $meta = metaFromContext(context);
         try {
             result = [
-                await adapter.imported!.decode(dataPacket as Buffer, $meta, context, adapter.log),
+                await (
+                    adapter.imported!.decode as unknown as (
+                        b: unknown,
+                        m: unknown,
+                        c: unknown,
+                        l: unknown,
+                    ) => Promise<unknown>
+                )(dataPacket as Buffer, $meta, context, adapter.log),
                 traceMeta(adapter, context, $meta, 'in/', 'out/', time),
             ];
         } catch (decodeError) {
@@ -397,7 +440,7 @@ async function decodeReceive(
         }
     } else if (typeof Buffer !== 'undefined' && dataPacket instanceof Buffer) {
         result = [
-            {payload: result},
+            {payload: undefined},
             metaFromContext(context, {mtid: 'notification', opcode: 'payload'}),
         ];
     } else {
@@ -405,7 +448,14 @@ async function decodeReceive(
         const $meta = result.length > 1 && (result[result.length - 1] as IMeta);
         if ($meta && context?.conId) $meta.conId = context.conId;
         if (result.length > 1)
-            result[result.length - 1] = traceMeta(adapter, context, $meta, 'in/', 'out/', time);
+            result[result.length - 1] = traceMeta(
+                adapter,
+                context,
+                $meta as IMeta,
+                'in/',
+                'out/',
+                time,
+            );
     }
     checkDeadlock(result);
     return await receive(adapter, context, result);
@@ -432,7 +482,7 @@ async function receive(
         if (validate) dataPacket[0] = validate.apply(adapter, dataPacket);
         return dataPacket;
     } catch (error) {
-        return handleError(adapter, error, $meta);
+        return handleError(adapter, error as Error & {code?: string}, $meta as IMeta);
     }
 }
 
@@ -444,7 +494,10 @@ async function dispatch(adapter: Adapter, dispatchPacket: unknown[]): Promise<un
         ({} as IMeta);
     if ($meta.dispatch) {
         // reportTimes(adapter, $meta);
-        return $meta.dispatch.apply(adapter, dispatchPacket);
+        return $meta.dispatch.apply(
+            adapter,
+            dispatchPacket as unknown as Parameters<typeof $meta.dispatch>,
+        );
     }
     if (!dispatchPacket || !dispatchPacket[0]) {
         return;
@@ -462,8 +515,10 @@ async function dispatch(adapter: Adapter, dispatchPacket: unknown[]): Promise<un
     ): unknown[] | undefined => {
         const $metaResult =
             ((!isError &&
-                (dispatchResult as []).length > 1 &&
-                dispatchResult[(dispatchResult as []).length - 1]) as IMeta) || ({} as IMeta);
+                (dispatchResult as unknown[]).length > 1 &&
+                (dispatchResult as unknown[])[
+                    (dispatchResult as unknown[]).length - 1
+                ]) as IMeta) || ({} as IMeta);
         if (mtid === 'request' && $metaResult.mtid !== 'discard') {
             if (!$metaResult.opcode) $metaResult.opcode = opcode;
             if (!$metaResult.method) $metaResult.method = method;

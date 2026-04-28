@@ -380,13 +380,32 @@ export interface IAdapter<T, C> {
     start?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
     ready?(this: Adapter<T, C>): Promise<unknown>;
     stop?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
+    link?(
+        this: Adapter<T, C>,
+        patterns: (string | RegExp)[] | string | RegExp,
+        target: object,
+    ): Promise<{
+        importedMap?: Map<string, object>;
+        imported?: object;
+        config?: {namespace?: string | string[]};
+    }>;
     connected?(this: Adapter<T, C>): Promise<boolean>;
     error?(error: unknown, $meta: unknown): void;
     pack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
     unpackSize?(this: Adapter<T, C>, ...params: unknown[]): unknown;
     unpack?(this: Adapter<T, C>, ...params: unknown[]): unknown;
-    encode?(data: unknown, $meta: unknown, context: unknown, log: unknown): Promise<string | Buffer>;
-    decode?(buff: string | Buffer, $meta: unknown, context: unknown, log: unknown): Promise<object[]>;
+    encode?(
+        data: unknown,
+        $meta: unknown,
+        context: unknown,
+        log: unknown,
+    ): Promise<string | Buffer>;
+    decode?(
+        buff: string | Buffer,
+        $meta: unknown,
+        context: unknown,
+        log: unknown,
+    ): Promise<object[]>;
     request?(...params: unknown[]): Promise<unknown>;
     publish?(): Promise<unknown>;
     drain?(): void;
@@ -593,7 +612,10 @@ export interface IModuleConfig<T extends TSchema = TNever> {
     url: string;
     config?: IActivationConfig<Partial<Static<T>> & Partial<Static<IBaseConfig>>>;
     validation?: T;
-    children?: (string | (() => Promise<object>))[] | ((layer: ModuleApi) => unknown)[] | Record<string, () => Promise<unknown>>;
+    children?:
+        | (string | (() => Promise<object>))[]
+        | ((layer: ModuleApi) => unknown)[]
+        | Record<string, () => Promise<unknown>>;
     glob?: Record<string, () => Promise<object>>;
 }
 
@@ -806,7 +828,7 @@ export abstract class Internal {
         return this;
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public async start(_configOverride: unknown): Promise<unknown> {
+    public async start(..._args: unknown[]): Promise<unknown> {
         return this;
     }
 }

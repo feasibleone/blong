@@ -3,6 +3,8 @@ import {
     Internal,
     kind,
     type ConfigDiff,
+    type Handlers,
+    type IAdapterRegistry,
     type IApiSchema,
     type IConfigRuntime,
     type IErrorFactory,
@@ -13,6 +15,7 @@ import {
     type IRemote,
     type IWatcher,
 } from '@feasibleone/blong/types';
+import type {Dirent} from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
@@ -31,6 +34,9 @@ export interface IWatch {
     setConfigRuntime?(configRuntime: IConfigRuntime): void;
 }
 
+interface ITestContext {
+    test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown;
+}
 const isYaml = (filename: string): boolean => /\.ya?ml$/i.test(filename);
 const isJSON = (filename: string): boolean => /\.jsonl?$/i.test(filename);
 const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(filename);
@@ -155,7 +161,7 @@ export default class Watch extends Internal implements IWatch {
             });
         }
 
-        return name;
+        return name!;
     }
 
     private async _generate(files: {filename: string; name: string}[], dir: string): Promise<void> {
@@ -226,14 +232,14 @@ export default class Watch extends Internal implements IWatch {
         const apis: unknown[] = [];
         const libs: unknown[] = [];
         const assets: unknown[] = [];
-        const handlerFilenames: string[] = [];
+        const handlerFilenames: {filename: string; name: string}[] = [];
         let latest = 0;
         const isFile = () => true;
         const isDirectory = () => false;
         const allFiles =
             directory === true
                 ? await this.#platform.scan(dir)
-                : Object.keys(directory).map(path => ({
+                : Object.keys(directory ?? {}).map(path => ({
                       name: this.#platform.basename(path),
                       isFile,
                       isDirectory,
@@ -272,7 +278,7 @@ export default class Watch extends Internal implements IWatch {
                     !isLayerActivation(entry.name) &&
                     !isConfig(entry.name),
             );
-        await this.#apiSchema?.generateDir(dir, handlerFiles);
+        await this.#apiSchema?.generateDir(dir, handlerFiles as Dirent[]);
         for (const handlerEntry of handlerFiles) {
             const filename = this.#platform.join(dir, handlerEntry.name);
             if (
@@ -287,7 +293,7 @@ export default class Watch extends Internal implements IWatch {
                 directory === true
                     ? (await import(this.#config.enabled ? filename + '?' + Date.now() : filename))
                           .default
-                    : (await directory[filename]()).default;
+                    : ((await directory![filename]()) as {default: unknown}).default;
             if (!item) this.log?.error?.('Error loading ' + filename);
             const expectedName = this.#platform.basename(
                 filename,
@@ -321,26 +327,27 @@ export default class Watch extends Internal implements IWatch {
         }
         this.#handlerFolders.set(dir, config);
         return api => {
+            const apiAny = api as Record<string, (...args: unknown[]) => unknown>;
             if (validations.length)
-                api[this.#platform.basename(dir) + '.validation'](
+                apiAny[this.#platform.basename(dir) + '.validation'](
                     [...libs, ...validations],
                     config.name + '.' + this.#platform.basename(dir) + '.validation',
                     this.#platform.relative('.', dir),
                 );
             if (apis.length)
-                api[this.#platform.basename(dir) + '.api'](
+                apiAny[this.#platform.basename(dir) + '.api'](
                     [...libs, ...apis],
                     config.name + '.' + this.#platform.basename(dir) + '.api',
                     this.#platform.relative('.', dir),
                 );
             if (assets.length)
-                api[this.#platform.basename(dir) + '.asset'](
+                apiAny[this.#platform.basename(dir) + '.asset'](
                     assets,
                     config.name + '.' + this.#platform.basename(dir) + '.asset',
                     this.#platform.relative('.', dir),
                 );
             if (handlers.length)
-                api[this.#platform.basename(dir)](
+                apiAny[this.#platform.basename(dir)](
                     [...libs, ...handlers],
                     config.name + '.' + this.#platform.basename(dir),
                     this.#platform.relative('.', dir),
@@ -351,12 +358,18 @@ export default class Watch extends Internal implements IWatch {
 
     public async load<T extends {result: unknown}>(
         config: {name: string; pkg: IModuleConfig['pkg']; base: string},
-        isDirectory: boolean | `Record<string, () => Promise<unknown>>` | undefined,
+        isDirectory: boolean | Record<string, () => Promise<unknown>> | undefined,
         isFile: boolean | object | undefined,
         ...path: string[]
     ): Promise<(api: T) => T> {
         if (isDirectory) {
-            return this._loadHandlers(isDirectory, config, ...path);
+            return this._loadHandlers(
+                isDirectory === true
+                    ? true
+                    : (isDirectory as Record<string, () => Promise<unknown>>),
+                config,
+                ...path,
+            );
         } else if (isFile) {
             // if (isFile !== true) debugger;
             const filename = this.#platform.join(...path);
@@ -376,33 +389,38 @@ export default class Watch extends Internal implements IWatch {
                 if (kind(item) === 'handler') {
                     this.#handlerFiles.set(filename, config);
                     return Object.defineProperty(
-                        api =>
-                            api[itemName](
+                        (api: T) => {
+                            (api as Record<string, (...args: unknown[]) => unknown>)[itemName](
                                 [item],
                                 config.name + '.' + itemName,
                                 this.#platform.relative('.', filename),
-                            ),
+                            );
+                            return api;
+                        },
                         'name',
                         {value: itemName},
                     );
                 } else {
                     this.#layerFiles.set(filename, config);
                     return Object.defineProperty(
-                        api =>
-                            api[itemName](
+                        (api: T) => {
+                            (api as Record<string, (...args: unknown[]) => unknown>)[itemName](
                                 typeof item === 'function' &&
                                     !['adapter', 'orchestrator'].includes(kind(item))
                                     ? item(api)
                                     : item,
                                 config.name + '.' + itemName,
                                 this.#platform.relative('.', filename),
-                            ),
+                            );
+                            return api;
+                        },
                         'name',
                         {value: itemName},
                     );
                 }
             }
         }
+        return (api: T) => api;
     }
 
     /**
@@ -472,14 +490,25 @@ export default class Watch extends Internal implements IWatch {
         configOverride: object,
         filename: string,
     ): Promise<void> {
+        type LayerResult = {
+            result: Record<string, {methods: unknown[]; source?: string; port?: unknown}>;
+        };
+        type ModuleConfig = Parameters<typeof layerProxy>[3];
         // Path 1: Layer file changed — recreate and restart the port
         const layerConfig = this.#layerFiles.get(filename);
         if (layerConfig) {
             const id = this.#platform.basename(filename, this.#platform.extname(filename));
-            const item = (await this.load(layerConfig, false, true, filename))(
-                layerProxy(this.#error, this.#apiSchema, this.#port, layerConfig),
-            ).result[id];
-            registry.ports.set(layerConfig.name + '.' + id, item.port);
+            const proxy = layerProxy(
+                this.#error,
+                this.#apiSchema,
+                this.#port,
+                layerConfig as unknown as ModuleConfig,
+            );
+            const loadFn = (await this.load(layerConfig, false, true, filename)) as (
+                api: LayerResult,
+            ) => LayerResult;
+            const item = loadFn(proxy as unknown as LayerResult).result[id];
+            registry.ports.set(layerConfig.name + '.' + id, item.port as IAdapterRegistry);
             const port = await registry.createPort(layerConfig.name + '.' + id);
             if (!port) return;
             await port.start(configOverride);
@@ -500,10 +529,17 @@ export default class Watch extends Internal implements IWatch {
         if (config) {
             const importProxyCallback = await this.load(config, false, true, filename);
             const name = importProxyCallback.name;
+            const cbResult = (importProxyCallback as unknown as (api: LayerResult) => LayerResult)(
+                layerProxy(
+                    this.#error,
+                    this.#apiSchema,
+                    this.#port,
+                    config as unknown as ModuleConfig,
+                ) as unknown as LayerResult,
+            );
             await registry.replaceHandlers(
                 config.name + '.' + name,
-                importProxyCallback(layerProxy(this.#error, this.#apiSchema, this.#port, config))
-                    .result[name].methods,
+                cbResult.result[name].methods as Handlers,
             );
         } else {
             // Path 3b: Handler folder changed — reload entire folder
@@ -511,16 +547,22 @@ export default class Watch extends Internal implements IWatch {
             config = this.#handlerFolders.get(dir);
             if (config) {
                 const handlers = (await this._loadHandlers(true, config, dir))(
-                    layerProxy(this.#error, this.#apiSchema, this.#port, config),
-                );
+                    layerProxy(
+                        this.#error,
+                        this.#apiSchema,
+                        this.#port,
+                        config as unknown as ModuleConfig,
+                    ) as unknown as LayerResult,
+                ) as unknown as LayerResult;
                 await registry.replaceHandlers(
                     config.name + '.' + this.#platform.basename(dir),
-                    handlers.result[this.#platform.basename(dir)].methods,
+                    handlers.result[this.#platform.basename(dir)].methods as Handlers,
                 );
                 if (handlers.result[this.#platform.basename(dir) + '.validation'])
                     await registry.replaceHandlers(
                         config.name + '.' + this.#platform.basename(dir) + '.validation',
-                        handlers.result[this.#platform.basename(dir) + '.validation'].methods,
+                        handlers.result[this.#platform.basename(dir) + '.validation']
+                            .methods as Handlers,
                     );
             }
         }
@@ -579,9 +621,15 @@ export default class Watch extends Internal implements IWatch {
                 .map(folder => this.#platform.relative('.', folder)),
         });
         if (this.#config.test) {
-            this.#emit.addEventListener('test', async ({detail: {done, test}}) => {
+            this.#emit.addEventListener('test', async (event: Event) => {
+                const {done, test} = ((event as CustomEvent).detail ?? {}) as {
+                    done?: (error?: unknown) => void;
+                    test?: unknown;
+                };
                 try {
-                    const chain = await (await import('./chain.ts')).default(test, this.log);
+                    const chain = await (
+                        await import('./chain.ts')
+                    ).default(test as ITestContext, this.log);
 
                     const steps = await Promise.all(
                         ([] as string[]).concat(this.#config.test).map(async method => {
@@ -595,7 +643,9 @@ export default class Watch extends Internal implements IWatch {
                             return result;
                         }),
                     );
-                    await Promise.all(steps.map(chain));
+                    await Promise.all(
+                        steps.map(step => chain(step as Parameters<typeof chain>[0])),
+                    );
                 } catch (error) {
                     this.log?.error?.(error);
                     done?.(error);

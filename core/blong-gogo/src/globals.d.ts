@@ -61,3 +61,40 @@ interface ImportMeta {
     glob(patterns: string | string[]): Record<string, () => Promise<unknown>>;
     glob<T>(patterns: string | string[], options?: object): Record<string, () => Promise<T>>;
 }
+
+declare module 'picomatch' {
+    function picomatch(glob: string | string[], options?: object): (path: string) => boolean;
+    export default picomatch;
+}
+
+declare module 'minimist' {
+    interface ParsedArgs {
+        _: string[];
+        [key: string]: unknown;
+    }
+    function minimist(args?: string[], opts?: object): ParsedArgs;
+    export = minimist;
+}
+
+declare module 'rc' {
+    function rc(
+        name: string,
+        defaults?: object,
+        argv?: object,
+        parse?: (content: string) => object,
+    ): object;
+    export = rc;
+}
+
+declare module 'ut-function.cbc' {
+    function cbc(key: string | Buffer, validate?: boolean): {
+        encrypt(data: string | Buffer): Buffer;
+        decrypt(data: string | Buffer): string;
+    };
+    export default cbc;
+}
+
+declare module 'ut-function.template' {
+    function template(obj: object, context: object): object;
+    export default template;
+}

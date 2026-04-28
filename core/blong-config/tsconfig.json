@@ -22,5 +22,6 @@
         "files": true,
         "experimentalResolver": true
     },
+    "types": ["node"],
     "exclude": ["node_modules", ".lint", ".docusaurus", "dist"]
 }

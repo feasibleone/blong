@@ -158,7 +158,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
         } as unknown as Parameters<typeof oidc>[0]);
 
         this.#gatewayCodec = (async () => {
-            const mleClient = await jose((config.client || {}) as unknown as {sign: unknown; encrypt: unknown});
+            const mleClient = await jose((config.client || {}) as Parameters<typeof jose>[0]);
             return busGateway({
                 errorPrefix: 'rpc.',
                 serverInfo: (key: 'protocol' | 'port') => ({protocol, port})[key],
@@ -176,8 +176,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
             const gw = this.#config.gateway as Record<string, unknown>;
             const [prefix, method] = methodName.split('/');
             if (method) {
-                if (gw[prefix])
-                    return {...(gw[prefix] as object), ...$meta.gateway, method};
+                if (gw[prefix]) return {...(gw[prefix] as object), ...$meta.gateway, method};
             } else {
                 const [namespace] = prefix.split('.');
                 const gwEntry = gw[namespace] || gw[prefix];
@@ -194,7 +193,10 @@ export default class GatewayCodecImpl implements IGatewayCodec {
     ): ReturnType<IGatewayCodec['codec']> {
         const gatewayConfig = this.gateway($meta);
 
-        if (gatewayConfig) return (await this.#gatewayCodec)(gatewayConfig as never) as unknown as Awaited<ReturnType<IGatewayCodec['codec']>>;
+        if (gatewayConfig)
+            return (await this.#gatewayCodec)(gatewayConfig as never) as unknown as Awaited<
+                ReturnType<IGatewayCodec['codec']>
+            >;
 
         const [namespace, event] = $meta.method!.split('.');
 

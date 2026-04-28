@@ -1,4 +1,5 @@
 import type {
+    ApiSchema as ApiSchemaType,
     GatewaySchema,
     IApiSchema,
     ILog,
@@ -78,8 +79,10 @@ export default class ApiSchema extends Internal implements IApiSchema {
                         file.name.endsWith('.json'))
                 ) {
                     const [name] = this.#platform.basename(file.name).split('.');
-                    namespace[name] ||= [];
-                    namespace[name].push(this.#platform.join(dir, file.name));
+                    (namespace as Record<string, string[]>)[name] ||= [];
+                    (namespace as Record<string, string[]>)[name].push(
+                        this.#platform.join(dir, file.name),
+                    );
                 }
             }
         }
@@ -92,13 +95,18 @@ export default class ApiSchema extends Internal implements IApiSchema {
                 {},
             );
 
+        if (!namespace) return result;
+
         for (const [name, locations] of Object.entries(namespace)) {
             const bundle = await loadApi(locations, source, this.#platform);
-            const {namespace = name, destination} = bundle['x-blong'] ?? {};
-            this.#namespace[namespace] ||= {};
-            Object.entries(bundle.paths).forEach(([path, methods]: [string, PathItemObject]) => {
-                ['get', 'post', 'put', 'delete'].forEach(
-                    (httpMethod: 'get' | 'post' | 'put' | 'delete') => {
+            const blongMeta = (bundle as Record<string, unknown>)['x-blong'] as
+                | {namespace?: string; destination?: string}
+                | undefined;
+            const {namespace: nsName = name, destination} = blongMeta ?? {};
+            this.#namespace[nsName] ||= {};
+            Object.entries(bundle.paths ?? {}).forEach(
+                ([path, methods]: [string, PathItemObject]) => {
+                    (['get', 'post', 'put', 'delete'] as const).forEach(httpMethod => {
                         const operation = methods[httpMethod];
                         if (!operation) return;
                         const bodyParam = (
@@ -108,39 +116,46 @@ export default class ApiSchema extends Internal implements IApiSchema {
                         const definition: GatewaySchema = {
                             rpc: false,
                             auth: false,
-                            ...(bodyParam && {
-                                body: bodyParam,
-                            }),
+                            ...(bodyParam ? {body: bodyParam} : {}),
                             ...('requestBody' in operation && {
                                 body:
                                     'openapi' in bundle
-                                        ? 'content' in operation.requestBody &&
-                                          operation.requestBody.content?.['application/json']
+                                        ? 'content' in (operation.requestBody ?? {}) &&
+                                          (
+                                              operation.requestBody as {
+                                                  content?: Record<string, {schema?: unknown}>;
+                                              }
+                                          )?.content?.['application/json']
                                         : operation.requestBody,
                             }),
-                            basePath: `/rest/${namespace}`,
-                            response: (operation.responses?.['200'] as {content: unknown})
-                                ?.content?.['application/json']?.schema,
+                            basePath: `/rest/${nsName}`,
+                            response: (
+                                (
+                                    operation.responses?.['200'] as {
+                                        content?: Record<string, {schema?: unknown}>;
+                                    }
+                                )?.content?.['application/json'] as {schema?: unknown} | undefined
+                            )?.schema as ApiSchemaType | undefined,
                             description: operation.description,
                             summary: operation.summary,
                             destination,
                             method: httpMethod.toUpperCase() as Uppercase<typeof httpMethod>,
-                            subject: namespace,
+                            subject: nsName,
                             operation,
                             path: path.replaceAll('{', ':').replaceAll('}', ''),
                         };
-                        this.#loaded[`${namespace}${method}`.toLowerCase()] = definition;
-                        this.#namespace[namespace][`${namespace}.${method}`.toLowerCase()] =
-                            definition;
-                        result[`${namespace}.${method}`.toLowerCase()] = definition;
-                    },
-                );
-            });
+                        this.#loaded[`${nsName}${method}`.toLowerCase()] = definition;
+                        this.#namespace[nsName][`${nsName}.${method}`.toLowerCase()] = definition;
+                        result[`${nsName}.${method}`.toLowerCase()] = definition;
+                    });
+                },
+            );
         }
         const generate = [];
         for (const [prefix, record] of Object.entries(this.#generateDir)) {
             for (const [method, operation] of Object.entries(this.#loaded)) {
-                const filename = operation.subject + this.method(operation.operation) + '.ts';
+                const filename =
+                    (operation.subject ?? '') + this.method(operation.operation ?? {}) + '.ts';
                 if (method.startsWith(prefix) && !record.existing.has(filename.toLowerCase())) {
                     generate.push(this.#platform.join(record.dir, filename));
                 }
@@ -182,53 +197,61 @@ export default handler(
     }
 
     private _params(schema: GatewaySchema): string {
-        return schema?.operation?.parameters
-            ?.map((param: (typeof schema.operation.parameters)[0]) => {
-                if ('$ref' in param) return '';
-                if (!('in' in param)) return;
-                switch (param.in) {
-                    case 'header':
-                    case 'path':
-                    case 'query':
-                        return `    ${identifier(param.name)}${
-                            param.required ? ':' : '?:'
-                        } ${this._paramType(param)};${
-                            param.description
-                                ? ` // ${param.description.replaceAll(/[\r\n]/g, '')}`
-                                : ''
-                        }`;
-                    case 'body':
-                        if (param.schema?.type === 'object') {
-                            return Object.entries(param.schema.properties)
-                                .map(
-                                    ([name, property]: [string, {description?: string}]) =>
-                                        `    ${name}${param.required ? ':' : '?:'} ${this._type(
-                                            property,
-                                        )};${
-                                            property.description
-                                                ? ` // ${property.description.replaceAll(
-                                                      /[\r\n]/g,
-                                                      '',
-                                                  )}`
-                                                : ''
-                                        }`,
+        return (
+            schema?.operation?.parameters
+                ?.map((param: (typeof schema.operation.parameters)[0]) => {
+                    if ('$ref' in param) return '';
+                    if (!('in' in param)) return;
+                    switch (param.in) {
+                        case 'header':
+                        case 'path':
+                        case 'query':
+                            return `    ${identifier(param.name)}${
+                                param.required ? ':' : '?:'
+                            } ${this._paramType(param)};${
+                                param.description
+                                    ? ` // ${param.description.replaceAll(/[\r\n]/g, '')}`
+                                    : ''
+                            }`;
+                        case 'body':
+                            if (param.schema?.type === 'object') {
+                                return Object.entries(
+                                    (param.schema.properties as Record<
+                                        string,
+                                        {description?: string}
+                                    >) ?? {},
                                 )
-                                .join('\n');
-                        }
-                }
-            })
-            .filter(Boolean)
-            .join('\n');
+                                    .map(
+                                        ([name, property]: [string, {description?: string}]) =>
+                                            `    ${name}${param.required ? ':' : '?:'} ${this._type(
+                                                property,
+                                            )};${
+                                                property.description
+                                                    ? ` // ${property.description.replaceAll(
+                                                          /[\r\n]/g,
+                                                          '',
+                                                      )}`
+                                                    : ''
+                                            }`,
+                                    )
+                                    .join('\n');
+                            }
+                    }
+                })
+                .filter(Boolean)
+                .join('\n') ?? ''
+        );
     }
 
     private _response({operation}: GatewaySchema): string {
         if (!operation?.responses || !(200 in operation.responses)) return '';
-        if (!('schema' in operation.responses[200])) return '';
-        const schema = operation.responses?.[200]?.schema;
-        if (!schema || !('properties' in schema)) return '';
-        return Object.entries(schema.properties ?? {})
+        const resp200 = operation.responses[200] as Record<string, unknown> | undefined;
+        if (!resp200 || !('schema' in resp200)) return '';
+        const schema = resp200?.['schema'];
+        if (!schema || typeof schema !== 'object' || !('properties' in schema)) return '';
+        return Object.entries((schema as {properties: Record<string, unknown>}).properties ?? {})
             .map(([name, property]) => {
-                return `    ${name}: ${this._type(property)},`;
+                return `    ${name}: ${this._type(property as SchemaObject)},`;
             })
             .join('\n');
     }
@@ -256,11 +279,15 @@ export default handler(
             case 'boolean':
                 return 'boolean';
             case 'array':
-                return `${this._type(schema.items)}[]`;
+                return `${this._type(schema.items as SchemaObject)}[]`;
             case 'object':
-                return `{${Object.entries(schema.properties)
-                    .map(([name, property]) => `${name}: ${this._type(property)}`)
+                return `{${Object.entries(
+                    (schema as {properties?: Record<string, unknown>}).properties ?? {},
+                )
+                    .map(([name, property]) => `${name}: ${this._type(property as SchemaObject)}`)
                     .join('; ')}}`;
+            default:
+                return 'unknown';
         }
     }
 
@@ -293,5 +320,6 @@ export default handler(
         files.forEach(file =>
             record.existing.add(this.#platform.basename(file.name).toLowerCase()),
         );
+        return true;
     }
 }

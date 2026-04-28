@@ -191,11 +191,12 @@ function activeConfigs<T extends TSchema>(
     mod: IModuleConfig<T>,
     configNames: string[],
 ): (boolean | object)[] {
-    return ['default']
-        .concat(configNames)
-        .map(name => mod.config?.[name])
-        .filter(Boolean)
-        .concat({pkg: mod.pkg, children: mod.children, url: mod.url});
+    return (
+        (['default'] as string[])
+            .concat(configNames)
+            .map(name => (mod.config as unknown as Record<string, unknown>)?.[name])
+            .filter(Boolean) as (boolean | object)[]
+    ).concat({pkg: mod.pkg, children: mod.children, url: mod.url});
 }
 
 export default async function loadRealm<T extends TSchema>(
@@ -355,7 +356,7 @@ export default async function loadRealm<T extends TSchema>(
     if (!api) {
         api = {
             platform: platformApi,
-        };
+        } as unknown as typeof api;
         loadedConfigs.push({
             watch: {},
             log: {},
@@ -536,7 +537,6 @@ export default async function loadRealm<T extends TSchema>(
             base,
             rootKind,
             explicitChildren,
-            configNames,
         );
         for (const [folderName, activation] of discoveredFolders) {
             if (!(folderName in mergedConfig))
@@ -645,11 +645,15 @@ export default async function loadRealm<T extends TSchema>(
                 );
                 item = async () => loaded.filter(Boolean);
             }
-            const loadedModules = await item();
+            const loadedModules = await (item as () => Promise<unknown[]>)();
             for (const module of Array.isArray(loadedModules) ? loadedModules : [loadedModules]) {
                 const item = await module;
-                const fn = item?.default ?? item;
-                if (typeof fn === 'function' && (fn.prototype instanceof Internal || fn[System])) {
+                const fn = (item as {default?: unknown})?.default ?? item;
+                if (
+                    typeof fn === 'function' &&
+                    (fn.prototype instanceof Internal ||
+                        (fn as unknown as Record<symbol, unknown>)[System])
+                ) {
                     api![itemName] = new (fn as IConstructor)(config, api);
                     await api![itemName].init?.();
                     if (itemName === 'log')
@@ -661,13 +665,15 @@ export default async function loadRealm<T extends TSchema>(
                                 context: `${defKind}`,
                             },
                         );
-                } else if (['solution', 'server', 'browser'].includes(kind(fn))) {
+                } else if (
+                    ['solution', 'server', 'browser'].includes(kind(fn as Record<symbol, Kinds>))
+                ) {
                     realm ||= new RealmImpl(mergedConfig, api!, rootKind);
                     realm.addModule(
                         itemName,
                         await loadRealm(
                             platformApi,
-                            fn,
+                            fn as Parameters<typeof loadRealm>[1],
                             itemName,
                             {[platformApi.platform]: mergedConfig[platformApi.platform], ...config},
                             configNames,
@@ -684,7 +690,7 @@ export default async function loadRealm<T extends TSchema>(
                                 api?.error,
                                 api?.apiSchema,
                                 api?.port,
-                                mergedConfig,
+                                mergedConfig as unknown as Parameters<typeof layerProxy>[3],
                                 api?.configRuntime,
                             ),
                         ).result,

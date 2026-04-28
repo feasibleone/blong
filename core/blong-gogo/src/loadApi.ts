@@ -17,7 +17,7 @@ export default async function loadApi(
             .map(([key, value]) => value);
     }
 
-    for (const location of [].concat(locations)) {
+    for (const location of ([] as unknown[]).concat(locations as unknown)) {
         if (typeof location === 'object') documents.push(location);
         else if (typeof location === 'string') {
             if (location.startsWith('http')) {

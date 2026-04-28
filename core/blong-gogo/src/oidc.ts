@@ -39,28 +39,40 @@ export default ({
 }) => {
     async function openIdConfig(
         issuer: string,
-        headers: Record<string, string | undefined> | undefined,
-        protocol: string,
+        headers?: Record<string, string | undefined> | undefined,
+        protocol?: string,
     ) {
         if (issuer === 'blong-login') {
-            const {protocol: loginProtocol, hostname, port} = await loginService(discoverService);
+            const {
+                protocol: loginProtocol,
+                hostname,
+                port,
+            } = await loginService(
+                discoverService as unknown as (
+                    service: string,
+                ) => Promise<{protocol: string; hostname: string; port: number}>,
+            );
             issuer = `${loginProtocol}://${hostname}:${port}/rpc/login/.well-known/openid-configuration`;
         } else {
             headers = undefined;
         }
-        return await get(issuer, errorOidcHttp, errorOidcEmpty, headers, protocol, tls);
+        return await get(issuer, errorOidcHttp, errorOidcEmpty, headers, protocol ?? '', tls);
     }
 
     let actionsCache: Record<string, number[] | number>;
     async function actions(method: string) {
         if (actionsCache) return actionsCache[method];
-        const {protocol, hostname, port} = await loginService(discoverService);
+        const {protocol, hostname, port} = await loginService(
+            discoverService as unknown as (
+                service: string,
+            ) => Promise<{protocol: string; hostname: string; port: number}>,
+        );
         const actionsMap = (await get(
             `${protocol}://${hostname}:${port}/rpc/login/action`,
             errorActionHttp,
             errorActionEmpty,
             {},
-            undefined,
+            protocol,
             tls,
         )) as Record<string, number>;
         const fuzzyMap = Object.entries(actionsMap).reduce(
@@ -113,7 +125,19 @@ export default ({
     const loadIssuers = () =>
         Promise.all(
             Object.entries(issuers)
-                .filter(([, config]) => config)
+                .filter(
+                    (
+                        entry,
+                    ): entry is [
+                        string,
+                        {
+                            configuration?: string;
+                            url?: string;
+                            audience?: string;
+                            [key: string]: unknown;
+                        },
+                    ] => !!entry[1],
+                )
                 .map(
                     ([
                         issuerId,
@@ -127,7 +151,9 @@ export default ({
                         (async () => [
                             issuerId,
                             {
-                                ...(await openIdConfig(configuration || issuerUrl(issuerId, url))),
+                                ...((await openIdConfig(
+                                    configuration || issuerUrl(issuerId, url),
+                                )) as object),
                                 audience,
                                 issuerId,
                                 ...rest,
@@ -138,21 +164,35 @@ export default ({
 
     async function cache() {
         return (await loadIssuers()).reduce(
-            (prev, [issuer, config]) => ({...prev, [config.issuer]: config, [issuer]: config}),
-            {},
+            (prev, [issuer, config]) => {
+                const key = (config as {issuer?: string}).issuer;
+                return {...prev, ...(key ? {[key]: config} : {}), [issuer as string]: config};
+            },
+            {} as Record<string, unknown>,
         );
     }
 
     const getIssuers = (headers: object, protocol: string) =>
         Promise.all(
             Object.entries(issuers)
-                .filter(([, config]) => config)
+                .filter(
+                    (
+                        entry,
+                    ): entry is [
+                        string,
+                        {configuration?: string; url?: string; [key: string]: unknown},
+                    ] => !!entry[1],
+                )
                 .map(([issuer, {configuration, url = '.well-known/openid-configuration'}]) =>
-                    openIdConfig(configuration || issuerUrl(issuer, url), headers, protocol),
+                    openIdConfig(
+                        configuration || issuerUrl(issuer, url),
+                        headers as Record<string, string | undefined>,
+                        protocol,
+                    ),
                 ),
         );
 
-    let issuersCache: Promise<Record<string, object>> | null = null;
+    let issuersCache: Promise<Record<string, unknown>> | null = null;
 
     async function issuerConfig(issuerId: string): Promise<{
         issuer: string;
@@ -160,9 +200,17 @@ export default ({
         audience: string;
         [key: string]: unknown;
     }> {
-        if (issuerId === 'blong-login') return openIdConfig('blong-login');
-        issuersCache = issuersCache || cache();
-        const result = (await issuersCache)[issuerId];
+        if (issuerId === 'blong-login')
+            return openIdConfig('blong-login') as unknown as {
+                issuer: string;
+                jwks_uri: string;
+                audience: string;
+                [key: string]: unknown;
+            };
+        issuersCache = issuersCache ?? cache();
+        const result = (await issuersCache)[issuerId] as
+            | {issuer: string; jwks_uri: string; audience: string; [key: string]: unknown}
+            | undefined;
         if (!result) {
             throw errorBadIssuer({params: {issuerId}});
         }
@@ -175,7 +223,7 @@ export default ({
             errorOidcHttp,
             errorOidcEmpty,
             {},
-            undefined,
+            '',
             tls,
         );
     }
@@ -187,8 +235,14 @@ export default ({
         if (!issuerId) throw errorNoIssuer();
         const kid = protectedHeader?.kid;
         if (!kid) throw errorNoKid();
-        if (!keys[issuerId]) keys[issuerId] = createLocalJWKSet(await jwks(issuerId));
-        const result = await keys[issuerId](protectedHeader, decoded);
+        if (!keys[issuerId])
+            keys[issuerId] = createLocalJWKSet(
+                (await jwks(issuerId)) as Parameters<typeof createLocalJWKSet>[0],
+            );
+        const result = await keys[issuerId](
+            protectedHeader as Parameters<(typeof keys)[string]>[0],
+            decoded as Parameters<(typeof keys)[string]>[1],
+        );
         if (!result) throw errorInvalid({params: {message: 'Invalid OIDC key id'}});
         return result;
     }
@@ -204,22 +258,37 @@ export default ({
             decoded = decodeJwt(token);
             protectedHeader = decodeProtectedHeader(token);
         } catch (error) {
-            throw errorInvalid({params: {message: error.message}, cause: error});
+            throw errorInvalid({
+                params: {message: (error as Error).message},
+                cause: error as Error,
+            });
         }
         const config = (decoded.iss &&
             decoded.iss !== 'blong-login' &&
             (await issuerConfig(decoded.iss))) || {audience};
         try {
             if (isId) {
-                await jwtVerify(token, await getKey(decoded, protectedHeader), {
-                    audience: config.audience,
-                    issuer: decoded.iss,
-                    nonce,
-                });
+                await jwtVerify(
+                    token,
+                    (await getKey(decoded, protectedHeader)) as unknown as Parameters<
+                        typeof jwtVerify
+                    >[1],
+                    {
+                        audience: (config as {audience?: string}).audience ?? audience,
+                        issuer: decoded.iss as string,
+                        ...(nonce ? {nonce} : {}),
+                    } as Parameters<typeof jwtVerify>[2],
+                );
             } else {
-                await jwtVerify(token, await getKey(decoded, protectedHeader), {
-                    audience: config.audience,
-                });
+                await jwtVerify(
+                    token,
+                    (await getKey(decoded, protectedHeader)) as unknown as Parameters<
+                        typeof jwtVerify
+                    >[1],
+                    {
+                        audience: (config as {audience?: string}).audience,
+                    },
+                );
             }
         } catch (error) {
             throw errorInvalid({params: {message: (error as Error).message}, cause: error});

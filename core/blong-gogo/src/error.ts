@@ -50,7 +50,7 @@ export default ({
     errorPrint?: string | boolean;
 }): IErrorFactory => {
     const warn = getWarnHandler({logFactory, logLevel});
-    const errors: Record<string | symbol, {message: string; print?: string}> = {
+    const errors: Record<string | symbol, {message: string; print?: string} | string> = {
         source: '',
     };
     // Mapping from lowercase no-dot keys to original error keys for case-insensitive lookup
@@ -118,7 +118,7 @@ export default ({
             }
 
             // Check both direct and via lookup
-            if (prop in target || this.has(target, prop)) {
+            if (prop in target || this.has!(target, prop)) {
                 return {
                     enumerable: true,
                     configurable: true,
@@ -168,14 +168,16 @@ export default ({
                           ? {message: message[0], print: message[1]}
                           : message;
                 if (!props.message) throw new Error(`Missing message for error '${type}'`);
-                const error = errors[type];
+                const error = errors[type] as {message?: string; print?: string} | undefined;
                 if (error) {
                     if (error.message !== props.message) {
                         throw new Error(
                             `Error '${type}' is already defined with different message!`,
                         );
                     }
-                    result[type] = error;
+                    (result as Record<string, (params?: unknown, $meta?: IMeta) => ITypedError>)[
+                        type
+                    ] = error as unknown as (params?: unknown, $meta?: IMeta) => ITypedError;
                     return;
                 }
 
@@ -209,7 +211,9 @@ export default ({
                 handler.params = handler.message
                     .match(paramsRegex)
                     ?.map(param => param.substring(1, param.length - 1));
-                result[type] = errors[type] = handler;
+                (result as Record<string, unknown>)[type] = (errors as Record<string, unknown>)[
+                    type
+                ] = handler;
 
                 // Add to lookup map (lowercase, no dots)
                 const lookupKey = type.toLowerCase().replace(/\./g, '');
@@ -218,5 +222,5 @@ export default ({
             return result;
         },
     };
-    return api;
+    return api as IErrorFactory;
 };

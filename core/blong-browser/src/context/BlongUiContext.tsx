@@ -137,8 +137,8 @@ export function BlongUiProvider({
     );
 
     return (
-        <BlongUiContext.Provider value={value}>
+        <BlongUiContext value={value}>
             <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        </BlongUiContext.Provider>
+        </BlongUiContext>
     );
 }

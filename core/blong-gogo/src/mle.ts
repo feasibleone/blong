@@ -18,9 +18,9 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                 request.routeOptions.config.auth &&
                 request.headers['content-type'] === 'application/json'
             ) {
-                const [where, what]: [Record<string, unknown>, string] = request.body?.jsonrpc
-                    ? [request.body, 'params']
-                    : [request, 'body'];
+                const [where, what]: [Record<string, unknown>, string] = (
+                    request.body?.jsonrpc ? [request.body, 'params'] : [request, 'body']
+                ) as [Record<string, unknown>, string];
                 if (where[what] && request.routeOptions.config.mle !== false) {
                     const credentials = request.auth?.credentials;
                     if (!credentials) {
@@ -38,9 +38,15 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                             };
                             credentials.mlsk = mlsk;
                             credentials.mlek = mlek;
-                            where[what] = await mle.verify(plaintext, mlsk);
+                            where[what] = await mle.verify(
+                                plaintext,
+                                mlsk as unknown as Parameters<typeof mle.verify>[1],
+                            );
                         } else {
-                            where[what] = await mle.decryptVerify(where[what], credentials.mlsk);
+                            where[what] = await mle.decryptVerify(
+                                where[what] as string,
+                                credentials.mlsk as Parameters<typeof mle.decryptVerify>[1],
+                            );
                         }
                     } catch (error) {
                         reply.code(400);

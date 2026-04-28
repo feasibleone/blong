@@ -73,41 +73,46 @@ function operationParams(
     request: GatewayRequest,
 ): unknown {
     const result: Record<string, unknown> =
-        operation?.parameters?.reduce((result: Record<string, unknown>, parameter) => {
-            if ('in' in parameter && 'name' in parameter) {
-                let where: Record<string, unknown> | undefined;
-                switch (parameter.in) {
-                    case 'header':
-                        where = request.headers as Record<string, unknown>;
-                        break;
-                    case 'query':
-                        where = request.query as Record<string, unknown>;
-                        break;
-                    case 'path':
-                        where = request.params as Record<string, unknown>;
-                        break;
-                    case 'cookie':
-                        where = request.cookies as Record<string, unknown>;
-                        break;
-                    case 'body':
-                        if (request.body) {
-                            if (parameter.schema?.additionalProperties)
-                                Object.assign(result, request.body);
-                            else if (parameter.schema?.properties)
-                                Object.entries(parameter.schema.properties).forEach(
-                                    ([name, value]) => {
-                                        if (name in (request.body as Record<string, unknown>))
-                                            result[snakeToCamel(name)] = (request.body as Record<string, unknown>)[name];
-                                    },
-                                );
-                        }
-                        break;
+        operation?.parameters?.reduce(
+            (result: Record<string, unknown>, parameter) => {
+                if ('in' in parameter && 'name' in parameter) {
+                    let where: Record<string, unknown> | undefined;
+                    switch (parameter.in) {
+                        case 'header':
+                            where = request.headers as Record<string, unknown>;
+                            break;
+                        case 'query':
+                            where = request.query as Record<string, unknown>;
+                            break;
+                        case 'path':
+                            where = request.params as Record<string, unknown>;
+                            break;
+                        case 'cookie':
+                            where = request.cookies as Record<string, unknown>;
+                            break;
+                        case 'body':
+                            if (request.body) {
+                                if (parameter.schema?.additionalProperties)
+                                    Object.assign(result, request.body);
+                                else if (parameter.schema?.properties)
+                                    Object.entries(parameter.schema.properties).forEach(
+                                        ([name, value]) => {
+                                            if (name in (request.body as Record<string, unknown>))
+                                                result[snakeToCamel(name)] = (
+                                                    request.body as Record<string, unknown>
+                                                )[name];
+                                        },
+                                    );
+                            }
+                            break;
+                    }
+                    if (where && parameter.name in where)
+                        result[snakeToCamel(parameter.name)] = where[parameter.name];
                 }
-                if (where && parameter.name in where)
-                    result[snakeToCamel(parameter.name)] = where[parameter.name];
-            }
-            return result;
-        }, {} as Record<string, unknown>) ?? {};
+                return result;
+            },
+            {} as Record<string, unknown>,
+        ) ?? {};
     if (
         bodySchema &&
         'type' in bodySchema &&
@@ -119,7 +124,8 @@ function operationParams(
             Object.assign(result, request.body);
         else if (bodySchema.properties)
             Object.entries(bodySchema.properties).forEach(([name, value]) => {
-                if (name in (request.body as Record<string, unknown>)) result[snakeToCamel(name)] = (request.body as Record<string, unknown>)[name];
+                if (name in (request.body as Record<string, unknown>))
+                    result[snakeToCamel(name)] = (request.body as Record<string, unknown>)[name];
             });
     }
     return result;
@@ -134,8 +140,8 @@ export default class Gateway extends Internal implements IGateway {
         port: 8080,
         logLevel: 'trace',
         cors: undefined,
-        sign: undefined,
-        encrypt: undefined,
+        sign: undefined as unknown as IConfig['sign'],
+        encrypt: undefined as unknown as IConfig['encrypt'],
         public: {
             sign: undefined,
             encrypt: undefined,
@@ -206,17 +212,20 @@ export default class Gateway extends Internal implements IGateway {
     }
 
     private _forward(headers: object): Record<string, string> {
-        return ([
-            ['x-request-id'],
-            ['x-b3-traceid', () => v4().replace(/-/g, '')],
-            ['x-b3-spanid'],
-            ['x-b3-parentspanid'],
-            ['x-b3-sampled'],
-            ['x-b3-flags'],
-            ['x-ot-span-context'],
-            ['x-ut-stack'],
-        ] as [string, (() => string)?][]).reduce(function (object: Record<string, string>, [key, value]) {
-            if (typeof key === 'string' && key in (headers as Record<string, unknown>)) object[key] = (headers as Record<string, unknown>)[key] as string;
+        return (
+            [
+                ['x-request-id'],
+                ['x-b3-traceid', () => v4().replace(/-/g, '')],
+                ['x-b3-spanid'],
+                ['x-b3-parentspanid'],
+                ['x-b3-sampled'],
+                ['x-b3-flags'],
+                ['x-ot-span-context'],
+                ['x-ut-stack'],
+            ] as [string, (() => string)?][]
+        ).reduce(function (object: Record<string, string>, [key, value]) {
+            if (typeof key === 'string' && key in (headers as Record<string, unknown>))
+                object[key] = (headers as Record<string, unknown>)[key] as string;
             else if (value) object[key] = value();
             return object;
         }, {});
@@ -246,7 +255,11 @@ export default class Gateway extends Internal implements IGateway {
             localPort,
             ...(req.auth?.credentials && {auth, language}),
             hostName: (forwardedHost || req.hostname) as string,
-            ipAddress: (([] as string[]).concat(forwardedIp as string | string[])[0] || req.socket.remoteAddress || '').split(',')[0],
+            ipAddress: (
+                ([] as string[]).concat(forwardedIp as string | string[])[0] ||
+                req.socket.remoteAddress ||
+                ''
+            ).split(',')[0],
             machineName: hostName,
             os: osName,
             version,
@@ -281,7 +294,9 @@ export default class Gateway extends Internal implements IGateway {
                     const params = httpResp[method];
                     if (Array.isArray((params as unknown[])?.[0])) {
                         // setting multiple headers and cookies require nested arrays
-                        (params as unknown[][]).forEach(param => resp[method](...([] as unknown[]).concat(param)));
+                        (params as unknown[][]).forEach(param =>
+                            resp[method](...([] as unknown[]).concat(param)),
+                        );
                     } else {
                         resp[method](...([] as unknown[]).concat(params));
                     }
@@ -300,7 +315,10 @@ export default class Gateway extends Internal implements IGateway {
             const reqName = `ports.${value.destination ?? method.split('.', 1)[0]}.request`;
             const pubName = `ports.${value.destination ?? method.split('.', 1)[0]}.publish`;
             const isWildcard = method.endsWith('.*');
-            this.#resolution?.announce(method.split('.')[0].replace(/\//g, '-'), this.#config.port!);
+            this.#resolution?.announce(
+                method.split('.')[0].replace(/\//g, '-'),
+                this.#config.port!,
+            );
             this.#routes.push({
                 method: 'method' in value ? value.method : 'POST',
                 url:
@@ -411,7 +429,9 @@ export default class Gateway extends Internal implements IGateway {
                             mtid: !id ? 'notification' : 'request',
                             method: methodName,
                             opcode: methodName.split('.').pop(),
-                            ...(timeout && {timeout: this.#platform.timing.after(timeout as number)}),
+                            ...(timeout && {
+                                timeout: this.#platform.timing.after(timeout as number),
+                            }),
                             ...(expect && {expect: ([] as string[]).concat(expect)}),
                             ...this._meta(request, pkg?.version, methodName.split('.')[0]),
                         };
@@ -450,13 +470,19 @@ export default class Gateway extends Internal implements IGateway {
                                 jsonrpc: '2.0',
                                 id,
                                 result,
-                                ...((resultMeta as {checkpoints?: unknown[]})?.checkpoints?.length && {
-                                    checkpoints: (resultMeta as {checkpoints?: unknown[]}).checkpoints,
+                                ...((resultMeta as {checkpoints?: unknown[]})?.checkpoints
+                                    ?.length && {
+                                    checkpoints: (resultMeta as {checkpoints?: unknown[]})
+                                        .checkpoints,
                                 }),
                             };
                         }
                     } catch (error) {
-                        const typedError = error as {statusCode?: number; httpResponse?: unknown; [key: string]: unknown};
+                        const typedError = error as {
+                            statusCode?: number;
+                            httpResponse?: unknown;
+                            [key: string]: unknown;
+                        };
                         request.log.error(
                             {err: error, method: methodName},
                             'gateway handler error',

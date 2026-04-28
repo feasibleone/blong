@@ -297,7 +297,11 @@ export class AdapterBase<T, C extends IContext> {
     }
 
     async start(): Promise<unknown> {
-        await this._api.attachHandlers(this as unknown as AdapterHandlerContext, this.config.imports, true);
+        await this._api.attachHandlers(
+            this as unknown as AdapterHandlerContext,
+            this.config.imports,
+            true,
+        );
         const {req, pub} = this.forNamespaces(
             (
                 prev: {
@@ -323,7 +327,7 @@ export class AdapterBase<T, C extends IContext> {
     async link(
         patterns: (string | RegExp)[] | string | RegExp,
         target: AdapterHandlerContext = {} as unknown as AdapterHandlerContext,
-    ): Promise<object | undefined> {
+    ): Promise<object> {
         await this._api.attachHandlers(target, patterns);
         return target.imported;
     }

@@ -1,6 +1,11 @@
-import {adapter, type Adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
+import {
+    adapter,
+    type Adapter,
+    type Errors,
+    type IErrorMap,
+    type IMeta,
+} from '@feasibleone/blong/types';
 import KcAdminClient from '@keycloak/keycloak-admin-client';
-import GroupRepresentation from '@keycloak/keycloak-admin-client/lib/defs/groupRepresentation.js';
 import got from 'got';
 
 export interface IConfig {
@@ -68,13 +73,21 @@ export default adapter<IConfig>(({utError}) => {
         async authenticate(
             this: Adapter<IConfig>,
             {
-            grantType = this.config.keycloak.grantType || 'password',
-            clientId = this.config.keycloak.clientId || 'admin-cli',
-            clientSecret = this.config.keycloak.clientSecret,
-            username = this.config.keycloak.username,
-            password = this.config.keycloak.password,
-            totp = this.config.keycloak.totp,
-        }: {grantType?: string; clientId?: string; clientSecret?: string; username?: string; password?: string; totp?: string} = {}) {
+                grantType = this.config.keycloak.grantType || 'password',
+                clientId = this.config.keycloak.clientId || 'admin-cli',
+                clientSecret = this.config.keycloak.clientSecret,
+                username = this.config.keycloak.username,
+                password = this.config.keycloak.password,
+                totp = this.config.keycloak.totp,
+            }: {
+                grantType?: string;
+                clientId?: string;
+                clientSecret?: string;
+                username?: string;
+                password?: string;
+                totp?: string;
+            } = {},
+        ) {
             if (_authenticated) return;
             // Authenticate with Keycloak
             try {
@@ -161,7 +174,9 @@ export default adapter<IConfig>(({utError}) => {
                 this.config.keycloak.realmName ||
                 'master';
             await (
-                this as unknown as {authenticate: (args: unknown, options: unknown) => Promise<void>}
+                this as unknown as {
+                    authenticate: (args: unknown, options: unknown) => Promise<void>;
+                }
             ).authenticate({}, arguments[1]);
             const client = this.config.context.kcAdminClient!;
             client.setConfig({realmName: targetRealm});
@@ -347,8 +362,8 @@ export default adapter<IConfig>(({utError}) => {
                                 name: name as string,
                                 path: path as string,
                                 attributes: attributes as Record<string, unknown>,
-                                subGroups: subGroups as GroupRepresentation[],
-                            });
+                                subGroups: subGroups,
+                            } as Parameters<KcAdminClient['groups']['create']>[0]);
                         }
 
                         case 'update':
