@@ -14,8 +14,8 @@ export default adapter<{
         default: {
             knex: {
                 connection: {
-                    database: 'blong',
-                    user: 'test',
+                    database: 'blong-integration',
+                    user: 'blong-test',
                     password: 'password',
                 },
             },

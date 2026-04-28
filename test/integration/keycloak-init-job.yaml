@@ -1,0 +1,98 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-init
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: keycloak-init
+        image: curlimages/curl:latest
+        env:
+        - name: KEYCLOAK_URL
+          value: "http://keycloak:8180"
+        - name: KEYCLOAK_ADMIN
+          value: "blong-admin"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: "password"
+        - name: TEST_REALM
+          value: "blong-integration"
+        - name: TEST_USER
+          value: "blong-test"
+        - name: TEST_USER_PASSWORD
+          value: "password"
+        - name: TEST_CLIENT_ID
+          value: "blong-test-client"
+        - name: TEST_CLIENT_SECRET
+          value: "blong-test-secret"
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "Waiting for Keycloak to be ready..."
+          MAX_RETRIES=30
+          RETRY_COUNT=0
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -sf "$KEYCLOAK_URL/health/ready" > /dev/null 2>&1; then
+              echo "Keycloak is ready!"
+              break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
+            sleep 2
+          done
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "ERROR: Keycloak failed to start within the expected time"
+            exit 1
+          fi
+          echo "Obtaining admin access token..."
+          TOKEN_RESPONSE=$(curl -sf -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" -H "Content-Type: application/x-www-form-urlencoded" -d "username=$KEYCLOAK_ADMIN" -d "password=$KEYCLOAK_ADMIN_PASSWORD" -d "grant_type=password" -d "client_id=admin-cli")
+          ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "ERROR: Failed to obtain access token"
+            exit 1
+          fi
+          echo "Creating test realm: $TEST_REALM..."
+          REALM_EXISTS=$(curl -sf -X GET "$KEYCLOAK_URL/admin/realms/$TEST_REALM" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" -w "%{http_code}" -o /dev/null || echo "404")
+          if [ "$REALM_EXISTS" != "200" ]; then
+            curl -sf -X POST "$KEYCLOAK_URL/admin/realms" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" -d '{"realm": "'"$TEST_REALM"'", "enabled": true, "displayName": "Test Realm", "accessTokenLifespan": 3600, "ssoSessionIdleTimeout": 36000, "ssoSessionMaxLifespan": 36000}'
+            echo "Realm created successfully!"
+          else
+            echo "Realm already exists, skipping creation."
+          fi
+          echo "Creating test user: $TEST_USER..."
+          USERS_RESPONSE=$(curl -sf -X GET "$KEYCLOAK_URL/admin/realms/$TEST_REALM/users?username=$TEST_USER" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json")
+          if [ "$USERS_RESPONSE" = "[]" ]; then
+            USER_RESPONSE=$(curl -sf -X POST "$KEYCLOAK_URL/admin/realms/$TEST_REALM/users" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" -i -d '{"username": "'"$TEST_USER"'", "enabled": true, "email": "'"$TEST_USER"'@test.com", "emailVerified": true, "firstName": "Test", "lastName": "User"}')
+            USER_ID=$(echo "$USER_RESPONSE" | grep -i "location:" | sed 's/.*\///' | tr -d '\r')
+            echo "Setting password for test user..."
+            curl -sf -X PUT "$KEYCLOAK_URL/admin/realms/$TEST_REALM/users/$USER_ID/reset-password" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" -d '{"type": "password", "value": "'"$TEST_USER_PASSWORD"'", "temporary": false}'
+            echo "Test user created successfully!"
+          else
+            echo "Test user already exists, skipping creation."
+          fi
+          echo "Creating test client: $TEST_CLIENT_ID..."
+          CLIENTS_RESPONSE=$(curl -sf -X GET "$KEYCLOAK_URL/admin/realms/$TEST_REALM/clients?clientId=$TEST_CLIENT_ID" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json")
+          if [ "$CLIENTS_RESPONSE" = "[]" ]; then
+            curl -sf -X POST "$KEYCLOAK_URL/admin/realms/$TEST_REALM/clients" -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" -d '{"clientId": "'"$TEST_CLIENT_ID"'", "enabled": true, "protocol": "openid-connect", "publicClient": false, "secret": "'"$TEST_CLIENT_SECRET"'", "directAccessGrantsEnabled": true, "serviceAccountsEnabled": true, "standardFlowEnabled": true, "redirectUris": ["*"], "webOrigins": ["*"], "attributes": {"access.token.lifespan": "3600"}}'
+            echo "Test client created successfully!"
+          else
+            echo "Test client already exists, skipping creation."
+          fi
+          echo ""
+          echo "=========================================="
+          echo "Keycloak initialization completed!"
+          echo "=========================================="
+          echo "Keycloak URL: $KEYCLOAK_URL"
+          echo "Realm: $TEST_REALM"
+          echo "Test User: $TEST_USER"
+          echo "Test Password: $TEST_USER_PASSWORD"
+          echo "Test Client ID: $TEST_CLIENT_ID"
+          echo "Test Client Secret: $TEST_CLIENT_SECRET"
+          echo ""
+          echo "Token endpoint: $KEYCLOAK_URL/realms/$TEST_REALM/protocol/openid-connect/token"
+          echo "=========================================="
+      restartPolicy: Never

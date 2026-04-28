@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:23.0
+        args:
+        - start-dev
+        - --http-port=8180
+        - --hostname-debug=true
+        ports:
+        - containerPort: 8180
+          name: http
+        env:
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        - name: KEYCLOAK_ADMIN
+          value: blong-admin
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: password
+        - name: KC_DB
+          value: dev-file
+        volumeMounts:
+        - name: keycloak-data
+          mountPath: /opt/keycloak/data
+        resources:
+          limits:
+            cpu: "1.0"
+            memory: 512Mi
+          requests:
+            cpu: "0.5"
+            memory: 256Mi
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "exec 3<>/dev/tcp/localhost/8180 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200 OK'"
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8180
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+      volumes:
+      - name: keycloak-data
+        persistentVolumeClaim:
+          claimName: keycloak-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+spec:
+  selector:
+    app: keycloak
+  ports:
+  - port: 8180
+    targetPort: 8180
+    nodePort: 30080
+    name: http
+  type: NodePort

@@ -1,18 +1,13 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: blong-integration
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mysql-init-config
 data:
   init.sql: |
-    CREATE DATABASE IF NOT EXISTS `blong`;
+    CREATE DATABASE IF NOT EXISTS `blong-integration`;
     FLUSH PRIVILEGES;
-    CREATE USER 'sa'@'%' IDENTIFIED BY 'password';
-    GRANT ALL ON *.* TO 'sa'@'%';
+    CREATE USER 'blong-admin'@'%' IDENTIFIED BY 'password';
+    GRANT ALL ON *.* TO 'blong-admin'@'%';
     FLUSH PRIVILEGES;
 ---
 apiVersion: v1
@@ -55,7 +50,7 @@ spec:
           name: mysql
         env:
         - name: MYSQL_USER
-          value: "test"
+          value: "blong-test"
         - name: MYSQL_PASSWORD
           value: "password"
         - name: MYSQL_DATABASE
