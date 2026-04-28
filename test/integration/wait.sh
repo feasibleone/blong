@@ -9,11 +9,10 @@ elapsed=0
 echo "Waiting for all deployments in blong-integration to be ready (timeout: ${timeout}s)..."
 
 while [ $elapsed -lt $timeout ]; do
-  not_ready=$(kubectl -n blong-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' 2>/dev/null | grep -c "False" || true)
   total=$(kubectl -n blong-integration get deployments --no-headers 2>/dev/null | wc -l | tr -d ' ')
   available=$(kubectl -n blong-integration get deployments -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' 2>/dev/null | tr ' ' '\n' | grep -c "True" || true)
-  if [ "$not_ready" -eq 0 ] && [ "$total" -gt 0 ]; then
-    echo "All ${total} deployments are ready (${available} available)."
+  if [ "$total" -gt 0 ] && [ "$available" -eq "$total" ]; then
+    echo "All ${total} deployments are ready."
     break
   fi
   echo "Waiting for deployments to be ready... ${elapsed}s elapsed (${available}/${total} available)"
