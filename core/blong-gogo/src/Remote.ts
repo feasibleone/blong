@@ -118,7 +118,7 @@ export default class Remote extends Internal implements IRemote {
                         .then(resolve)
                         .catch((error: {params?: {method: string}}) => {
                             // todo maybe log these errors
-                            if (Date.now() > (timeout as unknown as number)) {
+                            if (timeout && Date.now() > timeout) {
                                 if (error) error.params = {method: 'methodName'};
                                 reject(this.#errors['remote.timeout'](error));
                             } else {
@@ -131,11 +131,19 @@ export default class Remote extends Internal implements IRemote {
         };
 
         if (!result) {
-            const method = this._getMethod('req', 'request', methodName, (options ?? {}) as {fallback?: boolean; returnMeta?: boolean; timeout?: number});
+            const method = this._getMethod(
+                'req',
+                'request',
+                methodName,
+                (options ?? {}) as {fallback?: boolean; returnMeta?: boolean; timeout?: number},
+            );
             result = Object.assign(function (...params: unknown[]) {
                 const $meta = params.length > 1 && (params[params.length - 1] as IMeta);
                 if ($meta && $meta.timeout && $meta.retry) {
-                    return startRetry(() => method(...params), $meta as {timeout?: number; retry?: number});
+                    return startRetry(
+                        () => method(...params),
+                        $meta as {timeout?: number; retry?: number},
+                    );
                 } else {
                     return method(...params);
                 }
@@ -306,14 +314,19 @@ export default class Remote extends Internal implements IRemote {
                         await fnCache.call(this, result[0], $metaAfter);
                     if ($meta.timer) {
                         const $resultMeta = result.length > 1 && result[result.length - 1];
-                        if ($resultMeta && ($resultMeta as {calls?: string}).calls) $meta.timer(($resultMeta as {calls?: string}).calls);
+                        if ($resultMeta && ($resultMeta as {calls?: string}).calls)
+                            $meta.timer(($resultMeta as {calls?: string}).calls);
                     }
                     if (!unpack || (options && options.returnMeta)) {
                         return result;
                     }
                     return result[0];
                 } catch (error) {
-                    if (typeof fallback === 'function' && fallback !== applyFn && (error as {type?: string}).type === 'bus.methodNotFound') {
+                    if (
+                        typeof fallback === 'function' &&
+                        fallback !== applyFn &&
+                        (error as {type?: string}).type === 'bus.methodNotFound'
+                    ) {
                         if (fn) fn = fallback as unknown as RemoteMethod;
                         unpack = false;
                         return fn!.apply(this, params);

@@ -61,7 +61,7 @@ export default class Registry extends Internal implements IRegistry {
         [
             {
                 port: object;
-                target: {importedMap: Map<string, object>};
+                target: {importedMap?: Map<string, object>};
                 parent: object;
                 pointer: object;
             },
@@ -186,7 +186,7 @@ export default class Registry extends Internal implements IRegistry {
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
         };
-        const result = await port!(api) as unknown as Adapter;
+        const result = (await port!(api)) as unknown as Adapter;
         this.#ports.set(id, result);
         api.attachHandlers = this._attachHandlers(result);
         return result as Adapter;
@@ -244,7 +244,7 @@ export default class Registry extends Internal implements IRegistry {
 
     private _attachHandlers(port: object): (
         target: {
-            importedMap: Map<string, object>;
+            importedMap?: Map<string, object>;
             imported: object;
             config: {namespace?: string | string[]};
         },
@@ -253,7 +253,7 @@ export default class Registry extends Internal implements IRegistry {
     ) => unknown {
         return (
             target: {
-                importedMap: Map<string, object>;
+                importedMap?: Map<string, object>;
                 imported: object;
                 config: {
                     namespace?: string | string[];
@@ -271,7 +271,7 @@ export default class Registry extends Internal implements IRegistry {
                     const info = {port, target, parent: target.imported, pointer: {}};
                     if (ports) ports.push(info);
                     else this.#portAttachments.set(name, [info]);
-                    target.importedMap.set(name, local);
+                    target.importedMap!.set(name, local);
                     if (adapter) {
                         if (local.config) merge(target.config, local.config);
                         if (local.namespace)
@@ -293,7 +293,7 @@ export default class Registry extends Internal implements IRegistry {
         if (attachments) {
             for (const {port, target, parent, pointer} of attachments) {
                 const {local, literals} = await this._createHandlers(handlers, port);
-                target.importedMap.set(id, local);
+                target.importedMap!.set(id, local);
                 literals.forEach(literal => Object.setPrototypeOf(literal, parent));
                 Object.setPrototypeOf(local, parent);
                 Object.setPrototypeOf(pointer, local);

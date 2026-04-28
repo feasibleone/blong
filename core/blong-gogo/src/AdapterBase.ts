@@ -73,12 +73,12 @@ const reserved: string[] = [
  * hot-reload semantics.
  */
 type AdapterHandlerContext = {
-    importedMap: Map<string, object>;
+    importedMap?: Map<string, object>;
     imported: object;
     config: {namespace?: string | string[]};
 };
 
-export class AdapterBase<T, C extends IContext> {
+export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext {
     errors = _errors;
     exec: unknown = null;
     imported: Record<string, PortHandlerBound> = {};
@@ -297,11 +297,7 @@ export class AdapterBase<T, C extends IContext> {
     }
 
     async start(): Promise<unknown> {
-        await this._api.attachHandlers(
-            this as unknown as AdapterHandlerContext,
-            this.config.imports,
-            true,
-        );
+        await this._api.attachHandlers(this, this.config.imports, true);
         const {req, pub} = this.forNamespaces(
             (
                 prev: {

@@ -229,7 +229,7 @@ async function decryptVerify(
     return verify((await decrypt(message, mlek!)) as Uint8Array, mlskPub);
 }
 
-export default async function jose({sign, encrypt}: {sign: KeySpec; encrypt: KeySpec}): Promise<{
+export default async function jose({sign, encrypt}: {sign?: KeySpec; encrypt?: KeySpec}): Promise<{
     keys: {sign: JWK; encrypt: JWK};
     signEncrypt: (
         msg: Parameters<typeof signEncrypt>[0],

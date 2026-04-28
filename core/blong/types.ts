@@ -318,7 +318,7 @@ export interface IApi {
     ) => (...params: unknown[]) => Promise<unknown>;
     attachHandlers: (
         target: {
-            importedMap: Map<string, object>;
+            importedMap?: Map<string, object>;
             imported: object;
             config: {namespace?: string | string[]};
         },

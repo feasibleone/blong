@@ -140,8 +140,8 @@ export default class Gateway extends Internal implements IGateway {
         port: 8080,
         logLevel: 'trace',
         cors: undefined,
-        sign: undefined as unknown as IConfig['sign'],
-        encrypt: undefined as unknown as IConfig['encrypt'],
+        sign: undefined as IConfig['sign'] | undefined,
+        encrypt: undefined as IConfig['encrypt'] | undefined,
         public: {
             sign: undefined,
             encrypt: undefined,

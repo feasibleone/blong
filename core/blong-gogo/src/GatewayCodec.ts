@@ -1,6 +1,5 @@
 import type {IMeta} from '@feasibleone/blong/types';
 import got, {type HTTPAlias, type Headers} from 'got';
-import type {JWTPayload} from 'jose';
 import busGateway from './busGateway.ts';
 import jose from './jose.ts';
 import oidc from './oidc.ts';
@@ -34,7 +33,7 @@ export interface IGatewayCodec {
         token: string,
         flags: {nonce?: string; audience: string},
         isId?: boolean,
-    ) => Promise<JWTPayload & {per?: string}>;
+    ) => Promise<object>;
 }
 
 export interface IConfig {
@@ -133,7 +132,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
                     url: string;
                     headers: Headers;
                 },
-                callback: (error: Error, response?: unknown, body?: unknown) => void,
+                callback: (error: Error | null, response?: unknown, body?: unknown) => void,
             ) {
                 try {
                     const response = await got(url, {
@@ -142,12 +141,12 @@ export default class GatewayCodecImpl implements IGatewayCodec {
                         responseType: json ? 'json' : undefined,
                     });
                     if (response.request) Object.assign(response.request, {method, href: url});
-                    callback(null as unknown as Error, response, response.body);
+                    callback(null, response, response.body);
                 } catch (error) {
                     callback(error as Error);
                 }
             },
-            discoverService: this._discoverService.bind(this) as unknown as boolean,
+            discoverService: this._discoverService.bind(this),
             errorPrefix: 'rpc.',
             errors: errors as never,
             session,
@@ -168,7 +167,7 @@ export default class GatewayCodecImpl implements IGatewayCodec {
             } as never) as unknown as ReturnType<typeof busGateway>;
         })();
 
-        this.verify = verify as unknown as IGatewayCodec['verify'];
+        this.verify = verify as IGatewayCodec['verify'];
     }
 
     public gateway($meta: IMeta, methodName: string = $meta.method!): object | void {

@@ -1,4 +1,12 @@
-import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta, IPlatformApi} from '@feasibleone/blong/types';
+import type {
+    Errors,
+    IErrorFactory,
+    IErrorMap,
+    ILocal,
+    ILog,
+    IMeta,
+    IPlatformApi,
+} from '@feasibleone/blong/types';
 import ky from 'ky';
 
 import Remote from './Remote.ts';
@@ -36,9 +44,14 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
 
     public constructor(
         config: IConfig,
-        {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal},
+        {
+            log,
+            error,
+            local,
+            platform,
+        }: {log: ILog; error: IErrorFactory; local: ILocal; platform: IPlatformApi},
     ) {
-        super(config, {log, error, local, platform: undefined as unknown as IPlatformApi});
+        super(config, {log, error, local, platform});
         this.merge(this.#config, config);
         this.#errors = error.register(errorMap);
     }

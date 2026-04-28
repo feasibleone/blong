@@ -30,7 +30,9 @@ export default ({
         cert?: string | Buffer;
         key?: string | Buffer;
     };
-    discoverService?: boolean;
+    discoverService?:
+        | boolean
+        | ((service: string) => Promise<{protocol: string; hostname: string; port: number}>);
     session?: (decoded: object) => Promise<void>;
     errorPrefix: string;
     errors: Errors<{
