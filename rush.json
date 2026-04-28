@@ -543,6 +543,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-int-adapter",
+            "projectFolder": "core/blong-int-adapter",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-sim-tcp",
             "projectFolder": "core/blong-sim-tcp",
             "reviewCategory": "core",

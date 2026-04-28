@@ -2,6 +2,7 @@ import {
     Internal,
     browser as browserFactory,
     kind,
+    orchestrator,
     server as serverFactory,
     type IApiSchema,
     type IConfigRuntime,
@@ -636,6 +637,58 @@ export default async function loadRealm<T extends TSchema>(
                                     dirEntry.name.toString(),
                                 ),
                             );
+                        // Auto-provision a testDispatch orchestrator when the test/ folder
+                        // has no testDispatch.ts and no layer.server.ts.
+                        if (
+                            itemName === 'test' &&
+                            platformApi.platform === 'server' &&
+                            base
+                        ) {
+                            const testDir = platformApi.join(base, item as string);
+                            const hasTestDispatch = platformApi.existsSync(
+                                platformApi.join(testDir, 'testDispatch.ts'),
+                            );
+                            const hasLayerServer = platformApi.existsSync(
+                                platformApi.join(testDir, 'layer.server.ts'),
+                            );
+                            if (!hasTestDispatch && !hasLayerServer) {
+                                const realmName = mergedConfig.name;
+                                const activation: Record<string, object> = {default: {}};
+                                for (const configName of configNames) {
+                                    activation[configName] = {
+                                        namespace: ['test'],
+                                        imports: [`${realmName}.test`],
+                                    };
+                                }
+                                const syntheticOrch = orchestrator(() => ({
+                                    extends: 'orchestrator.dispatch' as const,
+                                    activation,
+                                }));
+                                Object.defineProperty(syntheticOrch, 'name', {
+                                    value: 'testDispatch',
+                                    configurable: true,
+                                });
+                                loaded.push(
+                                    Object.defineProperty(
+                                        (api: unknown) => {
+                                            (
+                                                api as Record<
+                                                    string,
+                                                    (...args: unknown[]) => unknown
+                                                >
+                                            )['testDispatch'](
+                                                syntheticOrch,
+                                                realmName + '.testDispatch',
+                                                'auto-provisioned',
+                                            );
+                                            return api;
+                                        },
+                                        'name',
+                                        {value: 'testDispatch'},
+                                    ),
+                                );
+                            }
+                        }
                         item = async () => loaded.filter(Boolean);
                 }
             } else if (platformApi.platform === 'browser' && 'path' in item) {
