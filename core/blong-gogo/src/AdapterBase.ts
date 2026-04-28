@@ -297,7 +297,7 @@ export class AdapterBase<T, C extends IContext> {
     }
 
     async start(): Promise<unknown> {
-        await this._api.attachHandlers(this as unknown as AdapterHandlerContext, this.config.imports);
+        await this._api.attachHandlers(this as unknown as AdapterHandlerContext, this.config.imports, true);
         const {req, pub} = this.forNamespaces(
             (
                 prev: {

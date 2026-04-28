@@ -249,6 +249,7 @@ export default class Registry extends Internal implements IRegistry {
             config: {namespace?: string | string[]};
         },
         patterns: (string | RegExp)[] | string | RegExp,
+        adapter?: boolean,
     ) => unknown {
         return (
             target: {

@@ -323,6 +323,7 @@ export interface IApi {
             config: {namespace?: string | string[]};
         },
         patterns: (string | RegExp)[] | string | RegExp,
+        adapter?: boolean,
     ) => unknown;
     createLog: ILog['logger'];
     attachCheckpoint?: (meta: IMeta) => void;
