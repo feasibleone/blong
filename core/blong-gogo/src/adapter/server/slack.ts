@@ -30,7 +30,7 @@ export default adapter<IConfig>(({utError}) => {
         },
         start() {
             this.config.context = {
-                slack: new IncomingWebhook(this.config.slack.webhookUrl) as any,
+                slack: new IncomingWebhook(this.config.slack.webhookUrl!) as any,
             };
             super.connect();
             return super.start();
@@ -54,7 +54,7 @@ export default adapter<IConfig>(({utError}) => {
             } & Record<string, unknown>,
             {method}: IMeta,
         ) {
-            const [, , operation] = method.split('.');
+            const [, , operation] = method!.split('.');
             switch (operation) {
                 case 'send':
                 case 'post':

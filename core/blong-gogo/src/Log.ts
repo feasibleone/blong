@@ -1,5 +1,5 @@
-import {Internal, type ILog} from '@feasibleone/blong/types';
-import {pino, type Logger, type LoggerOptions} from 'pino';
+import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
+import {pino, type Logger, type LogFn, type LoggerOptions} from 'pino';
 import {monotonicFactory} from 'ulidx';
 import type {CacacheTransportOptions} from './pino-cacache.js';
 
@@ -99,7 +99,7 @@ export default class Log extends Internal implements ILog {
         bindings: object,
     ): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
-        const result = {
+        const result: Record<keyof ILogger, LogFn | null> = {
             trace: null,
             debug: null,
             info: null,
@@ -121,6 +121,6 @@ export default class Log extends Internal implements ILog {
             case 'fatal': // eslint-disable-line no-fallthrough
                 result.fatal = child.fatal.bind(child);
         }
-        return result;
+        return result as unknown as ILogger;
     }
 }

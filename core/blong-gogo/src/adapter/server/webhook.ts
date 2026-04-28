@@ -1,4 +1,4 @@
-import {adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
+import {adapter, type Adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
 import got, {type HttpsOptions, type Options} from 'got';
 import {Duplex, Readable, Writable} from 'stream';
 
@@ -22,8 +22,8 @@ let _errors: Errors<typeof errorMap>;
 
 export default adapter<IConfig>(({utError, local, registry}) => {
     _errors ||= utError.register(errorMap);
-    let stream: Duplex = null;
-    let https: HttpsOptions;
+    let stream: Duplex | null = null;
+    let https: HttpsOptions | undefined;
 
     return {
         activation: {
@@ -34,21 +34,23 @@ export default adapter<IConfig>(({utError, local, registry}) => {
         },
         async init(...configs: object[]) {
             await super.init(...configs);
-            https = tls(this.config, true);
-            if (this.config['codec.openapi'])
+            https = tls(this.config, true) as HttpsOptions | undefined;
+            const cfg = this.config as unknown as Record<string, unknown>;
+            if (cfg['codec.openapi'])
                 await registry.loadApi(
                     this.config.id + '.api',
-                    this.config['codec.openapi'],
-                    this.configBase,
+                    cfg['codec.openapi'] as {namespace: Record<string, string | string[]>},
+                    this.configBase ?? '',
                 );
         },
 
-        async start() {
+        async start(this: Adapter<IConfig>) {
             const result = await super.start();
             const readable = new Readable({
                 objectMode: true,
                 read() {},
             });
+            const self = this;
 
             local.register(
                 {
@@ -57,8 +59,8 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                         $meta: IMeta,
                     ) =>
                         new Promise((resolve, reject) => {
-                            $meta.dispatch = function (...packet: unknown[]) {
-                                this.dispatch(...packet).then(resolve, reject);
+                            ($meta as Record<string, unknown>)['dispatch'] = function (...packet: unknown[]) {
+                                (self.dispatch as (...args: unknown[]) => Promise<unknown>)(...packet).then(resolve, reject);
                             };
                             readable.push([params, $meta]);
                         }),
@@ -80,7 +82,7 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                             {
                                 path = '',
                                 query: searchParams,
-                                url = new URL(path, this.config.url),
+                                url = new URL(path, self.config.url),
                                 responseType = 'json',
                                 method,
                                 headers,
@@ -103,8 +105,8 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                             },
                             IMeta,
                         ],
-                        encoding: Parameters<ConstructorParameters<typeof Writable>[0]['write']>[1],
-                        callback: Parameters<ConstructorParameters<typeof Writable>[0]['write']>[2],
+                        _encoding: BufferEncoding,
+                        callback: (error?: Error | null) => void,
                     ) => {
                         try {
                             const request = {
@@ -121,15 +123,15 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 followRedirect: false,
                                 // isStream: false,
                             };
-                            if (this.log.trace) this.log.trace(request);
-                            else this.log.info?.(`${request.method.toUpperCase()} ${url}`);
+                            if (self.log?.trace) self.log.trace(request);
+                            else self.log?.info?.(`${(request.method as string).toUpperCase()} ${url}`);
                             {
                                 const result = await got(request);
                                 const {headers, body, statusCode, statusMessage} = result;
-                                if (this.log.trace) this.log.trace({headers, body, statusCode});
+                                if (self.log?.trace) self.log.trace({headers, body, statusCode});
                                 else
-                                    this.log.info?.(
-                                        `${statusCode} ${statusMessage} ${request.method.toUpperCase()} ${url}`,
+                                    self.log?.info?.(
+                                        `${statusCode} ${statusMessage} ${(request.method as string).toUpperCase()} ${url}`,
                                     );
                                 if (!$meta.trace)
                                     readable.push([result, {...$meta, mtid: 'response'}]);

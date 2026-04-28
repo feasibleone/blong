@@ -1,4 +1,4 @@
-import type {Errors, IErrorMap, IMeta} from '@feasibleone/blong/types';
+import type {Errors, IErrorMap, IMeta, Adapter} from '@feasibleone/blong/types';
 import {adapter} from '@feasibleone/blong/types';
 import ky, {type Options as KyOptions} from 'ky';
 
@@ -66,6 +66,7 @@ export default adapter<IConfig>(({utError}) => {
             return super.start();
         },
         async exec(
+            this: Adapter<IConfig>,
             {
                 path,
                 query: searchParams,
@@ -90,7 +91,7 @@ export default adapter<IConfig>(({utError}) => {
             _meta: IMeta,
         ) {
             try {
-                this.log.debug?.({
+                this.log?.debug?.({
                     req: {
                         method: (method || 'POST').toUpperCase(),
                         url,
@@ -122,7 +123,7 @@ export default adapter<IConfig>(({utError}) => {
                     headers: Object.fromEntries(res.headers.entries()),
                     body: resolvedBody,
                 };
-                this.log.debug?.({
+                this.log?.debug?.({
                     req: {
                         url,
                         method: (method || 'POST').toUpperCase(),

@@ -133,7 +133,7 @@ export default adapter<IConfig>(({utError}) => {
                 | unknown[],
             {method}: IMeta,
         ) {
-            const [, resource, operation] = method.split('.');
+            const [, resource, operation] = method!.split('.');
             let secretPath = resource;
             let actualParams = params;
 

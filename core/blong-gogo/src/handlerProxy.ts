@@ -1,8 +1,7 @@
-import type {ILib, IMeta} from '@feasibleone/blong/types';
+import type {Adapter, ILib, IMeta} from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
 import {camelToSentence, parseAnnotatedKey} from './lib.ts';
-import type {IAdapterFactory} from '@feasibleone/blong/types';
 
 /**
  * Rename a function's `.name` property.
@@ -25,7 +24,7 @@ function rename<T>(value: string, fn: T): T {
  */
 export default function createHandlerProxy(
     local: object,
-    port: ReturnType<IAdapterFactory>,
+    port: Adapter,
     remote: (methodName: string) => () => unknown,
     attachCheckpoint: ((meta: IMeta) => void) | undefined,
     lib: ILib,
@@ -38,7 +37,7 @@ export default function createHandlerProxy(
             function resolveHandler(
                 resolvedName: string,
             ): (...params: unknown[]) => unknown {
-                let fn: () => unknown;
+                let fn: (() => unknown) | undefined;
                 const sentence = camelToSentence(resolvedName);
                 function nameSteps(result: unknown): unknown {
                     if (
@@ -56,7 +55,7 @@ export default function createHandlerProxy(
                     return rename(
                         resolvedName,
                         function (...params: unknown[]) {
-                            fn ||= port.findHandler(resolvedName);
+                            fn ||= port.findHandler?.(resolvedName) as (() => unknown) | undefined;
                             if (!fn)
                                 throw new Error(
                                     `Handler '${resolvedName}' not found`,
@@ -68,7 +67,7 @@ export default function createHandlerProxy(
                             if ($meta && typeof $meta === 'object') {
                                 attachCheckpoint?.($meta);
                             }
-                            return nameSteps(fn.apply(port, params));
+                            return nameSteps(fn.apply(port, params as []));
                         },
                     );
                 }

@@ -49,7 +49,7 @@ export default class RestFs extends Internal {
     ) {
         super({log});
         this.merge(this.#config, config);
-        this.#gateway = gateway;
+        this.#gateway = gateway!;
     }
 
     public async init(): Promise<void> {

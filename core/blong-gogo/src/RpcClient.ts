@@ -79,12 +79,12 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
             platform: IPlatformApi;
         },
     ) {
-        super(config, {log, error, local});
+        super(config, {log, error, local, platform});
         config = this.merge(this.#config, config);
         this.#resolution = resolution;
         this.#platform = platform;
         this.#errors = error.register(errorMap);
-        this.#https = tls(config, true);
+        this.#https = tls(config, true) as unknown as HttpsOptions;
         this.#gatewayCodec = new GatewayCodecImpl(
             config,
             'http',
@@ -193,10 +193,10 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                         });
                     } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
                         const result = await decode(body.result);
-                        if (/\.service\.get$/.test(method)) Object.assign(result[0], requestParams);
-                        if ((body as {checkpoints?: unknown[]}).checkpoints?.length) {
-                            (callerMeta.checkpoints ??= []).push(
-                                ...(body as {checkpoints: unknown[]}).checkpoints,
+                        if (/\.service\.get$/.test(method!)) Object.assign((result as Record<string, unknown>[])[0], requestParams);
+                        if ((body as unknown as {checkpoints?: unknown[]}).checkpoints?.length) {
+                            ((callerMeta as {checkpoints?: unknown[]}).checkpoints ??= []).push(
+                                ...(body as unknown as {checkpoints: unknown[]}).checkpoints,
                             );
                         }
                         return result;
@@ -204,12 +204,13 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                         throw this.#errors['rpc.jsonRpcEmpty']();
                     }
                 } catch (error) {
+                    const typedError = error as {code?: string; connect?: unknown};
                     if (this.#resolution && requestParams.cache) {
                         // invalidate cache and retry upon connection fail
-                        switch (error.code) {
+                        switch (typedError.code) {
                             case 'ETIMEDOUT':
                             case 'ESOCKETTIMEDOUT':
-                                if (!error.connect) break; // https://www.npmjs.com/package/request#timeouts
+                                if (!typedError.connect) break; // https://www.npmjs.com/package/request#timeouts
                             case 'ENOTFOUND': // eslint-disable-line no-fallthrough
                             case 'ECONNREFUSED':
                                 Object.assign(
@@ -217,7 +218,7 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                                     await this.#resolution.resolve(
                                         requestParams.cache,
                                         true,
-                                        requestParams.namespace,
+                                        requestParams.namespace!,
                                     ),
                                 );
                                 delete requestParams.cache;

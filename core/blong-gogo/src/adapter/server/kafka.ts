@@ -10,10 +10,10 @@ export interface IConfig {
         topics: string[];
         groupId: string;
     };
-    codec: {
-        new (config: object);
-        encode: (data: object[], $meta, context, log) => string | Buffer;
-        decode: (buff: string | Buffer, $meta, context, log) => object[];
+    codec?: {
+        new (config: object): object;
+        encode: (data: object[], $meta: unknown, context: unknown, log: unknown) => string | Buffer;
+        decode: (buff: string | Buffer, $meta: unknown, context: unknown, log: unknown) => object[];
     };
     context: {
         kafkaStream?: Duplex;

@@ -68,7 +68,7 @@ export default adapter<IConfig>(({utError}) => {
             } & Record<string, unknown>,
             {method}: IMeta,
         ) {
-            const [, , operation] = method.split('.');
+            const [, , operation] = method!.split('.');
             const {octokit} = this.config.context;
 
             switch (operation) {

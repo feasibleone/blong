@@ -20,7 +20,7 @@ export default class ErrorFactory extends Internal implements IErrorFactory {
         this.#error = Errors({
             logFactory: {
                 createLog: (...params: Parameters<ILog['logger']>) => log?.logger(...params) || {},
-            },
+            } as unknown as Parameters<typeof Errors>[0]['logFactory'],
             logLevel: this.#config.logLevel,
             errorPrint: this.#config.errorPrint,
         });

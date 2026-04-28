@@ -1,4 +1,4 @@
-import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta} from '@feasibleone/blong/types';
+import type {Errors, IErrorFactory, IErrorMap, ILocal, ILog, IMeta, IPlatformApi} from '@feasibleone/blong/types';
 import ky from 'ky';
 
 import Remote from './Remote.ts';
@@ -38,12 +38,12 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
         config: IConfig,
         {log, error, local}: {log: ILog; error: IErrorFactory; local: ILocal},
     ) {
-        super(config, {log, error, local});
+        super(config, {log, error, local, platform: undefined as unknown as IPlatformApi});
         this.merge(this.#config, config);
         this.#errors = error.register(errorMap);
     }
 
-    public gateway(meta: object, method: string): void {}
+    public gateway(..._args: unknown[]): void {}
 
     protected sender(
         methodType: 'request' | 'publish',
@@ -56,7 +56,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
             };
             const {headers, method} = $meta;
             const sendRequest = async (): Promise<unknown> => {
-                const url = new URL(method.split('.').join('/'), this.#config.url);
+                const url = new URL(method!.split('.').join('/'), this.#config.url);
                 const response = await ky(url, {
                     // https: this.#https,
                     // followRedirect: false,
@@ -73,7 +73,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
                             }),
                         params,
                     },
-                    headers: headers as Parameters<typeof ky>[1]['headers'],
+                    headers: headers as NonNullable<Parameters<typeof ky>[1]>['headers'],
                 });
                 const body = await response.json<{
                     jsonrpc?: string;
@@ -119,8 +119,8 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
                     });
                 } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
                     const result = body.result;
-                    if (/\.service\.get$/.test(method)) {
-                        Object.assign(result, {
+                    if (/\.service\.get$/.test(method!)) {
+                        Object.assign(result as object, {
                             protocol: url.protocol,
                             hostname: url.hostname,
                             port: url.port,

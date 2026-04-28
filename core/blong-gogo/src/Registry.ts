@@ -186,10 +186,10 @@ export default class Registry extends Internal implements IRegistry {
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
         };
-        const result = await port!(api);
+        const result = await port!(api) as unknown as Adapter;
         this.#ports.set(id, result);
         api.attachHandlers = this._attachHandlers(result);
-        return result;
+        return result as Adapter;
     }
 
     private async _matchMethods(
