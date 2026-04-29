@@ -13,7 +13,7 @@ Each adapter realm is **opt-in**: it only activates when its dedicated config na
 | `http/` | `adapter.http` | In-process Node.js echo server | 30088 |
 | `s3/` | `adapter.s3` | MinIO | 30009 |
 | `kafka/` | `adapter.kafka` | Kafka KRaft | 30092 |
-| `vault/` | `adapter.vault` | Vault dev mode | 30200 |
+| `vault/` | `adapter.vault` | Vault dev mode | 30002 |
 | `keycloak/` | `adapter.keycloak` | Keycloak | 30080 |
 | `k8s/` | `adapter.k8s` | k3d cluster (kubeconfig default) | — |
 | `slack/` | `adapter.slack` | Manual only — requires Slack token | — |
@@ -58,6 +58,6 @@ Backends are provisioned in `test/integration/`:
 | Keycloak | `keycloak-deployment.yaml` | 30080 |
 | MinIO | `minio-deployment.yaml` | 30009 |
 | Kafka (KRaft) | `kafka-deployment.yaml` | 30092 |
-| Vault (dev) | `vault-deployment.yaml` | 30200 |
+| Vault (dev) | `vault-deployment.yaml` | 30002 |
 
 K8s adapter tests use the k3d cluster already available in the GitHub Actions runner.

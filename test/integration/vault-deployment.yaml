@@ -55,6 +55,6 @@ spec:
   ports:
   - port: 8200
     targetPort: 8200
-    nodePort: 30200
+    nodePort: 30002
     name: vault
   type: NodePort
