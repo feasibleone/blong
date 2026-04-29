@@ -1,10 +1,10 @@
 import {adapter} from '@feasibleone/blong';
+import type {IncomingMessage, Server, ServerResponse} from 'node:http';
 import {createServer} from 'node:http';
-import type {Server, IncomingMessage, ServerResponse} from 'node:http';
 
 let _server: Server | null = null;
 
-export default adapter(api => ({
+export default adapter(() => ({
     activation: {
         default: {},
         'adapter.http': {
@@ -30,7 +30,9 @@ export default adapter(api => ({
                 );
             });
         });
-        await new Promise<void>(resolve => _server!.listen(30088, '127.0.0.1', resolve as () => void));
+        await new Promise<void>(resolve =>
+            _server!.listen(30088, '127.0.0.1', resolve as () => void),
+        );
         super.connect();
         return super.start();
     },

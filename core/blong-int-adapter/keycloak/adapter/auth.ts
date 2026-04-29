@@ -8,14 +8,14 @@ export default adapter<{
         password?: string;
         grantType?: 'password' | 'client_credentials';
     };
-}>(api => ({
+}>(() => ({
     extends: 'adapter.keycloak',
     activation: {
         default: {
             keycloak: {
                 baseUrl: 'http://localhost:8180',
-                realmName: 'blong-integration',
-                username: 'blong-test',
+                realmName: 'master',
+                username: 'blong-admin',
                 password: 'password',
                 grantType: 'password',
             },

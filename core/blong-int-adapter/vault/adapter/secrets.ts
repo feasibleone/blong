@@ -6,7 +6,7 @@ export default adapter<{
         token?: string;
         apiVersion?: string;
     };
-}>(api => ({
+}>(() => ({
     extends: 'adapter.vault',
     activation: {
         default: {

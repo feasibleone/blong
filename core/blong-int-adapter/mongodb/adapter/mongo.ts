@@ -8,7 +8,7 @@ export default adapter<{
         user?: string;
         password?: string;
     };
-}>(api => ({
+}>(() => ({
     extends: 'adapter.mongodb',
     activation: {
         default: {
@@ -16,8 +16,8 @@ export default adapter<{
                 host: 'localhost',
                 port: 27017,
                 database: 'blong-integration',
-                user: 'blong-test',
-                password: 'password',
+                // user: 'blong-test',
+                // password: 'password',
             },
             namespace: 'mongo',
             imports: [],

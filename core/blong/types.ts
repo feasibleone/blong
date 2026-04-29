@@ -932,21 +932,40 @@ export const validationHandlers: (
         ),
     );
 
-export const realm = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
-    Object.defineProperty(definition, Kind, {value: 'solution'});
-export const server = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
-    Object.defineProperty(definition, Kind, {value: 'server'});
-export const browser = <T extends TObject>(definition: SolutionFactory<T>): SolutionFactory<T> =>
-    Object.defineProperty(definition, Kind, {value: 'browser'});
+export const realm = <T extends TObject>(
+    definition: SolutionFactory<T>,
+): SolutionFactory<T> & {[Kind]: 'solution'} =>
+    Object.defineProperty(definition as SolutionFactory<T> & {[Kind]: 'solution'}, Kind, {
+        value: 'solution',
+    });
+export const server = <T extends TObject>(
+    definition: SolutionFactory<T>,
+): SolutionFactory<T> & {[Kind]: 'server'} =>
+    Object.defineProperty(definition as SolutionFactory<T> & {[Kind]: 'server'}, Kind, {
+        value: 'server',
+    });
+export const browser = <T extends TObject>(
+    definition: SolutionFactory<T>,
+): SolutionFactory<T> & {[Kind]: 'browser'} =>
+    Object.defineProperty(definition as SolutionFactory<T> & {[Kind]: 'browser'}, Kind, {
+        value: 'browser',
+    });
 export const layer = (
     activation: Record<string, boolean | object>,
-): Record<string, boolean | object> => Object.defineProperty(activation, Kind, {value: 'layer'});
+): Record<string, boolean | object> & {[Kind]: 'layer'} =>
+    Object.defineProperty(activation, Kind, {value: 'layer'});
 export const adapter = <T, C = AdapterContext>(
     definition: IAdapterFactory<T, C>,
-): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'adapter'});
+): IAdapterFactory<T, C> & {[Kind]: 'adapter'} =>
+    Object.defineProperty(definition as IAdapterFactory<T, C> & {[Kind]: 'adapter'}, Kind, {
+        value: 'adapter',
+    });
 export const orchestrator = <T, C = AdapterContext>(
     definition: IAdapterFactory<T, C>,
-): IAdapterFactory<T, C> => Object.defineProperty(definition, Kind, {value: 'orchestrator'});
+): IAdapterFactory<T, C> & {[Kind]: 'orchestrator'} =>
+    Object.defineProperty(definition as IAdapterFactory<T, C> & {[Kind]: 'orchestrator'}, Kind, {
+        value: 'orchestrator',
+    });
 
 export type Kinds =
     | 'lib'

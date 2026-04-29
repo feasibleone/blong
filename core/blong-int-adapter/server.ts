@@ -40,6 +40,7 @@ export default server(blong => ({
             watch: {test: ['test.mongodb.documentInsert']},
         },
         'adapter.http': {
+            http: {},
             remote: {canSkipSocket: true},
             watch: {test: ['test.http.echoGet']},
         },

@@ -2,7 +2,7 @@ import {adapter} from '@feasibleone/blong';
 
 export default adapter<{
     url?: string;
-}>(api => ({
+}>(() => ({
     extends: 'adapter.http',
     activation: {
         default: {

@@ -8,7 +8,7 @@ export default adapter<{
         forcePathStyle?: boolean;
     };
     bucket?: {Bucket?: string};
-}>(api => ({
+}>(() => ({
     extends: 'adapter.s3',
     activation: {
         default: {

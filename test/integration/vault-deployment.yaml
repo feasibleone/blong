@@ -15,7 +15,7 @@ spec:
       containers:
       - name: vault
         image: hashicorp/vault:1.16
-        args: ["server", "-dev", "-dev-root-token-id=root", "-dev-listen-address=0.0.0.0:8200"]
+        args: ["server", "-dev", "-dev-root-token-id=root", "-dev-listen-address=0.0.0.0:8200", "-dev-kv-v1"]
         ports:
         - containerPort: 8200
           name: vault

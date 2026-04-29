@@ -2,7 +2,7 @@ import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {group}, handler: {echoEchoGet}}) => ({
-    testHttpEchoGet: ({name = 'http echo GET'}, $meta) =>
+    testHttpEchoGet: ({name = 'http echo GET'}: {name?: string}) =>
         group(name)([
             async function echoRequest(assert: typeof Assert, {$meta}) {
                 const result = await echoEchoGet(
