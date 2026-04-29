@@ -165,7 +165,7 @@ export default adapter<IConfig>(({utError}) => {
                         .mongodb!.db()
                         .collection(table)
                         .updateOne(
-                            {_id: _id as BSON.ObjectId | undefined, ...where},
+                            {...(_id != null ? {_id: _id as BSON.ObjectId} : {}), ...where},
                             {$set: rest, ...(operators as object)},
                         );
                 }
@@ -188,7 +188,7 @@ export default adapter<IConfig>(({utError}) => {
                         .mongodb!.db()
                         .collection(table)
                         .updateMany(
-                            {_id: _id as BSON.ObjectId | undefined},
+                            {...(_id != null ? {_id: _id as BSON.ObjectId} : {})},
                             {$set: rest},
                             {upsert: true},
                         );
@@ -208,7 +208,7 @@ export default adapter<IConfig>(({utError}) => {
                         .mongodb!.db()
                         .collection(table)
                         .updateMany(
-                            {_id: _id as BSON.ObjectId | undefined, ...where},
+                            {...(_id != null ? {_id: _id as BSON.ObjectId} : {}), ...where},
                             update as UpdateFilter<BSON.Document>,
                         );
                 }

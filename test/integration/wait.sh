@@ -56,10 +56,10 @@ if [ $elapsed -ge $timeout ]; then
       if ! kubectl -n "${ns}" logs deployment/"${d}" --all-containers --tail=50 2>/dev/null; then
         echo "No logs available via deployment logs for ${d}, attempting pod logs..."
         # fallback: get pods for this deployment and print logs for each
-        mapfile -t pods < <(kubectl -n "${ns}" get pods --selector=app.kubernetes.io/name="${d}" --no-headers -o custom-columns=":metadata.name" 2>/dev/null || true)
+        mapfile -t pods < <(kubectl -n "${ns}" get pods --selector="app=${d}" --no-headers -o custom-columns=":metadata.name" 2>/dev/null || true)
         if [ ${#pods[@]} -eq 0 ]; then
-          # try matching by deployment name label or list pods owning the deployment
-          mapfile -t pods < <(kubectl -n "${ns}" get pods --no-headers -o custom-columns=":metadata.name,:metadata.ownerReferences[*].name" 2>/dev/null | awk -v d="${d}" -F' ' '$2==d {print $1}')
+          # fallback: match pods by the ReplicaSet owner that starts with the deployment name
+          mapfile -t pods < <(kubectl -n "${ns}" get pods --no-headers -o custom-columns=":metadata.name,:metadata.labels.app" 2>/dev/null | awk -v d="${d}" '$2==d {print $1}' || true)
         fi
         if [ ${#pods[@]} -eq 0 ]; then
           echo "No pods found for deployment ${d} to fetch logs from."

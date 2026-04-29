@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.k8s
 RESULT_K8S=$?
