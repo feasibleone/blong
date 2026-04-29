@@ -6,7 +6,7 @@ export default handler(({lib: {group}, handler: {brokerMessageProduce}}) => ({
         group(name)([
             async function produceMessage(assert: typeof Assert, {$meta}) {
                 const result = await brokerMessageProduce(
-                    {topic: 'blong-test', message: 'blong-integration-test'},
+                    {topic: 'blong-integration', message: 'blong-integration-test'},
                     $meta,
                 );
                 assert.ok(result, 'Produce should return a result');

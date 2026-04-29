@@ -43,7 +43,7 @@ spec:
         - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
           value: "1"
         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
-          value: "true"
+          value: "false"
         - name: CLUSTER_ID
           value: "M2ZkNjIwMjYwNTFiNGJhOG"
         resources:
@@ -78,3 +78,39 @@ spec:
     nodePort: 30092
     name: kafka
   type: NodePort
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topic-init
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-kafka
+        image: confluentinc/cp-kafka:7.6.0
+        command:
+        - sh
+        - -c
+        - |
+          until kafka-topics --bootstrap-server kafka:9092 --list > /dev/null 2>&1; do
+            echo "Waiting for Kafka..."; sleep 3
+          done
+      containers:
+      - name: create-topic
+        image: confluentinc/cp-kafka:7.6.0
+        command:
+        - sh
+        - -c
+        - |
+          kafka-topics --bootstrap-server kafka:9092 \
+            --create --if-not-exists \
+            --topic blong-integration \
+            --partitions 1 \
+            --replication-factor 1 && \
+          echo "Topic blong-integration created"
+        resources:
+          limits:
+            cpu: "0.1"
+            memory: 128Mi

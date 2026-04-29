@@ -6,7 +6,7 @@ type KafkaMessage = {topic: string; partition: number; value: Buffer};
 class KafkaJsonCodec {
     encode(data: Record<string, unknown>, $meta: Record<string, unknown>) {
         if (!$meta.trace) $meta.trace = randomUUID();
-        const {topic = 'blong-test', partition = 0, ...rest} = data;
+        const {topic = 'blong-integration', partition = 0, ...rest} = data;
         return {
             topic,
             partition,
@@ -48,8 +48,8 @@ export default adapter<{
                 'security.protocol': 'plaintext',
             },
             consume: {
-                topics: ['blong-test'],
-                groupId: 'blong-test-group',
+                topics: ['blong-integration'],
+                groupId: 'blong-integration-group',
             },
             codec: KafkaJsonCodec,
             namespace: 'broker',
