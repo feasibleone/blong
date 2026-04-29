@@ -32,7 +32,7 @@ export async function runPlatform(serverDef: SolutionFactory, name: string): Pro
 export async function autoRun(options: {cwd: string; target?: string}): Promise<void> {
     const {cwd, target} = options;
 
-    if (target) {
+    if (target && existsSync(target)) {
         (await import(target)).default(load);
         return;
     }

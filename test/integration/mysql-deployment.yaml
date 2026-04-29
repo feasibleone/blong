@@ -54,7 +54,7 @@ spec:
         - name: MYSQL_PASSWORD
           value: "password"
         - name: MYSQL_DATABASE
-          value: "blong"
+          value: "blong-integration"
         - name: MYSQL_ALLOW_EMPTY_PASSWORD
           value: "true"
         volumeMounts:

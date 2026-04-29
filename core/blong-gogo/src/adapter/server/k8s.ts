@@ -260,9 +260,19 @@ export default adapter<IConfig>(({utError}) => {
             const api = isCustomResource
                 ? this.config.context.customObjectsApi
                 : getApiForResource(_resourceType);
+            const CLUSTER_SCOPED_RESOURCES = new Set([
+                'namespace',
+                'node',
+                'persistentvolume',
+                'clusterrole',
+                'clusterrolebinding',
+                'storageclass',
+                'priorityclass',
+                'ingressclass',
+            ]);
             const isNamespaced = isCustomResource
                 ? !Array.isArray(params) && params.namespaced !== false
-                : !!namespace;
+                : !!namespace && !CLUSTER_SCOPED_RESOURCES.has(resourceType);
 
             // Helper to build method name
             const getMethodName = (verb: string): string => {
@@ -301,7 +311,9 @@ export default adapter<IConfig>(({utError}) => {
                 const methodName = getMethodName(verb);
                 const apiRecord = api as unknown as Record<string, unknown>;
                 if (typeof apiRecord[methodName] === 'function') {
-                    return await (apiRecord[methodName] as (opts: unknown) => Promise<unknown>)(buildOptions(options));
+                    return await (apiRecord[methodName] as (opts: unknown) => Promise<unknown>)(
+                        buildOptions(options),
+                    );
                 }
                 throw _errors['k8s.invalid']();
             };

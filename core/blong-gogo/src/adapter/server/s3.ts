@@ -137,7 +137,9 @@ export default adapter<IConfig>(({utError}) => {
                                 contentLength = Number(response.headers.get('content-length'));
                                 body =
                                     contentLength > 0
-                                        ? Readable.fromWeb(response.body as import('stream/web').ReadableStream)
+                                        ? Readable.fromWeb(
+                                              response.body as import('stream/web').ReadableStream,
+                                          )
                                         : Buffer.from(await response.arrayBuffer());
                             } catch (error) {
                                 this.log?.error?.(
@@ -159,11 +161,12 @@ export default adapter<IConfig>(({utError}) => {
                         Key: key,
                         Body: body as import('@aws-sdk/client-s3').PutObjectCommandInput['Body'],
                         ContentType: contentType ?? undefined,
-                        ...(contentLength != null && contentLength > 0 && {ContentLength: contentLength}),
+                        ...(contentLength != null &&
+                            contentLength > 0 && {ContentLength: contentLength}),
                         Metadata: metadata,
                     });
-                    await this.config.context.s3!.send(command);
-                    return this.config.url?.replace?.('{key}', key);
+                    const putResult = await this.config.context.s3!.send(command);
+                    return this.config.url?.replace?.('{key}', key) ?? {key, etag: putResult.ETag};
                 }
                 case 'delete':
                 case 'remove': {

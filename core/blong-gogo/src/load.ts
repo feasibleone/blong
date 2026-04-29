@@ -2,6 +2,7 @@ import {
     Internal,
     browser as browserFactory,
     kind,
+    orchestrator,
     server as serverFactory,
     type IApiSchema,
     type IConfigRuntime,
@@ -20,6 +21,7 @@ import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
+import minimist from 'minimist';
 import ConfigRuntime from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
@@ -187,6 +189,8 @@ interface IConstructor {
     new (config?: object, api?: object): object;
 }
 
+const argConfigs = minimist(process.argv.slice(2))._;
+
 function activeConfigs<T extends TSchema>(
     mod: IModuleConfig<T>,
     configNames: string[],
@@ -194,6 +198,7 @@ function activeConfigs<T extends TSchema>(
     return (
         (['default'] as string[])
             .concat(configNames)
+            .concat(argConfigs)
             .map(name => (mod.config as unknown as Record<string, unknown>)?.[name])
             .filter(Boolean) as (boolean | object)[]
     ).concat({pkg: mod.pkg, children: mod.children, url: mod.url});
@@ -636,6 +641,53 @@ export default async function loadRealm<T extends TSchema>(
                                     dirEntry.name.toString(),
                                 ),
                             );
+                        // Auto-provision a testDispatch orchestrator when the test/ folder
+                        // has no testDispatch.ts and no layer.server.ts.
+                        if (itemName === 'test' && platformApi.platform === 'server' && base) {
+                            const testDir = platformApi.join(base, item as string);
+                            const hasTestDispatch = platformApi.existsSync(
+                                platformApi.join(testDir, 'testDispatch.ts'),
+                            );
+                            const hasLayerServer = platformApi.existsSync(
+                                platformApi.join(testDir, 'layer.server.ts'),
+                            );
+                            if (!hasTestDispatch && !hasLayerServer) {
+                                const realmName = mergedConfig.name;
+                                const syntheticOrch = orchestrator(() => ({
+                                    extends: 'orchestrator.dispatch' as const,
+                                    activation: {
+                                        default: {},
+                                        integration: {
+                                            namespace: ['test'],
+                                            imports: [/\.test$/],
+                                        },
+                                    },
+                                }));
+                                Object.defineProperty(syntheticOrch, 'name', {
+                                    value: 'testDispatch',
+                                    configurable: true,
+                                });
+                                loaded.push(
+                                    Object.defineProperty(
+                                        (api: unknown) => {
+                                            (
+                                                api as Record<
+                                                    string,
+                                                    (...args: unknown[]) => unknown
+                                                >
+                                            )['testDispatch'](
+                                                syntheticOrch,
+                                                realmName + '.testDispatch',
+                                                'auto-provisioned',
+                                            );
+                                            return api;
+                                        },
+                                        'name',
+                                        {value: 'testDispatch'},
+                                    ),
+                                );
+                            }
+                        }
                         item = async () => loaded.filter(Boolean);
                 }
             } else if (platformApi.platform === 'browser' && 'path' in item) {
