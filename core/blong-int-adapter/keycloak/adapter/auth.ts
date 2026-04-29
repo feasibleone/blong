@@ -13,10 +13,10 @@ export default adapter<{
     activation: {
         default: {
             keycloak: {
-                baseUrl: 'http://localhost:30080',
-                realmName: 'master',
-                username: 'admin',
-                password: 'admin',
+                baseUrl: 'http://localhost:8180',
+                realmName: 'blong-integration',
+                username: 'blong-test',
+                password: 'password',
                 grantType: 'password',
             },
             namespace: 'auth',

@@ -14,7 +14,7 @@ export default adapter<{
         default: {
             s3: {
                 region: 'us-east-1',
-                endpoint: 'http://localhost:30009',
+                endpoint: 'http://localhost:9000',
                 credentials: {
                     accessKeyId: 'minioadmin',
                     secretAccessKey: 'minioadmin',

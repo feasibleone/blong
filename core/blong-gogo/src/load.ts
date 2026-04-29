@@ -653,19 +653,15 @@ export default async function loadRealm<T extends TSchema>(
                             );
                             if (!hasTestDispatch && !hasLayerServer) {
                                 const realmName = mergedConfig.name;
-                                const activation: {
-                                    default: object;
-                                    [key: string]: object;
-                                } = {default: {}};
-                                for (const configName of configNames) {
-                                    activation[configName] = {
-                                        namespace: ['test'],
-                                        imports: [`${realmName}.test`],
-                                    };
-                                }
                                 const syntheticOrch = orchestrator(() => ({
                                     extends: 'orchestrator.dispatch' as const,
-                                    activation,
+                                    activation: {
+                                        default: {},
+                                        integration: {
+                                            namespace: ['test'],
+                                            imports: [/\.test$/],
+                                        },
+                                    },
                                 }));
                                 Object.defineProperty(syntheticOrch, 'name', {
                                     value: 'testDispatch',

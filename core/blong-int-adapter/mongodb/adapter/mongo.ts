@@ -14,7 +14,7 @@ export default adapter<{
         default: {
             mongodb: {
                 host: 'localhost',
-                port: 30017,
+                port: 27017,
                 database: 'blong-integration',
                 user: 'blong-test',
                 password: 'password',

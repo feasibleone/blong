@@ -11,7 +11,7 @@ export default adapter<{
     activation: {
         default: {
             vault: {
-                endpoint: 'http://localhost:30200',
+                endpoint: 'http://localhost:8200',
                 token: 'root',
                 apiVersion: 'v1',
             },

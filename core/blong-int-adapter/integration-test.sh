@@ -3,13 +3,8 @@
 tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.k8s
 RESULT_K8S=$?
 
-if ! ../../test/integration/wait.sh http; then
-  echo "wait.sh failed for HTTP, skipping."
-  RESULT_HTTP=1
-else
-  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.http
-  RESULT_HTTP=$?
-fi
+tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.http
+RESULT_HTTP=$?
 
 if ! ../../test/integration/wait.sh mongodb; then
   echo "wait.sh failed for MongoDB, skipping."
@@ -27,8 +22,8 @@ else
   RESULT_MYSQL=$?
 fi
 
-if ! ../../test/integration/wait.sh s3; then
-  echo "wait.sh failed for S3, skipping."
+if ! ../../test/integration/wait.sh minio; then
+  echo "wait.sh failed for minio, skipping."
   RESULT_S3=1
 else
   tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.s3
