@@ -108,11 +108,9 @@ The wiring pipeline converts a declarative suite definition (a tree of
 connected adapters, orchestrators, gateways, and handlers. The pipeline has
 four major phases:
 
-```
-  ┌──────────────┐    ┌────────────┐    ┌──────────────┐    ┌──────────────┐
-  │  1. Bootstrap │ →  │  2. Load   │ →  │  3. Wire     │ →  │  4. Start    │
-  │   (infra)    │    │  (tree)    │    │  (registry)  │    │  (lifecycle) │
-  └──────────────┘    └────────────┘    └──────────────┘    └──────────────┘
+```mermaid
+flowchart LR
+    B["1. Bootstrap\n(infra)"] --> L["2. Load\n(tree)"] --> W["3. Wire\n(registry)"] --> S["4. Start\n(lifecycle)"]
 ```
 
 | Phase | Entry point | What happens |
@@ -184,12 +182,14 @@ hard-coded array position.
 ### Phase 1 — Bootstrap
 
 `loadServer.ts` (or `loadBrowser.ts`) calls `load.ts:loadRealm()` with:
+
 - A **platform API** object (filesystem operations, `watch`, `hrtime`, etc.)
 - The root **suite factory** (a function annotated with `server()` or `browser()`)
 - A **name** (suite name) and **parentConfig** (config file name or object)
 - **configNames** (active environment names like `['dev']`, `['integration']`)
 
 On the first call (`api` is undefined), `loadRealm()`:
+
 1. Creates the initial config skeleton with defaults for all infrastructure keys.
 2. Builds the infrastructure **items** list with explicit dependency declarations
    and performs a topological sort. Items are instantiated in the resolved order
@@ -231,36 +231,23 @@ activation config.
 
 The trap classifies each item in `items`:
 
-```
-┌─────────────────────────────────────┐
-│  For each item in the items array:  │
-├─────────────────────────────────────┤
-│                                     │
-│  Is it a Port subclass or           │
-│  kind === 'adapter'/'orchestrator'? │
-│  ─── YES → Create port factory ──→  │  Sets `where.port` = async factory fn
-│                                     │  that calls `createPort()` or `new Port()`
-│  ─── NO → It's a handler ────────→  │  Pushed into `where.methods[]`
-│                                     │
-│  Handler closure wraps:             │
-│  • config merging                   │
-│  • `handler` proxy (the IoC proxy)  │
-│  • `lib` proxy (lazy lib loading)   │
-│  • `errors` reference               │
-│  • `remote()` for cross-service     │
-│                                     │
-│  Kind-specific dispatch:            │
-│  • 'lib' → merge into lib object    │
-│  • 'handler'/'validation' → invoke  │
-│    factory, merge result into local │
-│  • 'api' → generate schema          │
-│  • 'model' → createHandlers         │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["For each item in the items array"] --> B{"Port subclass or\nkind = adapter/orchestrator?"}
+    B -- Yes --> C["Create port factory\nwhere.port = async factory fn\ncreatePort() or new Port()"]
+    B -- No --> D["It's a handler\npush into where.methods[]"]
+    D --> E["Handler closure wraps:\n• config merging\n• handler proxy (IoC)\n• lib proxy (lazy)\n• errors reference\n• remote() for cross-service"]
+    E --> F{"kind?"}
+    F -- lib --> G["merge into lib object"]
+    F -- "handler / validation" --> H["invoke factory\nmerge result into local"]
+    F -- api --> I["generate schema"]
+    F -- model --> J["createHandlers"]
 ```
 
 **The handler proxy** (`runtime.handler` / `layerApi.handler`) lives in
 `handlerProxy.ts` and is a `Proxy` over the `local` object. When a handler
 accesses `handler.someMethod`, the proxy:
+
 1. Checks if the port `handles()` the method name → calls the port's local
    `findHandler()`.
 2. Otherwise → calls `remote(methodName)` to create a remote dispatch function.
@@ -333,6 +320,7 @@ methods and matches them against the adapter's `imports` patterns.
 
 For each match, `_createHandlers(handlers, port)` executes the handler
 closures:
+
 - Each closure receives `{lib, local, literals, gateway, remote, port, attachCheckpoint, apiSchema}`.
 - The closure populates `local` with named functions and `literals` with
   prototype-chained objects.
@@ -343,8 +331,9 @@ groups shadow earlier ones.
 
 ### Prototype Chain Wiring
 
-```
-port.imported → pointer₁ → local₁ → pointer₂ → local₂ → … → target (AdapterBase)
+```mermaid
+flowchart LR
+    PI["port.imported"] --> P1["pointer₁"] --> L1["local₁"] --> P2["pointer₂"] --> L2["local₂"] --> DOT["…"] --> T["target\n(AdapterBase)"]
 ```
 
 Each `pointer` is an empty object. When a handler group is hot-reloaded,
@@ -376,6 +365,78 @@ file) share this abstraction with slight variations:
 After any change, `emit('test')` triggers test re-runs.
 
 ---
+
+## Load Pipeline Diagram
+
+The diagram below shows the complete flow inside `loadRealm()` — from the
+initial call through infrastructure bootstrap, tree walking, layer wiring, and
+final startup.
+
+```mermaid
+flowchart TD
+    LS["loadServer.ts / loadBrowser.ts\n(bind platform API)"]
+    LS --> LR["loadRealm(platformApi, def, name, parentConfig, configNames)"]
+
+    LR --> DK{"Detect kind\nof root factory"}
+    DK -- "solution (realm passed directly)" --> AW["Auto-wrap in minimal\nserver() or browser() suite\n+ discoverRealmTestMethods()\nthen recurse loadRealm()"]
+    DK -- "server | browser" --> BOOT
+
+    subgraph BOOT["Phase 1 — Bootstrap (first call only)"]
+        direction TB
+        B1["Create initial config skeleton"]
+        B2["Build InfraItem list with\nexplicit dep declarations\n(topoSort)"]
+        B3["Instantiate infra objects in order:\nlog → apiSchema → port → error\n→ watch → local → resolution\n→ remote/rpcClient → rpcServer*\n→ gateway* → restFs* → registry\n→ codec → orchestrator → adapter\n(* server only)"]
+        B4["Invoke root factory → mod\n{url, pkg, children, config}"]
+        B5["Merge configs via ConfigRuntime:\nmodule defaults + env overrides\n+ external config files\n+ CLI positional args as config names"]
+        B1 --> B2 --> B3 --> B4 --> B5
+    end
+
+    BOOT --> DISC
+
+    subgraph DISC["Phase 2 — Auto-discover layer folders"]
+        direction TB
+        D1["discoverLayerFolders():\nscan realm dir for WELL_KNOWN_LAYERS\nnot already in mod.children"]
+        D2["WELL_KNOWN_LAYERS:\napi, init, server/init, server/api,\nbrowser/init, browser/api,\nerror, sim, adapter, orchestrator,\ngateway, browser, backend,\ncomponent, action, actions,\ntest, server/test, browser/test"]
+        D3["Each discovered folder appended\nto children with default activation"]
+        D1 --> D2 --> D3
+    end
+
+    DISC --> WALK
+
+    subgraph WALK["Phase 2 (cont.) — Tree Walking"]
+        direction TB
+        W1{"For each child\n(system items + mod.children\n+ extra discovered children)"}
+        W1 -- "Internal subclass\nor [System] marker" --> W2["api[name] = new Ctor(config, api)\nawait api[name].init()"]
+        W1 -- "kind = solution/server/browser" --> W3["loadRealm() recursively\nrealm.addModule(name, subRegistry)"]
+        W1 -- "plain layer function" --> W4["fn(layerProxy(...))\nrealm.addLayer(name, result)"]
+        W1 -- "test/ folder\n(server, no testDispatch.ts,\nno layer.server.ts)" --> W5["Auto-provision synthetic\norchestrator.dispatch as\ntestDispatch"]
+    end
+
+    WALK --> LP
+
+    subgraph LP["Phase 3 — layerProxy (Core Wiring)"]
+        direction TB
+        LP1["layerProxy(error, apiSchema, port,\nmergedConfig, configRuntime)"]
+        LP1 --> LP2{"For each item\nin group"}
+        LP2 -- "Port subclass or\nkind=adapter/orchestrator" --> LP3["where.port =\nasync port factory"]
+        LP2 -- "handler / lib /\nvalidation / api / model" --> LP4["Handler closure:\nwraps config, handler proxy,\nlib proxy, errors, remote"]
+        LP3 --> LP5["realm.addLayer()\n→ registry.ports"]
+        LP4 --> LP5B["realm.addLayer()\n→ registry.methods"]
+    end
+
+    LP --> START
+
+    subgraph START["Phase 4 — Registry.start()"]
+        direction TB
+        S1["for each port factory\n→ createPort(id)\n→ port.init() / port.start()"]
+        S2["attachHandlers:\n_matchMethods('extend', imports, port)\n→ _createHandlers()\n→ Object.setPrototypeOf() chain"]
+        S3["for each port\n→ port.ready()"]
+        S4["Collect validations from\n.validation and .api groups\n→ gateway.route(validations, pkg)"]
+        S5["resolution.start()\nrpcServer.start()\nremote.start()\ngateway.start()"]
+        S6["watch.start()\n(file watchers + test runner)"]
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
+    end
+```
 
 ## Data Flow Diagram
 

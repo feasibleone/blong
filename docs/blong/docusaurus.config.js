@@ -27,10 +27,13 @@ const config = {
     },
 
     markdown: {
+        mermaid: true,
         hooks: {
             onBrokenMarkdownLinks: 'warn',
         },
     },
+
+    themes: ['@docusaurus/theme-mermaid'],
 
     headTags: [
         {
