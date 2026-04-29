@@ -1,26 +1,63 @@
 #! /bin/bash
 
-if ! ../../test/integration/wait.sh; then
-  echo "wait.sh failed, exiting."
-  exit 1
-fi
-
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.http
-RESULT_HTTP=$?
 tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.k8s
 RESULT_K8S=$?
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.kafka
-RESULT_KAFKA=$?
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.keycloak
-RESULT_KEYCLOAK=$?
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.mongodb
-RESULT_MONGODB=$?
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.mysql
-RESULT_MYSQL=$?
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.s3
-RESULT_S3=$?
-tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.vault
-RESULT_VAULT=$?
+
+if ! ../../test/integration/wait.sh http; then
+  echo "wait.sh failed for HTTP, skipping."
+  RESULT_HTTP=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.http
+  RESULT_HTTP=$?
+fi
+
+if ! ../../test/integration/wait.sh mongodb; then
+  echo "wait.sh failed for MongoDB, skipping."
+  RESULT_MONGODB=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.mongodb
+  RESULT_MONGODB=$?
+fi
+
+if ! ../../test/integration/wait.sh mysql; then
+  echo "wait.sh failed for MySQL, skipping."
+  RESULT_MYSQL=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.mysql
+  RESULT_MYSQL=$?
+fi
+
+if ! ../../test/integration/wait.sh s3; then
+  echo "wait.sh failed for S3, skipping."
+  RESULT_S3=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.s3
+  RESULT_S3=$?
+fi
+
+if ! ../../test/integration/wait.sh keycloak; then
+  echo "wait.sh failed for Keycloak, skipping."
+  RESULT_KEYCLOAK=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.keycloak
+  RESULT_KEYCLOAK=$?
+fi
+
+if ! ../../test/integration/wait.sh vault; then
+  echo "wait.sh failed for Vault, skipping."
+  RESULT_VAULT=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.vault
+  RESULT_VAULT=$?
+fi
+
+if ! ../../test/integration/wait.sh kafka; then
+  echo "wait.sh failed for Kafka, skipping."
+  RESULT_KAFKA=1
+else
+  tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.kafka
+  RESULT_KAFKA=$?
+fi
 
 # report list of failed tests
 if [ $RESULT_HTTP -ne 0 ] || [ $RESULT_K8S -ne 0 ] || [ $RESULT_KAFKA -ne 0 ] || [ $RESULT_KEYCLOAK -ne 0 ] || [ $RESULT_MONGODB -ne 0 ] || [ $RESULT_MYSQL -ne 0 ] || [ $RESULT_S3 -ne 0 ] || [ $RESULT_VAULT -ne 0 ]; then

@@ -12,6 +12,7 @@ spec:
       labels:
         app: kafka
     spec:
+      enableServiceLinks: false
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:7.6.0
@@ -44,7 +45,7 @@ spec:
         - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
           value: "true"
         - name: CLUSTER_ID
-          value: "blong-int-kafka-cluster-01"
+          value: "M2ZkNjIwMjYwNTFiNGJhOG"
         resources:
           limits:
             cpu: "1.0"
