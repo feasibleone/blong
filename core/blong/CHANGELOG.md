@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-v1.17.0...blong-v1.18.0) (2026-04-29)
+
+
+### Features
+
+* rename blong-int-sql → blong-int-adapter with full adapter integration test suite ([#135](https://github.com/feasibleone/blong/issues/135)) ([ee2b0f6](https://github.com/feasibleone/blong/commit/ee2b0f64b181f787a71c404e08fd62959a7f0e8e))
+
+
+### Bug Fixes
+
+* type errors ([2f105bd](https://github.com/feasibleone/blong/commit/2f105bd3546b30ad1505ccde63ba43f3ccd575a8))
+* type errors ([#133](https://github.com/feasibleone/blong/issues/133)) ([5b33e54](https://github.com/feasibleone/blong/commit/5b33e54b6b57eb561748a72f400a48f70af7f311))
+
 ## [1.17.0](https://github.com/feasibleone/blong/compare/blong-v1.16.1...blong-v1.17.0) (2026-04-26)
 
 

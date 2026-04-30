@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/feasibleone/blong/compare/test-v1.8.0...test-v1.8.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* type errors ([#133](https://github.com/feasibleone/blong/issues/133)) ([5b33e54](https://github.com/feasibleone/blong/commit/5b33e54b6b57eb561748a72f400a48f70af7f311))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/test-v1.7.0...test-v1.8.0) (2026-04-26)
 
 

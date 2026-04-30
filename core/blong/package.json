@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong",
-    "version": "1.17.0",
+    "version": "1.18.0",
     "description": "API and DRY focused RAD framework https://feasibleone.github.io/blong-docs",
     "keywords": [
         "blong",
