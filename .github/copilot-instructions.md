@@ -57,33 +57,81 @@ local scratch area; `docs/` — documentation site.
 
 ## ⚠️ Essential Rules — Always Apply These
 
-These rules apply to all Blong code, without exception:
+These rules apply to all Blong code. When features appear incomplete or contradictory, use these
+rules as the authoritative guide and prioritize the API definition as the primary source of truth:
 
 1. Blong is work in progress. When working on it, there may be incomplete or even contradicting
    features. When in doubt, follow the leading principles to take decisions about how to implement
    or refactor code:
-    - Follow the handler and runtime pattern described below — it's the lingua franca of the
-      framework
-    - API definition is the king and source of truth. Currently it is derived from Typebox schemas
-      or can be supplied via existing OpenAPI specs.
+    - Follow the handler and runtime patterns described below — they are the foundational patterns
+      that all framework components must follow. The handler pattern is a primary approach, where
+      handlers keep maximum isolation. The framework makes sure to process them and provide many
+      features without the handlers needing to be aware of them: configuration, validation, API
+      docs, hot reload, test mocking, exception handling, telemetry, concurrency, cache, dependency
+      analysis, etc.
+    - The API definition is the primary and authoritative source of truth for all implementations.
+      Currently it is derived from Typebox schemas or can be supplied via existing OpenAPI specs.
+      These two ways must be well determined before implementing any functionality. Prefer
+      generating the API definition from Typebox schemas co-located with the handlers, unless there
+      is a reason to align with an existing OpenAPI spec, which as a minimum will require specifying
+      the semantic triple (in x-blong-method) for each operation. Once the API definition is
+      determined, many other things will be derived from it.
     - DRY (do not repeat yourself) - avoid duplication of ideas, logic, or code
     - RAD (rapid application development) - prioritize fast iteration and delivery, implement
-      convention over configuration, be able to generate bolerplate code, which can be customized
+      convention over configuration, be able to generate boilerplate code, which can be customized
       when needed
     - DMMT (Don't make me think) - avoid surprises, keep it intuitive
     - KISS (keep it simple, stupid) - avoid unnecessary complexity, prefer simple solutions
 
+    When these principles conflict, apply them in the order listed: handler and runtime pattern
+    first, then the API definition, then the adapters and orchestrators, then DRY, RAD, DMMT, and
+    finally KISS.
+
 1. **Hierarchy is suite → realm → layer → handler group → handler.** Never skip levels or mix
    concerns across them.
 
-1. **Blong is a runtime, not a library.** Handlers never `import` other handlers. All cross-handler
-   dependencies are injected at runtime by the framework via the `handler()` factory's `handler: {}`
-   proxy. Direct imports between handlers break the IoC model.
+1. **Blong is a runtime, not a library.** .The runtime can run in both server and browser platforms
+   without code changes. Future platforms (desktop, mobile) could be added later. As consequence:
+    - The main `blong-gogo` package is not a production dependency of any realm or suite code. For
+      the server platform, it is built as a docker image, which is then used to run the code in the
+      realms and suites. In the development environment use the global `blong` command, which runs
+      the runtime. When using the blong command, passing arguments on the command line is a way to
+      activate configurations (including realms and layers) (e.g. `blong integration xxx.adapter`)
+      or pass configuration settings (e.g. `blong --db.connection.password=secret`). Currently there
+      are some exceptions for the realm's `index.test.ts` files, as they are launched via tap and
+      refer to the `load` function in `blong-gogo`.
+    - Handlers never `import` other handlers. All cross-handler dependencies are injected at runtime
+      by the framework via the `handler()` factory's `handler: {}` proxy. Direct imports between
+      handlers break the IoC model.
+
+1. **Adapters and orchestrators are the functionality wrappers** - all business logic and external
+   system integration goes via them. Sometimes docs or prompts could use the word "port" which is an
+   older terminology for "adapters and orchestrators". They operate with the semantic triple naming
+   convention when called via the internal or gateway API. Orchestrators can talk to other
+   orchestrators and adapters, adapters must avoid directly calling other adapters. The adapters
+   translate to and from the semantic triple internal API to the external system's API, i.e. they
+   are the integration points, while the orchestrators are the business logic coordinators.
+
+1. **Adapters and orchestrators are self-contained.** Their configuration goes in the `activation`
+   property co-located in the layer file — not in the realm's `server.ts`. The realm's `server.ts`
+   is only needed when realm-level config is shared across layers.
+
+1. **Sometimes adapters and orchestrators can be a singleton**. In these cases they can import and
+   attach handlers or refer to other functionality from multiple realms via RegEx patterns. This is
+   often related to some underlying paradigm, like a DB connection pool, an authenticated state that
+   needs to be shared or reusing repetitive logic like the test orchestrator. Nothing in the design
+   of adapters or orchestrators should enforce a singleton usage.
 
 1. **Semantic triple naming — `subjectObjectPredicate`.** Every API handler is named as a three-part
    compound: `subject` (realm/namespace), `object` (entity), `predicate` (action). The file name,
    exported function name, and wire-format method name are all identical (e.g. `userUserAdd.ts`
-   exports `userUserAdd`).
+   exports `userUserAdd`). Always verify handler names follow this convention; flag any violations
+   and suggest the correct triple-format name before proceeding. Use singular nouns for `subject`
+   and `object` and present tense verbs for `predicate`. This is the main vocabulary of the
+   framework and is critical. In some cases, when calling handlers a `namespace/` prefix can be
+   added, which represent the intent to route the call to a specific adapter or orchestrator, which
+   handles this namespace. This allows the same handler name to be used in different places, as the
+   flow propagates across different orchestrators and adapters.
 
 1. **Standard predicates only.** Use `get` (single by ID), `find` (list with filter/pagination),
    `add` (create), `edit` (modify), `remove` (delete), `merge` (upsert) for single-entity
@@ -94,6 +142,12 @@ These rules apply to all Blong code, without exception:
    `email`. Two-word names prevent context ambiguity when entities from multiple realms appear
    together.
 
+1. File naming: use semantic triple or two-word convention and avoid "index.x" files when
+   appropriate. For example files which represent a single entity should be named after the entity
+   or files representing a handler should be named after the handler's semantic triple. This is to
+   make it easy to find the file in IDE (e.g. ctrl+p in VSCode). Use `CamelCase` names for Classes
+   and React components and `camelCase` for everything else.
+
 1. **One handler per file.** File name = exported function name = semantic triple. Library functions
    also get their own files.
 
@@ -102,14 +156,10 @@ These rules apply to all Blong code, without exception:
    are automatically detected and activated at their default environment. Custom folder names
    require a `layer.server.ts` / `layer.browser.ts` file.
 
-1. **Adapters and orchestrators are self-contained.** Their configuration goes in the `activation`
-   property co-located in the layer file — not in the realm's `server.ts`. The realm's `server.ts`
-   is only needed when realm-level config is shared across layers.
-
 1. **`$meta` flows through every handler call.** Always accept and forward `$meta` as the second
    parameter to preserve auth, tracing, and transport metadata across the call chain.
 
-1. **`dev/` is gitignored — never commit code there.** All committed work goes in `core/`.
+1. **`dev/` is gitignored — never commit code there.**.
 
 ---
 
@@ -239,11 +289,6 @@ convention: `subjectObjectPredicate` where:
 - `subject` = realm namespace or realm name
 - `object` = entity within realm
 - `predicate` = action on entity
-
-Blong is a **runtime**, not a library. Handler files never `import` other handler files or the blong
-runtime (blong-gogo). All dependencies are injected by the framework at runtime through the
-`handler()` factory. This pattern is the most important to understand and follow and is the lingua
-franca of the framework.
 
 ```typescript
 import {handler} from '@feasibleone/blong';
