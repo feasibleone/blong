@@ -5,7 +5,9 @@
  */
 
 /** A lazy async import returning a React component class/function */
-export type ComponentImport = () => Promise<React.ComponentType<Record<string, unknown>>>;
+export type ComponentImport = (
+    params: object,
+) => Promise<React.ComponentType<Record<string, unknown>>>;
 
 /** Params can be a plain object or a function that derives params from a source object */
 export type ParamsResolver<T = Record<string, unknown>> =

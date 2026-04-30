@@ -38,7 +38,7 @@ style.textContent = `
 document.head.appendChild(style);
 
 export default browser =>
-    function withBlong(Story: React.ComponentType, context?: unknown) {
+    function withBlong(Story: React.ComponentType) {
         let result: IRegistry | undefined;
         const [blong, setBlong] = React.useState<{
             registry: IRegistry | null;
@@ -51,10 +51,10 @@ export default browser =>
                 {
                     browser: {
                         load: {
-                            logLevel: 'debug',
+                            // logLevel: 'debug',
                         },
                         realm: {
-                            logLevel: 'debug',
+                            // logLevel: 'debug',
                         },
                     },
                     apiSchema: false,
@@ -67,7 +67,7 @@ export default browser =>
                 },
                 ['storybook', 'integration', 'dev'],
             )
-                .then(platform => platform.start())
+                .then(platform => platform.start({}))
                 .then(registry => {
                     const adapter = registry.getPort('blongUi.portal');
                     setBlong({
@@ -76,7 +76,10 @@ export default browser =>
                             method: string,
                             rpcParams: Record<string, unknown> = {},
                         ) => {
-                            console.log('Dispatching method:', method, 'with params:', rpcParams);
+                            adapter?.log?.info?.(
+                                {...rpcParams, $meta: {method}},
+                                'Dispatching method',
+                            );
                             const result = await adapter?.dispatch?.(rpcParams, {
                                 method,
                                 mtid: 'request',

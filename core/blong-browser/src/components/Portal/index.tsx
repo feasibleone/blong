@@ -4,12 +4,13 @@
  * Renders a Menubar at the top, a TabView of open pages below it,
  * and wires menu item clicks to action dispatches.
  */
+import {Menubar, ProgressSpinner, TabPanel, TabView} from '../../primereact/index.js';
 import './index.css';
-import {Menubar, ProgressSpinner,TabView, TabPanel} from '../../primereact/index.js';
 
 import React, {Suspense, useCallback} from 'react';
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {usePortal} from '../../hooks/usePortal.js';
+import testid from '../../lib/testid.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPageAction} from '../../types/action.js';
 import type {IMenuItem} from '../../types/portal.js';
@@ -17,8 +18,7 @@ import {Button} from '../Button/index.js';
 import {ErrorDialog} from '../Error/index.js';
 import {Hint} from '../Hint/index.js';
 import {Loader} from '../Loader/index.js';
-import { Text } from '../Text/index.js';
-import testid from '../../lib/testid.js';
+import {Text} from '../Text/index.js';
 
 // ── Per-tab error boundary ─────────────────────────────────────────────────
 
@@ -96,7 +96,7 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                 try {
                     let component: React.ComponentType<Record<string, unknown>>;
                     if (action && 'component' in action) {
-                        component = await (action as IPageAction).component();
+                        component = await (action as IPageAction).component({});
                     } else {
                         component = (await dispatch('portal.component.get', {
                             page: actionName,
@@ -143,10 +143,13 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                 >
                     {tabs.map(tab => (
                         <TabPanel
-                            __TYPE='TabPanel'
+                            __TYPE="TabPanel"
                             key={tab.id}
                             header={
-                                <span className="blong-tab-header" {...testid(`portal.tab${tab.id}`)}>
+                                <span
+                                    className="blong-tab-header"
+                                    {...testid(`portal.tab${tab.id}`)}
+                                >
                                     {tab.dirty && <span className="blong-tab-dirty">● </span>}
                                     <Text>{tab.title}</Text>
 

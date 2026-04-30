@@ -12,18 +12,28 @@ export async function subjectObjectBrowse(
         permission: browser.permission.browse,
         icon: browser.icon,
         component: async () => {
-            const [schema, {Explorer}] = await Promise.all([
+            const [schemaOverride, {Explorer}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
                 import('../../components/Explorer/index.js'),
             ]);
 
+            const schema = blong.lib.merge({}, model.schema, schemaOverride);
             function BrowsePage(props: Record<string, unknown>) {
-                const columns = (model.cards?.browse?.widgets as string[] | undefined)
-                    ?.filter(w => typeof w === 'string')
-                    .map(w => ({field: w.includes('.') ? w.split('.').pop()! : w}));
+                const columns = (model.cards?.browse?.widgets).map(widget => {
+                    if (typeof widget === 'string') {
+                        const field = widget.split('.').pop()!;
+                        return {
+                            field,
+                            ...schema.properties?.[object]?.properties?.[field],
+                        };
+                    } else
+                        return {
+                            field: widget.name,
+                        };
+                });
 
                 return Explorer({
-                    schema: blong.lib.merge({}, model.schema, schema),
+                    schema,
                     columns,
                     listAction: methods.find,
                     selectionMode: 'single',

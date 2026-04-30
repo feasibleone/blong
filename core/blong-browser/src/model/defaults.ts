@@ -73,7 +73,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     const keyField = spec.keyField ?? `${object}Id`;
     const nameField = spec.nameField ?? `${object}.${object}Name`;
 
-    return deepMerge<IResolvedModelSpec[]>(
+    return deepMerge<[IResolvedModelSpec, IModelSpec]>(
         {
             subject,
             object,
@@ -89,6 +89,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                                 title: `${objectTitle} Name`,
                                 filter: true,
                                 sort: true,
+                                action: `component/${subject}.${object}.open`,
                             },
                         },
                     },
@@ -97,6 +98,9 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             cards: {
                 edit: {
                     label: objectTitle,
+                    widgets: [nameField],
+                },
+                browse: {
                     widgets: [nameField],
                 },
                 hidden: {
@@ -139,5 +143,5 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             },
         },
         spec,
-    );
+    ) as unknown as IResolvedModelSpec;
 }

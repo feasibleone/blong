@@ -534,7 +534,7 @@ export function Form({
     })();
 
     return (
-        <FormContext.Provider
+        <FormContext
             value={{
                 schema: effectiveSchema,
                 cards,
@@ -574,6 +574,6 @@ export function Form({
                     {formBody}
                 </form>
             )}
-        </FormContext.Provider>
+        </FormContext>
     );
 }

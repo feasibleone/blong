@@ -37,7 +37,6 @@ export function ActionButton({
     confirm: confirmMessage,
     enabled = true,
     visible = true,
-    align: _align,
     menu,
     params: extraParams,
     successHint,

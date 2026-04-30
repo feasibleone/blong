@@ -91,10 +91,10 @@ export interface IExplorerProps {
      *  - `table` (default) — standard DataTable
      *  - `grid`            — DataView with cards
      */
-    layout?: 'table' | 'grid';
+    view?: 'table' | 'grid';
 
     /**
-     * Card template for `layout='grid'` — renders a single row as a card.
+     * Card template for `view='grid'` — renders a single row as a card.
      * When omitted, a default key-value card based on the column definitions
      * is rendered.
      */
@@ -219,7 +219,7 @@ export function Explorer({
     navigator,
     children,
     details,
-    layout = 'table',
+    view = 'table',
     cardTemplate,
     resultSet = 'items',
     pageSize: defaultPageSize = 25,
@@ -255,7 +255,7 @@ export function Explorer({
     const [navOpened, setNavOpened] = useState(true);
     /** Whether the details panel is currently open. */
     const [detailsOpened, setDetailsOpened] = useState(true);
-    const dt = useRef<DataTable>(null);
+    const dataTableRef = useRef<DataTable>(null);
     const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const {dispatch} = useBlongUi();
@@ -466,7 +466,7 @@ export function Explorer({
             className="blong-explorer-table"
             style={{display: 'flex', flexDirection: 'column', height: '100%'}}
         >
-            {layout === 'grid' ? (
+            {view === 'grid' ? (
                 <DataView
                     value={pagedRows}
                     loading={loading}
@@ -478,7 +478,7 @@ export function Explorer({
                 />
             ) : (
                 <DataTable
-                    ref={dt}
+                    ref={dataTableRef}
                     value={pagedRows}
                     dataKey={keyField}
                     size={size}
@@ -566,18 +566,14 @@ export function Explorer({
                             {...(col.action && {
                                 body: (row: RowData) =>
                                     row[col.field] ? (
-                                        <Button
+                                        <ActionButton
                                             label={String(row[col.field])}
                                             className="p-button-link p-0"
-                                            style={{padding: 0}}
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                void dispatch(col.action!, {
-                                                    [keyField]: row[keyField],
-                                                    id: row[keyField],
-                                                    current: row,
-                                                    ...row,
-                                                });
+                                            action={col.action}
+                                            params={{
+                                                [keyField]: row[keyField],
+                                                id: row[keyField],
+                                                current: row,
                                             }}
                                         />
                                     ) : null,
@@ -712,7 +708,7 @@ export function Explorer({
         >
             <style>{`.blong-explorer-current-row { outline: 0.15rem solid var(--primary-color) !important; outline-offset: -0.15rem; }`}</style>
             <Toolbar
-                left={
+                start={
                     <div className="blong-toolbar-left">
                         {hasLeftPanel && (
                             <Button
@@ -738,7 +734,7 @@ export function Explorer({
                         ))}
                     </div>
                 }
-                right={
+                end={
                     <div className="blong-toolbar-right">
                         {toolbarRight.map((btn, i) => (
                             <ActionButton
@@ -753,7 +749,7 @@ export function Explorer({
                                 className="mr-2"
                             />
                         ))}
-                        {layout !== 'grid' && (
+                        {view !== 'grid' && (
                             <Button
                                 icon="pi pi-arrows-h"
                                 className="p-button-text mr-2 ml-2"

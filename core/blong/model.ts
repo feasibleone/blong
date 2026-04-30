@@ -93,8 +93,6 @@ export interface IBrowserConfig {
     title?: string;
     icon?: string;
     permission?: IBrowserPermissions;
-    /** Column transformation applied to server fetch params */
-    fetch?: (params: Record<string, unknown>) => Record<string, unknown>;
     /** Default filter applied on page open */
     filter?: Record<string, unknown>;
     /** Result set key to use from server response */
@@ -103,6 +101,11 @@ export interface IBrowserConfig {
     create?: Array<{title?: string; type?: string; permission?: string}>;
     /** Extra toolbar buttons */
     toolbar?: unknown[];
+}
+
+export interface IBrowserConfigOptional {
+    /** Column transformation applied to server fetch params */
+    fetch?: (params: Record<string, unknown>) => Record<string, unknown>;
 }
 
 /** Editor page configuration */
@@ -147,7 +150,7 @@ export interface IModelSpec {
     /** Named card layout definitions */
     cards?: Record<string, ICardOverride>;
     /** Browse page configuration */
-    browser?: IBrowserConfig;
+    browser?: IBrowserConfig & IBrowserConfigOptional;
     /** Editor page configuration */
     editor?: IEditorConfig;
     /** Report page configuration */
@@ -169,7 +172,7 @@ export interface IResolvedModelSpec extends Required<IModelSpec> {
     objectTitle: string;
     keyField: string;
     nameField: string;
-    browser: Required<IBrowserConfig> & {permission: IBrowserPermissions};
+    browser: Required<IBrowserConfig> & IBrowserConfigOptional;
     editor: Required<IEditorConfig>;
     report: Required<IReportConfig>;
     methods: Required<IMethodsConfig>;

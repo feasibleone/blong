@@ -6,9 +6,9 @@
  * realm browser layers (matched by regex), plus the ui.portal handler group.
  */
 import {orchestrator, type IHandlerProxy} from '@feasibleone/blong';
-import component from '../src/model/component/index.ts';
+import component from '../src/model/component/subjectObjectComponent.ts';
 
-export default orchestrator(blong => ({
+export default orchestrator(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {

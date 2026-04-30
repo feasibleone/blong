@@ -21,7 +21,6 @@ import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
-import minimist from 'minimist';
 import ConfigRuntime from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
@@ -189,16 +188,15 @@ interface IConstructor {
     new (config?: object, api?: object): object;
 }
 
-const argConfigs = minimist(process.argv.slice(2))._;
-
 function activeConfigs<T extends TSchema>(
     mod: IModuleConfig<T>,
     configNames: string[],
+    platformConfigs: string[],
 ): (boolean | object)[] {
     return (
         (['default'] as string[])
             .concat(configNames)
-            .concat(argConfigs)
+            .concat(platformConfigs)
             .map(name => (mod.config as unknown as Record<string, unknown>)?.[name])
             .filter(Boolean) as (boolean | object)[]
     ).concat({pkg: mod.pkg, children: mod.children, url: mod.url});
@@ -502,7 +500,7 @@ export default async function loadRealm<T extends TSchema>(
             return fn;
         });
     }
-    loadedConfigs.push(...activeConfigs(mod, configNames));
+    loadedConfigs.push(...activeConfigs(mod, configNames, platformApi.configs));
     const {loadedConfig, configRuntime} = await platformApi.loadConfig(parentConfig);
     if (loadedConfig) loadedConfigs.push(loadedConfig);
 

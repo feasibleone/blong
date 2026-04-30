@@ -2,6 +2,7 @@ import {watch} from 'chokidar';
 import type {Dirent} from 'fs';
 import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
+import minimist from 'minimist';
 import {createRequire} from 'node:module';
 import {hrtime} from 'node:process';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
@@ -45,4 +46,5 @@ export default load.bind(null, {
     statSync,
     watch,
     timing: timing(hrtime),
+    configs: ['server', ...minimist(process.argv.slice(2))._],
 });

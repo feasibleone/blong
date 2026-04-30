@@ -182,7 +182,7 @@ export const Children: Story = {
 export const Grid: Story = {
     args: {
         ...Default.args,
-        layout: 'grid',
+        view: 'grid',
         selectionMode: 'none',
     },
 };
@@ -193,7 +193,7 @@ export const Grid: Story = {
 export const GridFlex: Story = {
     args: {
         ...Default.args,
-        layout: 'grid',
+        view: 'grid',
         selectionMode: 'none',
         pageSize: 25,
         cardTemplate: row => (

@@ -11,8 +11,8 @@ declare global {
     }
 }
 
-var performance = globalThis.performance || {};
-var performanceNow =
+const performance = globalThis.performance || {};
+const performanceNow =
     performance.now ||
     performance.mozNow ||
     performance.msNow ||
@@ -25,9 +25,9 @@ var performanceNow =
 // generate timestamp or delta
 // see http://nodejs.org/api/process.html#process_process_hrtime
 function hrtime(previousTimestamp?: HRTime): HRTime {
-    var clocktime = performanceNow.call(performance) * 1e-3;
-    var seconds = Math.floor(clocktime);
-    var nanoseconds = Math.floor((clocktime % 1) * 1e9);
+    const clockTime = performanceNow.call(performance) * 1e-3;
+    let seconds = Math.floor(clockTime);
+    let nanoseconds = Math.floor((clockTime % 1) * 1e9);
     if (previousTimestamp) {
         seconds = seconds - previousTimestamp[0];
         nanoseconds = nanoseconds - previousTimestamp[1];
@@ -79,4 +79,5 @@ export default load.bind(null, {
     },
     statSync: (() => undefined) as unknown as import('node:fs').StatSyncFn,
     timing: timing(hrtime),
+    configs: ['browser'],
 });

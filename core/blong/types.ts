@@ -160,6 +160,7 @@ export interface IPlatformApi {
         isAfter: (time: HRTime, timeout: HRTime) => boolean;
         spare: (time: HRTime, latency?: number) => number;
     };
+    configs: string[];
 }
 
 export interface IErrorFactory {

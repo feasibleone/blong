@@ -88,7 +88,7 @@ export function useAction<TResult = unknown>(
                 action || (await dispatch(actionName, resolved));
             if (componentAction && isComponentAction(componentAction)) {
                 try {
-                    const component = await componentAction.component();
+                    const component = await componentAction.component(resolved);
                     const tab: ITab = {
                         id: ulid(),
                         actionName,
@@ -121,6 +121,7 @@ export function useAction<TResult = unknown>(
         queryKey: [method, params ?? {}],
         queryFn: () => dispatch(method, mergedParams()) as Promise<TResult>,
         enabled: !!action && isQueryAction(action),
+        staleTime: 0,
     });
 
     const queryCall = useCallback(

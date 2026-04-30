@@ -267,7 +267,7 @@ describe('Explorer', () => {
                 schema={schema}
                 columns={[{field: 'name', header: 'Name'}]}
                 listAction="entityEntityFind"
-                layout="grid"
+                view="grid"
                 selectionMode="none"
             />,
             {dispatch},
@@ -288,7 +288,7 @@ describe('Explorer', () => {
                 schema={schema}
                 columns={[{field: 'name', header: 'Name'}]}
                 listAction="entityEntityFind"
-                layout="grid"
+                view="grid"
                 selectionMode="none"
             />,
             {dispatch},
@@ -315,7 +315,7 @@ describe('Explorer', () => {
                 schema={schema}
                 columns={[{field: 'name', header: 'Name'}]}
                 listAction="entityEntityFind"
-                layout="grid"
+                view="grid"
                 selectionMode="none"
                 cardTemplate={row => <div className="custom-card">{String(row.name ?? '')}</div>}
             />,
@@ -338,7 +338,7 @@ describe('Explorer', () => {
             <Explorer
                 schema={schema}
                 columns={[{field: 'name', header: 'Name'}]}
-                layout="grid"
+                view="grid"
                 selectionMode="none"
             />,
             {dispatch: vi.fn().mockResolvedValue({})},
