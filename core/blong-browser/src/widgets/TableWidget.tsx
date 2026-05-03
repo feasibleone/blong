@@ -745,15 +745,16 @@ export function TableWidget({
     );
 
     // ── Template context for custom toolbar params ────────────────────────
+    const currentRowKey = singleSelected?.[isListMode ? keyFieldName : KEY];
     const templateContext = useMemo(
         () => ({
-            [keyFieldName]: singleSelected?.[isListMode ? keyFieldName : KEY],
-            id: singleSelected?.[isListMode ? keyFieldName : KEY],
+            [keyFieldName]: currentRowKey,
+            id: currentRowKey,
             current: singleSelected,
             selected: selected.length > 0 ? selected : singleSelected ? [singleSelected] : [],
             ...(singleSelected ?? {}),
         }),
-        [singleSelected, selected, keyFieldName, isListMode],
+        [singleSelected, selected, keyFieldName, currentRowKey],
     );
 
     // ── Toolbar rendering ─────────────────────────────────────────────────

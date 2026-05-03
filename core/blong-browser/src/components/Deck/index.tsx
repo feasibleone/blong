@@ -86,7 +86,9 @@ function TabContent({
 // ── Root layout mode ──────────────────────────────────────────────────────────
 
 function RootDeck() {
-    const formCtx = useBlongForm()!;
+    const formCtx = useBlongForm();
+    // Safety guard: RootDeck is only rendered by Deck when FormContext is present
+    if (!formCtx?.layoutResult) return null;
     const {layoutResult, layout, formId, onLayoutChange, cards} = formCtx;
     const {layoutType, rows, tabs, orientation, panels} = layoutResult;
 
@@ -266,6 +268,7 @@ function RootDeck() {
 
             if (overId.startsWith('col-end:')) {
                 const toColIdx = parseInt(overId.replace('col-end:', ''), 10);
+                if (Number.isNaN(toColIdx)) return;
                 const from = findCard(activeCardName);
                 if (!from) return;
                 if (from.ci === toColIdx) return;

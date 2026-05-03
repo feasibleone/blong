@@ -87,7 +87,19 @@ export function NavigatorWidget({schema, value, onSelect}: IWidgetProps) {
                 } else if (Array.isArray(result)) {
                     items = result as Row[];
                 } else {
-                    items = (Object.values(result as Record<string, unknown>)[0] as Row[]) ?? [];
+                    // Try first array property as a fallback, warn if used
+                    const firstArray = Object.values(result as Record<string, unknown>).find(
+                        v => Array.isArray(v),
+                    );
+                    if (firstArray) {
+                        // eslint-disable-next-line no-console
+                        console.warn(
+                            `[NavigatorWidget] listAction "${listAction}" did not return expected resultSet "${resultSet}"; using first array property.`,
+                        );
+                        items = firstArray as Row[];
+                    } else {
+                        items = [];
+                    }
                 }
                 setTreeData(buildTree(items, keyField, parentField, labelField));
             })
