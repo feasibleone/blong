@@ -7,7 +7,7 @@
  */
 import {createContext, useContext} from 'react';
 import type {Control, FieldErrors, UseFormSetValue} from 'react-hook-form';
-import type {IResolvedCard} from '../../hooks/useLayout.js';
+import type {FlatLayoutConfig, ILayoutResult, IResolvedCard} from '../../hooks/useLayout.js';
 import type {IEnrichedSchema} from '../../types/widget.js';
 
 export interface ITableSelection {
@@ -33,6 +33,15 @@ export interface IFormContext {
     handleTableSelect: (fieldName: string, selection: ITableSelection | null) => void;
     setValue: UseFormSetValue<Record<string, unknown>>;
     checkPermission: ((permission: string) => boolean) | undefined;
+
+    // ── Layout fields — consumed by the root Deck ─────────────────────────
+    layoutResult: ILayoutResult;
+    /** Active layout key */
+    layout: string;
+    /** Form element id — needed by Steps submit button */
+    formId: string;
+    /** Called when the user reorders cards in design mode */
+    onLayoutChange?: (layoutKey: string, newLayout: FlatLayoutConfig) => void;
 }
 
 export const FormContext = createContext<IFormContext | null>(null);

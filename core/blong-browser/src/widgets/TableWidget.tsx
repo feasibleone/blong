@@ -15,10 +15,11 @@ import {
     type DataTableSelectionChangeParams,
 } from '../primereact/index.js';
 
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/index.js';
 import {Text} from '../components/Text/index.js';
-import type {IEnrichedFieldSchema, IWidgetProps} from '../types/widget.js';
+import {useBlongUi} from '../context/BlongUiContext.js';
+import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '../types/widget.js';
 import {dateIn, dateOut} from './DateWidget.js';
 
 type Row = Record<string, unknown>;
@@ -424,6 +425,62 @@ function resolveParentField(parent?: string): string | undefined {
     return parent;
 }
 
+// ── Template resolution helpers (for widget.toolbar params) ──────────────────
+
+function getPath(obj: unknown, path: string): unknown {
+    if (!obj || typeof obj !== 'object') return undefined;
+    const parts = path.split('.');
+    let cur: unknown = obj;
+    for (const part of parts) {
+        if (cur === null || cur === undefined) return undefined;
+        cur = (cur as Record<string, unknown>)[part];
+    }
+    return cur;
+}
+
+function resolveToolbarParams(
+    params: Record<string, unknown> | string | undefined,
+    context: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+    if (params === undefined || params === null) return undefined;
+    if (typeof params === 'string') {
+        const singleExpr = params.trim().match(/^\$\{([^}]+)\}$/);
+        if (singleExpr) {
+            const val = getPath(context, singleExpr[1].trim());
+            if (val !== null && typeof val === 'object') return val as Record<string, unknown>;
+            return {value: val};
+        }
+        const resolved = params.replace(/\$\{([^}]+)\}/g, (_, expr) => {
+            const v = getPath(context, (expr as string).trim());
+            return v === undefined || v === null
+                ? ''
+                : typeof v === 'object'
+                  ? JSON.stringify(v)
+                  : String(v);
+        });
+        return {value: resolved};
+    }
+    return Object.fromEntries(
+        Object.entries(params).map(([k, v]) => {
+            if (typeof v === 'string') {
+                const r = resolveToolbarParams(v, context);
+                return [k, r?.value !== undefined ? r.value : r];
+            }
+            return [k, v];
+        }),
+    );
+}
+
+function evalToolbarEnabled(
+    enabled: IWidgetToolbarButton['enabled'],
+    selection: Row[],
+    currentRow: Row | null,
+): boolean {
+    if (enabled === 'current') return currentRow !== null;
+    if (enabled === 'selected') return selection.length > 0 || currentRow !== null;
+    return enabled !== false;
+}
+
 export function TableWidget({
     id,
     name,
@@ -441,10 +498,122 @@ export function TableWidget({
     const tableId = id ?? name;
     const properties = schema.items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
 
-    const rows: Row[] = (Array.isArray(value) ? (value as Row[]) : []).map((r, i) => ({
-        ...r,
-        [KEY]: (r as Row)[KEY] ?? i,
-    }));
+    // ── listAction mode: external data loading ────────────────────────────
+    const listAction = schema.widget?.listAction ?? '';
+    const listParams = schema.widget?.listParams;
+    const resultSet = schema.widget?.resultSet ?? 'items';
+    const keyFieldName = schema.widget?.keyField ?? 'id';
+    const initialPageSize = schema.widget?.pageSize ?? 25;
+    const widgetToolbar = schema.widget?.toolbar ?? [];
+    const widgetToolbarRight = schema.widget?.toolbarRight ?? [];
+    const isListMode = !!listAction;
+
+    // listAction-mode state
+    const [searchInput, setSearchInput] = useState('');
+    const [committedSearch, setCommittedSearch] = useState('');
+    const [columnFilterInputs, setColumnFilterInputs] = useState<Record<string, string>>({});
+    const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
+    const [listSortField, setListSortField] = useState<string | null>(null);
+    const [listSortOrder, setListSortOrder] = useState<1 | -1>(1);
+    const [listFirst, setListFirst] = useState(0);
+    const [listPageSize, setListPageSize] = useState(initialPageSize);
+    const [listLoading, setListLoading] = useState(false);
+    const [listRows, setListRows] = useState<Row[]>([]);
+    const [listTotal, setListTotal] = useState(0);
+    const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const {dispatch} = useBlongUi();
+
+    const mergedListParams = useMemo(() => {
+        const filterBy = Object.fromEntries(
+            Object.entries(committedFilters).filter(([, v]) => v !== ''),
+        );
+        return {
+            ...(listParams ?? {}),
+            ...(Object.keys(filterBy).length > 0 ? {filterBy} : {}),
+            ...(committedSearch ? {search: committedSearch} : {}),
+            ...(listSortField
+                ? {orderBy: [{field: listSortField, dir: listSortOrder === 1 ? 'ASC' : 'DESC'}]}
+                : {}),
+            paging: {pageSize: listPageSize, pageNumber: Math.floor(listFirst / listPageSize) + 1},
+        };
+    }, [
+        listParams,
+        committedFilters,
+        committedSearch,
+        listSortField,
+        listSortOrder,
+        listFirst,
+        listPageSize,
+    ]);
+
+    useEffect(() => {
+        if (!isListMode) return;
+        setListLoading(true);
+        void (dispatch(listAction, mergedListParams) as Promise<Record<string, unknown>>)
+            .then(result => {
+                let rows: Row[];
+                if (
+                    resultSet &&
+                    Array.isArray((result as Record<string, unknown>)[resultSet])
+                ) {
+                    rows = (result as Record<string, unknown>)[resultSet] as Row[];
+                } else if (Array.isArray(result)) {
+                    rows = result as Row[];
+                } else {
+                    rows = [];
+                }
+                const total =
+                    typeof (result as {pagination?: {recordsTotal?: number}}).pagination
+                        ?.recordsTotal === 'number'
+                        ? (result as {pagination: {recordsTotal: number}}).pagination.recordsTotal
+                        : rows.length;
+                setListRows(rows);
+                setListTotal(total);
+            })
+            .catch(() => {
+                setListRows([]);
+                setListTotal(0);
+            })
+            .finally(() => setListLoading(false));
+    }, [isListMode, listAction, mergedListParams, dispatch, resultSet]);
+
+    const handleSearchChange = useCallback((v: string) => {
+        setSearchInput(v);
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = setTimeout(
+            () => {
+                setCommittedSearch(v);
+                setListFirst(0);
+            },
+            v === '' ? 0 : 350,
+        );
+    }, []);
+
+    const handleColumnFilterChange = useCallback((field: string, v: string) => {
+        setColumnFilterInputs(prev => ({...prev, [field]: v}));
+        if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+        filterDebounceRef.current = setTimeout(
+            () => {
+                setCommittedFilters(prev => {
+                    const next = {...prev, [field]: v};
+                    if (v === '') delete next[field];
+                    return next;
+                });
+                setListFirst(0);
+            },
+            v === '' ? 0 : 350,
+        );
+    }, []);
+
+    // ── Rows source (form-value vs listAction) ────────────────────────────
+    const rows: Row[] = isListMode
+        ? listRows
+        : (Array.isArray(value) ? (value as Row[]) : []).map((r, i) => ({
+              ...r,
+              [KEY]: (r as Row)[KEY] ?? i,
+          }));
 
     // ── Cascaded table filtering ───────────────────────────────────────────
     const parentFieldName = resolveParentField(schema.widget?.parent);
@@ -485,11 +654,17 @@ export function TableWidget({
                 onSelect?.(null);
                 return;
             }
+            if (isListMode) {
+                // In listAction mode rows have no KEY field; use keyFieldName
+                const originalIndex = rows.findIndex(r => r[keyFieldName] === row[keyFieldName]);
+                onSelect?.({row: row as Record<string, unknown>, index: originalIndex});
+                return;
+            }
             const {[KEY]: _k, ...clean} = row;
             const originalIndex = rows.findIndex(r => r[KEY] === row[KEY]);
             onSelect?.({row: clean as Record<string, unknown>, index: originalIndex});
         },
-        [rows, onSelect],
+        [rows, onSelect, isListMode, keyFieldName],
     );
 
     const rowClass = useCallback(
@@ -569,7 +744,79 @@ export function TableWidget({
         [rows, selected, singleSelected, onChange, onSelect],
     );
 
-    const actionButtons = editable ? (
+    // ── Template context for custom toolbar params ────────────────────────
+    const templateContext = useMemo(
+        () => ({
+            [keyFieldName]: singleSelected?.[isListMode ? keyFieldName : KEY],
+            id: singleSelected?.[isListMode ? keyFieldName : KEY],
+            current: singleSelected,
+            selected: selected.length > 0 ? selected : singleSelected ? [singleSelected] : [],
+            ...(singleSelected ?? {}),
+        }),
+        [singleSelected, selected, keyFieldName, isListMode],
+    );
+
+    // ── Toolbar rendering ─────────────────────────────────────────────────
+    const [busyCount, setBusyCount] = useState(0);
+    const isBusy = busyCount > 0;
+
+    const renderCustomButton = (btn: IWidgetToolbarButton, idx: number) => {
+        const isEnabled = evalToolbarEnabled(btn.enabled, selected, singleSelected);
+        const resolvedParams = resolveToolbarParams(btn.params, templateContext);
+        return (
+            <Button
+                key={idx}
+                label={btn.label}
+                icon={btn.icon}
+                className="p-button mr-2"
+                type="button"
+                disabled={isBusy || !isEnabled}
+                onClick={e => {
+                    e.preventDefault();
+                    if (!btn.method) return;
+                    setBusyCount(c => c + 1);
+                    void (dispatch(btn.method, resolvedParams ?? {}) as Promise<unknown>).finally(
+                        () => setBusyCount(c => c - 1),
+                    );
+                }}
+            />
+        );
+    };
+
+    // listAction mode: search + paginator in toolbar right
+    const listModeSearchBar = isListMode ? (
+        <span
+            style={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                flexShrink: 0,
+            }}
+        >
+            <i
+                className="pi pi-search"
+                style={{position: 'absolute', left: '0.5rem', pointerEvents: 'none'}}
+            />
+            <InputText
+                value={searchInput}
+                onChange={e => handleSearchChange(e.target.value)}
+                placeholder="Search…"
+                style={{width: '9rem', paddingLeft: '1.75rem'}}
+            />
+            {searchInput && (
+                <Button
+                    icon="pi pi-times"
+                    className="p-button-text p-button-sm"
+                    style={{position: 'absolute', right: 0, padding: '0.25rem'}}
+                    type="button"
+                    onClick={() => handleSearchChange('')}
+                />
+            )}
+        </span>
+    ) : null;
+
+    const hasCustomToolbar = widgetToolbar.length > 0 || widgetToolbarRight.length > 0 || isListMode;
+    const actionButtons = !isListMode && editable ? (
         <>
             {allowAdd && (
                 <Button
@@ -596,38 +843,58 @@ export function TableWidget({
         </>
     ) : null;
 
-    const toolbarLeft = widgetLabel ? (
-        <span className="p-card-title">
-            <Text>{widgetLabel}</Text>
-        </span>
-    ) : (
-        actionButtons
+    const toolbarLeftContent = (
+        <>
+            {widgetLabel && (
+                <span className="p-card-title mr-2">
+                    <Text>{widgetLabel}</Text>
+                </span>
+            )}
+            {widgetToolbar.map(renderCustomButton)}
+            {!widgetLabel && actionButtons}
+        </>
     );
-    const toolbarRight = widgetLabel ? actionButtons : null;
+
+    const toolbarRightContent = (
+        <>
+            {widgetToolbarRight.map(renderCustomButton)}
+            {widgetLabel && actionButtons}
+            {listModeSearchBar}
+        </>
+    );
+
+    const showToolbar = editable || widgetLabel || hasCustomToolbar;
 
     if (parentFieldName && masterMapping && !parentSelection) return null;
+
+    // listAction mode: compute dataKey and active row key
+    const dataKeyField = isListMode ? keyFieldName : KEY;
+    const hasFilter = cols.some(c => c.filter);
 
     return (
         <div
             data-testid={`${tableId}`}
             className="blong-table-widget w-full"
+            style={isListMode ? {display: 'flex', flexDirection: 'column'} : undefined}
         >
-            {(editable || widgetLabel) && (
+            {showToolbar && (
                 <Toolbar
-                    left={toolbarLeft}
-                    right={toolbarRight ?? undefined}
+                    left={toolbarLeftContent}
+                    right={toolbarRightContent}
                     className="p-0 border-none"
                     style={{background: 'none'}}
                 />
             )}
             <DataTable
                 value={filteredRows}
-                editMode={editable ? 'row' : undefined}
-                editingRows={editable ? editingRows : undefined}
-                onRowEditChange={editable ? onRowEditChange : undefined}
-                onRowEditComplete={editable ? onRowEditComplete : undefined}
-                dataKey={KEY}
+                editMode={!isListMode && editable ? 'row' : undefined}
+                editingRows={!isListMode && editable ? editingRows : undefined}
+                onRowEditChange={!isListMode && editable ? onRowEditChange : undefined}
+                onRowEditComplete={!isListMode && editable ? onRowEditComplete : undefined}
+                dataKey={dataKeyField}
                 size="small"
+                loading={isListMode ? listLoading : undefined}
+                lazy={isListMode}
                 rowClassName={rowClass}
                 selection={isSingleSelect ? singleSelected : selected}
                 onSelectionChange={(e: DataTableSelectionChangeParams) => {
@@ -641,8 +908,22 @@ export function TableWidget({
                 }}
                 selectionMode={isSingleSelect ? 'single' : 'multiple'}
                 metaKeySelection={false}
+                removableSort={isListMode}
+                sortField={isListMode ? (listSortField ?? undefined) : undefined}
+                sortOrder={isListMode ? listSortOrder : undefined}
+                onSort={
+                    isListMode
+                        ? e => {
+                              const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
+                              setListSortField(order === 0 ? null : (e.sortField ?? null));
+                              setListSortOrder(order === 0 ? 1 : order);
+                              setListFirst(0);
+                          }
+                        : undefined
+                }
+                filterDisplay={hasFilter && !isListMode ? 'row' : undefined}
             >
-                {!isSingleSelect && editable && (
+                {!isSingleSelect && (editable || isListMode) && (
                     <Column
                         selectionMode="multiple"
                         style={{width: '3rem', flexGrow: 0}}
@@ -661,8 +942,8 @@ export function TableWidget({
                             key={field}
                             field={field}
                             header={<Text>{header}</Text>}
-                            filter={filter}
-                            sortable={sortable}
+                            filter={filter && !isListMode}
+                            sortable={sortable || isListMode}
                             alignHeader={isNumeric ? 'right' : undefined}
                             bodyClassName={isNumeric ? 'text-right' : undefined}
                             body={(rowData: Row, colOptions) => {
@@ -676,7 +957,7 @@ export function TableWidget({
                                             <Checkbox
                                                 checked={Boolean(rowData[field])}
                                                 onChange={e => {
-                                                    if (readOnly || disabled) return;
+                                                    if (readOnly || disabled || isListMode) return;
                                                     const matchKey = rowData[KEY];
                                                     const updated = rows.map(r =>
                                                         r[KEY] === matchKey
@@ -685,7 +966,7 @@ export function TableWidget({
                                                     );
                                                     onChange(updated.map(({[KEY]: _k, ...r}) => r));
                                                 }}
-                                                disabled={readOnly || disabled}
+                                                disabled={readOnly || disabled || isListMode}
                                             />
                                         </span>
                                     );
@@ -693,7 +974,7 @@ export function TableWidget({
                                 return renderBody(widgetType, field, rowData, cellId, options);
                             }}
                             editor={
-                                editable && !isBoolType
+                                !isListMode && editable && !isBoolType
                                     ? colOptions => {
                                           const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
                                           const cellName = `${tableId}[${colOptions.rowIndex}].${field}`;
@@ -713,13 +994,88 @@ export function TableWidget({
                         />
                     );
                 })}
-                {editable && (
+                {!isListMode && editable && (
                     <Column
                         rowEditor
                         style={{width: '7rem', textAlign: 'center'}}
                     />
                 )}
             </DataTable>
+            {isListMode && listTotal > 0 && (
+                <div
+                    className="blong-table-paginator"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        padding: '0.5rem',
+                        justifyContent: 'center',
+                        userSelect: 'none',
+                        flexShrink: 0,
+                    }}
+                >
+                    <Button
+                        icon="pi pi-angle-double-left"
+                        className="p-button-text p-button-sm"
+                        type="button"
+                        disabled={listFirst === 0}
+                        onClick={() => setListFirst(0)}
+                    />
+                    <Button
+                        icon="pi pi-angle-left"
+                        className="p-button-text p-button-sm"
+                        type="button"
+                        disabled={listFirst === 0}
+                        onClick={() => setListFirst(Math.max(0, listFirst - listPageSize))}
+                    />
+                    <span style={{padding: '0 0.5rem', fontSize: '0.875rem'}}>
+                        {Math.floor(listFirst / listPageSize) + 1} /{' '}
+                        {Math.ceil(listTotal / listPageSize)}
+                    </span>
+                    <Button
+                        icon="pi pi-angle-right"
+                        className="p-button-text p-button-sm"
+                        type="button"
+                        disabled={listFirst + listPageSize >= listTotal}
+                        onClick={() => setListFirst(listFirst + listPageSize)}
+                    />
+                    <Button
+                        icon="pi pi-angle-double-right"
+                        className="p-button-text p-button-sm"
+                        type="button"
+                        disabled={listFirst + listPageSize >= listTotal}
+                        onClick={() =>
+                            setListFirst(
+                                (Math.ceil(listTotal / listPageSize) - 1) * listPageSize,
+                            )
+                        }
+                    />
+                    <select
+                        value={listPageSize}
+                        onChange={e => {
+                            setListPageSize(Number(e.target.value));
+                            setListFirst(0);
+                        }}
+                        style={{
+                            marginLeft: '0.5rem',
+                            background: 'var(--surface-overlay)',
+                            color: 'var(--text-color)',
+                            border: '1px solid var(--surface-border)',
+                            borderRadius: 'var(--border-radius)',
+                            padding: '0.2rem',
+                        }}
+                    >
+                        {[10, 25, 50, 100].map(n => (
+                            <option
+                                key={n}
+                                value={n}
+                            >
+                                {n}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
         </div>
     );
 }
