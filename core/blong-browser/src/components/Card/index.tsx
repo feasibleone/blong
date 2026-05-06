@@ -396,7 +396,7 @@ function renderWatchField(
     // For listAction tables the form array is empty; fall back to the selection row directly
     const hasFormData = Array.isArray(arr) && arr.length > selection.index;
     const currentVal = hasFormData
-        ? arr![selection.index]?.[fieldName]
+        ? (arr as Record<string, unknown>[])[selection.index]?.[fieldName]
         : selection.row?.[fieldName];
     const widgetKey = `${fieldName}-${selection.index}-${String(currentVal)}`;
 

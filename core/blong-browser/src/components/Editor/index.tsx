@@ -86,13 +86,14 @@ function resolveTemplate(
 ): Record<string, unknown> | undefined {
     if (params === undefined || params === null) return undefined;
     if (typeof params === 'string') {
-        const singleExpr = params.trim().match(/^\$\{([^}]+)\}$/);
+        // Use [^{}]+ instead of [^}]+ to prevent ReDoS on deeply-nested inputs
+        const singleExpr = params.trim().match(/^\$\{([^{}]+)\}$/);
         if (singleExpr) {
             const val = getPath(context, (singleExpr[1] as string).trim());
             if (val !== null && typeof val === 'object') return val as Record<string, unknown>;
             return {value: val};
         }
-        const resolved = params.replace(/\$\{([^}]+)\}/g, (_, expr: string) => {
+        const resolved = params.replace(/\$\{([^{}]+)\}/g, (_, expr: string) => {
             const v = getPath(context, expr.trim());
             return v === undefined || v === null
                 ? ''
@@ -303,6 +304,31 @@ export function Editor({
         }
     };
 
+    /** Render a custom ActionButton with selection-aware enabled/params resolution */
+    const renderActionBtn = (btn: IToolbarButton, i: number) => {
+        const resolvedParams = resolveTemplate(btn.params, selectionContext);
+        const resolvedDisabled =
+            globalBusy ||
+            !evalEnabled(
+                btn.enabled,
+                selectionContext.current as Record<string, unknown> | null,
+                selectionContext.selected as Record<string, unknown>[],
+                isDirty,
+            );
+        const resolvedBtn: IToolbarButton =
+            resolvedParams != null ? {...btn, params: resolvedParams} : btn;
+        return (
+            <ActionButton
+                key={i}
+                {...resolvedBtn}
+                disabled={resolvedDisabled}
+                formId={formId}
+                className="mr-2"
+                onBusyChange={handleToolbarBusy}
+            />
+        );
+    };
+
     const leftContent = (
         <div className="blong-toolbar-left">
             {leftButtons.map((btn, i) => {
@@ -347,31 +373,7 @@ export function Editor({
                         </button>
                     );
                 }
-                const resolvedParams = resolveTemplate(
-                    btn.params,
-                    selectionContext,
-                );
-                const resolvedDisabled =
-                    globalBusy ||
-                    !evalEnabled(
-                        btn.enabled,
-                        selectionContext.current as Record<string, unknown> | null,
-                        selectionContext.selected as Record<string, unknown>[],
-                        isDirty,
-                    );
-                const resolvedBtn: IToolbarButton = resolvedParams != null
-                    ? {...btn, params: resolvedParams}
-                    : btn;
-                return (
-                    <ActionButton
-                        key={i}
-                        {...resolvedBtn}
-                        disabled={resolvedDisabled}
-                        formId={formId}
-                        className="mr-2"
-                        onBusyChange={handleToolbarBusy}
-                    />
-                );
+                return renderActionBtn(btn, i);
             })}
         </div>
     );
@@ -412,31 +414,7 @@ export function Editor({
                             </span>
                         );
                     }
-                    const resolvedParamsR = resolveTemplate(
-                        btn.params,
-                        selectionContext,
-                    );
-                    const resolvedDisabledR =
-                        globalBusy ||
-                        !evalEnabled(
-                            btn.enabled,
-                            selectionContext.current as Record<string, unknown> | null,
-                            selectionContext.selected as Record<string, unknown>[],
-                            isDirty,
-                        );
-                    const resolvedBtnR: IToolbarButton = resolvedParamsR != null
-                        ? {...btn, params: resolvedParamsR}
-                        : btn;
-                    return (
-                        <ActionButton
-                            key={i}
-                            {...resolvedBtnR}
-                            disabled={resolvedDisabledR}
-                            formId={formId}
-                            className="mr-2"
-                            onBusyChange={handleToolbarBusy}
-                        />
-                    );
+                    return renderActionBtn(btn, i);
                 })}
             </div>
         ) : undefined;

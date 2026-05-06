@@ -18,6 +18,7 @@
  * These stories replace and supersede the Explorer.stories.tsx stories.
  */
 import type {Meta} from '@storybook/react-vite';
+import type {ISplitLayoutConfig} from '../../../hooks/useLayout.js';
 import type {IWidgetConfig} from '../../../index.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
@@ -124,7 +125,7 @@ export const WithDetails: StoryFn = () => (
                     {size: 65, minSize: 30, cards: ['table']},
                     {size: 35, minSize: 20, cards: ['detail']},
                 ],
-            } as any,
+            } as ISplitLayoutConfig,
         }}
         editable={false}
         editMode={false}
@@ -217,7 +218,7 @@ export const WithNavigator: StoryFn = () => (
                     {size: 50, minSize: 30, cards: ['table']},
                     {size: 30, minSize: 15, cards: ['detail']},
                 ],
-            } as any,
+            } as ISplitLayoutConfig,
         }}
         editable={false}
         editMode={false}
@@ -291,7 +292,7 @@ export const SplitVertical: StoryFn = () => (
                     {size: 60, cards: ['table']},
                     {size: 40, cards: ['detail']},
                 ],
-            } as any,
+            } as ISplitLayoutConfig,
         }}
         editable={false}
         editMode={false}
