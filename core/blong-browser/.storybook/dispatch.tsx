@@ -719,6 +719,7 @@ export function withDispatch(
                 theme={{name: 'vela-blue', palette: 'dark-compact', languages: themeLanguages}}
                 loginRoute={loginRoute}
                 loginComponent={loginComponentParam}
+                debug={true}
             >
                 <Story />
                 <Hint />

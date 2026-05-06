@@ -554,10 +554,7 @@ export function TableWidget({
         void (dispatch(listAction, mergedListParams) as Promise<Record<string, unknown>>)
             .then(result => {
                 let rows: Row[];
-                if (
-                    resultSet &&
-                    Array.isArray((result as Record<string, unknown>)[resultSet])
-                ) {
+                if (resultSet && Array.isArray((result as Record<string, unknown>)[resultSet])) {
                     rows = (result as Record<string, unknown>)[resultSet] as Row[];
                 } else if (Array.isArray(result)) {
                     rows = result as Row[];
@@ -688,7 +685,6 @@ export function TableWidget({
             setSingleSelected(null);
             onSelect?.(null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [parentSelection?.index, parentFieldName, schema.widget?.autoSelect]);
 
     useEffect(() => {
@@ -816,33 +812,35 @@ export function TableWidget({
         </span>
     ) : null;
 
-    const hasCustomToolbar = widgetToolbar.length > 0 || widgetToolbarRight.length > 0 || isListMode;
-    const actionButtons = !isListMode && editable ? (
-        <>
-            {allowAdd && (
-                <Button
-                    label="Add"
-                    icon="pi pi-plus"
-                    className="p-button mr-2"
-                    onClick={addRow}
-                    type="button"
-                    disabled={interactionDisabled}
-                    data-testid={`${tableId}-addButton`}
-                />
-            )}
-            {allowDelete && (
-                <Button
-                    label="Delete"
-                    icon="pi pi-trash"
-                    className="p-button"
-                    onClick={deleteSelected}
-                    type="button"
-                    disabled={interactionDisabled || (!selected.length && !singleSelected)}
-                    data-testid={`${tableId}-deleteButton`}
-                />
-            )}
-        </>
-    ) : null;
+    const hasCustomToolbar =
+        widgetToolbar.length > 0 || widgetToolbarRight.length > 0 || isListMode;
+    const actionButtons =
+        !isListMode && editable ? (
+            <>
+                {allowAdd && (
+                    <Button
+                        label="Add"
+                        icon="pi pi-plus"
+                        className="p-button mr-2"
+                        onClick={addRow}
+                        type="button"
+                        disabled={interactionDisabled}
+                        data-testid={`${tableId}-addButton`}
+                    />
+                )}
+                {allowDelete && (
+                    <Button
+                        label="Delete"
+                        icon="pi pi-trash"
+                        className="p-button"
+                        onClick={deleteSelected}
+                        type="button"
+                        disabled={interactionDisabled || (!selected.length && !singleSelected)}
+                        data-testid={`${tableId}-deleteButton`}
+                    />
+                )}
+            </>
+        ) : null;
 
     const toolbarLeftContent = (
         <>
@@ -1046,9 +1044,7 @@ export function TableWidget({
                         type="button"
                         disabled={listFirst + listPageSize >= listTotal}
                         onClick={() =>
-                            setListFirst(
-                                (Math.ceil(listTotal / listPageSize) - 1) * listPageSize,
-                            )
+                            setListFirst((Math.ceil(listTotal / listPageSize) - 1) * listPageSize)
                         }
                     />
                     <select

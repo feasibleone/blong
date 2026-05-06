@@ -15,6 +15,7 @@
  * These stories replace and supersede the Explorer.stories.tsx stories.
  */
 import type {Meta} from '@storybook/react-vite';
+import type {IWidgetConfig} from '../../../index.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../index.js';
 
@@ -27,8 +28,7 @@ export default meta;
 
 // ── Shared column schema ──────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const coralTableField: any = {
+const coralTableField = {
     title: '',
     type: 'array',
     widget: {
@@ -54,7 +54,7 @@ const coralTableField: any = {
                 method: 'coralCoralDelete',
             },
         ],
-    },
+    } as IWidgetConfig,
     items: {
         properties: {
             id: {title: 'ID', readOnly: true},
@@ -74,7 +74,7 @@ const coralTableField: any = {
  */
 export const Default: StoryFn = () => (
     <Editor
-        schema={{properties: {coral: coralTableField}} as any}
+        schema={{properties: {coral: coralTableField}}}
         cards={{
             table: {label: '', widgets: ['coral']},
         }}
@@ -95,7 +95,7 @@ export const Default: StoryFn = () => (
  */
 export const WithDetails: StoryFn = () => (
     <Editor
-        schema={{properties: {coral: coralTableField}} as any}
+        schema={{properties: {coral: coralTableField}}}
         cards={{
             table: {label: '', widgets: ['coral']},
             detail: {
@@ -117,9 +117,9 @@ export const WithDetails: StoryFn = () => (
                     {size: 65, minSize: 30, cards: ['table']},
                     {size: 35, minSize: 20, cards: ['detail']},
                 ],
-            } as any,
+            },
         }}
-        editable={false}
+        editable={true}
         editMode={false}
     />
 );
@@ -195,7 +195,7 @@ export const WithNavigator: StoryFn = () => (
                     },
                 },
             },
-        } as any}
+        }}
         cards={{
             nav: {label: 'Categories', widgets: ['category']},
             table: {label: '', widgets: ['coral']},
@@ -218,7 +218,7 @@ export const WithNavigator: StoryFn = () => (
                     {size: 50, minSize: 30, cards: ['table']},
                     {size: 30, minSize: 15, cards: ['detail']},
                 ],
-            } as any,
+            },
         }}
         editable={false}
         editMode={false}
@@ -234,7 +234,7 @@ export const WithNavigator: StoryFn = () => (
  */
 export const TabbedExplorer: StoryFn = () => (
     <Editor
-        schema={{properties: {coral: coralTableField}} as any}
+        schema={{properties: {coral: coralTableField}}}
         cards={{
             table: {
                 label: '',
@@ -268,7 +268,7 @@ export const TabbedExplorer: StoryFn = () => (
  */
 export const SplitVertical: StoryFn = () => (
     <Editor
-        schema={{properties: {coral: coralTableField}} as any}
+        schema={{properties: {coral: coralTableField}}}
         cards={{
             table: {label: '', widgets: ['coral']},
             detail: {
@@ -290,7 +290,7 @@ export const SplitVertical: StoryFn = () => (
                     {size: 60, cards: ['table']},
                     {size: 40, cards: ['detail']},
                 ],
-            } as any,
+            },
         }}
         editable={false}
         editMode={false}
@@ -301,12 +301,12 @@ export const SplitVertical: StoryFn = () => (
 
 /**
  * Designable — click the cog icon in the toolbar to enter design mode.
- * Cards can be rearranged to customise the layout.
+ * Cards can be rearranged to customize the layout.
  */
 export const Designable: StoryFn = () => (
     <div style={{height: 600, display: 'flex', flexDirection: 'column'}}>
         <Editor
-            schema={{properties: {coral: coralTableField}} as any}
+            schema={{properties: {coral: coralTableField}}}
             cards={{
                 table: {
                     label: 'Coral List',

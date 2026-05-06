@@ -15,8 +15,10 @@
  */
 import './index.css';
 
+import {DevTool} from '@hookform/devtools';
 import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
+import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
@@ -206,6 +208,8 @@ export function Form({
         });
     };
 
+    const {debug} = useBlongUi();
+
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).
     // The root Deck reads layoutResult, layout, formId, and onLayoutChange from FormContext.
     return (
@@ -231,6 +235,12 @@ export function Form({
                 onLayoutChange,
             }}
         >
+            {debug ? (
+                <DevTool
+                    control={control}
+                    placement="top-right"
+                />
+            ) : null}
             {rightPanel ? (
                 <div className="blong-form-layout">
                     <form
