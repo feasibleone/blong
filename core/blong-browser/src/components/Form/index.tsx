@@ -24,7 +24,7 @@ import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/u
 import {useAppStore} from '../../state/appStore.js';
 import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
 import {Deck} from '../Deck/index.js';
-import {FormContext} from './FormContext.js';
+import {FormContext, type ITableSelection} from './FormContext.js';
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -61,6 +61,12 @@ export interface IFormProps {
      */
     dropdowns?: Record<string, {value: unknown; label: string}[]>;
     /**
+     * Called whenever a table widget's single selection changes.
+     * Receives the field name and the new selection (or null when deselected).
+     * The Editor uses this to track the current row for toolbar template resolution.
+     */
+    onTableSelect?: (fieldName: string, selection: ITableSelection | null) => void;
+    /**
      * Called in design mode when the user drags a card to a new position.
      * Receives the layout key and the updated FlatLayoutConfig so the caller can persist the change.
      */
@@ -87,6 +93,7 @@ export function Form({
     id,
     checkPermission,
     dropdowns,
+    onTableSelect,
     onLayoutChange,
     rightPanel,
 }: IFormProps) {
@@ -149,8 +156,9 @@ export function Form({
     const handleTableSelect = useCallback(
         (fieldName: string, selection: {row: Record<string, unknown>; index: number} | null) => {
             setTableSelections(prev => ({...prev, [fieldName]: selection}));
+            onTableSelect?.(fieldName, selection);
         },
-        [],
+        [onTableSelect],
     );
 
     const {

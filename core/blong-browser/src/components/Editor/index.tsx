@@ -19,6 +19,7 @@ import type {IBlongError, IToolbarButton} from '../../types/action.js';
 import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
 import {ActionButton} from '../ActionButton/index.js';
 import {Form} from '../Form/index.js';
+import type {ITableSelection} from '../Form/FormContext.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -66,6 +67,65 @@ export interface IEditorProps {
 
 const backgroundNone = {background: 'none'};
 
+// ── Template resolution (mirrors Explorer's resolveTemplate) ──────────────────
+
+function getPath(obj: unknown, path: string): unknown {
+    if (!obj || typeof obj !== 'object') return undefined;
+    const parts = path.split('.');
+    let cur: unknown = obj;
+    for (const part of parts) {
+        if (cur === null || cur === undefined) return undefined;
+        cur = (cur as Record<string, unknown>)[part];
+    }
+    return cur;
+}
+
+function resolveTemplate(
+    params: Record<string, unknown> | string | undefined,
+    context: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+    if (params === undefined || params === null) return undefined;
+    if (typeof params === 'string') {
+        const singleExpr = params.trim().match(/^\$\{([^}]+)\}$/);
+        if (singleExpr) {
+            const val = getPath(context, (singleExpr[1] as string).trim());
+            if (val !== null && typeof val === 'object') return val as Record<string, unknown>;
+            return {value: val};
+        }
+        const resolved = params.replace(/\$\{([^}]+)\}/g, (_, expr: string) => {
+            const v = getPath(context, expr.trim());
+            return v === undefined || v === null
+                ? ''
+                : typeof v === 'object'
+                  ? JSON.stringify(v)
+                  : String(v);
+        });
+        return {value: resolved};
+    }
+    return Object.fromEntries(
+        Object.entries(params).map(([k, v]) => {
+            if (typeof v === 'string') {
+                const r = resolveTemplate(v, context);
+                return [k, r?.value !== undefined ? r.value : r];
+            }
+            return [k, v];
+        }),
+    );
+}
+
+function evalEnabled(
+    enabled: IToolbarButton['enabled'],
+    currentRow: Record<string, unknown> | null,
+    selectedRows: Record<string, unknown>[],
+    isDirty: boolean,
+): boolean {
+    if (enabled === 'current') return currentRow !== null;
+    if (enabled === 'selected') return selectedRows.length > 0;
+    if (enabled === 'dirty') return isDirty;
+    if (enabled === 'clean') return !isDirty;
+    return enabled !== false;
+}
+
 export function Editor({
     schema,
     cards,
@@ -108,6 +168,31 @@ export function Editor({
     const [localLayouts, setLocalLayouts] = useState<Record<string, LayoutConfig> | undefined>(
         () => layouts,
     );
+
+    // ── Table selection tracking (for toolbar button enabled/params resolution) ──
+    /**
+     * The most recently set non-null table selection across all table widgets.
+     * Used to resolve `enabled: 'current' | 'selected'` and `${id}` / `${current}`
+     * template params in Editor toolbar buttons.
+     */
+    const [lastTableSelection, setLastTableSelection] = useState<ITableSelection | null>(null);
+
+    const handleTableSelect = useCallback(
+        (_fieldName: string, selection: ITableSelection | null) => {
+            if (selection) setLastTableSelection(selection);
+            else setLastTableSelection(null);
+        },
+        [],
+    );
+
+    /** Template context derived from the most recent table selection */
+    const selCtxRow = lastTableSelection?.row ?? null;
+    const selectionContext: Record<string, unknown> = {
+        id: selCtxRow?.id,
+        current: selCtxRow,
+        selected: selCtxRow ? [selCtxRow] : [],
+        ...(selCtxRow ?? {}),
+    };
 
     // Callback passed to DesignAddCardButton: adds the new card name to localLayouts
     const handleCardAdded = useCallback(
@@ -262,11 +347,26 @@ export function Editor({
                         </button>
                     );
                 }
+                const resolvedParams = resolveTemplate(
+                    btn.params,
+                    selectionContext,
+                );
+                const resolvedDisabled =
+                    globalBusy ||
+                    !evalEnabled(
+                        btn.enabled,
+                        selectionContext.current as Record<string, unknown> | null,
+                        selectionContext.selected as Record<string, unknown>[],
+                        isDirty,
+                    );
+                const resolvedBtn: IToolbarButton = resolvedParams != null
+                    ? {...btn, params: resolvedParams}
+                    : btn;
                 return (
                     <ActionButton
                         key={i}
-                        {...btn}
-                        disabled={globalBusy}
+                        {...resolvedBtn}
+                        disabled={resolvedDisabled}
                         formId={formId}
                         className="mr-2"
                         onBusyChange={handleToolbarBusy}
@@ -312,11 +412,26 @@ export function Editor({
                             </span>
                         );
                     }
+                    const resolvedParamsR = resolveTemplate(
+                        btn.params,
+                        selectionContext,
+                    );
+                    const resolvedDisabledR =
+                        globalBusy ||
+                        !evalEnabled(
+                            btn.enabled,
+                            selectionContext.current as Record<string, unknown> | null,
+                            selectionContext.selected as Record<string, unknown>[],
+                            isDirty,
+                        );
+                    const resolvedBtnR: IToolbarButton = resolvedParamsR != null
+                        ? {...btn, params: resolvedParamsR}
+                        : btn;
                     return (
                         <ActionButton
                             key={i}
-                            {...btn}
-                            disabled={globalBusy}
+                            {...resolvedBtnR}
+                            disabled={resolvedDisabledR}
                             formId={formId}
                             className="mr-2"
                             onBusyChange={handleToolbarBusy}
@@ -360,6 +475,7 @@ export function Editor({
                     setValidationHint(undefined);
                 }}
                 onSubmit={saveAction ? handleSubmit : undefined}
+                onTableSelect={handleTableSelect}
                 readOnly={
                     (!editMode && !initialEditMode) ||
                     saver.loading ||

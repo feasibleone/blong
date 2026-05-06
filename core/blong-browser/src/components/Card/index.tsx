@@ -375,7 +375,7 @@ function renderWatchField(
     cardReadOnly: boolean | undefined,
     ctx: IFormContext,
 ): React.ReactNode {
-    const {schema, rawFormValues, formValues, setValue, onChange} = ctx;
+    const {schema, rawFormValues, formValues, setValue, onChange, handleTableSelect} = ctx;
 
     const fieldName = rawFieldName.startsWith('$.edit.')
         ? rawFieldName.split('.').pop()!
@@ -393,7 +393,11 @@ function renderWatchField(
 
     const hasLabel = fieldSchema.title !== '';
     const arr = rawFormValues[watchField] as Record<string, unknown>[] | undefined;
-    const currentVal = arr?.[selection.index]?.[fieldName];
+    // For listAction tables the form array is empty; fall back to the selection row directly
+    const hasFormData = Array.isArray(arr) && arr.length > selection.index;
+    const currentVal = hasFormData
+        ? arr![selection.index]?.[fieldName]
+        : selection.row?.[fieldName];
     const widgetKey = `${fieldName}-${selection.index}-${String(currentVal)}`;
 
     return (
@@ -418,15 +422,23 @@ function renderWatchField(
                     schema={fieldSchema}
                     value={currentVal}
                     onChange={newVal => {
-                        const current = [
-                            ...((rawFormValues[watchField] as Record<string, unknown>[]) ?? []),
-                        ];
-                        current[selection.index] = {
-                            ...(current[selection.index] ?? {}),
-                            [fieldName]: newVal,
-                        };
-                        setValue(watchField, current);
-                        onChange?.({...rawFormValues, [watchField]: current});
+                        if (hasFormData) {
+                            // Form-owned mode: update react-hook-form value
+                            const current = [...(arr as Record<string, unknown>[])];
+                            current[selection.index] = {
+                                ...(current[selection.index] ?? {}),
+                                [fieldName]: newVal,
+                            };
+                            setValue(watchField, current);
+                            onChange?.({...rawFormValues, [watchField]: current});
+                        } else {
+                            // listAction mode: update tableSelections.row so detail re-renders
+                            const updatedRow = {...selection.row, [fieldName]: newVal};
+                            handleTableSelect(watchField, {
+                                row: updatedRow,
+                                index: selection.index,
+                            });
+                        }
                     }}
                     onBlur={() => {}}
                     readOnly={cardReadOnly || fieldSchema.readOnly}

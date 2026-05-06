@@ -8,9 +8,12 @@
  *  - NavigatorWidget (`widget.type: 'navigator'`) for the navigation tree
  *  - TableWidget with `widget.listAction` for server-side data loading,
  *    pagination, search and sort
- *  - TableWidget with `widget.toolbar` for selection-aware action buttons
- *  - Master-detail / cascaded wiring via `widget.parent`, `widget.master`,
- *    and `watch: '$.selected.tableName'` for the detail card
+ *  - Action buttons on the **Editor toolbar** (not the table widget) so they
+ *    appear in the unified top bar; `enabled: 'current' | 'selected'` and
+ *    `${id}` / `${current}` template params are resolved from the selected row
+ *  - Master-detail / cascaded wiring via `watch: '$.selected.tableName'` for
+ *    the detail card — the detail card reads directly from the selected row so
+ *    it works even in listAction mode where the form has no server data
  *
  * These stories replace and supersede the Explorer.stories.tsx stories.
  */
@@ -26,7 +29,21 @@ const meta: Meta<typeof Editor> = {
 };
 export default meta;
 
-// ── Shared column schema ──────────────────────────────────────────────────────
+// ── Shared toolbar buttons (placed on Editor, not widget) ─────────────────────
+
+const coralToolbar = [
+    {label: 'Create', icon: 'pi pi-plus', method: 'coralCoralAdd'},
+    {label: 'Edit', icon: 'pi pi-pencil', enabled: 'current' as const, method: 'coralCoralEdit'},
+    {
+        label: 'Delete',
+        icon: 'pi pi-trash',
+        enabled: 'selected' as const,
+        confirm: 'Delete selected corals?',
+        method: 'coralCoralDelete',
+    },
+];
+
+// ── Shared column schema (no widget-level toolbar) ────────────────────────────
 
 const coralTableField = {
     title: '',
@@ -38,22 +55,6 @@ const coralTableField = {
         keyField: 'id',
         selectionMode: 'single',
         columns: ['speciesName', 'coralType', 'maxDepth', 'endangered'],
-        toolbar: [
-            {label: 'Create', icon: 'pi pi-plus', method: 'coralCoralAdd'},
-            {
-                label: 'Edit',
-                icon: 'pi pi-pencil',
-                enabled: 'current',
-                method: 'coralCoralEdit',
-            },
-            {
-                label: 'Delete',
-                icon: 'pi pi-trash',
-                enabled: 'selected',
-                confirm: 'Delete selected corals?',
-                method: 'coralCoralDelete',
-            },
-        ],
     } as IWidgetConfig,
     items: {
         properties: {
@@ -70,11 +71,13 @@ const coralTableField = {
 
 /**
  * Default — a single table card that loads coral list from the server.
- * Demonstrates the most common Explorer pattern: listAction + toolbar buttons.
+ * Action buttons (Create / Edit / Delete) live on the Editor toolbar.
+ * Edit and Delete are disabled until a row is selected.
  */
 export const Default: StoryFn = () => (
     <Editor
         schema={{properties: {coral: coralTableField}}}
+        toolbar={coralToolbar}
         cards={{
             table: {label: '', widgets: ['coral']},
         }}
@@ -92,10 +95,14 @@ export const Default: StoryFn = () => (
 /**
  * WithDetails — selecting a row populates an editable detail card on the right.
  * Uses the master-detail pattern via `watch: '$.selected.coral'`.
+ * The detail card fields are populated directly from the selected row even though
+ * the table loads data via `listAction` (the form has no server data of its own).
+ * Action buttons in the Editor toolbar are enabled/disabled based on selection.
  */
 export const WithDetails: StoryFn = () => (
     <Editor
         schema={{properties: {coral: coralTableField}}}
+        toolbar={coralToolbar}
         cards={{
             table: {label: '', widgets: ['coral']},
             detail: {
@@ -117,9 +124,9 @@ export const WithDetails: StoryFn = () => (
                     {size: 65, minSize: 30, cards: ['table']},
                     {size: 35, minSize: 20, cards: ['detail']},
                 ],
-            },
+            } as any,
         }}
-        editable={true}
+        editable={false}
         editMode={false}
     />
 );
@@ -161,7 +168,7 @@ export const WithNavigator: StoryFn = () => (
                         },
                     },
                 },
-                // Table widget — cascaded from navigator selection
+                // Table widget — cascaded from navigator selection; no widget-level toolbar
                 coral: {
                     title: '',
                     type: 'array',
@@ -171,18 +178,8 @@ export const WithNavigator: StoryFn = () => (
                         keyField: 'id',
                         selectionMode: 'single',
                         columns: ['speciesName', 'coralType', 'maxDepth'],
-                        // Cascade from navigator: filter corals by the selected category
                         parent: '$.selected.category',
                         master: {categoryId: 'id'},
-                        toolbar: [
-                            {label: 'Create', icon: 'pi pi-plus', method: 'coralCoralAdd'},
-                            {
-                                label: 'Edit',
-                                icon: 'pi pi-pencil',
-                                enabled: 'current' as const,
-                                method: 'coralCoralEdit',
-                            },
-                        ],
                     },
                     items: {
                         properties: {
@@ -196,6 +193,8 @@ export const WithNavigator: StoryFn = () => (
                 },
             },
         }}
+        // Toolbar on Editor — enabled/disabled state driven by coral row selection
+        toolbar={coralToolbar}
         cards={{
             nav: {label: 'Categories', widgets: ['category']},
             table: {label: '', widgets: ['coral']},
@@ -218,7 +217,7 @@ export const WithNavigator: StoryFn = () => (
                     {size: 50, minSize: 30, cards: ['table']},
                     {size: 30, minSize: 15, cards: ['detail']},
                 ],
-            },
+            } as any,
         }}
         editable={false}
         editMode={false}
@@ -235,6 +234,7 @@ export const WithNavigator: StoryFn = () => (
 export const TabbedExplorer: StoryFn = () => (
     <Editor
         schema={{properties: {coral: coralTableField}}}
+        toolbar={coralToolbar}
         cards={{
             table: {
                 label: '',
@@ -269,6 +269,7 @@ export const TabbedExplorer: StoryFn = () => (
 export const SplitVertical: StoryFn = () => (
     <Editor
         schema={{properties: {coral: coralTableField}}}
+        toolbar={coralToolbar}
         cards={{
             table: {label: '', widgets: ['coral']},
             detail: {
@@ -290,7 +291,7 @@ export const SplitVertical: StoryFn = () => (
                     {size: 60, cards: ['table']},
                     {size: 40, cards: ['detail']},
                 ],
-            },
+            } as any,
         }}
         editable={false}
         editMode={false}
@@ -307,6 +308,7 @@ export const Designable: StoryFn = () => (
     <div style={{height: 600, display: 'flex', flexDirection: 'column'}}>
         <Editor
             schema={{properties: {coral: coralTableField}}}
+            toolbar={coralToolbar}
             cards={{
                 table: {
                     label: 'Coral List',
