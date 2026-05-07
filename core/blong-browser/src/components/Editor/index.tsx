@@ -178,10 +178,15 @@ export function Editor({
     const [tableSelections, setTableSelections] = useState<Record<string, ITableSelection | null>>({});
     const [lastTableFieldName, setLastTableFieldName] = useState<string | null>(null);
 
-    /** Returns true if the field with the given name is a table widget (not a navigator). */
+    /**
+     * Returns true if the field drives the Editor toolbar context.
+     * Navigator widgets publish selections for cascade filtering only —
+     * all other array-field widgets (table, etc.) update toolbar context.
+     */
     const isTableWidget = useCallback(
         (fieldName: string): boolean => {
             const widgetType = schema?.properties?.[fieldName]?.widget?.type;
+            // Explicitly exclude navigator; all other widget types (table, default) drive toolbar
             return widgetType !== 'navigator';
         },
         [schema?.properties],

@@ -425,6 +425,20 @@ function resolveParentField(parent?: string): string | undefined {
     return parent;
 }
 
+/**
+ * Extract the stable key value from a parent selection row.
+ * Uses `keyFieldName` as the primary key field.
+ * `keyFieldName` defaults to 'id' in the widget config, so this value
+ * is always valid when the widget is properly configured.
+ */
+function getParentKeyValue(
+    parentRow: Record<string, unknown> | null,
+    keyFieldName: string,
+): unknown {
+    if (!parentRow) return null;
+    return parentRow[keyFieldName];
+}
+
 // ── Template resolution helpers (for widget.toolbar params) ──────────────────
 
 function getPath(obj: unknown, path: string): unknown {
@@ -543,9 +557,7 @@ export function TableWidget({
     // Compare using the row's keyField value for stable identity (not object reference).
     useEffect(() => {
         if (!isListMode || !parentFieldName) return;
-        // Use the parent row's key field value as a stable identifier
-        const parentRow = parentSelection?.row ?? null;
-        const curKey = parentRow ? parentRow[keyFieldName] ?? parentRow['id'] : null;
+        const curKey = getParentKeyValue(parentSelection?.row ?? null, keyFieldName);
         if (prevParentKeyForPagingRef.current === curKey) return;
         prevParentKeyForPagingRef.current = curKey;
         setListFirst(0);
@@ -708,8 +720,7 @@ export function TableWidget({
     useEffect(() => {
         if (!schema.widget?.autoSelect || !parentFieldName) return;
         // Use the parent row's key field value for stable identity (not object reference)
-        const parentRow = parentSelection?.row ?? null;
-        const curKey = parentRow ? parentRow[keyFieldName] ?? parentRow['id'] : null;
+        const curKey = getParentKeyValue(parentSelection?.row ?? null, keyFieldName);
         if (prevParentKeyForAutoSelectRef.current === curKey) return;
         prevParentKeyForAutoSelectRef.current = curKey;
         if (filteredRows.length > 0) {
