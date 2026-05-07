@@ -525,12 +525,44 @@ export function TableWidget({
 
     const {dispatch} = useBlongUi();
 
+    // ── Cascaded table filtering ───────────────────────────────────────────
+    const parentFieldName = resolveParentField(schema.widget?.parent);
+    const masterMapping = schema.widget?.master;
+    const parentSelection = parentFieldName
+        ? (formValues?.['__sel_' + parentFieldName] as
+              | {row: Record<string, unknown>; index: number}
+              | null
+              | undefined)
+        : undefined;
+
+    // In listAction mode, reset paging and include master filter in server params
+    // when parent selection changes. In non-listAction mode, client-side filtering applies.
+    const prevParentRowForPagingRef = useRef<Record<string, unknown> | null | undefined>(undefined);
+
+    // Reset paging when the cascaded parent selection changes (listAction mode)
+    useEffect(() => {
+        if (!isListMode || !parentFieldName) return;
+        const curRow = parentSelection?.row ?? null;
+        if (prevParentRowForPagingRef.current === curRow) return;
+        prevParentRowForPagingRef.current = curRow;
+        setListFirst(0);
+        setSingleSelected(null);
+    }, [isListMode, parentFieldName, parentSelection?.row]);
+
     const mergedListParams = useMemo(() => {
         const filterBy = Object.fromEntries(
             Object.entries(committedFilters).filter(([, v]) => v !== ''),
         );
+        // In listAction mode with parent cascade, send master filter keys as server-side params
+        const cascadeFilter: Record<string, unknown> = {};
+        if (isListMode && parentFieldName && masterMapping && parentSelection) {
+            for (const [ownKey, parentKey] of Object.entries(masterMapping)) {
+                cascadeFilter[ownKey] = parentSelection.row[parentKey];
+            }
+        }
         return {
             ...(listParams ?? {}),
+            ...cascadeFilter,
             ...(Object.keys(filterBy).length > 0 ? {filterBy} : {}),
             ...(committedSearch ? {search: committedSearch} : {}),
             ...(listSortField
@@ -540,6 +572,10 @@ export function TableWidget({
         };
     }, [
         listParams,
+        isListMode,
+        parentFieldName,
+        masterMapping,
+        parentSelection,
         committedFilters,
         committedSearch,
         listSortField,
@@ -612,18 +648,10 @@ export function TableWidget({
               [KEY]: (r as Row)[KEY] ?? i,
           }));
 
-    // ── Cascaded table filtering ───────────────────────────────────────────
-    const parentFieldName = resolveParentField(schema.widget?.parent);
-    const masterMapping = schema.widget?.master;
-    const parentSelection = parentFieldName
-        ? (formValues?.['__sel_' + parentFieldName] as
-              | {row: Record<string, unknown>; index: number}
-              | null
-              | undefined)
-        : undefined;
-
+    // Client-side cascaded filtering (non-listAction mode only).
+    // In listAction mode, the cascade filter is sent to the server via mergedListParams.
     const filteredRows =
-        parentFieldName && masterMapping
+        !isListMode && parentFieldName && masterMapping
             ? parentSelection
                 ? rows.filter(r =>
                       Object.entries(masterMapping).every(
@@ -665,19 +693,20 @@ export function TableWidget({
     );
 
     const rowClass = useCallback(
-        (data: Row) =>
-            isSingleSelect && singleSelected && data[KEY] === singleSelected[KEY]
-                ? 'blong-table-current'
-                : '',
-        [isSingleSelect, singleSelected],
+        (data: Row) => {
+            if (!isSingleSelect || !singleSelected) return '';
+            const matchKey = isListMode ? keyFieldName : KEY;
+            return data[matchKey] === singleSelected[matchKey] ? 'blong-table-current' : '';
+        },
+        [isSingleSelect, singleSelected, isListMode, keyFieldName],
     );
 
-    const prevParentKeyRef = useRef<unknown>(null);
+    const prevParentRowForAutoSelectRef = useRef<Record<string, unknown> | null | undefined>(undefined);
     useEffect(() => {
         if (!schema.widget?.autoSelect || !parentFieldName) return;
-        const curKey = parentSelection ? parentSelection.index : null;
-        if (prevParentKeyRef.current === curKey) return;
-        prevParentKeyRef.current = curKey;
+        const curRow = parentSelection?.row ?? null;
+        if (prevParentRowForAutoSelectRef.current === curRow) return;
+        prevParentRowForAutoSelectRef.current = curRow;
         if (filteredRows.length > 0) {
             setSingleSelected(filteredRows[0]);
             fireSingleSelect(filteredRows[0]);
@@ -685,7 +714,7 @@ export function TableWidget({
             setSingleSelected(null);
             onSelect?.(name, null);
         }
-    }, [name, parentSelection?.index, parentFieldName, schema.widget?.autoSelect]);
+    }, [name, parentSelection, parentFieldName, schema.widget?.autoSelect, filteredRows, fireSingleSelect, onSelect]);
 
     useEffect(() => {
         if (!pendingEdit) return;
@@ -940,7 +969,23 @@ export function TableWidget({
                         <Column
                             key={field}
                             field={field}
-                            header={<Text>{header}</Text>}
+                            header={
+                                isListMode && filter ? (
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
+                                        <Text>{header}</Text>
+                                        <InputText
+                                            value={columnFilterInputs[field] ?? ''}
+                                            onChange={e => handleColumnFilterChange(field, e.target.value)}
+                                            placeholder="Filter…"
+                                            className="p-inputtext-sm"
+                                            style={{width: '100%', fontSize: '0.8125rem'}}
+                                            onClick={e => e.stopPropagation()}
+                                        />
+                                    </div>
+                                ) : (
+                                    <Text>{header}</Text>
+                                )
+                            }
                             filter={filter && !isListMode}
                             sortable={sortable || isListMode}
                             alignHeader={isNumeric ? 'right' : undefined}

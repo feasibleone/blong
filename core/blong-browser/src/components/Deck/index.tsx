@@ -414,8 +414,8 @@ export function Deck({id, cardNames, hiddenCardNames, children, className}: IDec
     const {active: isDesignMode} = useDesignMode();
     const formCtx = useBlongForm();
 
-    // Root layout mode: delegate to RootDeck when no cardNames and FormContext has layout info
-    if (cardNames === undefined && formCtx?.layoutResult) {
+    // Root layout mode: delegate to RootDeck when id='root', no cardNames, and FormContext has layout info
+    if (id === 'root' && cardNames === undefined && formCtx?.layoutResult) {
         return <RootDeck />;
     }
 

@@ -172,27 +172,32 @@ export function Editor({
 
     // ── Table selection tracking (for toolbar button enabled/params resolution) ──
     /**
-     * The most recently set non-null table selection across all table widgets.
-     * Used to resolve `enabled: 'current' | 'selected'` and `${id}` / `${current}`
-     * template params in Editor toolbar buttons.
+     * Per-field table selection tracking for toolbar button enabled/params resolution.
+     * Only table widgets (not navigator) contribute to toolbar context.
      */
-    const [lastTableSelection, setLastTableSelection] = useState<ITableSelection | null>(null);
+    const [tableSelections, setTableSelections] = useState<Record<string, ITableSelection | null>>({});
+    const [lastTableFieldName, setLastTableFieldName] = useState<string | null>(null);
 
     const handleTableSelect = useCallback(
-        (_fieldName: string, selection: ITableSelection | null) => {
-            if (selection) setLastTableSelection(selection);
-            else setLastTableSelection(null);
+        (fieldName: string, selection: ITableSelection | null) => {
+            // Skip navigator widget selections — they drive cascade filtering, not toolbar context
+            const fieldSchema = schema?.properties?.[fieldName];
+            const widgetType = fieldSchema?.widget?.type;
+            if (widgetType === 'navigator') return;
+            setTableSelections(prev => ({...prev, [fieldName]: selection}));
+            if (selection) setLastTableFieldName(fieldName);
+            else if (lastTableFieldName === fieldName) setLastTableFieldName(null);
         },
-        [],
+        [schema?.properties, lastTableFieldName],
     );
 
-    /** Template context derived from the most recent table selection */
-    const selCtxRow = lastTableSelection?.row ?? null;
+    /** Template context derived from the most recent non-null table widget selection */
+    const lastRow = lastTableFieldName ? (tableSelections[lastTableFieldName]?.row ?? null) : null;
     const selectionContext: Record<string, unknown> = {
-        id: selCtxRow?.id,
-        current: selCtxRow,
-        selected: selCtxRow ? [selCtxRow] : [],
-        ...(selCtxRow ?? {}),
+        id: lastRow?.id,
+        current: lastRow,
+        selected: lastRow ? [lastRow] : [],
+        ...(lastRow ?? {}),
     };
 
     // Callback passed to DesignAddCardButton: adds the new card name to localLayouts

@@ -15,8 +15,7 @@
  */
 import './index.css';
 
-import {DevTool} from '@hookform/devtools';
-import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
+import React, {lazy, Suspense, useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
@@ -25,6 +24,12 @@ import {useAppStore} from '../../state/appStore.js';
 import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
 import {Deck} from '../Deck/index.js';
 import {FormContext, type ITableSelection} from './FormContext.js';
+
+// DevTool is in devDependencies — load it lazily so the package builds correctly when
+// devDependencies are absent (production / downstream package consumers).
+const DevTool = lazy(() =>
+    import('@hookform/devtools').then(m => ({default: m.DevTool})),
+);
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -244,10 +249,12 @@ export function Form({
             }}
         >
             {debug ? (
-                <DevTool
-                    control={control}
-                    placement="top-right"
-                />
+                <Suspense fallback={null}>
+                    <DevTool
+                        control={control}
+                        placement="top-right"
+                    />
+                </Suspense>
             ) : null}
             {rightPanel ? (
                 <div className="blong-form-layout">

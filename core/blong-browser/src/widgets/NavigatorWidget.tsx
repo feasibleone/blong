@@ -110,7 +110,8 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
     useEffect(() => {
         if (!listAction) return;
         setLoading(true);
-        void (dispatch(listAction, {}) as Promise<Record<string, unknown>>)
+        const params = widget?.listParams ?? {};
+        void (dispatch(listAction, params) as Promise<Record<string, unknown>>)
             .then(result => {
                 let items: Row[];
                 if (resultSet && Array.isArray((result as Record<string, unknown>)[resultSet])) {
@@ -138,6 +139,7 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
             .finally(() => setLoading(false));
     }, [
         listAction,
+        widget?.listParams,
         resultSet,
         keyField,
         parentField,
