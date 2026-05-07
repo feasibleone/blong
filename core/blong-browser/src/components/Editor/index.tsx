@@ -178,17 +178,24 @@ export function Editor({
     const [tableSelections, setTableSelections] = useState<Record<string, ITableSelection | null>>({});
     const [lastTableFieldName, setLastTableFieldName] = useState<string | null>(null);
 
+    /** Returns true if the field with the given name is a table widget (not a navigator). */
+    const isTableWidget = useCallback(
+        (fieldName: string): boolean => {
+            const widgetType = schema?.properties?.[fieldName]?.widget?.type;
+            return widgetType !== 'navigator';
+        },
+        [schema?.properties],
+    );
+
     const handleTableSelect = useCallback(
         (fieldName: string, selection: ITableSelection | null) => {
             // Skip navigator widget selections — they drive cascade filtering, not toolbar context
-            const fieldSchema = schema?.properties?.[fieldName];
-            const widgetType = fieldSchema?.widget?.type;
-            if (widgetType === 'navigator') return;
+            if (!isTableWidget(fieldName)) return;
             setTableSelections(prev => ({...prev, [fieldName]: selection}));
             if (selection) setLastTableFieldName(fieldName);
             else if (lastTableFieldName === fieldName) setLastTableFieldName(null);
         },
-        [schema?.properties, lastTableFieldName],
+        [isTableWidget, lastTableFieldName],
     );
 
     /** Template context derived from the most recent non-null table widget selection */

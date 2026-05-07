@@ -530,9 +530,9 @@ describe('TableWidget', () => {
 
 describe('TableWidget — listAction mode', () => {
     it('renders loading state when dispatch is in-flight', async () => {
-        let resolveDispatch!: (v: unknown) => void;
+        let resolveDispatch: (v: unknown) => void = () => {};
         const dispatch = vi.fn(
-            () => new Promise(r => { resolveDispatch = r; }),
+            () => new Promise(r => { resolveDispatch = r as (v: unknown) => void; }),
         );
         const {container} = render(
             <TableWidget
@@ -681,11 +681,10 @@ describe('TableWidget — listAction mode', () => {
         );
         const cell = await findByText('Coral');
         fireEvent.click(cell);
-        if (onSelect.mock.calls.length > 0) {
-            const [fieldName, sel] = onSelect.mock.calls[0];
-            expect(fieldName).toBe('testField');
-            expect(sel).toMatchObject({row: {id: 7, name: 'Coral'}, index: 0});
-        }
+        expect(onSelect).toHaveBeenCalled();
+        const [fieldName, sel] = onSelect.mock.calls[0];
+        expect(fieldName).toBe('testField');
+        expect(sel).toMatchObject({row: {id: 7, name: 'Coral'}, index: 0});
     });
 });
 

@@ -537,17 +537,20 @@ export function TableWidget({
 
     // In listAction mode, reset paging and include master filter in server params
     // when parent selection changes. In non-listAction mode, client-side filtering applies.
-    const prevParentRowForPagingRef = useRef<Record<string, unknown> | null | undefined>(undefined);
+    const prevParentKeyForPagingRef = useRef<unknown>(undefined);
 
-    // Reset paging when the cascaded parent selection changes (listAction mode)
+    // Reset paging when the cascaded parent selection changes (listAction mode).
+    // Compare using the row's keyField value for stable identity (not object reference).
     useEffect(() => {
         if (!isListMode || !parentFieldName) return;
-        const curRow = parentSelection?.row ?? null;
-        if (prevParentRowForPagingRef.current === curRow) return;
-        prevParentRowForPagingRef.current = curRow;
+        // Use the parent row's key field value as a stable identifier
+        const parentRow = parentSelection?.row ?? null;
+        const curKey = parentRow ? parentRow[keyFieldName] ?? parentRow['id'] : null;
+        if (prevParentKeyForPagingRef.current === curKey) return;
+        prevParentKeyForPagingRef.current = curKey;
         setListFirst(0);
         setSingleSelected(null);
-    }, [isListMode, parentFieldName, parentSelection?.row]);
+    }, [isListMode, parentFieldName, parentSelection?.row, keyFieldName]);
 
     const mergedListParams = useMemo(() => {
         const filterBy = Object.fromEntries(
@@ -701,12 +704,14 @@ export function TableWidget({
         [isSingleSelect, singleSelected, isListMode, keyFieldName],
     );
 
-    const prevParentRowForAutoSelectRef = useRef<Record<string, unknown> | null | undefined>(undefined);
+    const prevParentKeyForAutoSelectRef = useRef<unknown>(undefined);
     useEffect(() => {
         if (!schema.widget?.autoSelect || !parentFieldName) return;
-        const curRow = parentSelection?.row ?? null;
-        if (prevParentRowForAutoSelectRef.current === curRow) return;
-        prevParentRowForAutoSelectRef.current = curRow;
+        // Use the parent row's key field value for stable identity (not object reference)
+        const parentRow = parentSelection?.row ?? null;
+        const curKey = parentRow ? parentRow[keyFieldName] ?? parentRow['id'] : null;
+        if (prevParentKeyForAutoSelectRef.current === curKey) return;
+        prevParentKeyForAutoSelectRef.current = curKey;
         if (filteredRows.length > 0) {
             setSingleSelected(filteredRows[0]);
             fireSingleSelect(filteredRows[0]);
@@ -714,7 +719,7 @@ export function TableWidget({
             setSingleSelected(null);
             onSelect?.(name, null);
         }
-    }, [name, parentSelection, parentFieldName, schema.widget?.autoSelect, filteredRows, fireSingleSelect, onSelect]);
+    }, [name, parentSelection, parentFieldName, schema.widget?.autoSelect, filteredRows, fireSingleSelect, onSelect, keyFieldName]);
 
     useEffect(() => {
         if (!pendingEdit) return;
