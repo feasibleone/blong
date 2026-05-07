@@ -2,6 +2,7 @@
  * BlongUiContext — the central provider that wires together all blong-browser
  * infrastructure: method registry dispatch, schema fetching, QueryClient, etc.
  */
+import type {ILogger} from '@feasibleone/blong';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {createContext, use, useMemo, type ReactNode} from 'react';
 import {blongEvents} from '../lib/eventBus.js';
@@ -36,6 +37,8 @@ export interface IBlongUiContextValue {
      * an expired session (401 / unauthenticated).
      */
     loginRoute?: string;
+    /** Logger instance */
+    log?: ILogger;
 }
 
 const BlongUiContext = createContext<IBlongUiContextValue | null>(null);
@@ -50,6 +53,8 @@ export function useBlongUi(): IBlongUiContextValue {
 export interface IBlongUiProviderProps {
     /** Method dispatch function (injected by the browser platform) */
     dispatch: DispatchFn;
+    /** Logger instance */
+    log?: ILogger;
     /** Schema URL override (default: '/openapi.json') */
     schemaUrl?: string;
     /** Custom schema registry (default: singleton) */
@@ -89,6 +94,7 @@ export function BlongUiProvider({
     debug = false,
     loginRoute,
     children,
+    log,
 }: IBlongUiProviderProps) {
     const queryClient = useMemo(() => createQueryClient(), []);
 
@@ -132,8 +138,9 @@ export function BlongUiProvider({
             baseUrl,
             debug,
             loginRoute,
+            log,
         }),
-        [wrappedDispatch, schemaRegistry, schemaUrl, queryClient, baseUrl, debug, loginRoute],
+        [wrappedDispatch, schemaRegistry, schemaUrl, queryClient, baseUrl, debug, loginRoute, log],
     );
 
     return (

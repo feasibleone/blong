@@ -341,8 +341,16 @@ const coralTypes = ['Hard', 'Soft', 'Black', 'Fire'];
 
 const coralBaseDate = new Date(2022, 5, 22);
 
+export const coralCategoryFixtures = [
+    {id: 1, parentId: null, name: 'Reef Corals'},
+    {id: 2, parentId: 1, name: 'Shallow Reef'},
+    {id: 3, parentId: 1, name: 'Deep Reef'},
+    {id: 4, parentId: null, name: 'Soft Corals'},
+];
+
 export const coralFixtures = [...Array(55).keys()].map(i => ({
     id: i,
+    categoryId: (i % 4) + 1,
     speciesName: coralNames[i % coralNames.length],
     coralType: coralTypes[i % coralTypes.length],
     maxDepth: (i + 1) * 5,
@@ -405,6 +413,9 @@ export const defaultHandlers: Record<string, Handler> = {
     itemItemFind: () => Promise.resolve({items: [], total: 0}),
 
     // ── Coral entity (for Explorer stories) ───────────────────────────────────
+
+    /** Find coral categories — returns the full category tree. */
+    coralCategoryFind: () => Promise.resolve({items: coralCategoryFixtures}),
 
     /** Find corals — server-side filter, sort, and paging. */
     coralCoralFind: (params = {}) => {
@@ -608,6 +619,13 @@ export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchF
     return result as DispatchFn;
 }
 
+const log = {
+    info: console.info,
+    warn: console.warn,
+    error: console.error,
+    debug: console.info,
+};
+
 // ── Global decorator ───────────────────────────────────────────────────────────
 
 /**
@@ -720,6 +738,7 @@ export function withDispatch(
                 loginRoute={loginRoute}
                 loginComponent={loginComponentParam}
                 debug={true}
+                log={log}
             >
                 <Story />
                 <Hint />

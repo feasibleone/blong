@@ -648,20 +648,20 @@ export function TableWidget({
     const fireSingleSelect = useCallback(
         (row: Row | null) => {
             if (!row) {
-                onSelect?.(null);
+                onSelect?.(name, null);
                 return;
             }
             if (isListMode) {
                 // In listAction mode rows have no KEY field; use keyFieldName
                 const originalIndex = rows.findIndex(r => r[keyFieldName] === row[keyFieldName]);
-                onSelect?.({row: row as Record<string, unknown>, index: originalIndex});
+                onSelect?.(name, {row: row as Record<string, unknown>, index: originalIndex});
                 return;
             }
             const {[KEY]: _k, ...clean} = row;
             const originalIndex = rows.findIndex(r => r[KEY] === row[KEY]);
-            onSelect?.({row: clean as Record<string, unknown>, index: originalIndex});
+            onSelect?.(name, {row: clean as Record<string, unknown>, index: originalIndex});
         },
-        [rows, onSelect, isListMode, keyFieldName],
+        [rows, name, onSelect, isListMode, keyFieldName],
     );
 
     const rowClass = useCallback(
@@ -683,9 +683,9 @@ export function TableWidget({
             fireSingleSelect(filteredRows[0]);
         } else {
             setSingleSelected(null);
-            onSelect?.(null);
+            onSelect?.(name, null);
         }
-    }, [parentSelection?.index, parentFieldName, schema.widget?.autoSelect]);
+    }, [name, parentSelection?.index, parentFieldName, schema.widget?.autoSelect]);
 
     useEffect(() => {
         if (!pendingEdit) return;
@@ -734,10 +734,10 @@ export function TableWidget({
             const updated = rows.filter(r => !selectedKeys.has(r[KEY]));
             setSelected([]);
             setSingleSelected(null);
-            onSelect?.(null);
+            onSelect?.(name, null);
             onChange(updated.map(({[KEY]: _k, ...r}) => r));
         },
-        [rows, selected, singleSelected, onChange, onSelect],
+        [rows, selected, singleSelected, onChange, onSelect, name],
     );
 
     // ── Template context for custom toolbar params ────────────────────────

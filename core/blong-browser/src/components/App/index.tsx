@@ -16,6 +16,7 @@
 import {ConfirmDialog, ConfirmPopup, PrimeReactProvider} from '../../primereact/index.js';
 import './index.css';
 
+import type {ILogger} from '@feasibleone/blong';
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
@@ -29,6 +30,8 @@ const DEFAULT_THEME: IThemeConfig = {name: 'lara-light-blue', palette: 'light'};
 export interface IAppProps extends IPortalProps {
     /** Method dispatch — routes calls through the browser handler registry */
     dispatch: DispatchFn;
+    /** Logger instance */
+    log?: ILogger;
     /** Schema URL override (default: '/openapi.json') */
     schemaUrl?: string;
     /** Base URL for API calls */
@@ -83,11 +86,13 @@ export function App({
     theme = DEFAULT_THEME,
     children,
     loginComponent,
+    log,
     ...portalProps
 }: IAppProps) {
     return (
         <BlongUiProvider
             dispatch={dispatch}
+            log={log}
             schemaUrl={schemaUrl}
             baseUrl={baseUrl}
             debug={debug}

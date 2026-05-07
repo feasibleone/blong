@@ -11,10 +11,9 @@
  * 2. **Passthrough** (no `cardName`): behaves as a plain titled container and
  *    renders `children` as-is. Used for standalone layout and stories.
  */
-import './index.css';
 import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
-
+import './index.css';
 
 import React, {useCallback, useState, type ReactNode} from 'react';
 import {Controller} from 'react-hook-form';
@@ -172,10 +171,7 @@ function resolveFieldSchema(
     if (dot === -1) return schema.properties[basePath];
     const head = basePath.slice(0, dot);
     const tail = basePath.slice(dot + 1);
-    return resolveFieldSchema(
-        {properties: schema.properties[head]?.properties},
-        tail,
-    );
+    return resolveFieldSchema({properties: schema.properties[head]?.properties}, tail);
 }
 
 /**
@@ -227,9 +223,7 @@ function renderField(
     // Derive id/data-testid:
     //   - ICardWidgetEntry (e.g. 'table#table1') → 'table1'
     //   - nested field (e.g. 'input.password')  → 'input-password'
-    const instanceId = hashIdx >= 0
-        ? fieldName.slice(hashIdx + 1)
-        : baseName.replace(/\./g, '-');
+    const instanceId = hashIdx >= 0 ? fieldName.slice(hashIdx + 1) : baseName.replace(/\./g, '-');
     const {
         schema,
         control,
@@ -257,14 +251,18 @@ function renderField(
     // Apply column override from ICardWidgetEntry (e.g. show only certain columns in a table)
     const effectiveSchema: IEnrichedFieldSchema | undefined =
         fieldSchema && columnOverride
-            ? ({...fieldSchema, widget: {...fieldSchema.widget, columns: columnOverride}} as IEnrichedFieldSchema)
+            ? ({
+                  ...fieldSchema,
+                  widget: {...fieldSchema.widget, columns: columnOverride},
+              } as IEnrichedFieldSchema)
             : fieldSchema;
     if (!effectiveSchema) return null;
 
     const WidgetComponent = widgetRegistry.get(resolveWidgetType(effectiveSchema));
     if (!WidgetComponent) return null;
 
-    const schemaReadOnly = cardReadOnly || effectiveSchema.readOnly;
+    const schemaReadOnly =
+        cardReadOnly || effectiveSchema.readOnly || effectiveSchema.widget?.readOnly;
     /** Transient disabled state (during save/load) — disables widget without changing its structure */
     const fieldDisabled = ctx.readOnly;
     const hasLabel = effectiveSchema.title !== '';
@@ -327,8 +325,9 @@ function renderField(
                             formValues={formValues}
                             dropdowns={dropdowns}
                             onSelect={
-                                effectiveSchema.widget?.selectionMode === 'single'
-                                    ? sel => handleTableSelect(baseName, sel)
+                                effectiveSchema.widget?.selectionMode === 'single' ||
+                                effectiveSchema.widget?.type === 'navigator'
+                                    ? handleTableSelect
                                     : undefined
                             }
                         />
@@ -354,7 +353,8 @@ function renderField(
                                 maximum: effectiveSchema.maximum ?? 0,
                             }}
                         >
-                            {getFieldError(errors as Record<string, unknown>, baseName)?.message ?? '{field} is invalid'}
+                            {getFieldError(errors as Record<string, unknown>, baseName)?.message ??
+                                '{field} is invalid'}
                         </Text>
                     </small>
                 </>
@@ -441,7 +441,7 @@ function renderWatchField(
                         }
                     }}
                     onBlur={() => {}}
-                    readOnly={cardReadOnly || fieldSchema.readOnly}
+                    readOnly={cardReadOnly || fieldSchema.readOnly || fieldSchema.widget?.readOnly}
                     formValues={formValues}
                 />
             </div>

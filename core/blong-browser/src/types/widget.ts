@@ -53,7 +53,14 @@ export interface IWidgetConfig {
     dropdown?: string;
     /** Options list for static select/multiSelect/select/tree widgets.
      * Flat options use `{value, label}`. TreeNode-style options use `{key, label, children}`. */
-    options?: Array<{value?: unknown; label?: string; icon?: string; key?: string | number; children?: unknown[]; [extra: string]: unknown}>;
+    options?: Array<{
+        value?: unknown;
+        label?: string;
+        icon?: string;
+        key?: string | number;
+        children?: unknown[];
+        [extra: string]: unknown;
+    }>;
     /** Parent field name for cascaded dropdowns/tables (supports '$.selected.field' or just 'field') */
     parent?: string;
     /** Key mapping for cascaded table filtering: {ownKey: parentKey} */
@@ -78,6 +85,8 @@ export interface IWidgetConfig {
     labelField?: string;
     /** Value field name in fetched options */
     valueField?: string;
+    /** Render this widget in read-only display mode regardless of card/form editability */
+    readOnly?: boolean;
     /** Custom component type (for 'custom' type) */
     component?: React.ComponentType<IWidgetProps>;
     /** Table action permissions */
@@ -237,7 +246,10 @@ export interface IWidgetProps {
      * Called by table widgets when a row is selected (selectionMode: 'single').
      * Passes null when the selection is cleared.
      */
-    onSelect?: (selection: {row: Record<string, unknown>; index: number} | null) => void;
+    onSelect?: (
+        name: string,
+        selection: {row: Record<string, unknown>; index: number} | null,
+    ) => void;
     /** Dropdown option maps — keyed by dropdown name, each value is the options array.
      *  Passed to TableWidget so column-level dropdown schemas can resolve their options. */
     dropdowns?: Record<string, unknown[]>;

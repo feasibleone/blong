@@ -1,4 +1,4 @@
-import type {IRegistry} from '@feasibleone/blong';
+import type {ILogger, IRegistry} from '@feasibleone/blong';
 import load from '@feasibleone/blong-gogo';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
@@ -43,6 +43,7 @@ export default browser =>
         const [blong, setBlong] = React.useState<{
             registry: IRegistry | null;
             dispatch: DispatchFn | null;
+            log?: ILogger;
         }>({registry: null, dispatch: null});
         React.useEffect(() => {
             load(
@@ -86,6 +87,7 @@ export default browser =>
                             });
                             return result[0];
                         },
+                        log: adapter?.log,
                     });
                     result = registry;
                 })
@@ -103,6 +105,7 @@ export default browser =>
                 schemaUrl="/schema.json"
                 theme={{name: 'vela-blue', palette: 'dark-compact'}}
                 loginRoute="/login"
+                log={blong.log}
             >
                 <Story />
                 <Hint />

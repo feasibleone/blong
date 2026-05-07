@@ -34,13 +34,20 @@ export default meta;
 
 const coralToolbar = [
     {label: 'Create', icon: 'pi pi-plus', method: 'coralCoralAdd'},
-    {label: 'Edit', icon: 'pi pi-pencil', enabled: 'current' as const, method: 'coralCoralEdit'},
+    {
+        label: 'Edit',
+        icon: 'pi pi-pencil',
+        enabled: 'current' as const,
+        method: 'coralCoralEdit',
+        params: '${current}',
+    },
     {
         label: 'Delete',
         icon: 'pi pi-trash',
         enabled: 'selected' as const,
         confirm: 'Delete selected corals?',
         method: 'coralCoralDelete',
+        params: {id: '${id}'},
     },
 ];
 
@@ -108,6 +115,7 @@ export const WithDetails: StoryFn = () => (
             table: {label: '', widgets: ['coral']},
             detail: {
                 label: 'Coral Details',
+                readOnly: true,
                 watch: '$.selected.coral',
                 widgets: [
                     '$.edit.coral.speciesName',
@@ -152,7 +160,7 @@ export const WithNavigator: StoryFn = () => (
             properties: {
                 // Navigator widget — tree nav
                 category: {
-                    title: 'Categories',
+                    title: '',
                     type: 'array',
                     widget: {
                         type: 'navigator',
@@ -201,6 +209,7 @@ export const WithNavigator: StoryFn = () => (
             table: {label: '', widgets: ['coral']},
             detail: {
                 label: 'Coral Details',
+                readOnly: true,
                 watch: '$.selected.coral',
                 widgets: [
                     '$.edit.coral.speciesName',
@@ -275,6 +284,7 @@ export const SplitVertical: StoryFn = () => (
             table: {label: '', widgets: ['coral']},
             detail: {
                 label: 'Details',
+                readOnly: true,
                 watch: '$.selected.coral',
                 widgets: [
                     '$.edit.coral.speciesName',
@@ -319,6 +329,7 @@ export const Designable: StoryFn = () => (
                 detail: {
                     label: 'Details',
                     className: 'col-12 md:col-5',
+                    readOnly: true,
                     watch: '$.selected.coral',
                     widgets: [
                         '$.edit.coral.speciesName',
