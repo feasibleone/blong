@@ -9,3 +9,7 @@
     flex: 1;
     min-width: 0;
 }
+
+.blong-password .p-icon-field {
+    width: 100%;
+}

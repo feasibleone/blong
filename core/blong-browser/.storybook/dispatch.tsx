@@ -419,14 +419,22 @@ export const defaultHandlers: Record<string, Handler> = {
 
     /** Find corals — server-side filter, sort, and paging. */
     coralCoralFind: (params = {}) => {
-        const {filterBy, search, orderBy, paging} = params as {
+        const {filterBy, search, orderBy, paging, ...cascadeParams} = params as {
             filterBy?: Record<string, string>;
             search?: string;
             orderBy?: Array<{field: string; dir: string}>;
             paging?: {pageSize: number; pageNumber: number};
+            [key: string]: unknown;
         };
         type CoralRow = (typeof coralFixtures)[number];
         let result: CoralRow[] = [...coralFixtures];
+        // Cascade params (e.g. categoryId) — exact-match filters sent by the TableWidget
+        // master-detail mechanism when a parent widget (navigator) has a selection.
+        for (const [field, value] of Object.entries(cascadeParams)) {
+            if (value !== undefined && value !== null) {
+                result = result.filter(r => (r as Record<string, unknown>)[field] === value);
+            }
+        }
         if (filterBy) {
             for (const [field, value] of Object.entries(filterBy)) {
                 if (value) {

@@ -124,6 +124,7 @@
 /* Input + Password wrapper fill the card width */
 .blong-login__input,
 .blong-login__input .p-password,
+.blong-login__input>.p-icon-field,
 .blong-login__input .p-password .p-inputtext {
     width: 100%;
 }
