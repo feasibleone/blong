@@ -730,7 +730,16 @@ export function TableWidget({
             setSingleSelected(null);
             onSelect?.(name, null);
         }
-    }, [name, parentSelection, parentFieldName, schema.widget?.autoSelect, filteredRows, fireSingleSelect, onSelect, keyFieldName]);
+    }, [
+        name,
+        parentSelection,
+        parentFieldName,
+        schema.widget?.autoSelect,
+        filteredRows,
+        fireSingleSelect,
+        onSelect,
+        keyFieldName,
+    ]);
 
     useEffect(() => {
         if (!pendingEdit) return;
@@ -957,7 +966,7 @@ export function TableWidget({
                 sortOrder={isListMode ? listSortOrder : undefined}
                 onSort={
                     isListMode
-                        ? e => {
+                        ? (e: {sortField: string; sortOrder: number}) => {
                               const order = (e.sortOrder ?? 0) as 0 | 1 | -1;
                               setListSortField(order === 0 ? null : (e.sortField ?? null));
                               setListSortOrder(order === 0 ? 1 : order);
@@ -987,11 +996,19 @@ export function TableWidget({
                             field={field}
                             header={
                                 isListMode && filter ? (
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.25rem',
+                                        }}
+                                    >
                                         <Text>{header}</Text>
                                         <InputText
                                             value={columnFilterInputs[field] ?? ''}
-                                            onChange={e => handleColumnFilterChange(field, e.target.value)}
+                                            onChange={e =>
+                                                handleColumnFilterChange(field, e.target.value)
+                                            }
                                             placeholder="Filter…"
                                             className="p-inputtext-sm"
                                             style={{width: '100%', fontSize: '0.8125rem'}}

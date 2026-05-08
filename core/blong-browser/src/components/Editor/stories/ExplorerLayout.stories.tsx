@@ -141,8 +141,8 @@ export const WithDetails: StoryFn = () => (
 );
 
 WithDetails.play = async ({canvas, userEvent}) => {
-    const row = await canvas.findByText('Brain Coral');
-    await userEvent.click(row);
+    const row = await canvas.findAllByText('Pillar Coral');
+    await userEvent.click(row[0]);
     await new Promise(r => setTimeout(r, 200));
 };
 

@@ -35,6 +35,8 @@ type WidgetProps = {
     error?: string;
     readOnly?: boolean;
     disabled?: boolean;
+    formValues?: Record<string, unknown>;
+    onSelect?: (fieldName: string, selection: unknown) => void;
 };
 
 function mkProps(overrides: WidgetProps = {}) {
@@ -532,8 +534,11 @@ describe('TableWidget — listAction mode', () => {
     it('renders loading state when dispatch is in-flight', async () => {
         let resolveDispatch: (v: unknown) => void = () => {};
         const dispatch = vi.fn(
-            () => new Promise(r => { resolveDispatch = r as (v: unknown) => void; }),
-        );
+            () =>
+                new Promise(r => {
+                    resolveDispatch = r;
+                }),
+        ) as <T>() => Promise<T>;
         const {container} = render(
             <TableWidget
                 {...mkProps({
@@ -555,7 +560,10 @@ describe('TableWidget — listAction mode', () => {
     });
 
     it('renders rows returned by listAction dispatch', async () => {
-        const rows = [{id: 1, name: 'Alpha'}, {id: 2, name: 'Beta'}];
+        const rows = [
+            {id: 1, name: 'Alpha'},
+            {id: 2, name: 'Beta'},
+        ];
         const dispatch = vi.fn().mockResolvedValue({items: rows});
         const {findByText} = render(
             <TableWidget
@@ -606,7 +614,7 @@ describe('TableWidget — listAction mode', () => {
     it('includes parent cascade filter in dispatch call when parent selection is set', () => {
         const dispatch = vi.fn().mockResolvedValue({items: []});
         const formValues = {
-            '__sel_category': {row: {id: 99, name: 'Reef'}, index: 0},
+            __sel_category: {row: {id: 99, name: 'Reef'}, index: 0},
         };
         render(
             <TableWidget
@@ -635,7 +643,9 @@ describe('TableWidget — listAction mode', () => {
     });
 
     it('renders paginator when total > 0', async () => {
-        const dispatch = vi.fn().mockResolvedValue({items: [{id: 1, name: 'X'}], pagination: {recordsTotal: 50}});
+        const dispatch = vi
+            .fn()
+            .mockResolvedValue({items: [{id: 1, name: 'X'}], pagination: {recordsTotal: 50}});
         const {container, findByText} = render(
             <TableWidget
                 {...mkProps({
@@ -702,7 +712,10 @@ describe('NavigatorWidget', () => {
                         labelField: 'name',
                     },
                 }}
-                value={[{id: 1, parentId: null, name: 'Root'}, {id: 2, parentId: 1, name: 'Child'}]}
+                value={[
+                    {id: 1, parentId: null, name: 'Root'},
+                    {id: 2, parentId: 1, name: 'Child'},
+                ]}
                 onChange={vi.fn()}
                 onBlur={vi.fn()}
                 onSelect={onSelect}
@@ -716,7 +729,10 @@ describe('NavigatorWidget', () => {
     });
 
     it('dispatches listAction with listParams and builds tree from response', async () => {
-        const rows = [{id: 1, parentId: null, name: 'Root'}, {id: 2, parentId: 1, name: 'Child'}];
+        const rows = [
+            {id: 1, parentId: null, name: 'Root'},
+            {id: 2, parentId: 1, name: 'Child'},
+        ];
         const dispatch = vi.fn().mockResolvedValue({items: rows});
         const {findByText} = render(
             <NavigatorWidget
@@ -742,7 +758,10 @@ describe('NavigatorWidget', () => {
         );
         // Tree node label should appear after dispatch resolves
         expect(await findByText('Root')).toBeTruthy();
-        expect(dispatch).toHaveBeenCalledWith('categoryFind', expect.objectContaining({tenantId: 5}));
+        expect(dispatch).toHaveBeenCalledWith(
+            'categoryFind',
+            expect.objectContaining({tenantId: 5}),
+        );
     });
 
     it('renders without crashing when listAction returns empty array', async () => {
