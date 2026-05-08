@@ -2,36 +2,34 @@
  * Form — schema-driven form component.
  *
  * Renders a hierarchy of Deck → Card → field for every field in the schema.
- * Supports flat layout, tab layout, and steps layout.
+ * Supports flat layout, tab layout, steps layout, and split layout.
  * Driven by react-hook-form internally; publishes flattened values via onChange/onSubmit.
  *
  * Form's responsibilities:
  *  - react-hook-form setup (control, errors, reset, watch)
  *  - Table-row selection state (for master-detail / watch cards)
- *  - Layout structure: resolves rows/tabs/steps and renders Deck components
- *  - Design-mode DnD (card reordering across columns)
  *  - Provides FormContext so Deck and Card can render without prop-drilling
+ *
+ * Layout rendering is delegated to the root Deck component (id="root"),
+ * which reads layout info from FormContext and handles all layout types.
  */
-import {
-    DndContext,
-    DragOverlay,
-    PointerSensor,
-    closestCenter,
-    useSensor,
-    useSensors,
-    type DragEndEvent,
-} from '@dnd-kit/core';
-import {PanelMenu, Steps, TabMenu} from '../../primereact/index.js';
 import './index.css';
 
-import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
+import React, {lazy, Suspense, useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
+import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
 import {Deck} from '../Deck/index.js';
-import {FormContext} from './FormContext.js';
+import {FormContext, type ITableSelection} from './FormContext.js';
+
+// DevTool is in devDependencies — load it lazily so the package builds correctly when
+// devDependencies are absent (production / downstream package consumers).
+const DevTool = lazy(() =>
+    import('@hookform/devtools').then(m => ({default: m.DevTool})),
+);
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -68,6 +66,12 @@ export interface IFormProps {
      */
     dropdowns?: Record<string, {value: unknown; label: string}[]>;
     /**
+     * Called whenever a table widget's single selection changes.
+     * Receives the field name and the new selection (or null when deselected).
+     * The Editor uses this to track the current row for toolbar template resolution.
+     */
+    onTableSelect?: (fieldName: string, selection: ITableSelection | null) => void;
+    /**
      * Called in design mode when the user drags a card to a new position.
      * Receives the layout key and the updated FlatLayoutConfig so the caller can persist the change.
      */
@@ -94,6 +98,7 @@ export function Form({
     id,
     checkPermission,
     dropdowns,
+    onTableSelect,
     onLayoutChange,
     rightPanel,
 }: IFormProps) {
@@ -143,9 +148,7 @@ export function Form({
     }, [schema, designCtx.active, designCtx.config.schema]);
 
     const layoutResult = useLayout(effectiveSchema, effectiveCards, layout, layouts);
-    const {rows, cards, tabs, layoutType} = layoutResult;
-
-    const [activeTabIndex, setActiveTabIndex] = useState(0);
+    const {cards} = layoutResult;
 
     /**
      * Tracks rows selected in table widgets with selectionMode: 'single'.
@@ -158,15 +161,10 @@ export function Form({
     const handleTableSelect = useCallback(
         (fieldName: string, selection: {row: Record<string, unknown>; index: number} | null) => {
             setTableSelections(prev => ({...prev, [fieldName]: selection}));
+            onTableSelect?.(fieldName, selection);
         },
-        [],
+        [onTableSelect],
     );
-
-    // Pointer sensor for design-mode drag-drop
-    const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 5}}));
-
-    /** Label of the item currently being dragged (for DragOverlay ghost) */
-    const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
 
     const {
         control,
@@ -223,316 +221,10 @@ export function Form({
         });
     };
 
-    /** Render tab or step content — a grid of Deck columns from deck groups. */
-    const renderTabContent = (deckGroups: string[][]) => (
-        <div className="grid col align-self-start max-w-screen">
-            {deckGroups.map((groupNames, groupIdx) => {
-                if (!groupNames.length) return null;
-                const firstResolved = groupNames.map(n => cards[n]).find(Boolean);
-                const colClass = firstResolved?.config.className ?? 'col-12 xl:col-6';
-                return (
-                    <Deck
-                        key={groupIdx}
-                        id={`deck-tab-${groupIdx}`}
-                        className={colClass}
-                        cardNames={groupNames}
-                    />
-                );
-            })}
-        </div>
-    );
+    const {debug} = useBlongUi();
 
-    const formBody = (() => {
-        if (layoutType === 'tabs') {
-            const orientation = layoutResult.orientation ?? 'top';
-            const activeTab = (tabs ?? [])[activeTabIndex];
-            const tabContent = activeTab?.component
-                ? React.createElement(activeTab.component)
-                : activeTab
-                  ? renderTabContent(activeTab.cardNames)
-                  : null;
-
-            // Left/right orientation: use PanelMenu (vertical accordion nav, no role="tablist")
-            if (orientation === 'left' || orientation === 'right') {
-                const panelItems = (tabs ?? []).map((tab, i) => ({
-                    id: tab.id,
-                    label: tab.label,
-                    icon: tab.icon,
-                    className: i === activeTabIndex ? 'p-highlight' : '',
-                    command: () => setActiveTabIndex(i),
-                }));
-                return (
-                    <div
-                        className={`blong-form-panel-layout blong-form-panel-layout--${orientation}`}
-                        style={{
-                            display: 'flex',
-                            flexDirection: orientation === 'left' ? 'row' : 'row-reverse',
-                        }}
-                    >
-                        <PanelMenu
-                            model={panelItems}
-                            className="blong-form-panelmenu flex-none"
-                        />
-                        <div className="blong-form-panel-content flex-1">{tabContent}</div>
-                    </div>
-                );
-            }
-
-            // Top/bottom orientation: use TabMenu
-            const tabItems = (tabs ?? []).map(tab => ({
-                label: tab.label,
-                icon: tab.icon,
-            }));
-            return (
-                <div className="blong-form-tabs">
-                    <TabMenu
-                        model={tabItems}
-                        activeIndex={activeTabIndex}
-                        onTabChange={e => setActiveTabIndex(e.index)}
-                        className="blong-form-tab-menu"
-                    />
-                    <div className="blong-form-tab-content">{tabContent}</div>
-                </div>
-            );
-        }
-
-        if (layoutType === 'steps') {
-            const stepItems = (tabs ?? []).map(tab => ({
-                label: tab.label,
-                icon: tab.icon,
-            }));
-            const activeStep = tabs?.[activeTabIndex];
-            const stepContent = activeStep?.component
-                ? React.createElement(activeStep.component)
-                : activeStep
-                  ? renderTabContent(activeStep.cardNames)
-                  : null;
-            const isFirst = activeTabIndex === 0;
-            const isLast = activeTabIndex === (tabs ?? []).length - 1;
-            return (
-                <div className="blong-form-steps">
-                    {/* Navigation bar: ← [Steps indicator] → centered as a group */}
-                    <div className="blong-form-steps__nav flex align-items-center justify-content-center sticky top-0 z-1 surface-0">
-                        <button
-                            type="button"
-                            className={`p-button p-component p-button-text p-button-icon-only m-1${isFirst ? ' p-disabled' : ''}`}
-                            aria-label="Back"
-                            disabled={isFirst}
-                            onClick={() => setActiveTabIndex(i => i - 1)}
-                        >
-                            <span className="p-button-icon pi pi-caret-left" />
-                        </button>
-                        <Steps
-                            model={stepItems}
-                            activeIndex={activeTabIndex}
-                            onSelect={e => setActiveTabIndex(e.index)}
-                            className="blong-steps-indicator"
-                        />
-                        <button
-                            type={isLast ? 'submit' : 'button'}
-                            form={isLast ? id : undefined}
-                            className="p-button p-component p-button-text p-button-icon-only m-1"
-                            aria-label={isLast ? 'Save' : 'Next'}
-                            onClick={isLast ? undefined : () => setActiveTabIndex(i => i + 1)}
-                        >
-                            <span
-                                className={`p-button-icon pi ${isLast ? 'pi-save' : 'pi-caret-right'}`}
-                            />
-                        </button>
-                    </div>
-                    <div className="blong-form-tab-content">{stepContent}</div>
-                </div>
-            );
-        }
-
-        // Flat layout — single PrimeFlex grid.
-        // Each element of `rows` is a column group (may contain multiple stacked cards).
-        // Deck handles permission/match filtering and hidden-input rendering internally.
-
-        // All non-hidden card ids for DnD (no SortableContext needed — we use useDraggable directly)
-
-        /**
-         * handleDragEnd — handles card and field moves in design mode.
-         * - card over card-{name}       → insert dragged card at that position
-         * - card over col-end:{colIdx}  → append card to column
-         * - field over field:{f}:{c}    → insert dragged field before that field
-         * - field over card-end:{c}     → append field to card
-         */
-        const handleDragEnd = (event: DragEndEvent) => {
-            setActiveDragLabel(null);
-            const {active, over} = event;
-            if (!over || active.id === over.id) return;
-
-            const activeId = String(active.id);
-            const overId = String(over.id);
-            const activeType = active.data.current?.type as string | undefined;
-
-            const findCard = (name: string) => {
-                for (let ci = 0; ci < rows.length; ci++) {
-                    const idx = rows[ci].indexOf(name);
-                    if (idx !== -1) return {ci, idx};
-                }
-                return null;
-            };
-
-            const applyNewRows = (newRows: string[][]) => {
-                const filteredRows = newRows.filter(col => col.length > 0);
-                const newLayoutConfig: FlatLayoutConfig = filteredRows.map(group =>
-                    group.length === 1 ? group[0] : group,
-                );
-                onLayoutChange?.(layout, newLayoutConfig);
-            };
-
-            if (activeType === 'card') {
-                const activeCardName = activeId.replace(/^card-/, '');
-
-                if (overId.startsWith('col-end:')) {
-                    // Append card to the end of the target column
-                    const toColIdx = parseInt(overId.replace('col-end:', ''), 10);
-                    const from = findCard(activeCardName);
-                    if (!from) return;
-                    if (from.ci === toColIdx) return; // already in same column
-                    const newRows = rows.map(col => [...col]);
-                    newRows[from.ci].splice(from.idx, 1);
-                    if (!newRows[toColIdx]) return;
-                    newRows[toColIdx].push(activeCardName);
-                    applyNewRows(newRows);
-                } else if (overId.startsWith('card-') && !overId.startsWith('card-end:')) {
-                    // Insert before another card (same or different column)
-                    const overCardName = overId.replace(/^card-/, '');
-                    const from = findCard(activeCardName);
-                    const to = findCard(overCardName);
-                    if (!from || !to) return;
-                    const newRows = rows.map(col => [...col]);
-                    newRows[from.ci].splice(from.idx, 1);
-                    const insertIdx = from.ci === to.ci && to.idx > from.idx ? to.idx - 1 : to.idx;
-                    newRows[to.ci].splice(insertIdx, 0, activeCardName);
-                    applyNewRows(newRows);
-                }
-            } else if (activeType === 'field') {
-                // Parse 'field:{fieldName}:{cardName}'
-                const withoutPrefix = activeId.replace(/^field:/, '');
-                const firstColon = withoutPrefix.indexOf(':');
-                if (firstColon === -1) return;
-                const fromField = withoutPrefix.substring(0, firstColon);
-                const fromCard = withoutPrefix.substring(firstColon + 1);
-
-                const moveField = (targetField: string | null, targetCard: string) => {
-                    const fromCardResolved = cards[fromCard];
-                    const toCardResolved = cards[targetCard];
-                    if (!fromCardResolved) return;
-
-                    const fromFields = [...fromCardResolved.fields];
-                    const toFields =
-                        fromCard === targetCard ? fromFields : [...(toCardResolved?.fields ?? [])];
-
-                    const fromIdx = fromFields.indexOf(fromField);
-                    if (fromIdx === -1) return;
-                    fromFields.splice(fromIdx, 1);
-
-                    if (fromCard === targetCard) {
-                        const insertIdx =
-                            targetField !== null
-                                ? Math.max(0, fromFields.indexOf(targetField))
-                                : fromFields.length;
-                        fromFields.splice(insertIdx, 0, fromField);
-                        designCtx.updateConfig({
-                            cards: {
-                                ...designCtx.config.cards,
-                                [fromCard]: {
-                                    ...(designCtx.config.cards[fromCard] ?? {}),
-                                    widgets: fromFields,
-                                    fields: undefined,
-                                } as ICardConfig,
-                            },
-                        });
-                    } else {
-                        const insertIdx = targetField !== null ? toFields.indexOf(targetField) : -1;
-                        toFields.splice(
-                            insertIdx === -1 ? toFields.length : insertIdx,
-                            0,
-                            fromField,
-                        );
-                        designCtx.updateConfig({
-                            cards: {
-                                ...designCtx.config.cards,
-                                [fromCard]: {
-                                    ...(designCtx.config.cards[fromCard] ?? {}),
-                                    widgets: fromFields,
-                                    fields: undefined,
-                                } as ICardConfig,
-                                [targetCard]: {
-                                    ...(designCtx.config.cards[targetCard] ?? {}),
-                                    widgets: toFields,
-                                    fields: undefined,
-                                } as ICardConfig,
-                            },
-                        });
-                    }
-                };
-
-                if (overId.startsWith('card-end:')) {
-                    const toCard = overId.replace('card-end:', '');
-                    if (fromCard === toCard) return;
-                    moveField(null, toCard);
-                } else if (overId.startsWith('field:')) {
-                    // Drop onto another field row — insert dragged field before it
-                    const rest = overId.replace(/^field:/, '');
-                    const colonIdx = rest.indexOf(':');
-                    if (colonIdx === -1) return;
-                    const targetField = rest.substring(0, colonIdx);
-                    const targetCard = rest.substring(colonIdx + 1);
-                    moveField(targetField, targetCard);
-                }
-            }
-        };
-
-        const gridContent = (
-            <div className="grid col align-self-start max-w-screen">
-                {rows.map((columnCards, colIdx) => {
-                    const hiddenCards = columnCards.filter(name => cards[name]?.config.hidden);
-                    const nonHiddenCards = columnCards.filter(name => !cards[name]?.config.hidden);
-                    if (!nonHiddenCards.length && !hiddenCards.length) return null;
-                    // Use first non-hidden card's className for the column width
-                    const firstCard = nonHiddenCards[0] ? cards[nonHiddenCards[0]] : undefined;
-                    const colClass = firstCard?.config.className ?? 'col-12 xl:col-6';
-                    return (
-                        <Deck
-                            key={colIdx}
-                            id={`deck-${colIdx}`}
-                            className={colClass}
-                            cardNames={nonHiddenCards}
-                            hiddenCardNames={hiddenCards}
-                        />
-                    );
-                })}
-            </div>
-        );
-
-        // Wrap in DndContext when design mode is active so useDraggable / useDroppable work
-        if (onLayoutChange) {
-            return (
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={({active: a}) =>
-                        setActiveDragLabel((a.data.current?.label as string | undefined) ?? null)
-                    }
-                    onDragEnd={handleDragEnd}
-                    onDragCancel={() => setActiveDragLabel(null)}
-                >
-                    {gridContent}
-                    <DragOverlay dropAnimation={null}>
-                        {activeDragLabel && (
-                            <div className="blong-drag-ghost">{activeDragLabel}</div>
-                        )}
-                    </DragOverlay>
-                </DndContext>
-            );
-        }
-        return gridContent;
-    })();
-
+    // Layout rendering is delegated to the root Deck (id="root", no cardNames).
+    // The root Deck reads layoutResult, layout, formId, and onLayoutChange from FormContext.
     return (
         <FormContext
             value={{
@@ -550,8 +242,20 @@ export function Form({
                 handleTableSelect,
                 setValue,
                 checkPermission,
+                layoutResult,
+                layout,
+                formId,
+                onLayoutChange,
             }}
         >
+            {debug ? (
+                <Suspense fallback={null}>
+                    <DevTool
+                        control={control}
+                        placement="top-right"
+                    />
+                </Suspense>
+            ) : null}
             {rightPanel ? (
                 <div className="blong-form-layout">
                     <form
@@ -560,7 +264,7 @@ export function Form({
                         className="blong-form"
                         noValidate
                     >
-                        {formBody}
+                        <Deck id="root" />
                     </form>
                     {rightPanel}
                 </div>
@@ -571,7 +275,7 @@ export function Form({
                     className="blong-form"
                     noValidate
                 >
-                    {formBody}
+                    <Deck id="root" />
                 </form>
             )}
         </FormContext>

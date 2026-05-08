@@ -27,7 +27,28 @@ export interface ITabLayoutConfig {
     items: ILayoutTabItem[];
 }
 
-export type LayoutConfig = FlatLayoutConfig | ITabLayoutConfig;
+/** A single panel in a split layout */
+export interface ISplitLayoutPanel {
+    /** Panel size as percentage (default auto-distributed) */
+    size?: number;
+    /** Minimum size in pixels */
+    minSize?: number;
+    /** Card names rendered in this panel (stacked vertically) */
+    cards: string[];
+}
+
+/**
+ * Split layout — renders cards in resizable side-by-side panels using a Splitter.
+ * Ideal for navigator + table + details explorer-style layouts.
+ */
+export interface ISplitLayoutConfig {
+    type: 'split';
+    /** Panel orientation: 'horizontal' (default) = side by side, 'vertical' = top/bottom */
+    orientation?: 'horizontal' | 'vertical';
+    panels: ISplitLayoutPanel[];
+}
+
+export type LayoutConfig = FlatLayoutConfig | ITabLayoutConfig | ISplitLayoutConfig;
 
 /** Resolved card — enriched card config with derived field list */
 export interface IResolvedCard {
@@ -64,15 +85,22 @@ export interface ILayoutResult {
     allFields: string[];
     /** Resolved tabs (populated in tab/steps mode, empty in flat mode) */
     tabs?: IResolvedTab[];
-    /** Layout type: 'flat' | 'tabs' | 'steps' */
-    layoutType: 'flat' | 'tabs' | 'steps';
+    /** Layout type: 'flat' | 'tabs' | 'steps' | 'split' */
+    layoutType: 'flat' | 'tabs' | 'steps' | 'split';
     /** Tab orientation (only for tabs mode) */
     orientation?: string;
+    /** Split layout panels (only for split mode) */
+    panels?: ISplitLayoutPanel[];
 }
 
 /** Type guard: is the layout config in tab/steps form? */
 export function isTabLayout(config: LayoutConfig): config is ITabLayoutConfig {
     return !Array.isArray(config) && 'items' in config;
+}
+
+/** Type guard: is the layout config a split layout? */
+export function isSplitLayout(config: LayoutConfig): config is ISplitLayoutConfig {
+    return !Array.isArray(config) && (config as ISplitLayoutConfig).type === 'split';
 }
 
 /**
@@ -184,6 +212,21 @@ export function useLayout(
                 tabs,
                 layoutType: layoutDef.type === 'steps' ? 'steps' : 'tabs',
                 orientation: layoutDef.orientation,
+            };
+        }
+
+        if (layoutDef && isSplitLayout(layoutDef)) {
+            // Split layout — resizable panels side by side
+            const panels = layoutDef.panels;
+            const allPanelCards = panels.flatMap(p => p.cards);
+            const allFields = [...new Set(allPanelCards.flatMap(c => cards[c]?.fields ?? []))];
+            return {
+                rows: [],
+                cards,
+                allFields,
+                layoutType: 'split',
+                orientation: layoutDef.orientation ?? 'horizontal',
+                panels,
             };
         }
 

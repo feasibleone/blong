@@ -17,6 +17,7 @@ import {IntegerWidget} from './IntegerWidget.js';
 import {JsonWidget} from './JsonWidget.js';
 import {MaskWidget} from './MaskWidget.js';
 import {MultiSelectWidget} from './MultiSelectWidget.js';
+import {NavigatorWidget} from './NavigatorWidget.js';
 import {NumberWidget} from './NumberWidget.js';
 import {PasswordWidget} from './PasswordWidget.js';
 import {SelectWidget} from './SelectWidget.js';
@@ -34,6 +35,8 @@ type WidgetProps = {
     error?: string;
     readOnly?: boolean;
     disabled?: boolean;
+    formValues?: Record<string, unknown>;
+    onSelect?: (fieldName: string, selection: unknown) => void;
 };
 
 function mkProps(overrides: WidgetProps = {}) {
@@ -524,5 +527,266 @@ describe('TableWidget', () => {
         );
         // No pi-plus action buttons visible in readOnly mode
         expect(container.querySelector('.blong-table-widget')).toBeTruthy();
+    });
+});
+
+describe('TableWidget — listAction mode', () => {
+    it('renders loading state when dispatch is in-flight', async () => {
+        let resolveDispatch: (v: unknown) => void = () => {};
+        const dispatch = vi.fn(
+            () =>
+                new Promise(r => {
+                    resolveDispatch = r;
+                }),
+        ) as <T>() => Promise<T>;
+        const {container} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        widget: {
+                            type: 'table',
+                            listAction: 'testAction',
+                            columns: ['name'],
+                        },
+                    },
+                    value: undefined,
+                })}
+            />,
+            {dispatch},
+        );
+        expect(container.querySelector('.blong-table-widget')).toBeTruthy();
+        // Resolve so there are no hanging promises
+        resolveDispatch({items: []});
+    });
+
+    it('renders rows returned by listAction dispatch', async () => {
+        const rows = [
+            {id: 1, name: 'Alpha'},
+            {id: 2, name: 'Beta'},
+        ];
+        const dispatch = vi.fn().mockResolvedValue({items: rows});
+        const {findByText} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        widget: {
+                            type: 'table',
+                            listAction: 'testAction',
+                            resultSet: 'items',
+                            keyField: 'id',
+                            columns: ['name'],
+                        },
+                        items: {properties: {id: {title: 'ID'}, name: {title: 'Name'}}},
+                    },
+                    value: undefined,
+                })}
+            />,
+            {dispatch},
+        );
+        expect(await findByText('Alpha')).toBeTruthy();
+        expect(dispatch).toHaveBeenCalledWith('testAction', expect.any(Object));
+    });
+
+    it('merges listParams into the dispatch call', () => {
+        const dispatch = vi.fn().mockResolvedValue({items: []});
+        render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        widget: {
+                            type: 'table',
+                            listAction: 'testAction',
+                            listParams: {tenantId: 42},
+                            columns: ['name'],
+                        },
+                    },
+                    value: undefined,
+                })}
+            />,
+            {dispatch},
+        );
+        expect(dispatch).toHaveBeenCalledWith(
+            'testAction',
+            expect.objectContaining({tenantId: 42}),
+        );
+    });
+
+    it('includes parent cascade filter in dispatch call when parent selection is set', () => {
+        const dispatch = vi.fn().mockResolvedValue({items: []});
+        const formValues = {
+            __sel_category: {row: {id: 99, name: 'Reef'}, index: 0},
+        };
+        render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        widget: {
+                            type: 'table',
+                            listAction: 'coralFind',
+                            keyField: 'id',
+                            selectionMode: 'single',
+                            columns: ['name'],
+                            parent: '$.selected.category',
+                            master: {categoryId: 'id'},
+                        },
+                    },
+                    value: undefined,
+                    formValues,
+                })}
+            />,
+            {dispatch},
+        );
+        expect(dispatch).toHaveBeenCalledWith(
+            'coralFind',
+            expect.objectContaining({categoryId: 99}),
+        );
+    });
+
+    it('renders paginator when total > 0', async () => {
+        const dispatch = vi
+            .fn()
+            .mockResolvedValue({items: [{id: 1, name: 'X'}], pagination: {recordsTotal: 50}});
+        const {container, findByText} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        widget: {
+                            type: 'table',
+                            listAction: 'testAction',
+                            keyField: 'id',
+                            columns: ['name'],
+                        },
+                        items: {properties: {id: {title: 'ID'}, name: {title: 'Name'}}},
+                    },
+                    value: undefined,
+                })}
+            />,
+            {dispatch},
+        );
+        await findByText('X');
+        expect(container.querySelector('.blong-table-paginator')).toBeTruthy();
+    });
+
+    it('calls onSelect with row and index when a row is clicked in single selection mode', async () => {
+        const dispatch = vi.fn().mockResolvedValue({items: [{id: 7, name: 'Coral'}]});
+        const onSelect = vi.fn();
+        const {findByText} = render(
+            <TableWidget
+                {...mkProps({
+                    schema: {
+                        widget: {
+                            type: 'table',
+                            listAction: 'testAction',
+                            keyField: 'id',
+                            selectionMode: 'single',
+                            columns: ['name'],
+                        },
+                        items: {properties: {id: {title: 'ID'}, name: {title: 'Name'}}},
+                    },
+                    value: undefined,
+                    onSelect,
+                })}
+            />,
+            {dispatch},
+        );
+        const cell = await findByText('Coral');
+        fireEvent.click(cell);
+        expect(onSelect).toHaveBeenCalled();
+        const [fieldName, sel] = onSelect.mock.calls[0];
+        expect(fieldName).toBe('testField');
+        expect(sel).toMatchObject({row: {id: 7, name: 'Coral'}, index: 0});
+    });
+});
+
+describe('NavigatorWidget', () => {
+    it('renders with static rows (no listAction)', () => {
+        const onSelect = vi.fn();
+        const {container} = render(
+            <NavigatorWidget
+                name="category"
+                schema={{
+                    widget: {
+                        type: 'navigator',
+                        keyField: 'id',
+                        parentField: 'parentId',
+                        labelField: 'name',
+                    },
+                }}
+                value={[
+                    {id: 1, parentId: null, name: 'Root'},
+                    {id: 2, parentId: 1, name: 'Child'},
+                ]}
+                onChange={vi.fn()}
+                onBlur={vi.fn()}
+                onSelect={onSelect}
+                readOnly={false}
+                disabled={false}
+            />,
+        );
+        expect(container.querySelector('.blong-navigator')).toBeTruthy();
+        // First root node should be auto-selected, publishing onSelect
+        expect(onSelect).toHaveBeenCalledWith('category', expect.objectContaining({index: 0}));
+    });
+
+    it('dispatches listAction with listParams and builds tree from response', async () => {
+        const rows = [
+            {id: 1, parentId: null, name: 'Root'},
+            {id: 2, parentId: 1, name: 'Child'},
+        ];
+        const dispatch = vi.fn().mockResolvedValue({items: rows});
+        const {findByText} = render(
+            <NavigatorWidget
+                name="category"
+                schema={{
+                    widget: {
+                        type: 'navigator',
+                        listAction: 'categoryFind',
+                        listParams: {tenantId: 5},
+                        resultSet: 'items',
+                        keyField: 'id',
+                        parentField: 'parentId',
+                        labelField: 'name',
+                    },
+                }}
+                value={undefined}
+                onChange={vi.fn()}
+                onBlur={vi.fn()}
+                readOnly={false}
+                disabled={false}
+            />,
+            {dispatch},
+        );
+        // Tree node label should appear after dispatch resolves
+        expect(await findByText('Root')).toBeTruthy();
+        expect(dispatch).toHaveBeenCalledWith(
+            'categoryFind',
+            expect.objectContaining({tenantId: 5}),
+        );
+    });
+
+    it('renders without crashing when listAction returns empty array', async () => {
+        const dispatch = vi.fn().mockResolvedValue({items: []});
+        const {container} = render(
+            <NavigatorWidget
+                name="cat"
+                schema={{
+                    widget: {
+                        type: 'navigator',
+                        listAction: 'catFind',
+                        resultSet: 'items',
+                        keyField: 'id',
+                        parentField: 'parentId',
+                        labelField: 'name',
+                    },
+                }}
+                value={undefined}
+                onChange={vi.fn()}
+                onBlur={vi.fn()}
+                readOnly={false}
+                disabled={false}
+            />,
+            {dispatch},
+        );
+        expect(container.querySelector('.blong-navigator')).toBeTruthy();
     });
 });

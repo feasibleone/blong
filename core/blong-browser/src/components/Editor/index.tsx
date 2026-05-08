@@ -19,6 +19,7 @@ import type {IBlongError, IToolbarButton} from '../../types/action.js';
 import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
 import {ActionButton} from '../ActionButton/index.js';
 import {Form} from '../Form/index.js';
+import type {ITableSelection} from '../Form/FormContext.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -66,6 +67,66 @@ export interface IEditorProps {
 
 const backgroundNone = {background: 'none'};
 
+// ── Template resolution (mirrors Explorer's resolveTemplate) ──────────────────
+
+function getPath(obj: unknown, path: string): unknown {
+    if (!obj || typeof obj !== 'object') return undefined;
+    const parts = path.split('.');
+    let cur: unknown = obj;
+    for (const part of parts) {
+        if (cur === null || cur === undefined) return undefined;
+        cur = (cur as Record<string, unknown>)[part];
+    }
+    return cur;
+}
+
+function resolveTemplate(
+    params: Record<string, unknown> | string | undefined,
+    context: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+    if (params === undefined || params === null) return undefined;
+    if (typeof params === 'string') {
+        // Use [^{}]+ instead of [^}]+ to prevent ReDoS on deeply-nested inputs
+        const singleExpr = params.trim().match(/^\$\{([^{}]+)\}$/);
+        if (singleExpr) {
+            const val = getPath(context, (singleExpr[1] as string).trim());
+            if (val !== null && typeof val === 'object') return val as Record<string, unknown>;
+            return {value: val};
+        }
+        const resolved = params.replace(/\$\{([^{}]+)\}/g, (_, expr: string) => {
+            const v = getPath(context, expr.trim());
+            return v === undefined || v === null
+                ? ''
+                : typeof v === 'object'
+                  ? JSON.stringify(v)
+                  : String(v);
+        });
+        return {value: resolved};
+    }
+    return Object.fromEntries(
+        Object.entries(params).map(([k, v]) => {
+            if (typeof v === 'string') {
+                const r = resolveTemplate(v, context);
+                return [k, r?.value !== undefined ? r.value : r];
+            }
+            return [k, v];
+        }),
+    );
+}
+
+function evalEnabled(
+    enabled: IToolbarButton['enabled'],
+    currentRow: Record<string, unknown> | null,
+    selectedRows: Record<string, unknown>[],
+    isDirty: boolean,
+): boolean {
+    if (enabled === 'current') return currentRow !== null;
+    if (enabled === 'selected') return selectedRows.length > 0;
+    if (enabled === 'dirty') return isDirty;
+    if (enabled === 'clean') return !isDirty;
+    return enabled !== false;
+}
+
 export function Editor({
     schema,
     cards,
@@ -108,6 +169,48 @@ export function Editor({
     const [localLayouts, setLocalLayouts] = useState<Record<string, LayoutConfig> | undefined>(
         () => layouts,
     );
+
+    // ── Table selection tracking (for toolbar button enabled/params resolution) ──
+    /**
+     * Per-field table selection tracking for toolbar button enabled/params resolution.
+     * Only table widgets (not navigator) contribute to toolbar context.
+     */
+    const [tableSelections, setTableSelections] = useState<Record<string, ITableSelection | null>>({});
+    const [lastTableFieldName, setLastTableFieldName] = useState<string | null>(null);
+
+    /**
+     * Returns true if the field drives the Editor toolbar context.
+     * Navigator widgets publish selections for cascade filtering only —
+     * all other array-field widgets (table, etc.) update toolbar context.
+     */
+    const isTableWidget = useCallback(
+        (fieldName: string): boolean => {
+            const widgetType = schema?.properties?.[fieldName]?.widget?.type;
+            // Explicitly exclude navigator; all other widget types (table, default) drive toolbar
+            return widgetType !== 'navigator';
+        },
+        [schema?.properties],
+    );
+
+    const handleTableSelect = useCallback(
+        (fieldName: string, selection: ITableSelection | null) => {
+            // Skip navigator widget selections — they drive cascade filtering, not toolbar context
+            if (!isTableWidget(fieldName)) return;
+            setTableSelections(prev => ({...prev, [fieldName]: selection}));
+            if (selection) setLastTableFieldName(fieldName);
+            else if (lastTableFieldName === fieldName) setLastTableFieldName(null);
+        },
+        [isTableWidget, lastTableFieldName],
+    );
+
+    /** Template context derived from the most recent non-null table widget selection */
+    const lastRow = lastTableFieldName ? (tableSelections[lastTableFieldName]?.row ?? null) : null;
+    const selectionContext: Record<string, unknown> = {
+        id: lastRow?.id,
+        current: lastRow,
+        selected: lastRow ? [lastRow] : [],
+        ...(lastRow ?? {}),
+    };
 
     // Callback passed to DesignAddCardButton: adds the new card name to localLayouts
     const handleCardAdded = useCallback(
@@ -218,6 +321,31 @@ export function Editor({
         }
     };
 
+    /** Render a custom ActionButton with selection-aware enabled/params resolution */
+    const renderActionBtn = (btn: IToolbarButton, i: number) => {
+        const resolvedParams = resolveTemplate(btn.params, selectionContext);
+        const resolvedDisabled =
+            globalBusy ||
+            !evalEnabled(
+                btn.enabled,
+                selectionContext.current as Record<string, unknown> | null,
+                selectionContext.selected as Record<string, unknown>[],
+                isDirty,
+            );
+        const resolvedBtn: IToolbarButton =
+            resolvedParams != null ? {...btn, params: resolvedParams} : btn;
+        return (
+            <ActionButton
+                key={i}
+                {...resolvedBtn}
+                disabled={resolvedDisabled}
+                formId={formId}
+                className="mr-2"
+                onBusyChange={handleToolbarBusy}
+            />
+        );
+    };
+
     const leftContent = (
         <div className="blong-toolbar-left">
             {leftButtons.map((btn, i) => {
@@ -262,16 +390,7 @@ export function Editor({
                         </button>
                     );
                 }
-                return (
-                    <ActionButton
-                        key={i}
-                        {...btn}
-                        disabled={globalBusy}
-                        formId={formId}
-                        className="mr-2"
-                        onBusyChange={handleToolbarBusy}
-                    />
-                );
+                return renderActionBtn(btn, i);
             })}
         </div>
     );
@@ -312,16 +431,7 @@ export function Editor({
                             </span>
                         );
                     }
-                    return (
-                        <ActionButton
-                            key={i}
-                            {...btn}
-                            disabled={globalBusy}
-                            formId={formId}
-                            className="mr-2"
-                            onBusyChange={handleToolbarBusy}
-                        />
-                    );
+                    return renderActionBtn(btn, i);
                 })}
             </div>
         ) : undefined;
@@ -360,6 +470,7 @@ export function Editor({
                     setValidationHint(undefined);
                 }}
                 onSubmit={saveAction ? handleSubmit : undefined}
+                onTableSelect={handleTableSelect}
                 readOnly={
                     (!editMode && !initialEditMode) ||
                     saver.loading ||

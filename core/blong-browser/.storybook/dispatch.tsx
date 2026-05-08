@@ -341,8 +341,16 @@ const coralTypes = ['Hard', 'Soft', 'Black', 'Fire'];
 
 const coralBaseDate = new Date(2022, 5, 22);
 
+export const coralCategoryFixtures = [
+    {id: 1, parentId: null, name: 'Reef Corals'},
+    {id: 2, parentId: 1, name: 'Shallow Reef'},
+    {id: 3, parentId: 1, name: 'Deep Reef'},
+    {id: 4, parentId: null, name: 'Soft Corals'},
+];
+
 export const coralFixtures = [...Array(55).keys()].map(i => ({
     id: i,
+    categoryId: (i % 4) + 1,
     speciesName: coralNames[i % coralNames.length],
     coralType: coralTypes[i % coralTypes.length],
     maxDepth: (i + 1) * 5,
@@ -406,16 +414,27 @@ export const defaultHandlers: Record<string, Handler> = {
 
     // ── Coral entity (for Explorer stories) ───────────────────────────────────
 
+    /** Find coral categories — returns the full category tree. */
+    coralCategoryFind: () => Promise.resolve({items: coralCategoryFixtures}),
+
     /** Find corals — server-side filter, sort, and paging. */
     coralCoralFind: (params = {}) => {
-        const {filterBy, search, orderBy, paging} = params as {
+        const {filterBy, search, orderBy, paging, ...cascadeParams} = params as {
             filterBy?: Record<string, string>;
             search?: string;
             orderBy?: Array<{field: string; dir: string}>;
             paging?: {pageSize: number; pageNumber: number};
+            [key: string]: unknown;
         };
         type CoralRow = (typeof coralFixtures)[number];
         let result: CoralRow[] = [...coralFixtures];
+        // Cascade params (e.g. categoryId) — exact-match filters sent by the TableWidget
+        // master-detail mechanism when a parent widget (navigator) has a selection.
+        for (const [field, value] of Object.entries(cascadeParams)) {
+            if (value !== undefined && value !== null) {
+                result = result.filter(r => (r as Record<string, unknown>)[field] === value);
+            }
+        }
         if (filterBy) {
             for (const [field, value] of Object.entries(filterBy)) {
                 if (value) {
@@ -608,6 +627,13 @@ export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchF
     return result as DispatchFn;
 }
 
+const log = {
+    info: console.info,
+    warn: console.warn,
+    error: console.error,
+    debug: console.info,
+};
+
 // ── Global decorator ───────────────────────────────────────────────────────────
 
 /**
@@ -719,6 +745,8 @@ export function withDispatch(
                 theme={{name: 'vela-blue', palette: 'dark-compact', languages: themeLanguages}}
                 loginRoute={loginRoute}
                 loginComponent={loginComponentParam}
+                debug={true}
+                log={log}
             >
                 <Story />
                 <Hint />

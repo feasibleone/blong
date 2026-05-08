@@ -22,6 +22,7 @@ import {MaskWidget} from './MaskWidget.js';
 import {MultiSelectTreeTableWidget} from './MultiSelectTreeTableWidget.js';
 import {MultiSelectTreeWidget} from './MultiSelectTreeWidget.js';
 import {MultiSelectWidget} from './MultiSelectWidget.js';
+import {NavigatorWidget} from './NavigatorWidget.js';
 import {NumberWidget} from './NumberWidget.js';
 import {PasswordWidget} from './PasswordWidget.js';
 import {SelectTableWidget} from './SelectTableWidget.js';
@@ -77,6 +78,7 @@ const builtins: Array<[WidgetType, React.ComponentType<IWidgetProps>]> = [
     ['select', SelectWidget as React.ComponentType<IWidgetProps>],
     ['selectTable', SelectTableWidget as React.ComponentType<IWidgetProps>],
     ['table', TableWidget as React.ComponentType<IWidgetProps>],
+    ['navigator', NavigatorWidget as React.ComponentType<IWidgetProps>],
     ['json', JsonWidget as React.ComponentType<IWidgetProps>],
     ['file', FileWidget as React.ComponentType<IWidgetProps>],
     ['image', ImageWidget as React.ComponentType<IWidgetProps>],

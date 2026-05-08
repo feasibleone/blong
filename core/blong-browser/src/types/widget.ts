@@ -36,6 +36,7 @@ export type WidgetType =
     | 'imageUpload'
     | 'autocomplete'
     | 'table'
+    | 'navigator'
     | 'json'
     | 'code'
     | 'divider'
@@ -52,7 +53,14 @@ export interface IWidgetConfig {
     dropdown?: string;
     /** Options list for static select/multiSelect/select/tree widgets.
      * Flat options use `{value, label}`. TreeNode-style options use `{key, label, children}`. */
-    options?: Array<{value?: unknown; label?: string; icon?: string; key?: string | number; children?: unknown[]; [extra: string]: unknown}>;
+    options?: Array<{
+        value?: unknown;
+        label?: string;
+        icon?: string;
+        key?: string | number;
+        children?: unknown[];
+        [extra: string]: unknown;
+    }>;
     /** Parent field name for cascaded dropdowns/tables (supports '$.selected.field' or just 'field') */
     parent?: string;
     /** Key mapping for cascaded table filtering: {ownKey: parentKey} */
@@ -77,6 +85,8 @@ export interface IWidgetConfig {
     labelField?: string;
     /** Value field name in fetched options */
     valueField?: string;
+    /** Render this widget in read-only display mode regardless of card/form editability */
+    readOnly?: boolean;
     /** Custom component type (for 'custom' type) */
     component?: React.ComponentType<IWidgetProps>;
     /** Table action permissions */
@@ -98,6 +108,63 @@ export interface IWidgetConfig {
     exclusive?: boolean;
     /** Show time-only pickers (dateRange/time widget) */
     timeOnly?: boolean;
+
+    // ── table / navigator: external data loading ─────────────────────────────
+    /**
+     * Action name to load list data from the server (table + navigator widgets).
+     * When set, the widget manages its own data loading, pagination, search, and
+     * sort independently of the react-hook-form value.
+     */
+    listAction?: string;
+    /** Static params merged into every `listAction` call */
+    listParams?: Record<string, unknown>;
+    /**
+     * Property name in the `listAction` response that contains the rows array.
+     * Defaults to `'items'`. Set to `''` to use the response directly as an array.
+     */
+    resultSet?: string;
+    /** Initial rows per page for listAction mode (default 25) */
+    pageSize?: number;
+    /**
+     * Primary key field name in row data — used for template resolution (`${id}`)
+     * and for the DataTable `dataKey`. Defaults to `'id'`.
+     */
+    keyField?: string;
+    /** Parent key field for navigator tree building (default 'parentId') */
+    parentField?: string;
+
+    // ── table: custom toolbar buttons ─────────────────────────────────────────
+    /**
+     * Custom toolbar buttons (left side). Support `${id}`, `${current}`, `${selected}`,
+     * and `${current.field}` template resolution and `enabled: 'current' | 'selected'`.
+     */
+    toolbar?: IWidgetToolbarButton[];
+    /** Custom toolbar buttons (right side) */
+    toolbarRight?: IWidgetToolbarButton[];
+}
+
+/**
+ * Toolbar button for widget-level toolbars (table, navigator).
+ * Similar to IToolbarButton but scoped to widget-level row context.
+ */
+export interface IWidgetToolbarButton {
+    label?: string;
+    icon?: string;
+    /** Direct RPC method name called via dispatch */
+    method?: string;
+    permission?: string;
+    /** Confirmation dialog message before invoking */
+    confirm?: string;
+    /** Enabled condition based on current row selection */
+    enabled?: boolean | 'current' | 'selected';
+    /**
+     * Params passed to the method. Supports template strings:
+     * `${id}` → keyField value, `${current}` → current row,
+     * `${selected}` → selected rows array, `${current.field}` → field of current row.
+     */
+    params?: Record<string, unknown> | string;
+    /** Success hint text shown as overlay near the button after the action completes */
+    successHint?: string;
 }
 
 /** Pivot config for table widget */
@@ -179,7 +246,10 @@ export interface IWidgetProps {
      * Called by table widgets when a row is selected (selectionMode: 'single').
      * Passes null when the selection is cleared.
      */
-    onSelect?: (selection: {row: Record<string, unknown>; index: number} | null) => void;
+    onSelect?: (
+        name: string,
+        selection: {row: Record<string, unknown>; index: number} | null,
+    ) => void;
     /** Dropdown option maps — keyed by dropdown name, each value is the options array.
      *  Passed to TableWidget so column-level dropdown schemas can resolve their options. */
     dropdowns?: Record<string, unknown[]>;
