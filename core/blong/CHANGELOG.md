@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1](https://github.com/feasibleone/blong/compare/blong-v1.18.0...blong-v1.18.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* improve model and mock ([20b530c](https://github.com/feasibleone/blong/commit/20b530cc9d00284a52ad99b63b95fbb7bd4e4e82))
+* update widget imports to use centralized types from '@feasibleone/blong' ([5a2a4d2](https://github.com/feasibleone/blong/commit/5a2a4d23762de4eb9c00c2be1f3138673c1cb38f))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-v1.17.0...blong-v1.18.0) (2026-04-29)
 
 

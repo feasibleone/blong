@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.19.0...blong-gogo-v1.19.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* improve model and mock ([20b530c](https://github.com/feasibleone/blong/commit/20b530cc9d00284a52ad99b63b95fbb7bd4e4e82))
+
 ## [1.19.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.18.1...blong-gogo-v1.19.0) (2026-04-29)
 
 
