@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.1.0...ui-demo-v1.2.0) (2026-05-09)
+
+
+### Features
+
+* browse model ([6ccb974](https://github.com/feasibleone/blong/commit/6ccb974eb707d5da98188e812bf39e7b6576fce7))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.0.0...ui-demo-v1.1.0) (2026-04-26)
 
 

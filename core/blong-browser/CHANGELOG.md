@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.2.1...blong-browser-v1.3.0) (2026-05-09)
+
+
+### Features
+
+* browse model ([6ccb974](https://github.com/feasibleone/blong/commit/6ccb974eb707d5da98188e812bf39e7b6576fce7))
+* form based explorer ([12b2f69](https://github.com/feasibleone/blong/commit/12b2f697e0a345c874e10559ce5315dc54405c8d))
+
+
+### Bug Fixes
+
+* improve model and mock ([20b530c](https://github.com/feasibleone/blong/commit/20b530cc9d00284a52ad99b63b95fbb7bd4e4e82))
+* update widget imports to use centralized types from '@feasibleone/blong' ([5a2a4d2](https://github.com/feasibleone/blong/commit/5a2a4d23762de4eb9c00c2be1f3138673c1cb38f))
+
 ## [1.2.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.2.0...blong-browser-v1.2.1) (2026-04-29)
 
 
