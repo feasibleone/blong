@@ -1,7 +1,7 @@
 /**
  * Schema registry type definitions.
  */
-import type {IEnrichedSchema} from './widget.js';
+import type {IEnrichedSchema} from '@feasibleone/blong';
 
 /** Schema fetcher function — resolves a schema by name */
 export type SchemaFetcher = (name?: string) => Promise<ISchemaDocument>;
@@ -11,19 +11,19 @@ export interface ISchemaDocument {
     openapi?: string;
     info?: {title: string; version: string};
     components?: {
-        schemas?: Record<string, IJsonSchema>;
+        schemas?: Record<string, IJsonSchemaExtended>;
     };
     paths?: Record<string, unknown>;
 }
 
 /** JSON Schema object */
-export interface IJsonSchema {
+export interface IJsonSchemaExtended {
     title?: string;
     description?: string;
     type?: string;
-    properties?: Record<string, IJsonSchema>;
+    properties?: Record<string, IJsonSchemaExtended>;
     required?: string[];
-    items?: IJsonSchema;
+    items?: IJsonSchemaExtended;
     minLength?: number;
     maxLength?: number;
     minimum?: number;

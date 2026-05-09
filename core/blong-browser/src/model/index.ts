@@ -1,7 +1,6 @@
 export type {
     IBrowserConfig,
     IBrowserPermissions,
-    ICardOverride,
     IDropdownOption,
     IEditorConfig,
     ILayoutTab,

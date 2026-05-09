@@ -13,8 +13,8 @@ import {confirmDialog, SplitButton} from '../../primereact/index.js';
 import {useRef, useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import {usePermission} from '../../hooks/usePermission.js';
+import type {IToolbarButton} from '../../index.js';
 import {useAppStore} from '../../state/appStore.js';
-import type {IToolbarButton} from '../../types/action.js';
 import {Button} from '../Button/index.js';
 
 export interface IActionButtonProps extends IToolbarButton {

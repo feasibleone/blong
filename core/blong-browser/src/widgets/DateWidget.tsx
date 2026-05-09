@@ -1,7 +1,7 @@
 import {Calendar} from '../primereact/index.js';
 
+import type {IWidgetProps} from '@feasibleone/blong';
 import React from 'react';
-import type {IWidgetProps} from '../types/widget.js';
 
 export const dateIn = (d: string | Date) => {
     const dd = new Date(d);

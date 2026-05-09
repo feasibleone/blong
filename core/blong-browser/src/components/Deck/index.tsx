@@ -29,13 +29,13 @@ import {
     useSensors,
     type DragEndEvent,
 } from '@dnd-kit/core';
-import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
+import type {ICardConfig} from '@feasibleone/blong';
 import React, {useState, type ReactNode} from 'react';
 import {Controller} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import type {FlatLayoutConfig, IResolvedCard, IResolvedTab} from '../../hooks/useLayout.js';
-import type {ICardConfig} from '../../types/widget.js';
+import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
 import {Card} from '../Card/index.js';
 import {useBlongForm} from '../Form/FormContext.js';
 
@@ -138,11 +138,14 @@ function RootDeck() {
     if (layoutType === 'tabs' || layoutType === 'steps') {
         const resolvedTabs = tabs ?? [];
         const activeEntry: IResolvedTab | undefined = resolvedTabs[activeTabIndex];
-        const tabContent = activeEntry?.component
-            ? React.createElement(activeEntry.component)
-            : activeEntry
-              ? <TabContent deckGroups={activeEntry.cardNames} cards={cards} />
-              : null;
+        const tabContent = activeEntry?.component ? (
+            React.createElement(activeEntry.component)
+        ) : activeEntry ? (
+            <TabContent
+                deckGroups={activeEntry.cardNames}
+                cards={cards}
+            />
+        ) : null;
 
         if (layoutType === 'steps') {
             const stepItems = resolvedTabs.map((t: IResolvedTab) => ({
@@ -326,11 +329,7 @@ function RootDeck() {
                     });
                 } else {
                     const insertIdx = targetField !== null ? toFields.indexOf(targetField) : -1;
-                    toFields.splice(
-                        insertIdx === -1 ? toFields.length : insertIdx,
-                        0,
-                        fromField,
-                    );
+                    toFields.splice(insertIdx === -1 ? toFields.length : insertIdx, 0, fromField);
                     designCtx.updateConfig({
                         cards: {
                             ...designCtx.config.cards,
@@ -398,9 +397,7 @@ function RootDeck() {
             >
                 {gridContent}
                 <DragOverlay dropAnimation={null}>
-                    {activeDragLabel && (
-                        <div className="blong-drag-ghost">{activeDragLabel}</div>
-                    )}
+                    {activeDragLabel && <div className="blong-drag-ghost">{activeDragLabel}</div>}
                 </DragOverlay>
             </DndContext>
         );

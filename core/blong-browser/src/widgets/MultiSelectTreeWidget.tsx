@@ -1,8 +1,8 @@
-import {TreeSelect, type TreeNode} from '../primereact/index.js';
+import type {IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
-import type {IWidgetProps} from '../types/widget.js';
+import {TreeSelect, type TreeNode} from '../primereact/index.js';
 
 export function MultiSelectTreeWidget({
     id,
@@ -66,9 +66,7 @@ export function MultiSelectTreeWidget({
             display="chip"
             metaKeySelection={false}
             onChange={e =>
-                onChange(
-                    e.value && typeof e.value === 'object' ? Object.keys(e.value) : [],
-                )
+                onChange(e.value && typeof e.value === 'object' ? Object.keys(e.value) : [])
             }
             onHide={onBlur}
             disabled={disabled || readOnly}

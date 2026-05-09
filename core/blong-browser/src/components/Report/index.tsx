@@ -6,9 +6,9 @@
  */
 import {Column, DataTable, Panel, Skeleton, Toolbar} from '../../primereact/index.js';
 
+import type {IEnrichedSchema} from '@feasibleone/blong';
 import {useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
-import type {IEnrichedSchema} from '../../types/widget.js';
 import {Button} from '../Button/index.js';
 import {Form} from '../Form/index.js';
 

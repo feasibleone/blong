@@ -1,5 +1,4 @@
-import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
-import type {IEnrichedSchema} from '../../types/widget.js';
+import type {IEnrichedSchema, IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
 
 export async function subjectObjectBrowse(
     model: IResolvedModelSpec,

@@ -2,8 +2,8 @@
  * Schema registry — fetches, normalizes, and enriches OpenAPI/JSON Schema objects.
  * The registry is the single source of truth for schema metadata in the browser.
  */
-import type {IJsonSchema, ISchemaDocument, ISchemaRegistry} from '../types/schema.js';
-import type {IEnrichedFieldSchema, IEnrichedSchema, IWidgetConfig} from '../types/widget.js';
+import type {IEnrichedFieldSchema, IEnrichedSchema, IWidgetConfig} from '@feasibleone/blong';
+import type {IJsonSchemaExtended, ISchemaDocument, ISchemaRegistry} from '../types/schema.js';
 
 /** Default OpenAPI endpoint */
 const DEFAULT_SCHEMA_URL = '/openapi.json';
@@ -67,13 +67,17 @@ function normalizeName(name: string): string {
 }
 
 /** Enrich a raw JSON Schema into a normalized IEnrichedSchema */
-export function enrichSchema(name: string, raw: IJsonSchema): IEnrichedSchema {
+export function enrichSchema(name: string, raw: IJsonSchemaExtended): IEnrichedSchema {
     const properties: Record<string, IEnrichedFieldSchema> = {};
     const rawProps = raw.properties ?? {};
     const required = new Set(raw.required ?? []);
 
     for (const [fieldName, fieldSchema] of Object.entries(rawProps)) {
-        properties[fieldName] = enrichField(fieldName, fieldSchema as IJsonSchema, required);
+        properties[fieldName] = enrichField(
+            fieldName,
+            fieldSchema as IJsonSchemaExtended,
+            required,
+        );
     }
 
     return {
@@ -86,7 +90,11 @@ export function enrichSchema(name: string, raw: IJsonSchema): IEnrichedSchema {
 }
 
 /** Normalize a single field schema */
-function enrichField(name: string, raw: IJsonSchema, required: Set<string>): IEnrichedFieldSchema {
+function enrichField(
+    name: string,
+    raw: IJsonSchemaExtended,
+    required: Set<string>,
+): IEnrichedFieldSchema {
     const widget = resolveWidget(name, raw);
     return {
         name,
@@ -110,7 +118,7 @@ function enrichField(name: string, raw: IJsonSchema, required: Set<string>): IEn
 }
 
 /** Infer widget config from field type and extensions */
-function resolveWidget(name: string, raw: IJsonSchema): IWidgetConfig {
+function resolveWidget(name: string, raw: IJsonSchemaExtended): IWidgetConfig {
     const xWidget = (raw['x-widget'] ?? {}) as Partial<IWidgetConfig>;
     if (xWidget.type) return xWidget as IWidgetConfig;
 

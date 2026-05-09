@@ -1,8 +1,8 @@
-import {Column, TreeTable, type TreeNode} from '../primereact/index.js';
+import type {IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
-import type {IWidgetProps} from '../types/widget.js';
+import {Column, TreeTable, type TreeNode} from '../primereact/index.js';
 
 export function MultiSelectTreeTableWidget({
     id,
@@ -61,7 +61,10 @@ export function MultiSelectTreeTableWidget({
             disabled={disabled || readOnly}
             className={`blong-multiselect-tree-table w-full ${error ? 'p-invalid' : ''}`}
         >
-            <Column expander body={(node: TreeNode) => (node as Record<string, unknown>).label as string} />
+            <Column
+                expander
+                body={(node: TreeNode) => (node as Record<string, unknown>).label as string}
+            />
         </TreeTable>
     );
 }

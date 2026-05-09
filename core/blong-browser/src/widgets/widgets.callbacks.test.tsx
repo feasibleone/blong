@@ -98,7 +98,7 @@ vi.mock('primereact/inputnumber', () => ({
     ),
 }));
 
-import type {IWidgetProps} from '../types/widget.js';
+import type {IWidgetProps} from '@feasibleone/blong';
 import {DateTimeWidget} from './DateTimeWidget.js';
 import {DateWidget} from './DateWidget.js';
 import {IntegerWidget} from './IntegerWidget.js';

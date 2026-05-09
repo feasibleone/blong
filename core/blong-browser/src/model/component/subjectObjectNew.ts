@@ -1,6 +1,10 @@
-import type {IHandlerProxy, IResolvedModelSpec} from '@feasibleone/blong';
+import type {
+    ICardConfig,
+    IEnrichedSchema,
+    IHandlerProxy,
+    IResolvedModelSpec,
+} from '@feasibleone/blong';
 import type {LayoutConfig} from '../../hooks/useLayout.js';
-import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
 
 export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandlerProxy<unknown>) {
     const {objectTitle, browser, methods, subject, object} = model;

@@ -6,6 +6,7 @@
  */
 import {confirmPopup, OverlayPanel, Toolbar} from '../../primereact/index.js';
 
+import type {ICardConfig, IEnrichedSchema} from '@feasibleone/blong';
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import {DesignModeProvider} from '../../design/DesignModeContext.js';
 import {
@@ -15,11 +16,11 @@ import {
 } from '../../design/PropertyEditor.js';
 import {useAction} from '../../hooks/useAction.js';
 import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
-import type {IBlongError, IToolbarButton} from '../../types/action.js';
-import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
+import type {IToolbarButton} from '../../index.js';
+import type {IBlongError} from '../../types/action.js';
 import {ActionButton} from '../ActionButton/index.js';
-import {Form} from '../Form/index.js';
 import type {ITableSelection} from '../Form/FormContext.js';
+import {Form} from '../Form/index.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -175,7 +176,9 @@ export function Editor({
      * Per-field table selection tracking for toolbar button enabled/params resolution.
      * Only table widgets (not navigator) contribute to toolbar context.
      */
-    const [tableSelections, setTableSelections] = useState<Record<string, ITableSelection | null>>({});
+    const [tableSelections, setTableSelections] = useState<Record<string, ITableSelection | null>>(
+        {},
+    );
     const [lastTableFieldName, setLastTableFieldName] = useState<string | null>(null);
 
     /**

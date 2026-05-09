@@ -1,4 +1,4 @@
-import type {ICardConfig, IEnrichedSchema} from '../../../types/widget.js';
+import type {ICardConfig, IEnrichedSchema} from '@feasibleone/blong';
 
 export interface ITreeFixture {
     schema: IEnrichedSchema;

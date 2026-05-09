@@ -1,10 +1,9 @@
 import {Dropdown} from '../primereact/index.js';
 
-import type {IDropdownOption} from '@feasibleone/blong';
+import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useRef, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
-import type {IWidgetProps} from '../types/widget.js';
 
 type SelectOption = IDropdownOption;
 

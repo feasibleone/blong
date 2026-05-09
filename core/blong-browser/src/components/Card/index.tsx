@@ -15,6 +15,7 @@ import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 import './index.css';
 
+import type {IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
 import React, {useCallback, useState, type ReactNode} from 'react';
 import {Controller} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
@@ -23,7 +24,6 @@ import {useDesignable} from '../../design/useDesignable.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
-import type {IEnrichedFieldSchema, IEnrichedSchema} from '../../types/widget.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {useBlongForm, type IFormContext, type ITableSelection} from '../Form/FormContext.js';
 import {Text} from '../Text/index.js';

@@ -79,25 +79,25 @@ export type {BlongEventMap} from './lib/eventBus.js';
 export type {
     ActionRegistry,
     IAction,
-    IActionRef,
     IBlongError,
     IMutationAction,
     IPageAction,
     IQueryAction,
-    IToolbarButton,
     IUseActionResult,
 } from './types/action.js';
 
 export type {
+    IActionRef,
     ICardConfig,
     IEnrichedFieldSchema,
     IEnrichedSchema,
     IFieldConfig,
+    IToolbarButton,
     IWidgetConfig,
     IWidgetProps,
     IWidgetRegistry,
     WidgetType,
-} from './types/widget.js';
+} from '@feasibleone/blong';
 
 export type {IMenuItem, IPortalConfig, IPortalState, ITab} from './types/portal.js';
 
@@ -112,7 +112,6 @@ export {dropdownRegistry, withDefaults} from './model/index.js';
 export type {
     IBrowserConfig,
     IBrowserPermissions,
-    ICardOverride,
     IDropdownOption,
     IEditorConfig,
     ILayoutTab,

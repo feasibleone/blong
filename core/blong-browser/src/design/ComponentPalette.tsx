@@ -1,7 +1,7 @@
 /**
  * ComponentPalette — sidebar listing available widgets and cards to drag in.
  */
-import type {WidgetType} from '../types/widget.js';
+import type {WidgetType} from '@feasibleone/blong';
 import {useDesignMode} from './useDesignMode.js';
 
 const WIDGET_TYPES: Array<{type: WidgetType; icon: string; label: string}> = [

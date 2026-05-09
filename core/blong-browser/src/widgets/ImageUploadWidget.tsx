@@ -1,10 +1,15 @@
 import {FileUpload, Image} from '../primereact/index.js';
 
-
-import type {IWidgetProps} from '../types/widget.js';
+import type {IWidgetProps} from '@feasibleone/blong';
 
 // PrimeReact 8 declares chooseOptions via defaultProps which React 19 no longer merges.
-const FILE_UPLOAD_OPTIONS = {label: undefined, icon: undefined, iconOnly: false, className: undefined, style: undefined} as const;
+const FILE_UPLOAD_OPTIONS = {
+    label: undefined,
+    icon: undefined,
+    iconOnly: false,
+    className: undefined,
+    style: undefined,
+} as const;
 
 /**
  * ImageUploadWidget — advanced FileUpload with image preview.
@@ -28,13 +33,23 @@ export function ImageUploadWidget({
     }
 
     const imagePreview = src ? (
-        <Image imageClassName="w-full" preview src={src} />
+        <Image
+            imageClassName="w-full"
+            preview
+            src={src}
+        />
     ) : (
         <div>No picture...</div>
     );
 
     if (readOnly || disabled) {
-        return src ? <Image imageClassName="w-full" preview src={src} /> : null;
+        return src ? (
+            <Image
+                imageClassName="w-full"
+                preview
+                src={src}
+            />
+        ) : null;
     }
 
     return (

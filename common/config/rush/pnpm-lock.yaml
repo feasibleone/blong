@@ -49,6 +49,9 @@ importers:
       '@slack/webhook':
         specifier: ^7.0.7
         version: 7.0.8
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
       '@types/request':
         specifier: ^2.48.13
         version: 2.48.13
@@ -73,6 +76,9 @@ importers:
       node-vault:
         specifier: ^0.10.10
         version: 0.10.10
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
       tarn:
         specifier: ^3.0.2
         version: 3.0.2

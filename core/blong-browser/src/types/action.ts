@@ -58,39 +58,6 @@ export type IAction = IPageAction | IQueryAction | IMutationAction;
 /** Registry of named actions */
 export type ActionRegistry = Record<string, IAction>;
 
-/** Extended action reference — action name plus static params override */
-export interface IActionRef {
-    name: string;
-    params?: Record<string, unknown>;
-}
-
-/** Toolbar button configuration */
-export interface IToolbarButton {
-    label?: string;
-    icon?: string;
-    /** Action name (string) or extended ref */
-    action?: string | IActionRef;
-    /** Direct RPC method name (bypass action registry) */
-    method?: string;
-    permission?: string;
-    /** Trigger form submit before invoking */
-    submit?: boolean;
-    /** Confirmation dialog message before invoking */
-    confirm?: string;
-    /** Enabled condition */
-    enabled?: boolean | 'dirty' | 'clean' | 'current' | 'selected';
-    visible?: boolean;
-    align?: 'left' | 'right';
-    /** Split-button sub-items */
-    menu?: IToolbarButton[];
-    /** Extra params passed to the action/method on invocation.
-     * May be a plain object or a string template using `${field}`, `${current}`,
-     * `${selected}` and `${current.field}` syntax for row-context interpolation. */
-    params?: Record<string, unknown> | string;
-    /** Success hint text shown in an overlay near the button after the action completes */
-    successHint?: string;
-}
-
 /** Return type of useAction hook */
 export interface IUseActionResult<TResult = unknown> {
     call: (params?: Record<string, unknown>) => Promise<TResult | void> | void;

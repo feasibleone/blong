@@ -1,8 +1,8 @@
-import {TreeSelect, type TreeNode} from '../primereact/index.js';
+import type {IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
-import type {IWidgetProps} from '../types/widget.js';
+import {TreeSelect, type TreeNode} from '../primereact/index.js';
 
 export function DropdownTreeWidget({
     id,

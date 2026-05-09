@@ -31,7 +31,7 @@ import type {Duplex} from 'node:stream';
 import type {OpenAPI, OpenAPIV2, OpenAPIV3_1} from 'openapi-types';
 import type {Level, LogFn, Logger as PinoLogger} from 'pino';
 import merge from 'ut-function.merge';
-import type {Knex} from './knex.js';
+import type {Knex} from './knex.ts';
 import type {IMock, IModelSpec} from './model.ts';
 
 // export {
@@ -49,6 +49,7 @@ export type {IJsonSchema, OpenAPI, OpenAPIV2, OpenAPIV3, OpenAPIV3_1} from 'open
 // export type {Level, LogFn, Logger as PinoLogger} from 'pino';
 export type {Knex} from './knex.js';
 export type * from './model.ts';
+export type * from './widget.ts';
 
 export type ServerContext = {
     queryBuilder?: Knex;
@@ -94,7 +95,7 @@ export type ConfigSubscriber = (
 ) => void | Promise<void>;
 
 /**
- * Mode used when the config proxy is queried during handler factory initialisation.
+ * Mode used when the config proxy is queried during handler factory initialization.
  *
  * - `'throw'`   — throw immediately (default; keeps misuse from going unnoticed)
  * - `'collect'` — accumulate errors and return them from exitConfigFactoryPhase()

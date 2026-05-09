@@ -6,10 +6,9 @@
  */
 import {BreadCrumb, Toolbar} from '../../primereact/index.js';
 
-
 import React from 'react';
-import type { IToolbarButton } from '../../types/action.js';
-import { ActionButton } from '../ActionButton/index.js';
+import type {IToolbarButton} from '../../index.js';
+import {ActionButton} from '../ActionButton/index.js';
 
 export interface IBreadcrumbItem {
     label: string;
@@ -49,21 +48,37 @@ export function Page({
             <div className="blong-page-header">
                 {title && <h2 className="blong-page-title">{title}</h2>}
                 {breadcrumbs.length > 0 && (
-                    <BreadCrumb model={crumbModel} home={home} className="blong-page-breadcrumb" />
+                    <BreadCrumb
+                        model={crumbModel}
+                        home={home}
+                        className="blong-page-breadcrumb"
+                    />
                 )}
                 {hasToolbar && (
                     <Toolbar
                         start={
                             toolbar.length > 0 ? (
                                 <div className="blong-toolbar-left">
-                                    {toolbar.map((btn, i) => <ActionButton key={i} {...btn} formId={formId} />)}
+                                    {toolbar.map((btn, i) => (
+                                        <ActionButton
+                                            key={i}
+                                            {...btn}
+                                            formId={formId}
+                                        />
+                                    ))}
                                 </div>
                             ) : undefined
                         }
                         end={
                             toolbarRight.length > 0 ? (
                                 <div className="blong-toolbar-right">
-                                    {toolbarRight.map((btn, i) => <ActionButton key={i} {...btn} formId={formId} />)}
+                                    {toolbarRight.map((btn, i) => (
+                                        <ActionButton
+                                            key={i}
+                                            {...btn}
+                                            formId={formId}
+                                        />
+                                    ))}
                                 </div>
                             ) : undefined
                         }
@@ -71,9 +86,7 @@ export function Page({
                     />
                 )}
             </div>
-            <div className="blong-page-body">
-                {children}
-            </div>
+            <div className="blong-page-body">{children}</div>
         </div>
     );
 }

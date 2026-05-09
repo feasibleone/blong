@@ -15,10 +15,10 @@
  *   widget.labelField   — display label field (default 'name')
  *   widget.label        — panel title
  */
+import type {IWidgetProps} from '@feasibleone/blong';
 import React, {useEffect, useState} from 'react';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {Tree, type TreeNode} from '../primereact/index.js';
-import type {IWidgetProps} from '../types/widget.js';
 
 type Row = Record<string, unknown>;
 

@@ -1,7 +1,7 @@
 import {InputText} from '../primereact/index.js';
 
+import type {IWidgetProps} from '@feasibleone/blong';
 import {Button} from '../components/Button/index.js';
-import type {IWidgetProps} from '../types/widget.js';
 
 export function TextWidget({
     id,

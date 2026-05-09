@@ -18,11 +18,11 @@ import {
 } from '../../primereact/index.js';
 import './index.css';
 
+import type {IEnrichedSchema} from '@feasibleone/blong';
 import {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useAction} from '../../hooks/useAction.js';
-import type {IToolbarButton} from '../../types/action.js';
-import type {IEnrichedSchema} from '../../types/widget.js';
+import type {IToolbarButton} from '../../index.js';
 import {ActionButton} from '../ActionButton/index.js';
 import {Button} from '../Button/index.js';
 import {Navigator} from '../Navigator/index.js';

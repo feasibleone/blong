@@ -1,54 +1,20 @@
 /**
  * useLayout — compute visible cards and fields from schema + card config + layout config.
  */
+import type {
+    FlatLayoutConfig,
+    ICardConfig,
+    ICardWidgetEntry,
+    IEnrichedFieldSchema,
+    IEnrichedSchema,
+    ISplitLayoutConfig,
+    ISplitLayoutPanel,
+    ITabLayoutConfig,
+    LayoutConfig,
+} from '@feasibleone/blong';
 import type React from 'react';
-import { useMemo } from 'react';
-import type { ICardConfig, ICardWidgetEntry, IEnrichedFieldSchema, IEnrichedSchema } from '../types/widget.js';
-
-export type LayoutRow = string | (string | string[])[];
-export type FlatLayoutConfig = LayoutRow[];
-
-/** A single tab/step item in a tab or steps layout */
-export interface ILayoutTabItem {
-    id: string;
-    label?: string;
-    icon?: string;
-    /** Card names shown in this tab/step. A string is a single-card deck; a string[] is a
-     *  multi-card deck where all cards are stacked vertically in the same grid column. */
-    widgets: (string | string[])[];
-    /** Optional React component rendered in place of cards (e.g. Explorer) */
-    component?: React.ComponentType;
-}
-
-/** Tab or steps layout (object form) */
-export interface ITabLayoutConfig {
-    orientation?: 'top' | 'left' | 'bottom' | 'right';
-    type?: 'steps';
-    items: ILayoutTabItem[];
-}
-
-/** A single panel in a split layout */
-export interface ISplitLayoutPanel {
-    /** Panel size as percentage (default auto-distributed) */
-    size?: number;
-    /** Minimum size in pixels */
-    minSize?: number;
-    /** Card names rendered in this panel (stacked vertically) */
-    cards: string[];
-}
-
-/**
- * Split layout — renders cards in resizable side-by-side panels using a Splitter.
- * Ideal for navigator + table + details explorer-style layouts.
- */
-export interface ISplitLayoutConfig {
-    type: 'split';
-    /** Panel orientation: 'horizontal' (default) = side by side, 'vertical' = top/bottom */
-    orientation?: 'horizontal' | 'vertical';
-    panels: ISplitLayoutPanel[];
-}
-
-export type LayoutConfig = FlatLayoutConfig | ITabLayoutConfig | ISplitLayoutConfig;
+import {useMemo} from 'react';
+export type {FlatLayoutConfig, ISplitLayoutConfig, LayoutConfig} from '@feasibleone/blong';
 
 /** Resolved card — enriched card config with derived field list */
 export interface IResolvedCard {
@@ -176,9 +142,12 @@ export function useLayout(
             const isWatchCard = !!cardCfg.watch;
             // Only include fields present in the schema (unless it's a watch/detail card or schema is absent)
             // Supports dot-notation paths like 'input.input' and 'table#table1' column-override entries.
-            const validFields = (isWatchCard || !schema)
-                ? fields
-                : fields.filter(f => schemaHasField(schemaProps as Record<string, IEnrichedFieldSchema>, f));
+            const validFields =
+                isWatchCard || !schema
+                    ? fields
+                    : fields.filter(f =>
+                          schemaHasField(schemaProps as Record<string, IEnrichedFieldSchema>, f),
+                      );
             cards[name] = {
                 name,
                 // undefined label → no card title (e.g. table widget provides its own title)

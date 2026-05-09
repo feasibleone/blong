@@ -5,10 +5,10 @@
  * Consumed via useBlongForm(). Returns null outside a Form — Deck and Card
  * fall back to children-passthrough mode when the context is absent.
  */
+import type {IEnrichedSchema} from '@feasibleone/blong';
 import {createContext, useContext} from 'react';
 import type {Control, FieldErrors, UseFormSetValue} from 'react-hook-form';
 import type {FlatLayoutConfig, ILayoutResult, IResolvedCard} from '../../hooks/useLayout.js';
-import type {IEnrichedSchema} from '../../types/widget.js';
 
 export interface ITableSelection {
     row: Record<string, unknown>;

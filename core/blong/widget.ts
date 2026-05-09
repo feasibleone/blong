@@ -85,7 +85,7 @@ export interface IWidgetConfig {
     labelField?: string;
     /** Value field name in fetched options */
     valueField?: string;
-    /** Render this widget in read-only display mode regardless of card/form editability */
+    /** Render this widget in read-only display mode regardless of card/form edit-ability */
     readOnly?: boolean;
     /** Custom component type (for 'custom' type) */
     component?: React.ComponentType<IWidgetProps>;
@@ -312,3 +312,81 @@ export interface IEnrichedSchema {
     /** Schema name (e.g. 'model.tree') */
     name?: string;
 }
+
+/** Extended action reference — action name plus static params override */
+export interface IActionRef {
+    name: string;
+    params?: Record<string, unknown>;
+}
+
+/** Toolbar button configuration */
+export interface IToolbarButton {
+    label?: string;
+    icon?: string;
+    /** Action name (string) or extended ref */
+    action?: string | IActionRef;
+    /** Direct RPC method name (bypass action registry) */
+    method?: string;
+    permission?: string;
+    /** Trigger form submit before invoking */
+    submit?: boolean;
+    /** Confirmation dialog message before invoking */
+    confirm?: string;
+    /** Enabled condition */
+    enabled?: boolean | 'dirty' | 'clean' | 'current' | 'selected';
+    visible?: boolean;
+    align?: 'left' | 'right';
+    /** Split-button sub-items */
+    menu?: IToolbarButton[];
+    /** Extra params passed to the action/method on invocation.
+     * May be a plain object or a string template using `${field}`, `${current}`,
+     * `${selected}` and `${current.field}` syntax for row-context interpolation. */
+    params?: Record<string, unknown> | string;
+    /** Success hint text shown in an overlay near the button after the action completes */
+    successHint?: string;
+}
+
+export type LayoutRow = string | (string | string[])[];
+export type FlatLayoutConfig = LayoutRow[];
+
+/** A single tab/step item in a tab or steps layout */
+export interface ILayoutTabItem {
+    id: string;
+    label?: string;
+    icon?: string;
+    /** Card names shown in this tab/step. A string is a single-card deck; a string[] is a
+     *  multi-card deck where all cards are stacked vertically in the same grid column. */
+    widgets: (string | string[])[];
+    /** Optional React component rendered in place of cards (e.g. Explorer) */
+    component?: React.ComponentType;
+}
+
+/** Tab or steps layout (object form) */
+export interface ITabLayoutConfig {
+    orientation?: 'top' | 'left' | 'bottom' | 'right';
+    type?: 'steps';
+    items: ILayoutTabItem[];
+}
+
+/** A single panel in a split layout */
+export interface ISplitLayoutPanel {
+    /** Panel size as percentage (default auto-distributed) */
+    size?: number;
+    /** Minimum size in pixels */
+    minSize?: number;
+    /** Card names rendered in this panel (stacked vertically) */
+    cards: string[];
+}
+
+/**
+ * Split layout — renders cards in resizable side-by-side panels using a Splitter.
+ * Ideal for navigator + table + details explorer-style layouts.
+ */
+export interface ISplitLayoutConfig {
+    type: 'split';
+    /** Panel orientation: 'horizontal' (default) = side by side, 'vertical' = top/bottom */
+    orientation?: 'horizontal' | 'vertical';
+    panels: ISplitLayoutPanel[];
+}
+
+export type LayoutConfig = FlatLayoutConfig | ITabLayoutConfig | ISplitLayoutConfig;

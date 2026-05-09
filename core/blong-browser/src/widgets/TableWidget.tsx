@@ -16,11 +16,11 @@ import {
     type DataTableSelectionChangeParams,
 } from '../primereact/index.js';
 
+import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '@feasibleone/blong';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/index.js';
 import {Text} from '../components/Text/index.js';
 import {useBlongUi} from '../context/BlongUiContext.js';
-import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '../types/widget.js';
 import {dateIn, dateOut} from './DateWidget.js';
 
 type Row = Record<string, unknown>;

@@ -1,6 +1,6 @@
 import {InputTextarea} from '../primereact/index.js';
 
-import type {IWidgetProps} from '../types/widget.js';
+import type {IWidgetProps} from '@feasibleone/blong';
 
 export function TextareaWidget({
     id,

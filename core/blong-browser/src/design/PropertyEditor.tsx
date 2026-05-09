@@ -4,9 +4,9 @@
  * Card properties: label, collapsible, hidden, className.
  * Field properties: title, widget.type, required, readOnly (all editable).
  */
+import type {ICardConfig, IEnrichedFieldSchema} from '@feasibleone/blong';
 import {useState} from 'react';
 import {useBlongForm} from '../components/Form/FormContext.js';
-import type {ICardConfig, IEnrichedFieldSchema} from '../types/widget.js';
 import {useDesignMode} from './useDesignMode.js';
 
 const WIDGET_TYPES = [

@@ -1,3 +1,4 @@
+import type {ICardConfig, IToolbarButton, LayoutConfig} from './widget.ts';
 /**
  * Model system types.
  *
@@ -97,15 +98,15 @@ export interface IBrowserConfig {
     filter?: Record<string, unknown>;
     /** Result set key to use from server response */
     resultSet?: string;
-    /** Whether to show "Create" button */
-    create?: Array<{title?: string; type?: string; permission?: string}>;
     /** Extra toolbar buttons */
-    toolbar?: unknown[];
+    toolbar?: IToolbarButton[];
 }
 
 export interface IBrowserConfigOptional {
     /** Column transformation applied to server fetch params */
     fetch?: (params: Record<string, unknown>) => Record<string, unknown>;
+    /** Whether to show "Create" button */
+    create?: Array<{title?: string; type?: string; permission?: string}>;
 }
 
 /** Editor page configuration */
@@ -148,7 +149,7 @@ export interface IModelSpec {
     /** JSON Schema overlay merged on top of server OpenAPI schema */
     schema?: ISchemaOverlay;
     /** Named card layout definitions */
-    cards?: Record<string, ICardOverride>;
+    cards?: Record<string, ICardConfig>;
     /** Browse page configuration */
     browser?: IBrowserConfig & IBrowserConfigOptional;
     /** Editor page configuration */
@@ -156,10 +157,7 @@ export interface IModelSpec {
     /** Report page configuration */
     report?: IReportConfig;
     /** Tab layouts for editor */
-    layouts?: {
-        edit?: ILayoutTab[] | string[];
-        [key: string]: unknown;
-    };
+    layouts?: Record<string, LayoutConfig>;
     /** Method name overrides */
     methods?: IMethodsConfig;
 }

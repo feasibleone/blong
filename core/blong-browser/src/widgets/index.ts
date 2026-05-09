@@ -2,8 +2,8 @@
  * Widget registry — central map of widget type → React component.
  * Can be extended per suite using registry.register().
  */
+import type {IWidgetProps, IWidgetRegistry, WidgetType} from '@feasibleone/blong';
 import type React from 'react';
-import type {IWidgetProps, IWidgetRegistry, WidgetType} from '../types/widget.js';
 import {AutoCompleteWidget} from './AutoCompleteWidget.js';
 import {BooleanWidget} from './BooleanWidget.js';
 import {ChipsWidget} from './ChipsWidget.js';

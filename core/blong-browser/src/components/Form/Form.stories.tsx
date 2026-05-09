@@ -1,8 +1,8 @@
+import type {ICardConfig, IEnrichedSchema} from '@feasibleone/blong';
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import {useState} from 'react';
-import type {ICardConfig, IEnrichedSchema} from '../../types/widget.js';
 import type {IFormProps} from './index.js';
 import {Form} from './index.js';
 

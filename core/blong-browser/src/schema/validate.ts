@@ -2,8 +2,8 @@
  * Schema-driven validation builder.
  * Converts enriched JSON Schema into react-hook-form validation rules.
  */
+import type {IEnrichedFieldSchema} from '@feasibleone/blong';
 import type {RegisterOptions} from 'react-hook-form';
-import type {IEnrichedFieldSchema} from '../types/widget.js';
 
 /** Build react-hook-form validation rules from an enriched field schema */
 export function buildValidationRules(schema: IEnrichedFieldSchema): RegisterOptions {

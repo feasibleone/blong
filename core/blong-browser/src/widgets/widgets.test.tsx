@@ -2,9 +2,9 @@
  * Widget rendering tests — exercises each widget component for snapshot coverage.
  * Widgets are rendered directly with the required IWidgetProps.
  */
+import type {IWidgetProps} from '@feasibleone/blong';
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render} from '../test/render.js';
-import type {IWidgetProps} from '../types/widget.js';
 
 import {BooleanWidget} from './BooleanWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';

@@ -2,9 +2,9 @@
  * DesignModeContext — propagates design mode state through the component tree.
  * When active=false, all design concerns are zero-cost no-ops.
  */
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import type { LayoutConfig } from '../hooks/useLayout.js';
-import type { ICardConfig, IEnrichedFieldSchema } from '../types/widget.js';
+import type {ICardConfig, IEnrichedFieldSchema} from '@feasibleone/blong';
+import {createContext, useCallback, useContext, useState, type ReactNode} from 'react';
+import type {LayoutConfig} from '../hooks/useLayout.js';
 
 export type DesignElementType = 'card' | 'field' | 'deck' | 'widget';
 
@@ -49,7 +49,9 @@ export const DesignModeContext = createContext<IDesignModeContextValue | null>(n
 export function useDesignModeContext(): IDesignModeContextValue {
     const ctx = useContext(DesignModeContext);
     if (!ctx)
-        throw new Error('[blong-browser] useDesignModeContext must be used inside DesignModeProvider');
+        throw new Error(
+            '[blong-browser] useDesignModeContext must be used inside DesignModeProvider',
+        );
     return ctx;
 }
 
