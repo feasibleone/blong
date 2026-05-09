@@ -193,7 +193,6 @@ export function Form({
                 Object.entries(tableSelections).map(([k, v]) => [`__sel_${k}`, v]),
             ),
         }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [rawFormValues, tableSelections],
     );
 
@@ -233,6 +232,12 @@ export function Form({
     //
     // Stable context: values here almost never change during an edit session.
     // Keeping them separate means Card and Deck do not rerender while the user types.
+    //
+    // `control` and `setValue` are stable object refs returned by react-hook-form's
+    // `useForm`; they never change identity across re-renders and are intentionally
+    // omitted from the dependency array to avoid unnecessary useMemo invalidations.
+    // `onChange` and `handleTableSelect` are stabilised at the Editor level via
+    // `useCallback` so they too remain stable throughout the form's lifetime.
     const stableContextValue = useMemo(
         () => ({
             schema: effectiveSchema,
@@ -248,7 +253,7 @@ export function Form({
             formId,
             onLayoutChange,
         }),
-        // control and setValue are stable refs from react-hook-form; omit from deps.
+        // control and setValue are excluded: see comment above.
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [
             effectiveSchema,
@@ -272,10 +277,12 @@ export function Form({
     );
 
     // Fast-changing values: changes on every keystroke.
+    // `rawFormValues` is always a new object reference produced by react-hook-form's
+    // `watch()` subscription — referential equality never holds across renders, so
+    // this memo will always invalidate when any field changes.  That is intentional:
+    // only FieldRow / WatchFieldRow subscribe here, keeping rerenders scoped.
     const valuesContextValue = useMemo(
         () => ({rawFormValues, formValues, errors}),
-        // rawFormValues is always a new object from watch(); no shallow-equal shortcut here.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [rawFormValues, formValues, errors],
     );
 

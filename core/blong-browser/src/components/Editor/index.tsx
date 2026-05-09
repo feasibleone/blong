@@ -235,13 +235,14 @@ export function Editor({
     );
 
     // Stable onChange passed to Form so FormStableContext is not invalidated on every render.
-    // All state-setters are stable React refs — the dep array is intentionally empty.
+    // The four setters (`setLocalValue`, `setIsDirty`, `setSavedSuccess`, `setValidationHint`)
+    // are guaranteed stable refs produced by React's `useState` — their identity never changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleFormChange = useCallback((v: Record<string, unknown>) => {
         setLocalValue(v);
         setIsDirty(true);
         setSavedSuccess(false);
         setValidationHint(undefined);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Stable onLayoutChange callback for design mode.
