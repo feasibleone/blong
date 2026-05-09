@@ -25,7 +25,12 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
-import {useBlongForm, type IFormContext, type ITableSelection} from '../Form/FormContext.js';
+import {
+    useBlongForm,
+    useBlongFormState,
+    useFormValues,
+    type ITableSelection,
+} from '../Form/FormContext.js';
 import {Text} from '../Text/index.js';
 
 export interface ICardProps {
@@ -58,18 +63,17 @@ function DraggableFieldRow({
     cardName,
     isLast,
     cardReadOnly,
-    formCtx,
 }: {
     fieldName: string;
     cardName: string;
     isLast: boolean;
     cardReadOnly: boolean | undefined;
-    formCtx: IFormContext;
 }) {
     const {active: isDesignMode, selected, select} = useDesignMode();
-    const translations = useAppStore(s => s.translations);
+    // fieldLabel only needs schema (stable context) — no volatile context required.
+    const stableCtx = useBlongForm();
     const fieldId = `field:${fieldName}:${cardName}`;
-    const fieldSchema = formCtx.schema?.properties?.[fieldName];
+    const fieldSchema = stableCtx?.schema?.properties?.[fieldName];
     const fieldLabel = fieldSchema?.title ?? fieldName;
     const isSelected = selected?.id === fieldId;
 
@@ -111,7 +115,14 @@ function DraggableFieldRow({
         [isDesignMode, fieldId, fieldLabel, select],
     );
 
-    const fieldContent = renderField(fieldName, cardReadOnly, isLast, formCtx, translations);
+    // FieldRow handles its own context subscriptions (stable + state + values)
+    const fieldContent = (
+        <FieldRow
+            fieldName={fieldName}
+            cardReadOnly={cardReadOnly}
+            isLast={isLast}
+        />
+    );
 
     if (!isDesignMode) return fieldContent;
 
@@ -208,15 +219,35 @@ function getFieldError(
     return getFieldError((errors[head] as Record<string, unknown>) ?? {}, tail);
 }
 
-/** Render a single field controlled by react-hook-form. */
-function renderField(
-    fieldName: string,
-    cardReadOnly: boolean | undefined,
-    isLast: boolean,
-    ctx: IFormContext,
-    translations: Record<string, string>,
-    columnOverride?: string[],
-): React.ReactNode {
+/**
+ * FieldRow — renders a single field row controlled by react-hook-form.
+ *
+ * Subscribes to FormValuesContext (fast) and FormStateContext (slow) directly
+ * so that Card itself does not rerender every time a field value changes.
+ * Only FieldRow instances rerender when their subscribed context changes.
+ */
+function FieldRow({
+    fieldName,
+    cardReadOnly,
+    isLast,
+    columnOverride,
+}: {
+    fieldName: string;
+    cardReadOnly: boolean | undefined;
+    isLast: boolean;
+    columnOverride?: string[];
+}) {
+    const stableCtx = useBlongForm();
+    const stateCtx = useBlongFormState();
+    const valuesCtx = useFormValues();
+    const translations = useAppStore(s => s.translations);
+
+    if (!stableCtx || !stateCtx || !valuesCtx) return null;
+
+    const {schema, control, dropdowns, onChange, handleTableSelect} = stableCtx;
+    const {readOnly: fieldDisabled, loading} = stateCtx;
+    const {formValues, rawFormValues, errors} = valuesCtx;
+
     // Strip '#id' suffix (ICardWidgetEntry key) to get the real form field name
     const hashIdx = fieldName.indexOf('#');
     const baseName = hashIdx >= 0 ? fieldName.slice(0, hashIdx) : fieldName;
@@ -224,17 +255,7 @@ function renderField(
     //   - ICardWidgetEntry (e.g. 'table#table1') → 'table1'
     //   - nested field (e.g. 'input.password')  → 'input-password'
     const instanceId = hashIdx >= 0 ? fieldName.slice(hashIdx + 1) : baseName.replace(/\./g, '-');
-    const {
-        schema,
-        control,
-        errors,
-        formValues,
-        rawFormValues,
-        loading,
-        dropdowns,
-        onChange,
-        handleTableSelect,
-    } = ctx;
+
     const rawSchema: IEnrichedFieldSchema | undefined = resolveFieldSchema(schema, fieldName);
     const dropdownKey = rawSchema?.widget?.dropdown;
     const fieldSchema: IEnrichedFieldSchema | undefined =
@@ -263,16 +284,11 @@ function renderField(
 
     const schemaReadOnly =
         cardReadOnly || effectiveSchema.readOnly || effectiveSchema.widget?.readOnly;
-    /** Transient disabled state (during save/load) — disables widget without changing its structure */
-    const fieldDisabled = ctx.readOnly;
     const hasLabel = effectiveSchema.title !== '';
 
     if (loading) {
         return (
-            <div
-                key={fieldName}
-                className={`field grid${isLast ? ' mb-0' : ''}`}
-            >
+            <div className={`field grid${isLast ? ' mb-0' : ''}`}>
                 {hasLabel && (
                     <label className="col-12 md:col-4">
                         <Text>{effectiveSchema.title ?? baseName}</Text>
@@ -286,10 +302,7 @@ function renderField(
     }
 
     return (
-        <div
-            key={fieldName}
-            className={`field grid${isLast ? ' mb-0' : ''}`}
-        >
+        <div className={`field grid${isLast ? ' mb-0' : ''}`}>
             {hasLabel && (
                 <label
                     htmlFor={instanceId}
@@ -364,18 +377,33 @@ function renderField(
 }
 
 /**
- * Render a single field for a watch (master-detail) card.
+ * WatchFieldRow — renders a single field from a master-detail (watch) card.
+ *
  * Reads from the selected table row and writes back via setValue.
+ * Subscribes to FormValuesContext (fast) and FormStateContext (slow) directly
+ * so that the parent Card component does not rerender when values change.
  */
-function renderWatchField(
-    rawFieldName: string,
-    isLast: boolean,
-    selection: ITableSelection,
-    watchField: string,
-    cardReadOnly: boolean | undefined,
-    ctx: IFormContext,
-): React.ReactNode {
-    const {schema, rawFormValues, formValues, setValue, onChange, handleTableSelect} = ctx;
+function WatchFieldRow({
+    rawFieldName,
+    isLast,
+    selection,
+    watchField,
+    cardReadOnly,
+}: {
+    rawFieldName: string;
+    isLast: boolean;
+    selection: ITableSelection;
+    watchField: string;
+    cardReadOnly: boolean | undefined;
+}) {
+    const stableCtx = useBlongForm();
+    const stateCtx = useBlongFormState();
+    const valuesCtx = useFormValues();
+
+    if (!stableCtx || !stateCtx || !valuesCtx) return null;
+
+    const {schema, setValue, onChange, handleTableSelect} = stableCtx;
+    const {rawFormValues, formValues} = valuesCtx;
 
     const fieldName = rawFieldName.startsWith('$.edit.')
         ? rawFieldName.split('.').pop()!
@@ -403,10 +431,7 @@ function renderWatchField(
     const widgetKey = `${fieldName}-${selection.index}-${String(currentVal)}`;
 
     return (
-        <div
-            key={fieldName}
-            className={`field grid${isLast ? ' mb-0' : ''}`}
-        >
+        <div className={`field grid${isLast ? ' mb-0' : ''}`}>
             {hasLabel && (
                 <label
                     htmlFor={fieldName}
@@ -470,9 +495,11 @@ export function Card({
     const {active: isDesignMode} = useDesignMode();
     const elementId = id ?? (cardName ? `card-${cardName}` : 'card');
 
+    // Subscribe to stable context (schema, cards) and slow-changing state (tableSelections, loading).
+    // Card does NOT subscribe to FormValuesContext (fast), so it does NOT rerender on every keystroke.
     const formCtx = useBlongForm();
+    const formState = useBlongFormState();
     const resolved = cardName && formCtx ? formCtx.cards[cardName] : undefined;
-    const translations = useAppStore(s => s.translations);
 
     // When cardName is active, prefer resolved values over explicit props
     const resolvedTitle: string | ReactNode | undefined = resolved ? resolved.label : title;
@@ -489,7 +516,8 @@ export function Card({
         },
     );
     const resolvedCollapsible = resolved ? resolved.config.collapsible : collapsible;
-    const resolvedLoading = resolved ? formCtx!.loading : loading;
+    // loading and readOnly come from FormStateContext (slow) — not from FormValuesContext (fast).
+    const resolvedLoading = resolved ? (formState?.loading ?? false) : loading;
     const cardReadOnly = resolved ? resolved.config.readOnly : readOnly;
 
     // Build content
@@ -506,18 +534,20 @@ export function Card({
                 const watchField = rawWatch.startsWith('$.selected.')
                     ? rawWatch.slice('$.selected.'.length)
                     : rawWatch;
-                const selection = formCtx.tableSelections[watchField] ?? null;
+                // tableSelections comes from FormStateContext (slow) — Card rerenders only on
+                // row selection events, not on every field-value change.
+                const selection = (formState?.tableSelections ?? {})[watchField] ?? null;
                 content = selection ? (
-                    resolved.fields.map((rawFieldName, idx) =>
-                        renderWatchField(
-                            rawFieldName,
-                            idx === resolved.fields.length - 1,
-                            selection,
-                            watchField,
-                            cardReadOnly,
-                            formCtx,
-                        ),
-                    )
+                    resolved.fields.map((rawFieldName, idx) => (
+                        <WatchFieldRow
+                            key={rawFieldName}
+                            rawFieldName={rawFieldName}
+                            isLast={idx === resolved.fields.length - 1}
+                            selection={selection}
+                            watchField={watchField}
+                            cardReadOnly={cardReadOnly}
+                        />
+                    ))
                 ) : (
                     <span className="p-text-secondary text-sm">Select a row to see details</span>
                 );
@@ -529,20 +559,20 @@ export function Card({
                         cardName={cardName!}
                         isLast={idx === resolved.fields.length - 1}
                         cardReadOnly={cardReadOnly}
-                        formCtx={formCtx}
                     />
                 ));
             } else {
-                content = resolved.fields.map((fieldName, idx) =>
-                    renderField(
-                        fieldName,
-                        cardReadOnly,
-                        idx === resolved.fields.length - 1,
-                        formCtx,
-                        translations,
-                        resolved.columnOverrides?.[fieldName],
-                    ),
-                );
+                // FieldRow handles its own context subscriptions (stable + state + values).
+                // Card itself does NOT rerender when values change.
+                content = resolved.fields.map((fieldName, idx) => (
+                    <FieldRow
+                        key={fieldName}
+                        fieldName={fieldName}
+                        cardReadOnly={cardReadOnly}
+                        isLast={idx === resolved.fields.length - 1}
+                        columnOverride={resolved.columnOverrides?.[fieldName]}
+                    />
+                ));
             }
         }
     } else {

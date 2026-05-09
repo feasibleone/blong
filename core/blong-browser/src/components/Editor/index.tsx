@@ -195,15 +195,20 @@ export function Editor({
         [schema?.properties],
     );
 
+    // Use functional state updates so this callback does not close over `lastTableFieldName`
+    // state — keeping a stable reference prevents unnecessary FormStableContext updates.
     const handleTableSelect = useCallback(
         (fieldName: string, selection: ITableSelection | null) => {
             // Skip navigator widget selections — they drive cascade filtering, not toolbar context
             if (!isTableWidget(fieldName)) return;
             setTableSelections(prev => ({...prev, [fieldName]: selection}));
-            if (selection) setLastTableFieldName(fieldName);
-            else if (lastTableFieldName === fieldName) setLastTableFieldName(null);
+            setLastTableFieldName(prev => {
+                if (selection) return fieldName;
+                if (prev === fieldName) return null;
+                return prev;
+            });
         },
-        [isTableWidget, lastTableFieldName],
+        [isTableWidget],
     );
 
     /** Template context derived from the most recent non-null table widget selection */
@@ -227,6 +232,24 @@ export function Editor({
             });
         },
         [layout],
+    );
+
+    // Stable onChange passed to Form so FormStableContext is not invalidated on every render.
+    // All state-setters are stable React refs — the dep array is intentionally empty.
+    const handleFormChange = useCallback((v: Record<string, unknown>) => {
+        setLocalValue(v);
+        setIsDirty(true);
+        setSavedSuccess(false);
+        setValidationHint(undefined);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Stable onLayoutChange callback for design mode.
+    const handleLayoutChange = useCallback(
+        (key: string, newLayout: FlatLayoutConfig) => {
+            setLocalLayouts(prev => ({...(prev ?? {}), [key]: newLayout as FlatLayoutConfig}));
+        },
+        [],
     );
 
     // Load action (skipped when static value is provided)
@@ -466,12 +489,7 @@ export function Editor({
                 layout={layout}
                 layouts={localLayouts}
                 value={entityValue}
-                onChange={v => {
-                    setLocalValue(v);
-                    setIsDirty(true);
-                    setSavedSuccess(false);
-                    setValidationHint(undefined);
-                }}
+                onChange={handleFormChange}
                 onSubmit={saveAction ? handleSubmit : undefined}
                 onTableSelect={handleTableSelect}
                 readOnly={
@@ -484,16 +502,7 @@ export function Editor({
                 serverErrors={serverErrors}
                 checkPermission={checkPermission}
                 dropdowns={dropdowns}
-                onLayoutChange={
-                    designMode
-                        ? (key, newLayout) => {
-                              setLocalLayouts(prev => ({
-                                  ...(prev ?? {}),
-                                  [key]: newLayout as FlatLayoutConfig,
-                              }));
-                          }
-                        : undefined
-                }
+                onLayoutChange={designMode ? handleLayoutChange : undefined}
                 rightPanel={designable ? <PropertyEditor /> : undefined}
             />
         </div>

@@ -37,7 +37,7 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import type {FlatLayoutConfig, IResolvedCard, IResolvedTab} from '../../hooks/useLayout.js';
 import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
 import {Card} from '../Card/index.js';
-import {useBlongForm} from '../Form/FormContext.js';
+import {useBlongForm, useBlongFormState} from '../Form/FormContext.js';
 
 export interface IDeckProps {
     id: string;
@@ -410,6 +410,7 @@ function RootDeck() {
 export function Deck({id, cardNames, hiddenCardNames, children, className}: IDeckProps) {
     const {active: isDesignMode} = useDesignMode();
     const formCtx = useBlongForm();
+    const formState = useBlongFormState();
 
     // Root layout mode: delegate to RootDeck when id='root', no cardNames, and FormContext has layout info
     if (id === 'root' && cardNames === undefined && formCtx?.layoutResult) {
@@ -423,7 +424,10 @@ export function Deck({id, cardNames, hiddenCardNames, children, className}: IDec
 
     if (cardNames !== undefined && formCtx) {
         // Context-driven mode — filter and render cards
-        const {cards, tableSelections, checkPermission, control, schema} = formCtx;
+        // tableSelections comes from FormStateContext (slow-changing) so Deck does not
+        // rerender on every keystroke — only when a row selection changes.
+        const {cards, checkPermission, control, schema} = formCtx;
+        const tableSelections = formState?.tableSelections ?? {};
 
         const visibleCards = cardNames.filter(name => {
             const resolved = cards[name];
