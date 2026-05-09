@@ -92,6 +92,22 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                                 action: `component/${subject}.${object}.open`,
                             },
                         },
+                        title: '',
+                        widget: {
+                            type: 'table',
+                            listAction: `${subject}.${object}.find`,
+                            keyField,
+                            selectionMode: 'single',
+                            columns: [nameField.split('.').pop()!],
+                            parent: '$.selected.navigator',
+                        },
+                    },
+                    navigator: {
+                        title: '',
+                        type: 'array',
+                        widget: {
+                            type: 'navigator',
+                        },
                     },
                 },
             },
@@ -100,13 +116,24 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                     label: objectTitle,
                     widgets: [nameField],
                 },
-                browse: {
-                    widgets: [nameField],
-                },
                 hidden: {
                     hidden: true,
                     label: 'Hidden fields',
                     widgets: [`${object}.${keyField}`],
+                },
+                navigator: {
+                    label: '',
+                    widgets: ['navigator'],
+                },
+                browse: {
+                    label: '',
+                    widgets: [object],
+                },
+                detail: {
+                    label: '',
+                    readOnly: true,
+                    watch: `$.selected.${object}`,
+                    widgets: [`$.edit.${object}.${nameField.split('.').pop()!}`],
                 },
             },
             browser: {
@@ -119,8 +146,29 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                     delete: `${subject}.${object}.remove`,
                 },
                 resultSet: object,
-                create: [{title: 'Create'}],
-                toolbar: [],
+                toolbar: [
+                    {
+                        label: 'Create',
+                        icon: 'pi pi-plus',
+                        action: `component/${subject}.${object}.new`,
+                        permission: `${subject}.${object}.add`,
+                    },
+                    {
+                        label: 'Edit',
+                        icon: 'pi pi-pencil',
+                        enabled: 'current' as const,
+                        method: `component/${subject}.${object}.open`,
+                        params: '${current}',
+                    },
+                    {
+                        label: 'Delete',
+                        icon: 'pi pi-trash',
+                        enabled: 'selected' as const,
+                        confirm: 'Delete selected record?',
+                        method: `${subject}.${object}.remove`,
+                        params: {[keyField]: '${' + keyField + '}'},
+                    },
+                ],
                 filter: {},
             },
             editor: {
@@ -132,6 +180,14 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             },
             layouts: {
                 edit: ['edit', 'hidden'],
+                browse: {
+                    type: 'split',
+                    panels: [
+                        {size: 20, minSize: 10, cards: ['navigator']},
+                        {size: 50, minSize: 30, cards: ['browse']},
+                        {size: 30, minSize: 15, cards: ['detail']},
+                    ],
+                },
             },
             methods: {
                 find: `${subject}.${object}.find`,

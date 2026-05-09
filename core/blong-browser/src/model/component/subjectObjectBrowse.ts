@@ -5,48 +5,28 @@ export async function subjectObjectBrowse(
     model: IResolvedModelSpec,
     blong: IHandlerProxy<unknown>,
 ) {
-    const {subject, object, browser, methods, keyField} = model;
+    const {subject, object, browser, cards, layouts} = model;
 
     return async () => ({
         title: browser.title,
         permission: browser.permission.browse,
         icon: browser.icon,
         component: async () => {
-            const [schemaOverride, {Explorer}] = await Promise.all([
+            const [schemaOverride, {Editor}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
-                import('../../components/Explorer/index.js'),
+                import('../../components/Editor/index.js'),
             ]);
 
             const schema = blong.lib.merge({}, model.schema, schemaOverride);
             function BrowsePage(props: Record<string, unknown>) {
-                const columns = (model.cards?.browse?.widgets).map(widget => {
-                    if (typeof widget === 'string') {
-                        const field = widget.split('.').pop()!;
-                        return {
-                            field,
-                            ...schema.properties?.[object]?.properties?.[field],
-                        };
-                    } else
-                        return {
-                            field: widget.name,
-                        };
-                });
-
-                return Explorer({
+                return Editor({
                     schema,
-                    columns,
-                    listAction: methods.find,
-                    selectionMode: 'single',
-                    keyField,
-                    toolbar: [
-                        {
-                            label: 'Create',
-                            icon: 'pi pi-plus',
-                            action: `component/${subject}.${object}.new`,
-                            permission: browser.permission.add,
-                        },
-                    ],
-                    toolbarRight: [],
+                    toolbar: browser.toolbar,
+                    cards,
+                    layouts,
+                    layout: 'browse',
+                    editable: false,
+                    editMode: false,
                     ...props,
                 });
             }

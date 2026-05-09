@@ -50,17 +50,88 @@ export default async function mock(
                 );
                 return {};
             },
-            async [`${subject}.${object}.find`](this: IAdapter<object, object>) {
+            async [`${subject}.${object}.find`](
+                this: IAdapter<object, object>,
+                {
+                    paging: {pageNumber, pageSize} = {pageNumber: 1, pageSize: 10},
+                    paging,
+                    orderBy,
+                    search,
+                    ...params
+                }: {
+                    paging?: {pageNumber: number; pageSize: number};
+                    orderBy?: (string | {field: string; dir: 'ASC' | 'DESC'})[];
+                    search?: string;
+                    [key: string]: unknown;
+                },
+            ) {
                 // console.log(`Generating find mock for ${subject}.${object}...`);
                 this.log?.info?.(
                     {
                         $meta: {method: `${subject}.${object}.find`},
+                        paging,
+                        orderBy,
+                        search,
+                        ...params,
                     },
                     'Mock find',
                 );
-                return structuredClone(await fixture(`${subject}.${object}`));
+                return structuredClone(await fixture(`${subject}.${object}`))
+                    .filter(item => {
+                        for (const [key, value] of Object.entries(params)) {
+                            if (item[key] !== value) return false;
+                        }
+                        if (search) {
+                            if (
+                                !Object.values(item).some(val =>
+                                    String(val).toLowerCase().includes(search.toLowerCase()),
+                                )
+                            )
+                                return false;
+                        }
+                        return true;
+                    })
+                    .sort((a, b) => {
+                        if (!orderBy) return 0;
+                        for (const order of orderBy) {
+                            const field = typeof order === 'string' ? order : order.field;
+                            const dir = typeof order === 'string' ? 'ASC' : order.dir;
+                            if (typeof a[field] === 'number' && typeof b[field] === 'number') {
+                                if (a[field] < b[field]) return dir === 'ASC' ? -1 : 1;
+                                if (a[field] > b[field]) return dir === 'ASC' ? 1 : -1;
+                            } else {
+                                const aStr = String(a[field]).toLowerCase();
+                                const bStr = String(b[field]).toLowerCase();
+                                if (aStr < bStr) return dir === 'ASC' ? -1 : 1;
+                                if (aStr > bStr) return dir === 'ASC' ? 1 : -1;
+                            }
+                        }
+                        return 0;
+                    })
+                    .slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
             },
             [`${subject}.${object}.get`]: get,
+            async [`${subject}.${object}.remove`](
+                this: IAdapter<object, object>,
+                {[keyField]: id, ...rest}: Record<string, unknown>,
+            ) {
+                this.log?.info?.(
+                    {
+                        [keyField]: id,
+                        ...rest,
+                        $meta: {method: `${subject}.${object}.remove`},
+                    },
+                    `Mock remove ${id}`,
+                );
+                const items = await fixture(`${subject}.${object}`);
+                const index = items.findIndex(item => item[keyField] === id);
+                if (index !== -1) {
+                    items.splice(index, 1);
+                    return {success: true};
+                } else {
+                    return {success: false, message: 'Item not found'};
+                }
+            },
             async [`${subject}.${object}.report`](
                 this: IAdapter<object, object>,
                 params: Record<string, unknown>,

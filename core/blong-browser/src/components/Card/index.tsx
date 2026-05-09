@@ -381,9 +381,11 @@ function renderWatchField(
         ? rawFieldName.split('.').pop()!
         : rawFieldName;
 
-    const itemsProps = schema?.properties?.[watchField]?.items?.properties as
-        | Record<string, IEnrichedFieldSchema>
-        | undefined;
+    const itemsProps =
+        schema?.properties?.[watchField]?.items?.properties ??
+        (schema?.properties?.[watchField]?.properties as
+            | Record<string, IEnrichedFieldSchema>
+            | undefined);
     const fieldSchema: IEnrichedFieldSchema | undefined =
         itemsProps?.[fieldName] ?? schema?.properties?.[fieldName];
     if (!fieldSchema) return null;

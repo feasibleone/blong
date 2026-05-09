@@ -1,3 +1,4 @@
+import {ActionButton} from '../components/ActionButton/index.js';
 import {
     Calendar,
     Checkbox,
@@ -29,6 +30,7 @@ const KEY = '__key';
 
 function resolveWidgetType(schema: IEnrichedFieldSchema): string {
     if (schema.widget?.type) return schema.widget.type;
+    if (schema.action) return 'action';
     if (schema.type === 'boolean') return 'boolean';
     if (schema.type === 'number') return 'number';
     if (schema.type === 'integer') return 'integer';
@@ -120,10 +122,26 @@ function renderBody(
     rowData: Row,
     cellId: string,
     options: DropdownOption[],
+    keyFieldName: string,
+    fieldSchema: IEnrichedFieldSchema,
 ): React.ReactNode {
     const value = rowData[field];
 
     switch (widgetType) {
+        case 'action':
+            return (
+                <ActionButton
+                    label={String(value)}
+                    className="p-button-link p-0"
+                    action={fieldSchema?.action}
+                    params={{
+                        [keyFieldName]: rowData[keyFieldName],
+                        id: rowData[keyFieldName],
+                        current: rowData,
+                    }}
+                />
+            );
+
         case 'password':
             return <span data-testid={cellId}>{value ? '*'.repeat(10) : ''}</span>;
         case 'dropdown': {
@@ -507,7 +525,7 @@ export function TableWidget({
     formValues,
     dropdowns,
 }: IWidgetProps) {
-    const cols = resolveColumns(schema.widget, schema.items);
+    const cols = resolveColumns(schema.widget, schema.items ?? schema);
     const colFields = cols.map(c => c.field);
     const tableId = id ?? name;
     const properties = schema.items?.properties as Record<string, IEnrichedFieldSchema> | undefined;
@@ -1048,7 +1066,15 @@ export function TableWidget({
                                         </span>
                                     );
                                 }
-                                return renderBody(widgetType, field, rowData, cellId, options);
+                                return renderBody(
+                                    widgetType,
+                                    field,
+                                    rowData,
+                                    cellId,
+                                    options,
+                                    keyFieldName,
+                                    fieldSchema,
+                                );
                             }}
                             editor={
                                 !isListMode && editable && !isBoolType

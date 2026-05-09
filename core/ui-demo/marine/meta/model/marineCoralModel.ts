@@ -27,19 +27,21 @@ export default model(
                                 discovered: {title: 'Discovered', widget: {type: 'date'}},
                                 description: {title: 'Description', widget: {type: 'textArea'}},
                             },
+                            widget: {
+                                master: {familyId: 'familyId'},
+                            },
+                        },
+                        navigator: {
+                            widget: {
+                                listAction: 'marine.family.find',
+                                keyField: 'familyId',
+                                // parentField: 'parentFamilyId',
+                                labelField: 'familyName',
+                            },
                         },
                     },
                 },
                 cards: {
-                    browse: {
-                        label: 'Coral',
-                        widgets: [
-                            'coral.coralName',
-                            'coral.familyName',
-                            'coral.habitatName',
-                            'coral.maxDepth',
-                        ],
-                    },
                     edit: {
                         label: 'Coral Details',
                         widgets: [
@@ -52,10 +54,6 @@ export default model(
                             'coral.description',
                         ],
                     },
-                },
-                browser: {
-                    title: 'Coral List',
-                    icon: 'pi pi-list',
                 },
             };
         },
