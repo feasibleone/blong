@@ -36,9 +36,10 @@ exports[`Explorer > renders DataView in grid layout mode 1`] = `
           class="blong-toolbar-right"
         >
           <button
-            class="p-button-text mr-2 p-button p-component p-button-icon-only"
+            class="p-button-text mr-2 p-button p-component p-button-icon-only p-disabled"
             data-pc-name="button"
             data-pc-section="root"
+            disabled=""
           >
             <span
               class="p-button-icon p-c pi pi-search"
@@ -96,11 +97,20 @@ exports[`Explorer > renders DataView in grid layout mode 1`] = `
         style="display: flex; flex-direction: column; height: 100%;"
       >
         <div
-          class="blong-explorer-dv p-dataview p-component p-dataview-grid"
+          class="blong-explorer-dv p-dataview p-component p-dataview-grid p-dataview-loading"
           data-pc-name="dataview"
           data-pc-section="root"
           style="flex: 1 1 0%; overflow: auto;"
         >
+          <div
+            class="p-dataview-loading-overlay p-component-overlay"
+            data-pc-section="loadingoverlay"
+          >
+            <span
+              class="p-dataview-loading-icon pi pi-spinner"
+              data-pc-section="loadingicon"
+            />
+          </div>
           <div
             class="p-dataview-content"
             data-pc-section="content"
@@ -108,14 +118,7 @@ exports[`Explorer > renders DataView in grid layout mode 1`] = `
             <div
               class="p-grid grid p-nogutter grid-nogutter"
               data-pc-section="grid"
-            >
-              <div
-                class="p-dataview-emptymessage"
-                data-pc-section="emptymessage"
-              >
-                No records found.
-              </div>
-            </div>
+            />
           </div>
         </div>
       </div>
@@ -982,22 +985,184 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
                 role=" rowgroup"
               >
                 <tr
-                  class="p-datatable-emptymessage"
-                  data-pc-section="emptymessage"
+                  aria-selected="false"
+                  class="p-selectable-row"
+                  data-p-highlight="false"
+                  data-p-highlight-contextmenu="false"
+                  data-p-selectable-row="true"
+                  data-pc-section="bodyrow"
                   role="row"
                 >
                   <td
-                    colspan="3"
+                    class="p-selection-column"
+                    data-p-cell-editing="false"
+                    data-p-editable-column="false"
+                    data-p-frozen-column="false"
+                    data-p-selectable-cell="false"
+                    data-p-selection-column="true"
+                    data-pc-name="datatable"
+                    data-pc-section="bodycell"
+                    role="cell"
+                    style="width: 40px;"
+                  >
+                    <div
+                      aria-checked="false"
+                      class="p-radiobutton p-component"
+                      data-p-checked="false"
+                      data-pc-name="radiobutton"
+                      data-pc-section="root"
+                      role="radio"
+                    >
+                      <input
+                        aria-checked="false"
+                        class="p-radiobutton-input"
+                        data-pc-section="input"
+                        name="pr_id_37_dt_radio"
+                        type="radio"
+                      />
+                      <div
+                        class="p-radiobutton-box"
+                        data-pc-section="box"
+                      >
+                        <div
+                          class="p-radiobutton-icon"
+                          data-pc-section="icon"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    data-p-cell-editing="false"
+                    data-p-editable-column="false"
+                    data-p-frozen-column="false"
+                    data-p-selectable-cell="false"
+                    data-p-selection-column="false"
                     data-pc-name="datatable"
                     data-pc-section="bodycell"
                     role="cell"
                   >
-                    No records found.
+                    file.txt
+                  </td>
+                  <td
+                    data-p-cell-editing="false"
+                    data-p-editable-column="false"
+                    data-p-frozen-column="false"
+                    data-p-selectable-cell="false"
+                    data-p-selection-column="false"
+                    data-pc-name="datatable"
+                    data-pc-section="bodycell"
+                    role="cell"
+                  >
+                    100
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
+        <div
+          class="blong-explorer-paginator"
+          style="display: flex; align-items: center; gap: 0.25rem; padding: 0.5rem; justify-content: center; user-select: none;"
+        >
+          <button
+            class="p-button-text p-button-sm p-button p-component p-button-icon-only p-disabled"
+            data-pc-name="button"
+            data-pc-section="root"
+            disabled=""
+          >
+            <span
+              class="p-button-icon p-c pi pi-angle-double-left"
+              data-pc-section="icon"
+            />
+            <span
+              class="p-button-label p-c"
+              data-pc-section="label"
+            >
+               
+            </span>
+          </button>
+          <button
+            class="p-button-text p-button-sm p-button p-component p-button-icon-only p-disabled"
+            data-pc-name="button"
+            data-pc-section="root"
+            disabled=""
+          >
+            <span
+              class="p-button-icon p-c pi pi-angle-left"
+              data-pc-section="icon"
+            />
+            <span
+              class="p-button-label p-c"
+              data-pc-section="label"
+            >
+               
+            </span>
+          </button>
+          <span
+            style="padding: 0px 0.5rem; font-size: 0.875rem;"
+          >
+            1
+             / 
+            1
+          </span>
+          <button
+            class="p-button-text p-button-sm p-button p-component p-button-icon-only p-disabled"
+            data-pc-name="button"
+            data-pc-section="root"
+            disabled=""
+          >
+            <span
+              class="p-button-icon p-c pi pi-angle-right"
+              data-pc-section="icon"
+            />
+            <span
+              class="p-button-label p-c"
+              data-pc-section="label"
+            >
+               
+            </span>
+          </button>
+          <button
+            class="p-button-text p-button-sm p-button p-component p-button-icon-only p-disabled"
+            data-pc-name="button"
+            data-pc-section="root"
+            disabled=""
+          >
+            <span
+              class="p-button-icon p-c pi pi-angle-double-right"
+              data-pc-section="icon"
+            />
+            <span
+              class="p-button-label p-c"
+              data-pc-section="label"
+            >
+               
+            </span>
+          </button>
+          <select
+            style="margin-left: 0.5rem; background: var(--surface-overlay); color: var(--text-color); border: 1px solid var(--surface-border); border-radius: var(--border-radius); padding: 0.2rem;"
+          >
+            <option
+              value="10"
+            >
+              10
+            </option>
+            <option
+              value="25"
+            >
+              25
+            </option>
+            <option
+              value="50"
+            >
+              50
+            </option>
+            <option
+              value="100"
+            >
+              100
+            </option>
+          </select>
         </div>
       </div>
     </div>

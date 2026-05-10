@@ -16,8 +16,14 @@ import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 import './index.css';
 
 import type {IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
-import React, {useCallback, useState, type ReactNode} from 'react';
-import {Controller} from 'react-hook-form';
+import React, {useCallback, useMemo, useState, type ReactNode} from 'react';
+import {
+    Controller,
+    useWatch,
+    type ControllerFieldState,
+    type ControllerRenderProps,
+    type UseFormStateReturn,
+} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
 import {SelectionIndicator} from '../../design/SelectionIndicator.js';
 import {useDesignable} from '../../design/useDesignable.js';
@@ -25,7 +31,7 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
-import {useBlongForm, type IFormContext, type ITableSelection} from '../Form/FormContext.js';
+import {useBlongForm, useBlongFormState, type ITableSelection} from '../Form/FormContext.js';
 import {Text} from '../Text/index.js';
 
 export interface ICardProps {
@@ -58,18 +64,17 @@ function DraggableFieldRow({
     cardName,
     isLast,
     cardReadOnly,
-    formCtx,
 }: {
     fieldName: string;
     cardName: string;
     isLast: boolean;
     cardReadOnly: boolean | undefined;
-    formCtx: IFormContext;
 }) {
     const {active: isDesignMode, selected, select} = useDesignMode();
-    const translations = useAppStore(s => s.translations);
+    // fieldLabel only needs schema (stable context) — no volatile context required.
+    const stableCtx = useBlongForm();
     const fieldId = `field:${fieldName}:${cardName}`;
-    const fieldSchema = formCtx.schema?.properties?.[fieldName];
+    const fieldSchema = stableCtx?.schema?.properties?.[fieldName];
     const fieldLabel = fieldSchema?.title ?? fieldName;
     const isSelected = selected?.id === fieldId;
 
@@ -111,7 +116,14 @@ function DraggableFieldRow({
         [isDesignMode, fieldId, fieldLabel, select],
     );
 
-    const fieldContent = renderField(fieldName, cardReadOnly, isLast, formCtx, translations);
+    // FieldRow handles its own context subscriptions (stable + state + values)
+    const fieldContent = (
+        <FieldRow
+            fieldName={fieldName}
+            cardReadOnly={cardReadOnly}
+            isLast={isLast}
+        />
+    );
 
     if (!isDesignMode) return fieldContent;
 
@@ -194,29 +206,48 @@ function setFieldValue(
 }
 
 /**
- * Read a react-hook-form FieldErrors value at a dot-notation path.
- * RHF stores nested errors as nested objects, not flat 'a.b' keys.
+ * FieldRow — renders a single field row controlled by react-hook-form.
+ *
+ * Subscribes to FormStateContext (slow) directly so that Card itself does not
+ * rerender every time a field value changes.  Only FieldRow instances rerender
+ * when their subscribed context changes.
+ *
+ * Error markup is rendered inside the Controller render callback using
+ * `fieldState.error`, so errors are always up-to-date without requiring a
+ * separate context subscription.
+ *
+ * All hooks are called unconditionally (before any early returns) to satisfy
+ * React's rules of hooks. `validationRules` and `renderController` are memoised
+ * so that Controller — which is React.memo'd internally by react-hook-form —
+ * can skip rerenders when neither the schema nor the field/form state has changed.
  */
-function getFieldError(
-    errors: Record<string, unknown>,
-    path: string,
-): {message?: string} | undefined {
-    const dot = path.indexOf('.');
-    if (dot === -1) return errors[path] as {message?: string} | undefined;
-    const head = path.slice(0, dot);
-    const tail = path.slice(dot + 1);
-    return getFieldError((errors[head] as Record<string, unknown>) ?? {}, tail);
-}
+function FieldRow({
+    fieldName,
+    cardReadOnly,
+    isLast,
+    columnOverride,
+}: {
+    fieldName: string;
+    cardReadOnly: boolean | undefined;
+    isLast: boolean;
+    columnOverride?: string[];
+}) {
+    // ── Context subscriptions (all unconditional) ──────────────────────────────
+    const stableCtx = useBlongForm();
+    const stateCtx = useBlongFormState();
+    const translations = useAppStore(s => s.translations);
 
-/** Render a single field controlled by react-hook-form. */
-function renderField(
-    fieldName: string,
-    cardReadOnly: boolean | undefined,
-    isLast: boolean,
-    ctx: IFormContext,
-    translations: Record<string, string>,
-    columnOverride?: string[],
-): React.ReactNode {
+    // Safe-extract with defaults so hook deps below never see undefined
+    const schema = stableCtx?.schema;
+    const control = stableCtx?.control;
+    const dropdowns = stableCtx?.dropdowns;
+    const onChange = stableCtx?.onChange;
+    const handleTableSelect = stableCtx?.handleTableSelect;
+    const getValues = stableCtx?.getValues;
+    const {readOnly: fieldDisabled = false, loading = false} = stateCtx ?? {};
+
+    // ── Pure derivations (no hooks) ────────────────────────────────────────────
+
     // Strip '#id' suffix (ICardWidgetEntry key) to get the real form field name
     const hashIdx = fieldName.indexOf('#');
     const baseName = hashIdx >= 0 ? fieldName.slice(0, hashIdx) : fieldName;
@@ -224,17 +255,7 @@ function renderField(
     //   - ICardWidgetEntry (e.g. 'table#table1') → 'table1'
     //   - nested field (e.g. 'input.password')  → 'input-password'
     const instanceId = hashIdx >= 0 ? fieldName.slice(hashIdx + 1) : baseName.replace(/\./g, '-');
-    const {
-        schema,
-        control,
-        errors,
-        formValues,
-        rawFormValues,
-        loading,
-        dropdowns,
-        onChange,
-        handleTableSelect,
-    } = ctx;
+
     const rawSchema: IEnrichedFieldSchema | undefined = resolveFieldSchema(schema, fieldName);
     const dropdownKey = rawSchema?.widget?.dropdown;
     const fieldSchema: IEnrichedFieldSchema | undefined =
@@ -256,23 +277,155 @@ function renderField(
                   widget: {...fieldSchema.widget, columns: columnOverride},
               } as IEnrichedFieldSchema)
             : fieldSchema;
-    if (!effectiveSchema) return null;
 
-    const WidgetComponent = widgetRegistry.get(resolveWidgetType(effectiveSchema));
-    if (!WidgetComponent) return null;
+    const WidgetComponent = effectiveSchema
+        ? widgetRegistry.get(resolveWidgetType(effectiveSchema))
+        : undefined;
 
     const schemaReadOnly =
-        cardReadOnly || effectiveSchema.readOnly || effectiveSchema.widget?.readOnly;
-    /** Transient disabled state (during save/load) — disables widget without changing its structure */
-    const fieldDisabled = ctx.readOnly;
+        cardReadOnly || effectiveSchema?.readOnly || effectiveSchema?.widget?.readOnly;
+
+    // Whether this field's widget reports table row selections (for onSelect wiring)
+    const needsOnSelect =
+        effectiveSchema?.widget?.selectionMode === 'single' ||
+        effectiveSchema?.widget?.type === 'navigator';
+
+    // ── Hooks that depend on derived values (still unconditional) ──────────────
+
+    // Memoize validation rules — effectiveSchema is derived from the stable context
+    // and fieldName, so it almost never changes during a user's editing session.
+    // Keeping it stable prevents Controller from seeing a new `rules` object on
+    // every FieldRow render.
+    const validationRules = useMemo(
+        () => (effectiveSchema ? buildValidationRules(effectiveSchema) : {}),
+        [effectiveSchema],
+    );
+
+    // Memoize the Controller render callback.
+    //
+    // Deps explanation:
+    //  - getValues is intentionally excluded — it is a stable function ref from
+    //    react-hook-form (same identity for the lifetime of the form) so including
+    //    it would only add noise without value.
+    //  - translations changes identity only on language switch (very rare) and is
+    //    included so the error message params reflect the current language.
+    //  - All other deps are derived from the stable context or slow state and
+    //    therefore change rarely.
+    //
+    // Because react-hook-form's Controller is wrapped with React.memo, a stable
+    // render reference allows Controller to skip its own rerender when the field's
+    // value hasn't changed (e.g. when another field is selected in a table).
+    //
+    // The render callback returns a fragment whose children become direct siblings
+    // inside the parent `div.field.grid`.  This allows the error <small> tags to
+    // participate in the grid layout (col-12 md:col-4 / col-12 md:col-8) exactly
+    // as they would if they were written inline in FieldRow's JSX, while still
+    // being driven by fieldState.error — which Controller keeps fresh automatically.
+    const renderController = useCallback(
+        ({
+            field,
+            fieldState,
+        }: {
+            field: ControllerRenderProps<Record<string, unknown>, string>;
+            fieldState: ControllerFieldState;
+            formState: UseFormStateReturn<Record<string, unknown>>;
+        }) => {
+            // Both are non-null here: FieldRow returns null before the <Controller>
+            // JSX if either is undefined (see early returns further below).
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const Widget = WidgetComponent!;
+            const hasLabel = effectiveSchema?.title !== '';
+            const error = fieldState.error;
+            return (
+                <>
+                    <div
+                        className={`flex align-items-center relative col-12${hasLabel ? ' md:col-8' : ''}`}
+                    >
+                        <Widget
+                            id={instanceId}
+                            name={baseName}
+                            schema={effectiveSchema!}
+                            value={field.value}
+                            onChange={(val: unknown) => {
+                                field.onChange(val);
+                                // getValues() reads the current RHF store at call time — no
+                                // stale closure, no context subscription required.
+                                onChange?.(
+                                    setFieldValue(
+                                        getValues!() as Record<string, unknown>,
+                                        baseName,
+                                        val,
+                                    ),
+                                );
+                            }}
+                            onBlur={field.onBlur}
+                            error={error}
+                            readOnly={schemaReadOnly}
+                            loading={loading}
+                            disabled={fieldDisabled}
+                            dropdowns={dropdowns}
+                            onSelect={needsOnSelect ? handleTableSelect : undefined}
+                        />
+                        {effectiveSchema?.description && (
+                            <small className="blong-field-hint">
+                                {effectiveSchema.description}
+                            </small>
+                        )}
+                    </div>
+                    {error && (
+                        <>
+                            <small className="col-12 md:col-4" />
+                            <small className="p-error blong-field-error col-12 md:col-8">
+                                <Text
+                                    params={{
+                                        field:
+                                            translations[effectiveSchema?.title ?? baseName] ??
+                                            effectiveSchema?.title ??
+                                            baseName,
+                                        minLength: effectiveSchema?.minLength ?? 0,
+                                        maxLength: effectiveSchema?.maxLength ?? 0,
+                                        minimum: effectiveSchema?.minimum ?? 0,
+                                        maximum: effectiveSchema?.maximum ?? 0,
+                                    }}
+                                >
+                                    {error.message ?? '{field} is invalid'}
+                                </Text>
+                            </small>
+                        </>
+                    )}
+                </>
+            );
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- getValues is excluded: stable ref, see comment above
+        [
+            WidgetComponent,
+            instanceId,
+            baseName,
+            effectiveSchema,
+            onChange,
+            schemaReadOnly,
+            loading,
+            fieldDisabled,
+            dropdowns,
+            needsOnSelect,
+            handleTableSelect,
+            translations,
+        ],
+    );
+
+    // ── Conditional returns — must be after all hooks (React rules-of-hooks) ────
+    // All hooks above are called unconditionally.  The hook computations are cheap
+    // (context reads, ref updates, useMemo with stable deps) so the cost of running
+    // them before bailing out is negligible compared to the benefit of keeping the
+    // hook call order stable across renders.
+    if (!stableCtx || !stateCtx) return null;
+    if (!effectiveSchema || !WidgetComponent) return null;
+
     const hasLabel = effectiveSchema.title !== '';
 
     if (loading) {
         return (
-            <div
-                key={fieldName}
-                className={`field grid${isLast ? ' mb-0' : ''}`}
-            >
+            <div className={`field grid${isLast ? ' mb-0' : ''}`}>
                 {hasLabel && (
                     <label className="col-12 md:col-4">
                         <Text>{effectiveSchema.title ?? baseName}</Text>
@@ -286,10 +439,7 @@ function renderField(
     }
 
     return (
-        <div
-            key={fieldName}
-            className={`field grid${isLast ? ' mb-0' : ''}`}
-        >
+        <div className={`field grid${isLast ? ' mb-0' : ''}`}>
             {hasLabel && (
                 <label
                     htmlFor={instanceId}
@@ -300,82 +450,52 @@ function renderField(
                     <Text>{effectiveSchema.title ?? baseName}</Text>
                 </label>
             )}
-            <div
-                className={`flex align-items-center relative col-12${hasLabel ? ' md:col-8' : ''}`}
-            >
-                <Controller
-                    name={baseName}
-                    control={control}
-                    rules={buildValidationRules(effectiveSchema)}
-                    render={({field, fieldState}) => (
-                        <WidgetComponent
-                            id={instanceId}
-                            name={baseName}
-                            schema={effectiveSchema}
-                            value={field.value}
-                            onChange={val => {
-                                field.onChange(val);
-                                onChange?.(setFieldValue(rawFormValues, baseName, val));
-                            }}
-                            onBlur={field.onBlur}
-                            error={fieldState.error}
-                            readOnly={schemaReadOnly}
-                            loading={loading}
-                            disabled={fieldDisabled}
-                            formValues={formValues}
-                            dropdowns={dropdowns}
-                            onSelect={
-                                effectiveSchema.widget?.selectionMode === 'single' ||
-                                effectiveSchema.widget?.type === 'navigator'
-                                    ? handleTableSelect
-                                    : undefined
-                            }
-                        />
-                    )}
-                />
-                {effectiveSchema.description && (
-                    <small className="blong-field-hint">{effectiveSchema.description}</small>
-                )}
-            </div>
-            {getFieldError(errors as Record<string, unknown>, baseName) && (
-                <>
-                    <small className="col-12 md:col-4" />
-                    <small className="p-error blong-field-error col-12 md:col-8">
-                        <Text
-                            params={{
-                                field:
-                                    translations[effectiveSchema.title ?? baseName] ??
-                                    effectiveSchema.title ??
-                                    baseName,
-                                minLength: effectiveSchema.minLength ?? 0,
-                                maxLength: effectiveSchema.maxLength ?? 0,
-                                minimum: effectiveSchema.minimum ?? 0,
-                                maximum: effectiveSchema.maximum ?? 0,
-                            }}
-                        >
-                            {getFieldError(errors as Record<string, unknown>, baseName)?.message ??
-                                '{field} is invalid'}
-                        </Text>
-                    </small>
-                </>
-            )}
+            <Controller
+                name={baseName}
+                control={control!}
+                rules={validationRules}
+                render={renderController}
+            />
         </div>
     );
 }
 
 /**
- * Render a single field for a watch (master-detail) card.
+ * WatchFieldRow — renders a single field from a master-detail (watch) card.
+ *
  * Reads from the selected table row and writes back via setValue.
+ * Subscribes to FormStateContext (slow) directly
+ * so that the parent Card component does not rerender when values change.
  */
-function renderWatchField(
-    rawFieldName: string,
-    isLast: boolean,
-    selection: ITableSelection,
-    watchField: string,
-    cardReadOnly: boolean | undefined,
-    ctx: IFormContext,
-): React.ReactNode {
-    const {schema, rawFormValues, formValues, setValue, onChange, handleTableSelect} = ctx;
+function WatchFieldRow({
+    rawFieldName,
+    isLast,
+    selection,
+    watchField,
+    cardReadOnly,
+}: {
+    rawFieldName: string;
+    isLast: boolean;
+    selection: ITableSelection;
+    watchField: string;
+    cardReadOnly: boolean | undefined;
+}) {
+    const stableCtx = useBlongForm();
+    const stateCtx = useBlongFormState();
+
+    // Subscribe only to the specific watched table field so this component
+    // rerenders only when that array changes — not on every keystroke in
+    // any other field.  disabled: !stableCtx?.control ensures we don't crash
+    // when the component is rendered outside a Form (defensive guard).
+    const watchedArray = useWatch({
+        control: stableCtx?.control,
+        name: watchField,
+        disabled: !stableCtx?.control,
+    }) as Record<string, unknown>[] | undefined;
+
+    if (!stableCtx || !stateCtx) return null;
+
+    const {schema, setValue, onChange, handleTableSelect, getValues} = stableCtx;
 
     const fieldName = rawFieldName.startsWith('$.edit.')
         ? rawFieldName.split('.').pop()!
@@ -394,19 +514,15 @@ function renderWatchField(
     if (!WidgetComponent) return null;
 
     const hasLabel = fieldSchema.title !== '';
-    const arr = rawFormValues[watchField] as Record<string, unknown>[] | undefined;
     // For listAction tables the form array is empty; fall back to the selection row directly
-    const hasFormData = Array.isArray(arr) && arr.length > selection.index;
+    const hasFormData = Array.isArray(watchedArray) && watchedArray.length > selection.index;
     const currentVal = hasFormData
-        ? (arr as Record<string, unknown>[])[selection.index]?.[fieldName]
+        ? (watchedArray as Record<string, unknown>[])[selection.index]?.[fieldName]
         : selection.row?.[fieldName];
     const widgetKey = `${fieldName}-${selection.index}-${String(currentVal)}`;
 
     return (
-        <div
-            key={fieldName}
-            className={`field grid${isLast ? ' mb-0' : ''}`}
-        >
+        <div className={`field grid${isLast ? ' mb-0' : ''}`}>
             {hasLabel && (
                 <label
                     htmlFor={fieldName}
@@ -426,13 +542,15 @@ function renderWatchField(
                     onChange={newVal => {
                         if (hasFormData) {
                             // Form-owned mode: update react-hook-form value
-                            const current = [...(arr as Record<string, unknown>[])];
+                            const current = [...(watchedArray as Record<string, unknown>[])];
                             current[selection.index] = {
                                 ...(current[selection.index] ?? {}),
                                 [fieldName]: newVal,
                             };
                             setValue(watchField, current);
-                            onChange?.({...rawFormValues, [watchField]: current});
+                            // getValues() includes the just-set value because setValue
+                            // updates the internal RHF store synchronously.
+                            onChange?.({...getValues(), [watchField]: current});
                         } else {
                             // listAction mode: update tableSelections.row so detail re-renders
                             const updatedRow = {...selection.row, [fieldName]: newVal};
@@ -444,7 +562,6 @@ function renderWatchField(
                     }}
                     onBlur={() => {}}
                     readOnly={cardReadOnly || fieldSchema.readOnly || fieldSchema.widget?.readOnly}
-                    formValues={formValues}
                 />
             </div>
         </div>
@@ -470,9 +587,10 @@ export function Card({
     const {active: isDesignMode} = useDesignMode();
     const elementId = id ?? (cardName ? `card-${cardName}` : 'card');
 
+    // Subscribe to stable context (schema, cards) and slow-changing state (tableSelections, loading).
     const formCtx = useBlongForm();
+    const formState = useBlongFormState();
     const resolved = cardName && formCtx ? formCtx.cards[cardName] : undefined;
-    const translations = useAppStore(s => s.translations);
 
     // When cardName is active, prefer resolved values over explicit props
     const resolvedTitle: string | ReactNode | undefined = resolved ? resolved.label : title;
@@ -489,7 +607,8 @@ export function Card({
         },
     );
     const resolvedCollapsible = resolved ? resolved.config.collapsible : collapsible;
-    const resolvedLoading = resolved ? formCtx!.loading : loading;
+    // loading and readOnly come from FormStateContext (slow).
+    const resolvedLoading = resolved ? (formState?.loading ?? false) : loading;
     const cardReadOnly = resolved ? resolved.config.readOnly : readOnly;
 
     // Build content
@@ -506,18 +625,20 @@ export function Card({
                 const watchField = rawWatch.startsWith('$.selected.')
                     ? rawWatch.slice('$.selected.'.length)
                     : rawWatch;
-                const selection = formCtx.tableSelections[watchField] ?? null;
+                // tableSelections comes from FormStateContext (slow) — Card rerenders only on
+                // row selection events, not on every field-value change.
+                const selection = (formState?.tableSelections ?? {})[watchField] ?? null;
                 content = selection ? (
-                    resolved.fields.map((rawFieldName, idx) =>
-                        renderWatchField(
-                            rawFieldName,
-                            idx === resolved.fields.length - 1,
-                            selection,
-                            watchField,
-                            cardReadOnly,
-                            formCtx,
-                        ),
-                    )
+                    resolved.fields.map((rawFieldName, idx) => (
+                        <WatchFieldRow
+                            key={rawFieldName}
+                            rawFieldName={rawFieldName}
+                            isLast={idx === resolved.fields.length - 1}
+                            selection={selection}
+                            watchField={watchField}
+                            cardReadOnly={cardReadOnly}
+                        />
+                    ))
                 ) : (
                     <span className="p-text-secondary text-sm">Select a row to see details</span>
                 );
@@ -529,20 +650,20 @@ export function Card({
                         cardName={cardName!}
                         isLast={idx === resolved.fields.length - 1}
                         cardReadOnly={cardReadOnly}
-                        formCtx={formCtx}
                     />
                 ));
             } else {
-                content = resolved.fields.map((fieldName, idx) =>
-                    renderField(
-                        fieldName,
-                        cardReadOnly,
-                        idx === resolved.fields.length - 1,
-                        formCtx,
-                        translations,
-                        resolved.columnOverrides?.[fieldName],
-                    ),
-                );
+                // FieldRow handles its own context subscriptions (stable + state).
+                // Card itself does NOT rerender when values change.
+                content = resolved.fields.map((fieldName, idx) => (
+                    <FieldRow
+                        key={fieldName}
+                        fieldName={fieldName}
+                        cardReadOnly={cardReadOnly}
+                        isLast={idx === resolved.fields.length - 1}
+                        columnOverride={resolved.columnOverrides?.[fieldName]}
+                    />
+                ));
             }
         }
     } else {

@@ -30,14 +30,14 @@ import {
     type DragEndEvent,
 } from '@dnd-kit/core';
 import type {ICardConfig} from '@feasibleone/blong';
-import React, {useState, type ReactNode} from 'react';
+import React, {memo, useMemo, useState, type ReactNode} from 'react';
 import {Controller} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import type {FlatLayoutConfig, IResolvedCard, IResolvedTab} from '../../hooks/useLayout.js';
 import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
 import {Card} from '../Card/index.js';
-import {useBlongForm} from '../Form/FormContext.js';
+import {useBlongForm, useBlongFormState} from '../Form/FormContext.js';
 
 export interface IDeckProps {
     id: string;
@@ -85,7 +85,15 @@ function TabContent({
 
 // ── Root layout mode ──────────────────────────────────────────────────────────
 
-function RootDeck() {
+/**
+ * RootDeck — renders the top-level layout grid (flat, tabs, steps, split).
+ *
+ * Wrapped with React.memo so it does not rerender when the parent Deck rerenders
+ * due to FormStateContext changes (e.g. row selection).  RootDeck's own subscription
+ * to the stable FormContext will still trigger a rerender when schema or layout
+ * actually changes.
+ */
+const RootDeck = memo(function RootDeck() {
     const formCtx = useBlongForm();
     // Safety guard: RootDeck is only rendered by Deck when FormContext is present
     if (!formCtx?.layoutResult) return null;
@@ -363,14 +371,24 @@ function RootDeck() {
         }
     };
 
-    const gridContent = (
-        <div className="grid col align-self-start max-w-screen">
-            {rows.map((columnCards, colIdx) => {
+    // Memoize the per-column card split so child Deck components receive stable
+    // array references when rows/cards haven't changed, preventing unnecessary rerenders.
+    const columnDecks = useMemo(
+        () =>
+            rows.map(columnCards => {
                 const hiddenCards = columnCards.filter(name => cards[name]?.config.hidden);
                 const nonHiddenCards = columnCards.filter(name => !cards[name]?.config.hidden);
-                if (!nonHiddenCards.length && !hiddenCards.length) return null;
                 const firstCard = nonHiddenCards[0] ? cards[nonHiddenCards[0]] : undefined;
                 const colClass = firstCard?.config.className ?? 'col-12 xl:col-6';
+                return {hiddenCards, nonHiddenCards, colClass};
+            }),
+        [rows, cards],
+    );
+
+    const gridContent = (
+        <div className="grid col align-self-start max-w-screen">
+            {columnDecks.map(({hiddenCards, nonHiddenCards, colClass}, colIdx) => {
+                if (!nonHiddenCards.length && !hiddenCards.length) return null;
                 return (
                     <Deck
                         key={colIdx}
@@ -403,13 +421,14 @@ function RootDeck() {
         );
     }
     return gridContent;
-}
+});
 
 // ── Main Deck export ──────────────────────────────────────────────────────────
 
 export function Deck({id, cardNames, hiddenCardNames, children, className}: IDeckProps) {
     const {active: isDesignMode} = useDesignMode();
     const formCtx = useBlongForm();
+    const formState = useBlongFormState();
 
     // Root layout mode: delegate to RootDeck when id='root', no cardNames, and FormContext has layout info
     if (id === 'root' && cardNames === undefined && formCtx?.layoutResult) {
@@ -423,7 +442,10 @@ export function Deck({id, cardNames, hiddenCardNames, children, className}: IDec
 
     if (cardNames !== undefined && formCtx) {
         // Context-driven mode — filter and render cards
-        const {cards, tableSelections, checkPermission, control, schema} = formCtx;
+        // tableSelections comes from FormStateContext (slow-changing) so Deck does not
+        // rerender on every keystroke — only when a row selection changes.
+        const {cards, checkPermission, control, schema} = formCtx;
+        const tableSelections = formState?.tableSelections ?? {};
 
         const visibleCards = cardNames.filter(name => {
             const resolved = cards[name];

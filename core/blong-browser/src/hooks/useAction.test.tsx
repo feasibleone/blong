@@ -32,7 +32,7 @@ beforeEach(() => {
 describe('useAction — no action registered (direct dispatch)', () => {
     it('returns call and open functions', () => {
         const dispatch = vi.fn().mockResolvedValue({});
-        const {result} = renderHook(() => useAction('some.method'), {
+        const {result} = renderHook(() => useAction('component/some.method'), {
             wrapper: makeWrapper(dispatch),
         });
         expect(typeof result.current.call).toBe('function');
@@ -48,7 +48,7 @@ describe('useAction — no action registered (direct dispatch)', () => {
         await act(async () => {
             await result.current.call({name: 'test'});
         });
-        expect(dispatch).toHaveBeenCalledWith('component/entity.add', {name: 'test'});
+        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'test'});
     });
 });
 
@@ -152,7 +152,7 @@ describe('useAction — page action', () => {
         await act(async () => {
             await result.current.open({param: 'value'});
         });
-        expect(dispatch).toHaveBeenCalledWith('component/unregistered.action', {param: 'value'});
+        expect(dispatch).toHaveBeenCalledWith('unregistered.action', {param: 'value'});
     });
 });
 

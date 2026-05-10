@@ -6,7 +6,7 @@
  * Driven by react-hook-form internally; publishes flattened values via onChange/onSubmit.
  *
  * Form's responsibilities:
- *  - react-hook-form setup (control, errors, reset, watch)
+ *  - react-hook-form setup (control, errors, reset, getValues)
  *  - Table-row selection state (for master-detail / watch cards)
  *  - Provides FormContext so Deck and Card can render without prop-drilling
  *
@@ -23,7 +23,11 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Deck} from '../Deck/index.js';
-import {FormContext, type ITableSelection} from './FormContext.js';
+import {
+    FormContext,
+    FormStateContext,
+    type ITableSelection,
+} from './FormContext.js';
 
 // DevTool is in devDependencies — load it lazily so the package builds correctly when
 // devDependencies are absent (production / downstream package consumers).
@@ -169,25 +173,12 @@ export function Form({
         handleSubmit,
         reset,
         setError,
-        watch,
+        getValues,
         setValue,
-        formState: {errors},
     } = useForm<Record<string, unknown>>({
-        defaultValues: value ?? {},
+        // defaultValues: value ?? {},
         mode: 'onBlur',
     });
-
-    const rawFormValues = watch();
-
-    /**
-     * Extended form values — includes raw form values plus table selections.
-     * Table selections are stored under __sel_{fieldName} so cascaded dropdowns
-     * and watch/match cards can react to row selection.
-     */
-    const formValues: Record<string, unknown> = {
-        ...rawFormValues,
-        ...Object.fromEntries(Object.entries(tableSelections).map(([k, v]) => [`__sel_${k}`, v])),
-    };
 
     // Sync external value changes (e.g. after fetch)
     useEffect(() => {
@@ -221,61 +212,93 @@ export function Form({
 
     const {debug} = useBlongUi();
 
+    // ── Memoised context values ────────────────────────────────────────────────
+    //
+    // Stable context: values here almost never change during an edit session.
+    // Keeping them separate means Card and Deck do not rerender while the user types.
+    //
+    // `control` and `setValue` are stable object refs returned by react-hook-form's
+    // `useForm`; they never change identity across re-renders and are intentionally
+    // omitted from the dependency array to avoid unnecessary useMemo invalidations.
+    // `onChange` and `handleTableSelect` are stabilised at the Editor level via
+    // `useCallback` so they too remain stable throughout the form's lifetime.
+    const stableContextValue = useMemo(
+        () => ({
+            schema: effectiveSchema,
+            cards,
+            control,
+            dropdowns,
+            onChange,
+            handleTableSelect,
+            setValue,
+            getValues,
+            checkPermission,
+            layoutResult,
+            layout,
+            formId,
+            onLayoutChange,
+        }),
+        // control, setValue and getValues are excluded: see comment above.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            effectiveSchema,
+            cards,
+            dropdowns,
+            onChange,
+            handleTableSelect,
+            checkPermission,
+            layoutResult,
+            layout,
+            formId,
+            onLayoutChange,
+        ],
+    );
+
+    // Slow-changing state: changes on user actions (row selection, save, edit toggle)
+    // but NOT on every keystroke.
+    const stateContextValue = useMemo(
+        () => ({tableSelections, readOnly, loading}),
+        [tableSelections, readOnly, loading],
+    );
+
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).
     // The root Deck reads layoutResult, layout, formId, and onLayoutChange from FormContext.
-    return (
-        <FormContext
-            value={{
-                schema: effectiveSchema,
-                cards,
-                control,
-                errors,
-                rawFormValues,
-                formValues,
-                readOnly,
-                loading,
-                dropdowns,
-                onChange,
-                tableSelections,
-                handleTableSelect,
-                setValue,
-                checkPermission,
-                layoutResult,
-                layout,
-                formId,
-                onLayoutChange,
-            }}
+    const formBody = rightPanel ? (
+        <div className="blong-form-layout">
+            <form
+                id={formId}
+                onSubmit={handleSubmit(handleFormSubmit, handleFormInvalid)}
+                className="blong-form"
+                noValidate
+            >
+                <Deck id="root" />
+            </form>
+            {rightPanel}
+        </div>
+    ) : (
+        <form
+            id={formId}
+            onSubmit={handleSubmit(handleFormSubmit, handleFormInvalid)}
+            className="blong-form"
+            noValidate
         >
-            {debug ? (
-                <Suspense fallback={null}>
-                    <DevTool
-                        control={control}
-                        placement="top-right"
-                    />
-                </Suspense>
-            ) : null}
-            {rightPanel ? (
-                <div className="blong-form-layout">
-                    <form
-                        id={formId}
-                        onSubmit={handleSubmit(handleFormSubmit, handleFormInvalid)}
-                        className="blong-form"
-                        noValidate
-                    >
-                        <Deck id="root" />
-                    </form>
-                    {rightPanel}
-                </div>
-            ) : (
-                <form
-                    id={formId}
-                    onSubmit={handleSubmit(handleFormSubmit, handleFormInvalid)}
-                    className="blong-form"
-                    noValidate
-                >
-                    <Deck id="root" />
-                </form>
-            )}
+            <Deck id="root" />
+        </form>
+    );
+
+    return (
+        <FormContext value={stableContextValue}>
+            <FormStateContext value={stateContextValue}>
+                {debug ? (
+                    <Suspense fallback={null}>
+                        <DevTool
+                            control={control}
+                            placement="top-right"
+                        />
+                    </Suspense>
+                ) : null}
+                {formBody}
+            </FormStateContext>
         </FormContext>
     );
 }

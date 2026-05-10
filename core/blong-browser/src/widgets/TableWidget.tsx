@@ -21,6 +21,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/index.js';
 import {Text} from '../components/Text/index.js';
 import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlongFormState} from '../components/Form/FormContext.js';
 import {dateIn, dateOut} from './DateWidget.js';
 
 type Row = Record<string, unknown>;
@@ -522,7 +523,6 @@ export function TableWidget({
     readOnly,
     disabled,
     onSelect,
-    formValues,
     dropdowns,
 }: IWidgetProps) {
     const cols = resolveColumns(schema.widget, schema.items ?? schema);
@@ -557,11 +557,16 @@ export function TableWidget({
 
     const {dispatch} = useBlongUi();
 
+    // Subscribe to table selections from FormStateContext (slow-changing — only updates on
+    // row selection events, never on keystrokes).  Falls back gracefully to undefined when
+    // TableWidget is used outside a Form (e.g. in standalone stories / tests).
+    const formState = useBlongFormState();
+
     // ── Cascaded table filtering ───────────────────────────────────────────
     const parentFieldName = resolveParentField(schema.widget?.parent);
     const masterMapping = schema.widget?.master;
     const parentSelection = parentFieldName
-        ? (formValues?.['__sel_' + parentFieldName] as
+        ? (formState?.tableSelections[parentFieldName] as
               | {row: Record<string, unknown>; index: number}
               | null
               | undefined)
