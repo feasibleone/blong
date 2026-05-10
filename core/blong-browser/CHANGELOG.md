@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.3.0...blong-browser-v1.3.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* avoid re-rendering ([183b718](https://github.com/feasibleone/blong/commit/183b718451e8166fa85bd1258ae62ede474db3d1))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.2.1...blong-browser-v1.3.0) (2026-05-09)
 
 

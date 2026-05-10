@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.2](https://github.com/feasibleone/blong/compare/blong-v1.18.1...blong-v1.18.2) (2026-05-10)
+
+
+### Bug Fixes
+
+* avoid re-rendering ([183b718](https://github.com/feasibleone/blong/commit/183b718451e8166fa85bd1258ae62ede474db3d1))
+
 ## [1.18.1](https://github.com/feasibleone/blong/compare/blong-v1.18.0...blong-v1.18.1) (2026-05-09)
 
 
