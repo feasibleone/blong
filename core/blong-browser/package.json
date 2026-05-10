@@ -66,7 +66,6 @@
     },
     "devDependencies": {
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
-        "@hookform/devtools": "^4.4.0",
         "@storybook/addon-a11y": "^10.3.5",
         "@storybook/addon-docs": "^10.3.5",
         "@storybook/react-vite": "^10.3.5",

@@ -254,6 +254,59 @@
     word-break: break-all;
 }
 
+/* ── Form Inspector (debug mode) ── */
+.blong-inspector .blong-property-editor__title {
+    display: flex;
+    align-items: center;
+}
+
+.blong-inspector__icon {
+    margin-right: 0.4rem;
+}
+
+.blong-inspector__section {
+    margin-bottom: 0.5rem;
+}
+
+.blong-inspector__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.25rem 0;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    text-align: left;
+    border-radius: 0.2rem;
+}
+
+.blong-inspector__toggle:hover {
+    color: var(--text-color);
+}
+
+.blong-inspector__chevron {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.blong-inspector__body {
+    margin-top: 0.2rem;
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 0.75rem;
+}
+
+.blong-inspector__body .blong-json {
+    font-size: 0.72rem;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 /* Design-mode toolbar buttons group */
 .blong-design-toolbar {
     display: inline-flex;
