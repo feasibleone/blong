@@ -19,16 +19,11 @@ import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '@feasible
 import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
 import {useBlongUi} from '../../context/BlongUiContext.js';
-import {useDesignMode} from '../../design/useDesignMode.js';
-import {FormInspector} from '../../design/FormInspector.js';
+import {FormInspector, useDesignMode} from '../../design/index.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Deck} from '../Deck/index.js';
-import {
-    FormContext,
-    FormStateContext,
-    type ITableSelection,
-} from './FormContext.js';
+import {FormContext, FormStateContext, type ITableSelection} from './FormContext.js';
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -165,14 +160,9 @@ export function Form({
         [onTableSelect],
     );
 
-    const {
-        control,
-        handleSubmit,
-        reset,
-        setError,
-        getValues,
-        setValue,
-    } = useForm<Record<string, unknown>>({
+    const {control, handleSubmit, reset, setError, getValues, setValue} = useForm<
+        Record<string, unknown>
+    >({
         // defaultValues: value ?? {},
         mode: 'onBlur',
     });
@@ -267,7 +257,9 @@ export function Form({
             {rightPanel}
             <FormInspector />
         </>
-    ) : rightPanel;
+    ) : (
+        rightPanel
+    );
 
     const formBody = effectiveRightPanel ? (
         <div className="blong-form-layout">
@@ -294,9 +286,7 @@ export function Form({
 
     return (
         <FormContext value={stableContextValue}>
-            <FormStateContext value={stateContextValue}>
-                {formBody}
-            </FormStateContext>
+            <FormStateContext value={stateContextValue}>{formBody}</FormStateContext>
         </FormContext>
     );
 }
