@@ -240,8 +240,6 @@ export interface IWidgetProps {
     readOnly?: boolean;
     loading?: boolean;
     disabled?: boolean;
-    /** All current form values — enables inter-widget reactivity (cascaded dropdowns etc.) */
-    formValues?: Record<string, unknown>;
     /**
      * Called by table widgets when a row is selected (selectionMode: 'single').
      * Passes null when the selection is cleared.

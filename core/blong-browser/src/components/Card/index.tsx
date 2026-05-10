@@ -261,7 +261,6 @@ function FieldRow({
     const handleTableSelect = stableCtx?.handleTableSelect;
     const {readOnly: fieldDisabled = false, loading = false} = stateCtx ?? {};
     const {
-        formValues = {} as Record<string, unknown>,
         rawFormValues = {} as Record<string, unknown>,
         errors = {},
     } = valuesCtx ?? {};
@@ -333,8 +332,9 @@ function FieldRow({
     // Deps explanation:
     //  - rawFormValues is intentionally excluded — read via rawFormValuesRef so the
     //    callback stays stable even when unrelated fields are being typed into.
-    //  - formValues IS included because widgets need it for cascade-dropdown
-    //    filtering; cascade options must update when a parent field changes.
+    //  - formValues is no longer passed to widgets; cascaded widgets subscribe to
+    //    their specific parent field directly (DropdownWidget via useWatch, TableWidget
+    //    via useBlongFormState).
     //  - All other deps are derived from the stable context or slow state and
     //    therefore change rarely.
     //
@@ -370,7 +370,6 @@ function FieldRow({
                     readOnly={schemaReadOnly}
                     loading={loading}
                     disabled={fieldDisabled}
-                    formValues={formValues}
                     dropdowns={dropdowns}
                     onSelect={needsOnSelect ? handleTableSelect : undefined}
                 />
@@ -386,7 +385,6 @@ function FieldRow({
             schemaReadOnly,
             loading,
             fieldDisabled,
-            formValues,
             dropdowns,
             needsOnSelect,
             handleTableSelect,
@@ -496,7 +494,7 @@ function WatchFieldRow({
     if (!stableCtx || !stateCtx || !valuesCtx) return null;
 
     const {schema, setValue, onChange, handleTableSelect} = stableCtx;
-    const {rawFormValues, formValues} = valuesCtx;
+    const {rawFormValues} = valuesCtx;
 
     const fieldName = rawFieldName.startsWith('$.edit.')
         ? rawFieldName.split('.').pop()!
@@ -562,7 +560,6 @@ function WatchFieldRow({
                     }}
                     onBlur={() => {}}
                     readOnly={cardReadOnly || fieldSchema.readOnly || fieldSchema.widget?.readOnly}
-                    formValues={formValues}
                 />
             </div>
         </div>

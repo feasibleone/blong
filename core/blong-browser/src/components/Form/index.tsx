@@ -184,23 +184,6 @@ export function Form({
 
     const rawFormValues = watch();
 
-    /**
-     * Extended form values — includes raw form values plus table selections.
-     * Table selections are stored under __sel_{fieldName} so cascaded dropdowns
-     * and watch/match cards can react to row selection.
-     * Memoised so FormValuesContext only changes when the actual values change,
-     * not on every unrelated Form re-render.
-     */
-    const formValues = useMemo<Record<string, unknown>>(
-        () => ({
-            ...rawFormValues,
-            ...Object.fromEntries(
-                Object.entries(tableSelections).map(([k, v]) => [`__sel_${k}`, v]),
-            ),
-        }),
-        [rawFormValues, tableSelections],
-    );
-
     // Sync external value changes (e.g. after fetch)
     useEffect(() => {
         if (value !== undefined) reset(value);
@@ -287,8 +270,8 @@ export function Form({
     // this memo will always invalidate when any field changes.  That is intentional:
     // only FieldRow / WatchFieldRow subscribe here, keeping rerenders scoped.
     const valuesContextValue = useMemo(
-        () => ({rawFormValues, formValues, errors}),
-        [rawFormValues, formValues, errors],
+        () => ({rawFormValues, errors}),
+        [rawFormValues, errors],
     );
 
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).

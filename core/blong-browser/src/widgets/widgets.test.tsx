@@ -4,7 +4,9 @@
  */
 import type {IWidgetProps} from '@feasibleone/blong';
 import {describe, expect, it, vi} from 'vitest';
+import React from 'react';
 import {fireEvent, render} from '../test/render.js';
+import {FormStateContext} from '../components/Form/FormContext.js';
 
 import {BooleanWidget} from './BooleanWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
@@ -35,7 +37,6 @@ type WidgetProps = {
     error?: string;
     readOnly?: boolean;
     disabled?: boolean;
-    formValues?: Record<string, unknown>;
     onSelect?: (fieldName: string, selection: unknown) => void;
 };
 
@@ -613,27 +614,33 @@ describe('TableWidget — listAction mode', () => {
 
     it('includes parent cascade filter in dispatch call when parent selection is set', () => {
         const dispatch = vi.fn().mockResolvedValue({items: []});
-        const formValues = {
-            __sel_category: {row: {id: 99, name: 'Reef'}, index: 0},
-        };
         render(
-            <TableWidget
-                {...mkProps({
-                    schema: {
-                        widget: {
-                            type: 'table',
-                            listAction: 'coralFind',
-                            keyField: 'id',
-                            selectionMode: 'single',
-                            columns: ['name'],
-                            parent: '$.selected.category',
-                            master: {categoryId: 'id'},
-                        },
+            <FormStateContext
+                value={{
+                    tableSelections: {
+                        category: {row: {id: 99, name: 'Reef'}, index: 0},
                     },
-                    value: undefined,
-                    formValues,
-                })}
-            />,
+                    readOnly: false,
+                    loading: false,
+                }}
+            >
+                <TableWidget
+                    {...mkProps({
+                        schema: {
+                            widget: {
+                                type: 'table',
+                                listAction: 'coralFind',
+                                keyField: 'id',
+                                selectionMode: 'single',
+                                columns: ['name'],
+                                parent: '$.selected.category',
+                                master: {categoryId: 'id'},
+                            },
+                        },
+                        value: undefined,
+                    })}
+                />
+            </FormStateContext>,
             {dispatch},
         );
         expect(dispatch).toHaveBeenCalledWith(

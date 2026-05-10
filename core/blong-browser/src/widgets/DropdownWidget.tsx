@@ -1,8 +1,10 @@
 import {Dropdown} from '../primereact/index.js';
 
 import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
-import {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
+import {useWatch, type Control} from 'react-hook-form';
 import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlongForm} from '../components/Form/FormContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
@@ -16,7 +18,12 @@ function toOptions(data: unknown): SelectOption[] {
     }));
 }
 
-export function DropdownWidget({
+/**
+ * Core rendering logic for DropdownWidget.
+ * Receives `parentValue` already resolved — either from `useWatch` (inside a Form)
+ * or `undefined` (standalone / no cascade needed).
+ */
+function DropdownCore({
     id,
     name,
     schema,
@@ -26,8 +33,8 @@ export function DropdownWidget({
     error,
     readOnly,
     disabled,
-    formValues,
-}: IWidgetProps) {
+    parentValue,
+}: IWidgetProps & {parentValue: unknown}) {
     const {
         fetch: fetchAction,
         options: staticOptions,
@@ -35,7 +42,7 @@ export function DropdownWidget({
         parent,
     } = schema.widget ?? {};
     const {dispatch} = useBlongUi();
-    const parentValue = parent ? formValues?.[parent] : undefined;
+
     const [options, setOptions] = useState<SelectOption[]>(
         staticOptions ? toOptions(staticOptions) : [],
     );
@@ -129,6 +136,61 @@ export function DropdownWidget({
             showClear={!schema.required}
             filter={visibleOptions.length > 8}
             placeholder={schema.placeholder ?? 'Select…'}
+        />
+    );
+}
+
+/**
+ * Connected variant — uses `useWatch` to subscribe only to the specific parent field.
+ * This component is only rendered when inside a Form that has a `control` and a `parent`
+ * field is configured.  It re-renders only when the parent field value changes, not on
+ * every keystroke in any other field.
+ */
+function ConnectedDropdown({
+    parentFieldName,
+    control,
+    ...props
+}: IWidgetProps & {
+    parentFieldName: string;
+    control: Control<Record<string, unknown>>;
+}) {
+    const parentValue = useWatch({control, name: parentFieldName});
+    return (
+        <DropdownCore
+            {...props}
+            parentValue={parentValue}
+        />
+    );
+}
+
+/**
+ * DropdownWidget — wraps PrimeReact Dropdown with cascade-filtering support.
+ *
+ * When a `parent` field is configured in the schema and the widget is rendered inside
+ * a Form, it delegates to `ConnectedDropdown` which subscribes only to that specific
+ * parent field via `useWatch`.  This means the dropdown only rerenders when the parent
+ * field changes — not on every keystroke in any field.
+ *
+ * When used standalone (no Form context / no parent), rendering is handled directly.
+ */
+export function DropdownWidget(props: IWidgetProps) {
+    const formCtx = useBlongForm();
+    const parent = props.schema.widget?.parent;
+
+    if (formCtx?.control && parent) {
+        return (
+            <ConnectedDropdown
+                {...props}
+                parentFieldName={parent}
+                control={formCtx.control}
+            />
+        );
+    }
+
+    return (
+        <DropdownCore
+            {...props}
+            parentValue={undefined}
         />
     );
 }

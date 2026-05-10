@@ -85,8 +85,6 @@ export function useBlongFormState(): IFormStateContext | null {
 export interface IFormValuesContext {
     /** Raw react-hook-form values (from watch()) */
     rawFormValues: Record<string, unknown>;
-    /** Extended values — raw values + __sel_{field} table-selection pseudo-fields */
-    formValues: Record<string, unknown>;
     errors: FieldErrors<Record<string, unknown>>;
 }
 
