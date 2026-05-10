@@ -393,7 +393,11 @@ function FieldRow({
         ],
     );
 
-    // ── Conditional returns (after all hooks) ──────────────────────────────────
+    // ── Conditional returns — must be after all hooks (React rules-of-hooks) ────
+    // All hooks above are called unconditionally.  The hook computations are cheap
+    // (context reads, ref updates, useMemo with stable deps) so the cost of running
+    // them before bailing out is negligible compared to the benefit of keeping the
+    // hook call order stable across renders.
     if (!stableCtx || !stateCtx || !valuesCtx) return null;
     if (!effectiveSchema || !WidgetComponent) return null;
 
