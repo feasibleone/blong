@@ -10,17 +10,20 @@
  * - FormStateContext   (slow)     — tableSelections, readOnly, loading.
  *                                   Changes only on user actions (row selection, save,
  *                                   edit-mode toggle); consumed by useBlongFormState().
- * - FormValuesContext  (fast)     — rawFormValues, errors.
- *                                   Changes on every field-value change (typing);
+ * - FormValuesContext  (fast)     — errors only.
+ *                                   Changes on validation events (blur/submit), NOT on
+ *                                   every keystroke; consumed by useFormValues().
  *                                   consumed by useFormValues().
  *
  * Card and Deck subscribe only to stable + slow contexts, so they do NOT rerender
- * while the user is typing.  FieldRow and WatchFieldRow subscribe to the fast context
- * so individual field rows update in response to value changes.
+ * while the user is typing.  FieldRow subscribes to the fast (errors) context
+ * so individual field rows can display validation errors.  Value changes are
+ * tracked per-field via react-hook-form's Controller/useWatch subscriptions, never
+ * via broadcast context.
  */
 import type {IEnrichedSchema} from '@feasibleone/blong';
 import {createContext, useContext} from 'react';
-import type {Control, FieldErrors, UseFormSetValue} from 'react-hook-form';
+import type {Control, FieldErrors, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
 import type {FlatLayoutConfig, ILayoutResult, IResolvedCard} from '../../hooks/useLayout.js';
 
 export interface ITableSelection {
@@ -39,6 +42,12 @@ export interface IFormContext {
     onChange: ((value: Record<string, unknown>) => void) | undefined;
     handleTableSelect: (fieldName: string, selection: ITableSelection | null) => void;
     setValue: UseFormSetValue<Record<string, unknown>>;
+    /**
+     * Non-subscribing snapshot of the current form values. Stable reference from
+     * react-hook-form — calling it always returns the latest values without causing
+     * the caller to subscribe to future value changes.
+     */
+    getValues: UseFormGetValues<Record<string, unknown>>;
     checkPermission: ((permission: string) => boolean) | undefined;
 
     // ── Layout fields — consumed by the root Deck ─────────────────────────
@@ -83,16 +92,14 @@ export function useBlongFormState(): IFormStateContext | null {
 // ── Fast-changing values context (changes on every keystroke) ─────────────────
 
 export interface IFormValuesContext {
-    /** Raw react-hook-form values (from watch()) */
-    rawFormValues: Record<string, unknown>;
     errors: FieldErrors<Record<string, unknown>>;
 }
 
 export const FormValuesContext = createContext<IFormValuesContext | null>(null);
 
 /**
- * Returns the fast-changing form values context (rawFormValues, formValues, errors).
- * Only FieldRow / WatchFieldRow subscribe here, so rerenders stay scoped to individual fields.
+ * Returns the fast-changing form values context (errors).
+ * Only FieldRow subscribes here, so rerenders stay scoped to individual fields.
  */
 export function useFormValues(): IFormValuesContext | null {
     return useContext(FormValuesContext);

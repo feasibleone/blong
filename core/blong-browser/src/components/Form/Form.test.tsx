@@ -188,8 +188,8 @@ describe('Form render isolation', () => {
 
     const spySchema = {
         properties: {
-            fieldA: {title: 'Field A', widget: {type: SPY_TYPE}},
-            fieldB: {title: 'Field B', widget: {type: SPY_TYPE}},
+            fieldA: {title: 'Field A', widget: {type: SPY_TYPE as 'input'}},
+            fieldB: {title: 'Field B', widget: {type: SPY_TYPE as 'input'}},
         },
     };
     const spyCards = {

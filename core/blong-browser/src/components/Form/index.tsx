@@ -6,7 +6,7 @@
  * Driven by react-hook-form internally; publishes flattened values via onChange/onSubmit.
  *
  * Form's responsibilities:
- *  - react-hook-form setup (control, errors, reset, watch)
+ *  - react-hook-form setup (control, errors, reset, getValues)
  *  - Table-row selection state (for master-detail / watch cards)
  *  - Provides FormContext so Deck and Card can render without prop-drilling
  *
@@ -174,15 +174,13 @@ export function Form({
         handleSubmit,
         reset,
         setError,
-        watch,
+        getValues,
         setValue,
         formState: {errors},
     } = useForm<Record<string, unknown>>({
         // defaultValues: value ?? {},
         mode: 'onBlur',
     });
-
-    const rawFormValues = watch();
 
     // Sync external value changes (e.g. after fetch)
     useEffect(() => {
@@ -235,13 +233,14 @@ export function Form({
             onChange,
             handleTableSelect,
             setValue,
+            getValues,
             checkPermission,
             layoutResult,
             layout,
             formId,
             onLayoutChange,
         }),
-        // control and setValue are excluded: see comment above.
+        // control, setValue and getValues are excluded: see comment above.
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [
             effectiveSchema,
@@ -264,14 +263,13 @@ export function Form({
         [tableSelections, readOnly, loading],
     );
 
-    // Fast-changing values: changes on every keystroke.
-    // `rawFormValues` is always a new object reference produced by react-hook-form's
-    // `watch()` subscription — referential equality never holds across renders, so
-    // this memo will always invalidate when any field changes.  That is intentional:
-    // only FieldRow / WatchFieldRow subscribe here, keeping rerenders scoped.
+    // Validation errors: changes only on blur/submit (mode: 'onBlur').
+    // Kept in context so FieldRow can display per-field error messages without
+    // receiving rawFormValues (which would cause all fields to rerender on every
+    // keystroke).  Individual field values are tracked via Controller/useWatch.
     const valuesContextValue = useMemo(
-        () => ({rawFormValues, errors}),
-        [rawFormValues, errors],
+        () => ({errors}),
+        [errors],
     );
 
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).

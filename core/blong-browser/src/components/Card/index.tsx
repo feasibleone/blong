@@ -16,9 +16,10 @@ import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 import './index.css';
 
 import type {IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
-import React, {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
+import React, {useCallback, useMemo, useState, type ReactNode} from 'react';
 import {
     Controller,
+    useWatch,
     type ControllerFieldState,
     type ControllerRenderProps,
     type UseFormStateReturn,
@@ -259,9 +260,9 @@ function FieldRow({
     const dropdowns = stableCtx?.dropdowns;
     const onChange = stableCtx?.onChange;
     const handleTableSelect = stableCtx?.handleTableSelect;
+    const getValues = stableCtx?.getValues;
     const {readOnly: fieldDisabled = false, loading = false} = stateCtx ?? {};
     const {
-        rawFormValues = {} as Record<string, unknown>,
         errors = {},
     } = valuesCtx ?? {};
 
@@ -311,13 +312,6 @@ function FieldRow({
 
     // ── Hooks that depend on derived values (still unconditional) ──────────────
 
-    // Keep the latest rawFormValues in a ref so the Controller render callback
-    // can always access it without having it as a dependency.  This avoids the
-    // callback being recreated purely because rawFormValues changed — a per-
-    // keystroke event — when only the ref value needs updating.
-    const rawFormValuesRef = useRef(rawFormValues);
-    rawFormValuesRef.current = rawFormValues;
-
     // Memoize validation rules — effectiveSchema is derived from the stable context
     // and fieldName, so it almost never changes during a user's editing session.
     // Keeping it stable prevents Controller from seeing a new `rules` object on
@@ -330,11 +324,9 @@ function FieldRow({
     // Memoize the Controller render callback.
     //
     // Deps explanation:
-    //  - rawFormValues is intentionally excluded — read via rawFormValuesRef so the
-    //    callback stays stable even when unrelated fields are being typed into.
-    //  - formValues is no longer passed to widgets; cascaded widgets subscribe to
-    //    their specific parent field directly (DropdownWidget via useWatch, TableWidget
-    //    via useBlongFormState).
+    //  - getValues is intentionally excluded — it is a stable function ref from
+    //    react-hook-form (same identity for the lifetime of the form) so including
+    //    it would only add noise without value.
     //  - All other deps are derived from the stable context or slow state and
     //    therefore change rarely.
     //
@@ -362,8 +354,9 @@ function FieldRow({
                     value={field.value}
                     onChange={(val: unknown) => {
                         field.onChange(val);
-                        // Use ref to avoid capturing a stale rawFormValues closure
-                        onChange?.(setFieldValue(rawFormValuesRef.current, baseName, val));
+                        // getValues() reads the current RHF store at call time — no
+                        // stale closure, no context subscription required.
+                        onChange?.(setFieldValue(getValues!() as Record<string, unknown>, baseName, val));
                     }}
                     onBlur={field.onBlur}
                     error={fieldState.error}
@@ -489,12 +482,20 @@ function WatchFieldRow({
 }) {
     const stableCtx = useBlongForm();
     const stateCtx = useBlongFormState();
-    const valuesCtx = useFormValues();
 
-    if (!stableCtx || !stateCtx || !valuesCtx) return null;
+    // Subscribe only to the specific watched table field so this component
+    // rerenders only when that array changes — not on every keystroke in
+    // any other field.  disabled: !stableCtx?.control ensures we don't crash
+    // when the component is rendered outside a Form (defensive guard).
+    const watchedArray = useWatch({
+        control: stableCtx?.control,
+        name: watchField,
+        disabled: !stableCtx?.control,
+    }) as Record<string, unknown>[] | undefined;
 
-    const {schema, setValue, onChange, handleTableSelect} = stableCtx;
-    const {rawFormValues} = valuesCtx;
+    if (!stableCtx || !stateCtx) return null;
+
+    const {schema, setValue, onChange, handleTableSelect, getValues} = stableCtx;
 
     const fieldName = rawFieldName.startsWith('$.edit.')
         ? rawFieldName.split('.').pop()!
@@ -513,11 +514,10 @@ function WatchFieldRow({
     if (!WidgetComponent) return null;
 
     const hasLabel = fieldSchema.title !== '';
-    const arr = rawFormValues[watchField] as Record<string, unknown>[] | undefined;
     // For listAction tables the form array is empty; fall back to the selection row directly
-    const hasFormData = Array.isArray(arr) && arr.length > selection.index;
+    const hasFormData = Array.isArray(watchedArray) && watchedArray.length > selection.index;
     const currentVal = hasFormData
-        ? (arr as Record<string, unknown>[])[selection.index]?.[fieldName]
+        ? (watchedArray as Record<string, unknown>[])[selection.index]?.[fieldName]
         : selection.row?.[fieldName];
     const widgetKey = `${fieldName}-${selection.index}-${String(currentVal)}`;
 
@@ -542,13 +542,15 @@ function WatchFieldRow({
                     onChange={newVal => {
                         if (hasFormData) {
                             // Form-owned mode: update react-hook-form value
-                            const current = [...(arr as Record<string, unknown>[])];
+                            const current = [...(watchedArray as Record<string, unknown>[])];
                             current[selection.index] = {
                                 ...(current[selection.index] ?? {}),
                                 [fieldName]: newVal,
                             };
                             setValue(watchField, current);
-                            onChange?.({...rawFormValues, [watchField]: current});
+                            // getValues() includes the just-set value because setValue
+                            // updates the internal RHF store synchronously.
+                            onChange?.({...getValues(), [watchField]: current});
                         } else {
                             // listAction mode: update tableSelections.row so detail re-renders
                             const updatedRow = {...selection.row, [fieldName]: newVal};
