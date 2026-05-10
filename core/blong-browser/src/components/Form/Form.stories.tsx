@@ -339,15 +339,12 @@ const inputDropdowns = {
 const inputLayouts = {default: ['left', 'center', 'right']};
 export const Input: Story = {
     render: () => {
-        const [value, setValue] = useState<Record<string, unknown>>({});
         return (
             <Form
                 schema={inputSchema}
                 cards={inputCards}
                 layouts={inputLayouts}
                 dropdowns={inputDropdowns}
-                value={value}
-                onChange={setValue}
             />
         );
     },
