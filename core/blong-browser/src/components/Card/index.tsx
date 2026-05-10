@@ -34,7 +34,6 @@ import {widgetRegistry} from '../../widgets/index.js';
 import {
     useBlongForm,
     useBlongFormState,
-    useFormValues,
     type ITableSelection,
 } from '../Form/FormContext.js';
 import {Text} from '../Text/index.js';
@@ -211,26 +210,15 @@ function setFieldValue(
 }
 
 /**
- * Read a react-hook-form FieldErrors value at a dot-notation path.
- * RHF stores nested errors as nested objects, not flat 'a.b' keys.
- */
-function getFieldError(
-    errors: Record<string, unknown>,
-    path: string,
-): {message?: string} | undefined {
-    const dot = path.indexOf('.');
-    if (dot === -1) return errors[path] as {message?: string} | undefined;
-    const head = path.slice(0, dot);
-    const tail = path.slice(dot + 1);
-    return getFieldError((errors[head] as Record<string, unknown>) ?? {}, tail);
-}
-
-/**
  * FieldRow — renders a single field row controlled by react-hook-form.
  *
- * Subscribes to FormValuesContext (fast) and FormStateContext (slow) directly
- * so that Card itself does not rerender every time a field value changes.
- * Only FieldRow instances rerender when their subscribed context changes.
+ * Subscribes to FormStateContext (slow) directly so that Card itself does not
+ * rerender every time a field value changes.  Only FieldRow instances rerender
+ * when their subscribed context changes.
+ *
+ * Error markup is rendered inside the Controller render callback using
+ * `fieldState.error`, so errors are always up-to-date without requiring a
+ * separate context subscription.
  *
  * All hooks are called unconditionally (before any early returns) to satisfy
  * React's rules of hooks. `validationRules` and `renderController` are memoised
@@ -251,7 +239,6 @@ function FieldRow({
     // ── Context subscriptions (all unconditional) ──────────────────────────────
     const stableCtx = useBlongForm();
     const stateCtx = useBlongFormState();
-    const valuesCtx = useFormValues();
     const translations = useAppStore(s => s.translations);
 
     // Safe-extract with defaults so hook deps below never see undefined
@@ -262,9 +249,6 @@ function FieldRow({
     const handleTableSelect = stableCtx?.handleTableSelect;
     const getValues = stableCtx?.getValues;
     const {readOnly: fieldDisabled = false, loading = false} = stateCtx ?? {};
-    const {
-        errors = {},
-    } = valuesCtx ?? {};
 
     // ── Pure derivations (no hooks) ────────────────────────────────────────────
 
@@ -327,12 +311,20 @@ function FieldRow({
     //  - getValues is intentionally excluded — it is a stable function ref from
     //    react-hook-form (same identity for the lifetime of the form) so including
     //    it would only add noise without value.
+    //  - translations changes identity only on language switch (very rare) and is
+    //    included so the error message params reflect the current language.
     //  - All other deps are derived from the stable context or slow state and
     //    therefore change rarely.
     //
     // Because react-hook-form's Controller is wrapped with React.memo, a stable
     // render reference allows Controller to skip its own rerender when the field's
     // value hasn't changed (e.g. when another field is selected in a table).
+    //
+    // The render callback returns a fragment whose children become direct siblings
+    // inside the parent `div.field.grid`.  This allows the error <small> tags to
+    // participate in the grid layout (col-12 md:col-4 / col-12 md:col-8) exactly
+    // as they would if they were written inline in FieldRow's JSX, while still
+    // being driven by fieldState.error — which Controller keeps fresh automatically.
     const renderController = useCallback(
         ({
             field,
@@ -346,26 +338,66 @@ function FieldRow({
             // JSX if either is undefined (see early returns further below).
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const Widget = WidgetComponent!;
+            const hasLabel = effectiveSchema?.title !== '';
+            const error = fieldState.error;
             return (
-                <Widget
-                    id={instanceId}
-                    name={baseName}
-                    schema={effectiveSchema!}
-                    value={field.value}
-                    onChange={(val: unknown) => {
-                        field.onChange(val);
-                        // getValues() reads the current RHF store at call time — no
-                        // stale closure, no context subscription required.
-                        onChange?.(setFieldValue(getValues!() as Record<string, unknown>, baseName, val));
-                    }}
-                    onBlur={field.onBlur}
-                    error={fieldState.error}
-                    readOnly={schemaReadOnly}
-                    loading={loading}
-                    disabled={fieldDisabled}
-                    dropdowns={dropdowns}
-                    onSelect={needsOnSelect ? handleTableSelect : undefined}
-                />
+                <>
+                    <div
+                        className={`flex align-items-center relative col-12${hasLabel ? ' md:col-8' : ''}`}
+                    >
+                        <Widget
+                            id={instanceId}
+                            name={baseName}
+                            schema={effectiveSchema!}
+                            value={field.value}
+                            onChange={(val: unknown) => {
+                                field.onChange(val);
+                                // getValues() reads the current RHF store at call time — no
+                                // stale closure, no context subscription required.
+                                onChange?.(
+                                    setFieldValue(
+                                        getValues!() as Record<string, unknown>,
+                                        baseName,
+                                        val,
+                                    ),
+                                );
+                            }}
+                            onBlur={field.onBlur}
+                            error={error}
+                            readOnly={schemaReadOnly}
+                            loading={loading}
+                            disabled={fieldDisabled}
+                            dropdowns={dropdowns}
+                            onSelect={needsOnSelect ? handleTableSelect : undefined}
+                        />
+                        {effectiveSchema?.description && (
+                            <small className="blong-field-hint">
+                                {effectiveSchema.description}
+                            </small>
+                        )}
+                    </div>
+                    {error && (
+                        <>
+                            <small className="col-12 md:col-4" />
+                            <small className="p-error blong-field-error col-12 md:col-8">
+                                <Text
+                                    params={{
+                                        field:
+                                            translations[effectiveSchema?.title ?? baseName] ??
+                                            effectiveSchema?.title ??
+                                            baseName,
+                                        minLength: effectiveSchema?.minLength ?? 0,
+                                        maxLength: effectiveSchema?.maxLength ?? 0,
+                                        minimum: effectiveSchema?.minimum ?? 0,
+                                        maximum: effectiveSchema?.maximum ?? 0,
+                                    }}
+                                >
+                                    {error.message ?? '{field} is invalid'}
+                                </Text>
+                            </small>
+                        </>
+                    )}
+                </>
             );
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -381,6 +413,7 @@ function FieldRow({
             dropdowns,
             needsOnSelect,
             handleTableSelect,
+            translations,
         ],
     );
 
@@ -389,7 +422,7 @@ function FieldRow({
     // (context reads, ref updates, useMemo with stable deps) so the cost of running
     // them before bailing out is negligible compared to the benefit of keeping the
     // hook call order stable across renders.
-    if (!stableCtx || !stateCtx || !valuesCtx) return null;
+    if (!stableCtx || !stateCtx) return null;
     if (!effectiveSchema || !WidgetComponent) return null;
 
     const hasLabel = effectiveSchema.title !== '';
@@ -421,41 +454,12 @@ function FieldRow({
                     <Text>{effectiveSchema.title ?? baseName}</Text>
                 </label>
             )}
-            <div
-                className={`flex align-items-center relative col-12${hasLabel ? ' md:col-8' : ''}`}
-            >
-                <Controller
-                    name={baseName}
-                    control={control!}
-                    rules={validationRules}
-                    render={renderController}
-                />
-                {effectiveSchema.description && (
-                    <small className="blong-field-hint">{effectiveSchema.description}</small>
-                )}
-            </div>
-            {getFieldError(errors as Record<string, unknown>, baseName) && (
-                <>
-                    <small className="col-12 md:col-4" />
-                    <small className="p-error blong-field-error col-12 md:col-8">
-                        <Text
-                            params={{
-                                field:
-                                    translations[effectiveSchema.title ?? baseName] ??
-                                    effectiveSchema.title ??
-                                    baseName,
-                                minLength: effectiveSchema.minLength ?? 0,
-                                maxLength: effectiveSchema.maxLength ?? 0,
-                                minimum: effectiveSchema.minimum ?? 0,
-                                maximum: effectiveSchema.maximum ?? 0,
-                            }}
-                        >
-                            {getFieldError(errors as Record<string, unknown>, baseName)?.message ??
-                                '{field} is invalid'}
-                        </Text>
-                    </small>
-                </>
-            )}
+            <Controller
+                name={baseName}
+                control={control!}
+                rules={validationRules}
+                render={renderController}
+            />
         </div>
     );
 }
@@ -608,7 +612,7 @@ export function Card({
         },
     );
     const resolvedCollapsible = resolved ? resolved.config.collapsible : collapsible;
-    // loading and readOnly come from FormStateContext (slow) — not from FormValuesContext (fast).
+    // loading and readOnly come from FormStateContext (slow).
     const resolvedLoading = resolved ? (formState?.loading ?? false) : loading;
     const cardReadOnly = resolved ? resolved.config.readOnly : readOnly;
 
@@ -654,7 +658,7 @@ export function Card({
                     />
                 ));
             } else {
-                // FieldRow handles its own context subscriptions (stable + state + values).
+                // FieldRow handles its own context subscriptions (stable + state).
                 // Card itself does NOT rerender when values change.
                 content = resolved.fields.map((fieldName, idx) => (
                     <FieldRow

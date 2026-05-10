@@ -26,7 +26,6 @@ import {Deck} from '../Deck/index.js';
 import {
     FormContext,
     FormStateContext,
-    FormValuesContext,
     type ITableSelection,
 } from './FormContext.js';
 
@@ -176,7 +175,6 @@ export function Form({
         setError,
         getValues,
         setValue,
-        formState: {errors},
     } = useForm<Record<string, unknown>>({
         // defaultValues: value ?? {},
         mode: 'onBlur',
@@ -263,15 +261,6 @@ export function Form({
         [tableSelections, readOnly, loading],
     );
 
-    // Validation errors: changes only on blur/submit (mode: 'onBlur').
-    // Kept in context so FieldRow can display per-field error messages without
-    // receiving rawFormValues (which would cause all fields to rerender on every
-    // keystroke).  Individual field values are tracked via Controller/useWatch.
-    const valuesContextValue = useMemo(
-        () => ({errors}),
-        [errors],
-    );
-
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).
     // The root Deck reads layoutResult, layout, formId, and onLayoutChange from FormContext.
     const formBody = rightPanel ? (
@@ -300,17 +289,15 @@ export function Form({
     return (
         <FormContext value={stableContextValue}>
             <FormStateContext value={stateContextValue}>
-                <FormValuesContext value={valuesContextValue}>
-                    {debug ? (
-                        <Suspense fallback={null}>
-                            <DevTool
-                                control={control}
-                                placement="top-right"
-                            />
-                        </Suspense>
-                    ) : null}
-                    {formBody}
-                </FormValuesContext>
+                {debug ? (
+                    <Suspense fallback={null}>
+                        <DevTool
+                            control={control}
+                            placement="top-right"
+                        />
+                    </Suspense>
+                ) : null}
+                {formBody}
             </FormStateContext>
         </FormContext>
     );

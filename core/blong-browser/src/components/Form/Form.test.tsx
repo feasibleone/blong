@@ -105,17 +105,25 @@ describe('Form', () => {
         await waitFor(() => expect(onChange).toHaveBeenCalled());
     });
 
-    it('shows server validation errors', () => {
-        render(
+    it('shows server validation errors', async () => {
+        const {rerender} = render(
+            <Form
+                schema={schema}
+                cards={cards}
+            />,
+        );
+        // Server errors are pushed into react-hook-form via setError.
+        // Rerender with serverErrors so the useEffect fires.
+        rerender(
             <Form
                 schema={schema}
                 cards={cards}
                 serverErrors={{userName: 'Name is already taken'}}
             />,
         );
-        // Server errors are pushed into react-hook-form — they show after a re-render
-        // Just verify the form renders without crashing
-        expect(screen.getByLabelText('User Name')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText('Name is already taken')).toBeInTheDocument();
+        });
     });
 
     it('syncs external value changes via reset', async () => {

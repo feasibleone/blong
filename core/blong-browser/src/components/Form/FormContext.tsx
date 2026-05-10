@@ -2,7 +2,7 @@
  * FormContext — broadcasts react-hook-form state and configuration through
  * the Form component tree so Deck and Card can render without prop-drilling.
  *
- * To minimise rerendering, the context is split into three layers:
+ * To minimise rerendering, the context is split into two layers:
  *
  * - FormContext        (stable)   — schema, cards, control, layout config, callbacks.
  *                                   Never changes during a user's edit session; consumed
@@ -10,16 +10,11 @@
  * - FormStateContext   (slow)     — tableSelections, readOnly, loading.
  *                                   Changes only on user actions (row selection, save,
  *                                   edit-mode toggle); consumed by useBlongFormState().
- * - FormValuesContext  (fast)     — errors only.
- *                                   Changes on validation events (blur/submit), NOT on
- *                                   every keystroke; consumed by useFormValues().
- *                                   consumed by useFormValues().
  *
- * Card and Deck subscribe only to stable + slow contexts, so they do NOT rerender
- * while the user is typing.  FieldRow subscribes to the fast (errors) context
- * so individual field rows can display validation errors.  Value changes are
- * tracked per-field via react-hook-form's Controller/useWatch subscriptions, never
- * via broadcast context.
+ * Card and Deck subscribe only to the stable context, so they do NOT rerender
+ * while the user is typing.  FieldRow subscribes to the slow state context.
+ * Validation errors are tracked per-field via react-hook-form's Controller
+ * `fieldState.error` — no context broadcast is needed.
  */
 import type {IEnrichedSchema} from '@feasibleone/blong';
 import {createContext, useContext} from 'react';
@@ -89,7 +84,10 @@ export function useBlongFormState(): IFormStateContext | null {
     return useContext(FormStateContext);
 }
 
-// ── Fast-changing values context (changes on every keystroke) ─────────────────
+// ── Values context (retained for API compatibility) ───────────────────────────
+// Validation errors are now tracked via Controller fieldState.error rather than
+// via this context, so FormValuesContext is no longer provided by Form.
+// The type and hook are kept for any external consumers.
 
 export interface IFormValuesContext {
     errors: FieldErrors<Record<string, unknown>>;
@@ -98,8 +96,9 @@ export interface IFormValuesContext {
 export const FormValuesContext = createContext<IFormValuesContext | null>(null);
 
 /**
- * Returns the fast-changing form values context (errors).
- * Only FieldRow subscribes here, so rerenders stay scoped to individual fields.
+ * Returns the form values context (errors).
+ * NOTE: No longer provided by Form — use fieldState.error inside a Controller
+ * render callback instead.
  */
 export function useFormValues(): IFormValuesContext | null {
     return useContext(FormValuesContext);
