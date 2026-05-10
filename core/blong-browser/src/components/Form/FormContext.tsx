@@ -10,7 +10,7 @@
  * - FormStateContext   (slow)     — tableSelections, readOnly, loading.
  *                                   Changes only on user actions (row selection, save,
  *                                   edit-mode toggle); consumed by useBlongFormState().
- * - FormValuesContext  (fast)     — rawFormValues, formValues, errors.
+ * - FormValuesContext  (fast)     — rawFormValues, errors.
  *                                   Changes on every field-value change (typing);
  *                                   consumed by useFormValues().
  *
