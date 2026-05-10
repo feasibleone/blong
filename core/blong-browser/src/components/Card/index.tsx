@@ -400,7 +400,7 @@ function FieldRow({
                 </>
             );
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- getValues is excluded: stable ref, see comment above
         [
             WidgetComponent,
             instanceId,
