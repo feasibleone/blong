@@ -2,11 +2,13 @@ import '@testing-library/jest-dom';
 import {vi} from 'vitest';
 
 // PrimeReact uses ResizeObserver — polyfill for jsdom
-global.ResizeObserver = vi.fn(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-}));
+global.ResizeObserver = vi.fn(
+    class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+    },
+);
 
 // scrollIntoView is not implemented in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
