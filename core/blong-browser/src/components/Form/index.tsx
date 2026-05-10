@@ -23,7 +23,12 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Deck} from '../Deck/index.js';
-import {FormContext, FormStateContext, FormValuesContext, type ITableSelection} from './FormContext.js';
+import {
+    FormContext,
+    FormStateContext,
+    FormValuesContext,
+    type ITableSelection,
+} from './FormContext.js';
 
 // DevTool is in devDependencies — load it lazily so the package builds correctly when
 // devDependencies are absent (production / downstream package consumers).
@@ -173,7 +178,7 @@ export function Form({
         setValue,
         formState: {errors},
     } = useForm<Record<string, unknown>>({
-        defaultValues: value ?? {},
+        // defaultValues: value ?? {},
         mode: 'onBlur',
     });
 

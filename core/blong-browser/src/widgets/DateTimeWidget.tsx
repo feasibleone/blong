@@ -1,6 +1,7 @@
 import {Calendar} from '../primereact/index.js';
 
 import type {IWidgetProps} from '@feasibleone/blong';
+import React from 'react';
 
 export function DateTimeWidget({
     id,
@@ -12,7 +13,10 @@ export function DateTimeWidget({
     readOnly,
     disabled,
 }: IWidgetProps) {
-    const dateValue = value instanceof Date ? value : value ? new Date(value as string) : null;
+    const dateValue = React.useMemo(
+        () => (value instanceof Date ? value : value ? new Date(value as string) : null),
+        [value],
+    );
     return (
         <Calendar
             inputId={id ?? name}

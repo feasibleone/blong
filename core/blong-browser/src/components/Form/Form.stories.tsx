@@ -336,7 +336,7 @@ const inputDropdowns = {
 };
 
 // ── Input — widget showcase ──────────────────────────────────────────────────
-
+const inputLayouts = {default: ['left', 'center', 'right']};
 export const Input: Story = {
     render: () => {
         const [value, setValue] = useState<Record<string, unknown>>({});
@@ -344,7 +344,7 @@ export const Input: Story = {
             <Form
                 schema={inputSchema}
                 cards={inputCards}
-                layouts={{default: ['left', 'center', 'right']}}
+                layouts={inputLayouts}
                 dropdowns={inputDropdowns}
                 value={value}
                 onChange={setValue}

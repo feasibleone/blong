@@ -25,7 +25,10 @@ export function DateWidget({
     readOnly,
     disabled,
 }: IWidgetProps) {
-    const dateValue = value != null ? dateIn(value as string) : null;
+    const dateValue = React.useMemo(
+        () => (value != null ? dateIn(value as string) : null),
+        [value],
+    );
 
     const handleChange = React.useMemo(
         () => (event: {value: Date | null | undefined | string | Date[]}) => {
