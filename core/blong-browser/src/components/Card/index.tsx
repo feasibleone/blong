@@ -31,11 +31,7 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
-import {
-    useBlongForm,
-    useBlongFormState,
-    type ITableSelection,
-} from '../Form/FormContext.js';
+import {useBlongForm, useBlongFormState, type ITableSelection} from '../Form/FormContext.js';
 import {Text} from '../Text/index.js';
 
 export interface ICardProps {
@@ -468,7 +464,7 @@ function FieldRow({
  * WatchFieldRow — renders a single field from a master-detail (watch) card.
  *
  * Reads from the selected table row and writes back via setValue.
- * Subscribes to FormValuesContext (fast) and FormStateContext (slow) directly
+ * Subscribes to FormStateContext (slow) directly
  * so that the parent Card component does not rerender when values change.
  */
 function WatchFieldRow({
@@ -592,7 +588,6 @@ export function Card({
     const elementId = id ?? (cardName ? `card-${cardName}` : 'card');
 
     // Subscribe to stable context (schema, cards) and slow-changing state (tableSelections, loading).
-    // Card does NOT subscribe to FormValuesContext (fast), so it does NOT rerender on every keystroke.
     const formCtx = useBlongForm();
     const formState = useBlongFormState();
     const resolved = cardName && formCtx ? formCtx.cards[cardName] : undefined;

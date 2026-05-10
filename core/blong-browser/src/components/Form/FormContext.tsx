@@ -17,8 +17,8 @@
  * `fieldState.error` — no context broadcast is needed.
  */
 import type {IEnrichedSchema} from '@feasibleone/blong';
-import {createContext, useContext} from 'react';
-import type {Control, FieldErrors, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
+import {createContext, use} from 'react';
+import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
 import type {FlatLayoutConfig, ILayoutResult, IResolvedCard} from '../../hooks/useLayout.js';
 
 export interface ITableSelection {
@@ -63,7 +63,7 @@ export const FormContext = createContext<IFormContext | null>(null);
  * context-driven mode or children-passthrough mode.
  */
 export function useBlongForm(): IFormContext | null {
-    return useContext(FormContext);
+    return use(FormContext);
 }
 
 // ── Slow-changing state context (row selection, readOnly, loading) ────────────
@@ -81,25 +81,5 @@ export const FormStateContext = createContext<IFormStateContext | null>(null);
  * Components that only need these values will not rerender during typing.
  */
 export function useBlongFormState(): IFormStateContext | null {
-    return useContext(FormStateContext);
-}
-
-// ── Values context (retained for API compatibility) ───────────────────────────
-// Validation errors are now tracked via Controller fieldState.error rather than
-// via this context, so FormValuesContext is no longer provided by Form.
-// The type and hook are kept for any external consumers.
-
-export interface IFormValuesContext {
-    errors: FieldErrors<Record<string, unknown>>;
-}
-
-export const FormValuesContext = createContext<IFormValuesContext | null>(null);
-
-/**
- * Returns the form values context (errors).
- * NOTE: No longer provided by Form — use fieldState.error inside a Controller
- * render callback instead.
- */
-export function useFormValues(): IFormValuesContext | null {
-    return useContext(FormValuesContext);
+    return use(FormStateContext);
 }
