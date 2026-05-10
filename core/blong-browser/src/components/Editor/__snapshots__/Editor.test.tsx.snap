@@ -5237,7 +5237,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_844=""
+                        pr_id_841=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -6279,7 +6279,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_709=""
+                        pr_id_706=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -7321,7 +7321,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_736=""
+                        pr_id_733=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -12391,7 +12391,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_599=""
+                        pr_id_596=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -13432,7 +13432,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_763=""
+                        pr_id_760=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -14474,7 +14474,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_790=""
+                        pr_id_787=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -15516,7 +15516,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_817=""
+                        pr_id_814=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -16558,7 +16558,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_351=""
+                        pr_id_348=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -19733,7 +19733,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_682=""
+                        pr_id_679=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -20785,7 +20785,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_378=""
+                        pr_id_375=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -21836,7 +21836,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_483=""
+                        pr_id_480=""
                       >
                         <div
                           class="p-datatable-wrapper"

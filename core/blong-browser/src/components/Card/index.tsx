@@ -16,8 +16,13 @@ import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 import './index.css';
 
 import type {IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
-import React, {useCallback, useState, type ReactNode} from 'react';
-import {Controller} from 'react-hook-form';
+import React, {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
+import {
+    Controller,
+    type ControllerFieldState,
+    type ControllerRenderProps,
+    type UseFormStateReturn,
+} from 'react-hook-form';
 import {DropZone} from '../../design/DropZone.js';
 import {SelectionIndicator} from '../../design/SelectionIndicator.js';
 import {useDesignable} from '../../design/useDesignable.js';
@@ -225,6 +230,11 @@ function getFieldError(
  * Subscribes to FormValuesContext (fast) and FormStateContext (slow) directly
  * so that Card itself does not rerender every time a field value changes.
  * Only FieldRow instances rerender when their subscribed context changes.
+ *
+ * All hooks are called unconditionally (before any early returns) to satisfy
+ * React's rules of hooks. `validationRules` and `renderController` are memoised
+ * so that Controller — which is React.memo'd internally by react-hook-form —
+ * can skip rerenders when neither the schema nor the field/form state has changed.
  */
 function FieldRow({
     fieldName,
@@ -237,16 +247,26 @@ function FieldRow({
     isLast: boolean;
     columnOverride?: string[];
 }) {
+    // ── Context subscriptions (all unconditional) ──────────────────────────────
     const stableCtx = useBlongForm();
     const stateCtx = useBlongFormState();
     const valuesCtx = useFormValues();
     const translations = useAppStore(s => s.translations);
 
-    if (!stableCtx || !stateCtx || !valuesCtx) return null;
+    // Safe-extract with defaults so hook deps below never see undefined
+    const schema = stableCtx?.schema;
+    const control = stableCtx?.control;
+    const dropdowns = stableCtx?.dropdowns;
+    const onChange = stableCtx?.onChange;
+    const handleTableSelect = stableCtx?.handleTableSelect;
+    const {readOnly: fieldDisabled = false, loading = false} = stateCtx ?? {};
+    const {
+        formValues = {} as Record<string, unknown>,
+        rawFormValues = {} as Record<string, unknown>,
+        errors = {},
+    } = valuesCtx ?? {};
 
-    const {schema, control, dropdowns, onChange, handleTableSelect} = stableCtx;
-    const {readOnly: fieldDisabled, loading} = stateCtx;
-    const {formValues, rawFormValues, errors} = valuesCtx;
+    // ── Pure derivations (no hooks) ────────────────────────────────────────────
 
     // Strip '#id' suffix (ICardWidgetEntry key) to get the real form field name
     const hashIdx = fieldName.indexOf('#');
@@ -277,13 +297,106 @@ function FieldRow({
                   widget: {...fieldSchema.widget, columns: columnOverride},
               } as IEnrichedFieldSchema)
             : fieldSchema;
-    if (!effectiveSchema) return null;
 
-    const WidgetComponent = widgetRegistry.get(resolveWidgetType(effectiveSchema));
-    if (!WidgetComponent) return null;
+    const WidgetComponent = effectiveSchema
+        ? widgetRegistry.get(resolveWidgetType(effectiveSchema))
+        : undefined;
 
     const schemaReadOnly =
-        cardReadOnly || effectiveSchema.readOnly || effectiveSchema.widget?.readOnly;
+        cardReadOnly || effectiveSchema?.readOnly || effectiveSchema?.widget?.readOnly;
+
+    // Whether this field's widget reports table row selections (for onSelect wiring)
+    const needsOnSelect =
+        effectiveSchema?.widget?.selectionMode === 'single' ||
+        effectiveSchema?.widget?.type === 'navigator';
+
+    // ── Hooks that depend on derived values (still unconditional) ──────────────
+
+    // Keep the latest rawFormValues in a ref so the Controller render callback
+    // can always access it without having it as a dependency.  This avoids the
+    // callback being recreated purely because rawFormValues changed — a per-
+    // keystroke event — when only the ref value needs updating.
+    const rawFormValuesRef = useRef(rawFormValues);
+    rawFormValuesRef.current = rawFormValues;
+
+    // Memoize validation rules — effectiveSchema is derived from the stable context
+    // and fieldName, so it almost never changes during a user's editing session.
+    // Keeping it stable prevents Controller from seeing a new `rules` object on
+    // every FieldRow render.
+    const validationRules = useMemo(
+        () => (effectiveSchema ? buildValidationRules(effectiveSchema) : {}),
+        [effectiveSchema],
+    );
+
+    // Memoize the Controller render callback.
+    //
+    // Deps explanation:
+    //  - rawFormValues is intentionally excluded — read via rawFormValuesRef so the
+    //    callback stays stable even when unrelated fields are being typed into.
+    //  - formValues IS included because widgets need it for cascade-dropdown
+    //    filtering; cascade options must update when a parent field changes.
+    //  - All other deps are derived from the stable context or slow state and
+    //    therefore change rarely.
+    //
+    // Because react-hook-form's Controller is wrapped with React.memo, a stable
+    // render reference allows Controller to skip its own rerender when the field's
+    // value hasn't changed (e.g. when another field is selected in a table).
+    const renderController = useCallback(
+        ({
+            field,
+            fieldState,
+        }: {
+            field: ControllerRenderProps<Record<string, unknown>, string>;
+            fieldState: ControllerFieldState;
+            formState: UseFormStateReturn<Record<string, unknown>>;
+        }) => {
+            // Both are non-null here: FieldRow returns null before the <Controller>
+            // JSX if either is undefined (see early returns further below).
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const Widget = WidgetComponent!;
+            return (
+                <Widget
+                    id={instanceId}
+                    name={baseName}
+                    schema={effectiveSchema!}
+                    value={field.value}
+                    onChange={(val: unknown) => {
+                        field.onChange(val);
+                        // Use ref to avoid capturing a stale rawFormValues closure
+                        onChange?.(setFieldValue(rawFormValuesRef.current, baseName, val));
+                    }}
+                    onBlur={field.onBlur}
+                    error={fieldState.error}
+                    readOnly={schemaReadOnly}
+                    loading={loading}
+                    disabled={fieldDisabled}
+                    formValues={formValues}
+                    dropdowns={dropdowns}
+                    onSelect={needsOnSelect ? handleTableSelect : undefined}
+                />
+            );
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            WidgetComponent,
+            instanceId,
+            baseName,
+            effectiveSchema,
+            onChange,
+            schemaReadOnly,
+            loading,
+            fieldDisabled,
+            formValues,
+            dropdowns,
+            needsOnSelect,
+            handleTableSelect,
+        ],
+    );
+
+    // ── Conditional returns (after all hooks) ──────────────────────────────────
+    if (!stableCtx || !stateCtx || !valuesCtx) return null;
+    if (!effectiveSchema || !WidgetComponent) return null;
+
     const hasLabel = effectiveSchema.title !== '';
 
     if (loading) {
@@ -318,33 +431,9 @@ function FieldRow({
             >
                 <Controller
                     name={baseName}
-                    control={control}
-                    rules={buildValidationRules(effectiveSchema)}
-                    render={({field, fieldState}) => (
-                        <WidgetComponent
-                            id={instanceId}
-                            name={baseName}
-                            schema={effectiveSchema}
-                            value={field.value}
-                            onChange={val => {
-                                field.onChange(val);
-                                onChange?.(setFieldValue(rawFormValues, baseName, val));
-                            }}
-                            onBlur={field.onBlur}
-                            error={fieldState.error}
-                            readOnly={schemaReadOnly}
-                            loading={loading}
-                            disabled={fieldDisabled}
-                            formValues={formValues}
-                            dropdowns={dropdowns}
-                            onSelect={
-                                effectiveSchema.widget?.selectionMode === 'single' ||
-                                effectiveSchema.widget?.type === 'navigator'
-                                    ? handleTableSelect
-                                    : undefined
-                            }
-                        />
-                    )}
+                    control={control!}
+                    rules={validationRules}
+                    render={renderController}
                 />
                 {effectiveSchema.description && (
                     <small className="blong-field-hint">{effectiveSchema.description}</small>
