@@ -1,11 +1,11 @@
 /**
- * FormInspector — debug panel showing live form state not tracked by react-hook-form.
+ * FormInspector — debug panel showing live form state, replacing @hookform/devtools.
  *
  * Renders a side panel (styled like PropertyEditor) with collapsible sections for:
- *   - Fields — per-field dirty/touched/error badges (via useFormState)
+ *   - Fields — per-field dirty/touched/error badges (via useFormState from react-hook-form)
  *   - Values — current form values (via useWatch — live on every keystroke)
- *   - Table selections (from FormStateContext)
- *   - State — read-only / loading flags (from FormStateContext)
+ *   - Table selections (from FormStateContext — not tracked by react-hook-form)
+ *   - State — read-only / loading flags (from FormStateContext — not tracked by react-hook-form)
  *
  * More sections can be added in future by following the Section pattern below.
  *
