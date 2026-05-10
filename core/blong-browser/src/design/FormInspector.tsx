@@ -82,7 +82,8 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
 
 /**
  * FormInspector — render inside a <Form> to display live form state in debug mode.
- * Returns null when rendered outside a Form context.
+ * Returns null when rendered outside a Form context (guards against both FormContext
+ * and FormStateContext being unavailable).
  */
 export function FormInspector() {
     const formCtx = useBlongForm();

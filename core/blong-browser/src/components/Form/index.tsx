@@ -261,7 +261,7 @@ export function Form({
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).
     // The root Deck reads layoutResult, layout, formId, and onLayoutChange from FormContext.
     // When debug mode is active, FormInspector is appended as an extra right panel showing
-    // live form state (values, tableSelections, etc.) not visible in react-hook-form devtools.
+    // live form state (values, tableSelections, etc.) for inspection during development.
     const effectiveRightPanel = debug ? (
         <>
             {rightPanel}
