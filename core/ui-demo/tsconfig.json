@@ -10,5 +10,13 @@
         "noEmit": true,
         "skipLibCheck": true
     },
-    "include": ["index.ts", "vite.config.ts", "browser.ts", "marine/**/*.ts", "marine/**/*.tsx"]
+    "include": [
+        "index.ts",
+        "vite.config.ts",
+        "browser.ts",
+        "marine/**/*.ts",
+        "marine/**/*.tsx",
+        "src/**/*.ts",
+        "src/**/*.tsx"
+    ]
 }

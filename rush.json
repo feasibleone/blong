@@ -591,6 +591,12 @@
             "tags": ["dev"]
         },
         {
+            "packageName": "@feasibleone/blong-marine",
+            "projectFolder": "core/blong-marine",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/ui-demo",
             "projectFolder": "core/ui-demo",
             "reviewCategory": "core",

@@ -1,24 +1,10 @@
 /**
- * marine/browser.ts — marine biology demonstration realm.
+ * marine/browser.ts — Marine biology realm for ui-demo.
  *
- * Contributes component handlers, action metadata, and an orchestrator to
- * the blong-browser registry.  The auto-discovery mechanism picks up:
+ * Delegates to the shared @feasibleone/blong-marine package, which owns all
+ * model specs, fixture data (YAML), and the forwarding orchestrator.
  *
- *   meta/       — coral/habitat/species/family component handlers
- *   actions/    — action metadata for all marine interactions
- *   orchestrator/ — dispatch orchestrator forwarding to backend/marine.*
+ * To add ui-demo-specific overrides (e.g. a local dev backend URL), extend
+ * the config block here rather than modifying the shared package.
  */
-import {realm} from '@feasibleone/blong';
-
-export default realm(blong => ({
-    url: import.meta.url,
-    children: globalThis.window
-        ? import.meta.glob(['./meta/**/*.ts', './orchestrator/*.ts'])
-        : ['./meta', './orchestrator'],
-    config: {
-        default: {
-            meta: true,
-            orchestrator: true,
-        },
-    },
-}));
+export {default} from '@feasibleone/blong-marine/browser.ts';

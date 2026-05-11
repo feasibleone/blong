@@ -1,0 +1,3 @@
+### oidc
+# @name oidc
+GET http://localhost:8080/rpc/login/.well-known/openid-configuration

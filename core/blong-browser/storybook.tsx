@@ -106,6 +106,7 @@ export default browser =>
                 theme={{name: 'vela-blue', palette: 'dark-compact'}}
                 loginRoute="/login"
                 log={blong.log}
+                debug
             >
                 <Story />
                 <Hint />

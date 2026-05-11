@@ -1,0 +1,29 @@
+{
+    "name": "@feasibleone/blong-marine",
+    "version": "1.0.0",
+    "description": "Marine biology demo realm — shared schema, fixtures, and model specs for the Blong ecosystem",
+    "type": "module",
+    "exports": {
+        "./browser.ts": "./browser.ts",
+        "./browser.js": {
+            "development": "./browser.ts",
+            "import": "./browser.ts"
+        },
+        "./data": {
+            "development": "./data/index.ts",
+            "import": "./data/index.ts"
+        },
+        "./data/index.ts": "./data/index.ts"
+    },
+    "scripts": {
+        "build": "true"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24",
+        "typescript": "^5.9.3",
+        "vite": "^8.0.8"
+    }
+}
