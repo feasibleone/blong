@@ -238,9 +238,11 @@ export class LogServer {
             const filters: FilterOptions = body ? (JSON.parse(body) as FilterOptions) : {};
             const entries = this.#buffer.query(filters);
             return this.#sendJson(res, {entries, total: entries.length});
-        } catch {
+        } catch (err) {
+            const message =
+                err instanceof SyntaxError ? 'Invalid JSON in request body' : 'Invalid request body';
             res.writeHead(400, {'Content-Type': 'application/json'});
-            res.end(JSON.stringify({error: 'Invalid request body'}));
+            res.end(JSON.stringify({error: message}));
         }
     }
 

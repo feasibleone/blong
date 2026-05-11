@@ -94,7 +94,7 @@ const KNOWN_X_EXTENSIONS = new Set(['x-filter', 'x-filterable', 'x-sort', 'x-car
 
 /**
  * Emit a console warning for any x-* extension key in the given schema that
- * is not recognised by blong-browser.  Unknown keys are silently ignored at
+ * is not recognized by blong-browser. Unknown keys are silently ignored at
  * runtime; this warning makes typos and unsupported extensions visible during
  * development rather than causing silent UI misbehaviour.
  */

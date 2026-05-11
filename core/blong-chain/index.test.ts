@@ -1673,6 +1673,15 @@ tap.test('snapshot helper', async t => {
         assert.equal(masked.user.role, 'admin');
     });
 
+    t.test('maskPaths - ignores prototype-polluting keys', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        const input = {name: 'Bob'};
+        // __proto__ paths should be silently skipped
+        const masked = maskPaths(input, ['__proto__.toString', 'constructor']) as Record<string, unknown>;
+        t.equal(masked.name, 'Bob');
+        t.equal(typeof masked.constructor, 'function', 'constructor should be unchanged');
+    });
+
     t.test('maskPaths - ignores missing paths', async () => {
         const {maskPaths} = await import('./snapshot.js');
         const input = {name: 'Bob'};

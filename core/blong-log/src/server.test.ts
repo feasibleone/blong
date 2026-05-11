@@ -184,6 +184,8 @@ test('LogServer', async t => {
             body: 'not-json',
         });
         t.equal(badRes.status, 400);
+        const badData = await badRes.json();
+        t.equal(badData.error, 'Invalid JSON in request body');
 
         await server.stop();
     });

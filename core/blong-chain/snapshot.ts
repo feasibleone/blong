@@ -16,9 +16,9 @@
  * });
  * ```
  *
- * The `mask` option accepts an array of dot-delimited paths.  Each matching
+ * The `mask` option accepts an array of dot-delimited paths. Each matching
  * leaf value is replaced with the string `'<masked>'` before the snapshot is
- * taken.  Glob-style wildcards (`*.field`) are not yet supported.
+ * taken. Glob-style wildcards (`*.field`) are not yet supported.
  */
 
 /** Minimal interface for a TAP test context (compatible with tap, node:test, etc.) */
@@ -84,6 +84,9 @@ function setAtPath(obj: unknown, parts: string[]): void {
     if (typeof obj !== 'object' || obj === null || parts.length === 0) return;
 
     const [head, ...tail] = parts;
+    // Skip prototype-polluting keys
+    if (head === '__proto__' || head === 'constructor' || head === 'prototype') return;
+
     const record = obj as Record<string, unknown>;
 
     if (tail.length === 0) {
