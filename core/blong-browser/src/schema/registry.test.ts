@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {enrichSchema, schemaRegistry} from './registry.js';
 
 describe('enrichSchema', () => {
@@ -72,6 +72,32 @@ describe('enrichSchema', () => {
     it('handles schema with no properties', () => {
         const schema = enrichSchema('empty', {title: 'Empty'});
         expect(schema.properties).toEqual({});
+    });
+});
+
+describe('warnUnknownExtensions', () => {
+    it('emits console.warn for unknown x-* extension keys', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        enrichSchema('item', {
+            properties: {
+                itemName: {type: 'string', 'x-unknownExt': true} as never,
+            },
+        });
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Unknown schema extension "x-unknownExt"'),
+        );
+        warnSpy.mockRestore();
+    });
+
+    it('does not warn for known x-* extension keys', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        enrichSchema('item', {
+            properties: {
+                itemName: {type: 'string', 'x-filter': true, 'x-sort': true, 'x-widget': {type: 'input'}} as never,
+            },
+        });
+        expect(warnSpy).not.toHaveBeenCalled();
+        warnSpy.mockRestore();
     });
 });
 

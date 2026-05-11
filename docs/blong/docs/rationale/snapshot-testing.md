@@ -193,7 +193,12 @@ assert.snapshot(context, 'p2p-flow-complete', {
   snapshot to fail even if downstream steps are unaffected
 - The snapshot file can become large for chains with many steps
 
-#### Strategy 2: Checkpoint Snapshots at Synchronization Barriers
+#### Strategy 2: Checkpoint Snapshots at Synchronization Barriers _(Future Direction)_
+
+> **Note:** Automatic context snapshots at checkpoint barriers are not yet
+> implemented in `blong-chain`. The description below outlines the intended
+> design. Until the `autoSnapshot` executor option is available, use
+> Strategy 1 (end-of-chain snapshot) or Strategy 3 (per-step snapshots).
 
 `blong-chain` supports checkpoints (empty arrays `[]`) as synchronization
 barriers. These natural phase boundaries are good points to capture

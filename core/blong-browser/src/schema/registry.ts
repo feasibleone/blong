@@ -89,12 +89,33 @@ export function enrichSchema(name: string, raw: IJsonSchemaExtended): IEnrichedS
     };
 }
 
+/** Known x-* extension keys understood by blong-browser */
+const KNOWN_X_EXTENSIONS = new Set(['x-filter', 'x-filterable', 'x-sort', 'x-cards', 'x-widget']);
+
+/**
+ * Emit a console warning for any x-* extension key in the given schema that
+ * is not recognised by blong-browser.  Unknown keys are silently ignored at
+ * runtime; this warning makes typos and unsupported extensions visible during
+ * development rather than causing silent UI misbehaviour.
+ */
+function warnUnknownExtensions(fieldName: string, raw: IJsonSchemaExtended): void {
+    for (const key of Object.keys(raw)) {
+        if (key.startsWith('x-') && !KNOWN_X_EXTENSIONS.has(key)) {
+            console.warn(
+                `[blong-browser] Unknown schema extension "${key}" on field "${fieldName}". ` +
+                    `Known extensions: ${[...KNOWN_X_EXTENSIONS].join(', ')}.`,
+            );
+        }
+    }
+}
+
 /** Normalize a single field schema */
 function enrichField(
     name: string,
     raw: IJsonSchemaExtended,
     required: Set<string>,
 ): IEnrichedFieldSchema {
+    warnUnknownExtensions(name, raw);
     const widget = resolveWidget(name, raw);
     return {
         name,
