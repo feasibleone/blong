@@ -11,13 +11,10 @@ export default handler(
             _params: Record<string, never>,
             _$meta: Record<string, unknown>,
         ): Promise<{table: string; dropped: boolean}> {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const qb = (this as any).config?.context?.queryBuilder;
-            if (!qb) return {table: 'item', dropped: false};
-            const existed: boolean = await qb.schema.hasTable('item');
+            const existed: boolean = await this.config?.context?.queryBuilder?.schema.hasTable('item');
             if (existed) {
-                await qb.schema.dropTable('item');
+                await this.config?.context?.queryBuilder?.schema.dropTable('item');
             }
-            return {table: 'item', dropped: existed};
+            return {table: 'item', dropped: existed ?? false};
         },
 );

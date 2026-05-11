@@ -27,7 +27,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  * All test documents are tagged with TEST_TAG for targeted cleanup.
  *
  * Dependency chain:
- *   cleanData → addDocument → getDocument → editDocument → mergeDocument_
+ *   cleanData → addDocument → getDocument → editDocument → mergeDocumentUpsert
  *                           ↘ findDocuments                → removeDocument
  *                           ↘ findWithLimit               → insertDocuments
  *                                                           → verifyInsert
@@ -184,7 +184,7 @@ export default handler(
                 },
 
                 // ── 8. merge — upsert-update the edited document by _id ───
-                async function mergeDocument_(
+                async function mergeDocumentUpsert(
                     assert: typeof Assert,
                     {$meta, verifyEdit, editDocument}: StepMeta & {
                         verifyEdit: Promise<DocResult>;
@@ -204,11 +204,11 @@ export default handler(
                 // ── 9. verify merge ───────────────────────────────────────
                 async function verifyMerge(
                     assert: typeof Assert,
-                    {$meta, mergeDocument_}: StepMeta & {
-                        mergeDocument_: Promise<{documentId: unknown; merged: boolean}>;
+                    {$meta, mergeDocumentUpsert}: StepMeta & {
+                        mergeDocumentUpsert: Promise<{documentId: unknown; merged: boolean}>;
                     },
                 ) {
-                    const {documentId} = await mergeDocument_;
+                    const {documentId} = await mergeDocumentUpsert;
                     const result = await mongoDocumentGet({documentId}, $meta);
                     assert.ok(result, 'get after merge returned a result');
                     assert.strictEqual(
@@ -222,13 +222,13 @@ export default handler(
                 // ── 10. remove — delete the document by _id ───────────────
                 async function removeDocument(
                     assert: typeof Assert,
-                    {$meta, verifyMerge, mergeDocument_}: StepMeta & {
+                    {$meta, verifyMerge, mergeDocumentUpsert}: StepMeta & {
                         verifyMerge: Promise<DocResult>;
-                        mergeDocument_: Promise<{documentId: unknown}>;
+                        mergeDocumentUpsert: Promise<{documentId: unknown}>;
                     },
                 ) {
                     await verifyMerge;
-                    const {documentId} = await mergeDocument_;
+                    const {documentId} = await mergeDocumentUpsert;
                     const result = await mongoDocumentRemove({documentId}, $meta);
                     assert.ok(result !== undefined, 'remove returned a result');
                     assert.ok(
