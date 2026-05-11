@@ -177,6 +177,8 @@ export function Form({
     // Notify parent when the dirty state transitions (false→true or true→false).
     // formState.isDirty is a Proxy-backed property in react-hook-form — subscribing to it
     // here causes Form to re-render only on dirty-state transitions, not on every keystroke.
+    // `onDirtyChange` should be a stable reference (e.g. a useState setter) to avoid
+    // unnecessary effect re-runs.
     useEffect(() => {
         onDirtyChange?.(formState.isDirty);
     }, [formState.isDirty, onDirtyChange]);

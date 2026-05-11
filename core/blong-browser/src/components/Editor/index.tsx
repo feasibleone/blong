@@ -240,7 +240,7 @@ export function Editor({
     // onDirtyChange (backed by react-hook-form's formState.isDirty) which fires only on
     // transitions, not on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const handleFormChange = useCallback((_v: Record<string, unknown>) => {
+    const handleFormChange = useCallback(() => {
         setSavedSuccess(false);
         setValidationHint(undefined);
     }, []);
