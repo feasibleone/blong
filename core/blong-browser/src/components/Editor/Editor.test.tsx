@@ -3,12 +3,22 @@ import {userEvent} from '@testing-library/user-event';
 import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 import React from 'react';
 import type {IWidgetProps} from '@feasibleone/blong';
-import {fireEvent, screen} from '@testing-library/react';
+import {fireEvent, screen, waitFor} from '@testing-library/react';
 import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {render} from '../../test/render.js';
 import {Editor} from './index.js';
+
+// Mock confirmPopup so the Reset-when-dirty confirmation accepts immediately.
+// Without a mounted <ConfirmPopup /> component the real function is a no-op in
+// jsdom, which would prevent doReset() from being called in the reset tests.
+vi.mock('primereact/confirmpopup', () => ({
+    confirmPopup: ({accept}: {accept?: () => void}) => {
+        accept?.();
+    },
+}));
+
 import {
     Basic,
     Design,
@@ -518,5 +528,89 @@ describe('Editor render isolation', () => {
             const sibling = testId === 'fieldA' ? 'fieldB' : 'fieldA';
             expect(renderCounts[sibling] ?? 0).toBe(0);
         }
+    });
+});
+
+// ── Editor reset behaviour ────────────────────────────────────────────────────
+//
+// Regression test for the bug where clicking Reset while the form has unsaved
+// edits (i.e. localValue is still undefined and entityValue hasn't changed)
+// left the form showing the dirty values, set Editor.isDirty=false, but never
+// restored the original field values or re-enabled the Save/Reset buttons on
+// the next edit.
+//
+// The fix: doReset() increments formResetKey which forces Form to call RHF's
+// reset(value) even when the `value` prop reference hasn't changed.
+
+describe('Editor reset behaviour', () => {
+    const schema = {
+        properties: {
+            userName: {title: 'User Name'},
+        },
+    };
+    const cards = {
+        edit: {label: 'User', widgets: ['userName']},
+    };
+
+    it('restores original value and re-enables buttons after reset and re-edit', async () => {
+        render(
+            <Editor
+                schema={schema}
+                cards={cards}
+                editMode
+                value={{userName: 'Alice'}}
+            />,
+        );
+
+        // Wait for initial render and value sync.
+        await act(async () => {});
+
+        const input = screen.getByLabelText('User Name') as HTMLInputElement;
+
+        // ── Step 1: edit the field ───────────────────────────────────────────
+        await act(async () => {
+            fireEvent.change(input, {target: {value: 'Bob'}});
+        });
+        expect(input.value).toBe('Bob');
+
+        // Save and Reset buttons should be enabled once the form is dirty.
+        await waitFor(() => {
+            const saveBtn = screen.getByRole('button', {name: 'Save'});
+            const resetBtn = screen.getByRole('button', {name: 'Reset'});
+            expect(saveBtn).not.toBeDisabled();
+            expect(resetBtn).not.toBeDisabled();
+        });
+
+        // ── Step 2: click Reset ──────────────────────────────────────────────
+        const resetBtn = screen.getByRole('button', {name: 'Reset'});
+        await act(async () => {
+            fireEvent.click(resetBtn);
+        });
+
+        // Original value must be restored in the input.
+        await waitFor(() => {
+            expect(input.value).toBe('Alice');
+        });
+
+        // Save and Reset buttons must be disabled (form is clean after reset).
+        await waitFor(() => {
+            const saveBtn = screen.getByRole('button', {name: 'Save'});
+            const resetBtnAfter = screen.getByRole('button', {name: 'Reset'});
+            expect(saveBtn).toBeDisabled();
+            expect(resetBtnAfter).toBeDisabled();
+        });
+
+        // ── Step 3: edit again after reset ──────────────────────────────────
+        await act(async () => {
+            fireEvent.change(input, {target: {value: 'Charlie'}});
+        });
+
+        // Buttons must become enabled again — this was the core regression.
+        await waitFor(() => {
+            const saveBtn = screen.getByRole('button', {name: 'Save'});
+            const resetBtnFinal = screen.getByRole('button', {name: 'Reset'});
+            expect(saveBtn).not.toBeDisabled();
+            expect(resetBtnFinal).not.toBeDisabled();
+        });
     });
 });

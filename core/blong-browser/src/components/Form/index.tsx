@@ -77,6 +77,13 @@ export interface IFormProps {
      */
     onDirtyChange?: (isDirty: boolean) => void;
     /**
+     * Increment this counter to imperatively reset the form to its current `value`.
+     * Useful when the parent needs to discard edits without changing the `value` prop reference
+     * (e.g. the Editor's Reset button when no save has occurred and `value` hasn't changed).
+     * The initial value of 0 is ignored — only increments trigger a reset.
+     */
+    resetKey?: number;
+    /**
      * Optional side panel rendered alongside the form (e.g. the design inspector).
      * Rendered inside FormContext.Provider but outside the <form> element so its
      * inputs do not participate in form submission.
@@ -101,6 +108,7 @@ export function Form({
     onTableSelect,
     onLayoutChange,
     onDirtyChange,
+    resetKey,
     rightPanel,
 }: IFormProps) {
     const fallbackId = useId();
@@ -187,6 +195,18 @@ export function Form({
     useEffect(() => {
         if (value !== undefined) reset(value);
     }, [value, reset]);
+
+    // Imperative reset: when the parent increments `resetKey`, discard the user's edits
+    // and restore the form to its current `value` prop.  This is needed when `value` hasn't
+    // changed (e.g. the Editor's Reset button before any save) so the value-sync effect above
+    // would not re-run on its own.  resetKey = 0 is the initial value and is ignored.
+    useEffect(() => {
+        if (!resetKey) return;
+        reset(value ?? {});
+        // `value` and `reset` intentionally omitted: this effect should fire only when
+        // resetKey changes, not whenever value changes (the effect above handles that).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resetKey]);
 
     // Push server-side validation errors into react-hook-form
     useEffect(() => {

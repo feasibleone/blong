@@ -153,6 +153,8 @@ export function Editor({
     const [localValue, setLocalValue] = useState<Record<string, unknown> | undefined>(undefined);
     const [serverErrors, setServerErrors] = useState<Record<string, string> | undefined>(undefined);
     const [isDirty, setIsDirty] = useState(false);
+    /** Incremented by doReset to imperatively reset the Form's RHF state to the current value */
+    const [formResetKey, setFormResetKey] = useState(0);
     /** Whether the last save succeeded and the form hasn't been touched since */
     const [savedSuccess, setSavedSuccess] = useState(false);
     /** Number of in-flight toolbar button calls — form is read-only while > 0 */
@@ -337,6 +339,10 @@ export function Editor({
                 setSavedSuccess(false);
                 setValidationHint(undefined);
                 setEditMode(initialEditMode);
+                // Increment resetKey to force Form to call RHF's reset() even when
+                // entityValue hasn't changed (e.g. user edited without saving first,
+                // so localValue was always undefined and value prop never changed).
+                setFormResetKey(k => k + 1);
             };
             if (isDirty) {
                 confirmPopup({
@@ -496,6 +502,7 @@ export function Editor({
                 onChange={handleFormChange}
                 onSubmit={saveAction ? handleSubmit : undefined}
                 onDirtyChange={setIsDirty}
+                resetKey={formResetKey}
                 onTableSelect={handleTableSelect}
                 readOnly={
                     (!editMode && !initialEditMode) ||
