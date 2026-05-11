@@ -57,9 +57,11 @@ function Section({title, value, defaultOpen = false, children}: ISectionProps) {
  * Uses useFormState (subscribes to dirty/touched/errors) and useWatch (subscribes
  * to values) separately so each only triggers when its own slice changes.
  */
-function FieldsSection({control}: {control: Control<Record<string, unknown>>}) {
-    const {dirtyFields, touchedFields, errors} = useFormState({control});
-
+function FieldsSection({
+    dirtyFields,
+    touchedFields,
+    errors,
+}: Pick<ReturnType<typeof useFormState>, 'dirtyFields' | 'touchedFields' | 'errors'>) {
     const allFields = new Set([
         ...Object.keys(dirtyFields),
         ...Object.keys(touchedFields),
@@ -102,7 +104,7 @@ function FieldsSection({control}: {control: Control<Record<string, unknown>>}) {
                                     className="blong-inspector__badge blong-inspector__badge--error"
                                     title={error.message as string | undefined}
                                 >
-                                    {error.type ?? 'E'}
+                                    {String(error.type ?? 'E')}
                                 </span>
                             )}
                             {error?.message && (
@@ -129,6 +131,9 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
     // Subscribe to all field value changes so the Values section stays live.
     const values = useWatch({control});
 
+    const {dirtyFields, touchedFields, errors, isDirty, isLoading, submitCount, isValid} =
+        useFormState({control});
+
     return (
         <div className="blong-property-editor blong-inspector p-component">
             <div className="blong-property-editor__title">
@@ -139,7 +144,11 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
                 title="Fields"
                 defaultOpen
             >
-                <FieldsSection control={control} />
+                <FieldsSection
+                    dirtyFields={dirtyFields}
+                    touchedFields={touchedFields}
+                    errors={errors}
+                />
             </Section>
             <Section
                 title="Values"
@@ -149,13 +158,19 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
             <Section
                 title="Table Selections"
                 value={stateCtx?.tableSelections ?? {}}
+                defaultOpen
             />
             <Section
                 title="State"
                 value={{
                     readOnly: stateCtx?.readOnly,
                     loading: stateCtx?.loading,
+                    isDirty,
+                    isValid,
+                    submitCount,
+                    isLoading,
                 }}
+                defaultOpen
             />
         </div>
     );
