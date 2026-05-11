@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.3.1...blong-browser-v1.4.0) (2026-05-11)
+
+
+### Features
+
+* custom widgets, events, pivot ([0d6eef6](https://github.com/feasibleone/blong/commit/0d6eef60688dba117648657a7d47ba7adb42501f))
+* replace @hookform/devtools with custom FormInspector debug panel ([1c62eaf](https://github.com/feasibleone/blong/commit/1c62eaf7907909a4d4402b3607f7cc5918a37ed0))
+
+
+### Bug Fixes
+
+* **blong-browser:** eliminate Editor keystroke re-renders; use server response on save ([#142](https://github.com/feasibleone/blong/issues/142)) ([6c1ee1a](https://github.com/feasibleone/blong/commit/6c1ee1a926f905d2c83198524622592c2c081ce7))
+
 ## [1.3.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.3.0...blong-browser-v1.3.1) (2026-05-10)
 
 
