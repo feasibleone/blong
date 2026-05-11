@@ -366,6 +366,9 @@ function captureSourceLocation(fn: Function): ISourceLocation {
     };
 }
 
+/** Default number of retry attempts per failing step when `rerun.enabled` is true */
+const DEFAULT_MAX_RETRIES = 1;
+
 /**
  * Main test executor class
  */
@@ -618,7 +621,7 @@ export class TestExecutor extends EventEmitter {
 
                 // Execute the step (with optional retry loop)
                 const maxRetries =
-                    this.config.rerun?.enabled ? (this.config.rerun.maxRetries ?? 1) : 0;
+                    this.config.rerun?.enabled ? (this.config.rerun.maxRetries ?? DEFAULT_MAX_RETRIES) : 0;
                 let result: unknown;
                 let lastError: Error | undefined;
 

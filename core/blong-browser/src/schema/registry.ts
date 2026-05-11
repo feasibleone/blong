@@ -89,7 +89,15 @@ export function enrichSchema(name: string, raw: IJsonSchemaExtended): IEnrichedS
     };
 }
 
-/** Known x-* extension keys understood by blong-browser */
+/**
+ * Known `x-*` extension keys understood by blong-browser.
+ *
+ * - `x-filter`      — include the field in the Explorer filter panel
+ * - `x-filterable`  — enable inline column filtering in DataTable
+ * - `x-sort`        — enable column sorting in DataTable
+ * - `x-cards`       — list of card names that should display this field
+ * - `x-widget`      — override widget type and configuration for this field
+ */
 const KNOWN_X_EXTENSIONS = new Set(['x-filter', 'x-filterable', 'x-sort', 'x-cards', 'x-widget']);
 
 /**

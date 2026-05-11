@@ -84,7 +84,7 @@ function setAtPath(obj: unknown, parts: string[]): void {
     if (typeof obj !== 'object' || obj === null || parts.length === 0) return;
 
     const [head, ...tail] = parts;
-    // Skip prototype-polluting keys
+    // Skip prototype-polluting keys to prevent prototype chain manipulation
     if (head === '__proto__' || head === 'constructor' || head === 'prototype') return;
 
     const record = obj as Record<string, unknown>;
