@@ -175,7 +175,7 @@ Submit.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 50));
     const descInput = canvas.queryByLabelText?.('Description') as HTMLTextAreaElement | null;
     if (descInput) await userEvent.type(descInput, 'test');
-    const saveBtn = canvas.queryByText?.('Save') as HTMLButtonElement | null;
+    const saveBtn = canvas.queryByLabelText?.('Save') as HTMLButtonElement | null;
     if (saveBtn) await userEvent.click(saveBtn);
 };
 
@@ -216,6 +216,12 @@ Toolbar.args = {
     ],
 };
 
+Toolbar.play = async ({canvas, userEvent}) => {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const errorBtn = canvas.queryByText?.('Error') as HTMLButtonElement | null;
+    if (errorBtn) await userEvent.click(errorBtn);
+};
+
 /**
  * ToolbarBG — same as Toolbar but with Bulgarian translations applied.
  * Demonstrates multi-language support: card titles, field labels, column headers,
@@ -226,6 +232,12 @@ export const ToolbarBG: StoryFn = Template.bind({});
 ToolbarBG.args = {
     ...Toolbar.args,
     lang: 'bg',
+};
+
+ToolbarBG.play = async ({canvas, userEvent}) => {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const openButton = canvas.queryByText?.('Open') as HTMLButtonElement | null;
+    if (openButton) await userEvent.click(openButton);
 };
 
 /** Files — stub; imageUpload/ocr/webcamera widgets not yet implemented in blong-browser. */

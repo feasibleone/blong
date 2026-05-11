@@ -51,39 +51,46 @@ const coralSchema: IEnrichedSchema = {
     required: ['speciesName'],
 };
 
+const brainCoral = {
+    speciesName: 'Brain Coral',
+    coralType: 'hard',
+};
 export const Basic: Story = {
     render: () => {
-        const [value, setValue] = useState<Record<string, unknown>>({
-            speciesName: 'Brain Coral',
-            coralType: 'hard',
-        });
         return (
             <Form
                 schema={coralSchema}
-                value={value}
-                onChange={setValue}
+                value={brainCoral}
             />
         );
     },
 };
 
 export const ReadOnly: Story = {
-    args: {
-        schema: coralSchema,
-        value: {
-            speciesName: 'Staghorn Coral',
-            scientificName: 'Acropora cervicornis',
-            coralType: 'hard',
-            maxDepth: 30,
-        },
-        readOnly: true,
+    render: () => {
+        return (
+            <Form
+                schema={coralSchema}
+                value={{
+                    speciesName: 'Staghorn Coral',
+                    scientificName: 'Acropora cervicornis',
+                    coralType: 'hard',
+                    maxDepth: 30,
+                }}
+                readOnly
+            />
+        );
     },
 };
 
 export const Loading: Story = {
-    args: {
-        schema: coralSchema,
-        loading: true,
+    render: () => {
+        return (
+            <Form
+                schema={coralSchema}
+                loading
+            />
+        );
     },
 };
 
