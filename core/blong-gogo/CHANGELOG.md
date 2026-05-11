@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.19.1...blong-gogo-v1.20.0) (2026-05-11)
+
+
+### Features
+
+* add runtime introspection endpoints for development troubleshooting ([#144](https://github.com/feasibleone/blong/issues/144)) ([81d665c](https://github.com/feasibleone/blong/commit/81d665c3d09bdd767ee78e824d4e529fed5f00d5))
+
 ## [1.19.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.19.0...blong-gogo-v1.19.1) (2026-05-09)
 
 
