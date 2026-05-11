@@ -217,13 +217,11 @@ export default handler(
                 // ── 14. Drop the test table (cleanup) ─────────────────────
                 async function dropTable(
                     assert: typeof Assert,
-                    {$meta, deleteItems, findItems}: StepMeta & {
+                    {$meta, deleteItems}: StepMeta & {
                         deleteItems: Promise<unknown>;
-                        findItems: Promise<unknown>;
                     },
                 ) {
                     await deleteItems;
-                    await findItems;
                     const result = await sqlTableDrop({}, $meta);
                     assert.ok(result, 'Table drop returned a result');
                     return result as {table: string; dropped: boolean};

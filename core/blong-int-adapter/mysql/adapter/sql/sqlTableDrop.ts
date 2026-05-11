@@ -7,7 +7,10 @@ import {handler} from '@feasibleone/blong';
  */
 export default handler(
     () =>
-        async function sqlTableDrop(_params: unknown, _$meta: unknown): Promise<{table: string; dropped: boolean}> {
+        async function sqlTableDrop(
+            _params: Record<string, never>,
+            _$meta: Record<string, unknown>,
+        ): Promise<{table: string; dropped: boolean}> {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const qb = (this as any).config?.context?.queryBuilder;
             if (!qb) return {table: 'item', dropped: false};
