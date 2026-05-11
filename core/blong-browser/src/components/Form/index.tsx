@@ -201,7 +201,7 @@ export function Form({
     // changed (e.g. the Editor's Reset button before any save) so the value-sync effect above
     // would not re-run on its own.  resetKey = 0 is the initial value and is ignored.
     useEffect(() => {
-        if (!resetKey) return;
+        if (resetKey === undefined || resetKey === 0) return;
         reset(value ?? {});
         // `value` and `reset` intentionally omitted: this effect should fire only when
         // resetKey changes, not whenever value changes (the effect above handles that).
