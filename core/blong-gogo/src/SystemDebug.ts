@@ -51,6 +51,10 @@ export default class SystemDebug extends Internal {
     public async init(): Promise<void> {
         if (!this.#config.enabled || !this.#gateway) return;
 
+        this.log?.warn?.(
+            'systemDebug is enabled — introspection endpoints are active; do not enable in production',
+        );
+
         const registry = this.#registry;
         const rpcServer = this.#rpcServer;
         const apiRef = this.#apiRef;
@@ -92,7 +96,9 @@ export default class SystemDebug extends Internal {
                     }),
                 });
 
-                // GET /api/sys/modules — registered realm modules
+                // GET /api/sys/modules — registered realm modules.
+                // Symbol keys (used internally for system-tagged infrastructure items)
+                // are excluded because they are not JSON-serialisable.
                 server.route({
                     method: 'GET',
                     url: `${prefix}/modules`,
