@@ -566,6 +566,33 @@ debug mode.
 
 - **blong-error** - Defining and throwing typed errors with parameterized messages
 
+### Runtime Introspection (Debug Mode)
+
+The framework includes built-in debug endpoints that expose internal state useful for
+troubleshooting during development. Enable them in the suite's `server.ts` config:
+
+```typescript
+config: {
+    dev: {
+        gateway: {debug: true},       // include stack/cause in HTTP error responses
+        systemDebug: {enabled: true}, // expose /api/sys/* introspection endpoints
+    },
+}
+```
+
+**System debug endpoints** (served by the gateway when `systemDebug.enabled` is `true`):
+
+| Endpoint               | Returns                                                       |
+| ---------------------- | ------------------------------------------------------------- |
+| `GET /api/sys/config`  | Effective runtime configuration snapshot (full merged object) |
+| `GET /api/sys/ports`   | Names of all registered adapter/orchestrator ports            |
+| `GET /api/sys/methods` | All handler method groups with their handler counts           |
+| `GET /api/sys/modules` | Names of all registered realm modules                         |
+| `GET /api/sys/rpc`     | Internal RPC server address info                              |
+
+These endpoints have no auth by default (`auth: false`). Never enable `systemDebug` in production.
+The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in config.
+
 ## Common Tasks
 
 **For detailed implementation guides, see the blong skills:**
@@ -587,6 +614,7 @@ debug mode.
 - **Error definitions:** See **blong-error** for typed error patterns
 - **Validation:** See **blong-validation** for input/output validation
 - **Real-time logging:** See **blong-log** for log viewer setup and monitoring
+- **Troubleshooting runtime state:** Enable `systemDebug: {enabled: true}` in suite `dev` config to expose `/api/sys/*` introspection endpoints — see Runtime Introspection section above
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
 

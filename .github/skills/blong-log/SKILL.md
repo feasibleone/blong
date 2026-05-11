@@ -225,3 +225,63 @@ PNG baseline images are stored in `src/client/__image_snapshots__/`.
 | `.storybook/test-runner.cjs`         | Visual snapshot config (postVisit hook)  |
 | `src/client/LogViewer.stories.tsx`   | All story definitions                    |
 | `src/client/__fixtures__/data.ts`    | Deterministic test data                  |
+
+## Runtime Introspection Endpoints
+
+In addition to log-based monitoring, the framework provides built-in HTTP endpoints that expose
+internal runtime state. These are complementary to log tailing — use them to inspect
+**configuration, registered ports, handlers, and modules** at a point in time rather than
+tracing events through time.
+
+Enable them in the suite's `server.ts` config (`dev` activation only — never in production):
+
+```typescript
+config: {
+    dev: {
+        gateway: {debug: true},       // include stack traces in error responses
+        systemDebug: {enabled: true}, // expose /api/sys/* endpoints
+    },
+}
+```
+
+### Available Endpoints
+
+All endpoints are `GET` with no auth by default:
+
+```bash
+# Effective runtime config (full merged snapshot — includes all activated config blocks)
+curl http://localhost:8080/api/sys/config | jq .
+
+# All registered adapter/orchestrator port names
+curl http://localhost:8080/api/sys/ports | jq .ports[]
+
+# All handler method groups with handler counts per group
+curl http://localhost:8080/api/sys/methods | jq '.methods[] | "\(.name): \(.handlerCount)"' -r
+
+# All registered realm module names
+curl http://localhost:8080/api/sys/modules | jq .modules[]
+
+# Internal RPC server address
+curl http://localhost:8080/api/sys/rpc | jq .
+```
+
+### Typical Troubleshooting Workflow
+
+Use logs and introspection endpoints together:
+
+```bash
+# 1. Check if the expected ports are registered
+curl -s http://localhost:8080/api/sys/ports | jq .ports[]
+# → is "myRealm.myAdapter" in the list?
+
+# 2. Check if the expected handlers are registered
+curl -s http://localhost:8080/api/sys/methods | jq '.methods[] | select(.name | contains("myRealm"))'
+# → are the method groups present with the right handler counts?
+
+# 3. Check the effective config for a specific key
+curl -s http://localhost:8080/api/sys/config | jq '.myRealm.myAdapter'
+# → is the config value what you expect?
+
+# 4. Correlate with logs if something looks wrong
+curl -s 'http://127.0.0.1:9998/api/entries?level=error&limit=10' | jq '.entries[] | {msg, name}'
+```

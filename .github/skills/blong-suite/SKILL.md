@@ -314,3 +314,65 @@ CI=true blong
 This makes it easy to test individual realms during development without needing a full suite setup.
 When a realm has an `index.ts`, it is loaded directly — useful when the realm depends on other realms
 and needs custom initialization.
+
+## Debug Configuration
+
+During development it is often useful to enable extra diagnostic output and runtime introspection.
+Both features are controlled via the suite's `server.ts` config and should be restricted to
+non-production environments (`dev` activation):
+
+```typescript
+// server.ts
+import {server} from '@feasibleone/blong';
+
+export default server(blong => ({
+    url: import.meta.url,
+    children: ['./my-realm'],
+    config: {
+        default: {},
+        dev: {
+            // Include stack traces and cause chains in HTTP error responses
+            gateway: {debug: true},
+            // Expose /api/sys/* introspection endpoints (no auth by default)
+            systemDebug: {enabled: true},
+        },
+    },
+}));
+```
+
+### System Debug Endpoints
+
+When `systemDebug.enabled` is `true`, the gateway exposes the following endpoints:
+
+| Endpoint               | Returns                                                       |
+| ---------------------- | ------------------------------------------------------------- |
+| `GET /api/sys/config`  | Effective runtime configuration snapshot (full merged object) |
+| `GET /api/sys/ports`   | Names of all registered adapter/orchestrator ports            |
+| `GET /api/sys/methods` | All handler method groups with handler counts                 |
+| `GET /api/sys/modules` | Names of all registered realm modules                         |
+| `GET /api/sys/rpc`     | Internal RPC server address and port                          |
+
+```bash
+# Quick inspection when the gateway is running locally (default port 8080)
+curl http://localhost:8080/api/sys/config  | jq .
+curl http://localhost:8080/api/sys/ports   | jq .
+curl http://localhost:8080/api/sys/methods | jq .
+curl http://localhost:8080/api/sys/modules | jq .
+curl http://localhost:8080/api/sys/rpc     | jq .
+```
+
+**Advanced options** — override in config as needed:
+
+```typescript
+systemDebug: {
+    enabled: true,
+    routePrefix: '/api/sys', // default; change if it conflicts with another plugin
+    auth: 'jwt',             // default: false (no auth); set 'jwt' to require a token
+},
+```
+
+> **Never enable `systemDebug` in production.** The `/api/sys/config` endpoint returns the full
+> merged configuration snapshot. Any secrets present in the config (database passwords, API keys,
+> signing keys, etc.) will be exposed as plaintext JSON. If you need to inspect config in a
+> non-dev environment, set `auth: 'jwt'` and scope access to trusted users only, or exclude
+> sensitive realms from the suite before starting.
