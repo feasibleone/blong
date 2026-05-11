@@ -146,7 +146,7 @@ export function PropertyEditor() {
         const currentReadOnly = schemaOverride.readOnly ?? baseSchema?.readOnly ?? false;
 
         return (
-            <div className="blong-property-editor">
+            <div className="blong-property-editor p-component">
                 <div className="blong-property-editor__title">Field · {fieldName}</div>
                 <div className="blong-property-editor__row">
                     <span className="blong-property-editor__key">Card</span>

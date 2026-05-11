@@ -13,12 +13,12 @@
  * FormStateContext. FormInspector guards against null context and renders nothing
  * when used outside a Form.
  */
-import {useState} from 'react';
 import type {ReactNode} from 'react';
+import {useState} from 'react';
 import type {Control} from 'react-hook-form';
 import {useFormState, useWatch} from 'react-hook-form';
-import {Json} from '../components/Json/index.js';
 import {useBlongForm, useBlongFormState} from '../components/Form/FormContext.js';
+import {Json} from '../components/Json/index.js';
 
 // ── Section (collapsible) ────────────────────────────────────────────────────
 
@@ -38,13 +38,13 @@ function Section({title, value, defaultOpen = false, children}: ISectionProps) {
                 className="blong-inspector__toggle"
                 onClick={() => setOpen(o => !o)}
             >
-                <span className={`pi pi-chevron-${open ? 'down' : 'right'} blong-inspector__chevron`} />
+                <span
+                    className={`pi pi-chevron-${open ? 'down' : 'right'} blong-inspector__chevron`}
+                />
                 {title}
             </button>
             {open && (
-                <div className="blong-inspector__body">
-                    {children ?? <Json value={value} />}
-                </div>
+                <div className="blong-inspector__body">{children ?? <Json value={value} />}</div>
             )}
         </div>
     );
@@ -67,9 +67,7 @@ function FieldsSection({control}: {control: Control<Record<string, unknown>>}) {
     ]);
 
     if (allFields.size === 0) {
-        return (
-            <p className="blong-inspector__empty">No dirty / touched / error fields yet.</p>
-        );
+        return <p className="blong-inspector__empty">No dirty / touched / error fields yet.</p>;
     }
 
     return (
@@ -83,12 +81,22 @@ function FieldsSection({control}: {control: Control<Record<string, unknown>>}) {
                         key={field}
                         className="blong-inspector__field-row"
                     >
-                        <dt className={`blong-inspector__field-name${dirty ? ' blong-inspector__field-name--dirty' : ''}`}>
+                        <dt
+                            className={`blong-inspector__field-name${dirty ? ' blong-inspector__field-name--dirty' : ''}`}
+                        >
                             {field}
                         </dt>
                         <dd className="blong-inspector__field-flags">
-                            {dirty && <span className="blong-inspector__badge blong-inspector__badge--dirty">D</span>}
-                            {touched && <span className="blong-inspector__badge blong-inspector__badge--touched">T</span>}
+                            {dirty && (
+                                <span className="blong-inspector__badge blong-inspector__badge--dirty">
+                                    D
+                                </span>
+                            )}
+                            {touched && (
+                                <span className="blong-inspector__badge blong-inspector__badge--touched">
+                                    T
+                                </span>
+                            )}
                             {error && (
                                 <span
                                     className="blong-inspector__badge blong-inspector__badge--error"
@@ -122,7 +130,7 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
     const values = useWatch({control});
 
     return (
-        <div className="blong-property-editor blong-inspector">
+        <div className="blong-property-editor blong-inspector p-component">
             <div className="blong-property-editor__title">
                 <i className="pi pi-info-circle blong-inspector__icon" />
                 Form Inspector

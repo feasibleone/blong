@@ -303,7 +303,6 @@
 .blong-inspector__body .blong-json {
     font-size: 0.72rem;
     margin: 0;
-    white-space: pre-wrap;
     word-break: break-all;
 }
 
