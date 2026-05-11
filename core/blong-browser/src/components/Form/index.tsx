@@ -71,6 +71,12 @@ export interface IFormProps {
      */
     onLayoutChange?: (layoutKey: string, newLayout: FlatLayoutConfig) => void;
     /**
+     * Called whenever the form's dirty state changes (false → true or true → false).
+     * Backed by react-hook-form's `formState.isDirty` so it fires only on transitions,
+     * not on every keystroke.
+     */
+    onDirtyChange?: (isDirty: boolean) => void;
+    /**
      * Optional side panel rendered alongside the form (e.g. the design inspector).
      * Rendered inside FormContext.Provider but outside the <form> element so its
      * inputs do not participate in form submission.
@@ -94,6 +100,7 @@ export function Form({
     dropdowns,
     onTableSelect,
     onLayoutChange,
+    onDirtyChange,
     rightPanel,
 }: IFormProps) {
     const fallbackId = useId();
@@ -160,12 +167,19 @@ export function Form({
         [onTableSelect],
     );
 
-    const {control, handleSubmit, reset, setError, getValues, setValue} = useForm<
+    const {control, handleSubmit, reset, setError, getValues, setValue, formState} = useForm<
         Record<string, unknown>
     >({
         // defaultValues: value ?? {},
         mode: 'onBlur',
     });
+
+    // Notify parent when the dirty state transitions (false→true or true→false).
+    // formState.isDirty is a Proxy-backed property in react-hook-form — subscribing to it
+    // here causes Form to re-render only on dirty-state transitions, not on every keystroke.
+    useEffect(() => {
+        onDirtyChange?.(formState.isDirty);
+    }, [formState.isDirty, onDirtyChange]);
 
     // Sync external value changes (e.g. after fetch)
     useEffect(() => {

@@ -2135,7 +2135,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_181=""
+                        pr_id_163=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -2577,7 +2577,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_205=""
+                        pr_id_187=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -3117,7 +3117,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_219=""
+                        pr_id_201=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -5237,7 +5237,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_806=""
+                        pr_id_631=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -6279,7 +6279,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_671=""
+                        pr_id_496=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -7321,7 +7321,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_698=""
+                        pr_id_523=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -8946,7 +8946,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_234=""
+                        pr_id_216=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -9246,7 +9246,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                     >
                       <input
                         aria-autocomplete="none"
-                        aria-controls="pr_id_245_panel"
+                        aria-controls="pr_id_227_panel"
                         aria-expanded="false"
                         aria-haspopup="dialog"
                         autocomplete="off"
@@ -9259,7 +9259,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
                         type="text"
                       />
                       <button
-                        aria-controls="pr_id_245_panel"
+                        aria-controls="pr_id_227_panel"
                         aria-expanded="false"
                         aria-haspopup="dialog"
                         aria-label="Choose Date"
@@ -9486,7 +9486,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_258=""
+                        pr_id_240=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -11931,7 +11931,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         id="treeName"
                         name="treeName"
-                        value="OakTet"
+                        value="OakTest"
                       />
                     </span>
                   </div>
@@ -12391,7 +12391,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_570=""
+                        pr_id_434=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -13432,7 +13432,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_725=""
+                        pr_id_550=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -14474,7 +14474,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_752=""
+                        pr_id_577=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -15516,7 +15516,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_779=""
+                        pr_id_604=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -16558,7 +16558,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_340=""
+                        pr_id_322=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -17091,7 +17091,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
             data-p-disabled="false"
             data-p-highlight="true"
             data-pc-section="menuitem"
-            id="pr_id_310_0"
+            id="pr_id_292_0"
             role="presentation"
           >
             <a
@@ -17115,7 +17115,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
             data-p-disabled="false"
             data-p-highlight="false"
             data-pc-section="menuitem"
-            id="pr_id_310_1"
+            id="pr_id_292_1"
             role="presentation"
           >
             <a
@@ -17139,7 +17139,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
             data-p-disabled="false"
             data-p-highlight="false"
             data-pc-section="menuitem"
-            id="pr_id_310_2"
+            id="pr_id_292_2"
             role="presentation"
           >
             <a
@@ -19733,7 +19733,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_644=""
+                        pr_id_469=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -20220,13 +20220,12 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
       >
         <button
           aria-label="Save"
-          class="p-button p-component p-button-icon-only mr-2 p-disabled"
-          disabled=""
+          class="p-button p-component p-button-icon-only mr-2"
           form="_r_14_"
           type="submit"
         >
           <span
-            class="p-button-icon p-c pi pi pi-check"
+            class="p-button-icon p-c pi pi pi-save"
           />
           <span
             class="p-button-label p-c"
@@ -20236,8 +20235,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
         </button>
         <button
           aria-label="Reset"
-          class="p-button p-component p-button-icon-only mr-2 p-disabled"
-          disabled=""
+          class="p-button p-component p-button-icon-only mr-2"
           type="button"
         >
           <span
@@ -20318,7 +20316,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="blong-input w-full p-inputtext p-component"
+                        class="blong-input w-full p-invalid p-inputtext p-component"
                         data-pc-name="inputtext"
                         data-pc-section="root"
                         id="treeName"
@@ -20327,6 +20325,16 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                       />
                     </span>
                   </div>
+                  <small
+                    class="col-12 md:col-4"
+                  />
+                  <small
+                    class="p-error blong-field-error col-12 md:col-8"
+                  >
+                    <span>
+                      Name is required
+                    </span>
+                  </small>
                 </div>
                 <div
                   class="field grid"
@@ -20350,7 +20358,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                       name="treeDescription"
                       rows="3"
                     >
-                      et
+                      test
                     </textarea>
                   </div>
                 </div>
@@ -20785,7 +20793,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_367=""
+                        pr_id_349=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -21271,13 +21279,12 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
       >
         <button
           aria-label="Save"
-          class="p-button p-component p-button-icon-only mr-2 p-disabled"
-          disabled=""
+          class="p-button p-component p-button-icon-only mr-2"
           form="_r_16_"
           type="submit"
         >
           <span
-            class="p-button-icon p-c pi pi pi-check"
+            class="p-button-icon p-c pi pi pi-save"
           />
           <span
             class="p-button-label p-c"
@@ -21287,8 +21294,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
         </button>
         <button
           aria-label="Reset"
-          class="p-button p-component p-button-icon-only mr-2 p-disabled"
-          disabled=""
+          class="p-button p-component p-button-icon-only mr-2"
           type="button"
         >
           <span
@@ -21369,7 +21375,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                       class="blong-input-wrapper w-full"
                     >
                       <input
-                        class="blong-input w-full p-inputtext p-component"
+                        class="blong-input w-full p-invalid p-inputtext p-component"
                         data-pc-name="inputtext"
                         data-pc-section="root"
                         id="treeName"
@@ -21378,6 +21384,16 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                       />
                     </span>
                   </div>
+                  <small
+                    class="col-12 md:col-4"
+                  />
+                  <small
+                    class="p-error blong-field-error col-12 md:col-8"
+                  >
+                    <span>
+                      Име е задължително
+                    </span>
+                  </small>
                 </div>
                 <div
                   class="field grid"
@@ -21401,7 +21417,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                       name="treeDescription"
                       rows="3"
                     >
-                      ет
+                      тест
                     </textarea>
                   </div>
                 </div>
@@ -21836,7 +21852,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_463=""
+                        pr_id_386=""
                       >
                         <div
                           class="p-datatable-wrapper"

@@ -1,9 +1,14 @@
 import {act, within} from '@testing-library/react';
 import {userEvent} from '@testing-library/user-event';
-import {describe, expect, it, vi} from 'vitest';
+import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
+import React from 'react';
+import type {IWidgetProps} from '@feasibleone/blong';
+import {fireEvent, screen} from '@testing-library/react';
 import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
+import {widgetRegistry} from '../../widgets/index.js';
 import {render} from '../../test/render.js';
+import {Editor} from './index.js';
 import {
     Basic,
     Design,
@@ -410,5 +415,108 @@ describe('<Editor />', () => {
             '.p-steps-list, .p-steps, [role="tablist"], .blong-form-steps',
         );
         expect(stepsList).toBeTruthy();
+    });
+});
+
+// ── Editor render isolation — typing in one field must not rerender sibling widgets ──
+//
+// Mirrors the equivalent test suite in Form.test.tsx.
+// The Editor wraps a Form and manages extra state (isDirty, localValue, savedSuccess, …).
+// Before the fix, handleFormChange called setLocalValue and setIsDirty on every keystroke,
+// which caused Editor → Form → all widgets to rerender.  This suite catches that regression.
+
+describe('Editor render isolation', () => {
+    const SPY_TYPE = '_editor_spy';
+
+    const renderCounts: Record<string, number> = {};
+
+    const SpyWidget = React.memo(function SpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
+        renderCounts[name] = (renderCounts[name] ?? 0) + 1;
+        return (
+            <input
+                data-testid={name}
+                value={String(value ?? '')}
+                onChange={e => onChange(e.target.value)}
+                onBlur={onBlur}
+            />
+        );
+    });
+
+    let prevWidget: React.ComponentType<IWidgetProps> | undefined;
+    beforeAll(() => {
+        prevWidget = widgetRegistry.get(SPY_TYPE);
+        widgetRegistry.register(SPY_TYPE, SpyWidget as React.ComponentType<IWidgetProps>);
+    });
+    afterAll(() => {
+        if (prevWidget) widgetRegistry.register(SPY_TYPE, prevWidget);
+    });
+    beforeEach(() => {
+        Object.keys(renderCounts).forEach(k => delete renderCounts[k]);
+    });
+
+    const spySchema = {
+        properties: {
+            fieldA: {title: 'Field A', widget: {type: SPY_TYPE as 'input'}},
+            fieldB: {title: 'Field B', widget: {type: SPY_TYPE as 'input'}},
+        },
+    };
+    const spyCards = {
+        edit: {label: 'Edit', widgets: ['fieldA', 'fieldB']},
+    };
+
+    it('typing in fieldA does not rerender fieldB widget', async () => {
+        render(
+            <Editor
+                schema={spySchema}
+                cards={spyCards}
+                editMode
+                value={{fieldA: '', fieldB: ''}}
+            />,
+        );
+
+        // Wait for initial render to settle, then reset counts.
+        await act(async () => {});
+        renderCounts.fieldA = 0;
+        renderCounts.fieldB = 0;
+
+        const inputA = screen.getByTestId('fieldA') as HTMLInputElement;
+        await act(async () => {
+            fireEvent.change(inputA, {target: {value: 'x'}});
+        });
+
+        // fieldB must NOT have rerendered (no Editor-level state change on keystroke).
+        expect(renderCounts.fieldB ?? 0).toBe(0);
+        // fieldA should have rerendered (its own Controller updated its value).
+        expect(renderCounts.fieldA ?? 0).toBeGreaterThan(0);
+    });
+
+    it('typing in multiple fields only rerenders the active field widget', async () => {
+        render(
+            <Editor
+                schema={spySchema}
+                cards={spyCards}
+                editMode
+                value={{fieldA: '', fieldB: ''}}
+            />,
+        );
+
+        await act(async () => {});
+
+        for (const [testId, char] of [
+            ['fieldA', 'a'],
+            ['fieldB', 'b'],
+            ['fieldA', 'c'],
+        ] as const) {
+            renderCounts.fieldA = 0;
+            renderCounts.fieldB = 0;
+
+            const input = screen.getByTestId(testId) as HTMLInputElement;
+            await act(async () => {
+                fireEvent.change(input, {target: {value: char}});
+            });
+
+            const sibling = testId === 'fieldA' ? 'fieldB' : 'fieldA';
+            expect(renderCounts[sibling] ?? 0).toBe(0);
+        }
     });
 });
