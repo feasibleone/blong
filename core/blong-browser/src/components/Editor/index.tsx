@@ -62,6 +62,23 @@ export interface IEditorProps {
     initialDesignMode?: boolean;
     /** Permission check passed to the form; cards with a permission key are only shown if this returns true */
     checkPermission?: (permission: string) => boolean;
+    /**
+     * Named method handlers for field-change dispatch.
+     * Each receives `{field, value, form}` and returns a Promise.
+     * Returning `false` aborts the field change.
+     */
+    methods?: Record<string, (params: unknown) => Promise<unknown>>;
+    /**
+     * Default method name to call on every field change (can be overridden per-field via `widget.onChange`).
+     */
+    onFieldChange?: string;
+
+    /**
+     * Custom editor components, keyed by the widget name used in card `widgets` arrays.
+     * Each component receives `Input`, `Label`, and `ErrorLabel` factory components and
+     * must declare a static `properties` array listing the schema fields it covers.
+     */
+    editors?: Record<string, import('../Form/FormContext.js').ICustomEditor>;
 
     className?: string;
 }
@@ -146,6 +163,9 @@ export function Editor({
     designable = false,
     initialDesignMode = false,
     checkPermission,
+    methods,
+    onFieldChange,
+    editors,
     className = '',
 }: IEditorProps) {
     const formId = useId();
@@ -513,6 +533,9 @@ export function Editor({
                 loading={loader.loading}
                 serverErrors={serverErrors}
                 checkPermission={checkPermission}
+                methods={methods}
+                editors={editors}
+                onFieldChange={onFieldChange}
                 dropdowns={dropdowns}
                 onLayoutChange={designMode ? handleLayoutChange : undefined}
                 rightPanel={designable ? <PropertyEditor /> : undefined}

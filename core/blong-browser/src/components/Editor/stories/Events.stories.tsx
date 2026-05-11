@@ -1,9 +1,5 @@
 /**
  * Events stories — field-change events and form API interactions.
- *
- * When blong-browser adds method dispatch support, this story should wire:
- *   - `onFieldChange: 'handleFieldChange'` → dispatch handler
- *   - `methods: { async handleFieldChange({field, value}) {...} }`
  */
 import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
@@ -16,8 +12,8 @@ export const Events: StoryFn = () => (
     <Editor
         schema={{
             properties: {
-                a: {title: 'A', type: 'integer'},
-                b: {title: 'B', type: 'integer'},
+                a: {title: 'A', type: 'integer', widget: {onChange: 'handleA'}} as never,
+                b: {title: 'B', type: 'integer', widget: {onChange: 'handleB'}} as never,
                 sum: {title: 'Sum', type: 'number', readOnly: true},
             },
         }}
@@ -29,6 +25,18 @@ export const Events: StoryFn = () => (
         editMode
         layout="edit"
         layouts={{edit: ['edit']}}
+        methods={{
+            async handleA(params) {
+                const {form, value} = params as {form: {getValues: (f: string) => unknown; setValue: (f: string, v: unknown) => void}; value: unknown};
+                const sum = Number(form.getValues('b')) + Number(value);
+                form.setValue('sum', sum);
+            },
+            async handleB(params) {
+                const {form, value} = params as {form: {getValues: (f: string) => unknown; setValue: (f: string, v: unknown) => void}; value: unknown};
+                const sum = Number(form.getValues('a')) + Number(value);
+                form.setValue('sum', sum);
+            },
+        }}
     />
 );
 
@@ -38,7 +46,10 @@ export const EventsFormAPI: StoryFn = () => (
             properties: {
                 visible: {title: 'Visible', type: 'boolean'},
                 enabled: {title: 'Enabled', type: 'boolean'},
-                input: {title: 'Conditional Input'},
+                input: {
+                    title: 'Conditional Input',
+                    widget: {visible: 'visible', enabled: 'enabled'},
+                } as never,
             },
         }}
         cards={{

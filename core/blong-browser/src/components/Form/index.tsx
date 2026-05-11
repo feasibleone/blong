@@ -89,6 +89,22 @@ export interface IFormProps {
      * inputs do not participate in form submission.
      */
     rightPanel?: React.ReactNode;
+    /**
+     * Named method handlers available to field widgets via `widget.onChange` or `onFieldChange`.
+     * Each method receives `{field, value, form}` and returns a Promise.
+     * Returning `false` from a method aborts the field change.
+     */
+    methods?: Record<string, (params: unknown) => Promise<unknown>>;
+    /**
+     * Default method name to call on every field change (can be overridden per-field via `widget.onChange`).
+     */
+    onFieldChange?: string;
+    /**
+     * Custom editor components, keyed by the widget name used in card `widgets` arrays.
+     * Each component receives `Input`, `Label`, and `ErrorLabel` factory components and
+     * must declare a static `properties` array listing the schema fields it covers.
+     */
+    editors?: Record<string, import('./FormContext.js').ICustomEditor>;
 }
 
 export function Form({
@@ -110,6 +126,9 @@ export function Form({
     onDirtyChange,
     resetKey,
     rightPanel,
+    methods,
+    onFieldChange,
+    editors,
 }: IFormProps) {
     const fallbackId = useId();
     const formId = id ?? fallbackId;
@@ -156,7 +175,7 @@ export function Form({
         return {...schema, properties: newProps};
     }, [schema, designCtx.active, designCtx.config.schema]);
 
-    const layoutResult = useLayout(effectiveSchema, effectiveCards, layout, layouts);
+    const layoutResult = useLayout(effectiveSchema, effectiveCards, layout, layouts, editors);
     const {cards} = layoutResult;
 
     /**
@@ -260,6 +279,9 @@ export function Form({
             layout,
             formId,
             onLayoutChange,
+            methods,
+            onFieldChange,
+            editors,
         }),
         // control, setValue and getValues are excluded: see comment above.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,6 +296,9 @@ export function Form({
             layout,
             formId,
             onLayoutChange,
+            methods,
+            onFieldChange,
+            editors,
         ],
     );
 

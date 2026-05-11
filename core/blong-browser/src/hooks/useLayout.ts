@@ -12,9 +12,13 @@ import type {
     ITabLayoutConfig,
     LayoutConfig,
 } from '@feasibleone/blong';
-import type React from 'react';
 import {useMemo} from 'react';
 export type {FlatLayoutConfig, ISplitLayoutConfig, LayoutConfig} from '@feasibleone/blong';
+
+/** Minimal shape of a custom editor that useLayout needs to know about */
+interface IEditorDef {
+    properties: string[];
+}
 
 /** Resolved card — enriched card config with derived field list */
 export interface IResolvedCard {
@@ -98,6 +102,7 @@ export function useLayout(
     cardsConfig: Record<string, ICardConfig> | undefined,
     layoutKey: string,
     layouts: Record<string, LayoutConfig> | undefined,
+    editors?: Record<string, IEditorDef>,
 ): ILayoutResult {
     return useMemo(() => {
         const schemaProps = schema?.properties ?? {};
@@ -142,11 +147,16 @@ export function useLayout(
             const isWatchCard = !!cardCfg.watch;
             // Only include fields present in the schema (unless it's a watch/detail card or schema is absent)
             // Supports dot-notation paths like 'input.input' and 'table#table1' column-override entries.
+            // Custom editor widget names (e.g. 'Period') are allowed even when not in schema.
             const validFields =
                 isWatchCard || !schema
                     ? fields
-                    : fields.filter(f =>
-                          schemaHasField(schemaProps as Record<string, IEnrichedFieldSchema>, f),
+                    : fields.filter(
+                          f =>
+                              schemaHasField(
+                                  schemaProps as Record<string, IEnrichedFieldSchema>,
+                                  f,
+                              ) || !!editors?.[f],
                       );
             cards[name] = {
                 name,
@@ -157,6 +167,10 @@ export function useLayout(
                 ...(Object.keys(columnOverrides).length > 0 ? {columnOverrides} : {}),
             };
         }
+
+        // Expand an editor widget name to its sub-properties for allFields tracking.
+        // Other field names pass through unchanged.
+        const expandField = (f: string): string[] => editors?.[f]?.properties ?? [f];
 
         // Step 2: Resolve layout
         const layoutDef = layouts?.[layoutKey];
@@ -173,7 +187,9 @@ export function useLayout(
                 component: item.component,
             }));
             const allTabCards = tabs.flatMap(t => t.cardNames.flat());
-            const allFields = [...new Set(allTabCards.flatMap(c => cards[c]?.fields ?? []))];
+            const allFields = [
+                ...new Set(allTabCards.flatMap(c => (cards[c]?.fields ?? []).flatMap(expandField))),
+            ];
             return {
                 rows: [],
                 cards,
@@ -188,7 +204,11 @@ export function useLayout(
             // Split layout — resizable panels side by side
             const panels = layoutDef.panels;
             const allPanelCards = panels.flatMap(p => p.cards);
-            const allFields = [...new Set(allPanelCards.flatMap(c => cards[c]?.fields ?? []))];
+            const allFields = [
+                ...new Set(
+                    allPanelCards.flatMap(c => (cards[c]?.fields ?? []).flatMap(expandField)),
+                ),
+            ];
             return {
                 rows: [],
                 cards,
@@ -206,10 +226,12 @@ export function useLayout(
         } else {
             rows = Object.keys(cards).map(c => [c]);
         }
-        const allFields = [...new Set(Object.values(cards).flatMap(c => c.fields))];
+        const allFields = [
+            ...new Set(Object.values(cards).flatMap(c => c.fields.flatMap(expandField))),
+        ];
 
         return {rows, cards, allFields, layoutType: 'flat'};
-    }, [schema, cardsConfig, layoutKey, layouts]);
+    }, [schema, cardsConfig, layoutKey, layouts, editors]);
 }
 
 /** Flatten layout definition to array of column groups.

@@ -17,9 +17,33 @@
  * `fieldState.error` — no context broadcast is needed.
  */
 import type {IEnrichedSchema} from '@feasibleone/blong';
+import type React from 'react';
 import {createContext, use} from 'react';
 import type {Control, UseFormGetValues, UseFormSetValue} from 'react-hook-form';
 import type {FlatLayoutConfig, ILayoutResult, IResolvedCard} from '../../hooks/useLayout.js';
+
+// ── Custom editor types ───────────────────────────────────────────────────────
+
+/**
+ * Props injected into every custom editor component.
+ * `Input` renders the widget for a named schema field.
+ * `Label` renders the field's label.
+ * `ErrorLabel` renders the field's validation error.
+ */
+export interface ICustomEditorProps {
+    Input: React.ComponentType<{name: string; className?: string; fieldClass?: string}>;
+    Label: React.ComponentType<{name?: string; className?: string; label?: string}>;
+    ErrorLabel: React.ComponentType<{name?: string; className?: string}>;
+}
+
+/**
+ * A custom editor component.
+ * Must carry a static `properties` array listing the schema field names it covers.
+ * These are used to correctly track visible fields and skip schema filtering.
+ */
+export type ICustomEditor = React.ComponentType<ICustomEditorProps> & {
+    properties: string[];
+};
 
 export interface ITableSelection {
     row: Record<string, unknown>;
@@ -44,6 +68,19 @@ export interface IFormContext {
      */
     getValues: UseFormGetValues<Record<string, unknown>>;
     checkPermission: ((permission: string) => boolean) | undefined;
+    /**
+     * Named method handlers for field-change dispatch and other programmatic actions.
+     * Keyed by method name; each receives a params object and returns a Promise.
+     */
+    methods?: Record<string, (params: unknown) => Promise<unknown>>;
+    /**
+     * Default method name to call on every field change.
+     * Individual fields can override this with `widget.onChange`.
+     */
+    onFieldChange?: string;
+
+    /** Custom editor components, keyed by widget name used in card `widgets` arrays */
+    editors?: Record<string, ICustomEditor>;
 
     // ── Layout fields — consumed by the root Deck ─────────────────────────
     layoutResult: ILayoutResult;

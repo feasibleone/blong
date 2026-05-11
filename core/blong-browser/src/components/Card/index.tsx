@@ -15,10 +15,11 @@ import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 import './index.css';
 
-import type {IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
+import type {IEnrichedFieldSchema, IEnrichedSchema, ILogger} from '@feasibleone/blong';
 import React, {useCallback, useMemo, useState, type ReactNode} from 'react';
 import {
     Controller,
+    useFormState,
     useWatch,
     type ControllerFieldState,
     type ControllerRenderProps,
@@ -28,6 +29,7 @@ import {DropZone} from '../../design/DropZone.js';
 import {SelectionIndicator} from '../../design/SelectionIndicator.js';
 import {useDesignable} from '../../design/useDesignable.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
+import {useBlongUi} from '../../index.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
@@ -226,11 +228,13 @@ function FieldRow({
     cardReadOnly,
     isLast,
     columnOverride,
+    log,
 }: {
     fieldName: string;
     cardReadOnly: boolean | undefined;
     isLast: boolean;
     columnOverride?: string[];
+    log?: ILogger;
 }) {
     // ── Context subscriptions (all unconditional) ──────────────────────────────
     const stableCtx = useBlongForm();
@@ -244,6 +248,9 @@ function FieldRow({
     const onChange = stableCtx?.onChange;
     const handleTableSelect = stableCtx?.handleTableSelect;
     const getValues = stableCtx?.getValues;
+    const setValue = stableCtx?.setValue;
+    const methods = stableCtx?.methods;
+    const onFieldChange = stableCtx?.onFieldChange;
     const {readOnly: fieldDisabled = false, loading = false} = stateCtx ?? {};
 
     // ── Pure derivations (no hooks) ────────────────────────────────────────────
@@ -290,7 +297,32 @@ function FieldRow({
         effectiveSchema?.widget?.selectionMode === 'single' ||
         effectiveSchema?.widget?.type === 'navigator';
 
+    // Paths for visibility and enabled state, driven by form values at those paths
+    const widgetExtra = effectiveSchema?.widget as unknown as Record<string, unknown> | undefined;
+    const visiblePath =
+        typeof widgetExtra?.visible === 'string' ? (widgetExtra.visible as string) : undefined;
+    const enabledPath =
+        typeof widgetExtra?.enabled === 'string' ? (widgetExtra.enabled as string) : undefined;
+    // Method name to call on change (per-widget override or form-level default)
+    const onChangeName =
+        typeof widgetExtra?.onChange === 'string'
+            ? (widgetExtra.onChange as string)
+            : onFieldChange;
+
     // ── Hooks that depend on derived values (still unconditional) ──────────────
+
+    // Watch form values at visibility/enabled paths so this field re-renders when they change.
+    // disabled: true when there is no path or no control, so no subscription is created.
+    const watchedVisible = useWatch({
+        control: stableCtx?.control,
+        name: visiblePath ?? '__never__',
+        disabled: !visiblePath || !stableCtx?.control,
+    });
+    const watchedEnabled = useWatch({
+        control: stableCtx?.control,
+        name: enabledPath ?? '__never__',
+        disabled: !enabledPath || !stableCtx?.control,
+    });
 
     // Memoize validation rules — effectiveSchema is derived from the stable context
     // and fieldName, so it almost never changes during a user's editing session.
@@ -321,6 +353,14 @@ function FieldRow({
     // participate in the grid layout (col-12 md:col-4 / col-12 md:col-8) exactly
     // as they would if they were written inline in FieldRow's JSX, while still
     // being driven by fieldState.error — which Controller keeps fresh automatically.
+    // Derived enabled state: disabled if form-level readOnly OR widget.enabled path is false
+    const isWidgetDisabled =
+        enabledPath != null
+            ? !watchedEnabled
+            : (effectiveSchema?.widget as unknown as Record<string, unknown> | undefined)
+                  ?.enabled === false;
+    const widgetDisabled = fieldDisabled || isWidgetDisabled;
+
     const renderController = useCallback(
         ({
             field,
@@ -332,7 +372,6 @@ function FieldRow({
         }) => {
             // Both are non-null here: FieldRow returns null before the <Controller>
             // JSX if either is undefined (see early returns further below).
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const Widget = WidgetComponent!;
             const hasLabel = effectiveSchema?.title !== '';
             const error = fieldState.error;
@@ -346,7 +385,25 @@ function FieldRow({
                             name={baseName}
                             schema={effectiveSchema!}
                             value={field.value}
-                            onChange={(val: unknown) => {
+                            onChange={async (val: unknown) => {
+                                // Call the field-change method (widget.onChange or onFieldChange)
+                                // before updating the form. Returning false aborts the change.
+                                if (onChangeName && methods?.[onChangeName]) {
+                                    try {
+                                        const result = await methods[onChangeName]({
+                                            field: {name: baseName},
+                                            value: val,
+                                            form: {
+                                                getValues: getValues!,
+                                                setValue: setValue!,
+                                            },
+                                        });
+                                        if (result === false) return;
+                                    } catch (err: unknown) {
+                                        log?.error?.(err, '[blong] Field onChange method error:');
+                                        return;
+                                    }
+                                }
                                 field.onChange(val);
                                 // getValues() reads the current RHF store at call time — no
                                 // stale closure, no context subscription required.
@@ -362,7 +419,7 @@ function FieldRow({
                             error={error}
                             readOnly={schemaReadOnly}
                             loading={loading}
-                            disabled={fieldDisabled}
+                            disabled={widgetDisabled}
                             dropdowns={dropdowns}
                             onSelect={needsOnSelect ? handleTableSelect : undefined}
                         />
@@ -396,20 +453,22 @@ function FieldRow({
                 </>
             );
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- getValues is excluded: stable ref, see comment above
         [
             WidgetComponent,
             instanceId,
             baseName,
             effectiveSchema,
             onChange,
+            onChangeName,
+            methods,
             schemaReadOnly,
             loading,
-            fieldDisabled,
+            widgetDisabled,
             dropdowns,
             needsOnSelect,
             handleTableSelect,
             translations,
+            log,
         ],
     );
 
@@ -420,6 +479,14 @@ function FieldRow({
     // hook call order stable across renders.
     if (!stableCtx || !stateCtx) return null;
     if (!effectiveSchema || !WidgetComponent) return null;
+
+    // Hide the field when widget.visible is explicitly false or a watched path resolves falsy
+    const isHidden =
+        visiblePath != null
+            ? !watchedVisible
+            : (effectiveSchema.widget as unknown as Record<string, unknown> | undefined)
+                  ?.visible === false;
+    if (isHidden) return null;
 
     const hasLabel = effectiveSchema.title !== '';
 
@@ -455,6 +522,158 @@ function FieldRow({
                 control={control!}
                 rules={validationRules}
                 render={renderController}
+            />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Custom editor building blocks (Input / Label / ErrorLabel)
+// These are module-level stable components so they never cause unmount/remount
+// when passed as props to custom editor components.
+// ---------------------------------------------------------------------------
+
+/**
+ * `Input` factory for custom editors.
+ * Renders the widget for a named schema field using react-hook-form Controller.
+ * Accepts `name` (required) and an optional `className`/`fieldClass` for the wrapper div.
+ */
+function CustomInput({
+    name,
+    className,
+    fieldClass,
+}: {
+    name: string;
+    className?: string;
+    fieldClass?: string;
+}) {
+    const stableCtx = useBlongForm();
+    const stateCtx = useBlongFormState();
+
+    if (!stableCtx || !stateCtx) return null;
+
+    const {schema, control, dropdowns, onChange, getValues} = stableCtx;
+    const {readOnly: fieldDisabled, loading} = stateCtx;
+
+    const fieldSchema = resolveFieldSchema(schema, name);
+    if (!fieldSchema) return null;
+
+    const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema));
+    if (!WidgetComponent) return null;
+
+    const dropdownKey = fieldSchema.widget?.dropdown;
+    const effectiveSchema: IEnrichedFieldSchema =
+        dropdowns && dropdownKey && dropdowns[dropdownKey]
+            ? {...fieldSchema, widget: {...fieldSchema.widget!, options: dropdowns[dropdownKey], dropdown: undefined}}
+            : fieldSchema;
+
+    const containerClass = className ?? fieldClass ?? '';
+
+    if (loading) {
+        return (
+            <div className={`flex align-items-center ${containerClass}`}>
+                <Skeleton className="p-inputtext w-full" />
+            </div>
+        );
+    }
+
+    return (
+        <Controller
+            name={name}
+            control={control!}
+            render={({field, fieldState}) => (
+                <div className={`flex align-items-center ${containerClass}`}>
+                    <WidgetComponent
+                        id={name.replace(/\./g, '-')}
+                        name={name}
+                        schema={effectiveSchema}
+                        value={field.value}
+                        onChange={(val: unknown) => {
+                            field.onChange(val);
+                            onChange?.(
+                                setFieldValue(
+                                    getValues!() as Record<string, unknown>,
+                                    name,
+                                    val,
+                                ),
+                            );
+                        }}
+                        onBlur={field.onBlur}
+                        error={fieldState.error}
+                        readOnly={fieldDisabled || effectiveSchema.readOnly || effectiveSchema.widget?.readOnly}
+                        dropdowns={dropdowns}
+                    />
+                </div>
+            )}
+        />
+    );
+}
+
+/**
+ * `Label` factory for custom editors.
+ * Renders the label for a named schema field.
+ */
+function CustomLabel({
+    name,
+    className = 'col-12 md:col-4',
+    label: labelOverride,
+}: {
+    name?: string;
+    className?: string;
+    label?: string;
+}) {
+    const stableCtx = useBlongForm();
+    const fieldSchema = name ? resolveFieldSchema(stableCtx?.schema, name) : undefined;
+    const title = labelOverride ?? fieldSchema?.title ?? name;
+    if (!title) return null;
+    return (
+        <label htmlFor={name?.replace(/\./g, '-')} className={className}>
+            <Text>{title}</Text>
+        </label>
+    );
+}
+
+/**
+ * `ErrorLabel` factory for custom editors.
+ * Renders the validation error message for a named field.
+ * When called without a `name`, renders nothing.
+ */
+function CustomErrorLabel({name, className}: {name?: string; className?: string}) {
+    const stableCtx = useBlongForm();
+    const {errors} = useFormState({control: stableCtx?.control});
+    if (!name || !errors[name]) return null;
+    const error = errors[name];
+    return (
+        <small className={`p-error blong-field-error ${className ?? ''}`}>
+            {error?.message as string}
+        </small>
+    );
+}
+
+/**
+ * CustomEditorRow — renders a custom editor component registered via the `editors` prop.
+ * The editor receives stable `Input`, `Label`, `ErrorLabel` factory components.
+ */
+function CustomEditorRow({
+    fieldName,
+    isLast,
+}: {
+    fieldName: string;
+    isLast: boolean;
+    cardReadOnly?: boolean;
+}) {
+    const stableCtx = useBlongForm();
+    if (!stableCtx) return null;
+
+    const CustomEditorComponent = stableCtx.editors?.[fieldName];
+    if (!CustomEditorComponent) return null;
+
+    return (
+        <div className={`blong-custom-editor${isLast ? '' : ' mb-3'}`}>
+            <CustomEditorComponent
+                Input={CustomInput}
+                Label={CustomLabel}
+                ErrorLabel={CustomErrorLabel}
             />
         </div>
     );
@@ -596,6 +815,7 @@ export function Card({
     const resolvedTitle: string | ReactNode | undefined = resolved ? resolved.label : title;
     const titleLabel = typeof resolvedTitle === 'string' ? resolvedTitle : (cardName ?? elementId);
 
+    const {log} = useBlongUi();
     const {isSelected, select, dragProps, setRef, designClass, style} = useDesignable(
         elementId,
         'card',
@@ -655,15 +875,31 @@ export function Card({
             } else {
                 // FieldRow handles its own context subscriptions (stable + state).
                 // Card itself does NOT rerender when values change.
-                content = resolved.fields.map((fieldName, idx) => (
-                    <FieldRow
-                        key={fieldName}
-                        fieldName={fieldName}
-                        cardReadOnly={cardReadOnly}
-                        isLast={idx === resolved.fields.length - 1}
-                        columnOverride={resolved.columnOverrides?.[fieldName]}
-                    />
-                ));
+                // Custom editor widget names (matching `editors` keys) are rendered via
+                // CustomEditorRow instead of the standard FieldRow.
+                content = resolved.fields.map((fieldName, idx) => {
+                    const isLast = idx === resolved.fields.length - 1;
+                    if (formCtx?.editors?.[fieldName]) {
+                        return (
+                            <CustomEditorRow
+                                key={fieldName}
+                                fieldName={fieldName}
+                                isLast={isLast}
+                                cardReadOnly={cardReadOnly}
+                            />
+                        );
+                    }
+                    return (
+                        <FieldRow
+                            key={fieldName}
+                            fieldName={fieldName}
+                            cardReadOnly={cardReadOnly}
+                            isLast={isLast}
+                            columnOverride={resolved.columnOverrides?.[fieldName]}
+                            log={log}
+                        />
+                    );
+                });
             }
         }
     } else {

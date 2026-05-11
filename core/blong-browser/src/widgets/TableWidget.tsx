@@ -686,26 +686,58 @@ export function TableWidget({
               [KEY]: (r as Row)[KEY] ?? i,
           }));
 
+    // ── Pivot transformation ───────────────────────────────────────────────
+    // When widget.pivot is configured, overlay existing data onto a fixed set
+    // of rows derived from `examples` (static) or a named `dropdown` (dynamic).
+    // The `join` map describes how pivot row fields map to actual data row fields.
+    const pivotCfg = schema.widget?.pivot as
+        | {examples?: Row[]; dropdown?: string; join?: Record<string, string>}
+        | undefined;
+    const pivotBaseRows: Row[] | undefined = pivotCfg
+        ? (pivotCfg.examples ??
+              (pivotCfg.dropdown
+                  ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? undefined)
+                  : undefined))
+        : undefined;
+
+    const baseRows: Row[] = pivotBaseRows
+        ? (() => {
+              const joinEntries = Object.entries(pivotCfg!.join ?? {});
+              return pivotBaseRows.map((pivotRow, i) => {
+                  const found = rows.find(r =>
+                      joinEntries.every(([pivotKey, rowKey]) => pivotRow[pivotKey] === r[rowKey]),
+                  );
+                  if (found) return found;
+                  // Build an empty row seeded with the join field values
+                  const seeded: Row = {[KEY]: i};
+                  for (const [pivotKey, rowKey] of joinEntries) {
+                      seeded[rowKey] = pivotRow[pivotKey];
+                  }
+                  return seeded;
+              });
+          })()
+        : rows;
+
     // Client-side cascaded filtering (non-listAction mode only).
     // In listAction mode, the cascade filter is sent to the server via mergedListParams.
     const filteredRows =
         !isListMode && parentFieldName && masterMapping
             ? parentSelection
-                ? rows.filter(r =>
+                ? baseRows.filter(r =>
                       Object.entries(masterMapping).every(
                           ([ownKey, parentKey]) => r[ownKey] === parentSelection.row[parentKey],
                       ),
                   )
                 : []
-            : rows;
+            : baseRows;
 
     const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
     const [pendingEdit, setPendingEdit] = useState<Record<string, boolean> | null>(null);
     const [selected, setSelected] = useState<Row[]>([]);
     const [singleSelected, setSingleSelected] = useState<Row | null>(null);
     const allowEdit = schema.widget?.actions?.allowEdit !== false;
-    const allowAdd = schema.widget?.actions?.allowAdd !== false;
-    const allowDelete = schema.widget?.actions?.allowDelete !== false;
+    const allowAdd = schema.widget?.actions?.allowAdd !== false && !pivotBaseRows;
+    const allowDelete = schema.widget?.actions?.allowDelete !== false && !pivotBaseRows;
     const editable = !readOnly && allowEdit;
     const interactionDisabled = disabled || readOnly;
     const isSingleSelect = schema.widget?.selectionMode === 'single';
