@@ -1,9 +1,24 @@
 import {act, within} from '@testing-library/react';
 import {userEvent} from '@testing-library/user-event';
-import {describe, expect, it, vi} from 'vitest';
+import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
+import React from 'react';
+import type {IWidgetProps} from '@feasibleone/blong';
+import {fireEvent, screen, waitFor} from '@testing-library/react';
 import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
+import {widgetRegistry} from '../../widgets/index.js';
 import {render} from '../../test/render.js';
+import {Editor} from './index.js';
+
+// Mock confirmPopup so the Reset-when-dirty confirmation accepts immediately.
+// Without a mounted <ConfirmPopup /> component the real function is a no-op in
+// jsdom, which would prevent doReset() from being called in the reset tests.
+vi.mock('primereact/confirmpopup', () => ({
+    confirmPopup: ({accept}: {accept?: () => void}) => {
+        accept?.();
+    },
+}));
+
 import {
     Basic,
     Design,
@@ -410,5 +425,192 @@ describe('<Editor />', () => {
             '.p-steps-list, .p-steps, [role="tablist"], .blong-form-steps',
         );
         expect(stepsList).toBeTruthy();
+    });
+});
+
+// ── Editor render isolation — typing in one field must not rerender sibling widgets ──
+//
+// Mirrors the equivalent test suite in Form.test.tsx.
+// The Editor wraps a Form and manages extra state (isDirty, localValue, savedSuccess, …).
+// Before the fix, handleFormChange called setLocalValue and setIsDirty on every keystroke,
+// which caused Editor → Form → all widgets to rerender.  This suite catches that regression.
+
+describe('Editor render isolation', () => {
+    const SPY_TYPE = '_editor_spy';
+
+    const renderCounts: Record<string, number> = {};
+
+    const SpyWidget = React.memo(function SpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
+        renderCounts[name] = (renderCounts[name] ?? 0) + 1;
+        return (
+            <input
+                data-testid={name}
+                value={String(value ?? '')}
+                onChange={e => onChange(e.target.value)}
+                onBlur={onBlur}
+            />
+        );
+    });
+
+    let prevWidget: React.ComponentType<IWidgetProps> | undefined;
+    beforeAll(() => {
+        prevWidget = widgetRegistry.get(SPY_TYPE);
+        widgetRegistry.register(SPY_TYPE, SpyWidget as React.ComponentType<IWidgetProps>);
+    });
+    afterAll(() => {
+        if (prevWidget) widgetRegistry.register(SPY_TYPE, prevWidget);
+    });
+    beforeEach(() => {
+        Object.keys(renderCounts).forEach(k => delete renderCounts[k]);
+    });
+
+    const spySchema = {
+        properties: {
+            fieldA: {title: 'Field A', widget: {type: SPY_TYPE as 'input'}},
+            fieldB: {title: 'Field B', widget: {type: SPY_TYPE as 'input'}},
+        },
+    };
+    const spyCards = {
+        edit: {label: 'Edit', widgets: ['fieldA', 'fieldB']},
+    };
+
+    it('typing in fieldA does not rerender fieldB widget', async () => {
+        render(
+            <Editor
+                schema={spySchema}
+                cards={spyCards}
+                editMode
+                value={{fieldA: '', fieldB: ''}}
+            />,
+        );
+
+        // Wait for initial render to settle, then reset counts.
+        await act(async () => {});
+        renderCounts.fieldA = 0;
+        renderCounts.fieldB = 0;
+
+        const inputA = screen.getByTestId('fieldA') as HTMLInputElement;
+        await act(async () => {
+            fireEvent.change(inputA, {target: {value: 'x'}});
+        });
+
+        // fieldB must NOT have rerendered (no Editor-level state change on keystroke).
+        expect(renderCounts.fieldB ?? 0).toBe(0);
+        // fieldA should have rerendered (its own Controller updated its value).
+        expect(renderCounts.fieldA ?? 0).toBeGreaterThan(0);
+    });
+
+    it('typing in multiple fields only rerenders the active field widget', async () => {
+        render(
+            <Editor
+                schema={spySchema}
+                cards={spyCards}
+                editMode
+                value={{fieldA: '', fieldB: ''}}
+            />,
+        );
+
+        await act(async () => {});
+
+        for (const [testId, char] of [
+            ['fieldA', 'a'],
+            ['fieldB', 'b'],
+            ['fieldA', 'c'],
+        ] as const) {
+            renderCounts.fieldA = 0;
+            renderCounts.fieldB = 0;
+
+            const input = screen.getByTestId(testId) as HTMLInputElement;
+            await act(async () => {
+                fireEvent.change(input, {target: {value: char}});
+            });
+
+            const sibling = testId === 'fieldA' ? 'fieldB' : 'fieldA';
+            expect(renderCounts[sibling] ?? 0).toBe(0);
+        }
+    });
+});
+
+// ── Editor reset behaviour ────────────────────────────────────────────────────
+//
+// Regression test for the bug where clicking Reset while the form has unsaved
+// edits (i.e. localValue is still undefined and entityValue hasn't changed)
+// left the form showing the dirty values, set Editor.isDirty=false, but never
+// restored the original field values or re-enabled the Save/Reset buttons on
+// the next edit.
+//
+// The fix: doReset() increments formResetKey which forces Form to call RHF's
+// reset(value) even when the `value` prop reference hasn't changed.
+
+describe('Editor reset behaviour', () => {
+    const schema = {
+        properties: {
+            userName: {title: 'User Name'},
+        },
+    };
+    const cards = {
+        edit: {label: 'User', widgets: ['userName']},
+    };
+
+    it('restores original value and re-enables buttons after reset and re-edit', async () => {
+        render(
+            <Editor
+                schema={schema}
+                cards={cards}
+                editMode
+                value={{userName: 'Alice'}}
+            />,
+        );
+
+        // Wait for initial render and value sync.
+        await act(async () => {});
+
+        const input = screen.getByLabelText('User Name') as HTMLInputElement;
+
+        // ── Step 1: edit the field ───────────────────────────────────────────
+        await act(async () => {
+            fireEvent.change(input, {target: {value: 'Bob'}});
+        });
+        expect(input.value).toBe('Bob');
+
+        // Save and Reset buttons should be enabled once the form is dirty.
+        await waitFor(() => {
+            const saveBtn = screen.getByRole('button', {name: 'Save'});
+            const resetBtn = screen.getByRole('button', {name: 'Reset'});
+            expect(saveBtn).not.toBeDisabled();
+            expect(resetBtn).not.toBeDisabled();
+        });
+
+        // ── Step 2: click Reset ──────────────────────────────────────────────
+        const resetBtn = screen.getByRole('button', {name: 'Reset'});
+        await act(async () => {
+            fireEvent.click(resetBtn);
+        });
+
+        // Original value must be restored in the input.
+        await waitFor(() => {
+            expect(input.value).toBe('Alice');
+        });
+
+        // Save and Reset buttons must be disabled (form is clean after reset).
+        await waitFor(() => {
+            const saveBtn = screen.getByRole('button', {name: 'Save'});
+            const resetBtnAfter = screen.getByRole('button', {name: 'Reset'});
+            expect(saveBtn).toBeDisabled();
+            expect(resetBtnAfter).toBeDisabled();
+        });
+
+        // ── Step 3: edit again after reset ──────────────────────────────────
+        await act(async () => {
+            fireEvent.change(input, {target: {value: 'Charlie'}});
+        });
+
+        // Buttons must become enabled again — this was the core regression.
+        await waitFor(() => {
+            const saveBtn = screen.getByRole('button', {name: 'Save'});
+            const resetBtnFinal = screen.getByRole('button', {name: 'Reset'});
+            expect(saveBtn).not.toBeDisabled();
+            expect(resetBtnFinal).not.toBeDisabled();
+        });
     });
 });
