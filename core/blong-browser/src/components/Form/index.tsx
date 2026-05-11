@@ -16,22 +16,14 @@
 import './index.css';
 
 import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
-import React, {lazy, Suspense, useCallback, useEffect, useId, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
 import {useBlongUi} from '../../context/BlongUiContext.js';
-import {useDesignMode} from '../../design/useDesignMode.js';
+import {FormInspector, useDesignMode} from '../../design/index.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Deck} from '../Deck/index.js';
-import {
-    FormContext,
-    FormStateContext,
-    type ITableSelection,
-} from './FormContext.js';
-
-// DevTool is in devDependencies — load it lazily so the package builds correctly when
-// devDependencies are absent (production / downstream package consumers).
-const DevTool = lazy(() => import('@hookform/devtools').then(m => ({default: m.DevTool})));
+import {FormContext, FormStateContext, type ITableSelection} from './FormContext.js';
 
 export interface IFormProps {
     /** JSON-enriched schema describing fields */
@@ -168,14 +160,9 @@ export function Form({
         [onTableSelect],
     );
 
-    const {
-        control,
-        handleSubmit,
-        reset,
-        setError,
-        getValues,
-        setValue,
-    } = useForm<Record<string, unknown>>({
+    const {control, handleSubmit, reset, setError, getValues, setValue} = useForm<
+        Record<string, unknown>
+    >({
         // defaultValues: value ?? {},
         mode: 'onBlur',
     });
@@ -263,7 +250,18 @@ export function Form({
 
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).
     // The root Deck reads layoutResult, layout, formId, and onLayoutChange from FormContext.
-    const formBody = rightPanel ? (
+    // When debug mode is active, FormInspector is appended as an extra right panel showing
+    // live form state (values, tableSelections, etc.) for inspection during development.
+    const effectiveRightPanel = debug ? (
+        <>
+            {rightPanel}
+            <FormInspector />
+        </>
+    ) : (
+        rightPanel
+    );
+
+    const formBody = effectiveRightPanel ? (
         <div className="blong-form-layout">
             <form
                 id={formId}
@@ -273,7 +271,7 @@ export function Form({
             >
                 <Deck id="root" />
             </form>
-            {rightPanel}
+            {effectiveRightPanel}
         </div>
     ) : (
         <form
@@ -288,17 +286,7 @@ export function Form({
 
     return (
         <FormContext value={stableContextValue}>
-            <FormStateContext value={stateContextValue}>
-                {debug ? (
-                    <Suspense fallback={null}>
-                        <DevTool
-                            control={control}
-                            placement="top-right"
-                        />
-                    </Suspense>
-                ) : null}
-                {formBody}
-            </FormStateContext>
+            <FormStateContext value={stateContextValue}>{formBody}</FormStateContext>
         </FormContext>
     );
 }

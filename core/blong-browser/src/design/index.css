@@ -254,6 +254,141 @@
     word-break: break-all;
 }
 
+/* ── Form Inspector (debug mode) ── */
+.blong-inspector .blong-property-editor__title {
+    display: flex;
+    align-items: center;
+}
+
+.blong-inspector__icon {
+    margin-right: 0.4rem;
+}
+
+.blong-inspector__section {
+    margin-bottom: 0.5rem;
+}
+
+.blong-inspector__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.25rem 0;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    text-align: left;
+    border-radius: 0.2rem;
+}
+
+.blong-inspector__toggle:hover {
+    color: var(--text-color);
+}
+
+.blong-inspector__chevron {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.blong-inspector__body {
+    margin-top: 0.2rem;
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 0.75rem;
+}
+
+.blong-inspector__body .blong-json {
+    font-size: 0.72rem;
+    margin: 0;
+    word-break: break-all;
+}
+
+/* Fields section — per-field dirty/touched/error rows */
+.blong-inspector__empty {
+    font-size: 0.72rem;
+    color: var(--text-color-secondary);
+    margin: 0.25rem 0 0;
+    font-style: italic;
+}
+
+.blong-inspector__fields {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.blong-inspector__field-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-height: 1.4rem;
+}
+
+.blong-inspector__field-name {
+    font-size: 0.72rem;
+    color: var(--text-color-secondary);
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.blong-inspector__field-name--dirty {
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.blong-inspector__field-flags {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+/* D = Dirty, T = Touched, error type badge */
+.blong-inspector__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 0.2rem;
+    padding: 0.1rem 0.3rem;
+    letter-spacing: 0.03em;
+}
+
+.blong-inspector__badge--dirty {
+    background: rgba(234, 179, 8, 0.2);
+    color: #a16207;
+}
+
+.blong-inspector__badge--touched {
+    background: rgba(99, 102, 241, 0.15);
+    color: #4338ca;
+}
+
+.blong-inspector__badge--error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #b91c1c;
+}
+
+.blong-inspector__error-msg {
+    font-size: 0.68rem;
+    color: #b91c1c;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 110px;
+}
+
 /* Design-mode toolbar buttons group */
 .blong-design-toolbar {
     display: inline-flex;

@@ -234,6 +234,15 @@ export const WithNavigator: StoryFn = () => (
     />
 );
 
+WithNavigator.play = async ({canvas, userEvent}) => {
+    const family = await canvas.findAllByText('Shallow Reef');
+    await userEvent.click(family[0]);
+    await new Promise(r => setTimeout(r, 200));
+    const row = await canvas.findAllByText('Table Coral');
+    await userEvent.click(row[0]);
+    await new Promise(r => setTimeout(r, 200));
+};
+
 // ── TabbedExplorer — tabs instead of split layout ─────────────────────────────
 
 /**
