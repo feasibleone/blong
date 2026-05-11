@@ -375,6 +375,7 @@ export default async function loadRealm<T extends TSchema>(
             rpcServer: {},
             gateway: {},
             restFs: {},
+            systemDebug: {},
         });
         items = topoSort([
             {
@@ -463,6 +464,11 @@ export default async function loadRealm<T extends TSchema>(
                           name: 'restFs',
                           deps: ['log', 'gateway'],
                           load: () => import('./RestFs.ts'),
+                      },
+                      {
+                          name: 'systemDebug',
+                          deps: ['log', 'gateway', 'registry', 'rpcServer'],
+                          load: () => import('./SystemDebug.ts'),
                       },
                       {
                           name: 'registry',
