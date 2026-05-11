@@ -32,12 +32,12 @@ export default server(blong => ({
         'adapter.mysql': {
             mysql: {},
             remote: {canSkipSocket: true},
-            watch: {test: ['test.mysql.query']},
+            watch: {test: ['test.mysql.query', 'test.mysql.crud']},
         },
         'adapter.mongodb': {
             mongodb: {},
             remote: {canSkipSocket: true},
-            watch: {test: ['test.mongodb.documentInsert']},
+            watch: {test: ['test.mongodb.documentInsert', 'test.mongodb.crud']},
         },
         'adapter.http': {
             http: {},
@@ -52,7 +52,7 @@ export default server(blong => ({
         'adapter.kafka': {
             kafka: {},
             remote: {canSkipSocket: true},
-            watch: {test: ['test.kafka.messageProduce']},
+            watch: {test: ['test.kafka.messageProduce', 'test.kafka.messageRoundtrip']},
         },
         'adapter.vault': {
             vault: {},
