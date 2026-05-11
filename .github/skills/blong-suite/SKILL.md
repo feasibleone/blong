@@ -371,5 +371,8 @@ systemDebug: {
 },
 ```
 
-> **Never enable `systemDebug` in production.** The endpoints expose the full configuration
-> snapshot including any secrets present in the merged config object.
+> **Never enable `systemDebug` in production.** The `/api/sys/config` endpoint returns the full
+> merged configuration snapshot. Any secrets present in the config (database passwords, API keys,
+> signing keys, etc.) will be exposed as plaintext JSON. If you need to inspect config in a
+> non-dev environment, set `auth: 'jwt'` and scope access to trusted users only, or exclude
+> sensitive realms from the suite before starting.

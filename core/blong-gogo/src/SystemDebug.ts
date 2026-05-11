@@ -17,6 +17,8 @@ interface IRpcServerWithInfo {
     info(): object;
 }
 
+// The api object is captured by reference so that configRuntime — which is set
+// on it after infra items are constructed (load.ts) — is visible at request time.
 interface IApiRef {
     log?: ILog;
     gateway?: IGatewayWithPlugins;
@@ -32,31 +34,21 @@ export default class SystemDebug extends Internal {
         auth: false,
     };
 
-    #gateway: IGatewayWithPlugins;
-    #registry: IRegistry;
-    #rpcServer: IRpcServerWithInfo | undefined;
     #apiRef: IApiRef;
 
     public constructor(config: IConfig, apiRef: IApiRef) {
         super({log: apiRef.log});
         this.merge(this.#config, config);
-        this.#gateway = apiRef.gateway!;
-        this.#registry = apiRef.registry!;
-        this.#rpcServer = apiRef.rpcServer;
-        // Keep a live reference to the api object so that configRuntime, which is
-        // set after infra items are constructed (load.ts), is visible at request time.
         this.#apiRef = apiRef;
     }
 
     public async init(): Promise<void> {
-        if (!this.#config.enabled || !this.#gateway) return;
+        if (!this.#config.enabled || !this.#apiRef.gateway) return;
 
         this.log?.warn?.(
             'systemDebug is enabled — introspection endpoints are active; do not enable in production',
         );
 
-        const registry = this.#registry;
-        const rpcServer = this.#rpcServer;
         const apiRef = this.#apiRef;
         const prefix = this.#config.routePrefix;
         const authConfig = this.#config.auth;
@@ -77,7 +69,7 @@ export default class SystemDebug extends Internal {
                     url: `${prefix}/ports`,
                     config: {auth: authConfig},
                     handler: async () => ({
-                        ports: Array.from(registry.ports.keys()),
+                        ports: Array.from(apiRef.registry?.ports.keys() ?? []),
                     }),
                 });
 
@@ -87,7 +79,7 @@ export default class SystemDebug extends Internal {
                     url: `${prefix}/methods`,
                     config: {auth: authConfig},
                     handler: async () => ({
-                        methods: Array.from(registry.methods.entries()).map(
+                        methods: Array.from(apiRef.registry?.methods.entries() ?? []).map(
                             ([name, handlers]) => ({
                                 name,
                                 handlerCount: handlers.length,
@@ -104,7 +96,7 @@ export default class SystemDebug extends Internal {
                     url: `${prefix}/modules`,
                     config: {auth: authConfig},
                     handler: async () => ({
-                        modules: Array.from(registry.modules.keys()).filter(
+                        modules: Array.from(apiRef.registry?.modules.keys() ?? []).filter(
                             (k): k is string => typeof k === 'string',
                         ),
                     }),
@@ -115,12 +107,12 @@ export default class SystemDebug extends Internal {
                     method: 'GET',
                     url: `${prefix}/rpc`,
                     config: {auth: authConfig},
-                    handler: async () => rpcServer?.info() ?? {},
+                    handler: async () => apiRef.rpcServer?.info() ?? {},
                 });
             },
             {name: 'system-debug'},
         );
 
-        this.#gateway.registerPlugin(plugin);
+        apiRef.gateway!.registerPlugin(plugin);
     }
 }
