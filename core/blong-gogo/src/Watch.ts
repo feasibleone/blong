@@ -294,7 +294,10 @@ export default class Watch extends Internal implements IWatch {
                     ? (await import(this.#config.enabled ? filename + '?' + Date.now() : filename))
                           .default
                     : ((await directory![filename]()) as {default: unknown}).default;
-            if (!item) this.log?.error?.('Error loading ' + filename);
+            if (!item) {
+                this.log?.error?.('Error loading ' + filename);
+                continue;
+            }
             const expectedName = this.#platform.basename(
                 filename,
                 this.#platform.extname(filename),
