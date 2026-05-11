@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.2.0...ui-demo-v1.3.0) (2026-05-11)
+
+
+### Features
+
+* improve model ([93bd565](https://github.com/feasibleone/blong/commit/93bd5652e827bbc166698f5aee026687c32bdf41))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.1.0...ui-demo-v1.2.0) (2026-05-09)
 
 

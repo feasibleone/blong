@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.4.0...blong-browser-v1.5.0) (2026-05-11)
+
+
+### Features
+
+* improve model ([93bd565](https://github.com/feasibleone/blong/commit/93bd5652e827bbc166698f5aee026687c32bdf41))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.3.1...blong-browser-v1.4.0) (2026-05-11)
 
 
