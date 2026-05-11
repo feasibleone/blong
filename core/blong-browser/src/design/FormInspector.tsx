@@ -135,7 +135,7 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
         useFormState({control});
 
     return (
-        <div className="blong-property-editor blong-inspector p-component">
+        <div className="blong-property-editor blong-inspector p-component m-2">
             <div className="blong-property-editor__title">
                 <i className="pi pi-info-circle blong-inspector__icon" />
                 Form Inspector

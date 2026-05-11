@@ -131,6 +131,11 @@ Design.args = {
     initialDesignMode: true,
 };
 
+Design.play = async ({canvas, userEvent}) => {
+    const descInput = canvas.queryByText?.('Type');
+    if (descInput) await userEvent.click(descInput);
+};
+
 /** Tabbed layout */
 export const Tabs: StoryFn = Template.bind({});
 Tabs.args = {
