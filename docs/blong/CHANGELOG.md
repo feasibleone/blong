@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.11.0...blong-docs-v1.12.0) (2026-05-12)
+
+
+### Features
+
+* implement rationale misalignment TODO items (Items 4-14) ([#145](https://github.com/feasibleone/blong/issues/145)) ([a7b3b44](https://github.com/feasibleone/blong/commit/a7b3b44c4389a8f6313819e42ff8053fb90e1904))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.10.0...blong-docs-v1.11.0) (2026-04-26)
 
 
