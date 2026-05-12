@@ -5,7 +5,7 @@
  * and wires menu item clicks to action dispatches.
  */
 import {Menubar, ProgressSpinner, TabPanel, TabView} from '../../primereact/index.js';
-import './index.css';
+import './Portal.css';
 
 import React, {Suspense, useCallback} from 'react';
 import {useBlongUi} from '../../context/BlongUiContext.js';
@@ -14,11 +14,11 @@ import testid from '../../lib/testid.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPageAction} from '../../types/action.js';
 import type {IMenuItem} from '../../types/portal.js';
-import {Button} from '../Button/index.js';
-import {ErrorDialog} from '../Error/index.js';
-import {Hint} from '../Hint/index.js';
-import {Loader} from '../Loader/index.js';
-import {Text} from '../Text/index.js';
+import {Button} from '../Button/Button.js';
+import {ErrorDialog} from '../Error/Error.js';
+import {Hint} from '../Hint/Hint.js';
+import {Loader} from '../Loader/Loader.js';
+import {Text} from '../Text/Text.js';
 
 // ── Per-tab error boundary ─────────────────────────────────────────────────
 

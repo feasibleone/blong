@@ -21,7 +21,7 @@ import type {Meta} from '@storybook/react-vite';
 import type {ISplitLayoutConfig} from '../../../hooks/useLayout.js';
 import type {IWidgetConfig} from '../../../index.js';
 import type {StoryFn} from '../Editor.stories.js';
-import {Editor} from '../index.js';
+import {Editor} from '../Editor.js';
 
 const meta: Meta<typeof Editor> = {
     title: 'Editor/Explorer',

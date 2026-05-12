@@ -14,16 +14,16 @@
  * while the provider wiring is always handled here.
  */
 import {ConfirmDialog, ConfirmPopup, PrimeReactProvider} from '../../primereact/index.js';
-import './index.css';
+import './App.css';
 
 import type {ILogger} from '@feasibleone/blong';
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
-import {ErrorDialog} from '../Error/index.js';
-import {ActionHint} from '../Hint/index.js';
-import {Portal, type IPortalProps} from '../Portal/index.js';
-import {Theme, type IThemeConfig} from '../Theme/index.js';
+import {ErrorDialog} from '../Error/Error.js';
+import {ActionHint} from '../Hint/Hint.js';
+import {Portal, type IPortalProps} from '../Portal/Portal.js';
+import {Theme, type IThemeConfig} from '../Theme/Theme.js';
 
 const DEFAULT_THEME: IThemeConfig = {name: 'lara-light-blue', palette: 'light'};
 

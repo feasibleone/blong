@@ -10,7 +10,7 @@
 import type {Meta} from '@storybook/react-vite';
 import type {ICustomEditorProps} from '../../Form/FormContext.js';
 import type {StoryFn} from '../Editor.stories.js';
-import {Editor} from '../index.js';
+import {Editor} from '../Editor.js';
 
 const meta: Meta<typeof Editor> = {title: 'Editor/CustomEditors', component: Editor};
 export default meta;

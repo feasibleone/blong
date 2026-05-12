@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {render, screen} from '../../test/render.js';
-import {Page} from './index.js';
+import {Page} from './Page.js';
 
 describe('Page', () => {
     it('renders children', () => {

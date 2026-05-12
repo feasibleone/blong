@@ -3,8 +3,8 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import {useState} from 'react';
-import type {IFormProps} from './index.js';
-import {Form} from './index.js';
+import type {IFormProps} from './Form.js';
+import {Form} from './Form.js';
 
 type FormArgs = Partial<IFormProps> & {lang?: string};
 

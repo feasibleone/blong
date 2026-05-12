@@ -25,8 +25,8 @@ import {useEffect} from 'react';
 import type {DispatchFn} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPortalConfig, ITab} from '../../types/portal.js';
-import {Login as LoginForm} from '../Login/index.js';
-import {Portal} from '../Portal/index.js';
+import {Login as LoginForm} from '../Login/Login.js';
+import {Portal} from '../Portal/Portal.js';
 
 // ── Meta ───────────────────────────────────────────────────────────────────
 

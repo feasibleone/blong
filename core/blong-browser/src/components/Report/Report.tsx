@@ -9,8 +9,8 @@ import {Column, DataTable, Panel, Skeleton, Toolbar} from '../../primereact/inde
 import type {IEnrichedSchema} from '@feasibleone/blong';
 import {useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
-import {Button} from '../Button/index.js';
-import {Form} from '../Form/index.js';
+import {Button} from '../Button/Button.js';
+import {Form} from '../Form/Form.js';
 
 export interface IReportColumn {
     field: string;

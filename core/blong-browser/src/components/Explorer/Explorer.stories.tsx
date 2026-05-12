@@ -1,7 +1,7 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import React from 'react';
 import {useAppStore} from '../../state/appStore.js';
-import {Explorer} from './index.js';
+import {Explorer} from './Explorer.js';
 
 const meta: Meta<typeof Explorer> = {
     title: 'Data/Explorer',

@@ -1,6 +1,6 @@
 import type {IComponent} from '@feasibleone/blong';
 import {useEffect} from 'react';
-import {Portal} from '../components/Portal/index.js';
+import {Portal} from '../components/Portal/Portal.js';
 import {useBlongUi} from '../index.js';
 import {useAppStore} from '../state/appStore.js';
 import type {ITab} from '../types/portal.js';

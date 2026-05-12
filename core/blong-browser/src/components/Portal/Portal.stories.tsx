@@ -18,8 +18,8 @@ import {useAppStore} from '../../state/appStore.js';
 import type {IPortalConfig, ITab} from '../../types/portal.js';
 import {Basic as EditorBasic} from '../Editor/Editor.stories.js';
 import {Default as ExplorerDefault} from '../Explorer/Explorer.stories.js';
-import {Explorer} from '../Explorer/index.js';
-import {Portal} from './index.js';
+import {Explorer} from '../Explorer/Explorer.js';
+import {Portal} from './Portal.js';
 
 // ── Story type ─────────────────────────────────────────────────────────────
 

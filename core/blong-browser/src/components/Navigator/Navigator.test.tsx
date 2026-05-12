@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import {render, screen} from '../../test/render.js';
-import {Navigator} from './index.js';
+import {Navigator} from './Navigator.js';
 
 describe('Navigator', () => {
     it('renders with static data', () => {

@@ -2,8 +2,8 @@ import {DndContext} from '@dnd-kit/core';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {DesignModeProvider} from '../../design/DesignModeContext.js';
 import {render, screen} from '../../test/render.js';
-import {Form} from '../Form/index.js';
-import {Deck} from './index.js';
+import {Form} from '../Form/Form.js';
+import {Deck} from './Deck.js';
 
 // Deck uses useDesignMode — keep design mode off by default
 beforeEach(() => {

@@ -5,7 +5,7 @@ import {Dialog} from '../../primereact/index.js';
 
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
-import {Button} from '../Button/index.js';
+import {Button} from '../Button/Button.js';
 
 /**
  * Error types that indicate an expired or invalid session.

@@ -8,7 +8,7 @@ import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {render} from '../../test/render.js';
-import {Editor} from './index.js';
+import {Editor} from './Editor.js';
 
 // Mock confirmPopup so the Reset-when-dirty confirmation accepts immediately.
 // Without a mounted <ConfirmPopup /> component the real function is a no-op in

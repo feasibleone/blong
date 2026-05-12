@@ -1,7 +1,7 @@
 import React from 'react';
 import {describe, expect, it} from 'vitest';
 import {render, screen, waitFor} from '../../test/render.js';
-import {Async} from './index.js';
+import {Async} from './Async.js';
 
 describe('Async', () => {
     it('shows fallback while loading', async () => {

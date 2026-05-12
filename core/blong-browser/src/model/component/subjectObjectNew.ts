@@ -16,7 +16,7 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
         component: async () => {
             const [schemaOverride, {Editor}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
-                import('../../components/Editor/index.js'),
+                import('../../components/Editor/Editor.js'),
             ]);
 
             const schema = blong.lib.merge({}, model.schema, schemaOverride);

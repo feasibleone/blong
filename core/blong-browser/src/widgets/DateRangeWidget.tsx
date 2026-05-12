@@ -1,5 +1,5 @@
 import type {IWidgetProps} from '@feasibleone/blong';
-import {DateRange} from '../components/DateRange/index.js';
+import {DateRange} from '../components/DateRange/DateRange.js';
 
 /**
  * DateRangeWidget — wraps the DateRange component.

@@ -2,7 +2,7 @@ import {InputTextarea} from '../primereact/index.js';
 
 import type {IWidgetProps} from '@feasibleone/blong';
 import {useState} from 'react';
-import {Button} from '../components/Button/index.js';
+import {Button} from '../components/Button/Button.js';
 
 export function JsonWidget({
     name,

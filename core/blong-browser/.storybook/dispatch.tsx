@@ -33,8 +33,8 @@ import {
     marineDropdownData,
 } from '@feasibleone/blong-marine/meta/storybook.js';
 import React from 'react';
-import {App} from '../src/components/App/index.js';
-import {Hint} from '../src/components/Hint/index.js';
+import {App} from '../src/components/App/App.js';
+import {Hint} from '../src/components/Hint/Hint.js';
 import type {DispatchFn} from '../src/context/BlongUiContext.js';
 import type {IModelSpec} from '../src/index.js';
 import {blongEvents} from '../src/lib/eventBus.js';

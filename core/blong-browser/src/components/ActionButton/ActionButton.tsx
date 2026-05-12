@@ -15,7 +15,7 @@ import {useAction} from '../../hooks/useAction.js';
 import {usePermission} from '../../hooks/usePermission.js';
 import type {IToolbarButton} from '../../index.js';
 import {useAppStore} from '../../state/appStore.js';
-import {Button} from '../Button/index.js';
+import {Button} from '../Button/Button.js';
 
 export interface IActionButtonProps extends IToolbarButton {
     /** Ref to the form element to submit before calling */

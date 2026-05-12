@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render} from '../../test/render.js';
-import {ThumbIndex} from './index.js';
+import {ThumbIndex} from './ThumbIndex.js';
 
 describe('ThumbIndex', () => {
     it('renders empty tab set (horizontal)', () => {

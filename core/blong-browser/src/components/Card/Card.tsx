@@ -13,7 +13,7 @@
  */
 import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
 import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
-import './index.css';
+import './Card.css';
 
 import type {IEnrichedFieldSchema, IEnrichedSchema, ILogger} from '@feasibleone/blong';
 import React, {useCallback, useMemo, useState, type ReactNode} from 'react';
@@ -34,7 +34,7 @@ import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {useBlongForm, useBlongFormState, type ITableSelection} from '../Form/FormContext.js';
-import {Text} from '../Text/index.js';
+import {Text} from '../Text/Text.js';
 
 export interface ICardProps {
     /** Card title shown in the header */

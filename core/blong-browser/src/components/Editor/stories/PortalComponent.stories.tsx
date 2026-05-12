@@ -2,10 +2,10 @@
  * PortalComponent story — tab that renders a dynamic Explorer component.
  */
 import type {Meta} from '@storybook/react-vite';
-import {Explorer} from '../../Explorer/index.js';
+import {Explorer} from '../../Explorer/Explorer.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Template} from '../Editor.stories.js';
-import {Editor} from '../index.js';
+import {Editor} from '../Editor.js';
 
 const meta: Meta<typeof Editor> = {title: 'Editor/PortalComponent', component: Editor};
 export default meta;

@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {render} from '../../test/render.js';
-import {Json} from './index.js';
+import {Json} from './Json.js';
 
 describe('Json', () => {
     it('renders raw JSON pre block', () => {

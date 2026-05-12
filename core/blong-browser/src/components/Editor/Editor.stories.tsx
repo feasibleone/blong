@@ -14,10 +14,10 @@ import type {Meta} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import React from 'react';
-import {Card} from '../Card/index.js';
-import {Explorer} from '../Explorer/index.js';
-import type {IEditorProps} from './index.js';
-import {Editor} from './index.js';
+import {Card} from '../Card/Card.js';
+import {Explorer} from '../Explorer/Explorer.js';
+import type {IEditorProps} from './Editor.js';
+import {Editor} from './Editor.js';
 
 const meta: Meta<typeof Editor> = {
     title: 'Editor',

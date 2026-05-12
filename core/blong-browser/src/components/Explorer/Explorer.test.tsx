@@ -1,7 +1,7 @@
 import {fireEvent, waitFor} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
 import {render} from '../../test/render.js';
-import {Explorer} from './index.js';
+import {Explorer} from './Explorer.js';
 
 const schema = {
     properties: {

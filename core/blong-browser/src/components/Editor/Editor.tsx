@@ -18,9 +18,9 @@ import {useAction} from '../../hooks/useAction.js';
 import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import type {IToolbarButton} from '../../index.js';
 import type {IBlongError} from '../../types/action.js';
-import {ActionButton} from '../ActionButton/index.js';
+import {ActionButton} from '../ActionButton/ActionButton.js';
 import type {ITableSelection} from '../Form/FormContext.js';
-import {Form} from '../Form/index.js';
+import {Form} from '../Form/Form.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */

@@ -2,7 +2,7 @@ import {act} from '@testing-library/react';
 import {describe, expect, it} from 'vitest';
 import {useAppStore} from '../../state/appStore.js';
 import {render} from '../../test/render.js';
-import {Hint} from './index.js';
+import {Hint} from './Hint.js';
 
 describe('Hint', () => {
     it('renders toast container', () => {

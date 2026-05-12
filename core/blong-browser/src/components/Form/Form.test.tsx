@@ -3,7 +3,7 @@ import React from 'react';
 import type {IWidgetProps} from '@feasibleone/blong';
 import {fireEvent, render, screen, waitFor, act} from '../../test/render.js';
 import {widgetRegistry} from '../../widgets/index.js';
-import {Form} from './index.js';
+import {Form} from './Form.js';
 
 const schema = {
     properties: {

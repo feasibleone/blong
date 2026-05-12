@@ -14,7 +14,7 @@ export async function subjectObjectReport(
         component: async () => {
             const [schema, {Report}] = await Promise.all([
                 blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
-                import('../../components/Report/index.js'),
+                import('../../components/Report/Report.js'),
             ]);
 
             return function ReportPage(props: Record<string, unknown>) {

@@ -16,16 +16,16 @@ import {
     type DataTableSelectionChangeParams,
     type DataTableSortParams,
 } from '../../primereact/index.js';
-import './index.css';
+import './Explorer.css';
 
 import type {IEnrichedSchema} from '@feasibleone/blong';
 import {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
 import {useBlongUi} from '../../context/BlongUiContext.js';
 import {useAction} from '../../hooks/useAction.js';
 import type {IToolbarButton} from '../../index.js';
-import {ActionButton} from '../ActionButton/index.js';
-import {Button} from '../Button/index.js';
-import {Navigator} from '../Navigator/index.js';
+import {ActionButton} from '../ActionButton/ActionButton.js';
+import {Button} from '../Button/Button.js';
+import {Navigator} from '../Navigator/Navigator.js';
 
 export interface IExplorerColumn {
     field: string;

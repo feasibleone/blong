@@ -1,7 +1,7 @@
 import {render as tlRender} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {useAppStore} from '../../state/appStore.js';
-import {App} from './index.js';
+import {App} from './App.js';
 
 beforeEach(() => {
     useAppStore.setState(s => ({

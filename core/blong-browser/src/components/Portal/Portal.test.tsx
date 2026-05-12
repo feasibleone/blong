@@ -2,7 +2,7 @@ import {act} from '@testing-library/react';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppStore} from '../../state/appStore.js';
 import {fireEvent, render, screen} from '../../test/render.js';
-import {Portal} from './index.js';
+import {Portal} from './Portal.js';
 
 beforeEach(() => {
     useAppStore.setState(s => ({

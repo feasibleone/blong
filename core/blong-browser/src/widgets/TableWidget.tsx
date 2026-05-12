@@ -1,4 +1,4 @@
-import {ActionButton} from '../components/ActionButton/index.js';
+import {ActionButton} from '../components/ActionButton/ActionButton.js';
 import {
     Calendar,
     Checkbox,
@@ -18,8 +18,8 @@ import {
 
 import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '@feasibleone/blong';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Button} from '../components/Button/index.js';
-import {Text} from '../components/Text/index.js';
+import {Button} from '../components/Button/Button.js';
+import {Text} from '../components/Text/Text.js';
 import {useBlongUi} from '../context/BlongUiContext.js';
 import {useBlongFormState} from '../components/Form/FormContext.js';
 import {dateIn, dateOut} from './DateWidget.js';

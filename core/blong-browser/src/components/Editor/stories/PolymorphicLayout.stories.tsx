@@ -7,7 +7,7 @@
  */
 import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
-import {Editor} from '../index.js';
+import {Editor} from '../Editor.js';
 
 const meta: Meta<typeof Editor> = {title: 'Editor/PolymorphicLayout', component: Editor};
 export default meta;

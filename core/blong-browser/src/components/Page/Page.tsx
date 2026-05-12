@@ -8,7 +8,7 @@ import {BreadCrumb, Toolbar} from '../../primereact/index.js';
 
 import React from 'react';
 import type {IToolbarButton} from '../../index.js';
-import {ActionButton} from '../ActionButton/index.js';
+import {ActionButton} from '../ActionButton/ActionButton.js';
 
 export interface IBreadcrumbItem {
     label: string;

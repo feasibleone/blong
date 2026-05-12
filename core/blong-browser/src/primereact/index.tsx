@@ -117,7 +117,7 @@ import {Tree as PrimeTree} from 'primereact/tree';
 import {TreeSelect as PrimeTreeSelect} from 'primereact/treeselect';
 import {TreeTable as PrimeTreeTable} from 'primereact/treetable';
 import React from 'react';
-import {Text} from '../components/Text/index.js';
+import {Text} from '../components/Text/Text.js';
 import {useAppStore} from '../state/appStore.js';
 
 import type {AutoCompleteProps} from 'primereact/autocomplete';

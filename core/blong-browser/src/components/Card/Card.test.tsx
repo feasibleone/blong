@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {fireEvent, render} from '../../test/render.js';
-import {Card} from './index.js';
+import {Card} from './Card.js';
 
 describe('Card', () => {
     it('renders label and children', () => {

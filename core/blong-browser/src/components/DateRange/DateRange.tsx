@@ -7,7 +7,7 @@
 import {Calendar, OverlayPanel} from '../../primereact/index.js';
 
 import React, {useRef, useState} from 'react';
-import {Button} from '../Button/index.js';
+import {Button} from '../Button/Button.js';
 
 /** @deprecated Use string-based value format instead */
 export interface IDateRangeValue {

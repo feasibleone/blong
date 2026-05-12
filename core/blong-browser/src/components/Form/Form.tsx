@@ -13,7 +13,7 @@
  * Layout rendering is delegated to the root Deck component (id="root"),
  * which reads layout info from FormContext and handles all layout types.
  */
-import './index.css';
+import './Form.css';
 
 import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
 import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
@@ -22,7 +22,7 @@ import {useBlongUi} from '../../context/BlongUiContext.js';
 import {FormInspector, useDesignMode} from '../../design/index.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
-import {Deck} from '../Deck/index.js';
+import {Deck} from '../Deck/Deck.js';
 import {FormContext, FormStateContext, type ITableSelection} from './FormContext.js';
 
 export interface IFormProps {

@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render, waitFor} from '../../test/render.js';
-import {Report} from './index.js';
+import {Report} from './Report.js';
 
 const schema = {
     properties: {

@@ -26,13 +26,13 @@
  *   `portal.component.get` when the Register button is clicked.
  *   The resolved component replaces the login form.
  */
-import './index.css';
+import './Login.css';
 
 import {InputText, Message, Password} from '../../primereact/index.js';
 
 import React, {useState} from 'react';
 import {useBlongUi} from '../../context/BlongUiContext.js';
-import {Button} from '../Button/index.js';
+import {Button} from '../Button/Button.js';
 
 type LoginStep = 'credentials' | 'otp' | 'newPassword';
 

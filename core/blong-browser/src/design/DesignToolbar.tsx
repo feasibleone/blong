@@ -1,7 +1,7 @@
 /**
  * DesignToolbar — toolbar section injected into Editor when design mode is active.
  */
-import {Button} from '../components/Button/index.js';
+import {Button} from '../components/Button/Button.js';
 import {useDesignMode} from './useDesignMode.js';
 
 interface IDesignToolbarProps {

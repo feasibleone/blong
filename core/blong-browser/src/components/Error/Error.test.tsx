@@ -2,7 +2,7 @@ import {act} from '@testing-library/react';
 import {describe, expect, it} from 'vitest';
 import {useAppStore} from '../../state/appStore.js';
 import {render, screen} from '../../test/render.js';
-import {ErrorDialog} from './index.js';
+import {ErrorDialog} from './Error.js';
 
 describe('ErrorDialog', () => {
     it('renders nothing when there is no error', () => {

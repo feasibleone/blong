@@ -36,7 +36,7 @@ import {DropZone} from '../../design/DropZone.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
 import type {FlatLayoutConfig, IResolvedCard, IResolvedTab} from '../../hooks/useLayout.js';
 import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
-import {Card} from '../Card/index.js';
+import {Card} from '../Card/Card.js';
 import {useBlongForm, useBlongFormState} from '../Form/FormContext.js';
 
 export interface IDeckProps {

@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render, screen, waitFor} from '../../test/render.js';
-import {Login} from './index.js';
+import {Login} from './Login.js';
 
 describe('Login', () => {
     it('renders the login form', () => {

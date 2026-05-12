@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {render, screen} from '../../test/render.js';
 
-import {PALETTE_FONT_SIZES, PRIMEREACT_PALETTE_THEMES, Theme} from './index.js';
+import {PALETTE_FONT_SIZES, PRIMEREACT_PALETTE_THEMES, Theme} from './Theme.js';
 
 describe('Theme', () => {
     it('renders children', () => {

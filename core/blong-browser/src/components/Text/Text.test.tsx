@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {render, screen} from '../../test/render.js';
-import {Text} from './index.js';
+import {Text} from './Text.js';
 
 describe('Text', () => {
     it('renders translation key as fallback text', () => {
