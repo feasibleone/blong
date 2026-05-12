@@ -190,7 +190,7 @@ available to the client via REST API on connection.
 
 ### Testing
 
-**Storybook Testing**: Comprehensive visual testing with 22 stories covering:
+**Storybook Testing**: Comprehensive visual testing with stories covering:
 
 - **Theme variations**: Dark and light themes
 - **Data scenarios**: Empty state, error-only, large datasets (500+ entries)
@@ -230,8 +230,8 @@ A skill for the same is implemented.
    array from the captured HTTP payloads. This turns a successful manual
    request into a regression test with minimal developer effort.
 
-3. **Agent-triggered synchronous query** — provide a REST endpoint
-   (`POST /api/query`) that accepts filter criteria and returns a filtered
-   log snapshot without requiring a WebSocket connection. AI agents and CI
-   scripts can poll this endpoint to verify that an operation produced
+3. **Agent-triggered synchronous query** — `POST /api/query` accepts filter
+   criteria in the request body and returns a filtered log snapshot without
+   requiring a WebSocket connection. Implemented in `core/blong-log`. AI agents
+   and CI scripts can poll this endpoint to verify that an operation produced
    expected log entries without holding an open WebSocket.

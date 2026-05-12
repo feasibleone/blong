@@ -216,8 +216,34 @@ export class LogServer {
             return this.#sendJson(res, {entries, total: entries.length});
         }
 
+        if (path === '/api/query' && req.method === 'POST') {
+            return this.#handleQueryPost(req, res);
+        }
+
         // Serve client-side assets
         await this.#serveStatic(req, res, path);
+    }
+
+    async #handleQueryPost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+        try {
+            const body = await new Promise<string>((resolve, reject) => {
+                let data = '';
+                req.on('data', (chunk: Buffer) => {
+                    data += chunk.toString();
+                });
+                req.on('end', () => resolve(data));
+                req.on('error', reject);
+            });
+
+            const filters: FilterOptions = body ? (JSON.parse(body) as FilterOptions) : {};
+            const entries = this.#buffer.query(filters);
+            return this.#sendJson(res, {entries, total: entries.length});
+        } catch (err) {
+            const message =
+                err instanceof SyntaxError ? 'Invalid JSON in request body' : 'Invalid request body';
+            res.writeHead(400, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({error: message}));
+        }
     }
 
     #parseFilters(params: URLSearchParams): FilterOptions {

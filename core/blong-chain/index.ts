@@ -366,6 +366,9 @@ function captureSourceLocation(fn: Function): ISourceLocation {
     };
 }
 
+/** Default number of retry attempts per failing step when `rerun.enabled` is true */
+const DEFAULT_MAX_RETRIES = 1;
+
 /**
  * Main test executor class
  */
@@ -416,6 +419,7 @@ export class TestExecutor extends EventEmitter {
             captureStackTraces: config.captureStackTraces ?? false,
             framework: config.framework,
             log: config.log,
+            rerun: config.rerun,
         };
         this.log = config.log;
 
@@ -615,8 +619,31 @@ export class TestExecutor extends EventEmitter {
                     this.dependencyTracker,
                 );
 
-                // Execute the step
-                const result = await fn(assert, context);
+                // Execute the step (with optional retry loop)
+                const maxRetries =
+                    this.config.rerun?.enabled ? (this.config.rerun.maxRetries ?? DEFAULT_MAX_RETRIES) : 0;
+                let result: unknown;
+                let lastError: Error | undefined;
+
+                for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                    try {
+                        result = await fn(assert, context);
+                        lastError = undefined;
+                        break;
+                    } catch (err) {
+                        lastError = err as Error;
+                        if (attempt < maxRetries) {
+                            this.log?.warn?.(
+                                {err},
+                                `step ${stepName} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying`,
+                            );
+                        }
+                    }
+                }
+
+                if (lastError !== undefined) {
+                    throw lastError;
+                }
 
                 // Store result in real context
                 this.realContext[stepName] = result;
@@ -903,3 +930,7 @@ export class TestExecutor extends EventEmitter {
 
 // Export all types
 export type * from './test-types.js';
+
+// Export snapshot helper
+export {maskPaths, snapshot} from './snapshot.js';
+export type {ISnapshotContext, ISnapshotOptions} from './snapshot.js';

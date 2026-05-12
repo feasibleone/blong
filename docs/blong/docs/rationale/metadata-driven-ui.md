@@ -278,7 +278,11 @@ Metadata flows through two levels:
 This layering lets server teams define clean TypeBox schemas and browser
 teams tune visual presentation independently.
 
-### 6. Interactive Design Editor
+### 6. Interactive Design Editor _(Not yet implemented)_
+
+> **Note:** The design editor described below is planned but not yet part of
+> `core/blong-browser`. It will be built after the base form and table
+> generation is stable and fully covered by Storybook stories.
 
 The design editor from ut-prime is retained as a first-class feature:
 

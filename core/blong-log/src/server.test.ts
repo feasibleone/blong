@@ -125,6 +125,71 @@ test('LogServer', async t => {
         await server.stop();
     });
 
+    t.test('REST API - POST /api/query', async t => {
+        const server = new LogServer({
+            udpPort: 18971,
+            httpPort: 18970,
+            host: '127.0.0.1',
+        });
+
+        await server.start();
+
+        server.addEntry({level: 30, msg: 'info one', name: 'svc-a'});
+        server.addEntry({level: 40, msg: 'warn one', name: 'svc-a'});
+        server.addEntry({level: 50, msg: 'error one', name: 'svc-b'});
+
+        // Query without filters returns all entries
+        const allRes = await fetch('http://127.0.0.1:18970/api/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: '{}',
+        });
+        t.equal(allRes.status, 200);
+        const allData = await allRes.json();
+        t.equal(allData.entries.length, 3);
+
+        // Query with level filter
+        const errRes = await fetch('http://127.0.0.1:18970/api/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({level: 'error'}),
+        });
+        const errData = await errRes.json();
+        t.equal(errData.entries.length, 1);
+        t.equal(errData.entries[0].msg, 'error one');
+
+        // Query with name filter
+        const nameRes = await fetch('http://127.0.0.1:18970/api/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: 'svc-a'}),
+        });
+        const nameData = await nameRes.json();
+        t.equal(nameData.entries.length, 2);
+
+        // Empty body is treated as no filters
+        const emptyRes = await fetch('http://127.0.0.1:18970/api/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: '',
+        });
+        t.equal(emptyRes.status, 200);
+        const emptyData = await emptyRes.json();
+        t.equal(emptyData.entries.length, 3);
+
+        // Invalid JSON returns 400
+        const badRes = await fetch('http://127.0.0.1:18970/api/query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: 'not-json',
+        });
+        t.equal(badRes.status, 400);
+        const badData = await badRes.json();
+        t.equal(badData.error, 'Invalid JSON in request body');
+
+        await server.stop();
+    });
+
     t.test('REST API - CORS headers', async t => {
         const server = new LogServer({
             udpPort: 18989,

@@ -1581,3 +1581,142 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
         assert.equal(progress3.status, 'completed');
     });
 });
+
+tap.test('TestExecutor - Rerun (Phase 1)', async t => {
+    t.test('retries a failing step up to maxRetries times', async () => {
+        const executor = new TestExecutor({
+            concurrency: 5,
+            rerun: {enabled: true, maxRetries: 2},
+        });
+
+        let attempts = 0;
+
+        const steps = [
+            async function flakyStep() {
+                attempts++;
+                if (attempts < 3) {
+                    throw new Error('transient error');
+                }
+                return {ok: true};
+            },
+        ];
+
+        await executor.execute(steps as any, {});
+
+        assert.equal(attempts, 3, 'should have tried 3 times (1 initial + 2 retries)');
+        const progress = executor.getProgress();
+        assert.equal(progress.status, 'completed');
+        assert.equal(progress.failedSteps, 0);
+    });
+
+    t.test('marks step as failed when all retries are exhausted', async () => {
+        const executor = new TestExecutor({
+            concurrency: 5,
+            rerun: {enabled: true, maxRetries: 1},
+        });
+
+        let attempts = 0;
+
+        const steps = [
+            async function alwaysFails() {
+                attempts++;
+                throw new Error('persistent error');
+            },
+        ];
+
+        await assert.rejects(
+            executor.execute(steps as any, {}),
+            /persistent error/,
+        );
+
+        assert.equal(attempts, 2, 'should have tried 2 times (1 initial + 1 retry)');
+        const progress = executor.getProgress();
+        assert.equal(progress.failedSteps, 1);
+    });
+
+    t.test('does not retry when rerun is disabled', async () => {
+        const executor = new TestExecutor({concurrency: 5});
+
+        let attempts = 0;
+
+        const steps = [
+            async function failsOnce() {
+                attempts++;
+                if (attempts === 1) throw new Error('first attempt error');
+                return {ok: true};
+            },
+        ];
+
+        await assert.rejects(
+            executor.execute(steps as any, {}),
+            /first attempt error/,
+        );
+
+        assert.equal(attempts, 1, 'should only try once when rerun is disabled');
+    });
+});
+
+tap.test('snapshot helper', async t => {
+    t.test('maskPaths - replaces top-level field', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        const input = {userId: 'abc-123', name: 'Alice'};
+        const masked = maskPaths(input, ['userId']) as Record<string, unknown>;
+        assert.equal(masked.userId, '<masked>');
+        assert.equal(masked.name, 'Alice');
+    });
+
+    t.test('maskPaths - replaces nested field', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        const input = {user: {userId: 'abc-123', role: 'admin'}, status: 'ok'};
+        const masked = maskPaths(input, ['user.userId']) as {user: Record<string, unknown>};
+        assert.equal(masked.user.userId, '<masked>');
+        assert.equal(masked.user.role, 'admin');
+    });
+
+    t.test('maskPaths - ignores prototype-polluting keys', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        const input = {name: 'Bob'};
+        // __proto__ paths should be silently skipped
+        const masked = maskPaths(input, ['__proto__.toString', 'constructor']) as Record<string, unknown>;
+        t.equal(masked.name, 'Bob');
+        t.equal(typeof masked.constructor, 'function', 'constructor should be unchanged');
+    });
+
+    t.test('maskPaths - ignores missing paths', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        const input = {name: 'Bob'};
+        const masked = maskPaths(input, ['missingField']) as Record<string, unknown>;
+        assert.equal(masked.name, 'Bob');
+        assert.ok(!('missingField' in masked));
+    });
+
+    t.test('maskPaths - does not mutate original', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        const input = {id: '123', label: 'test'};
+        maskPaths(input, ['id']);
+        assert.equal(input.id, '123', 'original should be unchanged');
+    });
+
+    t.test('maskPaths - handles non-object values', async () => {
+        const {maskPaths} = await import('./snapshot.js');
+        assert.equal(maskPaths('string', ['field']), 'string');
+        assert.equal(maskPaths(42, ['field']), 42);
+        assert.equal(maskPaths(null, ['field']), null);
+    });
+
+    t.test('snapshot - calls t.matchSnapshot with masked value', async () => {
+        const {snapshot} = await import('./snapshot.js');
+        const captured: Array<[unknown, string]> = [];
+        const mockT = {
+            matchSnapshot(v: unknown, name: string) {
+                captured.push([v, name]);
+            },
+        };
+        const value = {createdAt: '2024-01-01', label: 'hello'};
+        snapshot(mockT, value, 'my-test', {mask: ['createdAt']});
+        assert.equal(captured.length, 1);
+        assert.equal((captured[0][0] as Record<string, unknown>).createdAt, '<masked>');
+        assert.equal((captured[0][0] as Record<string, unknown>).label, 'hello');
+        assert.equal(captured[0][1], 'my-test');
+    });
+});

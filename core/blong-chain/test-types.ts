@@ -340,6 +340,24 @@ export interface ITestExecutorConfig {
     framework?: unknown;
     /** Logger instance for reporting step failures */
     log?: ITestLogger;
+    /**
+     * Automatic rerun configuration for failing steps (Phase 1).
+     *
+     * When enabled, a step that throws an error is retried up to `maxRetries`
+     * times before being reported as failed. This is useful for flaky tests
+     * caused by race conditions or transient network issues.
+     *
+     * Phase 2 (diagnostic attachment) is not yet implemented.
+     */
+    rerun?: {
+        /** Whether to enable the retry mechanism (default: false) */
+        enabled?: boolean;
+        /**
+         * Maximum number of retry attempts per failing step (default: 1).
+         * Set to 0 to detect failures without retrying.
+         */
+        maxRetries?: number;
+    };
 }
 
 /**
