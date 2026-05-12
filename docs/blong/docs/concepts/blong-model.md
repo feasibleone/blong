@@ -16,17 +16,21 @@ For usage patterns see [Schema based UI](../patterns/blong-model.md).
 
 ```text
 Realm
-  └── model/
-        ├── coral.ts        ← IModelSpec declaration
-        ├── family.ts
-        └── mock.ts         ← Storybook/test mock data
+  └── meta/
+        ├── model/
+        │     ├── subjectCoralModel.ts   ← IModelSpec handler (model() factory)
+        │     ├── subjectFamilyModel.ts
+        │     └── …
+        └── fixture/
+              └── subjectFixture.ts      ← fixture data handler for Storybook/tests
 ```
 
-Each model entry produces four discoverable page handlers:
+Each model handler (`.model` kind, discovered via `/\.model$/` regex) produces four discoverable
+page handlers registered in the portal component namespace:
 
 | Handler name                | Page type | Component |
 | --------------------------- | --------- | --------- |
-| `{subject}.{object}.browse` | List view | `Explorer`|
+| `{subject}.{object}.browse` | List view | `Editor` (browse layout) |
 | `{subject}.{object}.new`    | Create    | `Editor`  |
 | `{subject}.{object}.open`   | Edit/view | `Editor`  |
 | `{subject}.{object}.report` | Report    | `Report`  |
@@ -34,12 +38,30 @@ Each model entry produces four discoverable page handlers:
 The report page is optional — it is only registered when `report.permission`
 is defined in the model.
 
+> **Browse page:** The browse page uses `Editor` in `layout: 'browse'` mode — not the standalone
+> `Explorer` component. The default browse layout is a 3-panel split with a tree navigator, a main
+> table, and a detail preview panel.
+
 ---
 
 ## What a ModelSpec Contains
 
 An `IModelSpec` describes **one domain entity** from the browser's perspective.
-It has three concerns:
+It is declared using the `model()` factory from `@feasibleone/blong`, which wraps
+an async handler function returning the spec object:
+
+```typescript
+import {model} from '@feasibleone/blong';
+
+export default model(
+    () =>
+        async function marineCoralModel() {
+            return {subject: 'marine', object: 'coral', /* ... */ };
+        },
+);
+```
+
+The spec has three concerns:
 
 ### 1. Identity
 
@@ -81,51 +103,54 @@ Fields not mentioned in the overlay receive server-schema defaults.
 ## Schema Flow
 
 ```text
-Server TypeBox schema
+IModelSpec.schema overlay (static, in code)
        │
        ▼
-GET /rpc/{subject}/openapi.json  (schemaFetcher, cached per subject)
+{subject}.{object}.schema handler (runtime, from backend — returns {} if none)
        │
        ▼
-Extract params/result for each operationId
+blong.lib.merge(model.schema, schemaOverride)
        │
        ▼
-Merge browser IModelSpec overlay
+IEnrichedSchema  (passed to Editor / Report)
        │
-       ▼
-enrichSchema() → IEnrichedSchema
-       │
-       ├─▶  Explorer columns
-       ├─▶  Editor Form cards + widgets
+       ├─▶  Editor browse layout (table + navigator + detail)
+       ├─▶  Editor form cards + widgets
        └─▶  Report filter + table
 ```
 
-The schema is fetched and enriched once per subject, then cached for the
-lifetime of the browser session. All pages for all objects under the same
-subject share a single HTTP request.
+The schema is fetched per page invocation via the `{subject}.{object}.schema` handler
+(not a static HTTP fetch). The handler returns runtime customisations (e.g. tenant-specific
+design overrides stored in the database) and `{}` when no overrides exist. The merge order
+gives `schemaOverride` highest priority over the static `model.schema`.
 
 ---
 
 ## Dropdown Registry
 
 Fields declared with `widget: {type: 'dropdown', dropdown: 'marine.family'}`
-are tracked automatically. When a page mounts, the framework calls
-`{subject}.dropdown.list({name: 'marine.family'})` on the backend to
-fetch `[{value, label}]` pairs and caches the result in `dropdownRegistry`.
+are resolved by calling `{subject}.dropdown.list` on the backend.
+In development / Storybook the mock adapter auto-generates
+`{subject}.dropdown.list` from fixture data, synthesising `{value, label}` pairs
+using each model's `keyField` and `nameField`.
 
-All widgets on the same page that reference the same dropdown name share
-a single request. Subsequent pages use the cached data without re-fetching.
+The `dropdownRegistry` singleton (exported from `@feasibleone/blong-browser`)
+deduplicates concurrent loads and caches results for the browser session.
 
 ---
 
 ## Preview and Testing
 
-The `setupModelMock()` function overrides the schema fetcher and pre-populates
-the dropdown registry with static data. This is used in Storybook stories and
-unit tests to develop and verify model-driven pages without a running server.
+The mock adapter (`adapter/mock.ts` in blong-browser) activates in `storybook` and `integration`
+environments and auto-generates all CRUD handlers from `.model` and `.fixture` handlers. No manual
+mock setup is needed — add a fixture handler named `{subject}Fixture` that returns sample data
+keyed by `'{subject}.{object}'`.
 
-Each model folder conventionally exports a `mock.ts` file that contains the
-mock OpenAPI schema and dropdown data for that realm's entities.
+The `Model` React component (exported from `@feasibleone/blong-browser`) is the canonical way to
+render model pages in Storybook stories. It uses the full blong platform (loaded via
+`withBlong(browser)` in `.storybook/preview.tsx`) so all handlers are available.
+
+See `core/ui-demo/` for a working Storybook example using the marine biology realm.
 
 ---
 
@@ -133,9 +158,10 @@ mock OpenAPI schema and dropdown data for that realm's entities.
 
 The model system is a *convenience layer* built on top of the same components
 that are available for direct use. When a page requires custom logic that the
-model cannot express, a realm can bypass `modelFactory()` and write a
-component handler that uses `Editor`, `Explorer`, or `Report` directly.
+model cannot express, a realm can write a component handler (`.component` suffix)
+that uses `Editor`, `Explorer`, or `Report` directly.
 
 The model handles the 80 % case. The remaining 20 % uses the underlying
 components with hand-crafted props. Both approaches coexist naturally within
-the same realm's `component/` folder.
+the same realm — component handlers and model handlers are both discovered
+by the portal orchestrator.

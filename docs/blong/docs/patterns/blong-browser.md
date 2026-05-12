@@ -14,24 +14,31 @@ alongside the application realms:
 ```typescript
 // browser.ts
 import {browser} from '@feasibleone/blong';
+import pkg from './package.json' with {type: 'json'};
 
 export default browser(blong => ({
     url: import.meta.url,
+    pkg: {name: pkg.name, version: pkg.version},
     children: [
         async function blongUi() {
-            return import('@feasibleone/blong-browser/browser.js');
+            return import('@feasibleone/blong-browser/browser.ts');
         },
-        './marine',  // application realm
+        async function marine() {
+            return import('./marine/browser.ts');
+        },
     ],
     config: {
-        default: {adapter: true, orchestrator: true},
+        default: {
+            blongUi: {},
+            marine: {},
+        },
     },
 }));
 ```
 
 The blong-browser realm automatically registers the portal shell, auth
-handling, backend adapter, and storage adapter. No explicit initialisation
-is needed.
+handling, backend adapter, storage adapter, and (in storybook/integration
+environments) the mock adapter. No explicit initialisation is needed.
 
 ---
 
@@ -222,25 +229,58 @@ const schema = await schemaRegistry.resolve('marine.coral');
 
 ## Storybook Pattern
 
-Stories mock the dispatch function to develop and test components in isolation.
+Two Storybook patterns exist:
+
+### Component-level stories (blong-browser internal)
+
+Stories mock the dispatch function to develop and test individual components in isolation.
 Use the `withDispatch` decorator from `.storybook/dispatch.js`:
 
 ```tsx
 // CoralOpen.stories.tsx
 import {withDispatch} from '../../../.storybook/dispatch.js';
-import {coralSchema, mockCoral} from '../fixtures/coral.js';
+import {coralEditorFixture, coralStoryValue} from '@feasibleone/blong-marine/meta/storybook.js';
 
 export default {
     title: 'marine/CoralOpen',
     decorators: [withDispatch({
-        'marine.coral.get': () => ({coral: [mockCoral]}),
-        'marine.coral.edit': ({coral}) => ({coral}),
+        coralCoralGet: () => Promise.resolve(coralStoryValue),
+        coralCoralEdit: params => Promise.resolve(params),
     })],
 };
 
 export const Default = {
-    render: () => <CoralOpen schema={coralSchema} coralId={1} />,
+    render: () => <Editor schema={coralEditorFixture.schema} cards={coralEditorFixture.cards}
+                          loadAction="coralCoralGet" saveAction="coralCoralEdit" editable />,
 };
+```
+
+### Model page stories (ui-demo)
+
+For end-to-end model page stories, use the `Model` component with `withBlong(browser)` in the
+`.storybook/preview.tsx`. This loads the full blong platform including the mock adapter:
+
+```tsx
+// .storybook/preview.tsx
+import withBlong from '@feasibleone/blong-browser/storybook.tsx';
+import browser from '../browser.ts';
+
+export default {
+    decorators: [withBlong(browser)],
+    parameters: {layout: 'fullscreen'},
+};
+```
+
+Then stories use the `page()` helper:
+
+```tsx
+// coral/Coral.stories.tsx
+import {page} from '../../storyHelper.js';
+
+export const CoralBrowse     = page('marine.coral.browse');
+export const CoralOpen       = page('marine.coral.open', 1);
+export const CoralNew        = page('marine.coral.new');
+export const CoralOpenSplit  = page('marine.coral.open', 1, {layout: 'editSplit'});
 ```
 
 ---

@@ -26,18 +26,20 @@ Suite (browser.ts)
   └── blong-browser realm          ← @feasibleone/blong-browser/browser.js
         ├── adapter/backend   ← HTTP/JSON-RPC to Blong server gateway
         ├── adapter/storage   ← Browser localStorage
+        ├── adapter/mock      ← Auto-generated CRUD mocks (storybook/integration only)
         ├── orchestrator/auth ← Session management
-        └── orchestrator/portal ← Tab/menu navigation shell
+        └── orchestrator/portal ← Tab/menu navigation + model page discovery
   └── marine realm            ← realm-specific pages
-        ├── component/index   ← contributes page handlers
-        └── orchestrator/…    ← realm business logic
+        ├── meta/model/       ← IModelSpec handlers (.model kind)
+        ├── meta/fixture/     ← Fixture data handlers (.fixture kind)
+        └── orchestrator/     ← Forwarding orchestrator (→ backend)
 ```
 
 Application realms sit alongside blong-browser. They do not import blong-browser
-code directly. Instead, they register page handlers by file-naming
-convention (`*.component`, `*.portal`, `*.actions`) and the portal
-orchestrator discovers and wires them automatically through the handler
-namespace.
+code directly. Instead, they register page handlers via file-naming
+conventions — model handlers (`.model` kind), component handlers (`.component` suffix),
+portal configs (`.portal` suffix) — and the portal orchestrator discovers and wires
+them automatically.
 
 ---
 
@@ -71,22 +73,21 @@ and is local to the browser session.
 
 ## Schema-Driven Rendering
 
-The server exposes per-subject OpenAPI documents at
-`GET /rpc/{subject}/openapi.json`. The browser fetches and caches these
-documents. The `schemaRegistry` enriches the raw OpenAPI schema with
-widget resolution metadata, transforming JSON Schema property definitions
-into fully typed `IEnrichedSchema` objects that components consume directly
-to generate forms, tables and widgets.
+All widget configuration flows from `IEnrichedSchema` objects. In a model-driven page, the
+schema is produced by merging the static `IModelSpec.schema` overlay with the result of the
+`{subject}.{object}.schema` handler call (which returns runtime customisations or `{}`). In a
+custom page, the realm fetches or constructs the schema directly and passes it to `Editor`,
+`Explorer`, or `Report`.
+
+Widget type, validation rules, labels, required markers, and layout hints are all derived from the
+enriched schema properties without any per-field configuration at the component level.
 
 This means:
 
-- Adding a field on the server automatically adds it to the UI form
-- Required constraints on the server type drive browser-side validation
-- Enum values on the server type populate dropdown options
-
-The browser-side `IModelSpec` overlay can supplement the server schema
-with display hints (widget type, dropdown name, card groupings, filter
-flags) that are purely presentational and need not appear on the server.
+- Adding a field on the server (and updating the schema overlay in the model) automatically adds
+  it to the UI form
+- Required constraints in the schema overlay drive browser-side validation
+- Widget type hints (`widget.type`) select the correct PrimeReact input component
 
 ---
 
@@ -124,11 +125,12 @@ For the full Editor feature documentation see
 ## Micro-Frontend Integration
 
 The portal orchestrator (`orchestrator/portal.ts`) imports handlers that
-match three file-naming patterns:
+match several file-naming patterns:
 
-- `*.component` — page handler (returns `{title, permission, component}`)
-- `*.portal` — portal menu configuration
-- `*.actions` — named action objects
+- `.model` kind — model spec handlers (produced by the `model()` factory); auto-generate Browse/New/Open/Report pages
+- `*.component` suffix — component handlers (return `{title, permission, component}`)
+- `*.portal` suffix — portal menu configuration
+- `*.actions` suffix — named action objects
 
 Any realm that places files following these naming conventions
 automatically participates in the portal without a direct dependency on
@@ -150,7 +152,16 @@ See [Model System](blong-model.md) for the concept and
 
 ## Storybook
 
-Storybook (`core/blong-browser/.storybook/`) provides isolated development of
-all components. Stories mock the dispatch function so components can be
-developed and tested without a running Blong server. The canonical
-example domain is **marine biology** (corals, habitats, fish families).
+Two Storybook setups exist:
+
+**`core/blong-browser/.storybook/`** — Per-component stories for the blong-browser component
+library (`Editor`, `Explorer`, `Form`, widgets, etc.). Uses the `withDispatch` decorator from
+`.storybook/dispatch.tsx` with named mock handlers. Fixture data comes from
+`@feasibleone/blong-marine/meta/storybook.js`. Best for developing and testing individual
+components in isolation.
+
+**`core/ui-demo/.storybook/`** — End-to-end model page stories using the `Model` component. Uses
+`withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
+platform (including the mock adapter and marine realm). Stories use the `page()` helper from
+`src/storyHelper.tsx`. Best for verifying complete CRUD flows for a realm. The canonical domain is
+**marine biology** (corals, habitats, fish families, species).

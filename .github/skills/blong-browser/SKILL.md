@@ -34,11 +34,13 @@ stories and mocks is **marine biology** (corals, fish, etc.) — not the `ut-pri
 ```
 core/blong-browser/
   browser.ts              ← realm entry point (import in suite's browser.ts)
+  storybook.tsx           ← withBlong(browser) decorator for model page Storybooks
   adapter/
     backend.ts            ← HTTP JSON-RPC adapter (namespace: backend)
+    mock.ts               ← Auto-generated CRUD mock adapter (namespace: backend; storybook/integration only)
     storage.ts            ← Dispatch-based browser storage adapter (namespace: storage)
   orchestrator/
-    portal.ts             ← Portal orchestrator (namespace: portal)
+    portal.ts             ← Portal orchestrator (namespace: portal/component/action)
     auth.ts               ← Auth orchestrator (namespace: auth)
     portal/               ← Individual portal handlers (semantic triple naming)
       portalReady.ts
@@ -60,7 +62,7 @@ core/blong-browser/
     types/                ← TypeScript types (widget.ts, action.ts, portal.ts, …)
     widgets/              ← Widget registry + individual widget components
     design/               ← Design mode components (PropertyEditor, DropZone, etc.)
-    styles/               ← CSS overrides and theme variables
+    model/                ← Model system (subjectObjectComponent, entry factories, mock, dropdownRegistry)
 ```
 
 ---
@@ -419,10 +421,14 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 
 - **`adapter/backend.ts`** (`backend` namespace) — HTTP JSON-RPC via `adapter.http` +
   `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go through this adapter.
+- **`adapter/mock.ts`** (`backend` namespace, `storybook`/`integration` environments only) —
+  Discovers `.model` and `.fixture` handlers from realm layers; auto-generates `find`, `get`, `add`,
+  `edit`, `remove`, `report`, `schema`, and `{subject}.dropdown.list` handlers for each model. The
+  suite config must include `{blongUi: {mock: {}}}` to activate this adapter.
 - **`adapter/storage.ts`** (`storage` namespace) — browser storage via `adapter.dispatch`.
-- **`orchestrator/portal.ts`** (`portal.*`) — imports handlers matching `/\.component$/`,
-  `/\.portal$/`, `/\.actions?$/`. Realms contribute pages and actions by naming files with these
-  suffixes.
+- **`orchestrator/portal.ts`** (`portal.*`, `component.*`, `action.*`) — imports handlers matching
+  `/\.model$/`, `/\.component$/`, `/\.portal$/`, `/\.action?$/`. Realms contribute pages and actions
+  by naming files with these suffixes or by using the `model()` factory.
 - **`orchestrator/auth.ts`** (`auth.*`) — `authLogin`, `authLogout`, `authSessionGet`.
 
 ---
@@ -494,15 +500,43 @@ layout inference.
 
 ## Storybook
 
-Stories live in `src/components/*/` as `*.stories.tsx`. The tree schema from
-`src/components/Editor/fixtures/tree.ts` is the canonical complex form example. Import `StoryFn`
-type from `Editor.stories.tsx` when creating sub-story files.
+There are **two Storybook setups**:
 
-The `.storybook/dispatch.js` provides a mock dispatch that mirrors the blong action registry
-contract. Use it in Storybook decorators or wrap `withDispatch(mockDispatch)` for isolated stories.
+### `core/blong-browser/.storybook/` — component-level stories
 
-**Template / reuse pattern:** Export a base story with `.args` set, then re-export it with
-`.bind({})` for variant sub-stories — mirrors the ut-prime pattern for avoiding JSX duplication.
+Stories live in `src/components/*/` as `*.stories.tsx`. Used for developing and testing individual
+components (`Editor`, `Explorer`, `Form`, widgets) in isolation.
+
+The `.storybook/dispatch.tsx` provides a mock dispatch. Fixture data and handler stubs come from
+`@feasibleone/blong-marine/meta/storybook.js`. Use `withDispatch(overrides)` as a decorator:
+
+```ts
+export default {
+    decorators: [withDispatch({
+        coralCoralGet: () => Promise.resolve(coralStoryValue),
+    })],
+};
+```
+
+Named handlers in `dispatch.tsx` follow the pattern `{entity}{Entity}{Verb}`:
+- `coralCoralGet` — resolves immediately with fixture data
+- `coralCoralLoad` — never resolves (skeleton state)
+- `coralCoralEditError` — rejects with server-side validation errors
+
+### `core/ui-demo/.storybook/` — model page stories
+
+Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
+platform (including the mock adapter) so model pages work without a running server. Stories use the
+`Model` component:
+
+```tsx
+import {Model} from '@feasibleone/blong-browser';
+export const CoralBrowse = {render: () => <Model componentName="marine.coral.browse" />};
+```
+
+The `page()` helper in `src/storyHelper.tsx` simplifies this further — see the blong-model skill.
+
+### Common Storybook conventions
 
 **Language / translations:** Set `lang: 'bg'` (or any registered locale code) as a story arg —
 `withDispatch` activates translations and PrimeReact locale automatically. See the **blong-i18n**
@@ -554,11 +588,14 @@ Do not implement these yet without checking if they have been added to the codeb
 
 A realm that contributes UI pages registers:
 
-1. A handler file ending in `.component` (e.g. `marine.coral.browse.component.ts`) that returns
-   `{title, permission, component: () => import('...') }` — this makes the component discoverable by
-   the portal orchestrator.
-2. An actions file ending in `.actions` that exports named `IAction` records.
-3. A portal config file ending in `.portal` that defines menu structure referencing those actions.
+1. **Model handlers** (`.model` kind via the `model()` factory) — auto-generate Browse/New/Open/Report
+   pages. Discovered by the portal orchestrator via `/\.model$/` pattern. This is the recommended
+   approach for standard CRUD entities.
+2. **Component handlers** (file ending in `.component`) — manual page handlers returning
+   `{title, permission, component: () => import('...')}`. Used for custom pages beyond standard CRUD.
+3. **Actions files** (file ending in `.actions`) — named `IAction` records for mutations and queries.
+4. **Portal config files** (file ending in `.portal`) — define menu structure referencing those
+   actions/components.
 
 The portal orchestrator imports all matching handlers automatically without direct realm coupling.
 
@@ -573,10 +610,10 @@ way.
 
 ## Related skills and documentation
 
-- **blong-browser-model-dev** — Use when developing or improving `src/model/` internals
-  (modelFactory, entry files, schemaFetcher, dropdownRegistry, types, defaults, mock).
-- **blong-browser-model** — Use when a realm needs to define `IModelSpec` objects and use
-  `modelFactory` to generate CRUD pages.
+- **blong-model-dev** — Use when developing or improving `src/model/` internals
+  (subjectObjectComponent, entry factories, dropdownRegistry, defaults, mock system).
+- **blong-model** — Use when a realm needs to define `IModelSpec` objects and use
+  the model system to generate CRUD pages.
 - **blong-i18n** — Use when adding multi-language support, translating labels or validation
   messages, wiring PrimeReact locale, or adding a `lang` story arg.
 

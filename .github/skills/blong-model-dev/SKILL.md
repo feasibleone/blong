@@ -2,12 +2,12 @@
 name: blong-model-dev
 description: >
     Develop, extend, debug, or improve the blong-browser model system internals. The model system
-    lives in `core/blong-browser/src/model/` and provides the `modelFactory()` factory that
-    auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill when
-    working on the model system itself: modelFactory, entry files
-    (subjectObjectBrowse/New/Open/Report), IModelSpec types, withDefaults, schemaFetcher,
-    dropdownRegistry, or the mock system. For using the model to build realm pages, use the
-    blong-model skill instead.
+    lives in `core/blong-browser/src/model/` and provides the `subjectObjectComponent` aggregator
+    that auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill
+    when working on the model system itself: subjectObjectComponent, entry files
+    (subjectObjectBrowse/New/Open/Report in component/), IModelSpec types, withDefaults,
+    dropdownRegistry, or the mock system (adapter/mock.ts + subjectObjectMock.ts). For using the
+    model to build realm pages, use the blong-model skill instead.
 ---
 
 # blong-model-dev Skill
@@ -30,27 +30,31 @@ For using the model in realm development, use the **blong-model** skill.
 
 ```
 core/blong-browser/src/model/
-  types.ts                ← All TypeScript types (IModelSpec, IResolvedModelSpec, etc.)
-  defaults.ts             ← withDefaults() — fills in standard values for partial specs
-  schemaFetcher.ts        ← Per-subject OpenAPI fetch + overlay merge + cache
+  defaults.ts             ← withDefaults() + deepMerge() — fills in standard values for partial specs
   dropdownRegistry.ts     ← On-demand dropdown load + deduplication + cache
-  modelFactory.ts         ← model factory — the public entry point
-  mock.ts                 ← setupModelMock() / teardownModelMock() for Storybook/tests
   index.ts                ← Public re-exports
-  entries/
-    subjectObjectBrowse.ts  ← Browse page entry factory
-    subjectObjectNew.ts     ← New (create) page entry factory
-    subjectObjectOpen.ts    ← Open (edit) page entry factory
-    subjectObjectReport.ts  ← Report page entry factory (optional)
-    entries.test.ts         ← Unit tests for all entry factories
-  defaults.test.ts          ← Unit tests for withDefaults
-  schemaFetcher.test.ts     ← Unit tests for schemaFetcher
-  mock.test.ts              ← Unit tests for mock setup
+  defaults.test.ts        ← Unit tests for withDefaults
+  Model.tsx               ← <Model> React component for Storybook / standalone usage
+  component/
+    subjectObjectComponent.ts  ← Aggregator — called by portal.ts to build the components map
+    subjectObjectBrowse.ts     ← Browse page factory (uses Editor in browse layout)
+    subjectObjectNew.ts        ← New (create) page factory
+    subjectObjectOpen.ts       ← Open (edit) page factory
+    subjectObjectReport.tsx    ← Report page factory (optional)
+  mock/
+    subjectObjectMock.ts  ← Mock handler generator — used by adapter/mock.ts
+
+core/blong-browser/
+  adapter/mock.ts         ← Mock adapter — discovers .model and .fixture handlers, builds mocks
+  orchestrator/portal.ts  ← Portal orchestrator — discovers .model handlers, builds components map
 ```
+
+Types for IModelSpec, IResolvedModelSpec, IBrowserConfig, etc. live in `@feasibleone/blong` (the
+core types package), not in blong-browser itself.
 
 ---
 
-## Key Types (`types.ts`)
+## Key Types (in `@feasibleone/blong`)
 
 ```typescript
 /** The input spec provided by realm developers */
@@ -61,9 +65,10 @@ interface IModelSpec {
     keyField?: string; // defaults to '${object}Id'
     nameField?: string; // defaults to '${object}.${object}Name'
     schema?: ISchemaOverlay;
-    cards?: Record<string, ICardOverride>;
+    cards?: Record<string, ICardConfig>;
     layouts?: Record<string, LayoutConfig>;
     browser?: IBrowserConfig;
+    editor?: IEditorConfig;
     methods?: IMethodsConfig;
     report?: IReportConfig;
 }
@@ -76,6 +81,7 @@ interface IResolvedModelSpec {
     keyField: string;
     nameField: string;
     browser: Required<IBrowserConfig>;
+    editor: Required<IEditorConfig>;
     methods: Required<IMethodsConfig>;
     // ... cards, layouts, schema, report (with defaults)
 }
@@ -104,7 +110,8 @@ Fills in standard values for every optional field. Key defaults:
 | `methods.edit`         | `'${subject}.${object}.edit'`                     |
 | `methods.remove`       | `'${subject}.${object}.remove'`                   |
 | `methods.report`       | `'${subject}.${object}.report'`                   |
-| `browser.title`        | `capital(object)` + `'s'` plural                  |
+| `browser.title`        | `'${objectTitle} List'`                           |
+| `browser.icon`         | `'pi pi-list'`                                    |
 | `browser.permission.*` | `'${subject}.${object}.{browse/add/edit/delete}'` |
 
 The `deepMerge()` helper in `defaults.ts` deeply merges plain objects, overwriting arrays and
@@ -112,47 +119,27 @@ primitives. It is also exported for use elsewhere in the model system.
 
 ---
 
-## `schemaFetcher.ts`
+## Schema retrieval in entry factories
 
-Fetches and caches the OpenAPI document for a subject, then extracts and merges schema overlays.
-
-### Public API
+There is **no standalone `schemaFetcher.ts`**. Instead, each entry factory (Browse/New/Open/Report)
+calls the `{subject}.{object}.schema` handler at runtime to retrieve the browser-side schema
+override:
 
 ```typescript
-// Fetch raw operationId → {params, result} map for a subject (cached per subject)
-getSubjectApi(subject: string): Promise<Record<string, IOperationSchema>>
-
-// Get the merged IEnrichedSchema for a subject.object (browser overlay applied)
-getObjectSchema(
-    subject: string,
-    object: string,
-    browserOverlay: Record<string, unknown>
-): Promise<Record<string, unknown>>
-
-// Override base URL for fetching (default: '')
-setBaseUrl(url: string): void
-
-// Override the fetch function entirely (used by setupModelMock)
-setFetchFn(fn: (url: string) => Promise<unknown>): void
+const [schemaOverride, {Editor}] = await Promise.all([
+    blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
+    import('../../components/Editor/Editor.js'),
+]);
+const schema = blong.lib.merge({}, model.schema, schemaOverride);
 ```
 
-### Schema extraction logic
-
-1. Fetch `GET {baseUrl}/rpc/{subject}/openapi.json`
-2. From `paths`, find the operation matching `{subject}.{object}.find`
-3. Extract the `params` JSON Schema from
-   `requestBody.content.application/json.schema.properties.params`
-4. Extract the `result` JSON Schema from
-   `responses.200.content.application/json.schema.properties.result`
-5. Read `x-ui-customizations['{subject}.{object}']` from the top-level document for server-stored
-   design overrides
-6. `deepMerge(serverSchema, browserOverlay, serverCustomizations)` in that priority order
-
-### Cache behaviour
-
-The subject API map is cached as a `Promise` in a module-level `Map`. Setting a new fetch function
-via `setFetchFn()` clears both caches (subject API + UI customizations). This ensures the mock setup
-in tests always gets a clean state.
+- `{subject}.{object}.schema` is a backend handler that returns runtime schema customisations (e.g.
+  tenant-specific design overrides stored in the database). It returns `{}` when there are no
+  overrides.
+- `model.schema` is the static browser-side overlay defined in the `IModelSpec`.
+- `blong.lib.merge` deep-merges them: `model.schema` first (static defaults), then `schemaOverride`
+  (runtime, highest priority).
+- The merged object is an `IEnrichedSchema` passed directly to `Editor` or `Report`.
 
 ---
 
@@ -178,7 +165,7 @@ class DropdownRegistry {
     ): Promise<void>;
     // Check if already cached (avoids redundant get() calls)
     has(name: string): boolean;
-    // Clear all caches (used by teardownModelMock)
+    // Clear all caches (used in test teardown to reset between tests)
     clear(): void;
 }
 export const dropdownRegistry: DropdownRegistry;
@@ -190,127 +177,132 @@ the dropdown name (`'marine.family'` → subject `'marine'`).
 
 ---
 
-## Entry Files (`entries/`)
+## Entry files (`component/`)
 
-Each entry file exports a factory function that takes a resolved model and a schema loader, and
-returns an async function compatible with the `componentHandler` entries map.
+Each entry file exports an **async factory function** that takes a resolved model and the
+`IHandlerProxy` (`blong`) from the orchestrator context, and returns an async function that produces
+the `{title, permission, icon, component}` page descriptor.
 
 ### Signature pattern
 
 ```typescript
-export function subjectObjectBrowse(
+export async function subjectObjectBrowse(
     model: IResolvedModelSpec,
-    loadSchema: () => Promise<IEnrichedSchema>,
-): (params?: Record<string, unknown>) => Promise<{
-    title: string;
-    permission: string;
-    icon?: string;
-    component: (params: Record<string, unknown>) => Promise<React.ComponentType>;
-}>;
+    blong: IHandlerProxy<unknown>,
+): Promise<
+    () => Promise<{
+        title: string;
+        permission: string;
+        icon: string;
+        component: () => Promise<React.ComponentType>;
+    }>
+>;
 ```
 
 ### Current implementations
 
-**`subjectObjectBrowse`** — `Explorer` with:
+**`subjectObjectBrowse`** — `Editor` in `layout: 'browse'` mode:
 
-- `listAction` from `model.methods.find`
-- `columns` derived from `model.cards.browse.widgets` (field name after last `.`)
-- A "Create" toolbar button pointing to `{subject}.{object}.new`
-- Single selection mode
+- Schema fetched via `blong.handler['{subject}.{object}.schema']`, merged with `model.schema`
+- `editable: false, editMode: false, layout: 'browse'`
+- `toolbar` from `model.browser.toolbar`
+- `cards` and `layouts` from model (default `browse` layout has 3-panel split with navigator)
 
 **`subjectObjectNew`** — `Editor` with:
 
+- Schema fetched via `blong.handler['{subject}.{object}.schema']`
 - `saveAction` from `model.methods.add`
 - `editMode: true, editable: false` (always in edit mode, no toggle)
-- `cards` and `layouts` from model
+- `value: {}` — empty initial state for a new record
 
 **`subjectObjectOpen`** — `Editor` with:
 
-- `loadAction` from `model.methods.get`
-- `loadParams` contains `{[keyField]: params[keyField]}`
+- Schema fetched via `blong.handler['{subject}.{object}.schema']`
+- `loadAction` from `model.methods.get`; `loadParams = {[keyField]: params[keyField]}`
 - `saveAction` from `model.methods.edit`
 - `editable: true` (shows Edit/Save/Reset toolbar)
 
 **`subjectObjectReport`** — `Report` with:
 
-- `listAction` from `model.methods.report`
+- Schema fetched via `blong.handler['{subject}.{object}.schema']`
+- `dataAction` from `model.methods.report`
+- `filterSchema` from merged schema
 - Only registered when `model.report?.permission` is truthy
 
 ---
 
-## `modelFactory.ts`
+## `component/subjectObjectComponent.ts`
 
-The public factory exported from `@feasibleone/blong-browser`.
+The aggregator that the portal orchestrator calls for each batch of `.model` handlers:
 
 ```typescript
-modelFactory(models: IModelSpec[]): ReturnType<typeof componentHandler>
+export default async (models: IModelSpec[], blong: IHandlerProxy<unknown>) => {
+    const components: Record<string, () => Promise<IComponent>> = {};
+    for (const rawModel of models) {
+        const model = withDefaults(rawModel);
+        const {subject, object} = model;
+        components[`${subject}.${object}.browse`] = await subjectObjectBrowse(model, blong);
+        components[`${subject}.${object}.new`] = await subjectObjectNew(model, blong);
+        components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);
+        if (model.report?.permission)
+            components[`${subject}.${object}.report`] = await subjectObjectReport(model, blong);
+    }
+    return components;
+};
 ```
 
-For each model:
-
-1. Calls `withDefaults(model)` to produce `IResolvedModelSpec`
-2. Defines a `loadSchema()` closure: `getObjectSchema(subject, object, overlay)` + `enrichSchema()`
-3. Registers four entries using the factory functions from `entries/`
-4. Skips the report entry if `model.report?.permission` is falsy
+This is called from `orchestrator/portal.ts` inside `createHandlers` when `kind === 'model'`.
 
 ---
 
-## `mock.ts`
+## `adapter/mock.ts` and `mock/subjectObjectMock.ts`
 
-```typescript
-setupModelMock(options?: IModelMockOptions): void
-teardownModelMock(): void
-```
+The mock adapter (`adapter/mock.ts`) activates in `storybook` and `integration` environments. It:
 
-`IModelMockOptions`:
+1. Imports all handlers matching `/\.model$/` and `/\.fixture$/` from realm browser layers
+2. Calls `subjectObjectMock(models, blong)` for each batch of `.model` handlers to generate mock API
+   handlers
+3. Fixture data is loaded by calling `blong.handler['{subject}Fixture']({}, {})` — a handler
+   exported from a `{subject}Fixture.ts` file using the `fixture()` factory
 
-- `subjects` — map of subject name → minimal OpenAPI doc shape
-- `dropdowns` — map of dropdown name → `IDropdownOption[]`
+`subjectObjectMock.ts` generates the following mock handlers per model:
 
-`setupModelMock` calls `setFetchFn()` with a function that intercepts `/rpc/{subject}/openapi.json`
-requests and returns the corresponding mock doc. It also pre-populates `dropdownRegistry` via
-`registry.set()`.
+- `{subject}.{object}.schema` — returns `{}` (no server-side overrides)
+- `{subject}.{object}.find` — filters/sorts/pages fixture items in memory
+- `{subject}.{object}.get` — returns single item by `keyField`
+- `{subject}.{object}.add` — appends item; generates auto-increment `keyField`
+- `{subject}.{object}.edit` — updates matching item in memory
+- `{subject}.{object}.remove` — removes matching item in memory
+- `{subject}.{object}.report` — returns all fixture rows
+- `{subject}.dropdown.list` — synthesises `{value, label}` pairs from fixture data
 
-`teardownModelMock` restores the default `fetch`-based fetcher and clears the dropdown registry.
+Fixture handlers (`{subject}Fixture`) use the `fixture()` factory from `@feasibleone/blong` and
+return a YAML-parsed object keyed by entity name (e.g.
+`{'marine.coral': [...], 'marine.family': [...]}`).
 
 ---
 
 ## Known Unfinished / Improvement Opportunities
 
-The following are areas where the model system has known gaps. When a feature request touches one of
-these, implement it as part of the model:
+The following are areas where the model system has known gaps:
 
-1. **Browse "Open" on row click** — The Explorer generated by `subjectObjectBrowse` does not
-   automatically open `{subject}.{object}.open` when a row is clicked. This needs an `onSelect` prop
-   wired to a `portal.tab.show` action call.
+1. **Browse "Open" on row click** — The `subjectObjectBrowse` generates an Editor with a table
+   widget, but opening `{subject}.{object}.open` on row click depends on the table widget's `action`
+   field on `nameField` being wired correctly. Verify this via the coral browse story.
 
-2. **Delete action** — No model-level delete confirmation dialog. The browse page should support a
-   Delete button on the selected row when `browser.permission.delete` is set.
+2. **Custom browse columns configuration** — The `IBrowserConfig.columns` property exists in types
+   but the default browse layout uses `model.cards.browse.widgets` to derive columns.
 
-3. **Dropdown preload on browse** — The browse page does not preload dropdowns for filter fields
-   (only the old `browseEntry.ts` version did; the current `subjectObjectBrowse.ts` does not). The
-   `dropdownNames` discovery should be re-added to `modelFactory.ts` and passed to
-   `subjectObjectBrowse`.
+3. **`browser.filter`** — The default browse filter (`IBrowserConfig.filter`) is defined in defaults
+   but its interaction with the Editor browse layout needs verification.
 
-4. **Custom browse columns configuration** — The `IBrowserConfig.columns` property exists in types
-   but is not used by `subjectObjectBrowse`. It should override the default column list from
-   `model.cards.browse.widgets`.
+4. **Server customizations** — The `{subject}.{object}.schema` handler can return design-time
+   customisations, but the merging priority (model.schema → schemaOverride) should be confirmed
+   before adding new override keys.
 
-5. **`browser.filter`** — The default browse filter (`IBrowserConfig.filter`) is defined in types
-   but not passed to the Explorer `listAction`.
-
-6. **`browser.create` array** — Multiple create types (e.g. "New Coral" vs "New Soft Coral") are
-   typed but not rendered in the browse toolbar.
-
-7. **`methods.remove`** — The remove method is defined in types/defaults but no delete page or
-   confirmation dialog is generated.
-
-8. **Server customizations integration** — The `x-ui-customizations` from the OpenAPI document is
-   extracted by `schemaFetcher` but not yet merged into the cards/layouts on the model pages.
-
-9. **Storybook stories for model pages** — No Storybook stories exist that use `setupModelMock` +
-   `modelFactory` to render the generated pages. These are needed for visual verification and
-   regression testing.
+5. **Storybook stories for model pages in ui-demo** — The model pages are exercised via the
+   `core/ui-demo/.storybook/` setup (using `withBlong(browser)` + the full blong platform loaded),
+   not via `blong-browser/.storybook/` per-component stories.
 
 ---
 
@@ -323,5 +315,6 @@ Unit tests live alongside the source files:
 cd core/blong-browser && npx vitest run src/model
 ```
 
-Use `setupModelMock` in test `beforeEach` and `teardownModelMock` in `afterEach` to ensure clean
-state between tests. The test files use `vi.fn()` and `vi.spyOn()` for mock assertions.
+The `defaults.test.ts` file tests `withDefaults()` using plain spec objects. Tests use `vi.fn()` and
+`vi.spyOn()` for mock assertions. When testing entry factories, pass a mock `blong.handler` proxy
+that resolves `{subject}.{object}.schema` calls with `{}`.
