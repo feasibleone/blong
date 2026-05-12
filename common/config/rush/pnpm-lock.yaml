@@ -143,6 +143,9 @@ importers:
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
+      '@feasibleone/blong-marine':
+        specifier: workspace:^1.0.0
+        version: link:../blong-marine
       '@storybook/addon-a11y':
         specifier: ^10.3.5
         version: 10.3.5(storybook@10.3.5(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))

@@ -10,7 +10,42 @@
  *     └── Coral  (belongs to a Family)
  *     └── Species (belongs to a Family)
  *   Habitat (ocean zones + specific reef systems)
+ *
+ * Shared option lists (used by model widgets AND storybook dropdown data):
+ *   coralTypeOptions — the four coral-type values
+ *   marineCoralNames — coral names from marine.coral entries
  */
+
+/**
+ * Coral type options — shared between model `select` widgets and storybook
+ * `portal.dropdown.list` data.  Defined once here; imported by
+ * `marineCoralModel.ts` (inline widget options) and `meta/storybook.ts`
+ * (dropdown lookup table).
+ */
+export const coralTypeOptions = [
+    {value: 'hard', label: 'Hard Coral'},
+    {value: 'soft', label: 'Soft Coral'},
+    {value: 'fire', label: 'Fire Coral'},
+    {value: 'black', label: 'Black Coral'},
+];
+
+/**
+ * Coral names extracted from `marine.coral[*].coralName` in `marineYaml`.
+ * Used by `meta/storybook.ts` to generate synthetic explorer fixture rows
+ * without duplicating the names inline.
+ */
+export const marineCoralNames = [
+    'Brain Coral',
+    'Staghorn Coral',
+    'Sea Fan',
+    'Black Wire Coral',
+    'Pillar Coral',
+    'Elkhorn Coral',
+    'Fire Coral',
+    'Star Coral',
+    'Mushroom Coral',
+    'Table Coral',
+] as const;
 
 /**
  * YAML string containing all marine biology fixture data.

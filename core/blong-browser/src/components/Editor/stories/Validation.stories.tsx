@@ -1,6 +1,6 @@
 /**
  * Validation stories — client-side validation tests.
- * Uses Template from Editor.stories to avoid repeating the tree fixture.
+ * Uses Template from Editor.stories to avoid repeating the coral fixture.
  */
 import type {Meta} from '@storybook/react-vite';
 import type {StoryFn} from '../Editor.stories.js';
@@ -14,7 +14,7 @@ export default meta;
 export const Validation: StoryFn = Template.bind({});
 Validation.args = {
     editMode: true,
-    value: {treeName: 'Oak', treeType: 1, treeDescription: ''},
+    value: {coralName: 'Staghorn Coral', coralType: 'hard', coralDescription: ''},
 };
 Validation.play = async ({canvas, userEvent}) => {
     // Value is static — form renders synchronously. Use getByRole for accessible-name matching

@@ -1,4 +1,5 @@
 import {model} from '@feasibleone/blong';
+import {coralTypeOptions} from '../../data/index.js';
 
 export default model(
     () =>
@@ -27,12 +28,7 @@ export default model(
                                     title: 'Coral Type',
                                     widget: {
                                         type: 'select',
-                                        options: [
-                                            {value: 'hard', label: 'Hard Coral'},
-                                            {value: 'soft', label: 'Soft Coral'},
-                                            {value: 'fire', label: 'Fire Coral'},
-                                            {value: 'black', label: 'Black Coral'},
-                                        ],
+                                        options: coralTypeOptions,
                                     },
                                 },
                                 maxDepth: {type: 'number', title: 'Max Depth (m)'},

@@ -4,9 +4,9 @@
  * Each story that needs data simply points its `loadAction` / `saveAction` to
  * one of the named handlers below. No per-story decorator is needed:
  *
- *   Loading.args = {loadAction: 'treeTreeLoad'};  // never resolves → skeleton
- *   Design.args  = {loadAction: 'treeTreeGet'};   // returns fixture data
- *   ServerValidation.args = {saveAction: 'treeTreeEditError'};
+ *   Loading.args = {loadAction: 'coralCoralLoad'};  // never resolves → skeleton
+ *   Design.args  = {loadAction: 'coralCoralGet'};   // returns fixture data
+ *   ServerValidation.args = {saveAction: 'coralCoralEditError'};
  *
  * Per-story `decorators` with `withDispatch` overrides are only needed for
  * behavior that cannot be expressed as a named action (rare).
@@ -26,6 +26,12 @@
  *
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
+import {
+    coralCategoryFixtures,
+    coralFixtures,
+    coralStoryValue,
+    marineDropdownData,
+} from '@feasibleone/blong-marine/meta/storybook.js';
 import React from 'react';
 import {App} from '../src/components/App/index.js';
 import {Hint} from '../src/components/Hint/index.js';
@@ -63,7 +69,7 @@ function shouldNotify(notify: NotifyConfig, method: string): boolean {
     return false;
 }
 
-// ── Tree fixture data ──────────────────────────────────────────────────────────
+// ── Translation helpers ────────────────────────────────────────────────────────
 
 /**
  * Parse a block of `Key=Translation` lines into a translation dictionary.
@@ -265,26 +271,27 @@ primeLocales['bg'] = bgPrimeLocale;
  */
 export const bgTranslations = parseTranslations(`
     Add=Добавяне
+    Biology=Биология
     Browse=Преглед
-    Created On=Дата
+    Color Pattern=Цветна шарка
+    Coral=Корал
     Delete=Изтриване
     Description=Описание
+    Discovered=Открит
     Edit=Редактирай
-    Female Cone=Женска шишарка
-    Flower=Цвят
-    Fruit=Плод
+    Growth Form=Форма на растеж
     Habitat=Местообитание
+    Larva Type=Тип ларва
     Links=Връзки
-    Male Cone=Мъжка шишарка
     Morphology=Морфология
     Name=Име
-    Reproduction=Размножаване
+    Polyp=Полип
     Reset=Отмени
     Save=Запази
-    Seed=Семе
+    Spawn Season=Сезон на хвърляне на хайвер
+    Symbiotic Algae=Симбиотични водорасли
     Taxonomy=Таксономия
     title=Заглавие
-    Tree=Дърво
     Type=Тип
     url=Връзка
     {field} is required={field} е задължително
@@ -296,68 +303,10 @@ export const bgTranslations = parseTranslations(`
 `);
 /* spell-checker: enable */
 
-export const treeValue = {
-    treeName: 'Oak',
-    treeId: 1,
-    treeType: 1,
-    createdOn: new Date('2023-03-08'),
-    links: [
-        {title: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Oak'},
-        {title: 'GBIF', url: 'https://www.gbif.org/species/2878688'},
-    ],
-};
-
-export const treeDropdownData: Record<string, {value: number; label: string}[]> = {
-    'tree.type': [
-        {value: 1, label: 'Conifer'},
-        {value: 2, label: 'Broadleaf'},
-    ],
-    'tree.habitat': [
-        {value: 1, label: 'Forests'},
-        {value: 2, label: 'Plantations'},
-        {value: 3, label: 'Riverbanks'},
-        {value: 4, label: 'Rivers'},
-        {value: 5, label: 'Rocky areas'},
-        {value: 6, label: 'Urban'},
-        {value: 7, label: 'Wetlands'},
-    ],
-};
-
-// ── Coral fixtures (for Explorer stories) ─────────────────────────────────────
-
-const coralNames = [
-    'Brain Coral',
-    'Staghorn Coral',
-    'Sea Fan',
-    'Black Wire Coral',
-    'Pillar Coral',
-    'Elkhorn Coral',
-    'Fire Coral',
-    'Star Coral',
-    'Mushroom Coral',
-    'Table Coral',
-];
-const coralTypes = ['Hard', 'Soft', 'Black', 'Fire'];
-
-const coralBaseDate = new Date(2022, 5, 22);
-
-export const coralCategoryFixtures = [
-    {id: 1, parentId: null, name: 'Reef Corals'},
-    {id: 2, parentId: 1, name: 'Shallow Reef'},
-    {id: 3, parentId: 1, name: 'Deep Reef'},
-    {id: 4, parentId: null, name: 'Soft Corals'},
-];
-
-export const coralFixtures = [...Array(55).keys()].map(i => ({
-    id: i,
-    categoryId: (i % 4) + 1,
-    speciesName: coralNames[i % coralNames.length],
-    coralType: coralTypes[i % coralTypes.length],
-    maxDepth: (i + 1) * 5,
-    endangered: i % 3 === 0,
-    discoveredOn: new Date(coralBaseDate.getTime() + 1000 * 60 * 60 * 24 * i),
-    lastUpdated: new Date(coralBaseDate.getTime() + 1000 * 60 * 60 * i),
-}));
+// Marine fixture data imported from @feasibleone/blong-marine/meta/storybook.js:
+//   coralStoryValue, marineDropdownData, coralCategoryFixtures, coralFixtures
+// Re-export for any story files that import them directly from this module.
+export {coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData};
 
 // ── Handlers ───────────────────────────────────────────────────────────────────
 
@@ -374,45 +323,37 @@ export type Handler = (params?: Record<string, unknown>) => Promise<unknown>;
  *   <entity><Entity>Find     — list/search, returns empty result set
  */
 export const defaultHandlers: Record<string, Handler> = {
-    // ── Tree entity ────────────────────────────────────────────────────────────
+    // ── Coral editor entity (Editor stories: load/save/error) ─────────────────
 
     /** Load — resolves immediately with fixture data. */
-    treeTreeGet: () => Promise.resolve(treeValue),
-
-    /** Load — never resolves; use as `loadAction` to show skeleton indefinitely. */
-    treeTreeLoad: () => new Promise(() => {}),
+    coralCoralGet: () => Promise.resolve(coralStoryValue),
 
     /** Save — echoes the submitted params back as the persisted value. */
-    treeTreeEdit: params => Promise.resolve(params),
+    coralCoralSave: params => Promise.resolve(params),
 
     /** Save — rejects with server-side field validation errors. */
-    treeTreeEditError: () => {
+    coralCoralEditError: () => {
         const err = new Error('Server validation failed') as Error & IBlongError;
         err.print = 'server validation message';
         err.validation = [
-            {field: 'treeName', message: 'Duplicate name'},
-            {field: 'treeType', message: 'Invalid Type'},
+            {field: 'coralName', message: 'Duplicate name'},
+            {field: 'coralType', message: 'Invalid Type'},
         ];
         return Promise.reject(err);
     },
 
     /** Load — rejects with an auth error; use as `loadAction` to show session-expired dialog. */
-    treeTreeGetError: () =>
+    coralCoralGetError: () =>
         Promise.reject({
             type: 'identity.unauthenticated',
             message: 'Not authenticated',
             print: 'Your session has expired. Please log in again.',
         } satisfies IBlongError),
 
-    /** Find — returns an empty result set (explorer list). */
-    treeTreeFind: () => Promise.resolve({items: [], total: 0}),
+    /** Find — returns an empty result set (editor history tab). */
+    coralCoralHistoryFind: () => Promise.resolve({items: [], total: 0}),
 
-    // ── Item entity ────────────────────────────────────────────────────────────
-
-    /** Find — returns an empty result set (explorer list). */
-    itemItemFind: () => Promise.resolve({items: [], total: 0}),
-
-    // ── Coral entity (for Explorer stories) ───────────────────────────────────
+    // ── Coral explorer entity ─────────────────────────────────────────────────
 
     /** Find coral categories — returns the full category tree. */
     coralCategoryFind: () => Promise.resolve({items: coralCategoryFixtures}),
@@ -523,26 +464,9 @@ export const defaultHandlers: Record<string, Handler> = {
      */
     coralCoralOpen: params => Promise.resolve({opened: true, params}),
 
-    // ── Submit mock actions (used by Toolbar story) ───────────────────────────
-
-    /** Generic submit — resolves immediately; used for Browse/Open toolbar buttons. */
-    treeTreeSubmit: params => Promise.resolve({result: 'ok', ...params}),
-
-    /** Error submit — rejects; used for the Error toolbar button. */
-    treeTreeSubmitError: () =>
-        Promise.reject({
-            type: 'error.submit.failed',
-            message: 'Submit failed',
-            print: 'Submit failed',
-        } satisfies IBlongError),
-
-    /** Delayed submit — resolves after 1.5 s; used for the Delay toolbar button (demonstrates successHint). */
-    treeTreeSubmitDelay: params =>
-        new Promise<unknown>(resolve => setTimeout(() => resolve({result: 'ok', ...params}), 1500)),
-
     /**
      * Handle named-dropdown requests from DropdownWidget.
-     * Names ending in `Error` reject — use `dropdown: 'tree.typeError'` in the
+     * Names ending in `Error` reject — use `dropdown: 'marine.coralTypeError'` in the
      * widget schema to trigger the failure path (see DropdownError story).
      */
     'portal.dropdown.list': params => {
@@ -554,7 +478,9 @@ export const defaultHandlers: Record<string, Handler> = {
                 print: 'Your session has expired. Please log in again.',
             } satisfies IBlongError);
         }
-        return Promise.resolve(Object.fromEntries(names.map(n => [n, treeDropdownData[n] ?? []])));
+        return Promise.resolve(
+            Object.fromEntries(names.map(n => [n, marineDropdownData[n] ?? []])),
+        );
     },
 
     /**

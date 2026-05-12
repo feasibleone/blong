@@ -2,18 +2,20 @@
  * Editor stories — blong-browser adaptation
  *
  * Mapping notes:
- * - target `onGet` / `onDropdown` / `methods` → blong-browser `loadAction` + `dispatch` context
- * - target `object: 'tree'` with nested schema → blong-browser flat schema (see fixtures/tree.ts)
- * - target Template uses Redux + useToast → blong-browser uses `dispatch` vi.fn() in tests
+ * - Uses marine biology coral fixture from @feasibleone/blong-marine/meta/storybook.js
+ * - Schema and cards defined in blong-marine (coralEditorFixture) — single source of truth
+ * - Handlers in .storybook/dispatch.tsx use coralCoral* prefix
  */
+import coralEditorFixture, {
+    coralStoryValue,
+    marineDropdownData,
+} from '@feasibleone/blong-marine/meta/storybook.js';
 import type {Meta} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import React from 'react';
-import {treeDropdownData, treeValue} from '../../../.storybook/dispatch.js';
 import {Card} from '../Card/index.js';
 import {Explorer} from '../Explorer/index.js';
-import tree from './fixtures/tree.js';
 import type {IEditorProps} from './index.js';
 import {Editor} from './index.js';
 
@@ -33,9 +35,9 @@ export type StoryFn = ((args: StoryArgs) => React.ReactElement) & {
 
 export const Basic: StoryFn = (args = {}) => (
     <Editor
-        {...tree}
-        value={treeValue}
-        saveAction="treeTreeEdit"
+        {...coralEditorFixture}
+        value={coralStoryValue}
+        saveAction="coralCoralSave"
         editable
         editMode
         layout="edit"
@@ -47,7 +49,7 @@ export const Basic: StoryFn = (args = {}) => (
                 'habitat',
             ],
         }}
-        dropdowns={treeDropdownData}
+        dropdowns={marineDropdownData}
         designable
         {...args}
     />
@@ -55,14 +57,14 @@ export const Basic: StoryFn = (args = {}) => (
 Basic.args = {};
 
 /**
- * Shared template — tree schema + save wired; stories spread their args on top.
+ * Shared template — coral schema + save wired; stories spread their args on top.
  * Sub-story files import this to use `Template.bind({})` + `.args` instead of
  * duplicating the JSX
  */
 export const Template: StoryFn = (args = {}) => (
     <Editor
-        {...tree}
-        saveAction="treeTreeEdit"
+        {...coralEditorFixture}
+        saveAction="coralCoralSave"
         editable
         layout="edit"
         layouts={{
@@ -78,37 +80,37 @@ export const Template: StoryFn = (args = {}) => (
 );
 Template.args = {};
 
-/** Loading — shows per-field skeleton; `treeTreeLoad` never resolves so loading state persists */
+/** Loading — shows per-field skeleton; `coralCoralLoad` never resolves so loading state persists */
 export const Loading: StoryFn = Template.bind({});
-Loading.args = {loadAction: 'treeTreeLoad', editMode: true};
+Loading.args = {loadAction: 'coralCoralLoad', editMode: true};
 
-/** GetError — load rejects (e.g. unauthenticated); `treeTreeGetError` resolves with an error */
+/** GetError — load rejects (e.g. unauthenticated); `coralCoralGetError` resolves with an error */
 export const GetError: StoryFn = Template.bind({});
-GetError.args = {loadAction: 'treeTreeGetError', editMode: true};
+GetError.args = {loadAction: 'coralCoralGetError', editMode: true};
 
 /**
  * DropdownError — dropdown loading rejects.
- * Uses `dropdown: 'tree.typeError'` / `'tree.habitatError'` widget keys so
+ * Uses `dropdown: 'marine.coralTypeError'` / `'marine.zoneError'` widget keys so
  * `portal.dropdown.list` receives an Error-suffixed name and rejects.
  */
 export const DropdownError: StoryFn = (args = {}) => (
     <Editor
-        {...tree}
+        {...coralEditorFixture}
         schema={{
-            ...tree.schema,
+            ...coralEditorFixture.schema,
             properties: {
-                ...tree.schema.properties,
-                treeType: {
-                    ...(tree.schema.properties?.treeType ?? {}),
-                    widget: {type: 'dropdown', dropdown: 'tree.typeError'},
+                ...coralEditorFixture.schema.properties,
+                coralType: {
+                    ...(coralEditorFixture.schema.properties?.coralType ?? {}),
+                    widget: {type: 'dropdown', dropdown: 'marine.coralTypeError'},
                 },
                 habitat: {
-                    ...(tree.schema.properties?.habitat ?? {}),
-                    widget: {type: 'multiSelectPanel', dropdown: 'tree.habitatError'},
+                    ...(coralEditorFixture.schema.properties?.habitat ?? {}),
+                    widget: {type: 'multiSelectPanel', dropdown: 'marine.zoneError'},
                 },
             },
         }}
-        loadAction="treeTreeGet"
+        loadAction="coralCoralGet"
         editMode
         layout="edit"
         layouts={{
@@ -125,7 +127,7 @@ DropdownError.args = {};
  */
 export const Design: StoryFn = Template.bind({});
 Design.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     editMode: true,
     designable: true,
     initialDesignMode: true,
@@ -139,7 +141,7 @@ Design.play = async ({canvas, userEvent}) => {
 /** Tabbed layout */
 export const Tabs: StoryFn = Template.bind({});
 Tabs.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     layouts: {
         edit: {
             orientation: 'top',
@@ -160,7 +162,7 @@ Tabs.args = {
 /** Submit — flat layout, save interaction */
 export const Submit: StoryFn = Template.bind({});
 Submit.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     editMode: true,
     layouts: {
         edit: [
@@ -182,9 +184,9 @@ Submit.play = async ({canvas, userEvent}) => {
 /** Server-side validation errors shown in form fields */
 export const ServerValidation: StoryFn = Template.bind({});
 ServerValidation.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     editMode: true,
-    saveAction: 'treeTreeEditError',
+    saveAction: 'coralCoralEditError',
 };
 ServerValidation.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -200,16 +202,16 @@ ServerValidation.play = async ({canvas, userEvent}) => {
 /** Toolbar — custom buttons on the LEFT side beside save/reset */
 export const Toolbar: StoryFn = Template.bind({});
 Toolbar.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     editMode: true,
     toolbar: [
-        {label: 'Browse', icon: 'pi pi-list', method: 'treeTreeSubmit'},
-        {label: 'Open', icon: 'pi pi-folder-open', method: 'treeTreeSubmit', params: {id: 1}},
-        {label: 'Error', icon: 'pi pi-times-circle', method: 'treeTreeSubmitError'},
+        {label: 'Browse', icon: 'pi pi-list', method: 'coralCoralSubmit'},
+        {label: 'Open', icon: 'pi pi-folder-open', method: 'coralCoralSubmit', params: {id: 1}},
+        {label: 'Error', icon: 'pi pi-times-circle', method: 'coralCoralSubmitError'},
         {
             label: 'Delay',
             icon: 'pi pi-clock',
-            method: 'treeTreeSubmitDelay',
+            method: 'coralCoralSubmitDelay',
             params: {id: 1},
             successHint: 'Done',
         },
@@ -242,7 +244,7 @@ ToolbarBG.play = async ({canvas, userEvent}) => {
 
 /** Files — stub; imageUpload/ocr/webcamera widgets not yet implemented in blong-browser. */
 export const Files: StoryFn = Template.bind({});
-Files.args = {loadAction: 'treeTreeGet', editMode: true, layouts: {edit: ['edit']}};
+Files.args = {loadAction: 'coralCoralGet', editMode: true, layouts: {edit: ['edit']}};
 Files.play = async ({canvas, userEvent}) => {
     await new Promise(resolve => setTimeout(resolve, 50));
     const saveBtn = canvas.queryByText?.('Save') as HTMLButtonElement | null;
@@ -253,7 +255,7 @@ Files.play = async ({canvas, userEvent}) => {
 /** FilesInTab — file widget in a tab (stub). */
 export const FilesInTab: StoryFn = Template.bind({});
 FilesInTab.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     editMode: true,
     layouts: {
         edit: {
@@ -275,7 +277,7 @@ const stepsItems = [
 const stepsLayout = {orientation: 'top' as const, type: 'steps' as const, items: stepsItems};
 
 export const Steps: StoryFn = Template.bind({});
-Steps.args = {loadAction: 'treeTreeGet', editable: false, layouts: {edit: stepsLayout}};
+Steps.args = {loadAction: 'coralCoralGet', editable: false, layouts: {edit: stepsLayout}};
 
 /** Steps with back disabled (stub — disableBack not yet in ITabLayoutConfig). */
 export const StepsDisabledBack: StoryFn = Template.bind({});
@@ -291,17 +293,17 @@ export const StepsHiddenBack: StoryFn = Template.bind({});
 StepsHiddenBack.args = {...Steps.args};
 StepsHiddenBack.play = StepsDisabledBack.play;
 
-/** ExplorerTab — Explorer configured for the tree history tab */
+/** ExplorerTab — Explorer configured for the coral history tab */
 function ExplorerTab() {
     return (
         <Card id="card-history">
             <Explorer
                 columns={[
-                    {field: 'treeName', header: 'Name'},
+                    {field: 'coralName', header: 'Name'},
                     {field: 'habitat', header: 'Habitat'},
-                    {field: 'kingdom', header: 'Kingdom'},
+                    {field: 'coralType', header: 'Type'},
                 ]}
-                listAction="treeTreeFind"
+                listAction="coralCoralHistoryFind"
             />
         </Card>
     );
@@ -310,7 +312,7 @@ function ExplorerTab() {
 /** EditorWithExplorer — one tab contains an Explorer component (history tab). */
 export const EditorWithExplorer: StoryFn = Template.bind({});
 EditorWithExplorer.args = {
-    loadAction: 'treeTreeGet',
+    loadAction: 'coralCoralGet',
     layouts: {
         edit: {
             orientation: 'top',

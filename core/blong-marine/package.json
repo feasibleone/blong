@@ -13,7 +13,12 @@
             "development": "./data/index.ts",
             "import": "./data/index.ts"
         },
-        "./data/index.ts": "./data/index.ts"
+        "./data/index.ts": "./data/index.ts",
+        "./meta/storybook.ts": "./meta/storybook.ts",
+        "./meta/storybook.js": {
+            "development": "./meta/storybook.ts",
+            "import": "./meta/storybook.ts"
+        }
     },
     "scripts": {
         "build": "true"
