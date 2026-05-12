@@ -86,6 +86,22 @@
             "ignoreMissingScript": true,
             "allowWarningsInSuccessfulBuild": false,
             "enableParallelism": false
+        },
+        {
+            "commandKind": "bulk",
+            "name": "lint-fix",
+            "summary": "Auto-fix lint issues across the monorepo",
+            "ignoreMissingScript": true,
+            "allowWarningsInSuccessfulBuild": true,
+            "enableParallelism": true
+        },
+        {
+            "commandKind": "bulk",
+            "name": "format",
+            "summary": "Format source files with Prettier across the monorepo",
+            "ignoreMissingScript": true,
+            "allowWarningsInSuccessfulBuild": true,
+            "enableParallelism": true
         }
         // {
         //   /**
