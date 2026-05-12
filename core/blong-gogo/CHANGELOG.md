@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.20.0...blong-gogo-v1.21.0) (2026-05-12)
+
+
+### Features
+
+* **blong-int-adapter:** expand mysql/mongodb/kafka integration test coverage ([#143](https://github.com/feasibleone/blong/issues/143)) ([b4bb9dd](https://github.com/feasibleone/blong/commit/b4bb9dd130ed9adcb6f4f28d57534f69b174321f))
+
 ## [1.20.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.19.1...blong-gogo-v1.20.0) (2026-05-11)
 
 
