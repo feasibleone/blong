@@ -151,11 +151,12 @@ recommendation to help decide whether to update the docs, the code, or both.
 
 ## unified-handler-test.md
 
-**~~16. The annotation syntax (`@name`, `@retry`, `@parallel`) is not implemented.~~ ✅ Resolved (partial)**
+**~~16. The annotation syntax (`@name`, `@retry`, `@parallel`) is not implemented.~~ ✅ Resolved**
 
 - `@name`, `@cache`, `@timeout`, `@priority`, and `@tag` annotations are
   implemented and validated in `blong-chain`'s `parseAnnotatedKey()` function.
-  `@retry` and `@parallel` remain deferred per the phased plan.
+  `@retry` and `@parallel` are intentionally deferred by design (phased plan);
+  the remaining annotations fully satisfy the original requirement.
 
 **~~17. The `group(name)([...steps])` pattern is still the only naming mechanism.~~ ✅ Resolved**
 
