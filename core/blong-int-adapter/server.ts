@@ -47,7 +47,7 @@ export default server(blong => ({
         'adapter.s3': {
             s3: {},
             remote: {canSkipSocket: true},
-            watch: {test: ['test.s3.objectPut']},
+            watch: {test: ['test.s3.objectPut', 'test.s3.objectCrud']},
         },
         'adapter.kafka': {
             kafka: {},
@@ -57,12 +57,19 @@ export default server(blong => ({
         'adapter.vault': {
             vault: {},
             remote: {canSkipSocket: true},
-            watch: {test: ['test.vault.secretPut']},
+            watch: {test: ['test.vault.secretPut', 'test.vault.secretCrud', 'test.vault.secretHealth']},
         },
         'adapter.keycloak': {
             keycloak: {},
             remote: {canSkipSocket: true},
-            watch: {test: ['test.keycloak.realmFind']},
+            watch: {test: [
+                'test.keycloak.realmFind',
+                'test.keycloak.realmCrud',
+                'test.keycloak.userCrud',
+                'test.keycloak.groupCrud',
+                'test.keycloak.roleCrud',
+                'test.keycloak.clientCrud',
+            ]},
         },
         'adapter.k8s': {
             k8s: {},

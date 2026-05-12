@@ -762,6 +762,8 @@ export default adapter<IConfig>(({utError}) => {
                         throw _errors['keycloak.invalid']();
                 }
             } catch (error: unknown) {
+                // Re-throw already-typed blong errors without wrapping them
+                if (typeof (error as {type?: string}).type === 'string') throw error;
                 const keycloakError = error as {
                     response?: {status?: number; data?: {error?: string}};
                 };
