@@ -408,6 +408,16 @@ function renderEditor(
                     className="w-full"
                 />
             );
+        case 'boolean':
+        case 'checkbox':
+            return (
+                <span onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                        checked={Boolean(value)}
+                        onChange={e => editorCallback(e.checked)}
+                    />
+                </span>
+            );
         case 'text':
         case 'textArea':
             return (
@@ -699,6 +709,7 @@ export function TableWidget({
                   ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? undefined)
                   : undefined))
         : undefined;
+    const pivotJoinDataFields = new Set<string>(Object.values(pivotCfg?.join ?? {}));
 
     const baseRows: Row[] = pivotBaseRows
         ? (() => {
@@ -707,9 +718,9 @@ export function TableWidget({
                   const found = rows.find(r =>
                       joinEntries.every(([pivotKey, rowKey]) => pivotRow[pivotKey] === r[rowKey]),
                   );
-                  if (found) return found;
+                  if (found) return {...found, [KEY]: `pivot-${i}`};
                   // Build an empty row seeded with the join field values
-                  const seeded: Row = {[KEY]: i};
+                  const seeded: Row = {[KEY]: `pivot-${i}`};
                   for (const [pivotKey, rowKey] of joinEntries) {
                       seeded[rowKey] = pivotRow[pivotKey];
                   }
@@ -809,12 +820,23 @@ export function TableWidget({
 
     const onRowEditComplete = useCallback(
         (e: {newData: Row}) => {
-            const {[KEY]: k, ...rest} = e.newData;
-            const matchKey = e.newData[KEY];
-            const updated = rows.map(r => (r[KEY] === matchKey ? {...rest, [KEY]: k} : r));
+            const {[KEY]: rowKey, ...rowData} = e.newData;
+            if (pivotCfg) {
+                const joinEntries = Object.entries(pivotCfg.join ?? {});
+                const isMatch = (r: Row) =>
+                    joinEntries.every(([, jk]) => r[jk] === (rowData as Row)[jk]);
+                const updated = rows.some(isMatch)
+                    ? rows.map(r => (isMatch(r) ? {...r, ...rowData} : r))
+                    : [...rows, rowData as Row];
+                onChange(updated.map(({[KEY]: _k, ...r}) => r));
+                return;
+            }
+            const updated = rows.map(r =>
+                r[KEY] === rowKey ? {...rowData, [KEY]: rowKey} : r,
+            );
             onChange(updated.map(({[KEY]: _k, ...r}) => r));
         },
-        [rows, onChange],
+        [rows, onChange, pivotCfg],
     );
 
     const addRow = useCallback(
@@ -1031,7 +1053,7 @@ export function TableWidget({
                 }
                 filterDisplay={hasFilter && !isListMode ? 'row' : undefined}
             >
-                {!isSingleSelect && (editable || isListMode) && (
+                {!isSingleSelect && (editable || isListMode) && !pivotBaseRows && (
                     <Column
                         selectionMode="multiple"
                         style={{width: '3rem', flexGrow: 0}}
@@ -1081,24 +1103,16 @@ export function TableWidget({
                             body={(rowData: Row, colOptions) => {
                                 const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
                                 if (isBoolType) {
+                                    if (rowData[field] == null)
+                                        return <span data-testid={cellId} />;
                                     return (
-                                        <span
-                                            data-testid={cellId}
-                                            onClick={e => e.stopPropagation()}
-                                        >
-                                            <Checkbox
-                                                checked={Boolean(rowData[field])}
-                                                onChange={e => {
-                                                    if (readOnly || disabled || isListMode) return;
-                                                    const matchKey = rowData[KEY];
-                                                    const updated = rows.map(r =>
-                                                        r[KEY] === matchKey
-                                                            ? {...r, [field]: e.checked}
-                                                            : r,
-                                                    );
-                                                    onChange(updated.map(({[KEY]: _k, ...r}) => r));
-                                                }}
-                                                disabled={readOnly || disabled || isListMode}
+                                        <span data-testid={cellId}>
+                                            <i
+                                                className={`pi ${
+                                                    rowData[field]
+                                                        ? 'pi-check text-green-500'
+                                                        : 'pi-times text-red-500'
+                                                }`}
                                             />
                                         </span>
                                     );
@@ -1114,7 +1128,10 @@ export function TableWidget({
                                 );
                             }}
                             editor={
-                                !isListMode && editable && !isBoolType
+                                !isListMode &&
+                                editable &&
+                                !fieldSchema.readOnly &&
+                                !pivotJoinDataFields.has(field)
                                     ? colOptions => {
                                           const cellId = `${tableId}-${colOptions.rowIndex}-${field}`;
                                           const cellName = `${tableId}[${colOptions.rowIndex}].${field}`;

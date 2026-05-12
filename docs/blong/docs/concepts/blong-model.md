@@ -28,12 +28,12 @@ Realm
 Each model handler (`.model` kind, discovered via `/\.model$/` regex) produces four discoverable
 page handlers registered in the portal component namespace:
 
-| Handler name                | Page type | Component |
-| --------------------------- | --------- | --------- |
+| Handler name                | Page type | Component                |
+| --------------------------- | --------- | ------------------------ |
 | `{subject}.{object}.browse` | List view | `Editor` (browse layout) |
-| `{subject}.{object}.new`    | Create    | `Editor`  |
-| `{subject}.{object}.open`   | Edit/view | `Editor`  |
-| `{subject}.{object}.report` | Report    | `Report`  |
+| `{subject}.{object}.new`    | Create    | `Editor`                 |
+| `{subject}.{object}.open`   | Edit/view | `Editor`                 |
+| `{subject}.{object}.report` | Report    | `Report`                 |
 
 The report page is optional — it is only registered when `report.permission`
 is defined in the model.
