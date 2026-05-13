@@ -20,6 +20,10 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
             ]);
 
             const schema = blong.lib.merge({}, model.schema, schemaOverride);
+            // Hoisted outside NewPage so the object reference is stable across renders —
+            // an inline object literal would create a new identity on every render and
+            // trigger the Editor's tab-title effect every time, causing an infinite loop.
+            const title = {new: `Create ${objectTitle}`, edit: `Edit ${objectTitle}`};
             function NewPage(props: Record<string, unknown>) {
                 return Editor({
                     schema,
@@ -27,10 +31,12 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
                     layout: 'edit',
                     layouts: model.layouts as Record<string, LayoutConfig>,
                     loadAction: methods.get,
-                    saveAction: methods.add,
+                    createAction: methods.add,
+                    saveAction: methods.edit,
                     value: {},
-                    editMode: true,
+                    mode: 'new',
                     editable: false,
+                    title,
                     ...props,
                 });
             }

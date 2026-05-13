@@ -42,7 +42,7 @@ export {Async} from './components/Async/Async.js';
 export {Card} from './components/Card/Card.js';
 export {DateRange} from './components/DateRange/DateRange.js';
 export {Deck} from './components/Deck/Deck.js';
-export {Editor} from './components/Editor/Editor.js';
+export {Editor, type EditorMode, resolveTabTitle} from './components/Editor/Editor.js';
 export {ErrorDialog} from './components/Error/Error.js';
 export {Explorer} from './components/Explorer/Explorer.js';
 export {Form} from './components/Form/Form.js';

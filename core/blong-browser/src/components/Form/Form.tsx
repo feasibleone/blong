@@ -105,6 +105,16 @@ export interface IFormProps {
      * must declare a static `properties` array listing the schema fields it covers.
      */
     editors?: Record<string, import('./FormContext.js').ICustomEditor>;
+    /**
+     * Current editor mode passed down from the Editor for display in the Form Inspector.
+     * Does not affect form behaviour — purely informational.
+     */
+    editorMode?: string;
+    /**
+     * Resolved layout key passed down from the Editor for display in the Form Inspector.
+     * Does not affect form behaviour — purely informational.
+     */
+    editorLayout?: string;
 }
 
 export function Form({
@@ -129,6 +139,8 @@ export function Form({
     methods,
     onFieldChange,
     editors,
+    editorMode,
+    editorLayout,
 }: IFormProps) {
     const fallbackId = useId();
     const formId = id ?? fallbackId;
@@ -305,8 +317,8 @@ export function Form({
     // Slow-changing state: changes on user actions (row selection, save, edit toggle)
     // but NOT on every keystroke.
     const stateContextValue = useMemo(
-        () => ({tableSelections, readOnly, loading}),
-        [tableSelections, readOnly, loading],
+        () => ({tableSelections, readOnly, loading, editorMode, editorLayout}),
+        [tableSelections, readOnly, loading, editorMode, editorLayout],
     );
 
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).

@@ -321,6 +321,8 @@ export interface IActionRef {
 export interface IToolbarButton {
     label?: string;
     icon?: string;
+    /** Tooltip / aria title for icon-only buttons */
+    title?: string;
     /** Action name (string) or extended ref */
     action?: string | IActionRef;
     /** Direct RPC method name (bypass action registry) */

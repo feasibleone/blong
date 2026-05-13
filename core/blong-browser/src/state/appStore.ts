@@ -53,6 +53,7 @@ export interface IAppActions {
     closeTab: (id: string) => void;
     setActiveTab: (id: string | null) => void;
     setTabDirty: (id: string, dirty: boolean) => void;
+    setTabTitle: (id: string, title: string) => void;
     updateTabComponent: (
         id: string,
         component: React.ComponentType<Record<string, unknown>>,
@@ -164,6 +165,13 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
             portal: {
                 ...state.portal,
                 tabs: state.portal.tabs.map(t => (t.id === id ? {...t, dirty} : t)),
+            },
+        })),
+    setTabTitle: (id, title) =>
+        set(state => ({
+            portal: {
+                ...state.portal,
+                tabs: state.portal.tabs.map(t => (t.id === id ? {...t, title} : t)),
             },
         })),
     updateTabComponent: (id, component) =>

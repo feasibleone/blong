@@ -163,6 +163,8 @@ function FormInspectorInner({control}: IFormInspectorInnerProps) {
             <Section
                 title="State"
                 value={{
+                    editorMode: stateCtx?.editorMode,
+                    editorLayout: stateCtx?.editorLayout,
                     readOnly: stateCtx?.readOnly,
                     loading: stateCtx?.loading,
                     isDirty,

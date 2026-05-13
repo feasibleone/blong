@@ -14,9 +14,11 @@ import {
     DesignAddFieldButton,
     PropertyEditor,
 } from '../../design/PropertyEditor.js';
+import {useQueryClient} from '@tanstack/react-query';
 import {useAction} from '../../hooks/useAction.js';
 import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import type {IToolbarButton} from '../../index.js';
+import {useAppStore} from '../../state/appStore.js';
 import type {IBlongError} from '../../types/action.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
 import type {ITableSelection} from '../Form/FormContext.js';
@@ -39,8 +41,13 @@ export interface IEditorProps {
     /** Params for the load action */
     loadParams?: Record<string, unknown>;
 
-    /** Action name for saving changed data */
+    /** Action name for saving changed data (edit mode) */
     saveAction?: string;
+    /**
+     * Action name for creating new records (mode='new').
+     * Falls back to `saveAction` when not provided.
+     */
+    createAction?: string;
     /** Called with the saved value on successful save */
     onSave?: (value: Record<string, unknown>) => void;
 
@@ -52,9 +59,19 @@ export interface IEditorProps {
     /** Toolbar buttons (right side) */
     toolbarRight?: IToolbarButton[];
 
-    /** Start in edit mode */
+    /**
+     * Initial editor mode.
+     * - `'new'`  — editable, save creates a new record then switches to `'edit'`
+     * - `'view'` — read-only; an Edit button appears when `editable` is true
+     * - `'edit'` — editable, save updates the existing record
+     */
+    mode?: EditorMode;
+    /**
+     * @deprecated Use `mode` instead.
+     * When `true`, equivalent to `mode="edit"`; when `false`, equivalent to `mode="view"`.
+     */
     editMode?: boolean;
-    /** Allow user to toggle edit mode */
+    /** Allow user to toggle from view to edit mode */
     editable?: boolean;
     /** Show design mode toggle cog button on the toolbar right side */
     designable?: boolean;
@@ -81,6 +98,90 @@ export interface IEditorProps {
     editors?: Record<string, import('../Form/FormContext.js').ICustomEditor>;
 
     className?: string;
+
+    /**
+     * Per-mode tab titles, keyed by `EditorMode` (`'new'`, `'edit'`, `'view'`).
+     * Overrides the default title derived from `resolveTabTitle(mode, resolvedLayout)`.
+     *
+     * Using a plain object (instead of a function) keeps the value JSON-serializable so
+     * it can be stored in model specs and user customisations without embedding JS code,
+     * and each string is a discrete unit that can be looked up in a translation dictionary.
+     *
+     * Example: `title: {new: 'Create Coral', edit: 'Edit Coral'}`
+     *
+     * A bare string may also be passed when the title is the same across all modes.
+     */
+    title?: string | Record<string, string>;
+    /**
+     * Portal tab ID. When provided, the Editor keeps the tab title in sync with the
+     * current mode via `setTabTitle`. Injected automatically by the Portal when it
+     * renders tab components (`<tab.component tabId={tab.id} {...tab.params} />`).
+     */
+    tabId?: string;
+    /**
+     * TanStack Query namespace prefix for cache invalidation.
+     * When set, clicking `__refresh__` in the toolbar invalidates all queries
+     * whose key starts with `{refreshNamespace}.`. Auto-set by `subjectObjectBrowse`
+     * to `{subject}.{object}` (e.g. `'marine.coral'`).
+     */
+    refreshNamespace?: string;
+}
+
+/** Editor interaction mode. */
+export type EditorMode = 'new' | 'view' | 'edit';
+
+function deriveInitialMode(mode?: EditorMode, editMode?: boolean): EditorMode {
+    if (mode !== undefined) return mode;
+    return editMode ? 'edit' : 'view';
+}
+
+/**
+ * Derive effective layout key from mode and layout name with sensible fallbacks.
+ *
+ * Resolution order:
+ * 1. `{mode}{Capital(layout)}` — e.g. `editDefault`, `newDefault`, `viewDefault`
+ * 2. For non-edit modes: `edit{Capital(layout)}` — e.g. `editDefault`
+ * 3. `layout` as-is — e.g. `default`
+ */
+function resolveLayoutKey(
+    mode: EditorMode,
+    layout: string,
+    layouts?: Record<string, LayoutConfig>,
+): string {
+    if (!layouts) return layout;
+    const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+    const modeKey = mode + cap(layout);
+    if (modeKey in layouts) return modeKey;
+    if (mode !== 'edit') {
+        const editKey = 'edit' + cap(layout);
+        if (editKey in layouts) return editKey;
+    }
+    return layout;
+}
+
+/**
+ * Derive a display title from the current mode and resolved layout key.
+ *
+ * Splits the layout key at capital-letter boundaries and capitalises each word.
+ * When the layout starts with the current mode the mode word is used directly;
+ * otherwise only the capitalized mode is returned.
+ *
+ * Examples:
+ *   ('edit', 'editSplit')       → 'Edit Split'
+ *   ('edit', 'editThumbIndex')  → 'Edit Thumb Index'
+ *   ('new',  'edit')            → 'New'   (mode != layout prefix → no suffix)
+ *   ('view', 'viewDefault')     → 'View'  ('default' suffix filtered out)
+ */
+export function resolveTabTitle(mode: EditorMode, resolvedLayout: string): string {
+    const words = resolvedLayout.replace(/([A-Z])/g, ' $1').trim().split(/\s+/);
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    // If the layout key starts with the mode, use trailing words as suffix
+    const suffix: string[] =
+        words[0]?.toLowerCase() === mode
+            ? words.slice(1).filter(w => w.toLowerCase() !== 'default')
+            : [];
+    const modeTitle = cap(mode);
+    return suffix.length ? `${modeTitle} ${suffix.map(cap).join(' ')}` : modeTitle;
 }
 
 const backgroundNone = {background: 'none'};
@@ -154,10 +255,12 @@ export function Editor({
     loadAction,
     loadParams,
     saveAction,
+    createAction,
     onSave,
     dropdowns,
     toolbar = [],
     toolbarRight = [],
+    mode: initialModeProp,
     editMode: initialEditMode = false,
     editable = true,
     designable = false,
@@ -167,9 +270,16 @@ export function Editor({
     onFieldChange,
     editors,
     className = '',
+    title: titleProp,
+    tabId,
+    refreshNamespace,
 }: IEditorProps) {
     const formId = useId();
-    const [editMode, setEditMode] = useState(initialEditMode);
+    const [currentMode, setCurrentMode] = useState<EditorMode>(
+        () => deriveInitialMode(initialModeProp, initialEditMode),
+    );
+    // 'new' and 'edit' modes are both editable; 'view' is read-only
+    const editMode = currentMode !== 'view';
     const [localValue, setLocalValue] = useState<Record<string, unknown> | undefined>(undefined);
     const [serverErrors, setServerErrors] = useState<Record<string, string> | undefined>(undefined);
     const [isDirty, setIsDirty] = useState(false);
@@ -242,18 +352,46 @@ export function Editor({
         ...(lastRow ?? {}),
     };
 
+    // Resolved layout key — applies mode-based fallback: `{mode}{Capital(layout)}` → `edit{Capital(layout)}` → `layout`
+    const resolvedLayout = resolveLayoutKey(currentMode, layout, localLayouts ?? layouts);
+
+    // ── Tab title synchronisation ──────────────────────────────────────────────
+    // Use a ref for titleProp so the effect does not re-run when the caller
+    // passes an inline object (new identity on every render).  The effect only
+    // needs to re-run when the *computed* title string would actually change,
+    // which is driven by currentMode and resolvedLayout — not by object identity.
+    const titlePropRef = useRef(titleProp);
+    titlePropRef.current = titleProp;
+
+    const setTabTitleStore = useAppStore(s => s.setTabTitle);
+    useEffect(() => {
+        if (!tabId || !setTabTitleStore) return;
+        const tp = titlePropRef.current;
+        const computedTitle =
+            tp === null || tp === undefined
+                ? resolveTabTitle(currentMode, resolvedLayout)
+                : typeof tp === 'string'
+                  ? tp
+                  : (tp[currentMode] ?? resolveTabTitle(currentMode, resolvedLayout));
+        setTabTitleStore(tabId, computedTitle);
+        // titlePropRef is intentionally omitted from deps — we read it via ref to avoid
+        // re-running when the caller re-creates the object on every render.
+    }, [tabId, currentMode, resolvedLayout, setTabTitleStore]);
+
     // Callback passed to DesignAddCardButton: adds the new card name to localLayouts
     const handleCardAdded = useCallback(
         (name: string) => {
             setLocalLayouts(prev => {
-                const cur = prev?.[layout];
+                // Use the currently resolved layout key so cards land in the right layout config
+                const key = resolveLayoutKey(currentMode, layout, prev ?? layouts);
+                const cur = prev?.[key];
                 const flat: FlatLayoutConfig = Array.isArray(cur)
                     ? [...(cur as FlatLayoutConfig)]
                     : [];
-                return {...(prev ?? {}), [layout]: [...flat, name] as FlatLayoutConfig};
+                return {...(prev ?? {}), [key]: [...flat, name] as FlatLayoutConfig};
             });
         },
-        [layout],
+        [currentMode, layout, layouts],
     );
 
     // Stable onChange passed to Form so FormStableContext is not invalidated on every render.
@@ -283,8 +421,15 @@ export function Editor({
     );
     const entityValue = localValue ?? staticValue ?? loader.data ?? undefined;
 
-    // Save action invoked via form submit (formId wired to ActionButton)
+    const queryClient = useQueryClient();
+
+    // Creator action — used in 'new' mode; falls back to saveAction when createAction is not provided
+    const creator = useAction(createAction ?? saveAction ?? '', 'mutation');
+    // Saver action — used in 'edit' mode
     const saver = useAction(saveAction ?? '', 'mutation');
+    // Active saver and loading state based on current mode
+    const activeSaver = currentMode === 'new' ? creator : saver;
+    const activeSaving = creator.loading || saver.loading;
 
     // Show/hide the validation hint overlay when validationHint changes
     useEffect(() => {
@@ -297,16 +442,31 @@ export function Editor({
 
     const handleSubmit = async (formValue: Record<string, unknown>) => {
         setServerErrors(undefined);
+        const isCreate = currentMode === 'new';
         try {
-            const result = (await saver.call(formValue)) as Record<string, unknown> | undefined;
+            const result = (await activeSaver.call(formValue)) as Record<string, unknown> | undefined;
             // Use the server-returned value — the back end may apply side-effect updates
             // (timestamps, computed fields, etc.) that the client form does not know about.
             const savedValue = result ?? formValue;
             setLocalValue(savedValue);
             setIsDirty(false);
             setSavedSuccess(true);
+            // After creating a new record, switch to edit mode and reset the RHF baseline
+            // so the saved value (with server-assigned ID) becomes the new clean state.
+            if (isCreate) {
+                setCurrentMode('edit');
+                setFormResetKey(k => k + 1);
+            }
             setValidationHint(undefined);
             onSave?.(savedValue);
+            // Invalidate browse/list queries so any open browse tab refreshes automatically.
+            // Derive the namespace from the action that was just called.
+            const actionUsed = isCreate ? (createAction ?? saveAction) : saveAction;
+            const ns = actionUsed?.split('.').slice(0, -1).join('.');
+            if (ns) {
+                void queryClient.invalidateQueries({queryKey: [ns + '.find']});
+                void queryClient.invalidateQueries({queryKey: [ns + '.get']});
+            }
         } catch (err: unknown) {
             const blongErr = err as Partial<IBlongError>;
             if (Array.isArray(blongErr?.validation)) {
@@ -321,11 +481,13 @@ export function Editor({
         }
     };
 
-    // Build default toolbar when none specified
+    // Build default toolbar buttons based on current mode
     const leftButtons: IToolbarButton[] = [
-        ...(editable && !editMode
+        // 'view' mode + editable — show Edit button to enter edit mode
+        ...(editable && currentMode === 'view'
             ? [{label: 'Edit', icon: 'pi pi-pencil', action: '__edit__'}]
             : []),
+        // 'new' and 'edit' modes — show Save + Reset buttons
         ...(editMode
             ? [
                   {
@@ -347,18 +509,25 @@ export function Editor({
     ];
 
     /** True while any toolbar action or save is in-flight — disables all remaining buttons */
-    const globalBusy = toolbarBusy > 0 || saver.loading;
+    const globalBusy = toolbarBusy > 0 || activeSaving;
 
     const handleToolbarAction = (actionName: string) => {
-        if (actionName === '__edit__') setEditMode(true);
+        if (actionName === '__edit__') setCurrentMode('edit');
         if (actionName === '__design__') setDesignMode(d => !d);
+        if (actionName === '__refresh__' && refreshNamespace) {
+            void queryClient.invalidateQueries({
+                predicate: q =>
+                    typeof q.queryKey[0] === 'string' &&
+                    (q.queryKey[0] as string).startsWith(refreshNamespace + '.'),
+            });
+        }
         if (actionName === '__cancel__') {
             const doReset = () => {
                 setLocalValue(undefined);
                 setIsDirty(false);
                 setSavedSuccess(false);
                 setValidationHint(undefined);
-                setEditMode(initialEditMode);
+                setCurrentMode(deriveInitialMode(initialModeProp, initialEditMode));
                 // Increment resetKey to force Form to call RHF's reset() even when
                 // entityValue hasn't changed (e.g. user edited without saving first,
                 // so localValue was always undefined and value prop never changed).
@@ -409,15 +578,16 @@ export function Editor({
                     typeof btn.action === 'string' ? btn.action : (btn.action?.name ?? '');
                 const isDisabled =
                     (actionName === '__save__' || actionName === '__cancel__') &&
-                    (!isDirty || saver.loading || toolbarBusy > 0);
-                if (actionName === '__edit__' || actionName === '__cancel__') {
+                    (!isDirty || activeSaving || toolbarBusy > 0);
+                if (actionName === '__edit__' || actionName === '__cancel__' || actionName === '__refresh__') {
                     return (
                         <button
                             ref={actionName === '__cancel__' ? cancelButtonRef : undefined}
                             key={i}
                             type="button"
                             className={`p-button p-component p-button-icon-only mr-2${isDisabled ? ' p-disabled' : ''}`}
-                            aria-label={btn.label}
+                            aria-label={btn.label || btn.title}
+                            title={btn.title}
                             disabled={isDisabled}
                             onClick={() => handleToolbarAction(actionName)}
                         >
@@ -439,7 +609,7 @@ export function Editor({
                         >
                             {btn.icon && (
                                 <span
-                                    className={`p-button-icon p-c pi ${saver.loading || toolbarBusy > 0 ? 'pi-spin pi-spinner' : btn.icon}`}
+                                    className={`p-button-icon p-c pi ${activeSaving || toolbarBusy > 0 ? 'pi-spin pi-spinner' : btn.icon}`}
                                 />
                             )}
                             <span className="p-button-label p-c">&nbsp;</span>
@@ -516,17 +686,17 @@ export function Editor({
                 id={formId}
                 schema={schema}
                 cards={cards}
-                layout={layout}
+                layout={resolvedLayout}
                 layouts={localLayouts}
                 value={entityValue}
                 onChange={handleFormChange}
-                onSubmit={saveAction ? handleSubmit : undefined}
+                onSubmit={(saveAction || createAction) ? handleSubmit : undefined}
                 onDirtyChange={setIsDirty}
                 resetKey={formResetKey}
                 onTableSelect={handleTableSelect}
                 readOnly={
-                    (!editMode && !initialEditMode) ||
-                    saver.loading ||
+                    !editMode ||
+                    activeSaving ||
                     toolbarBusy > 0 ||
                     loader.loading
                 }
@@ -539,6 +709,8 @@ export function Editor({
                 dropdowns={dropdowns}
                 onLayoutChange={designMode ? handleLayoutChange : undefined}
                 rightPanel={designable ? <PropertyEditor /> : undefined}
+                editorMode={currentMode}
+                editorLayout={resolvedLayout}
             />
         </div>
     );

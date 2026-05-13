@@ -30,8 +30,9 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
                     loadAction: methods.get,
                     loadParams,
                     saveAction: methods.edit,
-                    editMode: true,
+                    mode: 'edit',
                     editable: true,
+                    title: `Edit ${objectTitle}`,
                     ...props,
                 });
             }

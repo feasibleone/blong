@@ -109,6 +109,10 @@ export interface IFormStateContext {
     tableSelections: Record<string, ITableSelection | null>;
     readOnly: boolean;
     loading: boolean;
+    /** Current editor mode — forwarded from the parent Editor for debug display */
+    editorMode?: string;
+    /** Effective resolved layout key — forwarded from the parent Editor for debug display */
+    editorLayout?: string;
 }
 
 export const FormStateContext = createContext<IFormStateContext | null>(null);

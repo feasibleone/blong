@@ -20,12 +20,16 @@ export async function subjectObjectBrowse(
             function BrowsePage(props: Record<string, unknown>) {
                 return Editor({
                     schema,
-                    toolbar: browser.toolbar,
+                    toolbar: [
+                        {label: '', icon: 'pi pi-refresh', action: '__refresh__', title: 'Refresh'},
+                        ...(browser.toolbar ?? []),
+                    ],
                     cards,
                     layouts,
                     layout: 'browse',
                     editable: false,
                     editMode: false,
+                    refreshNamespace: `${subject}.${object}`,
                     ...props,
                 });
             }
