@@ -53,7 +53,12 @@ export default model(
                             /** Filter the table rows by the selected navigator item (family). */
                             widget: {
                                 master: {familyId: 'familyId'},
-                                columns: ['coralName', 'coralType', 'conservationStatus', 'maxDepth'],
+                                columns: [
+                                    'coralName',
+                                    'coralType',
+                                    'conservationStatus',
+                                    'maxDepth',
+                                ],
                             },
                         },
                         /** Tree navigator — family list with parent categories for hierarchy. */
@@ -127,8 +132,18 @@ export default model(
                     editThumbIndex: {
                         orientation: 'left',
                         items: [
-                            {id: 'details', label: 'Details', icon: 'pi pi-info-circle', widgets: ['edit']},
-                            {id: 'habitat', label: 'Habitat & Depth', icon: 'pi pi-globe', widgets: ['editDepth', 'editTimeline']},
+                            {
+                                id: 'details',
+                                label: 'Details',
+                                icon: 'pi pi-info-circle',
+                                widgets: ['edit'],
+                            },
+                            {
+                                id: 'habitat',
+                                label: 'Habitat & Depth',
+                                icon: 'pi pi-globe',
+                                widgets: ['editDepth', 'editTimeline'],
+                            },
                         ],
                     },
                 },
@@ -155,6 +170,23 @@ export default model(
                             icon: 'pi pi-plus-circle',
                             action: 'component/marine.coral.new',
                             params: {value: {coral: {coralType: 'soft'}}},
+                            permission: 'marine.coral.add',
+                        },
+                        {
+                            label: 'Create Template',
+                            icon: 'pi pi-plus-circle',
+                            action: 'component/marine.coral.new',
+                            params: {
+                                value: {
+                                    coral: {
+                                        coralName: 'New Coral',
+                                        coralType: 'soft',
+                                        colorPattern: 'striped',
+                                        maxDepth: 30,
+                                        conservationStatus: 'VU',
+                                    },
+                                },
+                            },
                             permission: 'marine.coral.add',
                         },
                         {

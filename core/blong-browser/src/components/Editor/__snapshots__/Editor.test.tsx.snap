@@ -5786,7 +5786,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_797=""
+                        pr_id_781=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -6982,7 +6982,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_662=""
+                        pr_id_646=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -8178,7 +8178,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_689=""
+                        pr_id_673=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -11248,7 +11248,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_385=""
+                        pr_id_377=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -11270,54 +11270,6 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-pc-section="headerrow"
                                 role="row"
                               >
-                                <th
-                                  class="p-selection-column"
-                                  data-p-filter-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-reorderable-column="false"
-                                  data-p-resizable-column="false"
-                                  data-p-sortable-column="false"
-                                  data-pc-name="datatable"
-                                  data-pc-section="headercell"
-                                  role="columnheader"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    class="p-column-header-content"
-                                    data-pc-section="headercontent"
-                                  >
-                                    <span
-                                      class="p-column-title"
-                                      data-pc-section="headertitle"
-                                    />
-                                    <div
-                                      aria-checked="false"
-                                      aria-label="All items unselected"
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                      role="checkbox"
-                                    >
-                                      <input
-                                        aria-checked="false"
-                                        aria-invalid="false"
-                                        aria-label="All items unselected"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        tabindex="0"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </div>
-                                </th>
                                 <th
                                   data-p-filter-column="false"
                                   data-p-frozen-column="false"
@@ -11426,50 +11378,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="0"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 0"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 0"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -11558,50 +11471,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 0"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 0"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -11694,50 +11568,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 2"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 2"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -11826,50 +11661,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 3"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 3"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -11958,50 +11754,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 1"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 1"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12094,50 +11851,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 5"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 5"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12226,50 +11944,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 6"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 6"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12426,7 +12105,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_386=""
+                        pr_id_378=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -12448,54 +12127,6 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-pc-section="headerrow"
                                 role="row"
                               >
-                                <th
-                                  class="p-selection-column"
-                                  data-p-filter-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-reorderable-column="false"
-                                  data-p-resizable-column="false"
-                                  data-p-sortable-column="false"
-                                  data-pc-name="datatable"
-                                  data-pc-section="headercell"
-                                  role="columnheader"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    class="p-column-header-content"
-                                    data-pc-section="headercontent"
-                                  >
-                                    <span
-                                      class="p-column-title"
-                                      data-pc-section="headertitle"
-                                    />
-                                    <div
-                                      aria-checked="false"
-                                      aria-label="All items unselected"
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                      role="checkbox"
-                                    >
-                                      <input
-                                        aria-checked="false"
-                                        aria-invalid="false"
-                                        aria-label="All items unselected"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        tabindex="0"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </div>
-                                </th>
                                 <th
                                   data-p-filter-column="false"
                                   data-p-frozen-column="false"
@@ -12652,50 +12283,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="0"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 0"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 0"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12710,8 +12302,9 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12721,32 +12314,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-0-view"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12757,36 +12330,15 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-0-create"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12797,36 +12349,15 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-0-edit"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12836,28 +12367,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-0-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -12904,50 +12414,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 1"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 1"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12962,8 +12433,9 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -12974,36 +12446,15 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-1-view"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13013,32 +12464,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-1-create"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13048,32 +12479,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-1-edit"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13083,28 +12494,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-1-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -13151,50 +12541,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 2"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 2"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13209,8 +12560,9 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13221,36 +12573,15 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-view"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13261,36 +12592,15 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-create"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13301,36 +12611,15 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-edit"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13341,31 +12630,9 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-delete"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
@@ -13413,50 +12680,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 3"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 3"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13471,8 +12699,9 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13482,32 +12711,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-view"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13517,32 +12726,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-create"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13552,32 +12741,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-edit"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13587,28 +12756,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -13655,50 +12803,11 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 4"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 4"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13713,8 +12822,9 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13724,32 +12834,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-view"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13759,32 +12849,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-create"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13794,32 +12864,12 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-edit"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -13829,28 +12879,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -14066,54 +13095,6 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 role="row"
                               >
                                 <th
-                                  class="p-selection-column"
-                                  data-p-filter-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-reorderable-column="false"
-                                  data-p-resizable-column="false"
-                                  data-p-sortable-column="false"
-                                  data-pc-name="datatable"
-                                  data-pc-section="headercell"
-                                  role="columnheader"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    class="p-column-header-content"
-                                    data-pc-section="headercontent"
-                                  >
-                                    <span
-                                      class="p-column-title"
-                                      data-pc-section="headertitle"
-                                    />
-                                    <div
-                                      aria-checked="false"
-                                      aria-label="All items unselected"
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                      role="checkbox"
-                                    >
-                                      <input
-                                        aria-checked="false"
-                                        aria-invalid="false"
-                                        aria-label="All items unselected"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        tabindex="0"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </div>
-                                </th>
-                                <th
                                   data-p-filter-column="false"
                                   data-p-frozen-column="false"
                                   data-p-reorderable-column="false"
@@ -14221,50 +13202,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="0"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 0"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 0"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -14353,50 +13295,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 0"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 0"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -14489,50 +13392,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 2"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 2"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -14621,50 +13485,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 3"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 3"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -14753,50 +13578,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 1"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 1"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -14889,50 +13675,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 5"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 5"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15021,50 +13768,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 6"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 6"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15244,54 +13952,6 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 role="row"
                               >
                                 <th
-                                  class="p-selection-column"
-                                  data-p-filter-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-reorderable-column="false"
-                                  data-p-resizable-column="false"
-                                  data-p-sortable-column="false"
-                                  data-pc-name="datatable"
-                                  data-pc-section="headercell"
-                                  role="columnheader"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    class="p-column-header-content"
-                                    data-pc-section="headercontent"
-                                  >
-                                    <span
-                                      class="p-column-title"
-                                      data-pc-section="headertitle"
-                                    />
-                                    <div
-                                      aria-checked="false"
-                                      aria-label="All items unselected"
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                      role="checkbox"
-                                    >
-                                      <input
-                                        aria-checked="false"
-                                        aria-invalid="false"
-                                        aria-label="All items unselected"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        tabindex="0"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </div>
-                                </th>
-                                <th
                                   data-p-filter-column="false"
                                   data-p-frozen-column="false"
                                   data-p-reorderable-column="false"
@@ -15447,50 +14107,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="0"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 0"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 0"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15505,8 +14126,9 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15516,32 +14138,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-0-view"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15552,36 +14154,15 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-0-create"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15592,36 +14173,15 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-0-edit"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15631,28 +14191,7 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-0-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -15699,50 +14238,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 1"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 1"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15757,8 +14257,9 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15769,36 +14270,15 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-1-view"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15808,32 +14288,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-1-create"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15843,32 +14303,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-1-edit"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -15878,28 +14318,7 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-1-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -15946,50 +14365,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 2"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 2"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16004,8 +14384,9 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16016,36 +14397,15 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-view"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16056,36 +14416,15 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-create"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16096,36 +14435,15 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-edit"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16136,31 +14454,9 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   <span
                                     data-testid="permission-2-delete"
                                   >
-                                    <div
-                                      class="p-checkbox p-component p-highlight"
-                                      data-p-disabled="false"
-                                      data-p-highlight="true"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="true"
-                                        data-pc-section="box"
-                                      >
-                                        <span
-                                          class="p-checkbox-icon pi pi-check"
-                                          data-pc-section="icon"
-                                        />
-                                      </div>
-                                    </div>
+                                    <i
+                                      class="pi pi-check text-green-500"
+                                    />
                                   </span>
                                 </td>
                                 <td
@@ -16208,50 +14504,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 3"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 3"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16266,8 +14523,9 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16277,32 +14535,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-view"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16312,32 +14550,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-create"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16347,32 +14565,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-edit"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16382,28 +14580,7 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-3-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -16450,50 +14627,11 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 data-p-selectable-row="true"
                                 data-pc-section="bodyrow"
                                 role="row"
+                                tabindex="-1"
                               >
                                 <td
-                                  class="p-selection-column"
                                   data-p-cell-editing="false"
                                   data-p-editable-column="false"
-                                  data-p-frozen-column="false"
-                                  data-p-selectable-cell="false"
-                                  data-p-selection-column="true"
-                                  data-pc-name="datatable"
-                                  data-pc-section="bodycell"
-                                  role="cell"
-                                  style="width: 3rem; flex-grow: 0;"
-                                >
-                                  <div
-                                    aria-checked="false"
-                                    aria-label="Row Selected 4"
-                                    class="p-checkbox p-component"
-                                    data-p-disabled="false"
-                                    data-p-highlight="false"
-                                    data-pc-name="checkbox"
-                                    data-pc-section="root"
-                                    role="checkbox"
-                                  >
-                                    <input
-                                      aria-checked="false"
-                                      aria-invalid="false"
-                                      aria-label="Row Selected 4"
-                                      class="p-checkbox-input"
-                                      data-pc-section="input"
-                                      tabindex="0"
-                                      type="checkbox"
-                                    />
-                                    <div
-                                      class="p-checkbox-box"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-section="box"
-                                    />
-                                  </div>
-                                </td>
-                                <td
-                                  class="p-editable-column"
-                                  data-p-cell-editing="false"
-                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16508,8 +14646,9 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                   </span>
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16519,32 +14658,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-view"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16554,32 +14673,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-create"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16589,32 +14688,12 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-edit"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
+                                  class="p-editable-column"
                                   data-p-cell-editing="false"
-                                  data-p-editable-column="false"
+                                  data-p-editable-column="true"
                                   data-p-frozen-column="false"
                                   data-p-selectable-cell="false"
                                   data-p-selection-column="false"
@@ -16624,28 +14703,7 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
                                 >
                                   <span
                                     data-testid="permission-4-delete"
-                                  >
-                                    <div
-                                      class="p-checkbox p-component"
-                                      data-p-disabled="false"
-                                      data-p-highlight="false"
-                                      data-pc-name="checkbox"
-                                      data-pc-section="root"
-                                    >
-                                      <input
-                                        aria-invalid="false"
-                                        class="p-checkbox-input"
-                                        data-pc-section="input"
-                                        type="checkbox"
-                                      />
-                                      <div
-                                        class="p-checkbox-box"
-                                        data-p-disabled="false"
-                                        data-p-highlight="false"
-                                        data-pc-section="box"
-                                      />
-                                    </div>
-                                  </span>
+                                  />
                                 </td>
                                 <td
                                   data-p-cell-editing="false"
@@ -19029,7 +17087,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_590=""
+                        pr_id_574=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -20224,7 +18282,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_716=""
+                        pr_id_700=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -21420,7 +19478,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_743=""
+                        pr_id_727=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -22616,7 +20674,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_770=""
+                        pr_id_754=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -23812,7 +21870,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_478=""
+                        pr_id_462=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -24345,7 +22403,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
             data-p-disabled="false"
             data-p-highlight="true"
             data-pc-section="menuitem"
-            id="pr_id_448_0"
+            id="pr_id_432_0"
             role="presentation"
           >
             <a
@@ -24369,7 +22427,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
             data-p-disabled="false"
             data-p-highlight="false"
             data-pc-section="menuitem"
-            id="pr_id_448_1"
+            id="pr_id_432_1"
             role="presentation"
           >
             <a
@@ -24393,7 +22451,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
             data-p-disabled="false"
             data-p-highlight="false"
             data-pc-section="menuitem"
-            id="pr_id_448_2"
+            id="pr_id_432_2"
             role="presentation"
           >
             <a
@@ -27295,7 +25353,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_635=""
+                        pr_id_619=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -28504,7 +26562,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_505=""
+                        pr_id_489=""
                       >
                         <div
                           class="p-datatable-wrapper"
@@ -29712,7 +27770,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
                         data-pc-section="root"
                         data-scrollselectors=".p-datatable-wrapper"
                         data-showgridlines="false"
-                        pr_id_542=""
+                        pr_id_526=""
                       >
                         <div
                           class="p-datatable-wrapper"

@@ -10,7 +10,7 @@ export default handler<
             const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
                 import('react'),
                 import('react-dom/client'),
-                import('../../src/components/App/index.js'),
+                import('../../src/components/App/App.js'),
             ]);
 
             const dispatch = (method: string, rpcParams: Record<string, unknown> = {}) =>
