@@ -39,8 +39,10 @@ export default handler(
             group(name)([
                 // ── 1. Wipe any leftover objects from previous runs ────────
                 async function cleanObjects(assert: typeof Assert, {$meta}: StepMeta) {
-                    const keys = [objects[0].key, objects[1].key, objectWithMetadata.key, copiedKey];
-                    for (const key of keys) {
+                    const listResult = await storageObjectFind({prefix: PREFIX, maxKeys: 1000}, $meta);
+                    const existingKeys =
+                        ((listResult as ListResult).Contents ?? []).map(obj => obj.Key).filter(Boolean) as string[];
+                    for (const key of existingKeys) {
                         try {
                             await storageObjectRemove({key}, $meta);
                         } catch {

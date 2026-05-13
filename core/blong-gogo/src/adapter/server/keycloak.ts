@@ -249,7 +249,7 @@ export default adapter<IConfig>(({utError}) => {
 
                         case 'update':
                         case 'edit': {
-                            const {id: userId, ...updateData} = handleParams;
+                            const {id: userId, realm: _realm, ...updateData} = handleParams;
                             if (!userId) throw _errors['keycloak.missingKey']({key: 'id'});
                             return await client.users.update({id: userId as string}, updateData);
                         }
@@ -368,7 +368,7 @@ export default adapter<IConfig>(({utError}) => {
 
                         case 'update':
                         case 'edit': {
-                            const {id: groupId, ...updateData} = handleParams;
+                            const {id: groupId, realm: _realm, ...updateData} = handleParams;
                             if (!groupId) throw _errors['keycloak.missingKey']({key: 'id'});
                             return await client.groups.update({id: groupId as string}, updateData);
                         }
@@ -483,6 +483,7 @@ export default adapter<IConfig>(({utError}) => {
                             const {
                                 roleName: updateRoleName,
                                 clientUuid: updateClientUuid,
+                                realm: _realm,
                                 ...updateData
                             } = handleParams;
                             if (!updateRoleName)
@@ -499,7 +500,7 @@ export default adapter<IConfig>(({utError}) => {
                             } else {
                                 return await client.roles.updateByName(
                                     {name: updateRoleName as string},
-                                    updateData,
+                                    {name: updateRoleName as string, ...updateData},
                                 );
                             }
                         }
@@ -614,7 +615,11 @@ export default adapter<IConfig>(({utError}) => {
 
                         case 'update':
                         case 'edit': {
-                            const {id: clientUpdateId, ...clientUpdateData} = handleParams;
+                            const {
+                                id: clientUpdateId,
+                                realm: _realm,
+                                ...clientUpdateData
+                            } = handleParams;
                             if (!clientUpdateId) throw _errors['keycloak.missingKey']({key: 'id'});
                             return await client.clients.update(
                                 {id: clientUpdateId as string},
