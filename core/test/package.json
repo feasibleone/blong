@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "true",
-        "ci-unit": "tap **/*.test.ts *.test.ts --allow-incomplete-coverage"
+        "ci-unit": "./run-coverage.sh",
+        "ci-coverage": "./run-coverage.sh report"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

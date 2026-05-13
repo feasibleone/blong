@@ -269,7 +269,7 @@ export default async function jose({sign, encrypt}: {sign?: KeySpec; encrypt?: K
                 ? signEncrypt(
                       msg,
                       mlsk,
-                      await importKey(key),
+                      await importKey(await exportKey(key as JWK)),
                       protectedHeader!,
                       unprotectedHeader!,
                       options,
@@ -278,7 +278,7 @@ export default async function jose({sign, encrypt}: {sign?: KeySpec; encrypt?: K
         decryptVerify: async (
             msg: Parameters<typeof decryptVerify>[0],
             key: Parameters<typeof importKey>[0],
-        ) => (mlek ? decryptVerify(msg, await importKey(key), mlek!) : msg),
+        ) => (mlek ? decryptVerify(msg, await importKey(await exportKey(key as JWK)), mlek!) : msg),
         decrypt: (msg, options) =>
             mlek ? decrypt(msg, mlek!, options as {complete?: unknown} | undefined) : msg,
         verify: async (msg, key) => verify(msg, await importKey(key)),

@@ -14,8 +14,7 @@
         "ci-integration-mysql": "./integration-test.sh mysql",
         "ci-integration-s3": "./integration-test.sh s3",
         "ci-integration-vault": "./integration-test.sh vault",
-        "ci-integration-report": "./integration-test.sh report",
-        "ci-coverage": "./integration-test.sh report"
+        "ci-coverage": "test -f coverage/lcov.info || ./integration-test.sh report"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
