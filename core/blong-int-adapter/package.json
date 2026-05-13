@@ -6,14 +6,16 @@
     "scripts": {
         "build": "true",
         "ci-integration": "./integration-test.sh",
-        "ci-integration-http": "tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.http",
-        "ci-integration-k8s": "tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.k8s",
-        "ci-integration-kafka": "../../test/integration/wait.sh kafka && tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.kafka",
-        "ci-integration-keycloak": "../../test/integration/wait.sh keycloak && tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.keycloak",
-        "ci-integration-mongodb": "../../test/integration/wait.sh mongodb && tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.mongodb",
-        "ci-integration-mysql": "../../test/integration/wait.sh mysql && tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.mysql",
-        "ci-integration-s3": "../../test/integration/wait.sh minio && tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.s3",
-        "ci-integration-vault": "../../test/integration/wait.sh vault && tap index.test.ts --allow-incomplete-coverage --test-arg=adapter.vault"
+        "ci-integration-http": "./integration-test.sh http",
+        "ci-integration-k8s": "./integration-test.sh k8s",
+        "ci-integration-kafka": "./integration-test.sh kafka",
+        "ci-integration-keycloak": "./integration-test.sh keycloak",
+        "ci-integration-mongodb": "./integration-test.sh mongodb",
+        "ci-integration-mysql": "./integration-test.sh mysql",
+        "ci-integration-s3": "./integration-test.sh s3",
+        "ci-integration-vault": "./integration-test.sh vault",
+        "ci-integration-report": "./integration-test.sh report",
+        "ci-coverage": "./integration-test.sh report"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
