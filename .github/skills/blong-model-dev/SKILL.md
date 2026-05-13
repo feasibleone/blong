@@ -205,21 +205,33 @@ export async function subjectObjectBrowse(
 
 - Schema fetched via `blong.handler['{subject}.{object}.schema']`, merged with `model.schema`
 - `editable: false, editMode: false, layout: 'browse'`
-- `toolbar` from `model.browser.toolbar`
+- `toolbar` prepends a `{icon: 'pi pi-refresh', action: '__refresh__', title: 'Refresh'}` button
+  before `model.browser.toolbar` — clicking it invalidates all TanStack Query caches whose
+  key starts with `{subject}.{object}.` (forces the browse table to refetch)
+- `refreshNamespace: '{subject}.{object}'` is passed to `Editor` to wire up the `__refresh__` handler
 - `cards` and `layouts` from model (default `browse` layout has 3-panel split with navigator)
 
 **`subjectObjectNew`** — `Editor` with:
 
 - Schema fetched via `blong.handler['{subject}.{object}.schema']`
-- `saveAction` from `model.methods.add`
-- `editMode: true, editable: false` (always in edit mode, no toggle)
-- `value: {}` — empty initial state for a new record
+- **`createAction`** from `model.methods.add` (called only on the first save — creates the record)
+- **`saveAction`** from `model.methods.edit` (called on subsequent saves after mode switches to `'edit'`)
+- `mode: 'new'` — after the first save the Editor automatically switches to `'edit'` mode so the
+  second save calls `saveAction` (`.edit`), not `createAction` (`.add`). This prevents duplicate
+  records when the user saves, edits a field, and saves again.
+- `title: {new: 'Create {objectTitle}', edit: 'Edit {objectTitle}'}` — a plain `Record<string,string>`
+  (JSON-serializable, translation-friendly) so the tab title updates when mode switches
+- **Important:** the `title` object is hoisted **outside** the `NewPage` render function to keep
+  its reference stable. An inline object literal would trigger the tab-title `useEffect` on every
+  render, causing an infinite update loop (`Maximum update depth exceeded`).
+- `editable: false, value: {}` — always in edit mode, no view/edit toggle
 
 **`subjectObjectOpen`** — `Editor` with:
 
 - Schema fetched via `blong.handler['{subject}.{object}.schema']`
 - `loadAction` from `model.methods.get`; `loadParams = {[keyField]: params[keyField]}`
 - `saveAction` from `model.methods.edit`
+- `title: 'Edit {objectTitle}'` — static string (already in edit mode, no mode switch needed)
 - `editable: true` (shows Edit/Save/Reset toolbar)
 
 **`subjectObjectReport`** — `Report` with:
@@ -303,6 +315,55 @@ The following are areas where the model system has known gaps:
 5. **Storybook stories for model pages in ui-demo** — The model pages are exercised via the
    `core/ui-demo/.storybook/` setup (using `withBlong(browser)` + the full blong platform loaded),
    not via `blong-browser/.storybook/` per-component stories.
+
+---
+
+## Common Pitfalls
+
+### Duplicate records on second save from New page
+
+If `subjectObjectNew` uses `saveAction: methods.add` for both create and edit, clicking Save after
+the first save calls `.add` again — creating a duplicate. The correct pattern is:
+
+```typescript
+// CORRECT — createAction for first save, saveAction for subsequent saves
+Editor({
+    createAction: methods.add,   // ← called once, in 'new' mode
+    saveAction: methods.edit,    // ← called after mode switches to 'edit'
+    mode: 'new',
+    ...
+})
+```
+
+The Editor automatically switches from `mode='new'` to `mode='edit'` after the first successful
+save, so `createAction` is called exactly once.
+
+### Infinite update loop from inline title object
+
+Passing `title` as an inline object literal inside a React render function creates a new object
+identity on every render. The Editor's tab-title `useEffect` reads `titleProp` via a ref to avoid
+this, but the object should still be hoisted outside the render function as good practice:
+
+```typescript
+// WRONG — inline object triggers effect on every render (may still cause loop in some setups)
+function NewPage(props) {
+    return Editor({title: {new: 'Create X', edit: 'Edit X'}, ...props});
+}
+
+// CORRECT — stable reference, hoisted outside the render function
+const title = {new: `Create ${objectTitle}`, edit: `Edit ${objectTitle}`};
+function NewPage(props) {
+    return Editor({title, ...props});
+}
+```
+
+### `__refresh__` button tooltip error
+
+Internal action names starting with `__` (e.g. `__refresh__`, `__edit__`, `__save__`) are handled
+directly in the Editor's toolbar render loop — they are **not** dispatched as RPC methods. If a
+new `__xxx__` button falls through to `ActionButton`, it will fail with a "Method binding failed"
+error. Always add new internal actions to the `if (actionName === '__edit__' || ...)` branch in
+`Editor.tsx` and handle them in `handleToolbarAction`.
 
 ---
 

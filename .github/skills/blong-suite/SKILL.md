@@ -1,6 +1,6 @@
 ---
 name: blong-suite
-description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Covers server/browser suite definitions, API test runner setup (index.ts), internal API tests, and well-known reusable realms. Make sure to use this skill whenever creating a new top-level solution, setting up a new Blong project, configuring test runners, or wiring up multiple realms — even if the user just says 'create a new project' or 'set up the entry point'.
+description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Use this skill for each of the following distinct tasks: (1) Creating a new top-level solution or Blong project — follow the server/browser entry point patterns. (2) Configuring test runners — follow the index.ts and internal.test.ts patterns. (3) Wiring up multiple realms into a suite — follow the children and config patterns. Use this skill when the user explicitly requests any of these tasks, or when their request clearly aligns with one of them.
 ---
 
 # Implementing a Suite
@@ -250,6 +250,99 @@ Cover the most common interaction — application front ends calling the API gat
 ### Internal API Tests
 
 Cover direct calls to orchestrators (without gateway). Only the server is loaded. Defined in `internal.test.ts`. Use `tap` for test coverage. Run in CI for coverage reports.
+
+## Coverage for unit tests (ci-unit / ci-coverage)
+
+When `tap` tests exercise code in a **sibling package** (e.g. `core/test` exercises `blong-gogo/src`),
+tap's built-in reporter cannot include those files because it is bound to the package's own `cwd`.
+Use a `coverage-map.mjs` + a separate `c8` invocation from the parent directory instead.
+
+### coverage-map.mjs
+```js
+// Tells tap to collect V8 coverage for the sibling package's source files.
+// Glob is resolved relative to the package root, so use `..` to step up.
+export default () => [
+    '../blong-gogo/src/**/*.ts',
+    '!../blong-gogo/src/**/*.test.ts',
+];
+```
+
+### run-coverage.sh pattern
+Packages delegate to a shared script (`core/common/run-coverage.sh`) via a thin wrapper:
+
+```bash
+#!/bin/bash
+# Per-package wrapper — sets env vars and delegates to core/common/run-coverage.sh
+set -e
+export TAP_FILES='**/*.test.ts *.test.ts'
+export COVERAGE_INCLUDE='blong-gogo/src/**/*.ts'
+export COVERAGE_EXCLUDE='blong-gogo/src/**/*.test.ts'
+# REPORT_CWD defaults to CORE_DIR (core/) so the include glob resolves correctly
+exec "$(dirname "$0")/../common/run-coverage.sh" "$@"
+```
+
+`run-coverage.sh report` runs the tests then generates `coverage/lcov.info` in one command —
+both `ci-unit` (tests only) and `ci-coverage` (tests + report) delegate to the same script:
+
+```json
+{
+    "scripts": {
+        "ci-unit":     "./run-coverage.sh",
+        "ci-coverage": "./run-coverage.sh report"
+    }
+}
+```
+
+**Key constraints:**
+- `tap report` hardcodes `tempDirectory` and `cwd` with no overrides — use `c8` directly instead
+- `c8` must be run from a directory that is an ancestor of all source files being reported on
+- Use `-o <absolute-path>` not `--reports-directory` for the output directory
+
+### CI artifact pipeline
+`ci-coverage` is self-contained (runs tests + emits `coverage/lcov.info` in one step) so it works
+correctly when the `coverage` job runs on a separate CI machine from `unit-tests`.
+
+The `unit-tests` job runs `ci-coverage` and uploads the lcov artifact:
+```yaml
+- run: node common/scripts/install-run-rush.js ci-coverage
+  name: Generate Coverage Report
+  continue-on-error: true
+- uses: actions/upload-artifact@v5
+  if: always()
+  with:
+    name: unit-coverage
+    path: +(app|core|ext|library)/*/coverage/lcov.info
+    if-no-files-found: ignore
+```
+
+The `coverage` job downloads both `unit-coverage` and `integration-coverage`, merges them, and
+posts a PR comment using `romeovs/lcov-reporter-action`:
+```yaml
+coverage:
+  needs: [setup, unit-tests, integration]
+  if: always() && needs.setup.result == 'success' && needs.unit-tests.result != 'cancelled'
+  permissions:
+    pull-requests: write
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/download-artifact@v5
+      continue-on-error: true
+      with: {name: unit-coverage}
+    - uses: actions/download-artifact@v5
+      continue-on-error: true
+      with: {name: integration-coverage}
+    - name: Merge lcov files
+      id: merge
+      run: |
+        shopt -s globstar extglob nullglob
+        files=(+(app|core|ext|library)/*/coverage/lcov.info)
+        [[ ${#files[@]} -gt 0 ]] && echo "exists=true" >> $GITHUB_OUTPUT && cat "${files[@]}" > merged-lcov.info || echo "exists=false" >> $GITHUB_OUTPUT
+    - if: steps.merge.outputs.exists == 'true'
+      uses: romeovs/lcov-reporter-action@v0.4.0
+      with:
+        lcov-file: merged-lcov.info
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+```
 
 ### UI Tests
 

@@ -422,6 +422,12 @@ methods: {
 
 All six method names default to `{subject}.{object}.{find|get|add|edit|remove|report}`.
 
+> **Tip — avoid duplicate records:** The model's `subjectObjectNew` page uses `createAction`
+> (`methods.add`) for the **first** save only, then automatically switches to `mode='edit'` and uses
+> `saveAction` (`methods.edit`) for subsequent saves. Never configure `subjectObjectNew` with a
+> single `saveAction` pointing to `.add` — that would call `.add` on every save and create
+> duplicate records.
+
 ---
 
 ## Report Page

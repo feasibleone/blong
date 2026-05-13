@@ -179,13 +179,45 @@ Enter or clicking a submit button causes browser navigation.
 
 The Editor orchestrates load and save via action names:
 
-| Prop         | Purpose                                                                        |
-| ------------ | ------------------------------------------------------------------------------ |
-| `loadAction` | Action name whose result populates the form (skipped when `value` is provided) |
-| `loadParams` | Static params passed to the load action                                        |
-| `saveAction` | Action name called with the form data on submit                                |
-| `onSave`     | Callback receiving the saved value on success (e.g. show a toast)              |
-| `value`      | Static initial value — bypasses `loadAction` entirely                          |
+| Prop           | Purpose                                                                              |
+| -------------- | ------------------------------------------------------------------------------------ |
+| `loadAction`   | Action name whose result populates the form (skipped when `value` is provided)       |
+| `loadParams`   | Static params passed to the load action                                              |
+| `createAction` | Action called on the **first** save when `mode='new'` (creates the record)           |
+| `saveAction`   | Action called on save in `mode='edit'` (fallback for create when no `createAction`)  |
+| `onSave`       | Callback receiving the saved value on success (e.g. show a toast)                   |
+| `value`        | Static initial value — bypasses `loadAction` entirely                                |
+
+**`mode='new'` lifecycle:** When `createAction` and `saveAction` are both set, the Editor calls
+`createAction` on the first save, then automatically switches to `mode='edit'` so all subsequent
+saves call `saveAction`. This prevents duplicate records if the user saves, edits a field, and saves
+again. **Never use a single `saveAction` pointing to `.add` for a create form** — it would call
+`.add` on every save.
+
+```ts
+// Correct pattern for a create form
+<Editor
+    mode="new"
+    createAction="marine.coral.add"   // called once, creates the record
+    saveAction="marine.coral.edit"    // called on all saves after mode switches to 'edit'
+    value={{}}
+/>
+```
+
+**Tab title for mode-switching forms:** Pass `title` as a `Record<string, string>` keyed by mode
+so the portal tab title updates when the Editor switches from `'new'` to `'edit'` after the first
+save. This is JSON-serializable and translation-friendly (each string is a discrete lookup key):
+
+```ts
+// Hoisted OUTSIDE the render function — inline object literals cause an infinite update loop
+const title = {new: 'Create Coral', edit: 'Edit Coral'};
+<Editor mode="new" title={title} ... />
+```
+
+**Pitfall — infinite update loop:** If `title` is an inline object literal (`title={{new: '...'}}`
+inside a render function), a new object identity is created on every render. The Editor reads
+`titleProp` via a ref to guard against this, but hoisting the object outside the render function is
+still required as a React best practice.
 
 **Loading state:** While `loadAction` is pending, each field renders a `<Skeleton>` placeholder
 instead of the widget (per-field skeleton, same width as the real input).
@@ -242,12 +274,48 @@ toolbarRight={[{label: 'Export', icon: 'pi pi-download', action: 'marine.coral.e
 `editable` = user can toggle between read and edit mode. `editMode` = initial mode (true = starts in
 edit mode). Use `editable={true} editMode={true}` for forms that are always editable.
 
+`IToolbarButton` key props: `label`, `icon`, `title` (native tooltip for icon-only buttons),
+`action`, `method`, `enabled` (`boolean | 'dirty' | 'clean' | 'current' | 'selected'`),
+`confirm`, `submit`, `menu`, `params`, `successHint`.
+
+**Internal action names** (`__xxx__`) are handled directly by the Editor toolbar render loop and
+never dispatched as RPC methods. Current internal actions:
+
+| Name           | Effect                                                          |
+| -------------- | --------------------------------------------------------------- |
+| `__save__`     | Submit the form (type="submit")                                 |
+| `__cancel__`   | Reset / cancel edits (confirms if dirty)                        |
+| `__edit__`     | Switch to edit mode                                             |
+| `__refresh__`  | Invalidate TanStack Query caches for `refreshNamespace`         |
+| `__design__`   | Toggle design mode (toolbar right only)                         |
+
+Do **not** pass an `__xxx__` action name to `ActionButton` — it will attempt an RPC call and fail
+with a "Method binding failed" error. All internal actions must be handled inside `Editor.tsx`'s
+`handleToolbarAction` function.
+
 ### Design mode
 
 `designable={true}` adds a cog button to the toolbar right. Clicking it activates design mode where
 cards can be drag-dropped to rearrange the layout. The updated `FlatLayoutConfig` is communicated
 back via `onLayoutChange`. Design mode is a `DesignModeContext`-based feature that wraps the form in
 a `DndContext` for drag-and-drop.
+
+### Form Inspector (debug)
+
+When the `BlongUiProvider` is configured with `debug={true}`, a **Form Inspector** side panel
+appears next to the form showing live state useful for development:
+
+| Section            | Shows                                                              |
+| ------------------ | ------------------------------------------------------------------ |
+| **Fields**         | Per-field dirty (D) / touched (T) / error (E) badges              |
+| **Values**         | Live form values (updates on every keystroke via `useWatch`)       |
+| **Table Selections** | Row/index selection state for table widgets                      |
+| **State**          | `editorMode`, `editorLayout`, `readOnly`, `loading`, `isDirty`, `isValid`, `submitCount` |
+
+`editorMode` (`'new'` / `'edit'` / `'view'`) and `editorLayout` (resolved layout key, e.g.
+`'editSplit'`) are passed from the Editor down into the Form's `IFormStateContext` so the Inspector
+can display them. They update in real time when the Editor mode switches (e.g. after the first save
+of a create form).
 
 ### Schema-driven widget resolution
 
