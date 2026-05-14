@@ -186,10 +186,10 @@ export default handler(
     ({errors: {errorUserNotFound, errorUserInvalidEmail, errorUserExists}}) =>
         async function userUserAdd(params, $meta) {
             if (!params.email) throw errorUserInvalidEmail();
-            
+
             const existing = await checkUser(params.username);
             if (existing) throw errorUserExists();
-            
+
             // ... rest of logic
         }
 );
@@ -217,7 +217,7 @@ export default handler(
         async function handler(params, $meta) {
             // Simplified syntax
             throw errors.errorUserNotFound();
-            
+
             // Legacy syntax (still works)
             throw errors['user.notFound']();
         }
@@ -454,6 +454,54 @@ export default {
     }
 };
 ```
+
+## Expected Errors in Tests
+
+When writing tests that **assert an error should be thrown**, set `$meta.expect`
+to the expected error type (or an array / wildcard pattern).  This prevents the
+framework from logging those errors at `error` level, keeping the test output
+clean:
+
+```typescript
+// Exact type
+await assert.rejects(
+    parkingTest({zone: 'red'}, {...$meta, expect: 'parking.invalidZone'}),
+    {type: 'parking.invalidZone'},
+);
+
+// Wildcard — any error type starting with 'parking.'
+await assert.rejects(
+    parkingTest({zone: 'red'}, {...$meta, expect: 'parking.*'}),
+    {type: 'parking.invalidZone'},
+);
+
+// Array of accepted types
+await assert.rejects(
+    paymentTransfer({amount: -1}, {
+        ...$meta,
+        expect: ['payment.invalidAmount', 'payment.insufficientFunds'],
+    }),
+    {type: 'payment.invalidAmount'},
+);
+```
+
+The error still propagates to the caller normally; only the log level changes
+from `error` to `debug` for matched types.
+
+For the gateway to accept `expect` from external callers (e.g., HTTP test
+clients), set `gateway.expectedErrors: true` in the `dev` intent config:
+
+```typescript
+// suite server.ts
+config: {
+    dev: {
+        gateway: {expectedErrors: true},
+    },
+}
+```
+
+See the [expected errors concept](../../../docs/blong/docs/concepts/expected-errors.md)
+for full documentation.
 
 ## Best Practices
 

@@ -66,6 +66,28 @@ export function parseAnnotatedKey(key: string): {
     return {annotations, handlerName};
 }
 
+/**
+ * Returns true when an error type matches the `expect` declaration on `$meta`.
+ *
+ * Matching rules:
+ *  - Exact string: `'foo.bar'` matches only `foo.bar`
+ *  - Array of strings: any element that matches (exact or wildcard)
+ *  - Wildcard prefix: `'foo.*'` matches any type starting with `foo.`
+ */
+export function isExpectedError(
+    errorType: string | undefined,
+    expect: string | string[] | undefined,
+): boolean {
+    if (!errorType || !expect) return false;
+    const patterns = ([] as string[]).concat(expect);
+    return patterns.some(pattern => {
+        if (pattern.endsWith('.*')) {
+            return errorType.startsWith(pattern.slice(0, -1));
+        }
+        return errorType === pattern;
+    });
+}
+
 let loginCache: Promise<{protocol: string; hostname: string; port: number}> | null = null;
 export async function loginService(
     discovery: (service: string) => Promise<{protocol: string; hostname: string; port: number}>,

@@ -20,7 +20,7 @@ import {v4} from 'uuid';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
 import jwt from './jwt.ts';
-import {methodParts, snakeToCamel} from './lib.ts';
+import {isExpectedError, methodParts, snakeToCamel} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
 import swagger from './swagger.ts';
 
@@ -60,6 +60,15 @@ interface IConfig extends IConfigMLE {
     logLevel?: LevelWithSilent;
     cors?: unknown;
     debug?: boolean;
+    /**
+     * When true, the gateway accepts the `expect` field from JSON-RPC request
+     * bodies and uses it to suppress error-level log entries for declared
+     * expected errors (demoting them to `debug` level).
+     *
+     * Set to `true` in the `dev` intent.  Must be `false` (the default) in
+     * production to prevent callers from suppressing audit-level error logs.
+     */
+    expectedErrors?: boolean;
     errorFields: unknown[];
     jwt: {
         cache: object;
@@ -147,6 +156,7 @@ export default class Gateway extends Internal implements IGateway {
             encrypt: undefined,
         },
         debug: false,
+        expectedErrors: false,
         errorFields: [],
         jwt: {
             cache: {},
@@ -418,6 +428,13 @@ export default class Gateway extends Internal implements IGateway {
                                   timeout: false,
                                   expect: undefined,
                               };
+                    // Only honour `expect` from the request body when the gateway
+                    // is configured to allow it.  This prevents external callers
+                    // from suppressing error-level logs in production.
+                    const resolvedExpect =
+                        this.#config.expectedErrors && expect
+                            ? ([] as string[]).concat(expect)
+                            : undefined;
                     const methodName = isWildcard
                         ? new URL(request.url, 'http://localhost').pathname
                               .slice(5)
@@ -432,7 +449,7 @@ export default class Gateway extends Internal implements IGateway {
                             ...(timeout && {
                                 timeout: this.#platform.timing.after(timeout as number),
                             }),
-                            ...(expect && {expect: ([] as string[]).concat(expect)}),
+                            ...(resolvedExpect && {expect: resolvedExpect}),
                             ...this._meta(request, pkg?.version, methodName.split('.')[0]),
                         };
                         const notfound = (): unknown =>
@@ -483,10 +500,17 @@ export default class Gateway extends Internal implements IGateway {
                             httpResponse?: unknown;
                             [key: string]: unknown;
                         };
-                        request.log.error(
-                            {err: error, method: methodName},
-                            'gateway handler error',
-                        );
+                        if (isExpectedError(typedError.type as string | undefined, resolvedExpect)) {
+                            request.log.debug(
+                                {err: error, method: methodName},
+                                'gateway expected error',
+                            );
+                        } else {
+                            request.log.error(
+                                {err: error, method: methodName},
+                                'gateway handler error',
+                            );
+                        }
                         this._applyMeta(
                             reply
                                 .header('x-envoy-decorator-operation', methodName)

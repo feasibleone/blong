@@ -11,13 +11,32 @@ export default handler(({lib: {group}, handler: {testLoginTokenCreate, parkingTe
                     {zone: 'blue', price: 2},
                     'dispatch success',
                 );
+                // Expected errors: exact type match
                 await assert.rejects(
                     parkingTest(
                         {zone: 'red'},
                         {...$meta, expect: 'parking.invalidZone'},
                     ) as Promise<unknown>,
                     {type: 'parking.invalidZone'},
-                    'dispatch error',
+                    'dispatch error — exact expect',
+                );
+                // Expected errors: array of types
+                await assert.rejects(
+                    parkingTest(
+                        {zone: 'red'},
+                        {...$meta, expect: ['parking.invalidZone', 'parking.rateLimit']},
+                    ) as Promise<unknown>,
+                    {type: 'parking.invalidZone'},
+                    'dispatch error — array expect',
+                );
+                // Expected errors: wildcard prefix
+                await assert.rejects(
+                    parkingTest(
+                        {zone: 'red'},
+                        {...$meta, expect: 'parking.*'},
+                    ) as Promise<unknown>,
+                    {type: 'parking.invalidZone'},
+                    'dispatch error — wildcard expect',
                 );
             },
         ]),

@@ -14,6 +14,7 @@ import PQueue from 'p-queue';
 import merge from 'ut-function.merge';
 
 import ConfigRuntime from './ConfigRuntime.ts';
+import {isExpectedError} from './lib.ts';
 import loop from './loop.ts';
 
 const errorMap: IErrorMap = {
@@ -177,11 +178,12 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     }
 
     error(error: ITypedError, $meta: IMeta): void {
-        if ((this.log as {error?: (...args: unknown[]) => void})?.error) {
-            if (error.type && $meta?.expect?.includes?.(error.type)) return;
-            if ($meta) error.method = $meta.method;
-            (this.log as {error: (...args: unknown[]) => void}).error(error);
+        if ($meta) error.method = $meta.method;
+        if (isExpectedError(error.type, $meta?.expect)) {
+            (this.log as {debug?: (...args: unknown[]) => void})?.debug?.(error);
+            return;
         }
+        (this.log as {error?: (...args: unknown[]) => void})?.error?.(error);
     }
 
     findValidation(): unknown {

@@ -593,7 +593,10 @@ troubleshooting during development. Enable them in the suite's `server.ts` confi
 ```typescript
 config: {
     dev: {
-        gateway: {debug: true},       // include stack/cause in HTTP error responses
+        gateway: {
+            debug: true,            // include stack/cause in HTTP error responses
+            expectedErrors: true,   // allow callers to suppress error logs for expected errors
+        },
         systemDebug: {enabled: true}, // expose /api/sys/* introspection endpoints
     },
 }
@@ -634,6 +637,7 @@ The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in co
 - **Validation:** See **blong-validation** for input/output validation
 - **Real-time logging:** See **blong-log** for log viewer setup and monitoring
 - **Troubleshooting runtime state:** Enable `systemDebug: {enabled: true}` in suite `dev` config to expose `/api/sys/*` introspection endpoints — see Runtime Introspection section above
+- **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then set `$meta.expect` in test calls — see [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
 
@@ -648,3 +652,5 @@ For detailed design rationale and architecture decisions, see the
   referencing implementation
 - **[Real-Time Log](../docs/blong/docs/rationale/real-time-log.md)** - Real-time log viewer design
   and implementation
+- **[Expected Errors](../docs/blong/docs/rationale/expected-errors.md)** - Expected-errors design
+  and `$meta.expect` matching rules

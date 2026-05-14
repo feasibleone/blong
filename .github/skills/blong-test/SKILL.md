@@ -264,6 +264,7 @@ assert.throws(
 
 ```typescript
 async function testError(assert, {$meta}) {
+    // Exact error type — most common case
     await assert.rejects(
         userUserAdd(
             {
@@ -271,14 +272,37 @@ async function testError(assert, {$meta}) {
             },
             {
                 ...$meta,
-                expect: 'userExists', // Expected error type
+                expect: 'userExists', // Expected error type — demotes log to debug
             },
         ) as Promise<unknown>,
         {type: 'userExists'},
         'Should reject duplicate user',
     );
+
+    // Wildcard prefix — any error whose type starts with 'user.'
+    await assert.rejects(
+        userUserFind({userId: 999}, {...$meta, expect: 'user.*'}) as Promise<unknown>,
+        {type: 'user.notFound'},
+        'Should reject unknown user',
+    );
+
+    // Array of expected types — any of them is considered expected
+    await assert.rejects(
+        paymentTransfer({amount: -1}, {
+            ...$meta,
+            expect: ['payment.invalidAmount', 'payment.insufficientFunds'],
+        }) as Promise<unknown>,
+        {type: 'payment.invalidAmount'},
+        'Should reject invalid payment',
+    );
 }
 ```
+
+> **Note:** Setting `$meta.expect` suppresses `error`-level log entries for the
+> declared types (demoting them to `debug` level), keeping the test log clean.
+> The error still propagates normally; `assert.rejects` works as usual.
+> Unexpected errors (types not listed in `expect`) continue to log at
+> `error` level.  See [expected errors concept](../../../docs/blong/docs/concepts/expected-errors.md).
 
 ## Reusing Test Handlers with Parameters
 
