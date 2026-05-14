@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.21.0...blong-gogo-v1.22.0) (2026-05-14)
+
+
+### Features
+
+* intents ([5b238b0](https://github.com/feasibleone/blong/commit/5b238b064be7e20a051e963f23762012ce96bcb9))
+
+
+### Bug Fixes
+
+* improve integration test coverage for keycloak, S3, and vault adapters ([#149](https://github.com/feasibleone/blong/issues/149)) ([453c9ac](https://github.com/feasibleone/blong/commit/453c9ac17bdde48c526d92e465aeeb6a6fd816bb))
+* integration tests coverage report ([ce3ae79](https://github.com/feasibleone/blong/commit/ce3ae79e8056fab2d09d5f0779f24997773ba3c8))
+* integration tests coverage report ([4215fc1](https://github.com/feasibleone/blong/commit/4215fc1a8620e3cf36d748f55aabb0c85917d2f2))
+* integration tests coverage report ([bb8d3c7](https://github.com/feasibleone/blong/commit/bb8d3c7b0eb64c6be9d90d70ac1469c065139f31))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.20.0...blong-gogo-v1.21.0) (2026-05-12)
 
 

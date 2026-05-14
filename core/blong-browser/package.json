@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-browser",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "private": true,
     "description": "React UI component library and portal framework for the Blong ecosystem",
     "keywords": [

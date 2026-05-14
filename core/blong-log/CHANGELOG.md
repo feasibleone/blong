@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/blong-log-v1.3.0...blong-log-v1.3.1) (2026-05-14)
+
+
+### Bug Fixes
+
+* time widget remove date and leave only time ([925c185](https://github.com/feasibleone/blong/commit/925c18574a1b159917294f591ad864e46339d407))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-log-v1.2.0...blong-log-v1.3.0) (2026-05-12)
 
 

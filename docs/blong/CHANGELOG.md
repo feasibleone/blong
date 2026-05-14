@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.12.0...blong-docs-v1.13.0) (2026-05-14)
+
+
+### Features
+
+* intents ([5b238b0](https://github.com/feasibleone/blong/commit/5b238b064be7e20a051e963f23762012ce96bcb9))
+
+
+### Bug Fixes
+
+* pivot table functionality ([a4736ff](https://github.com/feasibleone/blong/commit/a4736ff0e4ad87faf0c2ce211d5a9c78c3464bc7))
+
 ## [1.12.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.11.0...blong-docs-v1.12.0) (2026-05-12)
 
 

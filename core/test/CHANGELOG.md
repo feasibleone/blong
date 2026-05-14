@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.1](https://github.com/feasibleone/blong/compare/test-v1.9.0...test-v1.9.1) (2026-05-14)
+
+
+### Bug Fixes
+
+* integration tests coverage report ([ce3ae79](https://github.com/feasibleone/blong/commit/ce3ae79e8056fab2d09d5f0779f24997773ba3c8))
+* integration tests coverage report ([4215fc1](https://github.com/feasibleone/blong/commit/4215fc1a8620e3cf36d748f55aabb0c85917d2f2))
+* integration tests coverage report ([bb8d3c7](https://github.com/feasibleone/blong/commit/bb8d3c7b0eb64c6be9d90d70ac1469c065139f31))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/test-v1.8.1...test-v1.9.0) (2026-05-11)
 
 
