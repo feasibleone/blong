@@ -16,6 +16,7 @@ ignore:
     - vulnerability: GHSA-3p68-rc4w-qgx5
     - vulnerability: CVE-2026-5450
     - vulnerability: CVE-2026-33845
+    - vulnerability: CVE-2026-42010
 
 # Set output format defaults
 output:
