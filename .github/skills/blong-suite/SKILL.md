@@ -253,50 +253,41 @@ Cover direct calls to orchestrators (without gateway). Only the server is loaded
 
 ## Coverage for unit tests (ci-unit / ci-coverage)
 
-When `tap` tests exercise code in a **sibling package** (e.g. `core/test` exercises `blong-gogo/src`),
-tap's built-in reporter cannot include those files because it is bound to the package's own `cwd`.
-Use a `coverage-map.mjs` + a separate `c8` invocation from the parent directory instead.
+All packages that cover `blong-gogo` source files share a single script:
+`core/common/run-coverage.sh`. It runs `tap` and (when called with `report`) generates
+`coverage/lcov.info` via `c8`.
 
-### coverage-map.mjs
-```js
-// Tells tap to collect V8 coverage for the sibling package's source files.
-// Glob is resolved relative to the package root, so use `..` to step up.
-export default () => [
-    '../blong-gogo/src/**/*.ts',
-    '!../blong-gogo/src/**/*.test.ts',
-];
-```
+### How it works
 
-### run-coverage.sh pattern
-Packages delegate to a shared script (`core/common/run-coverage.sh`) via a thin wrapper:
+- `tap` v21 collects V8 coverage by default into `.tap/coverage/` — no `--coverage-map` needed.
+- `--allow-incomplete-coverage --coverage-report=none` prevent tap from printing a table or
+  failing on thresholds; the report is generated separately by `c8`.
+- `c8 report` runs from `REPORT_CWD` (defaults to `core/`) so the `--include` glob
+  `blong-gogo/src/**/*.ts` resolves correctly against sibling-package source files.
+- `COVERAGE_INCLUDE` and `COVERAGE_EXCLUDE` default to `blong-gogo/src/**/*.ts` — hardcoded
+  because the script is purpose-built to track that package's coverage.
 
-```bash
-#!/bin/bash
-# Per-package wrapper — sets env vars and delegates to core/common/run-coverage.sh
-set -e
-export TAP_FILES='**/*.test.ts *.test.ts'
-export COVERAGE_INCLUDE='blong-gogo/src/**/*.ts'
-export COVERAGE_EXCLUDE='blong-gogo/src/**/*.test.ts'
-# REPORT_CWD defaults to CORE_DIR (core/) so the include glob resolves correctly
-exec "$(dirname "$0")/../common/run-coverage.sh" "$@"
-```
+**Why not `--coverage-map`:** passing it with TypeScript paths causes tap to exit 1 with
+"No coverage generated" because tsx compiles files in-memory and V8 coverage data doesn't
+match the original `.ts` file paths.
 
-`run-coverage.sh report` runs the tests then generates `coverage/lcov.info` in one command —
-both `ci-unit` (tests only) and `ci-coverage` (tests + report) delegate to the same script:
+### package.json scripts
+
+Packages call the shared script directly — no per-package wrapper needed:
 
 ```json
 {
     "scripts": {
-        "ci-unit":     "./run-coverage.sh",
-        "ci-coverage": "./run-coverage.sh report"
+        "ci-unit":     "../common/run-coverage.sh",
+        "ci-coverage": "../common/run-coverage.sh report"
     }
 }
 ```
 
 **Key constraints:**
-- `tap report` hardcodes `tempDirectory` and `cwd` with no overrides — use `c8` directly instead
 - `c8` must be run from a directory that is an ancestor of all source files being reported on
 - Use `-o <absolute-path>` not `--reports-directory` for the output directory
+- `ci-coverage` is self-contained (runs tests first) — safe to run on any CI machine
 
 ### CI artifact pipeline
 `ci-coverage` is self-contained (runs tests + emits `coverage/lcov.info` in one step) so it works

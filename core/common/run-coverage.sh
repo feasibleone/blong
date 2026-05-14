@@ -14,8 +14,8 @@
 #   COVERAGE_INCLUDE   – glob for source files to include in coverage report
 #                        (required when "report" is used)
 #   COVERAGE_EXCLUDE   – glob to exclude from coverage (optional)
-#   COVERAGE_TEMP_DIR  – path to .tap/coverage, relative to CORE_DIR
-#                        (default: <package-name>/.tap/coverage)
+#   COVERAGE_TEMP_DIR  – absolute path to store V8 coverage JSONs
+#                        (default: <core-dir>/<package-name>/.tap/coverage)
 #   COVERAGE_OUT_DIR   – absolute path for lcov output
 #                        (default: <package-dir>/coverage)
 #   REPORT_CWD         – directory from which c8 is run (default: CORE_DIR),
@@ -28,15 +28,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE_DIR="$(dirname "$SCRIPT_DIR")"
 C8="$CORE_DIR/../common/temp/node_modules/.pnpm/node_modules/.bin/c8"
 
+PKG_NAME="$(basename "$PWD")"
+TEMP_DIR="${COVERAGE_TEMP_DIR:-$CORE_DIR/$PKG_NAME/.tap/coverage}"
+TAP_FILES="${TAP_FILES:-**/*.test.ts}"
+# This script is purpose-built to capture blong-gogo coverage.
+COVERAGE_INCLUDE="${COVERAGE_INCLUDE:-blong-gogo/src/**/*.ts}"
+COVERAGE_EXCLUDE="${COVERAGE_EXCLUDE:-blong-gogo/src/**/*.test.ts}"
+
+# Run tests. tap v21 collects V8 coverage by default into .tap/coverage/.
+# We do NOT pass --coverage-map: it causes "No coverage generated" exit 1 when
+# tap can't resolve TypeScript source paths (e.g. sibling packages compiled
+# in-memory by tsx). --allow-incomplete-coverage prevents threshold failures.
+# c8 report reads the raw V8 JSON from TEMP_DIR and produces the lcov output.
 # shellcheck disable=SC2086
 tap $TAP_FILES \
     --allow-incomplete-coverage \
-    --coverage-map=./coverage-map.mjs \
     --coverage-report=none
 
 if [[ "${1:-}" == "report" ]]; then
-    PKG_NAME="$(basename "$PWD")"
-    TEMP_DIR="${COVERAGE_TEMP_DIR:-$PKG_NAME/.tap/coverage}"
     OUT_DIR="${COVERAGE_OUT_DIR:-$PWD/coverage}"
     REPORT_CWD="${REPORT_CWD:-$CORE_DIR}"
 
