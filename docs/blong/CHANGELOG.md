@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.13.0...blong-docs-v1.14.0) (2026-05-14)
+
+
+### Features
+
+* expected errors ([57ab05e](https://github.com/feasibleone/blong/commit/57ab05ed66b86405561f519e395e30f43b4fffa2))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.12.0...blong-docs-v1.13.0) (2026-05-14)
 
 

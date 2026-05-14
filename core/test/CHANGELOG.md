@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/test-v1.9.1...test-v1.10.0) (2026-05-14)
+
+
+### Features
+
+* expected errors ([57ab05e](https://github.com/feasibleone/blong/commit/57ab05ed66b86405561f519e395e30f43b4fffa2))
+
 ## [1.9.1](https://github.com/feasibleone/blong/compare/test-v1.9.0...test-v1.9.1) (2026-05-14)
 
 
