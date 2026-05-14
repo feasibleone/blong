@@ -1,6 +1,6 @@
 ---
 name: blong-test-sim
-description: Simulate backend systems locally for Blong integration tests without requiring the real backend. Covers two patterns: OpenAPI-based HTTP simulation using orchestrator.openapi from @feasibleone/blong-openapi, and TCP-based simulation using adapter.tcp with listen: true. Use this skill whenever the real backend is unavailable, you need to stand up a local mock server for integration tests, or you want to exercise the full adapter and codec stack against a controlled simulator — even if the user just says 'mock the backend server' or 'simulate the HSM'.
+description: Simulate backend systems locally for Blong integration tests without requiring the real backend. Covers two patterns - OpenAPI-based HTTP simulation using orchestrator.openapi from @feasibleone/blong-openapi, and TCP-based simulation using adapter.tcp with listen=true. Use this skill whenever the real backend is unavailable, you need to stand up a local mock server for integration tests, or you want to exercise the full adapter and codec stack against a controlled simulator — even if the user just says 'mock the backend server' or 'simulate the HSM'.
 ---
 
 # Simulating Backends for Tests

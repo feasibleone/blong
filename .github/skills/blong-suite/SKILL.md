@@ -1,6 +1,10 @@
 ---
 name: blong-suite
-description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Use this skill for each of the following distinct tasks: (1) Creating a new top-level solution or Blong project — follow the server/browser entry point patterns. (2) Configuring test runners — follow the index.ts and internal.test.ts patterns. (3) Wiring up multiple realms into a suite — follow the children and config patterns. Use this skill when the user explicitly requests any of these tasks, or when their request clearly aligns with one of them.
+description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Use this skill for each of the following distinct tasks
+  - (1) Creating a new top-level solution or Blong project — follow the server/browser entry point patterns.
+  - (2) Configuring test runners — follow the index.ts and internal.test.ts patterns.
+  - (3) Wiring up multiple realms into a suite — follow the children and config patterns.
+  Use this skill when the user explicitly requests any of these tasks, or when their request clearly aligns with one of them.
 ---
 
 # Implementing a Suite
