@@ -195,6 +195,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | CI integration tests with K8s backends   | **blong-test-int**                                    |
 | Testing with mock handlers (server-side) | **blong-mock-test**                                   |
 | Implementing EIP integration patterns    | **blong-eip**                                         |
+| Configuring / creating CLI intents       | **blong-intent**                                      |
 | Setting up Storybook                     | **storybook-v10-setup**                               |
 | Developing with Storybook                | **storybook-testing-workflow**                        |
 | Viewing real-time logs                   | **blong-log**                                         |
@@ -209,6 +210,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 - Layer architecture and organization: **blong-layer**
 - Protocol implementation details: **blong-codec**
 - Realm deployment patterns: **blong-realm**
+- CLI intents and activation system: **blong-intent**
 
 ## Framework Concepts
 
@@ -443,18 +445,21 @@ The framework performs the following without explicit configuration:
 - **Kubernetes services:** In microservice mode, each orchestrator namespace becomes a separate
   Kubernetes service automatically.
 
-### Well-Known Layer Activation Defaults
+### Well-Known Layer Intents (Auto-discovery Defaults)
 
-| Folder         | Server active in   | Browser active in  |
+The intent listed is the CLI intent that must be active for the layer to load automatically.
+`default` means the layer loads regardless of intents.
+
+| Folder         | Server intent      | Browser intent     |
 | -------------- | ------------------ | ------------------ |
-| `error`        | always             | —                  |
-| `adapter`      | always             | always             |
-| `orchestrator` | always             | —                  |
-| `gateway`      | always             | —                  |
-| `sim`          | `integration` only | —                  |
-| `test`         | `test` only        | `integration` only |
-| `backend`      | —                  | always             |
-| `component`    | —                  | always             |
+| `error`        | `default` (always) | —                  |
+| `adapter`      | `default` (always) | `default` (always) |
+| `orchestrator` | `default` (always) | —                  |
+| `gateway`      | `default` (always) | —                  |
+| `sim`          | `integration`      | —                  |
+| `test`         | `integration`      | `integration`      |
+| `backend`      | —                  | `default` (always) |
+| `component`    | —                  | `default` (always) |
 
 ## Development Workflows
 
@@ -477,19 +482,33 @@ The framework performs the following without explicit configuration:
 Configuration merges from multiple sources: source code, config files, environment variables, CLI
 parameters.
 
-**Standard environments:**
+**Intents** (formerly called "activations") are the positional arguments passed to the `blong` CLI.
+They control which config blocks are merged in for each realm, adapter, and orchestrator. See the
+**blong-intent** skill and the [intents rationale doc](../docs/blong/docs/rationale/intents.md) for
+the full reference.
 
-- `default` - Base configuration (always active)
-- `dev` - Development environment
-- `prod` - Production/UAT environments
-- `test` - Automated testing
-- `db` - Database creation
-- `realm` - Single realm development focus
-- `microservice` - Production microservice mode
-- `integration` - Integration testing mode
+**Standard intents:**
+
+| Intent | Purpose | Process lifetime |
+|--------|---------|------------------|
+| `default` | Base configuration (always active) | — |
+| `dev` | Development — verbose logs, hot-reload | Long-running, restarts on file changes |
+| `prod` | Production/UAT environments | Long-running |
+| `integration` | Integration testing — enables watch/test mode | Long-running, reruns tests on change |
+| `microservice` | Activates the layers needed to run a realm as a standalone microservice | Long-running |
+| `db` | Database creation / seeding | **Short-lived** — exits after completion |
+| `debug` | Enable `/api/sys/*` introspection, stack traces | No effect on lifetime |
+
+**Platform intents (implicit — added by the framework, never passed on CLI):**
+- `server` — always present on the server platform
+- `browser` — always present on the browser platform
+
+**Default intents:** Running `blong` with no arguments activates `dev + microservice + integration`.
+This default provides a fast feedback loop — file saves trigger hot-reload and integration tests
+rerun automatically — fulfilling the "Minimising development effort" goal.
 
 **Suite/realm config:** declared in `server.ts` / `browser.ts` as
-`config: { default: {}, microservice: {}, dev: {} }`. Keys are environment names merged into active
+`config: { default: {}, microservice: {}, dev: {} }`. Keys are intent names merged into active
 config.
 
 **Adapter/orchestrator config:** declared in the `activation` property co-located in the layer file

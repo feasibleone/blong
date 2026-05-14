@@ -28,6 +28,12 @@ const loadConfig = async (parentConfig: string | object) => {
     return {loadedConfig, configRuntime};
 };
 
+// Parse CLI intents: first positional arg may be a file/folder target — exclude it from intents.
+const allPositional = minimist(process.argv.slice(2))._ as string[];
+const [maybeTarget, ...rest] = allPositional;
+const targetIsFile = Boolean(maybeTarget && existsSync(resolve(maybeTarget)));
+const cliIntents = targetIsFile ? rest : allPositional;
+
 export default load.bind(null, {
     platform: 'server',
     readdir: async (path: string) => readdir(path, {withFileTypes: true}),
@@ -46,5 +52,5 @@ export default load.bind(null, {
     statSync,
     watch,
     timing: timing(hrtime),
-    configs: ['server', ...minimist(process.argv.slice(2))._],
+    configs: ['server', ...cliIntents],
 });

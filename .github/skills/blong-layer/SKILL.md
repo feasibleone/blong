@@ -70,15 +70,17 @@ realmname/
 
 ## layer.server.ts / layer.browser.ts
 
-For folders with non-standard names, add a `layer.server.ts` or `layer.browser.ts` to declare activation. This eliminates the need for an explicit `children` array or activation config in the parent `server.ts`.
+For folders with non-standard names, add a `layer.server.ts` or `layer.browser.ts` to declare
+which CLI **intents** activate the layer. This eliminates the need for an explicit `children` array
+or activation config in the parent `server.ts`.
 
 ```typescript
 // myCustomLayer/layer.server.ts
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true, // active in all environments
-    microservice: true, // additionally active in microservice deployment
+    default: true,        // active regardless of which intents are present
+    microservice: true,   // additionally active when the microservice intent is present
 });
 ```
 
@@ -87,23 +89,28 @@ export default layer({
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    integration: true, // only active during integration testing
+    integration: true, // only active when the integration intent is present
 });
 ```
 
-### Well-Known Layer Default Activations
+### Well-Known Layer Default Intents
 
-| Folder         | Server default        | Browser default       |
+The key is the **intent** that activates the layer. `{default: true}` means the layer is always
+active. Provide a `layer.server.ts` to override any entry.
+
+| Folder         | Server intent         | Browser intent        |
 | -------------- | --------------------- | --------------------- |
-| `error`        | `{default: true}`     | —                     |
-| `sim`          | `{integration: true}` | -                     |
-| `adapter`      | `{default: true}`     | -                     |
-| `orchestrator` | `{default: true}`     | —                     |
-| `gateway`      | `{default: true}`     | —                     |
-| `browser`      | `{default: true}`     | —                     |
-| `backend`      |                       | `{default: true}`     |
-| `component`    |                       | `{default: true}`     |
-| `test`         |                       | `{integration: true}` |
+| `error`        | `default` (always)    | —                     |
+| `sim`          | `integration`         | —                     |
+| `adapter`      | `default` (always)    | `default` (always)    |
+| `orchestrator` | `default` (always)    | —                     |
+| `gateway`      | `default` (always)    | —                     |
+| `browser`      | `default` (always)    | —                     |
+| `backend`      | —                     | `default` (always)    |
+| `component`    | —                     | `default` (always)    |
+| `test`         | `integration`         | `integration`         |
+
+See the **blong-intent** skill for the full intents reference and how to create custom intents.
 
 ## Self-Contained Layer Pattern
 

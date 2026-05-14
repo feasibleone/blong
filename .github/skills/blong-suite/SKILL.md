@@ -121,7 +121,7 @@ type Load = (
     definition: object,
     suiteName: string,
     parentConfig: string | object,
-    activations: string[],
+    intents: string[], // CLI intents to apply (e.g. 'microservice', 'dev', 'integration')
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -152,9 +152,9 @@ import tap from 'tap';
 import server from './server.js';
 
 const platform = await load(server, 'suite-name', 'suite-name', [
-    'microservice',
-    'integration',
-    'dev',
+    'microservice', // microservice deployment wiring
+    'integration',  // enables test layer, watch mode
+    'dev',          // verbose logging, relaxed config
 ]);
 await platform.start();
 await tap.test('internal api', async test => {
@@ -170,9 +170,9 @@ Suites are launched by the framework via the `blong` CLI. The `load` function pa
 ```typescript
 type Load = (
     definition: object, // default export of server.ts or browser.ts
-    suiteName: string, // determines config file name (.ut_<suite><env>rc) and k8s namespace
+    suiteName: string,  // determines config file name and k8s namespace
     parentConfig: string | object, // config overrides, avoids extra config files in tests
-    activations: string[], // config activations to apply (e.g. 'microservice', 'dev', 'integration')
+    intents: string[],  // CLI intents to apply (e.g. 'microservice', 'dev', 'integration')
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -180,16 +180,21 @@ type Load = (
 }>;
 ```
 
-The `activations` array controls which config blocks inside each realm/adapter/orchestrator are merged in. Standard activations:
+The `intents` array controls which config blocks inside each realm/adapter/orchestrator are merged
+in. These correspond to positional CLI arguments: `blong integration dev` passes
+`['integration', 'dev']` as intents. Standard intents:
 
-| Activation     | Purpose                                      |
-| -------------- | -------------------------------------------- |
-| `default`      | Always active (base config)                  |
-| `dev`          | Development environment                      |
-| `prod`         | Production / UAT environments                |
-| `test`         | Automated testing                            |
-| `microservice` | Enables per-layer deployment activation      |
-| `integration`  | Integration testing; enables watch/test mode |
+| Intent         | Purpose                                       | Process lifetime |
+| -------------- | --------------------------------------------- | ---------------- |
+| `default`      | Always active (base config — cannot be removed) | — |
+| `dev`          | Development — verbose logs, hot-reload        | Long-running, restarts on file changes |
+| `prod`         | Production / UAT environments                 | Long-running |
+| `integration`  | Integration testing; enables watch/test mode  | Long-running, reruns tests on change |
+| `microservice` | Enables per-layer deployment activation       | Long-running |
+| `db`           | Database creation / seeding                   | Short-lived — exits after completion |
+| `debug`        | Expose `/api/sys/*`, include stack traces     | No effect on lifetime |
+
+See the **blong-intent** skill for the full intents reference and how to create custom intents.
 
 ## Well-Known Reusable Realms
 
@@ -296,19 +301,6 @@ Packages call the shared script directly — no per-package wrapper needed:
 ### CI artifact pipeline
 `ci-coverage` is self-contained (runs tests + emits `coverage/lcov.info` in one step) so it works
 correctly when the `coverage` job runs on a separate CI machine from `unit-tests`.
-
-The `unit-tests` job runs `ci-coverage` and uploads the lcov artifact:
-```yaml
-- run: node common/scripts/install-run-rush.js ci-coverage
-  name: Generate Coverage Report
-  continue-on-error: true
-- uses: actions/upload-artifact@v5
-  if: always()
-  with:
-    name: unit-coverage
-    path: +(app|core|ext|library)/*/coverage/lcov.info
-    if-no-files-found: ignore
-```
 
 The `coverage` job downloads both `unit-coverage` and `integration-coverage`, merges them, and
 posts a PR comment using `romeovs/lcov-reporter-action`:

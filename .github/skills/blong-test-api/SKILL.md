@@ -61,7 +61,7 @@ type Load = (
     def: object, // the server or browser definition as factory function
     suiteName: string, // the suite name
     parentConfig: string | object, // configuration overrides for the suite
-    activations: string[], // config activations to apply for the test
+    intents: string[], // CLI intents to apply (e.g. 'microservice', 'integration', 'dev')
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;

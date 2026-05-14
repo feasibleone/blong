@@ -50,8 +50,8 @@ Only needed for non-well-known folder names. Declares activation per environment
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true,        // active in all environments
-    microservice: true,   // additionally active in microservice deployment
+    default: true,        // active in all environments (regardless of intents)
+    microservice: true,   // additionally active when the microservice intent is present
 });
 ```
 
@@ -60,22 +60,26 @@ export default layer({
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    integration: true,   // active only for integration tests
+    integration: true,   // active only when the integration intent is present
 });
 ```
 
 ### Well-known Folder Defaults
 
-Well-known folders are automatically activated without any `layer.*.ts` file:
+Well-known folders are automatically activated without any `layer.*.ts` file.
+The key in each cell is the **intent** that must be active for the layer to load:
 
-| Folder | Server default | Browser default |
-|--------|---------------|-----------------|
-| `error` | always active | — |
-| `adapter` | always active | always active |
-| `orchestrator` | always active | — |
-| `gateway` | always active | — |
-| `sim` | `integration` only | — |
-| `test` | `test` only | `integration` only |
+| Folder | Server intent | Browser intent |
+|--------|--------------|----------------|
+| `error` | `default` (always) | — |
+| `adapter` | `default` (always) | `default` (always) |
+| `orchestrator` | `default` (always) | — |
+| `gateway` | `default` (always) | — |
+| `sim` | `integration` | — |
+| `test` | `integration` | `integration` |
+
+Override any default by adding a `layer.server.ts` / `layer.browser.ts` to the folder.
+See the **blong-intent** skill for the full intents reference and how to create custom intents.
 
 ## Minimal server.ts (Only When Needed)
 
