@@ -39,6 +39,8 @@ generate_report() {
         "$C8" report \
             --temp-directory "$PKG_NAME/.tap/coverage-all" \
             --include 'blong-gogo/src/adapter/server/*.ts' \
+            --include "$PKG_NAME/**/*.ts" \
+            --exclude 'blong-gogo/src/**/*.test.ts' \
             --reporter text \
             --reporter lcov \
             -o "$SCRIPT_DIR/coverage"
@@ -70,7 +72,6 @@ run_adapter() {
 
     tap index.test.ts \
         --allow-incomplete-coverage \
-        --coverage-map=./coverage-map.mjs \
         --coverage-report=none \
         --test-arg="adapter.$name"
 }

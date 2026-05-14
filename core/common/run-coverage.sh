@@ -7,6 +7,7 @@
 # Without "report": runs the tap tests only (used by ci-unit).
 # With "report":    runs the tests then generates lcov + text coverage
 #                   report into coverage/ (used by ci-coverage).
+# When CI is defined assume "report" mode
 #
 # Callers configure the runner via environment variables:
 #
@@ -45,7 +46,7 @@ tap $TAP_FILES \
     --allow-incomplete-coverage \
     --coverage-report=none
 
-if [[ "${1:-}" == "report" ]]; then
+if [[ "${1:-}" == "report"  || -n "${CI:-}" ]]; then
     OUT_DIR="${COVERAGE_OUT_DIR:-$PWD/coverage}"
     REPORT_CWD="${REPORT_CWD:-$CORE_DIR}"
 
