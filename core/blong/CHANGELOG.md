@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.3](https://github.com/feasibleone/blong/compare/blong-v1.18.2...blong-v1.18.3) (2026-05-14)
+
+
+### Bug Fixes
+
+* editor lifecycle ([017ab13](https://github.com/feasibleone/blong/commit/017ab13339d4bd9c66a3622ccc0f319bc3ee2195))
+
 ## [1.18.2](https://github.com/feasibleone/blong/compare/blong-v1.18.1...blong-v1.18.2) (2026-05-10)
 
 

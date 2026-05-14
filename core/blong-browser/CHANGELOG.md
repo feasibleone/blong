@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.6.0...blong-browser-v1.6.1) (2026-05-14)
+
+
+### Bug Fixes
+
+* editor lifecycle ([017ab13](https://github.com/feasibleone/blong/commit/017ab13339d4bd9c66a3622ccc0f319bc3ee2195))
+* pivot table functionality ([a4736ff](https://github.com/feasibleone/blong/commit/a4736ff0e4ad87faf0c2ce211d5a9c78c3464bc7))
+* time widget remove date and leave only time ([925c185](https://github.com/feasibleone/blong/commit/925c18574a1b159917294f591ad864e46339d407))
+* UI issues and snapshot ([8173570](https://github.com/feasibleone/blong/commit/8173570642e7c7b1f90e4e8361ad7124d67a6566))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.5.0...blong-browser-v1.6.0) (2026-05-12)
 
 
