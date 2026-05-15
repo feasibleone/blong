@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.24.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.23.0...blong-gogo-v1.24.0) (2026-05-15)
+
+
+### Features
+
+* snapshot testing ([ffae636](https://github.com/feasibleone/blong/commit/ffae6360d9f6a04b42e733fc6be291e1cd707bfa))
+
 ## [1.23.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.22.0...blong-gogo-v1.23.0) (2026-05-14)
 
 

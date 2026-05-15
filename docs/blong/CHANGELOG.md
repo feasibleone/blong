@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.14.0...blong-docs-v1.15.0) (2026-05-15)
+
+
+### Features
+
+* snapshot testing ([ffae636](https://github.com/feasibleone/blong/commit/ffae6360d9f6a04b42e733fc6be291e1cd707bfa))
+
 ## [1.14.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.13.0...blong-docs-v1.14.0) (2026-05-14)
 
 

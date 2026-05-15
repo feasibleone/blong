@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/feasibleone/blong/compare/blong-v1.18.3...blong-v1.19.0) (2026-05-15)
+
+
+### Features
+
+* snapshot testing ([ffae636](https://github.com/feasibleone/blong/commit/ffae6360d9f6a04b42e733fc6be291e1cd707bfa))
+
 ## [1.18.3](https://github.com/feasibleone/blong/compare/blong-v1.18.2...blong-v1.18.3) (2026-05-14)
 
 

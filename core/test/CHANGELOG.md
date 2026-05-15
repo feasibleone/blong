@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/test-v1.10.0...test-v1.11.0) (2026-05-15)
+
+
+### Features
+
+* snapshot testing ([ffae636](https://github.com/feasibleone/blong/commit/ffae6360d9f6a04b42e733fc6be291e1cd707bfa))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/test-v1.9.1...test-v1.10.0) (2026-05-14)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.6.0...blong-chain-v1.7.0) (2026-05-15)
+
+
+### Features
+
+* snapshot testing ([ffae636](https://github.com/feasibleone/blong/commit/ffae6360d9f6a04b42e733fc6be291e1cd707bfa))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.5.1...blong-chain-v1.6.0) (2026-05-12)
 
 
