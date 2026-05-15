@@ -3,7 +3,7 @@
     "version": "1.11.0",
     "type": "module",
     "scripts": {
-        "ci-lint": "tsc --noEmit",
+        "ci-lint": "blong-ci lint",
         "build": "true",
         "ci-unit": "../common/run-coverage.sh",
         "ci-coverage": "../common/run-coverage.sh report"
@@ -25,6 +25,7 @@
         "ut-port-tcp": "^7.5.1"
     },
     "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
         "@rushstack/heft": "^1.2.6",
         "@rushstack/heft-lint-plugin": "^1.2.6",
         "@rushstack/heft-typescript-plugin": "^1.3.1",

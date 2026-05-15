@@ -28,6 +28,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1037.0
         version: 3.1037.0
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@keycloak/keycloak-admin-client':
         specifier: ^26.5.4
         version: 26.5.6
@@ -94,6 +97,9 @@ importers:
       '@feasibleone/blong-chain':
         specifier: workspace:^1.0.0
         version: link:../blong-chain
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -140,6 +146,9 @@ importers:
         specifier: ^5.0.4
         version: 5.0.12(@types/react@19.2.14)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
@@ -228,6 +237,9 @@ importers:
         specifier: ^9.1.0
         version: 9.1.0
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -271,6 +283,9 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -308,6 +323,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -330,6 +348,22 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  ../../core/blong-dev:
+    dependencies:
+      cspell:
+        specifier: ^8.0.0
+        version: 8.19.4
+      strip-json-comments:
+        specifier: 5.0.3
+        version: 5.0.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   ../../core/blong-eip:
     dependencies:
       '@feasibleone/blong':
@@ -342,6 +376,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -517,6 +554,9 @@ importers:
         specifier: ^2.8.3
         version: 2.8.3
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -532,9 +572,6 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.12.0
-      cspell:
-        specifier: ^8.0.0
-        version: 8.19.4
       playwright:
         specifier: ^1.58.2
         version: 1.58.2
@@ -554,6 +591,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@playwright/test':
         specifier: ^1.50.5
         version: 1.58.2
@@ -610,6 +650,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -647,6 +690,9 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -678,6 +724,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -727,6 +776,9 @@ importers:
         specifier: ^8.18.0
         version: 8.20.0
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -812,6 +864,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -834,6 +889,9 @@ importers:
         specifier: workspace:^1.0.0
         version: link:../blong
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@types/node':
         specifier: ^24
         version: 24.12.0
@@ -850,6 +908,9 @@ importers:
         specifier: workspace:^1.0.0
         version: link:../blong
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -878,6 +939,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -915,6 +979,9 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -942,6 +1009,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -991,6 +1061,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -1025,6 +1098,9 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -1080,6 +1156,9 @@ importers:
         specifier: workspace:^1.0.0
         version: link:../blong-test
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -1141,6 +1220,9 @@ importers:
         specifier: ^7.5.1
         version: 7.5.1
     devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -1187,6 +1269,9 @@ importers:
       '@feasibleone/blong-browser':
         specifier: workspace:^1.0.0
         version: link:../blong-browser
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo

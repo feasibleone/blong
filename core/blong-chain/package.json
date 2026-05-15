@@ -15,7 +15,7 @@
         ".": "./index.ts"
     },
     "scripts": {
-        "ci-lint": "tsc --noEmit",
+        "ci-lint": "blong-ci lint",
         "build": "heft build --clean",
         "ci-all": "npm run ci-unit && npm run ci-examples",
         "ci-examples": "npm run test:examples",
@@ -28,6 +28,7 @@
         "p-queue": "^9.1.0"
     },
     "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
         "@rushstack/heft": "^1.2.6",
         "@rushstack/heft-lint-plugin": "^1.2.6",
         "@rushstack/heft-typescript-plugin": "^1.3.1",

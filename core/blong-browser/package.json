@@ -44,7 +44,7 @@
         "build-storybook": "storybook build -o storybook-static",
         "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
         "ci-chromatic": "../common/chromatic.sh",
-        "ci-lint": "tsc --noEmit",
+        "ci-lint": "blong-ci lint",
         "ci-unit": "node --run test",
         "storybook": "storybook dev --port 6006",
         "storybook:test": "test-storybook",
@@ -65,6 +65,7 @@
         "zustand": "^5.0.4"
     },
     "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@feasibleone/blong-marine": "workspace:^1.0.0",
         "@storybook/addon-a11y": "^10.3.6",

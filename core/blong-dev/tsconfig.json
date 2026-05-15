@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "rootDir": ".",
+        "allowJs": true,
+        "checkJs": false,
+        "moduleResolution": "bundler",
+        "esModuleInterop": true,
+        "module": "preserve",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "target": "ES2022",
+        "strict": true
+    },
+    "include": ["src/**/*.ts", "bin/**/*.ts"],
+    "exclude": ["node_modules"]
+}

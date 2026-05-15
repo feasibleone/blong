@@ -1,0 +1,20 @@
+{
+    "name": "@feasibleone/blong-dev",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "bin": {
+        "blong-ci": "bin/blong-dev.ts"
+    },
+    "scripts": {
+        "ci-lint": "tsc --noEmit"
+    },
+    "dependencies": {
+        "cspell": "^8.0.0",
+        "strip-json-comments": "5.0.3"
+    },
+    "devDependencies": {
+        "@types/node": "^24",
+        "typescript": "^5.9.3"
+    }
+}

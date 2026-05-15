@@ -16,12 +16,13 @@
         ".": "./index.ts"
     },
     "scripts": {
-        "ci-lint": "tsc --noEmit",
+        "ci-lint": "blong-ci lint",
         "build": "heft build --clean",
         "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
         "test": "tap *.test.ts"
     },
     "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-chain": "workspace:^1.0.0",
         "@rushstack/heft": "^1.2.6",

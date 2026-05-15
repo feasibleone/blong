@@ -458,6 +458,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-dev",
+            "projectFolder": "core/blong-dev",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-gogo",
             "projectFolder": "core/blong-gogo",
             "reviewCategory": "core",

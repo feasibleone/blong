@@ -1,0 +1,19 @@
+{
+    "$schema": "https://developer.microsoft.com/json-schemas/heft/v0/heft.schema.json",
+
+    "phasesByName": {
+        "build": {
+            "phaseDescription": "Compile TypeScript source to dist/",
+
+            "cleanFiles": [{"sourcePath": "dist"}],
+
+            "tasksByName": {
+                "typescript": {
+                    "taskPlugin": {
+                        "pluginPackage": "@rushstack/heft-typescript-plugin"
+                    }
+                }
+            }
+        }
+    }
+}
