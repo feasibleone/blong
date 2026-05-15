@@ -1,5 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 import {testGroup, updatedGroup} from '../fixtures/group.ts';
 
@@ -15,7 +14,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {
             authGroupAdd,
             authGroupFind,
@@ -26,7 +25,7 @@ export default handler(
         },
     }) => ({
         testKeycloakGroupCrud: ({name = 'keycloak group CRUD'}: {name?: string}) =>
-            group(name)([
+            group(name, {mask: ['id']})([
                 // ── 1. Clean up leftover test group if present ─────────────
                 async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
                     try {
@@ -93,18 +92,16 @@ export default handler(
 
                 // ── 4. get — fetch the group by id ────────────────────────
                 async function getGroup(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addGroup}: StepMeta & {addGroup: Promise<CreateResult>},
                 ) {
-                    const {id} = await addGroup;
-                    const result = await authGroupGet({realm: testGroup.realm, id}, $meta);
-                    assert.ok(result, 'get group returned a result');
-                    assert.strictEqual(
-                        (result as GroupResult).name,
-                        testGroup.name,
-                        'get returned the correct group name',
-                    );
-                    return result as GroupResult & {id: string};
+                    // Snapshot captures name, path, and all other fields.
+                    // Chain-level mask handles the Keycloak `id` UUID.
+                    assert.snapshot();
+                    return (await authGroupGet(
+                        {realm: testGroup.realm, id: (await addGroup).id},
+                        $meta,
+                    )) as GroupResult & {id: string};
                 },
 
                 // ── 5. edit — rename the group ────────────────────────────
@@ -113,37 +110,36 @@ export default handler(
                     {$meta, addGroup}: StepMeta & {addGroup: Promise<CreateResult>},
                 ) {
                     const {id} = await addGroup;
-                    await authGroupEdit(
-                        {realm: testGroup.realm, id, ...updatedGroup},
-                        $meta,
-                    );
+                    await authGroupEdit({realm: testGroup.realm, id, ...updatedGroup}, $meta);
                     assert.ok(true, 'edit group completed without error');
                     return {id};
                 },
 
                 // ── 6. verify edit — re-fetch to confirm the rename ────────
                 async function verifyEdit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, editGroup}: StepMeta & {editGroup: Promise<{id: string}>},
                 ) {
-                    const {id} = await editGroup;
-                    const result = await authGroupGet({realm: testGroup.realm, id}, $meta);
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as GroupResult).name,
-                        updatedGroup.name,
-                        'group name was updated correctly',
-                    );
-                    return result as GroupResult;
+                    // Snapshot captures updated name alongside all other fields.
+                    assert.snapshot();
+                    return (await authGroupGet(
+                        {realm: testGroup.realm, id: (await editGroup).id},
+                        $meta,
+                    )) as GroupResult;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('group-read-snapshots', 'getGroup', 'verifyEdit'),
 
                 // ── 7. members — list members of the group (should be empty)
                 async function listMembers(
                     assert: typeof Assert,
                     {$meta, addGroup}: StepMeta & {addGroup: Promise<CreateResult>},
                 ) {
-                    const {id} = await addGroup;
-                    const result = await authGroupMembers({realm: testGroup.realm, id}, $meta);
+                    const result = await authGroupMembers(
+                        {realm: testGroup.realm, id: (await addGroup).id},
+                        $meta,
+                    );
                     assert.ok(Array.isArray(result), 'members returned an array');
                     assert.strictEqual(
                         (result as unknown[]).length,
@@ -172,8 +168,7 @@ export default handler(
                     await verifyEdit;
                     await findGroups;
                     await listMembers;
-                    const {id} = await addGroup;
-                    await authGroupRemove({realm: testGroup.realm, id}, $meta);
+                    await authGroupRemove({realm: testGroup.realm, id: (await addGroup).id}, $meta);
                     assert.ok(true, 'remove group completed without error');
                     return {removed: true};
                 },

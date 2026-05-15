@@ -40,9 +40,26 @@ export interface ITestContext {
 export type StepFunction = (assert: unknown, context: ITestContext) => unknown | Promise<unknown>;
 
 /**
- * Array of test steps that can be nested for sequential execution
+ * A snapshot checkpoint — an array of step-name strings placed inside the
+ * steps array. At runtime, when the executor encounters it the current batch
+ * is awaited and the listed step results are snapshotted into the TAP context.
+ *
+ * - `['*']`            — snapshot ALL completed steps' results into one context object
+ * - `['step1', 'step2']` — snapshot only those specific steps
+ * - `[]`               — sync barrier only, no snapshot (existing behaviour)
+ *
+ * The array may carry an optional `.name` to give the snapshot a stable name:
+ * ```
+ * const cp = Object.assign(['*'], {name: 'provisioning-complete'});
+ * ```
  */
-export type StepArray = (StepFunction | StepArray)[] & {name?: string};
+export type CheckpointMarker = string[] & {name?: string};
+
+/**
+ * Array of test steps. May contain step functions, nested step groups, or
+ * checkpoint markers (string arrays).
+ */
+export type StepArray = (StepFunction | StepArray | CheckpointMarker)[] & {name?: string};
 
 /**
  * Meta information passed through test execution
@@ -340,6 +357,35 @@ export interface ITestExecutorConfig {
     framework?: unknown;
     /** Logger instance for reporting step failures */
     log?: ITestLogger;
+    /**
+     * Chain-level mask paths. Applied to ALL snapshot operations in this chain:
+     * `autoSnapshot`, `assert.snapshot()`, and checkpoint snapshots.
+     *
+     * Supports:
+     * - Simple name: `'id'` — masks the `id` field in the snapshotted value
+     * - Dot-path: `'user.id'` — masks a nested field
+     * - Wildcard prefix: `'*.id'` — masks `id` inside every direct child of the
+     *   snapshotted object (useful for context-level snapshots where each child
+     *   is a step result)
+     *
+     * Per-call `{mask: [...]}` options are merged on top of this chain-level mask.
+     */
+    mask?: string[];
+    /**
+     * When `true`, automatically snapshot every step's return value under the
+     * step's function name after it completes. The chain-level `mask` is applied
+     * before snapshotting. No `assert.snapshot()` calls are needed in step
+     * functions — the framework captures everything automatically.
+     *
+     * Requires a TAP (or compatible) test context to be passed to `execute()`.
+     */
+    autoSnapshot?: boolean;
+    /**
+     * @deprecated Use `mask` (string array) instead.
+     * Custom masking function for advanced scenarios not covered by `mask`.
+     * When both are provided, `maskFn` is used and `mask` is passed to it.
+     */
+    maskFn?: (value: unknown, paths: string[]) => unknown;
     /**
      * Automatic rerun configuration for failing steps (Phase 1).
      *

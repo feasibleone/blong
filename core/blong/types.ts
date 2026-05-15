@@ -675,9 +675,26 @@ export type GatewaySchema = (
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
 export type PathItemObject = OpenAPIV3_1.PathItemObject | OpenAPIV2.PathItemObject;
 export type ThenableProxy = Promise<unknown> & {[key: string]: ThenableProxy};
+
+/**
+ * Augmented assert passed to every chain step.  The `snapshot()` method is
+ * injected at runtime by the test executor, so handlers can call it directly
+ * without `(assert as any)` casts.  Import this type from `@feasibleone/blong`
+ * instead of `typeof Assert` from `node:assert` in test handlers.
+ */
+export type IAssert = typeof Assert & {
+    /**
+     * Deferred (no-args): snapshot the step's return value under the step name.
+     * Optional object form: `assert.snapshot({mask: ['id']})` adds a per-call mask.
+     * Explicit form: `assert.snapshot(value, 'name', {mask?})` writes immediately.
+     */
+    snapshot(valueOrOpts?: unknown, name?: string, opts?: {mask?: string[]}): void;
+    matchSnapshot(value: unknown, name?: string): void;
+};
+
 export type ChainStep =
     | ((
-          assert: typeof Assert,
+          assert: IAssert,
           context: {
               $meta: IMeta;
           } & Record<string, Promise<unknown[]> & ThenableProxy>,
@@ -690,8 +707,34 @@ export interface ILib {
     type: typeof Type;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
-    /** @deprecated The framework now auto-names step arrays from handler names. */
-    group: (name: string) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
+    /**
+     * Create a named group of chain steps.  The group name is used in test reports.
+     * Optionally configure the group with `autoSnapshot: true` to automatically snapshot the
+     * return the steps and the common mask to apply to all snapshots taken within the group.
+     *
+     * @param name
+     * @param config
+     * @returns
+     */
+    group: (
+        name: string,
+        config?: {autoSnapshot?: boolean; mask?: string[]},
+    ) => (handlers: ChainStep[]) => ChainStep[] & {name: string};
+    /**
+     * Create a named snapshot checkpoint marker to place inside a `group()` steps array.
+     * Without extra arguments the `'*'` wildcard waits for all pending steps.
+     * With step names only those steps are awaited before the context snapshot is taken.
+     *
+     * @example
+     * group('my-test')([
+     *   stepA,
+     *   stepB,
+     *   checkpoint('after-b', 'stepA', 'stepB'),  // wait for A & B, then snapshot
+     *   stepC,
+     *   checkpoint('final'),                        // wait for all, then snapshot
+     * ])
+     */
+    checkpoint: (name: string, ...markers: string[]) => string[] & {name: string};
     assert: typeof Assert | undefined;
     yaml: {
         parse: <T>(source: string, options?: unknown) => T;

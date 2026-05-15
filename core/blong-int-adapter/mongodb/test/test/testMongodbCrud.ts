@@ -1,5 +1,4 @@
-import {handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert} from '@feasibleone/blong';
 
 import {documents, mergeDocument, TEST_TAG, updatedFields} from '../fixtures/document.ts';
 
@@ -37,7 +36,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {
             mongoDocumentAdd,
             mongoDocumentGet,
@@ -51,9 +50,10 @@ export default handler(
         },
     }) => ({
         testMongodbCrud: ({name = 'mongodb CRUD'}: {name?: string}) =>
-            group(name)([
+            // chain-level mask: `_id` for single documents, `*._id` for array results
+            group(name, {mask: ['_id', '*._id']})([
                 // ── 1. Cleanup any leftover test documents ────────────────
-                async function cleanData(assert: typeof Assert, {$meta}: StepMeta) {
+                async function cleanData(assert: IAssert, {$meta}: StepMeta) {
                     const result = await mongoDocumentDelete({testTag: TEST_TAG}, $meta);
                     assert.ok(result !== undefined, 'Initial cleanup delete returned a result');
                     return {cleaned: true};
@@ -61,7 +61,7 @@ export default handler(
 
                 // ── 2. add — insert a single document ────────────────────
                 async function addDocument(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanData}: StepMeta & {cleanData: Promise<unknown>},
                 ) {
                     await cleanData;
@@ -70,10 +70,7 @@ export default handler(
                         $meta,
                     );
                     assert.ok(result, 'add returned a result');
-                    assert.ok(
-                        (result as InsertResult).insertedId,
-                        'add returned an insertedId',
-                    );
+                    assert.ok((result as InsertResult).insertedId, 'add returned an insertedId');
                     assert.strictEqual(
                         (result as InsertResult).acknowledged,
                         true,
@@ -84,54 +81,38 @@ export default handler(
 
                 // ── 3. get — fetch the inserted document by _id ───────────
                 async function getDocument(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addDocument}: StepMeta & {addDocument: Promise<InsertResult>},
                 ) {
-                    const {insertedId} = await addDocument;
-                    const result = await mongoDocumentGet({documentId: insertedId}, $meta);
-                    assert.ok(result, 'get returned a result');
-                    assert.strictEqual(
-                        (result as DocResult).docTitle,
-                        documents[0].docTitle,
-                        'get returned the correct docTitle',
-                    );
-                    assert.strictEqual(
-                        (result as DocResult).docType,
-                        documents[0].docType,
-                        'get returned the correct docType',
-                    );
-                    return result as DocResult & {_id: unknown};
+                    // Snapshot captures docTitle, docType, docContent, docVersion.
+                    // Chain-level mask handles the MongoDB _id.
+                    assert.snapshot();
+                    return (await mongoDocumentGet(
+                        {documentId: (await addDocument).insertedId},
+                        $meta,
+                    )) as DocResult & {_id: unknown};
                 },
 
                 // ── 4. find — query documents with a filter ───────────────
                 async function findDocuments(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addDocument}: StepMeta & {addDocument: Promise<InsertResult>},
                 ) {
                     await addDocument;
-                    const result = await mongoDocumentFind({testTag: TEST_TAG}, $meta);
-                    assert.ok(Array.isArray(result), 'find returned an array');
-                    assert.ok(
-                        (result as DocResult[]).length >= 1,
-                        'find returned at least one document',
-                    );
-                    assert.ok(
-                        (result as DocResult[]).every(d => d.testTag === TEST_TAG),
-                        'all returned documents match the filter',
-                    );
-                    return result as DocResult[];
+                    // Sort by docTitle for snapshot stability; chain-level mask handles _id.
+                    assert.snapshot();
+                    return ((await mongoDocumentFind({testTag: TEST_TAG}, $meta)) as DocResult[])
+                        .slice()
+                        .sort((a, b) => (a.docTitle ?? '').localeCompare(b.docTitle ?? ''));
                 },
 
                 // ── 5. find with limit ────────────────────────────────────
                 async function findWithLimit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addDocument}: StepMeta & {addDocument: Promise<InsertResult>},
                 ) {
                     await addDocument;
-                    const result = await mongoDocumentFind(
-                        {testTag: TEST_TAG, limit: 1},
-                        $meta,
-                    );
+                    const result = await mongoDocumentFind({testTag: TEST_TAG, limit: 1}, $meta);
                     assert.ok(Array.isArray(result), 'find with limit returned an array');
                     assert.ok(
                         (result as DocResult[]).length <= 1,
@@ -142,8 +123,11 @@ export default handler(
 
                 // ── 6. edit — partial update of a document ────────────────
                 async function editDocument(
-                    assert: typeof Assert,
-                    {$meta, getDocument}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        getDocument,
+                    }: StepMeta & {
                         getDocument: Promise<DocResult & {_id: unknown}>;
                     },
                 ) {
@@ -162,31 +146,30 @@ export default handler(
 
                 // ── 7. verify edit ────────────────────────────────────────
                 async function verifyEdit(
-                    assert: typeof Assert,
-                    {$meta, editDocument}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        editDocument,
+                    }: StepMeta & {
                         editDocument: Promise<{documentId: unknown; edited: boolean}>;
                     },
                 ) {
-                    const {documentId} = await editDocument;
-                    const result = await mongoDocumentGet({documentId}, $meta);
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as DocResult).docTitle,
-                        updatedFields.docTitle,
-                        'docTitle was updated correctly',
-                    );
-                    assert.strictEqual(
-                        (result as DocResult).docVersion,
-                        updatedFields.docVersion,
-                        'docVersion was updated correctly',
-                    );
-                    return result as DocResult;
+                    // Snapshot captures updated docTitle and docVersion.
+                    assert.snapshot();
+                    return (await mongoDocumentGet(
+                        {documentId: (await editDocument).documentId},
+                        $meta,
+                    )) as DocResult;
                 },
 
                 // ── 8. merge — upsert-update the edited document by _id ───
                 async function mergeDocumentUpsert(
-                    assert: typeof Assert,
-                    {$meta, verifyEdit, editDocument}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        verifyEdit,
+                        editDocument,
+                    }: StepMeta & {
                         verifyEdit: Promise<DocResult>;
                         editDocument: Promise<{documentId: unknown}>;
                     },
@@ -203,26 +186,33 @@ export default handler(
 
                 // ── 9. verify merge ───────────────────────────────────────
                 async function verifyMerge(
-                    assert: typeof Assert,
-                    {$meta, mergeDocumentUpsert}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        mergeDocumentUpsert,
+                    }: StepMeta & {
                         mergeDocumentUpsert: Promise<{documentId: unknown; merged: boolean}>;
                     },
                 ) {
-                    const {documentId} = await mergeDocumentUpsert;
-                    const result = await mongoDocumentGet({documentId}, $meta);
-                    assert.ok(result, 'get after merge returned a result');
-                    assert.strictEqual(
-                        (result as DocResult).docTitle,
-                        mergeDocument.docTitle,
-                        'docTitle was updated by merge',
-                    );
-                    return result as DocResult;
+                    // Snapshot captures merged docTitle and all document fields.
+                    assert.snapshot();
+                    return (await mongoDocumentGet(
+                        {documentId: (await mergeDocumentUpsert).documentId},
+                        $meta,
+                    )) as DocResult;
                 },
+
+                // Phase checkpoint: snapshot all three read-back results together
+                checkpoint('doc-reads', 'getDocument', 'verifyEdit', 'verifyMerge'),
 
                 // ── 10. remove — delete the document by _id ───────────────
                 async function removeDocument(
-                    assert: typeof Assert,
-                    {$meta, verifyMerge, mergeDocumentUpsert}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        verifyMerge,
+                        mergeDocumentUpsert,
+                    }: StepMeta & {
                         verifyMerge: Promise<DocResult>;
                         mergeDocumentUpsert: Promise<{documentId: unknown}>;
                     },
@@ -240,7 +230,7 @@ export default handler(
 
                 // ── 11. insert — bulk insert multiple documents ────────────
                 async function insertDocuments(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, removeDocument}: StepMeta & {removeDocument: Promise<unknown>},
                 ) {
                     await removeDocument;
@@ -264,15 +254,12 @@ export default handler(
 
                 // ── 12. verify bulk insert ────────────────────────────────
                 async function verifyInsert(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, insertDocuments}: StepMeta & {insertDocuments: Promise<unknown>},
                 ) {
                     await insertDocuments;
                     const result = await mongoDocumentFind({testTag: TEST_TAG}, $meta);
-                    assert.ok(
-                        Array.isArray(result),
-                        'find after bulk insert returned an array',
-                    );
+                    assert.ok(Array.isArray(result), 'find after bulk insert returned an array');
                     assert.ok(
                         (result as DocResult[]).length >= documents.length,
                         'at least as many documents as inserted fixtures',
@@ -282,7 +269,7 @@ export default handler(
 
                 // ── 13. update — bulk update matching documents ────────────
                 async function updateDocuments(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, verifyInsert}: StepMeta & {verifyInsert: Promise<unknown>},
                 ) {
                     await verifyInsert;
@@ -303,8 +290,13 @@ export default handler(
 
                 // ── 14. delete — bulk delete all test documents ────────────
                 async function deleteDocuments(
-                    assert: typeof Assert,
-                    {$meta, updateDocuments, findDocuments, findWithLimit}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        updateDocuments,
+                        findDocuments,
+                        findWithLimit,
+                    }: StepMeta & {
                         updateDocuments: Promise<unknown>;
                         findDocuments: Promise<unknown>;
                         findWithLimit: Promise<unknown>;
@@ -324,7 +316,7 @@ export default handler(
 
                 // ── 15. verify delete ─────────────────────────────────────
                 async function verifyDelete(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, deleteDocuments}: StepMeta & {deleteDocuments: Promise<unknown>},
                 ) {
                     await deleteDocuments;

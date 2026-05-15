@@ -1,5 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 import {testRole, updatedRole} from '../fixtures/role.ts';
 
@@ -14,11 +13,11 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {authRoleAdd, authRoleFind, authRoleGet, authRoleEdit, authRoleRemove},
     }) => ({
         testKeycloakRoleCrud: ({name = 'keycloak role CRUD'}: {name?: string}) =>
-            group(name)([
+            group(name, {mask: ['id']})([
                 // ── 1. Clean up leftover test role if present ──────────────
                 async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
                     try {
@@ -52,35 +51,24 @@ export default handler(
                     await addRole;
                     const result = await authRoleFind({realm: testRole.realm}, $meta);
                     assert.ok(Array.isArray(result), 'find returned an array');
-                    const found = (result as RoleResult[]).find(
-                        r => r.name === testRole.roleName,
-                    );
+                    const found = (result as RoleResult[]).find(r => r.name === testRole.roleName);
                     assert.ok(found, 'the created role is present in find results');
                     return result as RoleResult[];
                 },
 
                 // ── 4. get — fetch the role by name ───────────────────────
                 async function getRole(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addRole}: StepMeta & {addRole: Promise<unknown>},
                 ) {
                     await addRole;
-                    const result = await authRoleGet(
+                    // Snapshot captures name, description, and all other fields.
+                    // Chain-level mask handles the Keycloak `id` UUID.
+                    assert.snapshot();
+                    return (await authRoleGet(
                         {realm: testRole.realm, roleName: testRole.roleName},
                         $meta,
-                    );
-                    assert.ok(result, 'get role returned a result');
-                    assert.strictEqual(
-                        (result as RoleResult).name,
-                        testRole.roleName,
-                        'get returned the correct role name',
-                    );
-                    assert.strictEqual(
-                        (result as RoleResult).description,
-                        testRole.description,
-                        'get returned the correct description',
-                    );
-                    return result as RoleResult;
+                    )) as RoleResult;
                 },
 
                 // ── 5. edit — update the role description ─────────────────
@@ -99,22 +87,20 @@ export default handler(
 
                 // ── 6. verify edit — re-fetch to confirm the update ────────
                 async function verifyEdit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, editRole}: StepMeta & {editRole: Promise<unknown>},
                 ) {
                     await editRole;
-                    const result = await authRoleGet(
+                    // Snapshot captures updated description alongside all other fields.
+                    assert.snapshot();
+                    return (await authRoleGet(
                         {realm: testRole.realm, roleName: testRole.roleName},
                         $meta,
-                    );
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as RoleResult).description,
-                        updatedRole.description,
-                        'description was updated correctly',
-                    );
-                    return result as RoleResult;
+                    )) as RoleResult;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('role-read-snapshots', 'getRole', 'verifyEdit'),
 
                 // ── 7. remove — delete the test role ──────────────────────
                 async function removeRole(

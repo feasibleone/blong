@@ -1358,7 +1358,7 @@ tap.test('TestExecutor - Unique Step Names', async t => {
 
         // Second execution with different steps should succeed (tracking is reset)
         await executor.execute(stepsWithoutDuplicate, {testId: 'second'});
-        
+
         const progress = executor.getProgress();
         assert.equal(progress.status, 'completed');
         assert.equal(progress.completedSteps, 2);
@@ -1656,67 +1656,335 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
     });
 });
 
-tap.test('snapshot helper', async t => {
-    t.test('maskPaths - replaces top-level field', async () => {
-        const {maskPaths} = await import('./snapshot.js');
-        const input = {userId: 'abc-123', name: 'Alice'};
-        const masked = maskPaths(input, ['userId']) as Record<string, unknown>;
-        assert.equal(masked.userId, '<masked>');
-        assert.equal(masked.name, 'Alice');
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// assert.snapshot / mask / autoSnapshot / checkpoint tests
+//
+// The capturing context helper simulates a minimal TAP test context so that
+// we can inspect what matchSnapshot receives without running TAP.
+// ─────────────────────────────────────────────────────────────────────────────
 
-    t.test('maskPaths - replaces nested field', async () => {
-        const {maskPaths} = await import('./snapshot.js');
-        const input = {user: {userId: 'abc-123', role: 'admin'}, status: 'ok'};
-        const masked = maskPaths(input, ['user.userId']) as {user: Record<string, unknown>};
-        assert.equal(masked.user.userId, '<masked>');
-        assert.equal(masked.user.role, 'admin');
-    });
+/** Build a minimal TAP-like test context that captures matchSnapshot calls. */
+function makeCapturingContext(): {ctx: unknown; captured: Array<[unknown, string]>} {
+    const captured: Array<[unknown, string]> = [];
+    const ctx = {
+        matchSnapshot(v: unknown, n: string) {
+            captured.push([v, n]);
+        },
+        test(_name: string, fn: (t: unknown) => Promise<void>) {
+            return fn({matchSnapshot(v: unknown, n: string) { captured.push([v, n]); }});
+        },
+    };
+    return {ctx, captured};
+}
 
-    t.test('maskPaths - ignores prototype-polluting keys', async () => {
-        const {maskPaths} = await import('./snapshot.js');
-        const input = {name: 'Bob'};
-        // __proto__ paths should be silently skipped
-        const masked = maskPaths(input, ['__proto__.toString', 'constructor']) as Record<string, unknown>;
-        t.equal(masked.name, 'Bob');
-        t.equal(typeof masked.constructor, 'function', 'constructor should be unchanged');
-    });
-
-    t.test('maskPaths - ignores missing paths', async () => {
-        const {maskPaths} = await import('./snapshot.js');
-        const input = {name: 'Bob'};
-        const masked = maskPaths(input, ['missingField']) as Record<string, unknown>;
-        assert.equal(masked.name, 'Bob');
-        assert.ok(!('missingField' in masked));
-    });
-
-    t.test('maskPaths - does not mutate original', async () => {
-        const {maskPaths} = await import('./snapshot.js');
-        const input = {id: '123', label: 'test'};
-        maskPaths(input, ['id']);
-        assert.equal(input.id, '123', 'original should be unchanged');
-    });
-
-    t.test('maskPaths - handles non-object values', async () => {
-        const {maskPaths} = await import('./snapshot.js');
-        assert.equal(maskPaths('string', ['field']), 'string');
-        assert.equal(maskPaths(42, ['field']), 42);
-        assert.equal(maskPaths(null, ['field']), null);
-    });
-
-    t.test('snapshot - calls t.matchSnapshot with masked value', async () => {
-        const {snapshot} = await import('./snapshot.js');
-        const captured: Array<[unknown, string]> = [];
-        const mockT = {
-            matchSnapshot(v: unknown, name: string) {
-                captured.push([v, name]);
+tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
+    t.test('masks listed paths using chain-level mask', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['id']});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({id: 'abc-123', name: 'Alice'}, 'myStep');
             },
-        };
-        const value = {createdAt: '2024-01-01', label: 'hello'};
-        snapshot(mockT, value, 'my-test', {mask: ['createdAt']});
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
         assert.equal(captured.length, 1);
-        assert.equal((captured[0][0] as Record<string, unknown>).createdAt, '<masked>');
-        assert.equal((captured[0][0] as Record<string, unknown>).label, 'hello');
-        assert.equal(captured[0][1], 'my-test');
+        assert.equal((captured[0][0] as Record<string, unknown>).id, '<masked>');
+        assert.equal((captured[0][0] as Record<string, unknown>).name, 'Alice');
+        assert.equal(captured[0][1], 'myStep');
+    });
+
+    t.test('merges chain-level mask with per-call mask', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['id']});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({id: 'x', createdAt: '2024', name: 'A'}, 'myStep', {mask: ['createdAt']});
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        const result = captured[0][0] as Record<string, unknown>;
+        assert.equal(result.id, '<masked>');
+        assert.equal(result.createdAt, '<masked>');
+        assert.equal(result.name, 'A');
+    });
+
+    t.test('passes value unchanged when no mask configured', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({id: 'abc-123', name: 'Alice'}, 'myStep');
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal((captured[0][0] as Record<string, unknown>).id, 'abc-123');
+    });
+
+    t.test('masks nested dot-path fields', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['user.userId']});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({user: {userId: 'u1', role: 'admin'}}, 'myStep');
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        const result = captured[0][0] as {user: Record<string, unknown>};
+        assert.equal(result.user.userId, '<masked>');
+        assert.equal(result.user.role, 'admin');
+    });
+
+    t.test('wildcard * masks field in every direct child', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['*.id']});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({a: {id: '1', x: 'keep'}, b: {id: '2', y: 'keep'}}, 'myStep');
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        const result = captured[0][0] as Record<string, Record<string, unknown>>;
+        assert.equal(result.a.id, '<masked>');
+        assert.equal(result.b.id, '<masked>');
+        assert.equal(result.a.x, 'keep');
+        assert.equal(result.b.y, 'keep');
+    });
+
+    t.test('ignores prototype-polluting mask paths', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['__proto__.toString', 'constructor']});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({name: 'Bob'}, 'myStep');
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        const result = captured[0][0] as Record<string, unknown>;
+        assert.equal(result.name, 'Bob');
+        assert.equal(typeof result.constructor, 'function', 'constructor should be unchanged');
+    });
+
+    t.test('assert.snapshot is not available without TAP context', async () => {
+        const executor = new TestExecutor({concurrency: 1});
+        let snapshotFn: unknown;
+        const steps = [
+            async function myStep(assert: any) {
+                snapshotFn = assert.snapshot;
+            },
+        ];
+        await executor.execute(steps as any, {});  // no test context
+        assert.equal(snapshotFn, undefined, 'snapshot is undefined without TAP context');
     });
 });
+
+tap.test('assert.snapshot() — deferred (no-args / opts-only)', async t => {
+    t.test('assert.snapshot() snapshots return value under step name', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot();   // deferred — executor takes the snapshot
+                return {name: 'Alice', value: 42};
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal(captured.length, 1);
+        assert.equal((captured[0][0] as Record<string, unknown>).name, 'Alice');
+        assert.equal(captured[0][1], 'myStep');
+    });
+
+    t.test('assert.snapshot({mask}) merges per-call mask with chain-level mask', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['id']});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot({mask: ['createdAt']});
+                return {id: 'x', createdAt: '2024', name: 'A'};
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        const result = captured[0][0] as Record<string, unknown>;
+        assert.equal(result.id, '<masked>');
+        assert.equal(result.createdAt, '<masked>');
+        assert.equal(result.name, 'A');
+    });
+
+    t.test('deferred snapshot wins; no extra autoSnapshot snapshot is taken', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, autoSnapshot: true});
+        const steps = [
+            async function myStep(assert: any) {
+                assert.snapshot();
+                return {v: 1};
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        // Only one snapshot even though autoSnapshot is enabled — deferred wins
+        assert.equal(captured.length, 1);
+    });
+
+    t.test('deferred snapshot not available without TAP context', async () => {
+        // Without TAP context, assert has no snapshot method — nothing is taken.
+        const executor = new TestExecutor({concurrency: 1});
+        const results: unknown[] = [];
+        const steps = [
+            async function myStep(assert: any) {
+                if (assert.snapshot) assert.snapshot();
+                results.push('ran');
+                return {v: 1};
+            },
+        ];
+        await executor.execute(steps as any, {});  // no TAP ctx
+        assert.equal(results.length, 1);  // step ran fine
+    });
+});
+
+tap.test('autoSnapshot: true', async t => {
+    t.test('snapshots every step result under its function name', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, autoSnapshot: true});
+        const steps = [
+            async function stepA() { return {a: 1}; },
+            async function stepB() { return {b: 2}; },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal(captured.length, 2);
+        const names = captured.map(c => c[1]);
+        assert.ok(names.includes('stepA'));
+        assert.ok(names.includes('stepB'));
+    });
+
+    t.test('applies chain-level mask before snapshotting', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, autoSnapshot: true, mask: ['id']});
+        const steps = [
+            async function myStep() { return {id: 'dynamic', name: 'Alice'}; },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal((captured[0][0] as Record<string, unknown>).id, '<masked>');
+        assert.equal((captured[0][0] as Record<string, unknown>).name, 'Alice');
+    });
+
+    t.test('does nothing when no TAP context is supplied', async () => {
+        const executor = new TestExecutor({concurrency: 1, autoSnapshot: true});
+        const steps = [
+            async function stepA() { return {v: 1}; },
+        ];
+        // Should not throw — just skips snapshotting
+        await executor.execute(steps as any, {});
+        const progress = executor.getProgress();
+        assert.equal(progress.completedSteps, 1);
+    });
+});
+
+tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
+    t.test("['*'] snapshots all completed steps into a context object", async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1});
+        const steps = [
+            async function stepA() { return {a: 1}; },
+            async function stepB() { return {b: 2}; },
+            ['*'],
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal(captured.length, 1);
+        const snapshot = captured[0][0] as Record<string, unknown>;
+        assert.deepStrictEqual((snapshot.stepA as Record<string, unknown>).a, 1);
+        assert.deepStrictEqual((snapshot.stepB as Record<string, unknown>).b, 2);
+        assert.equal(captured[0][1], 'context');
+    });
+
+    t.test("named ['*'] checkpoint uses .name property for snapshot name", async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1});
+        const steps = [
+            async function stepA() { return {a: 1}; },
+            Object.assign(['*'], {name: 'my-flow'}),
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal(captured[0][1], 'my-flow');
+    });
+
+    t.test("['step1', 'step2'] snapshots only named steps", async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1});
+        const steps = [
+            async function stepA() { return {a: 1}; },
+            async function stepB() { return {b: 2}; },
+            async function stepC() { return {c: 3}; },
+            ['stepA', 'stepC'],
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal(captured.length, 1);
+        const snapshot = captured[0][0] as Record<string, unknown>;
+        assert.ok('stepA' in snapshot);
+        assert.ok('stepC' in snapshot);
+        assert.ok(!('stepB' in snapshot));
+    });
+
+    t.test('checkpoint applies chain-level mask to context snapshot', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const executor = new TestExecutor({concurrency: 1, mask: ['id']});
+        const steps = [
+            async function stepA() { return {id: 'dynamic', name: 'A'}; },
+            async function stepB() { return {id: 'dynamic2', name: 'B'}; },
+            ['*'],
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        const snapshot = captured[0][0] as Record<string, Record<string, unknown>>;
+        assert.equal(snapshot.stepA.id, '<masked>');
+        assert.equal(snapshot.stepB.id, '<masked>');
+        assert.equal(snapshot.stepA.name, 'A');
+        assert.equal(snapshot.stepB.name, 'B');
+    });
+
+    t.test("['step1', 'step2'] does not block other running steps", async () => {
+        const order: string[] = [];
+        const {ctx, captured} = makeCapturingContext();
+        // concurrency: 10 so all steps can run in parallel
+        const executor = new TestExecutor({concurrency: 10});
+        const delay = (ms: number) => new Promise<void>(res => setTimeout(res, ms));
+        const steps = [
+            async function fast() { await delay(10); order.push('fast'); return {x: 1}; },
+            async function slow() { await delay(80); order.push('slow'); return {y: 2}; },
+            // Snapshot only 'fast' (which finishes first) — 'slow' keeps running
+            ['fast'],
+            // stepC can start immediately after the checkpoint, 'slow' still running
+            async function stepC(_a: any, ctx: any) {
+                await ctx.slow;  // wait for slow via context, not checkpoint
+                order.push('C');
+                return {z: 3};
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        // 'fast' should be snapshotted, 'slow' should NOT be in that snapshot
+        assert.equal(captured.length, 1);
+        const snapshot = captured[0][0] as Record<string, unknown>;
+        assert.ok('fast' in snapshot);
+        assert.ok(!('slow' in snapshot));
+        // All three steps completed
+        assert.ok(order.includes('fast'));
+        assert.ok(order.includes('slow'));
+        assert.ok(order.includes('C'));
+    });
+
+    t.test('[] empty array is still a sync barrier without snapshot', async () => {
+        const {ctx, captured} = makeCapturingContext();
+        const order: string[] = [];
+        const executor = new TestExecutor({concurrency: 10});
+        const steps = [
+            async function stepA() { order.push('A'); return {a: 1}; },
+            [],
+            async function stepB(assert: any, context: any) {
+                await context.stepA;
+                order.push('B');
+                return {b: 2};
+            },
+        ];
+        await executor.execute(steps as any, {}, ctx as any);
+        assert.equal(captured.length, 0);  // [] takes no snapshot
+        assert.ok(order.indexOf('A') < order.indexOf('B'));
+    });
+});
+
+

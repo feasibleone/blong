@@ -1,5 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 import {testPassword, testUser, updatedUser} from '../fixtures/user.ts';
 
@@ -22,7 +21,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {
             authUserAdd,
             authUserFind,
@@ -33,7 +32,9 @@ export default handler(
         },
     }) => ({
         testKeycloakUserCrud: ({name = 'keycloak user CRUD'}: {name?: string}) =>
-            group(name)([
+            // `id` — UUID assigned by Keycloak; `createdTimestamp` — epoch ms
+            // of user creation, changes each test run when the user is recreated.
+            group(name, {mask: ['id', 'createdTimestamp']})([
                 // ── 1. Clean up leftover test user if present ──────────────
                 async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
                     try {
@@ -42,7 +43,8 @@ export default handler(
                             $meta,
                         )) as UserResult[];
                         for (const user of users) {
-                            if (user.id) await authUserRemove({realm: testUser.realm, id: user.id}, $meta);
+                            if (user.id)
+                                await authUserRemove({realm: testUser.realm, id: user.id}, $meta);
                         }
                     } catch {
                         // ignore
@@ -87,23 +89,16 @@ export default handler(
 
                 // ── 4. get — fetch the user by id ─────────────────────────
                 async function getUser(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addUser}: StepMeta & {addUser: Promise<CreateResult>},
                 ) {
-                    const {id} = await addUser;
-                    const result = await authUserGet({realm: testUser.realm, id}, $meta);
-                    assert.ok(result, 'get user returned a result');
-                    assert.strictEqual(
-                        (result as UserResult).username,
-                        testUser.username,
-                        'get returned the correct username',
-                    );
-                    assert.strictEqual(
-                        (result as UserResult).email,
-                        testUser.email,
-                        'get returned the correct email',
-                    );
-                    return result as UserResult & {id: string};
+                    // Snapshot captures username, email, firstName, lastName, enabled.
+                    // Chain-level mask handles the Keycloak `id` UUID.
+                    assert.snapshot();
+                    return (await authUserGet(
+                        {realm: testUser.realm, id: (await addUser).id},
+                        $meta,
+                    )) as UserResult & {id: string};
                 },
 
                 // ── 5. edit — update first/last name ──────────────────────
@@ -112,39 +107,35 @@ export default handler(
                     {$meta, addUser}: StepMeta & {addUser: Promise<CreateResult>},
                 ) {
                     const {id} = await addUser;
-                    await authUserEdit(
-                        {realm: testUser.realm, id, ...updatedUser},
-                        $meta,
-                    );
+                    await authUserEdit({realm: testUser.realm, id, ...updatedUser}, $meta);
                     assert.ok(true, 'edit user completed without error');
                     return {id};
                 },
 
                 // ── 6. verify edit — re-fetch to confirm the update ────────
                 async function verifyEdit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, editUser}: StepMeta & {editUser: Promise<{id: string}>},
                 ) {
-                    const {id} = await editUser;
-                    const result = await authUserGet({realm: testUser.realm, id}, $meta);
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as UserResult).firstName,
-                        updatedUser.firstName,
-                        'firstName was updated correctly',
-                    );
-                    assert.strictEqual(
-                        (result as UserResult).lastName,
-                        updatedUser.lastName,
-                        'lastName was updated correctly',
-                    );
-                    return result as UserResult;
+                    // Snapshot captures updated firstName and lastName alongside all other fields.
+                    assert.snapshot();
+                    return (await authUserGet(
+                        {realm: testUser.realm, id: (await editUser).id},
+                        $meta,
+                    )) as UserResult;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('user-read-snapshots', 'getUser', 'verifyEdit'),
 
                 // ── 7. setPassword — set a password for the user ──────────
                 async function setPassword(
                     assert: typeof Assert,
-                    {$meta, verifyEdit, addUser}: StepMeta & {
+                    {
+                        $meta,
+                        verifyEdit,
+                        addUser,
+                    }: StepMeta & {
                         verifyEdit: Promise<unknown>;
                         addUser: Promise<CreateResult>;
                     },
@@ -172,8 +163,10 @@ export default handler(
                     },
                 ) {
                     await findUser;
-                    const {id} = await setPassword;
-                    await authUserRemove({realm: testUser.realm, id}, $meta);
+                    await authUserRemove(
+                        {realm: testUser.realm, id: (await setPassword).id},
+                        $meta,
+                    );
                     assert.ok(true, 'remove user completed without error');
                     return {removed: true};
                 },

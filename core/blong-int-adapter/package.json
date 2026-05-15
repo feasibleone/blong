@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "build": "true",
+        "ci-coverage": "test -f coverage/lcov.info || ./integration-test.sh report",
         "ci-integration": "./integration-test.sh",
         "ci-integration-http": "./integration-test.sh http",
         "ci-integration-k8s": "./integration-test.sh k8s",
@@ -13,8 +14,7 @@
         "ci-integration-mongodb": "./integration-test.sh mongodb",
         "ci-integration-mysql": "./integration-test.sh mysql",
         "ci-integration-s3": "./integration-test.sh s3",
-        "ci-integration-vault": "./integration-test.sh vault",
-        "ci-coverage": "test -f coverage/lcov.info || ./integration-test.sh report"
+        "ci-integration-vault": "./integration-test.sh vault"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

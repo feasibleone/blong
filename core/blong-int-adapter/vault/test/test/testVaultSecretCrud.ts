@@ -1,5 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 import {SECRET_PREFIX, secrets, updatedSecret} from '../fixtures/secret.ts';
 
@@ -17,7 +16,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {secretsSecretPut, secretsSecretGet, secretsSecretList, secretsSecretRemove},
     }) => ({
         testVaultSecretCrud: ({name = 'vault secret CRUD'}: {name?: string}) =>
@@ -52,23 +51,16 @@ export default handler(
 
                 // ── 3. get — read back alpha and verify data ───────────────
                 async function readAlpha(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, writeAlpha}: StepMeta & {writeAlpha: Promise<{path: string}>},
                 ) {
-                    const {path} = await writeAlpha;
-                    const result = await secretsSecretGet({path}, $meta);
-                    assert.ok(result, 'get alpha returned a result');
-                    assert.strictEqual(
-                        (result as SecretData).blongKey,
-                        secrets[0].data.blongKey,
-                        'get returned the correct blongKey value',
-                    );
-                    assert.strictEqual(
-                        (result as SecretData).blongSource,
-                        secrets[0].data.blongSource,
-                        'get returned the correct blongSource value',
-                    );
-                    return result as SecretData;
+                    // Snapshot captures blongKey and blongSource from fixture data.
+                    // No masking required — fixture values are static constants.
+                    assert.snapshot();
+                    return (await secretsSecretGet(
+                        {path: (await writeAlpha).path},
+                        $meta,
+                    )) as SecretData;
                 },
 
                 // ── 4. put — write the second secret ──────────────────────
@@ -130,24 +122,20 @@ export default handler(
 
                 // ── 7. get — verify the update took effect ─────────────────
                 async function verifyUpdate(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, updateAlpha}: StepMeta & {updateAlpha: Promise<{path: string}>},
                 ) {
-                    const {path} = await updateAlpha;
-                    const result = await secretsSecretGet({path}, $meta);
-                    assert.ok(result, 'get after update returned a result');
-                    assert.strictEqual(
-                        (result as SecretData).blongKey,
-                        updatedSecret.data.blongKey,
-                        'get returned the updated blongKey value',
-                    );
-                    assert.strictEqual(
-                        (result as SecretData).blongSource,
-                        updatedSecret.data.blongSource,
-                        'get returned the updated blongSource value',
-                    );
-                    return result as SecretData;
+                    // Snapshot captures updated blongKey and blongSource values.
+                    // No masking required — fixture values are static constants.
+                    assert.snapshot();
+                    return (await secretsSecretGet(
+                        {path: (await updateAlpha).path},
+                        $meta,
+                    )) as SecretData;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('secret-read-snapshots', 'readAlpha', 'verifyUpdate'),
 
                 // ── 8. remove — delete alpha ───────────────────────────────
                 async function deleteAlpha(

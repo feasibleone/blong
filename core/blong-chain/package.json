@@ -12,8 +12,7 @@
     },
     "type": "module",
     "exports": {
-        ".": "./index.ts",
-        "./snapshot": "./snapshot.ts"
+        ".": "./index.ts"
     },
     "scripts": {
         "build": "heft build --clean",

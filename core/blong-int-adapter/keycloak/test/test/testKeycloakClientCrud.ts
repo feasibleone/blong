@@ -1,5 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 import {testClient, updatedClient} from '../fixtures/client.ts';
 
@@ -21,17 +20,13 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
-        handler: {
-            authClientAdd,
-            authClientFind,
-            authClientGet,
-            authClientEdit,
-            authClientRemove,
-        },
+        lib: {group, checkpoint},
+        handler: {authClientAdd, authClientFind, authClientGet, authClientEdit, authClientRemove},
     }) => ({
         testKeycloakClientCrud: ({name = 'keycloak client CRUD'}: {name?: string}) =>
-            group(name)([
+            // `id` — UUID assigned by Keycloak; `secret` — randomly generated per run;
+            // `attributes` — contains `client.secret.creation.time` (a Unix timestamp).
+            group(name, {mask: ['id', 'secret', 'attributes']})([
                 // ── 1. Clean up leftover test client if present ────────────
                 async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
                     try {
@@ -87,23 +82,16 @@ export default handler(
 
                 // ── 4. get — fetch the client by id ───────────────────────
                 async function getClient(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addClient}: StepMeta & {addClient: Promise<CreateResult>},
                 ) {
-                    const {id} = await addClient;
-                    const result = await authClientGet({realm: testClient.realm, id}, $meta);
-                    assert.ok(result, 'get client returned a result');
-                    assert.strictEqual(
-                        (result as ClientResult).clientId,
-                        testClient.clientId,
-                        'get returned the correct clientId',
-                    );
-                    assert.strictEqual(
-                        (result as ClientResult).enabled,
-                        testClient.enabled,
-                        'get returned the correct enabled state',
-                    );
-                    return result as ClientResult & {id: string};
+                    // Snapshot captures clientId, enabled, protocol, and all other fields.
+                    // Chain-level mask handles the Keycloak `id` UUID.
+                    assert.snapshot();
+                    return (await authClientGet(
+                        {realm: testClient.realm, id: (await addClient).id},
+                        $meta,
+                    )) as ClientResult & {id: string};
                 },
 
                 // ── 5. edit — update the client name ──────────────────────
@@ -112,29 +100,26 @@ export default handler(
                     {$meta, addClient}: StepMeta & {addClient: Promise<CreateResult>},
                 ) {
                     const {id} = await addClient;
-                    await authClientEdit(
-                        {realm: testClient.realm, id, ...updatedClient},
-                        $meta,
-                    );
+                    await authClientEdit({realm: testClient.realm, id, ...updatedClient}, $meta);
                     assert.ok(true, 'edit client completed without error');
                     return {id};
                 },
 
                 // ── 6. verify edit — re-fetch to confirm the update ────────
                 async function verifyEdit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, editClient}: StepMeta & {editClient: Promise<{id: string}>},
                 ) {
-                    const {id} = await editClient;
-                    const result = await authClientGet({realm: testClient.realm, id}, $meta);
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as ClientResult).name,
-                        updatedClient.name,
-                        'client name was updated correctly',
-                    );
-                    return result as ClientResult;
+                    // Snapshot captures updated name alongside all other fields.
+                    assert.snapshot();
+                    return (await authClientGet(
+                        {realm: testClient.realm, id: (await editClient).id},
+                        $meta,
+                    )) as ClientResult;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('client-read-snapshots', 'getClient', 'verifyEdit'),
 
                 // ── 7. remove — delete the test client ────────────────────
                 async function removeClient(
@@ -155,8 +140,10 @@ export default handler(
                     await verifyEdit;
                     await findClients;
                     await getClient;
-                    const {id} = await addClient;
-                    await authClientRemove({realm: testClient.realm, id}, $meta);
+                    await authClientRemove(
+                        {realm: testClient.realm, id: (await addClient).id},
+                        $meta,
+                    );
                     assert.ok(true, 'remove client completed without error');
                     return {removed: true};
                 },

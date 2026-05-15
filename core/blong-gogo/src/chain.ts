@@ -2,7 +2,11 @@ import {TestExecutor, type ITestLogger} from '@feasibleone/blong-chain';
 import assert from 'node:assert';
 
 type Step = (a: typeof assert, results: object) => object | Promise<object>;
-type Steps = (Promise<(Step | Step[]) & {name: string}>[] | Step[]) & {name: string};
+type Steps = (Promise<(Step | Step[]) & {name: string}>[] | Step[]) & {
+    name: string;
+    autoSnapshot?: boolean;
+    mask?: string[];
+};
 interface ITestContext {
     test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown;
 }
@@ -15,7 +19,12 @@ const runSteps =
     ): ((t: ITestContext) => Promise<void>) =>
     async (t: ITestContext) => {
         // Use new parallel TestExecutor for improved performance
-        const executor = new TestExecutor({concurrency: 10, log});
+        const executor = new TestExecutor({
+            concurrency: 10,
+            log,
+            autoSnapshot: (steps as Steps).autoSnapshot,
+            mask: (steps as Steps).mask,
+        });
 
         // Resolve any promises in steps array
         const resolvedSteps: (Step | Step[])[] = [];

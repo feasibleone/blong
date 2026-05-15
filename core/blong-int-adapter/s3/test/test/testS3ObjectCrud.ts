@@ -1,7 +1,6 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
-import {copiedKey, objectWithMetadata, objects, PREFIX} from '../fixtures/object.ts';
+import {copiedKey, objects, objectWithMetadata, PREFIX} from '../fixtures/object.ts';
 
 type PutResult = {key: string; etag?: string} | string;
 type GetResult = {
@@ -25,7 +24,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {
             storageObjectAdd,
             storageObjectGet,
@@ -36,12 +35,29 @@ export default handler(
         },
     }) => ({
         testS3ObjectCrud: ({name = 's3 object CRUD'}: {name?: string}) =>
-            group(name)([
+            // chain-level mask: dynamic S3 fields (etag/ETag, lastModified/LastModified, binary body, per-request $metadata ids)
+            group(name, {
+                mask: [
+                    'etag',
+                    'body',
+                    'lastModified',
+                    'ETag',
+                    'LastModified',
+                    'Contents.*.ETag',
+                    'Contents.*.LastModified',
+                    '$metadata.requestId',
+                    '$metadata.extendedRequestId',
+                ],
+            })([
                 // ── 1. Wipe any leftover objects from previous runs ────────
-                async function cleanObjects(assert: typeof Assert, {$meta}: StepMeta) {
-                    const listResult = await storageObjectFind({prefix: PREFIX, maxKeys: 1000}, $meta);
-                    const existingKeys =
-                        ((listResult as ListResult).Contents ?? []).map(obj => obj.Key).filter(Boolean) as string[];
+                async function cleanObjects(assert: IAssert, {$meta}: StepMeta) {
+                    const listResult = await storageObjectFind(
+                        {prefix: PREFIX, maxKeys: 1000},
+                        $meta,
+                    );
+                    const existingKeys = ((listResult as ListResult).Contents ?? [])
+                        .map(obj => obj.Key)
+                        .filter(Boolean) as string[];
                     for (const key of existingKeys) {
                         try {
                             await storageObjectRemove({key}, $meta);
@@ -55,57 +71,55 @@ export default handler(
 
                 // ── 2. add — put a plain-text object ──────────────────────
                 async function addTextObject(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanObjects}: StepMeta & {cleanObjects: Promise<unknown>},
                 ) {
                     await cleanObjects;
                     const obj = objects[0];
-                    const result = await storageObjectAdd(
+                    // Snapshot captures key and any stable fields; chain-level mask handles etag.
+                    assert.snapshot();
+                    return (await storageObjectAdd(
                         {key: obj.key, body: obj.body, contentType: obj.contentType},
                         $meta,
-                    );
-                    assert.ok(result, 'add text object returned a result');
-                    return result as PutResult;
+                    )) as PutResult;
                 },
 
                 // ── 3. get — retrieve the text object and verify content type
                 async function getTextObject(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addTextObject}: StepMeta & {addTextObject: Promise<unknown>},
                 ) {
                     await addTextObject;
-                    const result = await storageObjectGet({key: objects[0].key}, $meta);
-                    assert.ok(result, 'get text object returned a result');
-                    assert.strictEqual(
-                        (result as GetResult).contentType,
-                        objects[0].contentType,
-                        'get returned the correct content type',
-                    );
-                    return result as GetResult;
+                    // Snapshot captures contentType, contentLength; chain-level mask handles
+                    // body (Uint8Array), etag, and lastModified.
+                    assert.snapshot();
+                    return (await storageObjectGet({key: objects[0].key}, $meta)) as GetResult;
                 },
 
                 // ── 4. add — put a JSON object ─────────────────────────────
                 async function addJsonObject(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanObjects}: StepMeta & {cleanObjects: Promise<unknown>},
                 ) {
                     await cleanObjects;
                     const obj = objects[1];
-                    const result = await storageObjectAdd(
+                    // Snapshot captures key and content type; chain-level mask handles etag.
+                    assert.snapshot();
+                    return (await storageObjectAdd(
                         {key: obj.key, body: obj.body, contentType: obj.contentType},
                         $meta,
-                    );
-                    assert.ok(result, 'add JSON object returned a result');
-                    return result as PutResult;
+                    )) as PutResult;
                 },
 
                 // ── 5. add — put object with custom metadata ───────────────
                 async function addObjectWithMetadata(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanObjects}: StepMeta & {cleanObjects: Promise<unknown>},
                 ) {
                     await cleanObjects;
-                    const result = await storageObjectAdd(
+                    // Snapshot captures key and content type; chain-level mask handles etag.
+                    assert.snapshot();
+                    return (await storageObjectAdd(
                         {
                             key: objectWithMetadata.key,
                             body: objectWithMetadata.body,
@@ -113,14 +127,12 @@ export default handler(
                             metadata: {...objectWithMetadata.metadata},
                         },
                         $meta,
-                    );
-                    assert.ok(result, 'add object with metadata returned a result');
-                    return result as PutResult;
+                    )) as PutResult;
                 },
 
                 // ── 6. find — list objects matching the test prefix ────────
                 async function findObjects(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         addTextObject,
@@ -133,37 +145,35 @@ export default handler(
                     await addTextObject;
                     await addJsonObject;
                     const result = await storageObjectFind({prefix: PREFIX}, $meta);
-                    assert.ok(result, 'find objects returned a result');
-                    assert.ok(
-                        (result as ListResult).Contents !== undefined,
-                        'find returned a Contents array',
-                    );
-                    assert.ok(
-                        ((result as ListResult).Contents?.length ?? 0) >= 2,
-                        'find returned at least 2 objects',
-                    );
-                    return result as ListResult;
+                    // Sort Contents by Key for snapshot stability; chain-level mask handles
+                    // ETag and LastModified on each element.
+                    assert.snapshot();
+                    return {
+                        ...(result as ListResult),
+                        Contents: (result as ListResult).Contents?.slice().sort((a, b) =>
+                            (a.Key ?? '').localeCompare(b.Key ?? ''),
+                        ),
+                    };
                 },
 
                 // ── 7. metadata — head request to check object metadata ────
                 async function headObject(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addTextObject}: StepMeta & {addTextObject: Promise<unknown>},
                 ) {
                     await addTextObject;
-                    const result = await storageObjectMetadata({key: objects[0].key}, $meta);
-                    assert.ok(result, 'metadata (head) returned a result');
-                    assert.strictEqual(
-                        (result as HeadResult).ContentType,
-                        objects[0].contentType,
-                        'head returned the correct content type',
-                    );
-                    return result as HeadResult;
+                    // Snapshot captures ContentType and ContentLength; chain-level mask handles
+                    // ETag and LastModified.
+                    assert.snapshot();
+                    return (await storageObjectMetadata(
+                        {key: objects[0].key},
+                        $meta,
+                    )) as HeadResult;
                 },
 
                 // ── 8. copy — copy the text object to a new key ───────────
                 async function copyObject(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addTextObject}: StepMeta & {addTextObject: Promise<unknown>},
                 ) {
                     await addTextObject;
@@ -181,23 +191,28 @@ export default handler(
 
                 // ── 9. get — verify the copied object exists ───────────────
                 async function getNewKey(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, copyObject}: StepMeta & {copyObject: Promise<unknown>},
                 ) {
                     await copyObject;
-                    const result = await storageObjectGet({key: copiedKey}, $meta);
-                    assert.ok(result, 'get copied object returned a result');
-                    assert.strictEqual(
-                        (result as GetResult).contentType,
-                        objects[0].contentType,
-                        'copied object has the same content type as the source',
-                    );
-                    return result as GetResult;
+                    // Snapshot captures contentType matching the source; chain-level mask
+                    // handles body, etag, and lastModified.
+                    assert.snapshot();
+                    return (await storageObjectGet({key: copiedKey}, $meta)) as GetResult;
                 },
+
+                // Phase checkpoint: snapshot all object read results together
+                checkpoint(
+                    'object-reads',
+                    'getTextObject',
+                    'headObject',
+                    'findObjects',
+                    'getNewKey',
+                ),
 
                 // ── 10. remove — delete all test objects ───────────────────
                 async function removeObjects(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         findObjects,
@@ -229,7 +244,7 @@ export default handler(
 
                 // ── 11. find — verify all test objects are gone ────────────
                 async function verifyRemoval(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, removeObjects}: StepMeta & {removeObjects: Promise<unknown>},
                 ) {
                     await removeObjects;

@@ -52,8 +52,7 @@ realmname/
 
 ```typescript
 // realmname/test/test/testExample.ts
-import {IMeta, handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({
@@ -64,7 +63,7 @@ export default handler(
     }) => ({
         testExample: ({name = 'example'}, $meta) =>
             group(name)([
-                async function testCase(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+                async function testCase(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const result = await realmEntityAction(
                         {
                             param: 'value',
@@ -82,11 +81,13 @@ export default handler(
 ### Test with Multiple Steps
 
 ```typescript
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+
 export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, userUserDelete}}) => ({
     testUserLifecycle: ({name = 'user lifecycle'}, $meta) =>
         group(name)([
             // Step 1: Create user
-            async function createUser(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            async function createUser(assert: IAssert, {$meta}: {$meta: IMeta}) {
                 const result = await userUserAdd(
                     {
                         username: 'testuser',
@@ -105,7 +106,7 @@ export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, user
 
             // Step 2: Find user (uses context from step 1)
             async function findUser(
-                assert: typeof Assert,
+                assert: IAssert,
                 {$meta, userId}: {$meta: IMeta; userId: number},
             ) {
                 const result = await userUserFind({userId}, $meta);
@@ -118,7 +119,7 @@ export default handler(({lib: {group}, handler: {userUserAdd, userUserFind, user
 
             // Step 3: Delete user
             async function deleteUser(
-                assert: typeof Assert,
+                assert: IAssert,
                 {$meta, userId}: {$meta: IMeta; userId: number},
             ) {
                 await userUserDelete({userId}, $meta);
@@ -304,6 +305,240 @@ async function testError(assert, {$meta}) {
 > Unexpected errors (types not listed in `expect`) continue to log at
 > `error` level.  See [expected errors concept](../../../docs/blong/docs/concepts/expected-errors.md).
 
+## Context Snapshotting
+
+For multi-step flows, context snapshotting replaces repetitive field-by-field assertions with
+structural regression checks stored in snapshot files.  The framework provides **five strategies**,
+ordered from most automatic to most explicit.
+
+`assert.snapshot()` is **injected by the runtime** — no import needed.  The chain-level `mask`
+config handles dynamic field masking so step functions never need to know about it.
+
+### Snapshotting strategies
+
+| Strategy | Config / Marker | Best for |
+|---|---|---|
+| `autoSnapshot: true` | executor config | Migrating collections; zero-boilerplate suites |
+| `['*']` checkpoint | end of steps array | Single comprehensive regression snapshot |
+| `['s1','s2']` checkpoint | phase boundaries | Multi-phase flows (narrow failure to a phase) |
+| `assert.snapshot()` (no-args) | inside step function | Per-step structural lock-in, mixed with business assertions |
+| Hybrid | combination of above | Production suites — explicit rules + selective snapshots + full regression |
+
+### Strategy A: `autoSnapshot: true` — fully automatic
+
+Pass `autoSnapshot: true` to the executor.  Every step return value is snapshotted under the
+function name automatically.  No code changes needed inside step functions.
+
+```typescript
+// realmname/test/test/testUserLifecycle.ts
+export default handler(({lib: {group}, handler: {userUserAdd, userUserGet, userUserRemove}}) => ({
+    testUserLifecycle: ({name = 'user lifecycle'}, $meta) =>
+        group(name, {autoSnapshot: true, mask: ['userId', 'createdAt']})(
+            [
+                async function createUser(_assert, {$meta}) {
+                    return await userUserAdd({userName: 'alice', emailAddress: 'alice@example.com'}, $meta);
+                },
+                async function getUser(_assert, {$meta, createUser}) {
+                    const {userId} = await createUser;
+                    return await userUserGet({userId}, $meta);
+                },
+            ],
+        ),
+}));
+```
+
+> **`group()` config:** Pass `{autoSnapshot, mask}` as the **second argument to `group()`**.
+> The steps array is the sole argument of the returned function.
+
+### Strategy B: `['*']` end-of-chain checkpoint — one declarative marker
+
+Use `lib.checkpoint('flow-name')` at the end of the steps array.  The executor
+waits for all steps, then snapshots the full accumulated context in one call.
+
+```typescript
+group(name)([
+    async function createParty(_assert, {$meta}) {
+        return await partyPartyAdd({partyType: 'MSISDN', partyId: PARTY_MSISDN}, $meta);
+    },
+    async function createQuote(_assert, {$meta, createParty}) {
+        const party = await createParty;
+        return await quoteQuoteCreate({receiverPartyId: party.partyId, amount: 100}, $meta);
+    },
+    async function executeTransfer(_assert, {$meta, createQuote}) {
+        const quote = await createQuote;
+        return await transferTransferExecute({quoteId: quote.quoteId}, $meta);
+    },
+    checkpoint('p2p-flow'),   // ← one marker, full snapshot
+]);
+```
+
+### Strategy C: Phase checkpoints — `['step1','step2']`
+
+Named checkpoint markers capture specific step results at phase boundaries.  The executor waits
+**only for the listed steps** — other parallel steps keep running.
+
+```typescript
+export default handler(({lib: {group, checkpoint}, handler: {...}}) => ({
+    testFlow: ({name = 'flow'}, $meta) =>
+        group(name)([
+            async function createUser(_assert, {$meta}) {
+                return await userUserAdd({userName: 'alice'}, $meta);
+            },
+            async function assignRole(_assert, {$meta, createUser}) {
+                const {userId} = await createUser;
+                return await userRoleAssign({userId, roleName: 'admin'}, $meta);
+            },
+            // Snapshot provisioning phase — only waits for createUser & assignRole
+            checkpoint('provisioning', 'createUser', 'assignRole'),
+
+            async function sendPayment(_assert, {$meta, createUser}) {
+                const {userId} = await createUser;
+                return await paymentTransferSend({senderId: userId, amount: 50}, $meta);
+            },
+            async function verifyBalance(_assert, {$meta, createUser}) {
+                const {userId} = await createUser;
+                return await accountBalanceGet({userId}, $meta);
+            },
+            checkpoint('execution', 'sendPayment', 'verifyBalance'),
+        ]),
+}));
+```
+
+### Strategy D: `assert.snapshot()` — per-step no-args
+
+Call `assert.snapshot()` with no arguments inside a step.  After the step function returns the
+executor automatically calls `matchSnapshot(result, stepName)`.
+
+> **`assert.ok(result)` is not needed before `assert.snapshot()`.** The snapshot
+> automatically throws for falsy return values — guarding against accidental
+> null/undefined snapshots — so a separate `assert.ok` would be redundant.
+
+```typescript
+async function getUser(assert: IAssert, {$meta, createUser}) {
+    assert.snapshot();   // ← throws if result is falsy; captures result under 'getUser'
+    return await userUserGet({userId: (await createUser).userId}, $meta);
+}
+```
+
+> **Snapshot-only steps are two lines.** Skip `const result` and any single-use
+> destructuring — put the awaited call directly in `return`. Inline single-use
+> step dependencies with `(await prevStep).field`:
+>
+> ```typescript
+> // ✓ preferred
+> assert.snapshot();
+> return await someGet({id: (await prevStep).id}, $meta);
+>
+> // ✗ avoid
+> const {id} = await prevStep;
+> const result = await someGet({id}, $meta);
+> assert.snapshot();
+> return result;
+> ```
+>
+> Keep `const result` only when the value is used more than once (e.g. in both
+> `assert.equal` and `return`, or in a spread + property access).
+
+For per-call extra masking: `assert.snapshot({mask: ['createdAt']})`.
+
+> **Sorting list results for stability:** `find` handlers may return results in non-deterministic
+> order. Sort the result inline in the `return` statement — no intermediate variable needed:
+>
+> ```typescript
+> async function findUsers(assert: IAssert, {$meta}: {$meta: IMeta}) {
+>     assert.snapshot();
+>     return (await userUserFind({}, $meta) as UserRow[]).slice().sort((a, b) => a.userName.localeCompare(b.userName));
+> }
+> ```
+>
+> For nested arrays (e.g. an object with a `Contents` list), spread and replace the array:
+>
+> ```typescript
+> assert.snapshot();
+> return {
+>     ...(result as ListResult),
+>     Contents: (result as ListResult).Contents?.slice().sort(
+>         (a, b) => (a.Key ?? '').localeCompare(b.Key ?? ''),
+>     ),
+> };
+> ```
+
+### Hybrid (recommended for production suites)
+
+Use explicit `assert.equal` / `assert.rejects` for critical business rules; use `assert.snapshot()`
+in sentinel steps; add `checkpoint('name')` at the end for full regression coverage.
+
+```typescript
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+
+export default handler(({lib: {group, checkpoint}, handler: {userUserAdd, paymentTransferSend, accountBalanceGet}}) => ({
+    testPaymentFlow: ({name = 'payment flow'}, $meta) =>
+        group(name)([
+            async function createUser(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                const result = await userUserAdd({userName: 'alice'}, $meta);
+                assert.ok(result.userId, 'user created');  // business rule check
+                return result;
+            },
+            async function sendPayment(assert: IAssert, {$meta, createUser}) {
+                const {userId} = await createUser;
+                const result = await paymentTransferSend({senderId: userId, amount: 50}, $meta);
+                // Business rule — explicit assertion
+                assert.equal(result.status, 'COMPLETED', 'payment must reach COMPLETED state');
+                // Structural regression — snapshot the full shape
+                assert.snapshot();
+                return result;
+            },
+            async function verifyBalance(_assert: IAssert, {$meta, createUser}) {
+                const {userId} = await createUser;
+                return await accountBalanceGet({userId}, $meta);
+            },
+            checkpoint('full-regression'),   // end-of-chain coverage for all steps
+        ]),
+}));
+```
+
+### Chain-level masking
+
+Configure `mask` via the second argument to `group()`.  All snapshot operations in the
+chain apply it automatically.  Supports dot-paths and the `*` wildcard.
+
+```typescript
+group(name, {mask: ['userId', 'createdAt', 'updatedAt']})(   // applied to every snapshot
+    [ /* steps */ ],
+)
+```
+
+Wildcards: `'*.id'` masks the `id` field in every direct child of the snapshotted object.  This
+is useful when snapshotting a context object whose keys are step names and each has an `id` field.
+
+Per-call override: `assert.snapshot({mask: ['extraField']})` — merges with chain mask.
+
+### When to use snapshots
+
+| Situation | Approach |
+|---|---|
+| `get`/`find` step returns a structured object with multiple stable fields | `assert.snapshot()` |
+| Verify-edit step re-fetches and confirms multiple updated fields | `assert.snapshot()` |
+| Multi-phase flow (setup → execute → verify) | Phase checkpoints `checkpoint('name', 's1', 's2')` |
+| Full flow regression | End-of-chain `checkpoint('name')` |
+| Single business-rule assertion (`status === 'COMPLETED'`) | Keep `assert.equal` |
+| Dynamic list content (size/order varies by environment) | Keep `assert.ok` |
+| `null` / void mutation response | Keep `assert.ok(result !== undefined)` |
+| `assert.ok(result)` before `assert.snapshot()` | **Remove it** — snapshot throws for falsy values |
+
+### Generating / updating snapshot files
+
+```bash
+# First run or after intentional shape change — write snapshots
+TAP_SNAPSHOT=1 tap my-test.test.ts
+
+# Normal run — compare against stored snapshots
+tap my-test.test.ts
+```
+
+Snapshot files are stored in `tap-snapshots/` alongside the test file and committed to source
+control.  See `core/blong-hello/test/test/` for a complete working realm-based example.
+
 ## Reusing Test Handlers with Parameters
 
 Test handlers support **arbitrary parameters** beyond `name`. This enables
@@ -312,10 +547,12 @@ values:
 
 ```typescript
 // realmname/test/test/testTransfer.ts
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
+
 export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
     testTransfer: ({name = 'transfer', amount = 100, currency = 'USD'}, $meta) =>
         group(name)([
-            async function createTransfer(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            async function createTransfer(assert: IAssert, {$meta}: {$meta: IMeta}) {
                 const result = await transferTransferCreate({amount, currency}, $meta);
                 assert.ok(result.transferId, 'Transfer ID returned');
                 assert.equal(result.amount, amount, 'Amount matches');

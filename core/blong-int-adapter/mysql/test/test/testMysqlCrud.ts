@@ -1,5 +1,4 @@
-import {handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert} from '@feasibleone/blong';
 
 import {items, mergedItem, updatedItem} from '../fixtures/item.ts';
 
@@ -16,7 +15,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {
             sqlTableCreate,
             sqlTableDrop,
@@ -31,9 +30,10 @@ export default handler(
         },
     }) => ({
         testMysqlCrud: ({name = 'mysql CRUD'}: {name?: string}) =>
-            group(name)([
+            // chain-level mask: `itemId` for single rows, `*.itemId` for array results
+            group(name, {mask: ['itemId', '*.itemId']})([
                 // ── 1. Ensure the test table exists ───────────────────────
-                async function createTable(assert: typeof Assert, {$meta}: StepMeta) {
+                async function createTable(assert: IAssert, {$meta}: StepMeta) {
                     const result = await sqlTableCreate({}, $meta);
                     assert.ok(result, 'Table create/verify returned a result');
                     return result as {table: string; existed: boolean};
@@ -41,7 +41,7 @@ export default handler(
 
                 // ── 2. Wipe any data from previous runs ───────────────────
                 async function cleanData(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, createTable}: StepMeta & {createTable: Promise<unknown>},
                 ) {
                     await createTable;
@@ -51,62 +51,45 @@ export default handler(
 
                 // ── 3. add — insert a single row ──────────────────────────
                 async function addItem(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanData}: StepMeta & {cleanData: Promise<unknown>},
                 ) {
                     await cleanData;
                     const result = await sqlItemAdd({...items[0]}, $meta);
                     assert.ok(result, 'add returned a result');
-                    assert.ok(
-                        (result as AddResult).itemId,
-                        'add returned an itemId',
-                    );
+                    assert.ok((result as AddResult).itemId, 'add returned an itemId');
                     return result as AddResult;
                 },
 
                 // ── 4. get — fetch the inserted row by primary key ────────
                 async function getItem(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addItem}: StepMeta & {addItem: Promise<AddResult>},
                 ) {
-                    const {itemId} = await addItem;
-                    const result = await sqlItemGet({itemId}, $meta);
-                    assert.ok(result, 'get returned a result');
-                    assert.strictEqual(
-                        (result as ItemRow).itemName,
-                        items[0].itemName,
-                        'get returned the correct itemName',
-                    );
-                    assert.strictEqual(
-                        (result as ItemRow).itemDescription,
-                        items[0].itemDescription,
-                        'get returned the correct itemDescription',
-                    );
-                    return result as ItemRow & {itemId: number};
+                    // Snapshot captures itemName and itemDescription; chain-level mask handles itemId.
+                    assert.snapshot();
+                    return (await sqlItemGet(
+                        {itemId: (await addItem).itemId},
+                        $meta,
+                    )) as ItemRow & {itemId: number};
                 },
 
                 // ── 5. find — query rows with a filter ───────────────────
                 async function findItems(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addItem}: StepMeta & {addItem: Promise<AddResult>},
                 ) {
                     await addItem;
-                    const result = await sqlItemFind({itemName: items[0].itemName}, $meta);
-                    assert.ok(Array.isArray(result), 'find returned an array');
-                    assert.ok(
-                        (result as ItemRow[]).length >= 1,
-                        'find returned at least one row',
-                    );
-                    assert.ok(
-                        (result as ItemRow[]).every(r => r.itemName === items[0].itemName),
-                        'all returned rows match the filter',
-                    );
-                    return result as ItemRow[];
+                    // Sort by itemName for snapshot stability; chain-level mask handles itemId.
+                    assert.snapshot();
+                    return ((await sqlItemFind({itemName: items[0].itemName}, $meta)) as ItemRow[])
+                        .slice()
+                        .sort((a, b) => (a.itemName ?? '').localeCompare(b.itemName ?? ''));
                 },
 
                 // ── 6. edit — update a row by primary key ─────────────────
                 async function editItem(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, getItem}: StepMeta & {getItem: Promise<ItemRow & {itemId: number}>},
                 ) {
                     const {itemId} = await getItem;
@@ -117,29 +100,25 @@ export default handler(
 
                 // ── 7. verify edit — re-fetch to confirm the update ───────
                 async function verifyEdit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, editItem}: StepMeta & {editItem: Promise<{itemId: number}>},
                 ) {
-                    const {itemId} = await editItem;
-                    const result = await sqlItemGet({itemId}, $meta);
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as ItemRow).itemName,
-                        updatedItem.itemName,
-                        'itemName was updated correctly',
-                    );
-                    assert.strictEqual(
-                        (result as ItemRow).itemDescription,
-                        updatedItem.itemDescription,
-                        'itemDescription was updated correctly',
-                    );
-                    return result as ItemRow;
+                    // Snapshot captures updated itemName and itemDescription.
+                    assert.snapshot();
+                    return (await sqlItemGet({itemId: (await editItem).itemId}, $meta)) as ItemRow;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('crud-reads', 'getItem', 'verifyEdit'),
 
                 // ── 8. remove — delete the row by primary key ─────────────
                 async function removeItem(
-                    assert: typeof Assert,
-                    {$meta, verifyEdit, editItem}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        verifyEdit,
+                        editItem,
+                    }: StepMeta & {
                         verifyEdit: Promise<ItemRow>;
                         editItem: Promise<{itemId: number}>;
                     },
@@ -153,7 +132,7 @@ export default handler(
 
                 // ── 9. merge — upsert a new row ───────────────────────────
                 async function mergeItem(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, removeItem}: StepMeta & {removeItem: Promise<unknown>},
                 ) {
                     await removeItem;
@@ -164,18 +143,21 @@ export default handler(
 
                 // ── 10. insert — bulk insert multiple rows ────────────────
                 async function insertItems(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, mergeItem}: StepMeta & {mergeItem: Promise<unknown>},
                 ) {
                     await mergeItem;
-                    const result = await sqlItemInsert(items.map(i => ({...i})), $meta);
+                    const result = await sqlItemInsert(
+                        items.map(i => ({...i})),
+                        $meta,
+                    );
                     assert.ok(result !== undefined, 'insert returned a result');
                     return {inserted: true};
                 },
 
                 // ── 11. verify bulk insert ────────────────────────────────
                 async function verifyInsert(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, insertItems}: StepMeta & {insertItems: Promise<unknown>},
                 ) {
                     await insertItems;
@@ -190,12 +172,15 @@ export default handler(
 
                 // ── 12. find with limit and order ─────────────────────────
                 async function findWithOptions(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, verifyInsert}: StepMeta & {verifyInsert: Promise<unknown>},
                 ) {
                     await verifyInsert;
                     const result = await sqlItemFind({limit: 2, order: 'itemName'}, $meta);
-                    assert.ok(Array.isArray(result), 'find with limit returned an array');
+                    // Already ordered by itemName via query; snapshot is stable.
+                    assert.snapshot();
+                    // Keep limit business-invariant: snapshot verifies count implicitly,
+                    // but the explicit check documents the intent.
                     assert.ok(
                         (result as ItemRow[]).length <= 2,
                         'find respects the limit parameter',
@@ -205,7 +190,7 @@ export default handler(
 
                 // ── 13. delete — bulk delete matching rows ────────────────
                 async function deleteItems(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, findWithOptions}: StepMeta & {findWithOptions: Promise<unknown>},
                 ) {
                     await findWithOptions;
@@ -216,8 +201,11 @@ export default handler(
 
                 // ── 14. Drop the test table (cleanup) ─────────────────────
                 async function dropTable(
-                    assert: typeof Assert,
-                    {$meta, deleteItems}: StepMeta & {
+                    assert: IAssert,
+                    {
+                        $meta,
+                        deleteItems,
+                    }: StepMeta & {
                         deleteItems: Promise<unknown>;
                     },
                 ) {

@@ -1,5 +1,4 @@
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 import {testRealm, updatedRealm} from '../fixtures/realm.ts';
 
@@ -15,11 +14,13 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group},
+        lib: {group, checkpoint},
         handler: {authRealmFind, authRealmAdd, authRealmGet, authRealmEdit, authRealmRemove},
     }) => ({
         testKeycloakRealmCrud: ({name = 'keycloak realm CRUD'}: {name?: string}) =>
-            group(name)([
+            // `id` — top-level realm UUID; `defaultRole.id` and `defaultRole.containerId`
+            // are UUIDs for the auto-created default role — all change each test run.
+            group(name, {mask: ['id', 'defaultRole.id', 'defaultRole.containerId']})([
                 // ── 1. Clean up leftover test realm if present ─────────────
                 async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
                     try {
@@ -61,28 +62,16 @@ export default handler(
 
                 // ── 4. get — fetch the newly created realm ─────────────────
                 async function getRealm(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addRealm}: StepMeta & {addRealm: Promise<{realm: string}>},
                 ) {
-                    const {realm} = await addRealm;
-                    const result = await authRealmGet({realm}, $meta);
-                    assert.ok(result, 'get realm returned a result');
-                    assert.strictEqual(
-                        (result as RealmResult).realm,
-                        testRealm.realm,
-                        'get returned the correct realm name',
-                    );
-                    assert.strictEqual(
-                        (result as RealmResult).displayName,
-                        testRealm.displayName,
-                        'get returned the correct displayName',
-                    );
-                    assert.strictEqual(
-                        (result as RealmResult).enabled,
-                        testRealm.enabled,
-                        'get returned the correct enabled state',
-                    );
-                    return result as RealmResult;
+                    // Snapshot captures realm name, displayName, and enabled in one entry.
+                    // Chain-level mask handles the Keycloak `id` UUID.
+                    assert.snapshot();
+                    return (await authRealmGet(
+                        {realm: (await addRealm).realm},
+                        $meta,
+                    )) as RealmResult;
                 },
 
                 // ── 5. edit — update the realm display name ────────────────
@@ -91,29 +80,26 @@ export default handler(
                     {$meta, getRealm}: StepMeta & {getRealm: Promise<RealmResult>},
                 ) {
                     await getRealm;
-                    await authRealmEdit(
-                        {realm: testRealm.realm, ...updatedRealm},
-                        $meta,
-                    );
+                    await authRealmEdit({realm: testRealm.realm, ...updatedRealm}, $meta);
                     assert.ok(true, 'edit realm completed without error');
                     return {realm: testRealm.realm};
                 },
 
                 // ── 6. verify edit — re-fetch to confirm the update ────────
                 async function verifyEdit(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, editRealm}: StepMeta & {editRealm: Promise<{realm: string}>},
                 ) {
-                    const {realm} = await editRealm;
-                    const result = await authRealmGet({realm}, $meta);
-                    assert.ok(result, 'get after edit returned a result');
-                    assert.strictEqual(
-                        (result as RealmResult).displayName,
-                        updatedRealm.displayName,
-                        'displayName was updated correctly',
-                    );
-                    return result as RealmResult;
+                    // Snapshot captures the updated displayName and all other fields.
+                    assert.snapshot();
+                    return (await authRealmGet(
+                        {realm: (await editRealm).realm},
+                        $meta,
+                    )) as RealmResult;
                 },
+
+                // Phase checkpoint: snapshot both read-back results together
+                checkpoint('realm-read-snapshots', 'getRealm', 'verifyEdit'),
 
                 // ── 7. remove — delete the test realm ─────────────────────
                 async function removeRealm(

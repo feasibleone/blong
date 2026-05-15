@@ -328,12 +328,32 @@ export default class Registry extends Internal implements IRegistry {
             assert: attachCheckpoint ? nodeAssert : undefined,
             rename: (object: object, value: string) =>
                 Object.defineProperty<unknown>(object, 'name', {value}),
-            group: (name: string) => (steps: unknown[]) =>
-                Object.defineProperty(steps, 'name', {
-                    value: name,
-                    enumerable: false,
-                    writable: true,
-                }),
+            group:
+                (name: string, config?: {autoSnapshot?: boolean; mask?: string[]}) =>
+                (steps: unknown[]) => {
+                    Object.defineProperty(steps, 'name', {
+                        value: name,
+                        enumerable: false,
+                        writable: true,
+                    });
+                    if (config?.autoSnapshot !== undefined)
+                        Object.defineProperty(steps, 'autoSnapshot', {
+                            value: config.autoSnapshot,
+                            enumerable: false,
+                            writable: true,
+                        });
+                    if (config?.mask !== undefined)
+                        Object.defineProperty(steps, 'mask', {
+                            value: config.mask,
+                            enumerable: false,
+                            writable: true,
+                        });
+                    return steps;
+                },
+            checkpoint: (name: string, ...markers: string[]) => {
+                const arr: string[] = markers.length > 0 ? [...markers] : ['*'];
+                return Object.assign(arr, {name});
+            },
             timing: this.#platform.timing,
             setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
                 if (!path) return;

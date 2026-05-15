@@ -369,6 +369,42 @@ function captureSourceLocation(fn: Function): ISourceLocation {
 /** Default number of retry attempts per failing step when `rerun.enabled` is true */
 const DEFAULT_MAX_RETRIES = 1;
 
+// ============================================================================
+// Masking helpers (also used by assert.snapshot and checkpoint snapshots)
+// ============================================================================
+
+/**
+ * Deep-clone `value` and replace the leaf at each dot-path in `paths` with
+ * `'<masked>'`. Supports `'*'` as a wildcard in any path segment, meaning
+ * "apply to every direct child of the current object".
+ *
+ * Examples:
+ *   maskPaths({id: '1', name: 'A'}, ['id'])
+ *     → {id: '<masked>', name: 'A'}
+ *   maskPaths({a: {id: '1'}, b: {id: '2'}}, ['*.id'])
+ *     → {a: {id: '<masked>'}, b: {id: '<masked>'}}
+ */
+function maskPaths(value: unknown, paths: string[]): unknown {
+    if (value === null || value === undefined || typeof value !== 'object') return value;
+    const clone = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    for (const path of paths) setAtPath(clone, path.split('.'));
+    return clone;
+}
+
+function setAtPath(obj: unknown, parts: string[]): void {
+    if (typeof obj !== 'object' || obj === null || parts.length === 0) return;
+    const [head, ...tail] = parts;
+    if (head === '__proto__' || head === 'constructor' || head === 'prototype') return;
+    const record = obj as Record<string, unknown>;
+    if (tail.length === 0) {
+        if (Object.prototype.hasOwnProperty.call(record, head)) record[head] = '<masked>';
+    } else if (head === '*') {
+        for (const key of Object.keys(record)) setAtPath(record[key], tail);
+    } else {
+        setAtPath(record[head], tail);
+    }
+}
+
 /**
  * Main test executor class
  */
@@ -420,6 +456,9 @@ export class TestExecutor extends EventEmitter {
             framework: config.framework,
             log: config.log,
             rerun: config.rerun,
+            mask: config.mask,
+            maskFn: config.maskFn,
+            autoSnapshot: config.autoSnapshot,
         };
         this.log = config.log;
 
@@ -501,18 +540,71 @@ export class TestExecutor extends EventEmitter {
         parentTestContext?: unknown,
     ): Promise<void> {
         const stepPromises: Promise<void>[] = [];
+        const namedPromises = new Map<string, Promise<void>>();
+        let checkpointIndex = 0;
 
         for (const step of steps) {
             if (Array.isArray(step)) {
-                // Check if it's an empty array (checkpoint)
+                // Distinguish by element type:
+                //   [] empty array        → sync barrier (existing behaviour)
+                //   ['*'] / ['s1','s2']  → snapshot checkpoint (new)
+                //   [fn, ...] nested     → nested step group (existing behaviour)
                 if (step.length === 0) {
-                    // Checkpoint: wait for all parallel steps to complete before continuing
+                    // Sync barrier — wait for all parallel steps in this batch
                     await Promise.all(stepPromises);
                     stepPromises.length = 0;
                     continue;
                 }
 
-                // Nested array - wait for current level to complete first
+                if (step.every(s => typeof s === 'string')) {
+                    // Snapshot checkpoint: await relevant steps, then snapshot
+                    const checkpoint = step as unknown as string[];
+
+                    if (checkpoint.length === 1 && checkpoint[0] === '*') {
+                        // ['*'] — wait for entire current batch
+                        await Promise.all(stepPromises);
+                        stepPromises.length = 0;
+                    } else {
+                        // ['step1','step2'] — wait only for the named steps
+                        const namedToWait = checkpoint
+                            .map(name => namedPromises.get(name))
+                            .filter((p): p is Promise<void> => p !== undefined);
+                        await Promise.all(namedToWait);
+                        // stepPromises is NOT cleared — other steps keep running
+                    }
+                    const cpName =
+                        (checkpoint as {name?: string}).name ??
+                        (checkpoint.length === 1 && checkpoint[0] === '*'
+                            ? `context`
+                            : checkpoint.join('-'));
+                    // Disambiguate when the same name is used more than once
+                    const snapshotName = checkpointIndex === 0 ? cpName : `${cpName}-${checkpointIndex}`;
+                    checkpointIndex++;
+
+                    const stepsToSnapshot =
+                        checkpoint.length === 1 && checkpoint[0] === '*'
+                            ? [...this.progress.steps.entries()]
+                                  .filter(([, s]) => s.status === 'completed')
+                                  .map(([name]) => name)
+                            : checkpoint.filter(name =>
+                                  Object.prototype.hasOwnProperty.call(this.realContext, name),
+                              );
+
+                    const contextSnapshot = Object.fromEntries(
+                        stepsToSnapshot.map(name => [name, this._applyMask(this.realContext[name])]),
+                    );
+
+                    const snapshotTarget = parentTestContext;
+                    if (
+                        snapshotTarget &&
+                        typeof (snapshotTarget as any).matchSnapshot === 'function'
+                    ) {
+                        (snapshotTarget as any).matchSnapshot(contextSnapshot, snapshotName);
+                    }
+                    continue;
+                }
+
+                // Nested step group — wait for current batch first
                 await Promise.all(stepPromises);
                 stepPromises.length = 0;
 
@@ -541,7 +633,9 @@ export class TestExecutor extends EventEmitter {
             } else if (typeof step === 'function') {
                 // Execute function step in parallel
                 const promise = this._executeStep(step, groupPath, parentTestContext);
+                const stepName = step.name || 'anonymous';
                 stepPromises.push(promise);
+                namedPromises.set(stepName, promise);
             }
         }
 
@@ -599,7 +693,56 @@ export class TestExecutor extends EventEmitter {
         this.latencyMetrics.set(stepName, latency);
 
         // Wrap execution function for potential test context wrapping
-        const executeStepFn = async () => {
+        // When a TAP sub-test context is supplied, assert is augmented with:
+        //   assert.snapshot(value, 'name', opts?)   — explicit snapshot
+        //   assert.snapshot({mask?: []})             — deferred: snapshot the
+        //                                              step's return value
+        //   assert.snapshot()                        — deferred, no extra mask
+        // Deferred snapshots are taken after fn() returns, under the step name.
+        const self = this;
+        const executeStepFn = async (stepTestContext?: unknown) => {
+            const hasSnapshotTarget =
+                stepTestContext !== undefined &&
+                typeof (stepTestContext as Record<string, unknown>).matchSnapshot === 'function';
+
+            // Tracks a deferred assert.snapshot() call made inside the step.
+            const snapshotRequest: {deferred?: {mask?: string[]}} = {};
+
+            const stepAssert = hasSnapshotTarget
+                ? new Proxy(assert, {
+                      get(target, prop) {
+                          if (prop === 'matchSnapshot')
+                              return (stepTestContext as any).matchSnapshot;
+                          if (prop === 'snapshot')
+                              return (
+                                  valueOrOpts?: unknown,
+                                  nameOrNothing?: unknown,
+                                  opts?: {mask?: string[]},
+                              ) => {
+                                  if (typeof nameOrNothing === 'string') {
+                                      // Explicit: assert.snapshot(value, 'name', opts?)
+                                      if (!valueOrOpts)
+                                          throw new assert.AssertionError({
+                                              message: `snapshot "${nameOrNothing}": value is falsy`,
+                                          });
+                                      const masked = self._applyMask(valueOrOpts, opts?.mask);
+                                      (stepTestContext as any).matchSnapshot(masked, nameOrNothing);
+                                  } else {
+                                      // Deferred: assert.snapshot() or assert.snapshot({mask})
+                                      const deferOpts =
+                                          typeof valueOrOpts === 'object' &&
+                                          valueOrOpts !== null &&
+                                          !Array.isArray(valueOrOpts)
+                                              ? (valueOrOpts as {mask?: string[]})
+                                              : {};
+                                      snapshotRequest.deferred = {mask: deferOpts.mask};
+                                  }
+                              };
+                          return (target as unknown as Record<string, unknown>)[prop as string];
+                      },
+                  })
+                : assert;
+
             latency.startedAt = Date.now();
             latency.queueTime = latency.startedAt - latency.queuedAt;
 
@@ -626,8 +769,10 @@ export class TestExecutor extends EventEmitter {
                 let lastError: Error | undefined;
 
                 for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                    // Reset per-attempt deferred snapshot flag
+                    delete snapshotRequest.deferred;
                     try {
-                        result = await fn(assert, context);
+                        result = await fn(stepAssert, context);
                         lastError = undefined;
                         break;
                     } catch (err) {
@@ -643,6 +788,24 @@ export class TestExecutor extends EventEmitter {
 
                 if (lastError !== undefined) {
                     throw lastError;
+                }
+
+                // Handle deferred assert.snapshot() — called inside step with no explicit value
+                if (snapshotRequest.deferred !== undefined && hasSnapshotTarget) {
+                    if (!result)
+                        throw new assert.AssertionError({
+                            message: `snapshot "${stepName}": step returned a falsy value`,
+                        });
+                    const masked = self._applyMask(result, snapshotRequest.deferred.mask);
+                    (stepTestContext as any).matchSnapshot(masked, stepName);
+                } else if (self.config.autoSnapshot && hasSnapshotTarget) {
+                    // Auto-snapshot: capture result automatically, no assert.snapshot() needed
+                    if (!result)
+                        throw new assert.AssertionError({
+                            message: `snapshot "${stepName}": step returned a falsy value`,
+                        });
+                    const masked = self._applyMask(result);
+                    (stepTestContext as any).matchSnapshot(masked, stepName);
                 }
 
                 // Store result in real context
@@ -714,8 +877,8 @@ export class TestExecutor extends EventEmitter {
                     await (this.testContext!.test as any).call(
                         parentTestContext,
                         stepName,
-                        async () => {
-                            await executeStepFn();
+                        async (stepT: unknown) => {
+                            await executeStepFn(stepT);
                         },
                     );
                 } catch (error) {
@@ -727,8 +890,8 @@ export class TestExecutor extends EventEmitter {
             // Top-level step with test context
             await this.queue.add(async () => {
                 try {
-                    await this.testContext!.test(stepName, async () => {
-                        await executeStepFn();
+                    await this.testContext!.test(stepName, async (stepT: unknown) => {
+                        await executeStepFn(stepT);
                     });
                 } catch (error) {
                     // Error already handled in executeStepFn, don't rethrow to break the queue
@@ -748,7 +911,7 @@ export class TestExecutor extends EventEmitter {
 
         for (const step of steps) {
             if (Array.isArray(step)) {
-                count += this._countSteps(step);
+                count += this._countSteps(step as StepArray);
             } else if (typeof step === 'function') {
                 count++;
             }
@@ -765,8 +928,10 @@ export class TestExecutor extends EventEmitter {
 
         for (const step of steps) {
             if (Array.isArray(step)) {
-                // Recursively collect from nested arrays
-                const nested = this._collectStepNames(step);
+                // Skip checkpoint markers (string-only arrays) — they are not steps
+                if (step.every(s => typeof s === 'string')) continue;
+                // Recursively collect from nested step groups
+                const nested = this._collectStepNames(step as StepArray);
                 nested.forEach(name => stepNames.add(name));
             } else if (typeof step === 'function') {
                 const stepName = step.name || 'anonymous';
@@ -788,6 +953,18 @@ export class TestExecutor extends EventEmitter {
             );
         }
         this.stepNamesUsed.add(stepName);
+    }
+
+    /**
+     * Applies the chain-level `mask` (and optional per-call `extraPaths`) to
+     * `value`. Returns the original reference unchanged when no masking is
+     * configured. Falls back to the deprecated `maskFn` when supplied.
+     */
+    private _applyMask(value: unknown, extraPaths?: string[]): unknown {
+        const paths = [...(this.config.mask ?? []), ...(extraPaths ?? [])];
+        if (!paths.length && !this.config.maskFn) return value;
+        if (this.config.maskFn) return this.config.maskFn(value, paths);
+        return maskPaths(value, paths);
     }
 
     /**
@@ -930,7 +1107,3 @@ export class TestExecutor extends EventEmitter {
 
 // Export all types
 export type * from './test-types.js';
-
-// Export snapshot helper
-export {maskPaths, snapshot} from './snapshot.js';
-export type {ISnapshotContext, ISnapshotOptions} from './snapshot.js';
