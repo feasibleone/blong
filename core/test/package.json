@@ -3,6 +3,7 @@
     "version": "1.11.0",
     "type": "module",
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true",
         "ci-unit": "../common/run-coverage.sh",
         "ci-coverage": "../common/run-coverage.sh report"

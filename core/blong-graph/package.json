@@ -21,6 +21,7 @@
         "./package.json": "./package.json"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "_ci-ui": "playwright test",
         "build": "true",
         "test": "playwright test",

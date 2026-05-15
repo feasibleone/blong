@@ -1,3 +1,4 @@
+/// <reference path="./globals.d.ts" />
 import type {HRTime} from '@feasibleone/blong';
 import load from './load.ts';
 import timing from './timing.ts';

@@ -16,6 +16,7 @@
         ".": "./index.ts"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "heft build --clean",
         "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
         "test": "tap *.test.ts"

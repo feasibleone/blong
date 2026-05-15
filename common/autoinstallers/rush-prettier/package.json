@@ -4,6 +4,7 @@
     "private": true,
     "dependencies": {
         "prettier": "^3.8.1",
-        "prettier-plugin-packagejson": "^3.0.2"
+        "prettier-plugin-packagejson": "^3.0.2",
+        "cspell": "^8.0.0"
     }
 }

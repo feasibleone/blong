@@ -4,6 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true",
         "ci-coverage": "test -f coverage/lcov.info || ./integration-test.sh report",
         "ci-integration": "./integration-test.sh",

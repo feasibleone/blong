@@ -22,6 +22,7 @@
         "./package.json": "./package.json"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "heft build --clean",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
     },

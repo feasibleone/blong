@@ -22,7 +22,7 @@ export default function tls(
     if (config?.tls) {
         return {
             minVersion: 'TLSv1.3',
-            ...(config.tls as ReturnType<typeof tls>),
+            ...(config.tls as unknown as ReturnType<typeof tls>),
             ...(config.tls.ca && {
                 [got ? 'certificateAuthority' : 'ca']: Array.isArray(config.tls.ca)
                     ? config.tls.ca.map(file => readFileSync(file))

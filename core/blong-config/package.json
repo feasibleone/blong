@@ -7,6 +7,7 @@
         ".": "./index.ts"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true"
     },
     "dependencies": {

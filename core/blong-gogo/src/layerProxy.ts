@@ -185,8 +185,8 @@ export default function layerProxy(
                                         else prev[1].push(item);
                                         return prev;
                                     },
-                                    [[], []],
-                                );
+                                    [[], []] as [unknown[], unknown[]],
+                                ) as [unknown[], unknown[]];
                                 ports.forEach(what => {
                                     if (what && port && (what as {prototype?: unknown}).prototype instanceof port) {
                                         where.port = async (

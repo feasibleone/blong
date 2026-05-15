@@ -1,3 +1,4 @@
+/// <reference path="./globals.d.ts" />
 import {watch} from 'chokidar';
 import type {Dirent} from 'fs';
 import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';

@@ -15,6 +15,7 @@
         ".": "./index.ts"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "heft build --clean",
         "ci-all": "npm run ci-unit && npm run ci-examples",
         "ci-examples": "npm run test:examples",

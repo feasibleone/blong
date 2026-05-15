@@ -12,7 +12,8 @@
         "outDir": "dist",
         "target": "ES2022",
         "resolveJsonModule": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "strict": true
     },
     "exclude": ["node_modules", "dist"]
 }

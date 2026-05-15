@@ -38,7 +38,7 @@ export default ({
     const localCache: Record<
         string,
         {
-            auth: {
+            auth?: {
                 access_token: string;
                 refresh_token: string;
                 expires_in: number;
@@ -46,11 +46,11 @@ export default ({
                 sign?: string;
                 encrypt?: string;
             };
-            tokenInfo: {
+            tokenInfo?: {
                 tokenExpire: number;
                 refreshTokenExpire: number;
             };
-            remoteKeys: {
+            remoteKeys?: {
                 sign: string;
                 encrypt: string;
             };
@@ -208,17 +208,18 @@ export default ({
 
         if (!cache.auth && !(username && password)) {
             if (cache.remoteKeys) {
+                const remoteKeys = cache.remoteKeys;
                 codec.encode = async params => ({
                     params: await mleClient.signEncrypt(
                         params,
-                        cache.remoteKeys.encrypt,
+                        remoteKeys.encrypt,
                         localKeys,
                     ),
                     method,
                 });
                 codec.decode = async (result, unpack) =>
                     decode(
-                        await mleClient.decryptVerify(result, cache.remoteKeys.sign),
+                        await mleClient.decryptVerify(result, remoteKeys.sign),
                         method,
                         unpack,
                     );
@@ -233,8 +234,8 @@ export default ({
 
         const exp = Date.now();
 
-        if (exp > cache.tokenInfo.tokenExpire) {
-            if (exp > cache.tokenInfo.refreshTokenExpire) {
+        if (exp > cache.tokenInfo!.tokenExpire) {
+            if (exp > cache.tokenInfo!.refreshTokenExpire) {
                 await login(cache, url, username, password, channel);
             } else {
                 const {body} = await ky
@@ -243,31 +244,32 @@ export default ({
                         {
                             json: {
                                 grant_type: 'refresh_token',
-                                refresh_token: cache.auth.refresh_token,
+                                refresh_token: cache.auth!.refresh_token,
                             },
                         },
                     )
                     .json();
-                Object.assign(cache.auth, body);
+                Object.assign(cache.auth!, body);
                 cache.tokenInfo = tokenInfo(body);
             }
         }
 
-        if (cache.auth.sign && cache.auth.encrypt) {
+        const cachedAuth = cache.auth!;
+        if (cachedAuth.sign && cachedAuth.encrypt) {
             codec.encode = async params => ({
-                params: await mleClient.signEncrypt(params, cache.auth.encrypt!),
+                params: await mleClient.signEncrypt(params, cachedAuth.encrypt!),
                 headers: {
-                    authorization: 'Bearer ' + cache.auth.access_token,
+                    authorization: 'Bearer ' + cachedAuth.access_token,
                 },
                 method,
             });
             codec.decode = async (result, unpack) =>
-                decode(await mleClient.decryptVerify(result, cache.auth.sign!), method, unpack);
+                decode(await mleClient.decryptVerify(result, cachedAuth.sign!), method, unpack);
         } else {
             codec.encode = params => ({
                 params,
                 headers: {
-                    authorization: 'Bearer ' + cache.auth.access_token,
+                    authorization: 'Bearer ' + cachedAuth.access_token,
                 },
                 method,
             });

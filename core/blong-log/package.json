@@ -22,6 +22,7 @@
         "blong-log": "./src/cli.ts"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "heft build --clean && node build-client.js",
         "build-storybook": "storybook build -o storybook-static",
         "ci-chromatic": "../common/chromatic.sh",

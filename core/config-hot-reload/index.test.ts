@@ -8,7 +8,7 @@ const platform = await load(server, 'config-hot-reload', 'config-hot-reload', [
     'integration',
     'dev',
 ]);
-await platform.start();
+await platform.start({});
 await tap.test('config-hot-reload', async test => {
     await platform.test(test);
 });

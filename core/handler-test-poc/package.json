@@ -9,6 +9,7 @@
         "./browser.ts": "./browser.ts"
     },
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true"
     },
     "dependencies": {

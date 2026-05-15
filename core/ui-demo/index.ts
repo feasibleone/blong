@@ -20,7 +20,7 @@ const start = async (load: Load): Promise<void> => {
         },
         ['microservice', 'integration', 'dev'],
     );
-    await platform.start();
+    await platform.start({});
     // if (process.env.CI) await platform.stop();
 };
 

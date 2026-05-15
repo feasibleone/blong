@@ -4,6 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true",
         "ci-integration": "../../test/integration/wait.sh mysql && tap index.test.ts --allow-incomplete-coverage"
     },

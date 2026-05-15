@@ -5,6 +5,7 @@
     "description": "Marine biology demo blong suite showcasing @feasibleone/blong-browser realm patterns",
     "type": "module",
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true",
         "build-storybook": "storybook build",
         "dev": "vite",

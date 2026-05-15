@@ -142,7 +142,7 @@ export default class Remote extends Internal implements IRemote {
                 if ($meta && $meta.timeout && $meta.retry) {
                     return startRetry(
                         () => method(...params),
-                        $meta as {timeout?: number; retry?: number},
+                        $meta as unknown as {timeout?: number; retry?: number},
                     );
                 } else {
                     return method(...params);

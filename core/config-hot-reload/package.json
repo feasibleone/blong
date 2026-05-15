@@ -4,6 +4,7 @@
     "description": "PoC suite demonstrating configuration hot reload end-to-end",
     "type": "module",
     "scripts": {
+        "ci-lint": "tsc --noEmit",
         "build": "true",
         "ci-unit": "tap index.test.ts --allow-incomplete-coverage"
     },

@@ -217,7 +217,7 @@ async function sendEncode(
                 message: encodeBuffer,
                 ...(context?.session && {log: context.session.log}),
             });
-        return adapter.imported.pack ? [encodeBuffer, $meta] : encodeBuffer;
+        return adapter.imported.pack ? [encodeBuffer, $meta] : (encodeBuffer as object);
     }
     return [encodeBuffer, $meta];
 }
