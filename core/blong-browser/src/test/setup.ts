@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom';
 import {expect, vi} from 'vitest';
 
+declare global {
+    var IS_REACT_ACT_ENVIRONMENT: boolean;
+}
+
 // Tell React we are in an act-capable test environment so that state updates
 // triggered by internal library timers (e.g. PrimeReact animations) don't
 // generate "not configured to support act" noise.  @testing-library/react sets
