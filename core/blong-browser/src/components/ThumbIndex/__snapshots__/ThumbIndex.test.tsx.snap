@@ -6,7 +6,7 @@ exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
     class="blong-thumb-index blong-thumb-index--horizontal  p-tabview p-component"
     data-pc-name="tabview"
     data-pc-section="root"
-    id="pr_id_17"
+    id="pr_id_0"
   >
     <div
       class="p-tabview-nav-container"
@@ -15,7 +15,7 @@ exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
       <div
         class="p-tabview-nav-content"
         data-pc-section="navcontent"
-        id="pr_id_17_navcontent"
+        id="pr_id_0_navcontent"
       >
         <ul
           class="p-tabview-nav"
@@ -29,12 +29,12 @@ exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_170_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="true"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_17_header_0"
+              id="pr_id_0_header_0"
               role="tab"
               tabindex="0"
             >
@@ -59,12 +59,12 @@ exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_171_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="false"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_17_header_1"
+              id="pr_id_0_header_1"
               role="tab"
               tabindex="-1"
             >
@@ -97,11 +97,11 @@ exports[`ThumbIndex > fires onChange when tab is clicked 1`] = `
       data-pc-section="panelcontainer"
     >
       <div
-        aria-labelledby="pr_id_17_header_0"
+        aria-labelledby="pr_id_0_header_0"
         class="p-tabview-panel"
         data-pc-name="tabpanel"
         data-pc-section="content"
-        id="pr_id_170_content"
+        id="pr_id_0_content"
         role="tabpanel"
       />
     </div>
@@ -115,7 +115,7 @@ exports[`ThumbIndex > handles controlled activeId 1`] = `
     class="blong-thumb-index blong-thumb-index--horizontal  p-tabview p-component"
     data-pc-name="tabview"
     data-pc-section="root"
-    id="pr_id_31"
+    id="pr_id_0"
   >
     <div
       class="p-tabview-nav-container"
@@ -124,7 +124,7 @@ exports[`ThumbIndex > handles controlled activeId 1`] = `
       <div
         class="p-tabview-nav-content"
         data-pc-section="navcontent"
-        id="pr_id_31_navcontent"
+        id="pr_id_0_navcontent"
       >
         <ul
           class="p-tabview-nav"
@@ -138,12 +138,12 @@ exports[`ThumbIndex > handles controlled activeId 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_310_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="false"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_31_header_0"
+              id="pr_id_0_header_0"
               role="tab"
               tabindex="-1"
             >
@@ -168,12 +168,12 @@ exports[`ThumbIndex > handles controlled activeId 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_311_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="true"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_31_header_1"
+              id="pr_id_0_header_1"
               role="tab"
               tabindex="0"
             >
@@ -206,11 +206,11 @@ exports[`ThumbIndex > handles controlled activeId 1`] = `
       data-pc-section="panelcontainer"
     >
       <div
-        aria-labelledby="pr_id_31_header_1"
+        aria-labelledby="pr_id_0_header_1"
         class="p-tabview-panel"
         data-pc-name="tabpanel"
         data-pc-section="content"
-        id="pr_id_311_content"
+        id="pr_id_0_content"
         role="tabpanel"
       />
     </div>
@@ -224,7 +224,7 @@ exports[`ThumbIndex > renders empty tab set (horizontal) 1`] = `
     class="blong-thumb-index blong-thumb-index--horizontal  p-tabview p-component"
     data-pc-name="tabview"
     data-pc-section="root"
-    id="pr_id_3"
+    id="pr_id_0"
   >
     <div
       class="p-tabview-nav-container"
@@ -233,7 +233,7 @@ exports[`ThumbIndex > renders empty tab set (horizontal) 1`] = `
       <div
         class="p-tabview-nav-content"
         data-pc-section="navcontent"
-        id="pr_id_3_navcontent"
+        id="pr_id_0_navcontent"
       >
         <ul
           class="p-tabview-nav"
@@ -264,7 +264,7 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
     class="blong-thumb-index blong-thumb-index--horizontal  p-tabview p-component"
     data-pc-name="tabview"
     data-pc-section="root"
-    id="pr_id_10"
+    id="pr_id_0"
   >
     <div
       class="p-tabview-nav-container"
@@ -273,7 +273,7 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
       <div
         class="p-tabview-nav-content"
         data-pc-section="navcontent"
-        id="pr_id_10_navcontent"
+        id="pr_id_0_navcontent"
       >
         <ul
           class="p-tabview-nav"
@@ -287,12 +287,12 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_100_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="true"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_10_header_0"
+              id="pr_id_0_header_0"
               role="tab"
               tabindex="0"
             >
@@ -317,12 +317,12 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_101_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="false"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_10_header_1"
+              id="pr_id_0_header_1"
               role="tab"
               tabindex="-1"
             >
@@ -347,12 +347,12 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_102_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="false"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_10_header_2"
+              id="pr_id_0_header_2"
               role="tab"
               tabindex="-1"
             >
@@ -385,11 +385,11 @@ exports[`ThumbIndex > renders tab items (horizontal) 1`] = `
       data-pc-section="panelcontainer"
     >
       <div
-        aria-labelledby="pr_id_10_header_0"
+        aria-labelledby="pr_id_0_header_0"
         class="p-tabview-panel"
         data-pc-name="tabpanel"
         data-pc-section="content"
-        id="pr_id_100_content"
+        id="pr_id_0_content"
         role="tabpanel"
       >
         <div>
@@ -520,7 +520,7 @@ exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] =
     class="blong-thumb-index blong-thumb-index--horizontal  p-tabview p-component"
     data-pc-name="tabview"
     data-pc-section="root"
-    id="pr_id_24"
+    id="pr_id_0"
   >
     <div
       class="p-tabview-nav-container"
@@ -529,7 +529,7 @@ exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] =
       <div
         class="p-tabview-nav-content"
         data-pc-section="navcontent"
-        id="pr_id_24_navcontent"
+        id="pr_id_0_navcontent"
       >
         <ul
           class="p-tabview-nav"
@@ -543,12 +543,12 @@ exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] =
             role="presentation"
           >
             <a
-              aria-controls="pr_id_240_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="true"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_24_header_0"
+              id="pr_id_0_header_0"
               role="tab"
               tabindex="0"
             >
@@ -573,12 +573,12 @@ exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] =
             role="presentation"
           >
             <a
-              aria-controls="pr_id_241_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="false"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_24_header_1"
+              id="pr_id_0_header_1"
               role="tab"
               tabindex="-1"
             >
@@ -611,11 +611,11 @@ exports[`ThumbIndex > renders with bottom orientation (horizontal TabView) 1`] =
       data-pc-section="panelcontainer"
     >
       <div
-        aria-labelledby="pr_id_24_header_0"
+        aria-labelledby="pr_id_0_header_0"
         class="p-tabview-panel"
         data-pc-name="tabpanel"
         data-pc-section="content"
-        id="pr_id_240_content"
+        id="pr_id_0_content"
         role="tabpanel"
       >
         <span>
@@ -633,7 +633,7 @@ exports[`ThumbIndex > renders with icons in items 1`] = `
     class="blong-thumb-index blong-thumb-index--horizontal  p-tabview p-component"
     data-pc-name="tabview"
     data-pc-section="root"
-    id="pr_id_38"
+    id="pr_id_0"
   >
     <div
       class="p-tabview-nav-container"
@@ -642,7 +642,7 @@ exports[`ThumbIndex > renders with icons in items 1`] = `
       <div
         class="p-tabview-nav-content"
         data-pc-section="navcontent"
-        id="pr_id_38_navcontent"
+        id="pr_id_0_navcontent"
       >
         <ul
           class="p-tabview-nav"
@@ -656,12 +656,12 @@ exports[`ThumbIndex > renders with icons in items 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_380_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="true"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_38_header_0"
+              id="pr_id_0_header_0"
               role="tab"
               tabindex="0"
             >
@@ -689,12 +689,12 @@ exports[`ThumbIndex > renders with icons in items 1`] = `
             role="presentation"
           >
             <a
-              aria-controls="pr_id_381_content"
+              aria-controls="pr_id_0_content"
               aria-disabled="false"
               aria-selected="false"
               class="p-tabview-nav-link"
               data-pc-section="headeraction"
-              id="pr_id_38_header_1"
+              id="pr_id_0_header_1"
               role="tab"
               tabindex="-1"
             >
@@ -730,11 +730,11 @@ exports[`ThumbIndex > renders with icons in items 1`] = `
       data-pc-section="panelcontainer"
     >
       <div
-        aria-labelledby="pr_id_38_header_0"
+        aria-labelledby="pr_id_0_header_0"
         class="p-tabview-panel"
         data-pc-name="tabpanel"
         data-pc-section="content"
-        id="pr_id_380_content"
+        id="pr_id_0_content"
         role="tabpanel"
       />
     </div>

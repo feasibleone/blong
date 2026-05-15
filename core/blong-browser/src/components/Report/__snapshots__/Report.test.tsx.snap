@@ -9,7 +9,7 @@ exports[`Report > renders report layout without data 1`] = `
       class="blong-report-filters p-panel p-component p-panel-toggleable"
       data-pc-name="panel"
       data-pc-section="root"
-      id="pr_id_11"
+      id="pr_id_0"
     >
       <div
         class="p-panel-header"
@@ -18,7 +18,7 @@ exports[`Report > renders report layout without data 1`] = `
         <span
           class="p-panel-title"
           data-pc-section="title"
-          id="pr_id_11_header"
+          id="pr_id_0_header"
         >
           Filters
         </span>
@@ -27,12 +27,12 @@ exports[`Report > renders report layout without data 1`] = `
           data-pc-section="icons"
         >
           <button
-            aria-controls="pr_id_11_content"
+            aria-controls="pr_id_0_content"
             aria-expanded="false"
             aria-label="Filters"
             class="p-panel-header-icon p-panel-toggler p-link"
             data-pc-section="toggler"
-            id="pr_id_11_label"
+            id="pr_id_0_label"
             role="button"
             type="button"
           >
@@ -107,7 +107,6 @@ exports[`Report > renders report layout without data 1`] = `
         data-pc-section="root"
         data-scrollselectors=".p-datatable-wrapper"
         data-showgridlines="false"
-        pr_id_12=""
       >
         <div
           class="p-datatable-wrapper"
@@ -340,7 +339,7 @@ exports[`Report > renders with metrics panel 1`] = `
       class="blong-report-filters p-panel p-component p-panel-toggleable"
       data-pc-name="panel"
       data-pc-section="root"
-      id="pr_id_53"
+      id="pr_id_0"
     >
       <div
         class="p-panel-header"
@@ -349,7 +348,7 @@ exports[`Report > renders with metrics panel 1`] = `
         <span
           class="p-panel-title"
           data-pc-section="title"
-          id="pr_id_53_header"
+          id="pr_id_0_header"
         >
           Filters
         </span>
@@ -358,12 +357,12 @@ exports[`Report > renders with metrics panel 1`] = `
           data-pc-section="icons"
         >
           <button
-            aria-controls="pr_id_53_content"
+            aria-controls="pr_id_0_content"
             aria-expanded="false"
             aria-label="Filters"
             class="p-panel-header-icon p-panel-toggler p-link"
             data-pc-section="toggler"
-            id="pr_id_53_label"
+            id="pr_id_0_label"
             role="button"
             type="button"
           >
@@ -482,7 +481,6 @@ exports[`Report > renders with metrics panel 1`] = `
         data-pc-section="root"
         data-scrollselectors=".p-datatable-wrapper"
         data-showgridlines="false"
-        pr_id_54=""
       >
         <div
           class="p-datatable-wrapper"
@@ -852,7 +850,7 @@ exports[`Report > renders with title and export buttons 1`] = `
       class="blong-report-filters p-panel p-component p-panel-toggleable"
       data-pc-name="panel"
       data-pc-section="root"
-      id="pr_id_31"
+      id="pr_id_0"
     >
       <div
         class="p-panel-header"
@@ -861,7 +859,7 @@ exports[`Report > renders with title and export buttons 1`] = `
         <span
           class="p-panel-title"
           data-pc-section="title"
-          id="pr_id_31_header"
+          id="pr_id_0_header"
         >
           Filters
         </span>
@@ -870,12 +868,12 @@ exports[`Report > renders with title and export buttons 1`] = `
           data-pc-section="icons"
         >
           <button
-            aria-controls="pr_id_31_content"
+            aria-controls="pr_id_0_content"
             aria-expanded="false"
             aria-label="Filters"
             class="p-panel-header-icon p-panel-toggler p-link"
             data-pc-section="toggler"
-            id="pr_id_31_label"
+            id="pr_id_0_label"
             role="button"
             type="button"
           >
@@ -956,7 +954,6 @@ exports[`Report > renders with title and export buttons 1`] = `
         data-pc-section="root"
         data-scrollselectors=".p-datatable-wrapper"
         data-showgridlines="false"
-        pr_id_32=""
       >
         <div
           class="p-datatable-wrapper"

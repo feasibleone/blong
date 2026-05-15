@@ -1,13 +1,12 @@
-import {act, within} from '@testing-library/react';
-import {userEvent} from '@testing-library/user-event';
-import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
-import React from 'react';
 import type {IWidgetProps} from '@feasibleone/blong';
-import {fireEvent, screen, waitFor} from '@testing-library/react';
+import {act, fireEvent, screen, waitFor, within} from '@testing-library/react';
+import {userEvent} from '@testing-library/user-event';
+import React from 'react';
+import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
-import {widgetRegistry} from '../../widgets/index.js';
 import {render} from '../../test/render.js';
+import {widgetRegistry} from '../../widgets/index.js';
 import {Editor, resolveTabTitle} from './Editor.js';
 
 // Mock confirmPopup so the Reset-when-dirty confirmation accepts immediately.
@@ -61,14 +60,12 @@ const dispatch = vi.fn().mockImplementation(async (method: string) => {
 describe('<Editor />', () => {
     it('Basic render equals snapshot', async () => {
         const {findByTestId} = render(<Basic />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('Loading render equals snapshot', async () => {
         const neverResolve = vi.fn().mockImplementation(() => new Promise(() => {}));
         const {findByTestId} = render(<Loading />, {dispatch: neverResolve});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -81,13 +78,11 @@ describe('<Editor />', () => {
      */
     it('Design render equals snapshot', async () => {
         const {findByTestId} = render(<Design />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('Tabs render equals snapshot', async () => {
         const {findByTestId} = render(<Tabs />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -99,13 +94,11 @@ describe('<Editor />', () => {
      */
     it('CascadedDropdowns render equals snapshot', async () => {
         const {findByTestId, container} = render(<CascadedDropdowns />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (CascadedDropdowns.play) {
             await act(() =>
                 CascadedDropdowns.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -117,13 +110,11 @@ describe('<Editor />', () => {
      */
     it('CascadedTables render equals snapshot', async () => {
         const {findByTestId, container} = render(<CascadedTables />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (CascadedTables.play) {
             await act(() =>
                 CascadedTables.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -135,7 +126,6 @@ describe('<Editor />', () => {
      */
     it('CustomEditors render equals snapshot', async () => {
         const {findByTestId} = render(<CustomEditors />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -147,13 +137,11 @@ describe('<Editor />', () => {
      */
     it('MasterDetail render equals snapshot', async () => {
         const {findByTestId, container} = render(<MasterDetail />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (MasterDetail.play) {
             await act(() =>
                 MasterDetail.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -164,7 +152,6 @@ describe('<Editor />', () => {
      */
     it('MasterDetailPolymorphic render equals snapshot', async () => {
         const {findByTestId, container} = render(<MasterDetailPolymorphic />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (MasterDetailPolymorphic.play) {
             await act(() =>
                 MasterDetailPolymorphic.play!({
@@ -173,7 +160,6 @@ describe('<Editor />', () => {
                 }),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -184,7 +170,6 @@ describe('<Editor />', () => {
      */
     it('Pivot render equals snapshot', async () => {
         const {findByTestId} = render(<Pivot />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -194,7 +179,6 @@ describe('<Editor />', () => {
      */
     it('Pivot BG render equals snapshot', async () => {
         const {findByTestId} = render(<PivotBG />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -205,7 +189,6 @@ describe('<Editor />', () => {
      */
     it('PolymorphicLayout render equals snapshot', async () => {
         const {container} = render(<PolymorphicLayout />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         // PolymorphicLayout renders multiple Editor instances so there are multiple test roots;
         // snapshot the outermost container instead.
         expect(container.firstChild).toMatchSnapshot();
@@ -213,13 +196,11 @@ describe('<Editor />', () => {
 
     it('ResponsiveLayout render equals snapshot', async () => {
         const {findByTestId} = render(<ResponsiveLayout />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('TabbedLayout render equals snapshot', async () => {
         const {findByTestId} = render(<TabbedLayout />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -231,32 +212,27 @@ describe('<Editor />', () => {
      */
     it('ThumbIndexLayout render equals snapshot', async () => {
         const {findByTestId} = render(<ThumbIndexLayout />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('Submit render equals snapshot', async () => {
         const {findByTestId, container} = render(<Submit />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (Submit.play) {
             await act(() =>
                 Submit.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('Validation render equals snapshot', async () => {
         // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
         const {findByTestId, container} = render(Validation(Validation.args ?? {}), {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (Validation.play) {
             await act(() =>
                 Validation.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -273,13 +249,11 @@ describe('<Editor />', () => {
             const {findByTestId, container} = render(ValidationBG(ValidationBG.args ?? {}), {
                 dispatch,
             });
-            await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
             if (ValidationBG.play) {
                 await act(() =>
                     ValidationBG.play!({canvas: within(container), userEvent: userEvent.setup()}),
                 );
             }
-            await act(() => new Promise(resolve => setTimeout(resolve, 500)));
             expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
         } finally {
             useAppStore.getState().setTranslations({});
@@ -292,19 +266,16 @@ describe('<Editor />', () => {
         const {findByTestId, container} = render(ServerValidation(ServerValidation.args ?? {}), {
             dispatch,
         });
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (ServerValidation.play) {
             await act(() =>
                 ServerValidation.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('Toolbar render equals snapshot', async () => {
         const {findByTestId} = render(<Toolbar />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -316,11 +287,9 @@ describe('<Editor />', () => {
      */
     it('Files render equals snapshot', async () => {
         const {findByTestId, container} = render(<Files />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (Files.play) {
             await act(() => Files.play!({canvas: within(container), userEvent: userEvent.setup()}));
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -330,43 +299,36 @@ describe('<Editor />', () => {
      */
     it('FilesInTab render equals snapshot', async () => {
         const {findByTestId, container} = render(<FilesInTab />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (FilesInTab.play) {
             await act(() =>
                 FilesInTab.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('Steps render equals snapshot', async () => {
         const {findByTestId} = render(<Steps />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('StepsDisabledBack render equals snapshot', async () => {
         const {findByTestId, container} = render(<StepsDisabledBack />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (StepsDisabledBack.play) {
             await act(() =>
                 StepsDisabledBack.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
     it('StepsHiddenBack render equals snapshot', async () => {
         const {findByTestId, container} = render(<StepsHiddenBack />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (StepsHiddenBack.play) {
             await act(() =>
                 StepsHiddenBack.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -378,13 +340,11 @@ describe('<Editor />', () => {
      */
     it('EditorTabsExplorer render equals snapshot', async () => {
         const {findByTestId, container} = render(<EditorWithExplorer />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 1000)));
         if (EditorWithExplorer.play) {
             await act(() =>
                 EditorWithExplorer.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
         }
-        await act(() => new Promise(resolve => setTimeout(resolve, 500)));
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
@@ -392,14 +352,12 @@ describe('<Editor />', () => {
 
     it('Basic: role="toolbar" element is present', async () => {
         const {container} = render(<Basic />, {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
         expect(container.querySelector('[role="toolbar"]')).toBeTruthy();
     });
 
     it('Basic: Edit button is present in read-only mode', async () => {
         // Basic story is in editMode; render with editMode=false to get the Edit button.
         const {container} = render(Basic({editMode: false}), {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
         // Edit button renders as icon-only — check aria-label, not text content.
         const editBtn = container.querySelector('[aria-label="Edit"]');
         expect(editBtn).toBeTruthy();
@@ -408,7 +366,6 @@ describe('<Editor />', () => {
     it('Tabs: tab navigation (role="menubar") is present', async () => {
         // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
         const {container} = render(Tabs(Tabs.args ?? {}), {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
         // PrimeReact 10: TabMenu renders role="menubar" (was role="tablist" in v8)
         expect(container.querySelector('[role="menubar"]')).toBeTruthy();
     });
@@ -420,7 +377,6 @@ describe('<Editor />', () => {
     it('Steps: steps indicator (ol/role=tablist) is present', async () => {
         // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
         const {container} = render(Steps(Steps.args ?? {}), {dispatch});
-        await act(() => new Promise(resolve => setTimeout(resolve, 200)));
         const stepsList = container.querySelector(
             '.p-steps-list, .p-steps, [role="tablist"], .blong-form-steps',
         );
@@ -776,13 +732,13 @@ describe('Editor mode+layout resolution', () => {
     // Two cards with distinct labels so we can assert which card is rendered
     const cards = {
         editCard: {label: 'Edit Card', widgets: ['coralName']},
-        newCard:  {label: 'New Card',  widgets: ['coralName']},
+        newCard: {label: 'New Card', widgets: ['coralName']},
     };
 
     const layouts = {
-        edit:       ['editCard'],
-        editSplit:  ['editCard'],
-        newEdit:    ['newCard'],   // mode='new', layout='edit' → 'newEdit'
+        edit: ['editCard'],
+        editSplit: ['editCard'],
+        newEdit: ['newCard'], // mode='new', layout='edit' → 'newEdit'
     };
 
     it('mode="new", layout="edit" falls through to newEdit layout', async () => {
@@ -852,9 +808,9 @@ describe('createAction / saveAction separation', () => {
 
     it('first save calls createAction, second save calls saveAction (not createAction)', async () => {
         const createMock = vi.fn().mockResolvedValue({coralName: 'Brain Coral', coralId: 99});
-        const editMock   = vi.fn().mockResolvedValue({coralName: 'Brain Coral II', coralId: 99});
+        const editMock = vi.fn().mockResolvedValue({coralName: 'Brain Coral II', coralId: 99});
         const dispatch = vi.fn().mockImplementation(async (method: string, params: unknown) => {
-            if (method === 'coral.add')  return createMock(params);
+            if (method === 'coral.add') return createMock(params);
             if (method === 'coral.edit') return editMock(params);
             return {};
         });

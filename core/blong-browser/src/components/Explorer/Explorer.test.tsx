@@ -1,4 +1,4 @@
-import {fireEvent, waitFor} from '@testing-library/react';
+import {act, fireEvent, waitFor} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
 import {render} from '../../test/render.js';
 import {Explorer} from './Explorer.js';
@@ -152,7 +152,7 @@ describe('Explorer', () => {
         expect(container.querySelector('.p-datatable')).toBeInTheDocument();
     });
 
-    it('renders with navigator prop', () => {
+    it('renders with navigator prop', async () => {
         const {container} = render(
             <Explorer
                 schema={schema}
@@ -171,6 +171,8 @@ describe('Explorer', () => {
         );
         // Should render with navigator splitter
         expect(container.querySelector('.blong-explorer')).toBeInTheDocument();
+        // Drain the resolved dispatch state updates.
+        await act(async () => {});
     });
 
     it('renders nav toggle button when children are provided', () => {

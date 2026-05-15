@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {fireEvent, render, screen} from '../test/render.js';
+import {act, fireEvent, render, screen} from '../test/render.js';
 import {ComponentPalette} from './ComponentPalette.js';
 import {DesignHandle} from './DesignHandle.js';
 import {DesignModeProvider, useDesignModeContext} from './DesignModeContext.js';
@@ -292,8 +292,8 @@ describe('DesignModeContext — context functions', () => {
             </DesignModeProvider>,
         );
         fireEvent.click(getByText('save'));
-        // Wait micro tick
-        await Promise.resolve();
+        // Drain the async onSave promise and any resulting state updates.
+        await act(async () => {});
         expect(onSave).toHaveBeenCalled();
     });
 

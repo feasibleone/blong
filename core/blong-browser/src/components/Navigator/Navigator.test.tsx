@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {render, screen} from '../../test/render.js';
+import {act, render, screen} from '../../test/render.js';
 import {Navigator} from './Navigator.js';
 
 describe('Navigator', () => {
@@ -36,7 +36,7 @@ describe('Navigator', () => {
         expect(container.querySelector('.blong-navigator')).toBeTruthy();
     });
 
-    it('renders with fetch function', () => {
+    it('renders with fetch function', async () => {
         const fetchFn = vi.fn().mockResolvedValue({items: [{id: 1, parentId: null, name: 'Root'}]});
         const {container} = render(
             <Navigator
@@ -48,5 +48,7 @@ describe('Navigator', () => {
             />,
         );
         expect(container.querySelector('.blong-navigator')).toBeTruthy();
+        // Drain the resolved promise state update so it doesn't leak outside the test.
+        await act(async () => {});
     });
 });

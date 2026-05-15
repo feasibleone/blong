@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {fireEvent, render, waitFor} from '../../test/render.js';
+import {act, fireEvent, render, waitFor} from '../../test/render.js';
 import {Report} from './Report.js';
 
 const schema = {
@@ -142,16 +142,15 @@ describe('Report', () => {
             {dispatch},
         );
 
-        // Wait for data to load
+        // Wait for data to load and render
         await waitFor(() => dispatch.mock.calls.length > 0);
-        await new Promise(r => setTimeout(r, 50));
 
         // Click any button with pi-download icon
         const downloadIcon = container.querySelector('.pi-download') as HTMLElement | null;
         if (downloadIcon) {
             // Click the parent button
             const btn = downloadIcon.closest('button') as HTMLElement | null;
-            if (btn) fireEvent.click(btn);
+            if (btn) await act(async () => { fireEvent.click(btn); });
         }
 
         // exportCSV with empty rows should early-return, with rows should call createObjectURL

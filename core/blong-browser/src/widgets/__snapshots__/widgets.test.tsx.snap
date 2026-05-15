@@ -139,7 +139,7 @@ exports[`DateTimeWidget > renders 1`] = `
   >
     <input
       aria-autocomplete="none"
-      aria-controls="pr_id_87_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       autocomplete="off"
@@ -152,7 +152,7 @@ exports[`DateTimeWidget > renders 1`] = `
       type="text"
     />
     <button
-      aria-controls="pr_id_87_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       aria-label="Choose Date"
@@ -186,7 +186,7 @@ exports[`DateWidget > renders 1`] = `
   >
     <input
       aria-autocomplete="none"
-      aria-controls="pr_id_29_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       autocomplete="off"
@@ -199,7 +199,7 @@ exports[`DateWidget > renders 1`] = `
       type="text"
     />
     <button
-      aria-controls="pr_id_29_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       aria-label="Choose Date"
@@ -233,7 +233,7 @@ exports[`DateWidget > renders readOnly 1`] = `
   >
     <input
       aria-autocomplete="none"
-      aria-controls="pr_id_61_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       autocomplete="off"
@@ -248,7 +248,7 @@ exports[`DateWidget > renders readOnly 1`] = `
       type="text"
     />
     <button
-      aria-controls="pr_id_61_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       aria-label="Choose Date"
@@ -283,7 +283,7 @@ exports[`DateWidget > renders with value 1`] = `
   >
     <input
       aria-autocomplete="none"
-      aria-controls="pr_id_45_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       autocomplete="off"
@@ -296,7 +296,7 @@ exports[`DateWidget > renders with value 1`] = `
       type="text"
     />
     <button
-      aria-controls="pr_id_45_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       aria-label="Choose Date"
@@ -983,7 +983,7 @@ exports[`TimeWidget > renders 1`] = `
   >
     <input
       aria-autocomplete="none"
-      aria-controls="pr_id_74_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       autocomplete="off"
@@ -996,7 +996,7 @@ exports[`TimeWidget > renders 1`] = `
       type="text"
     />
     <button
-      aria-controls="pr_id_74_panel"
+      aria-controls="pr_id_0_panel"
       aria-expanded="false"
       aria-haspopup="dialog"
       aria-label="Choose Date"

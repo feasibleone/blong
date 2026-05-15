@@ -2,6 +2,7 @@ import {render as tlRender, type RenderOptions, type RenderResult} from '@testin
 import React, {type ReactElement} from 'react';
 import {vi} from 'vitest';
 import {BlongUiProvider, type DispatchFn} from '../context/BlongUiContext.js';
+import {PrimeReactProvider} from '../primereact/index.js';
 
 export interface IRenderOptions extends Omit<RenderOptions, 'wrapper'> {
     dispatch?: DispatchFn;
@@ -10,12 +11,14 @@ export interface IRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 function makeWrapper(dispatch: DispatchFn) {
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
-            <BlongUiProvider
-                dispatch={dispatch}
-                schemaUrl="/test-schema.json"
-            >
-                {children}
-            </BlongUiProvider>
+            <PrimeReactProvider value={{cssTransition: false, ripple: false}}>
+                <BlongUiProvider
+                    dispatch={dispatch}
+                    schemaUrl="/test-schema.json"
+                >
+                    {children}
+                </BlongUiProvider>
+            </PrimeReactProvider>
         );
     };
 }

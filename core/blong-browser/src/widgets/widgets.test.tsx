@@ -5,7 +5,7 @@
 import type {IWidgetProps} from '@feasibleone/blong';
 import {describe, expect, it, vi} from 'vitest';
 import React from 'react';
-import {fireEvent, render} from '../test/render.js';
+import {act, fireEvent, render} from '../test/render.js';
 import {FormStateContext} from '../components/Form/FormContext.js';
 
 import {BooleanWidget} from './BooleanWidget.js';
@@ -556,8 +556,10 @@ describe('TableWidget — listAction mode', () => {
             {dispatch},
         );
         expect(container.querySelector('.blong-table-widget')).toBeTruthy();
-        // Resolve so there are no hanging promises
-        resolveDispatch({items: []});
+        // Resolve inside act so the state update from the resolved promise is tracked.
+        await act(async () => {
+            resolveDispatch({items: []});
+        });
     });
 
     it('renders rows returned by listAction dispatch', async () => {
@@ -588,7 +590,7 @@ describe('TableWidget — listAction mode', () => {
         expect(dispatch).toHaveBeenCalledWith('testAction', expect.any(Object));
     });
 
-    it('merges listParams into the dispatch call', () => {
+    it('merges listParams into the dispatch call', async () => {
         const dispatch = vi.fn().mockResolvedValue({items: []});
         render(
             <TableWidget
@@ -610,9 +612,11 @@ describe('TableWidget — listAction mode', () => {
             'testAction',
             expect.objectContaining({tenantId: 42}),
         );
+        // Drain the resolved dispatch promise so no state updates leak outside the test.
+        await act(async () => {});
     });
 
-    it('includes parent cascade filter in dispatch call when parent selection is set', () => {
+    it('includes parent cascade filter in dispatch call when parent selection is set', async () => {
         const dispatch = vi.fn().mockResolvedValue({items: []});
         render(
             <FormStateContext
@@ -647,6 +651,8 @@ describe('TableWidget — listAction mode', () => {
             'coralFind',
             expect.objectContaining({categoryId: 99}),
         );
+        // Drain the resolved dispatch promise so no state updates leak outside the test.
+        await act(async () => {});
     });
 
     it('renders paginator when total > 0', async () => {
@@ -795,5 +801,7 @@ describe('NavigatorWidget', () => {
             {dispatch},
         );
         expect(container.querySelector('.blong-navigator')).toBeTruthy();
+        // Drain the resolved dispatch promise so no state updates leak outside the test.
+        await act(async () => {});
     });
 });

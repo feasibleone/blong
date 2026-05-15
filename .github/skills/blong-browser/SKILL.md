@@ -629,12 +629,58 @@ tests by passing `{canvas: within(container), userEvent}`. For translated storie
 ```ts
 MyStory.play = async ({canvas, userEvent}) => {
     await userEvent.click(await canvas.findByText('Row label'));
-    await new Promise(r => setTimeout(r, 200)); // wait for reactive updates
+    // A small wait may be needed in Storybook (real browser, real CSS transitions).
+    // In vitest unit tests cssTransition is disabled so no wait is necessary there.
+    await new Promise(r => setTimeout(r, 200));
 };
 ```
 
 **Important**: `<Form>` must always have a real `onSubmit` handler attached (via `handleSubmit` even
 when no `onSubmit` prop is provided) — otherwise the browser will navigate on form submit.
+
+### Unit test conventions for blong-browser
+
+Tests live in `src/**/*.test.tsx` and run with Vitest (`npx vitest run`).
+
+**Test render wrapper** (`src/test/render.tsx`): Use `render()` from `../../test/render.js` — it
+wraps the component in `PrimeReactProvider value={{cssTransition: false, ripple: false}}` and
+`BlongUiProvider`. This disables all PrimeReact animations, so overlays and dropdowns open
+synchronously with no real-time delays.
+
+**`pr_id_*` normalisation** (`src/test/setup.ts`): A snapshot serialiser strips PrimeReact's
+internal incrementing component IDs (`pr_id_55=""`, `aria-controls="pr_id_55_panel"`, …) from every
+DOM snapshot. This makes snapshots counter-independent — they reflect structure, not identity.
+
+**No `setTimeout` waits**: Because dispatch mocks resolve immediately and transitions are
+synchronous, arbitrary `setTimeout` waits are not needed. `await findByTestId(...)` and
+`await waitFor(...)` already yield to pending microtasks on their first poll. Do not add
+`await act(async () => { await new Promise(r => setTimeout(r, N)); })` guards unless a test
+genuinely depends on real elapsed time (e.g. debounce logic).
+
+**Snapshot tests**:
+
+```tsx
+it('Basic render equals snapshot', async () => {
+    const {findByTestId} = render(<Basic />, {dispatch});
+    expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
+});
+```
+
+After interactions via a `play()` function, wrap it in `act` so React flushes before the snapshot:
+
+```tsx
+it('After interaction equals snapshot', async () => {
+    const {findByTestId, container} = render(<MyStory />, {dispatch});
+    if (MyStory.play) {
+        await act(() =>
+            MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}),
+        );
+    }
+    expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
+});
+```
+
+Update stale snapshots with `npx vitest run -u`.
 
 ## Planned / stub features (not yet implemented)
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import {describe, expect, it} from 'vitest';
-import {render, screen, waitFor} from '../../test/render.js';
+import {act, render, screen, waitFor} from '../../test/render.js';
 import {Async} from './Async.js';
 
 describe('Async', () => {
@@ -17,8 +17,10 @@ describe('Async', () => {
             />,
         );
         expect(screen.getByTestId('loading')).toBeInTheDocument();
-        // Cleanup: resolve to avoid dangling promise
-        resolve(() => null);
+        // Resolve inside act so the Suspense state update is tracked.
+        await act(async () => {
+            resolve(() => null);
+        });
     });
 
     it('renders the loaded component', async () => {
@@ -51,6 +53,9 @@ describe('Async', () => {
         const {container} = render(<Async component={component} />);
         // The fallback is a ProgressBar — check for the blong-async-loading container
         expect(container.querySelector('.blong-async-loading')).toBeInTheDocument();
-        resolve(() => null);
+        // Resolve inside act so the Suspense state update is tracked.
+        await act(async () => {
+            resolve(() => null);
+        });
     });
 });

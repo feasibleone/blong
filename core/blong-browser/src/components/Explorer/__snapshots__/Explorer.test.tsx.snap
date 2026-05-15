@@ -245,7 +245,6 @@ exports[`Explorer > renders empty state with no listAction 1`] = `
           data-pc-section="root"
           data-scrollselectors=".p-datatable-wrapper"
           data-showgridlines="false"
-          pr_id_9=""
           style="flex: 1 1 0%; min-height: 0;"
         >
           <div
@@ -573,7 +572,6 @@ exports[`Explorer > renders toolbar 1`] = `
           data-pc-section="root"
           data-scrollselectors=".p-datatable-wrapper"
           data-showgridlines="false"
-          pr_id_23=""
           style="flex: 1 1 0%; min-height: 0;"
         >
           <div
@@ -822,7 +820,6 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
           data-pc-section="root"
           data-scrollselectors=".p-datatable-wrapper"
           data-showgridlines="false"
-          pr_id_37=""
           style="flex: 1 1 0%; min-height: 0;"
         >
           <div
@@ -1017,7 +1014,7 @@ exports[`Explorer > renders with data rows after dispatch resolves 1`] = `
                         aria-checked="false"
                         class="p-radiobutton-input"
                         data-pc-section="input"
-                        name="pr_id_37_dt_radio"
+                        name="pr_id_0_dt_radio"
                         type="radio"
                       />
                       <div
