@@ -1,8 +1,8 @@
 import type {ChainStep, ILib} from '@feasibleone/blong';
 
+import {coerceMatchParam, compileCucumberExpression} from './matchStep.ts';
 import type {IGherkinFeature, IGherkinScenario, IGherkinStep} from './parseGherkin.ts';
 import {expandOutline, parseGherkin} from './parseGherkin.ts';
-import {compileCucumberExpression, coerceMatchParam} from './matchStep.ts';
 
 type StepDefinitionFn = (...params: unknown[]) => ChainStep;
 type GroupFn = ILib['group'];
@@ -30,11 +30,8 @@ function buildCompiledPatterns(stepDefs: IStepDefinitions): CompiledPattern[] {
     ]);
 }
 
-function resolveStep(
-    step: IGherkinStep,
-    compiled: CompiledPattern[],
-): ChainStep {
-    for (const [regex, pattern, fn] of compiled) {
+function resolveStep(step: IGherkinStep, compiled: CompiledPattern[]): ChainStep {
+    for (const [regex, , fn] of compiled) {
         const match = regex.exec(step.text);
         if (match) {
             const params = match.slice(1).map(coerceMatchParam);
@@ -43,7 +40,7 @@ function resolveStep(
     }
     throw new Error(
         `No step definition found for: "${step.keyword} ${step.text}"\n` +
-        `Available patterns: ${compiled.map(([, p]) => String(p)).join(', ')}`,
+            `Available patterns: ${compiled.map(([, p]) => String(p)).join(', ')}`,
     );
 }
 
@@ -82,8 +79,7 @@ export function featureToSteps(
     stepDefs: IStepDefinitions,
     options: IFeatureToStepsOptions,
 ): ReturnType<ReturnType<GroupFn>> {
-    const feature: IGherkinFeature =
-        typeof source === 'string' ? parseGherkin(source) : source;
+    const feature: IGherkinFeature = typeof source === 'string' ? parseGherkin(source) : source;
     const {group, name} = options;
     const compiled = buildCompiledPatterns(stepDefs);
     const backgroundSteps = feature.background?.steps ?? [];

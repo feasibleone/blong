@@ -13,7 +13,7 @@ type Load = (...params: unknown[]) => Promise<{
  */
 export default async (load: Load): Promise<void> => {
     const platform = await load(server, 'int-adapter', 'int-adapter', ['integration']);
-    await platform.start({});
+    await platform.start();
     await platform.test();
     if (process.env.CI) await platform.stop();
 };

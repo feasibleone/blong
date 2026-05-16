@@ -15,7 +15,7 @@ import log from '../log.ts';
  * - echoRequestSend: prepares idle send echo requests
  * - idleSendEventReceive: handles idle send events
  */
-export default adapter(blong => ({
+export default adapter(() => ({
     extends: 'adapter.tcp',
     activation: {
         default: {

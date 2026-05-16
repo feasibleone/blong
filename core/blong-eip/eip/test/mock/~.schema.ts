@@ -1,7 +1,3 @@
-/* eslint-disable indent,semi */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @rushstack/typedef-var */
-
 import {validationHandlers} from '@feasibleone/blong';
 
 export default validationHandlers({});

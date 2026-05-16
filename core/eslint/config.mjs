@@ -17,6 +17,7 @@ export default defineConfig([
             'public/**',
             'rush-logs/**',
             'coverage/**',
+            '**/.eslintrc*.cjs',
         ],
     },
     {
@@ -39,5 +40,19 @@ export default defineConfig([
     {
         ...eslintReact.configs.recommended,
         files: ['**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}'],
+    },
+    // Allow _ prefix convention for intentionally unused variables/parameters
+    {
+        files: ['**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+        rules: {
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_',
+                },
+            ],
+        },
     },
 ]);

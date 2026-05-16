@@ -186,11 +186,7 @@ export default class Watch extends Internal implements IWatch {
         if (schema.length)
             this.#platform.writeFileSync(
                 this.#platform.join(dir, '~.schema.ts'),
-                Formatter.Format(`/* eslint-disable indent,semi */
-            /* eslint-disable @typescript-eslint/naming-convention */
-            /* eslint-disable @rushstack/typedef-var */
-
-            import {validationHandlers} from '@feasibleone/blong';
+                Formatter.Format(`import {validationHandlers} from '@feasibleone/blong';
             import { Type, type Static } from 'typebox';
 
             ${TypeScriptToTypeBox.Generate(schema.sort().join('\n'), {useTypeBoxImport: false}).trim()}

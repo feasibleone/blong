@@ -11,7 +11,7 @@ export default handler(
             _params: Record<string, never>,
             _$meta: Record<string, unknown>,
         ): Promise<{table: string; existed: boolean}> {
-            const existed: boolean = await this.config?.context?.queryBuilder?.schema.hasTable('item');
+            const existed = await this.config?.context?.queryBuilder?.schema.hasTable('item');
             if (!existed) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await this.config?.context?.queryBuilder?.schema.createTable('item', (table: any) => {

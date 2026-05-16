@@ -69,11 +69,7 @@ function load({
 
     if (params) configs.push(params);
 
-    let {
-        configName,
-        mergeOptions = {},
-        suite = 'blong',
-    } = merge<{configName?: string; mergeOptions?: object; suite?: string}>(
+    const _merged = merge<{configName?: string; mergeOptions?: object; suite?: string}>(
         {} as {configName?: string; mergeOptions?: object; suite?: string},
         ...configs.map((config = {}) => {
             return {
@@ -83,6 +79,9 @@ function load({
             };
         }),
     );
+    const mergeOptions = _merged.mergeOptions ?? {};
+    const suite = _merged.suite ?? 'blong';
+    let configName = _merged.configName;
 
     const suffix = baseConfig.env[baseConfig.env.length - 1] || 'dev';
     if (!configName) {

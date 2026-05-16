@@ -59,8 +59,7 @@ Example:
 
 ```ts
 // realmname/test/test/testSomething.ts
-import {IMeta, handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(({
     lib: {group},
@@ -73,7 +72,7 @@ export default handler(({
         group(name)([
             testLoginTokenCreate({}, $meta), // reuse another test
             async function testCase(
-                assert: typeof Assert,
+                assert: IAssert,
                 {$meta}: {$meta: IMeta}
             ) {
                 const result = await subjectObjectPredicate<{data: string}>(
@@ -204,7 +203,7 @@ patterns. A reusable test handler defines custom parameters with default values:
 export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
     testTransfer: ({name = 'transfer', amount = 100, currency = 'USD', userId = 1}, $meta) =>
         group(name)([
-            async function createTransfer(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            async function createTransfer(assert: IAssert, {$meta}: {$meta: IMeta}) {
                 const result = await transferTransferCreate({amount, currency, userId}, $meta);
                 assert.ok(result.transferId, 'Transfer ID returned');
                 assert.equal(result.amount, amount, 'Amount matches');

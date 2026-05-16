@@ -22,7 +22,7 @@ export default handler(
         testVaultSecretCrud: ({name = 'vault secret CRUD'}: {name?: string}) =>
             group(name)([
                 // ── 1. Wipe any leftover secrets from previous runs ────────
-                async function cleanSecrets(assert: typeof Assert, {$meta}: StepMeta) {
+                async function cleanSecrets(assert: IAssert, {$meta}: StepMeta) {
                     for (const secret of secrets) {
                         try {
                             await secretsSecretRemove({path: secret.path}, $meta);
@@ -36,7 +36,7 @@ export default handler(
 
                 // ── 2. put — write the first secret ───────────────────────
                 async function writeAlpha(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanSecrets}: StepMeta & {cleanSecrets: Promise<unknown>},
                 ) {
                     await cleanSecrets;
@@ -65,7 +65,7 @@ export default handler(
 
                 // ── 4. put — write the second secret ──────────────────────
                 async function writeBeta(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, cleanSecrets}: StepMeta & {cleanSecrets: Promise<unknown>},
                 ) {
                     await cleanSecrets;
@@ -80,7 +80,7 @@ export default handler(
 
                 // ── 5. list — list secrets at the test prefix ──────────────
                 async function listSecrets(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         writeAlpha,
@@ -108,7 +108,7 @@ export default handler(
 
                 // ── 6. put — overwrite alpha with updated data ─────────────
                 async function updateAlpha(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, readAlpha}: StepMeta & {readAlpha: Promise<unknown>},
                 ) {
                     await readAlpha;
@@ -139,7 +139,7 @@ export default handler(
 
                 // ── 8. remove — delete alpha ───────────────────────────────
                 async function deleteAlpha(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         verifyUpdate,
@@ -158,7 +158,7 @@ export default handler(
 
                 // ── 9. remove — delete beta ────────────────────────────────
                 async function deleteBeta(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, deleteAlpha}: StepMeta & {deleteAlpha: Promise<unknown>},
                 ) {
                     await deleteAlpha;
@@ -169,7 +169,7 @@ export default handler(
 
                 // ── 10. list — verify both secrets are removed ─────────────
                 async function verifyDeletion(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, deleteBeta}: StepMeta & {deleteBeta: Promise<unknown>},
                 ) {
                     await deleteBeta;

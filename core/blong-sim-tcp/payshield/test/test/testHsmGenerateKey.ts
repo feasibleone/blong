@@ -13,7 +13,7 @@ import type Assert from 'node:assert';
  * 6. Response is parsed and returned
  */
 export default handler(({lib: {group}, handler: {hsmGenerateKey}}) => ({
-    testHsmGenerateKey: ({name = 'hsm generate key'}, $meta) =>
+    testHsmGenerateKey: ({name = 'hsm generate key'}: {name?: string}) =>
         group(name)([
             async function generateKey(assert: typeof Assert, {$meta}) {
                 const result = await hsmGenerateKey<{key: string; kcv: string}>(

@@ -1,4 +1,4 @@
-import {library} from '@feasibleone/blong';
+import {library, type IMeta} from '@feasibleone/blong';
 
 export default library<{
     pciDssMode: string;
@@ -10,7 +10,7 @@ export default library<{
             'payshieldport.generateKey': generateKey,
             'error.ctp.hsm.invalidParameters': invalidParameters,
         },
-        lib: {assert, keysByType},
+        lib: {check, keysByType},
     }) => ({
         /**
          * A0 (A1) - Generate a Key
@@ -36,9 +36,9 @@ export default library<{
                 tr31BlockData,
                 lmkIdentifier = lmkIdentifierDefault,
             }: Record<string, string>,
-            $meta: unknown,
+            $meta: IMeta,
         ) {
-            const keyTypeCode = assert(!pciDssMode, true, 'keyTypeCodeNonPci', 'keyTypeCodePci');
+            const keyTypeCode = check(!pciDssMode, true, 'keyTypeCodeNonPci', 'keyTypeCodePci');
             let delimiter;
             let tr31BlockDataLen;
 
@@ -49,13 +49,13 @@ export default library<{
                     dukptMasterKeyType = '';
                     dukptMasterKey = '';
                     ksn = '';
-                    zkaMasterKeyType = assert(
+                    zkaMasterKeyType = check(
                         !!keysByType[zkaMasterKeyType],
                         true,
                         keysByType[zkaMasterKeyType][keyTypeCode],
                         '',
                     );
-                    zkaRndi = assert(zkaOption, '0', zkaRndi, '');
+                    zkaRndi = check(zkaOption, '0', zkaRndi, '');
                 } else if (deriveKeyMode === '0') {
                     zkaMasterKeyType = '';
                     zkaMasterKey = '';
@@ -94,14 +94,14 @@ export default library<{
             }
 
             const delimiterLength = delimiter.length;
-            const keyZmkTmkFlagLength = assert(
+            const keyZmkTmkFlagLength = check(
                 !!keyZmkTmkFlag,
                 true,
                 () => keyZmkTmkFlag.toString().length,
                 0,
             );
-            const keyZmkTmkLength = assert(!!keyZmkTmk, true, () => keyZmkTmk.length, 0);
-            const keySchemeZmkTmkLength = assert(
+            const keyZmkTmkLength = check(!!keyZmkTmk, true, () => keyZmkTmk.length, 0);
+            const keySchemeZmkTmkLength = check(
                 !!keySchemeZmkTmk,
                 true,
                 () => keySchemeZmkTmk.length,
@@ -118,7 +118,7 @@ export default library<{
             const {key, rest} = await generateKey<{key: string; rest: string}>(
                 {
                     mode,
-                    keyType: assert(
+                    keyType: check(
                         !!keysByType[keyType],
                         true,
                         keysByType[keyType][keyTypeCode],
@@ -171,7 +171,7 @@ export default library<{
             returnResult = Object.assign(
                 {},
                 returnResult,
-                assert(zkaOption, '1', {zkaRndi: restString.slice(counter)}, {}),
+                check(zkaOption, '1', {zkaRndi: restString.slice(counter)}, {}),
             );
 
             return returnResult;

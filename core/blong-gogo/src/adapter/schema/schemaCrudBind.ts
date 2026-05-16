@@ -20,6 +20,7 @@ export default library(
             handlers: Record<string, (params: Record<string, unknown>) => Promise<unknown>>;
             schemas: Record<string, TFunction>;
         }> {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const knex = (config as Record<string, any>)?.context?.queryBuilder;
             if (!knex) throw new Error('Knex queryBuilder not available in adapter context');
 

@@ -20,7 +20,7 @@ type StepMeta = {$meta: IMeta};
  */
 export default handler(
     ({
-        lib: {group, checkpoint},
+        lib: {group, checkpoint, sortClientScopes},
         handler: {authClientAdd, authClientFind, authClientGet, authClientEdit, authClientRemove},
     }) => ({
         testKeycloakClientCrud: ({name = 'keycloak client CRUD'}: {name?: string}) =>
@@ -28,7 +28,7 @@ export default handler(
             // `attributes` — contains `client.secret.creation.time` (a Unix timestamp).
             group(name, {mask: ['id', 'secret', 'attributes']})([
                 // ── 1. Clean up leftover test client if present ────────────
-                async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
+                async function ensureClean(assert: IAssert, {$meta}: StepMeta) {
                     try {
                         const clients = (await authClientFind(
                             {realm: testClient.realm, clientId: testClient.clientId},
@@ -48,7 +48,7 @@ export default handler(
 
                 // ── 2. add — create the test client ───────────────────────
                 async function addClient(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, ensureClean}: StepMeta & {ensureClean: Promise<unknown>},
                 ) {
                     await ensureClean;
@@ -60,7 +60,7 @@ export default handler(
 
                 // ── 3. find — locate the client by clientId ───────────────
                 async function findClients(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addClient}: StepMeta & {addClient: Promise<CreateResult>},
                 ) {
                     await addClient;
@@ -88,15 +88,17 @@ export default handler(
                     // Snapshot captures clientId, enabled, protocol, and all other fields.
                     // Chain-level mask handles the Keycloak `id` UUID.
                     assert.snapshot();
-                    return (await authClientGet(
-                        {realm: testClient.realm, id: (await addClient).id},
-                        $meta,
-                    )) as ClientResult & {id: string};
+                    return sortClientScopes(
+                        await authClientGet(
+                            {realm: testClient.realm, id: (await addClient).id},
+                            $meta,
+                        ),
+                    ) as ClientResult & {id: string};
                 },
 
                 // ── 5. edit — update the client name ──────────────────────
                 async function editClient(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addClient}: StepMeta & {addClient: Promise<CreateResult>},
                 ) {
                     const {id} = await addClient;
@@ -112,10 +114,12 @@ export default handler(
                 ) {
                     // Snapshot captures updated name alongside all other fields.
                     assert.snapshot();
-                    return (await authClientGet(
-                        {realm: testClient.realm, id: (await editClient).id},
-                        $meta,
-                    )) as ClientResult;
+                    return sortClientScopes(
+                        await authClientGet(
+                            {realm: testClient.realm, id: (await editClient).id},
+                            $meta,
+                        ),
+                    ) as ClientResult;
                 },
 
                 // Phase checkpoint: snapshot both read-back results together
@@ -123,7 +127,7 @@ export default handler(
 
                 // ── 7. remove — delete the test client ────────────────────
                 async function removeClient(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         verifyEdit,

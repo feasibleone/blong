@@ -140,15 +140,14 @@ They live in `test/test/` and follow the [test handler pattern](./test).
 
 ```ts
 // realmname/test/test/testEipClaim.ts
-import {type IMeta, handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageClaim}}) => ({
         testEipClaim: ({name = 'eip claim'}: {name?: string}, $meta: IMeta) =>
             group(name)([
                 async function claimCheck(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta}: {$meta: IMeta},
                 ) {
                     const result = (await eipMessageClaim(

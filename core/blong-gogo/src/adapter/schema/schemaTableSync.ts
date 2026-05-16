@@ -11,11 +11,13 @@ interface IColumnSchema {
 export default library(
     ({config}) => {
         function addColumn(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             table: any,
             columnName: string,
             prop: IColumnSchema,
             isNullable: boolean,
         ): void {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let column: any;
 
             if (columnName.endsWith('Id') && prop.type === 'integer') {
@@ -62,6 +64,7 @@ export default library(
             schema: TObject,
             options: {dropColumns?: boolean} = {},
         ): Promise<{created: boolean; added: string[]; dropped: string[]}> {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const knex = (config as Record<string, any>)?.context?.queryBuilder;
             if (!knex) throw new Error('Knex queryBuilder not available in adapter context');
 
@@ -70,6 +73,7 @@ export default library(
             const exists = await knex.schema.hasTable(tableName);
 
             if (!exists) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await knex.schema.createTable(tableName, (table: any) => {
                     for (const [name, prop] of Object.entries(schema.properties)) {
                         addColumn(table, name, prop as IColumnSchema, !required.has(name));
@@ -83,6 +87,7 @@ export default library(
             const added: string[] = [];
             const dropped: string[] = [];
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await knex.schema.alterTable(tableName, (table: any) => {
                 for (const [name, prop] of Object.entries(schema.properties)) {
                     if (!existingColumns.has(name)) {

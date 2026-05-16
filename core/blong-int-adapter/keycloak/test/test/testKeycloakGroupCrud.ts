@@ -27,7 +27,7 @@ export default handler(
         testKeycloakGroupCrud: ({name = 'keycloak group CRUD'}: {name?: string}) =>
             group(name, {mask: ['id']})([
                 // ── 1. Clean up leftover test group if present ─────────────
-                async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
+                async function ensureClean(assert: IAssert, {$meta}: StepMeta) {
                     try {
                         const groups = (await authGroupFind(
                             {realm: testGroup.realm, search: testGroup.name},
@@ -60,7 +60,7 @@ export default handler(
 
                 // ── 2. add — create the test group ────────────────────────
                 async function addGroup(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, ensureClean}: StepMeta & {ensureClean: Promise<unknown>},
                 ) {
                     await ensureClean;
@@ -72,7 +72,7 @@ export default handler(
 
                 // ── 3. find — locate the group by name ────────────────────
                 async function findGroups(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addGroup}: StepMeta & {addGroup: Promise<CreateResult>},
                 ) {
                     await addGroup;
@@ -106,7 +106,7 @@ export default handler(
 
                 // ── 5. edit — rename the group ────────────────────────────
                 async function editGroup(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addGroup}: StepMeta & {addGroup: Promise<CreateResult>},
                 ) {
                     const {id} = await addGroup;
@@ -133,7 +133,7 @@ export default handler(
 
                 // ── 7. members — list members of the group (should be empty)
                 async function listMembers(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addGroup}: StepMeta & {addGroup: Promise<CreateResult>},
                 ) {
                     const result = await authGroupMembers(
@@ -151,7 +151,7 @@ export default handler(
 
                 // ── 8. remove — delete the test group ─────────────────────
                 async function removeGroup(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         verifyEdit,

@@ -1,4 +1,4 @@
-import {type IMeta, handler} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 
 type Handler = (params: {$objectId: string}) => Promise<{
     $objectId: string;
@@ -7,8 +7,7 @@ type Handler = (params: {$objectId: string}) => Promise<{
 export default handler(
     () =>
         async function $subject$ObjectAdd(
-            params: Parameters<Handler>[0],
-            $meta: IMeta,
+            _params: Parameters<Handler>[0],
         ): ReturnType<Handler> {
             return {$objectId: '1'};
         },

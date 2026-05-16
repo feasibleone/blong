@@ -29,7 +29,7 @@ export default handler(
                             {name: 'Widget', price: 50, quantity: 3},
                             {name: 'Gadget', price: 25, quantity: 2},
                         ],
-                        customerId: 'cust-1',
+                        customerId: 'customer-1',
                     },
                     $meta,
                 )) as {orderId: string; total: number; discountedTotal: number; status: string};

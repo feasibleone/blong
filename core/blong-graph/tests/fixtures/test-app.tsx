@@ -49,8 +49,18 @@ const mockGraphData = {
         },
     ],
     edges: [
-        {id: 'realm-user-layer-user-gateway', source: 'realm-user', target: 'layer-user-gateway', type: 'contains'},
-        {id: 'realm-user-layer-user-adapter', source: 'realm-user', target: 'layer-user-adapter', type: 'contains'},
+        {
+            id: 'realm-user-layer-user-gateway',
+            source: 'realm-user',
+            target: 'layer-user-gateway',
+            type: 'contains',
+        },
+        {
+            id: 'realm-user-layer-user-adapter',
+            source: 'realm-user',
+            target: 'layer-user-adapter',
+            type: 'contains',
+        },
         {
             id: 'layer-user-gateway-handler-user-gateway-userGet',
             source: 'layer-user-gateway',
@@ -67,7 +77,10 @@ const mockGraphData = {
 };
 
 // Mock fetch for testing
-(window as any).fetch = async (url: string, options: any) => {
+(window as {fetch: (url: string, options: unknown) => Promise<unknown>}).fetch = async (
+    url: string,
+    _options: unknown,
+) => {
     if (url.includes('/rpc')) {
         return {
             ok: true,
@@ -85,5 +98,5 @@ const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(
     <React.StrictMode>
         <BlongGraph apiUrl="http://localhost:8080" />
-    </React.StrictMode>
+    </React.StrictMode>,
 );

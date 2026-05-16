@@ -5,7 +5,7 @@ export default adapter<{
         kubeconfig?: string;
         namespace?: string;
     };
-}>(api => ({
+}>(() => ({
     extends: 'adapter.k8s',
     activation: {
         default: {

@@ -21,9 +21,7 @@ export default handler(
             }
             return {
                 issuer: 'blong-login',
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 id_token_signing_alg_values_supported: ['RS256'],
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 code_challenge_methods_supported: ['S256'],
                 authorization_endpoint: new URL('../form', url.href).href,
                 token_endpoint: new URL('../token', url.href).href,

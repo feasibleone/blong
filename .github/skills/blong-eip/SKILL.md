@@ -1,6 +1,11 @@
 ---
 name: blong-eip
-description: Implement Enterprise Integration Patterns (EIP) as Blong handlers. Each pattern (Pipes and Filters, Content-Based Router, Splitter, Aggregator, Claim Check, etc.) maps to a single handler that calls downstream handlers via the handler proxy. Make sure to use this skill whenever the user mentions routing, filtering, splitting, aggregating, or transforming messages in a pipeline — even if they don't use the term 'EIP' or 'enterprise integration'.
+description:
+    Implement Enterprise Integration Patterns (EIP) as Blong handlers. Each pattern (Pipes and
+    Filters, Content-Based Router, Splitter, Aggregator, Claim Check, etc.) maps to a single handler
+    that calls downstream handlers via the handler proxy. Make sure to use this skill whenever the
+    user mentions routing, filtering, splitting, aggregating, or transforming messages in a pipeline
+    — even if they don't use the term 'EIP' or 'enterprise integration'.
 ---
 
 # Implementing EIP Patterns
@@ -8,12 +13,12 @@ description: Implement Enterprise Integration Patterns (EIP) as Blong handlers. 
 ## Overview
 
 [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/) describe
-well-known solutions for message-based integration problems. In Blong each pattern becomes a
-single handler in `orchestrator/eip/` that receives a message and delegates to downstream
-handlers via the `handler` proxy.
+well-known solutions for message-based integration problems. In Blong each pattern becomes a single
+handler in `orchestrator/eip/` that receives a message and delegates to downstream handlers via the
+`handler` proxy.
 
-The downstream handlers can be real adapters in production or mock handlers during testing –
-the pattern handler code never changes. See **blong-mock-test** for the testing side.
+The downstream handlers can be real adapters in production or mock handlers during testing – the
+pattern handler code never changes. See **blong-mock-test** for the testing side.
 
 ## Purpose
 
@@ -146,7 +151,9 @@ export default handler(
             {destination, ...rest}: {destination: string; [key: string]: unknown},
             $meta: IMeta,
         ): Promise<unknown> {
-            const target = (handler as Record<string, (...args: unknown[]) => unknown>)[destination];
+            const target = (handler as Record<string, (...args: unknown[]) => unknown>)[
+                destination
+            ];
             return target(rest, $meta);
         },
 );
@@ -222,8 +229,8 @@ export default handler(
 
 ### Aggregator
 
-Collect individual messages until a batch size is reached, then process the batch.
-The factory closure holds mutable state, so each orchestrator instance keeps its own list.
+Collect individual messages until a batch size is reached, then process the batch. The factory
+closure holds mutable state, so each orchestrator instance keeps its own list.
 
 ```ts
 // realmname/orchestrator/eip/eipMessageAggregate.ts
@@ -231,22 +238,17 @@ import {type IMeta, handler} from '@feasibleone/blong';
 
 const BATCH_SIZE = 3;
 
-export default handler(
-    ({handler: {storeBatch}}) => {
-        const list: unknown[] = [];
-        return async function eipMessageAggregate(
-            message: unknown,
-            $meta: IMeta,
-        ): Promise<unknown> {
-            list.push(message);
-            if (list.length >= BATCH_SIZE) {
-                const batch = list.splice(0, list.length);
-                return storeBatch({items: batch}, $meta);
-            }
-            return undefined;
-        };
-    },
-);
+export default handler(({handler: {storeBatch}}) => {
+    const list: unknown[] = [];
+    return async function eipMessageAggregate(message: unknown, $meta: IMeta): Promise<unknown> {
+        list.push(message);
+        if (list.length >= BATCH_SIZE) {
+            const batch = list.splice(0, list.length);
+            return storeBatch({items: batch}, $meta);
+        }
+        return undefined;
+    };
+});
 ```
 
 ### Resequencer
@@ -259,24 +261,22 @@ import {type IMeta, handler} from '@feasibleone/blong';
 
 const BATCH_SIZE = 3;
 
-export default handler(
-    ({handler: {processItem}}) => {
-        const list: Array<{order: number; [key: string]: unknown}> = [];
-        return async function eipMessageSort(
-            params: {order: number; [key: string]: unknown},
-            $meta: IMeta,
-        ): Promise<unknown[] | undefined> {
-            list.push(params);
-            if (list.length >= BATCH_SIZE) {
-                const sorted = list.splice(0, list.length).sort((a, b) => a.order - b.order);
-                const results: unknown[] = [];
-                for (const item of sorted) results.push(await processItem(item, $meta));
-                return results;
-            }
-            return undefined;
-        };
-    },
-);
+export default handler(({handler: {processItem}}) => {
+    const list: Array<{order: number; [key: string]: unknown}> = [];
+    return async function eipMessageSort(
+        params: {order: number; [key: string]: unknown},
+        $meta: IMeta,
+    ): Promise<unknown[] | undefined> {
+        list.push(params);
+        if (list.length >= BATCH_SIZE) {
+            const sorted = list.splice(0, list.length).sort((a, b) => a.order - b.order);
+            const results: unknown[] = [];
+            for (const item of sorted) results.push(await processItem(item, $meta));
+            return results;
+        }
+        return undefined;
+    };
+});
 ```
 
 ### Composed Message Processor
@@ -421,14 +421,11 @@ export default handler(
 
 ## TypeBox schema & type declarations
 
-Declare handler signatures with TypeBox so the TypeScript compiler can verify call sites
-and the framework can generate OpenAPI documentation:
+Declare handler signatures with TypeBox so the TypeScript compiler can verify call sites and the
+framework can generate OpenAPI documentation:
 
 ```ts
 // realmname/orchestrator/eip/~.schema.ts
-/* eslint-disable indent,semi */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @rushstack/typedef-var */
 import {validationHandlers} from '@feasibleone/blong';
 import {Type, type Static} from 'typebox';
 
@@ -455,8 +452,8 @@ declare module '@feasibleone/blong' {
 
 ## Testing EIP handlers
 
-Use **blong-mock-test** to replace downstream handler calls with mock implementations
-during integration tests.
+Use **blong-mock-test** to replace downstream handler calls with mock implementations during
+integration tests.
 
 ## Complete example
 

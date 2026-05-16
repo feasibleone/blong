@@ -70,7 +70,7 @@ The graph will display:
 
 The graph data is available at:
 
-```
+```http
 POST /rpc
 {
     "jsonrpc": "2.0",

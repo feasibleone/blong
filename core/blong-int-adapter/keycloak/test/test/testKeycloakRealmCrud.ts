@@ -22,7 +22,7 @@ export default handler(
             // are UUIDs for the auto-created default role — all change each test run.
             group(name, {mask: ['id', 'defaultRole.id', 'defaultRole.containerId']})([
                 // ── 1. Clean up leftover test realm if present ─────────────
-                async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
+                async function ensureClean(assert: IAssert, {$meta}: StepMeta) {
                     try {
                         await authRealmRemove({realm: testRealm.realm}, $meta);
                     } catch {
@@ -34,7 +34,7 @@ export default handler(
 
                 // ── 2. find — list all realms (master should always be present)
                 async function findRealms(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, ensureClean}: StepMeta & {ensureClean: Promise<unknown>},
                 ) {
                     await ensureClean;
@@ -51,7 +51,7 @@ export default handler(
 
                 // ── 3. add — create the test realm ────────────────────────
                 async function addRealm(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, ensureClean}: StepMeta & {ensureClean: Promise<unknown>},
                 ) {
                     await ensureClean;
@@ -76,7 +76,7 @@ export default handler(
 
                 // ── 5. edit — update the realm display name ────────────────
                 async function editRealm(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, getRealm}: StepMeta & {getRealm: Promise<RealmResult>},
                 ) {
                     await getRealm;
@@ -103,7 +103,7 @@ export default handler(
 
                 // ── 7. remove — delete the test realm ─────────────────────
                 async function removeRealm(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         verifyEdit,
@@ -122,7 +122,7 @@ export default handler(
 
                 // ── 8. find — verify the test realm is gone ───────────────
                 async function verifyRemoval(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, removeRealm}: StepMeta & {removeRealm: Promise<unknown>},
                 ) {
                     await removeRealm;

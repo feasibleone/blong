@@ -20,6 +20,7 @@ export default library<{
         const kid = access.kid || (await calculateJwkThumbprint(access));
         const keyAccessToken = await importJWK(access, alg);
         const jwks = {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             keys: [access, id].filter(Boolean).map(({d, p, q, dp, dq, qi, ...pub}) => pub),
         };
         const keyStore = createLocalJWKSet(jwks);
@@ -77,7 +78,6 @@ export default library<{
                         refresh,
                         ...rest,
                     }),
-                    // eslint-disable-next-line @typescript-eslint/naming-convention
                     refresh_token_expires_in: refresh,
                 };
             },

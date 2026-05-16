@@ -12,14 +12,15 @@ import {type IMeta, handler} from '@feasibleone/blong';
  * the receive phase to send the response back to the client.
  */
 export default handler(
-    proxy =>
+    () =>
         function receive(params: unknown, $meta: IMeta): unknown {
             if ($meta.mtid === 'request') {
-                $meta.dispatch = (params: {data: unknown}, dispatchMeta: IMeta) => {
+                $meta.dispatch = (params?: {data?: unknown}, dispatchMeta?: IMeta) => {
+                    if (!dispatchMeta) return;
                     dispatchMeta.mtid = 'response';
                     switch (dispatchMeta.method) {
                         case 'echo':
-                            return [{data: params.data, errorCode: '00'}, dispatchMeta];
+                            return [{data: params?.data, errorCode: '00'}, dispatchMeta];
                         case 'generateKey':
                             return [
                                 {

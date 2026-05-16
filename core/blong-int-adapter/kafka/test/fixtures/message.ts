@@ -1,13 +1,13 @@
 /**
  * Fixture data for Kafka integration tests.
- * Used by testKafkaMessageRoundtrip to verify produce/consume round-trips
+ * Used by testKafkaMessageRoundTrip to verify produce/consume round-trips
  * with various payload shapes.
  */
 
 export const messages = [
     {
         topic: 'blong-integration',
-        payload: 'blong-integration-roundtrip-test',
+        payload: 'blong-integration-round-trip-test',
         source: 'blong-kafka-test',
     },
     {

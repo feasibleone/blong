@@ -1,13 +1,20 @@
 ---
 name: blong-validation
-description: Define input/output validation for Blong handlers using TypeScript types or TypeBox schemas. Automatic validation generates OpenAPI documentation and runtime checks. Make sure to use this skill whenever a handler needs typed parameters, you're generating API docs, or the user asks about schemas, validation rules, or TypeBox types in Blong — even if they don't mention 'validation' by name.
+description:
+    Define input/output validation for Blong handlers using TypeScript types or TypeBox schemas.
+    Automatic validation generates OpenAPI documentation and runtime checks. Make sure to use this
+    skill whenever a handler needs typed parameters, you're generating API docs, or the user asks
+    about schemas, validation rules, or TypeBox types in Blong — even if they don't mention
+    'validation' by name.
 ---
 
 # Implementing Validation
 
 ## Overview
 
-Validation definitions are used for API documentation, parameter validation, and response construction. They can be automatically derived from TypeScript types or manually specified using TypeBox.
+Validation definitions are used for API documentation, parameter validation, and response
+construction. They can be automatically derived from TypeScript types or manually specified using
+TypeBox.
 
 ## Purpose
 
@@ -73,37 +80,33 @@ Place `~.schema.ts` file in the handler folder:
 
 ```typescript
 // realmname/orchestrator/entity/~.schema.ts
-/* eslint-disable indent,semi */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @rushstack/typedef-var */
 
-import { validationHandlers } from '@feasibleone/blong'
-import { Type, type Static } from 'typebox'
+import {validationHandlers} from '@feasibleone/blong';
+import {Type, type Static} from 'typebox';
 
-type realmEntityAction = Static<typeof realmEntityAction>
+type realmEntityAction = Static<typeof realmEntityAction>;
 const realmEntityAction = Type.Function(
-  [
-    Type.Object({
-      param1: Type.String({ description: 'Parameter 1 description' }),
-      param2: Type.Optional(Type.Number({ description: 'Optional parameter description' })),
-      status: Type.Union([
-        Type.Literal('active'),
-        Type.Literal('inactive')
-      ], { description: 'Enum parameter' })
-    })
-  ],
-  Type.Promise(
-    Type.Object({
-      resultId: Type.Number({ description: 'Result property description' }),
-      message: Type.String({ description: 'Result message' })
-    })
-  ),
-  { description: 'Description for API documentation' }
-)
+    [
+        Type.Object({
+            param1: Type.String({description: 'Parameter 1 description'}),
+            param2: Type.Optional(Type.Number({description: 'Optional parameter description'})),
+            status: Type.Union([Type.Literal('active'), Type.Literal('inactive')], {
+                description: 'Enum parameter',
+            }),
+        }),
+    ],
+    Type.Promise(
+        Type.Object({
+            resultId: Type.Number({description: 'Result property description'}),
+            message: Type.String({description: 'Result message'}),
+        }),
+    ),
+    {description: 'Description for API documentation'},
+);
 
 export default validationHandlers({
-  realmEntityAction
-})
+    realmEntityAction,
+});
 ```
 
 **Note:** This file is auto-generated/updated by the framework when:
@@ -133,20 +136,18 @@ export default orchestrator(blong => ({
 
 **Regex Validation Patterns:**
 
-The `validations` property can accept regex patterns to match multiple validation groups automatically:
+The `validations` property can accept regex patterns to match multiple validation groups
+automatically:
 
 ```typescript
 // Match all validation groups in realmname:
-validations: [/^realmname\.\w+\.validation$/]
+validations: [/^realmname\.\w+\.validation$/];
 
 // Match specific pattern:
-validations: [/^realmname\.(entity1|entity2)\.validation$/]
+validations: [/^realmname\.(entity1|entity2)\.validation$/];
 
 // Mix strings and regex:
-validations: [
-    'realmname.entity1.validation',
-    /^realmname\.entity2\./
-]
+validations: ['realmname.entity1.validation', /^realmname\.entity2\./];
 ```
 
 ## Manual Validation
@@ -157,45 +158,45 @@ validations: [
 // realmname/gateway/entity/realmEntityAction.ts
 import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {type}}) =>
-    function realmEntityAction() {
-        return {
-            // Parameter validation
-            params: type.Object({
-                param1: type.String({
-                    description: 'Parameter 1',
-                    minLength: 3,
-                    maxLength: 50
+export default validation(
+    ({lib: {type}}) =>
+        function realmEntityAction() {
+            return {
+                // Parameter validation
+                params: type.Object({
+                    param1: type.String({
+                        description: 'Parameter 1',
+                        minLength: 3,
+                        maxLength: 50,
+                    }),
+                    param2: type.Optional(
+                        type.Number({
+                            description: 'Optional number',
+                            minimum: 0,
+                            maximum: 100,
+                        }),
+                    ),
+                    email: type.String({
+                        format: 'email',
+                        description: 'Email address',
+                    }),
+                    status: type.Union([type.Literal('active'), type.Literal('inactive')]),
                 }),
-                param2: type.Optional(type.Number({
-                    description: 'Optional number',
-                    minimum: 0,
-                    maximum: 100
-                })),
-                email: type.String({
-                    format: 'email',
-                    description: 'Email address'
+
+                // Result validation
+                result: type.Object({
+                    resultId: type.Number({description: 'ID'}),
+                    message: type.String({description: 'Message'}),
                 }),
-                status: type.Union([
-                    type.Literal('active'),
-                    type.Literal('inactive')
-                ])
-            }),
 
-            // Result validation
-            result: type.Object({
-                resultId: type.Number({description: 'ID'}),
-                message: type.String({description: 'Message'})
-            }),
-
-            // Optional overrides
-            description: 'Perform entity action',
-            method: 'POST',              // HTTP method (default: POST)
-            path: '/entity/action',      // Custom path
-            auth: true,                  // Require authentication (default: true)
-            tags: ['entity']             // OpenAPI tags
-        };
-    }
+                // Optional overrides
+                description: 'Perform entity action',
+                method: 'POST', // HTTP method (default: POST)
+                path: '/entity/action', // Custom path
+                auth: true, // Require authentication (default: true)
+                tags: ['entity'], // OpenAPI tags
+            };
+        },
 );
 ```
 
@@ -265,54 +266,54 @@ export default handler(({handler: {sqlUserAdd}}) =>
 // payment/gateway/transfer/paymentTransferCreate.ts
 import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {type}}) =>
-    function paymentTransferCreate() {
-        return {
-            params: type.Object({
-                fromAccount: type.String({
-                    description: 'Source account number',
-                    pattern: '^ACC[0-9]{6}$'
+export default validation(
+    ({lib: {type}}) =>
+        function paymentTransferCreate() {
+            return {
+                params: type.Object({
+                    fromAccount: type.String({
+                        description: 'Source account number',
+                        pattern: '^ACC[0-9]{6}$',
+                    }),
+                    toAccount: type.String({
+                        description: 'Destination account number',
+                        pattern: '^ACC[0-9]{6}$',
+                    }),
+                    amount: type.Number({
+                        description: 'Transfer amount',
+                        minimum: 0.01,
+                        maximum: 1000000,
+                        multipleOf: 0.01,
+                    }),
+                    currency: type.String({
+                        description: 'Currency code',
+                        pattern: '^[A-Z]{3}$',
+                        default: 'USD',
+                    }),
+                    reference: type.Optional(
+                        type.String({
+                            description: 'Payment reference',
+                            maxLength: 100,
+                        }),
+                    ),
+                    metadata: type.Optional(type.Record(type.String(), type.Any())),
                 }),
-                toAccount: type.String({
-                    description: 'Destination account number',
-                    pattern: '^ACC[0-9]{6}$'
-                }),
-                amount: type.Number({
-                    description: 'Transfer amount',
-                    minimum: 0.01,
-                    maximum: 1000000,
-                    multipleOf: 0.01
-                }),
-                currency: type.String({
-                    description: 'Currency code',
-                    pattern: '^[A-Z]{3}$',
-                    default: 'USD'
-                }),
-                reference: type.Optional(type.String({
-                    description: 'Payment reference',
-                    maxLength: 100
-                })),
-                metadata: type.Optional(type.Record(
-                    type.String(),
-                    type.Any()
-                ))
-            }),
 
-            result: type.Object({
-                transferId: type.String({
-                    description: 'Transfer ID',
-                    format: 'uuid'
+                result: type.Object({
+                    transferId: type.String({
+                        description: 'Transfer ID',
+                        format: 'uuid',
+                    }),
+                    status: type.Literal('pending'),
+                    createdAt: type.String({format: 'date-time'}),
                 }),
-                status: type.Literal('pending'),
-                createdAt: type.String({format: 'date-time'})
-            }),
 
-            description: 'Create a new transfer',
-            method: 'POST',
-            path: '/transfer',
-            tags: ['payment']
-        };
-    }
+                description: 'Create a new transfer',
+                method: 'POST',
+                path: '/transfer',
+                tags: ['payment'],
+            };
+        },
 );
 ```
 
@@ -333,19 +334,19 @@ Generates:
 
 ```typescript
 const handler = Type.Function(
-  [
-    Type.Object({
-      numbers: Type.Array(Type.Number(), {
-        description: 'Array of numbers'
-      })
-    })
-  ],
-  Type.Promise(
-    Type.Object({
-      average: Type.Number({ description: 'Average value' })
-    })
-  )
-)
+    [
+        Type.Object({
+            numbers: Type.Array(Type.Number(), {
+                description: 'Array of numbers',
+            }),
+        }),
+    ],
+    Type.Promise(
+        Type.Object({
+            average: Type.Number({description: 'Average value'}),
+        }),
+    ),
+);
 ```
 
 ## Validation Configuration
@@ -353,36 +354,43 @@ const handler = Type.Function(
 ### Overriding Defaults
 
 ```typescript
-export default validation(({lib: {type}}) =>
-    function handlerName() {
-        return {
-            params: type.Object({/* ... */}),
-            result: type.Object({/* ... */}),
+export default validation(
+    ({lib: {type}}) =>
+        function handlerName() {
+            return {
+                params: type.Object({
+                    /* ... */
+                }),
+                result: type.Object({
+                    /* ... */
+                }),
 
-            // Override defaults
-            auth: false,              // Disable authentication
-            method: 'GET',            // Use GET instead of POST
-            path: '/custom/path',     // Custom endpoint path
-            description: 'Custom description',
-            summary: 'Brief summary',
-            tags: ['tag1', 'tag2'],
-            deprecated: false,
+                // Override defaults
+                auth: false, // Disable authentication
+                method: 'GET', // Use GET instead of POST
+                path: '/custom/path', // Custom endpoint path
+                description: 'Custom description',
+                summary: 'Brief summary',
+                tags: ['tag1', 'tag2'],
+                deprecated: false,
 
-            // Response codes
-            responses: {
-                '200': {
-                    description: 'Success',
-                    content: type.Object({/* ... */})
+                // Response codes
+                responses: {
+                    '200': {
+                        description: 'Success',
+                        content: type.Object({
+                            /* ... */
+                        }),
+                    },
+                    '400': {
+                        description: 'Bad request',
+                    },
+                    '404': {
+                        description: 'Not found',
+                    },
                 },
-                '400': {
-                    description: 'Bad request'
-                },
-                '404': {
-                    description: 'Not found'
-                }
-            }
-        };
-    }
+            };
+        },
 );
 ```
 
@@ -400,7 +408,7 @@ Validations automatically generate OpenAPI documentation:
 **Manual override:**
 
 ```typescript
-path: '/users'  // Use /users instead
+path: '/users'; // Use /users instead
 ```
 
 ### HTTP Method
@@ -410,9 +418,9 @@ path: '/users'  // Use /users instead
 **Override:**
 
 ```typescript
-method: 'GET'     // GET request
-method: 'PUT'     // PUT request
-method: 'DELETE'  // DELETE request
+method: 'GET'; // GET request
+method: 'PUT'; // PUT request
+method: 'DELETE'; // DELETE request
 ```
 
 ### OpenAPI Tags
@@ -420,7 +428,7 @@ method: 'DELETE'  // DELETE request
 Group endpoints in documentation:
 
 ```typescript
-tags: ['user', 'authentication']
+tags: ['user', 'authentication'];
 ```
 
 ## Best Practices
@@ -444,20 +452,26 @@ Test that validation works:
 async function testValidation(assert, {$meta}) {
     // Should reject invalid email
     await assert.rejects(
-        userUserAdd({
-            username: 'test',
-            email: 'invalid-email',
-            role: 'user'
-        }, $meta),
-        'Validation should reject invalid email'
+        userUserAdd(
+            {
+                username: 'test',
+                email: 'invalid-email',
+                role: 'user',
+            },
+            $meta,
+        ),
+        'Validation should reject invalid email',
     );
 
     // Should accept valid input
-    const result = await userUserAdd({
-        username: 'test',
-        email: 'test@example.com',
-        role: 'user'
-    }, $meta);
+    const result = await userUserAdd(
+        {
+            username: 'test',
+            email: 'test@example.com',
+            role: 'user',
+        },
+        $meta,
+    );
 
     assert.ok(result.userId);
 }

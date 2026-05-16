@@ -7,7 +7,7 @@ import {orchestrator} from '@feasibleone/blong';
  * The payshield.hsm group contains library functions (generateKey, etc.) that
  * transform business parameters into Payshield protocol calls via the TCP adapter.
  */
-export default orchestrator(blong => ({
+export default orchestrator(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {

@@ -6,19 +6,12 @@ import calculatorFeature from '../feature/calculator.ts';
 
 export default handler(
     ({lib: {group}, handler: {cucumberCalculatorAdd, cucumberCalculatorSubtract}}) => ({
-        testCucumberCalculator: ({name = 'cucumber calculator'}: {name?: string}, $meta: IMeta) =>
+        testCucumberCalculator: ({name = 'cucumber calculator'}: {name?: string}) =>
             featureToSteps(
                 calculatorFeature,
                 {
-                    '{int} plus {int} equals {int}': (
-                        a: unknown,
-                        b: unknown,
-                        expected: unknown,
-                    ) =>
-                        async function addEquals(
-                            assert: typeof Assert,
-                            {$meta}: {$meta: IMeta},
-                        ) {
+                    '{int} plus {int} equals {int}': (a: unknown, b: unknown, expected: unknown) =>
+                        async function addEquals(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
                             const result = await cucumberCalculatorAdd(
                                 {a: a as number, b: b as number},
                                 $meta,
@@ -29,11 +22,7 @@ export default handler(
                                 `${a} + ${b} should equal ${expected}`,
                             );
                         },
-                    '{int} minus {int} equals {int}': (
-                        a: unknown,
-                        b: unknown,
-                        expected: unknown,
-                    ) =>
+                    '{int} minus {int} equals {int}': (a: unknown, b: unknown, expected: unknown) =>
                         async function subtractEquals(
                             assert: typeof Assert,
                             {$meta}: {$meta: IMeta},

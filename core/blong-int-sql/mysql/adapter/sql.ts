@@ -8,7 +8,7 @@ export default adapter<{
             password: string;
         };
     };
-}>(api => ({
+}>(() => ({
     extends: 'adapter.knex',
     activation: {
         default: {

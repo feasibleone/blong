@@ -11,7 +11,7 @@ export default handler(
             _params: Record<string, never>,
             _$meta: Record<string, unknown>,
         ): Promise<{table: string; dropped: boolean}> {
-            const existed: boolean = await this.config?.context?.queryBuilder?.schema.hasTable('item');
+            const existed = await this.config?.context?.queryBuilder?.schema.hasTable('item');
             if (existed) {
                 await this.config?.context?.queryBuilder?.schema.dropTable('item');
             }

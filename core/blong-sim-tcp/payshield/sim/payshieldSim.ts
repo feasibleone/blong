@@ -15,7 +15,7 @@ import log from '../log.ts';
  *
  * Key difference from the tcp adapter: listen: true makes this a server.
  */
-export default adapter(blong => ({
+export default adapter(() => ({
     extends: 'adapter.tcp',
     activation: {
         default: {

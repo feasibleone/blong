@@ -100,8 +100,7 @@ allure open allure-report
 
 ```typescript
 import {handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
-import type {IMeta} from '@feasibleone/blong';
+import type {IAssert, IMeta} from '@feasibleone/blong';
 
 export default handler(({lib: {group}, handler: {
     // Import handler functions you need
@@ -111,14 +110,14 @@ export default handler(({lib: {group}, handler: {
     testMyFeature: ({name = 'My Feature Test'}, $meta: IMeta) =>
         group(name)([
             // Test steps as async functions
-            async function step1(assert: typeof Assert, {$meta}) {
+            async function step1(assert: IAssert, {$meta}: {$meta: IMeta}) {
                 // Your test logic
                 const result = await someOperation();
                 assert.ok(result);
                 return result;
             },
 
-            async function step2(assert: typeof Assert, {step1, $meta}) {
+            async function step2(assert: IAssert, {step1, $meta}: {step1: any, $meta: IMeta}) {
                 // Depends on step1 via parameter
                 const data = await step1;
                 // More test logic
@@ -133,7 +132,7 @@ export default handler(({lib: {group}, handler: {
 For async flows (POST → 202 → PUT callback):
 
 ```typescript
-async function createTransfer(assert, {$meta}) {
+async function createTransfer(assert: IAssert, {$meta}: {$meta: IMeta}) {
     // Make API call
     const result = await transferTransferCreate({
         amount: {amount: '100', currency: 'USD'},
@@ -160,20 +159,23 @@ blong-chain automatically runs independent steps in parallel:
 
 ```typescript
 group('Parallel Provisioning')([
-    async function createDfsp1(assert, {$meta}) {
+    async function createDfsp1(assert: IAssert, {$meta}: {$meta: IMeta}) {
         return await provisionParticipantCreate({name: 'dfsp1'}, $meta);
     },
 
-    async function createDfsp2(assert, {$meta}) {
+    async function createDfsp2(assert: IAssert, {$meta}: {$meta: IMeta}) {
         return await provisionParticipantCreate({name: 'dfsp2'}, $meta);
     },
 
-    async function createDfsp3(assert, {$meta}) {
+    async function createDfsp3(assert: IAssert, {$meta}: {$meta: IMeta}) {
         return await provisionParticipantCreate({name: 'dfsp3'}, $meta);
     },
 
     // This runs after all DFSPs are created
-    async function setupRouting(assert, {createDfsp1, createDfsp2, createDfsp3, $meta}) {
+    async function setupRouting(
+        assert: IAssert,
+        {createDfsp1, createDfsp2, createDfsp3, $meta}: {createDfsp1: any, createDfsp2: any, createDfsp3: any, $meta: IMeta}
+    ) {
         const dfsps = await Promise.all([createDfsp1, createDfsp2, createDfsp3]);
         // Setup routing between DFSPs
     },
@@ -199,6 +201,7 @@ The migration emitter maps HTTP operations to semantic triple handler names
 | POST   | `/participants/{n}/limits`| `limitLimitCreate`         |
 
 Rules:
+
 - **Subject** = singular of the last non-parameter path segment
 - **Object** = same as subject (capitalized)
 - **Predicate** = Create / Get / Find / Update / Patch / Remove / Execute

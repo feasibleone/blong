@@ -7,7 +7,7 @@ export default library(() => ({
     /**
      * Conditional value selector (ternary helper).
      */
-    assert(checkWhat: unknown, compareTo: unknown, ifTrue: unknown, ifFalse: unknown) {
+    check(checkWhat: unknown, compareTo: unknown, ifTrue: unknown, ifFalse: unknown) {
         if (checkWhat === compareTo) {
             if (typeof ifTrue === 'function') {
                 return ifTrue();

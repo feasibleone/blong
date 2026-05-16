@@ -36,7 +36,7 @@ export default handler(
             // of user creation, changes each test run when the user is recreated.
             group(name, {mask: ['id', 'createdTimestamp']})([
                 // ── 1. Clean up leftover test user if present ──────────────
-                async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
+                async function ensureClean(assert: IAssert, {$meta}: StepMeta) {
                     try {
                         const users = (await authUserFind(
                             {realm: testUser.realm, username: testUser.username},
@@ -55,7 +55,7 @@ export default handler(
 
                 // ── 2. add — create the test user ─────────────────────────
                 async function addUser(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, ensureClean}: StepMeta & {ensureClean: Promise<unknown>},
                 ) {
                     await ensureClean;
@@ -67,7 +67,7 @@ export default handler(
 
                 // ── 3. find — locate the user by username ─────────────────
                 async function findUser(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addUser}: StepMeta & {addUser: Promise<CreateResult>},
                 ) {
                     await addUser;
@@ -103,7 +103,7 @@ export default handler(
 
                 // ── 5. edit — update first/last name ──────────────────────
                 async function editUser(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addUser}: StepMeta & {addUser: Promise<CreateResult>},
                 ) {
                     const {id} = await addUser;
@@ -130,7 +130,7 @@ export default handler(
 
                 // ── 7. setPassword — set a password for the user ──────────
                 async function setPassword(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         verifyEdit,
@@ -152,7 +152,7 @@ export default handler(
 
                 // ── 8. remove — delete the test user ──────────────────────
                 async function removeUser(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         setPassword,
@@ -173,7 +173,7 @@ export default handler(
 
                 // ── 9. find — verify the user is gone ────────────────────
                 async function verifyRemoval(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, removeUser}: StepMeta & {removeUser: Promise<unknown>},
                 ) {
                     await removeUser;

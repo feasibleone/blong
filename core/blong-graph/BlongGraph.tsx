@@ -1,16 +1,16 @@
-import React, {useEffect, useState, useCallback} from 'react';
 import {
-    ReactFlow,
-    Node,
-    Edge,
     Background,
     Controls,
-    MiniMap,
-    useNodesState,
-    useEdgesState,
+    Edge,
     MarkerType,
+    MiniMap,
+    Node,
+    ReactFlow,
+    useEdgesState,
+    useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import React, {useCallback, useEffect, useState} from 'react';
 
 interface GraphNode {
     id: string;
@@ -45,7 +45,7 @@ interface BlongGraphProps {
 /**
  * Custom node component for different types
  */
-const CustomNode = ({data}: {data: any}) => {
+const CustomNode = ({data}: {data: GraphNode['data'] & {type: string; label: string}}) => {
     const getNodeStyle = (type: string) => {
         const baseStyle = {
             padding: '10px 20px',
@@ -58,17 +58,47 @@ const CustomNode = ({data}: {data: any}) => {
 
         switch (type) {
             case 'realm':
-                return {...baseStyle, borderColor: '#1976d2', backgroundColor: '#e3f2fd', color: '#0d47a1'};
+                return {
+                    ...baseStyle,
+                    borderColor: '#1976d2',
+                    backgroundColor: '#e3f2fd',
+                    color: '#0d47a1',
+                };
             case 'layer':
-                return {...baseStyle, borderColor: '#388e3c', backgroundColor: '#e8f5e9', color: '#1b5e20'};
+                return {
+                    ...baseStyle,
+                    borderColor: '#388e3c',
+                    backgroundColor: '#e8f5e9',
+                    color: '#1b5e20',
+                };
             case 'handler':
-                return {...baseStyle, borderColor: '#f57c00', backgroundColor: '#fff3e0', color: '#e65100'};
+                return {
+                    ...baseStyle,
+                    borderColor: '#f57c00',
+                    backgroundColor: '#fff3e0',
+                    color: '#e65100',
+                };
             case 'adapter':
-                return {...baseStyle, borderColor: '#7b1fa2', backgroundColor: '#f3e5f5', color: '#4a148c'};
+                return {
+                    ...baseStyle,
+                    borderColor: '#7b1fa2',
+                    backgroundColor: '#f3e5f5',
+                    color: '#4a148c',
+                };
             case 'orchestrator':
-                return {...baseStyle, borderColor: '#c62828', backgroundColor: '#ffebee', color: '#b71c1c'};
+                return {
+                    ...baseStyle,
+                    borderColor: '#c62828',
+                    backgroundColor: '#ffebee',
+                    color: '#b71c1c',
+                };
             default:
-                return {...baseStyle, borderColor: '#757575', backgroundColor: '#f5f5f5', color: '#424242'};
+                return {
+                    ...baseStyle,
+                    borderColor: '#757575',
+                    backgroundColor: '#f5f5f5',
+                    color: '#424242',
+                };
         }
     };
 
@@ -92,8 +122,8 @@ const nodeTypes = {
  * Main BlongGraph component for visualizing application structure
  */
 export const BlongGraph: React.FC<BlongGraphProps> = ({apiUrl = 'http://localhost:8080'}) => {
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -117,7 +147,7 @@ export const BlongGraph: React.FC<BlongGraphProps> = ({apiUrl = 'http://localhos
                 }
 
                 const result = await response.json();
-                
+
                 if (result.error) {
                     throw new Error(result.error.message || 'Failed to fetch graph data');
                 }
@@ -158,15 +188,22 @@ export const BlongGraph: React.FC<BlongGraphProps> = ({apiUrl = 'http://localhos
         };
 
         fetchGraphData();
-    }, [apiUrl]);
+    }, [apiUrl, setEdges, setNodes]);
 
     const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-        setSelectedNode(node.data as any);
+        setSelectedNode(node.data as unknown as GraphNode);
     }, []);
 
     if (loading) {
         return (
-            <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                }}
+            >
                 <div style={{fontSize: '24px', color: '#666'}}>Loading graph...</div>
             </div>
         );
@@ -174,7 +211,14 @@ export const BlongGraph: React.FC<BlongGraphProps> = ({apiUrl = 'http://localhos
 
     if (error) {
         return (
-            <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                }}
+            >
                 <div style={{fontSize: '18px', color: '#d32f2f'}}>Error: {error}</div>
             </div>
         );
@@ -222,7 +266,7 @@ export const BlongGraph: React.FC<BlongGraphProps> = ({apiUrl = 'http://localhos
                             <strong>Namespace:</strong> {selectedNode.data.namespace}
                         </div>
                     )}
-                    {selectedNode.data.config && (
+                    {!!selectedNode.data.config && (
                         <div style={{marginBottom: '10px'}}>
                             <strong>Config:</strong>
                             <pre

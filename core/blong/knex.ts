@@ -399,7 +399,7 @@ declare namespace Knex {
         // Using
         using: Using<TRecord, TResult>;
 
-        // Withs
+        // With
         with: With<TRecord, TResult>;
         withMaterialized: With<TRecord, TResult>;
         withNotMaterialized: With<TRecord, TResult>;

@@ -7,6 +7,7 @@ export default library(
         async function schemaProcedureSync(
             procedures: string | Array<{name: string; sql: string}>,
         ): Promise<{created: string[]}> {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const knex = (config as Record<string, any>)?.context?.queryBuilder;
             if (!knex) throw new Error('Knex queryBuilder not available in adapter context');
 

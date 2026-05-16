@@ -1,5 +1,3 @@
-import type {PortHandler} from '@feasibleone/blong';
-
 /**
  * Graph node representing a component in the Blong architecture
  */
@@ -38,16 +36,25 @@ export interface GraphStructure {
 /**
  * Handler to retrieve the application graph structure
  */
-const graphGraphGet = async function({registry}: any): Promise<GraphStructure> {
+const graphGraphGet = async function ({
+    registry,
+}: {
+    registry?: {
+        realm?: Record<
+            string,
+            {config?: unknown; layer?: Record<string, {handler?: Record<string, unknown>}>}
+        >;
+    };
+}): Promise<GraphStructure> {
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
 
     // Get all realms from the registry
     const realms = registry?.realm || {};
-    
-    Object.entries(realms).forEach(([realmName, realmData]: [string, any], realmIndex) => {
+
+    Object.entries(realms).forEach(([realmName, realmData], realmIndex) => {
         const realmId = `realm-${realmName}`;
-        
+
         // Add realm node
         nodes.push({
             id: realmId,
@@ -62,9 +69,9 @@ const graphGraphGet = async function({registry}: any): Promise<GraphStructure> {
 
         // Get layers from the realm
         const layers = realmData.layer || {};
-        Object.entries(layers).forEach(([layerName, layerData]: [string, any], layerIndex) => {
+        Object.entries(layers).forEach(([layerName, layerData], layerIndex) => {
             const layerId = `layer-${realmName}-${layerName}`;
-            
+
             // Add layer node
             nodes.push({
                 id: layerId,
@@ -88,7 +95,7 @@ const graphGraphGet = async function({registry}: any): Promise<GraphStructure> {
             const handlers = layerData.handler || {};
             Object.entries(handlers).forEach(([handlerName], handlerIndex) => {
                 const handlerId = `handler-${realmName}-${layerName}-${handlerName}`;
-                
+
                 // Add handler node
                 nodes.push({
                     id: handlerId,

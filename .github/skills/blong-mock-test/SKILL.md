@@ -1,15 +1,20 @@
 ---
 name: blong-mock-test
-description: Write server-side integration tests using mock handlers in Blong. Mock handlers in test/mock/ simulate external systems (databases, services). mockDispatch and testDispatch orchestrators in the test layer wire the mocks and tests together. Make sure to use this skill whenever the user wants to test without real infrastructure, mentions mocking adapters or external services, or needs server-side integration testing with deterministic mock data.
+description:
+    Write server-side integration tests using mock handlers in Blong. Mock handlers in test/mock/
+    simulate external systems (databases, services). mockDispatch and testDispatch orchestrators in
+    the test layer wire the mocks and tests together. Make sure to use this skill whenever the user
+    wants to test without real infrastructure, mentions mocking adapters or external services, or
+    needs server-side integration testing with deterministic mock data.
 ---
 
 # Server-Side Testing with Mocks
 
 ## Overview
 
-When business handlers call external systems (a database, a downstream service, an HSM), you
-replace those systems with lightweight mock handlers that live in the `test` layer. All code
-stays in-process – no running infrastructure is required.
+When business handlers call external systems (a database, a downstream service, an HSM), you replace
+those systems with lightweight mock handlers that live in the `test` layer. All code stays
+in-process – no running infrastructure is required.
 
 The pattern uses two orchestrators in the `test` layer:
 
@@ -47,8 +52,8 @@ realmname/
 
 ## Step 1 – Write mock handlers
 
-Mock handlers are ordinary `handler()` exports in `test/mock/`. They return hardcoded or
-in-memory data.
+Mock handlers are ordinary `handler()` exports in `test/mock/`. They return hardcoded or in-memory
+data.
 
 ```ts
 // realmname/test/mock/mockDataSave.ts
@@ -79,14 +84,11 @@ export default handler(
 
 ### TypeScript declarations for mock handlers
 
-Add a `~.schema.ts` to declare the mock handler signatures.
-This lets the TypeScript compiler check call sites in business handlers.
+Add a `~.schema.ts` to declare the mock handler signatures. This lets the TypeScript compiler check
+call sites in business handlers.
 
 ```ts
 // realmname/test/mock/~.schema.ts
-/* eslint-disable indent,semi */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @rushstack/typedef-var */
 import {validationHandlers} from '@feasibleone/blong';
 
 export default validationHandlers({});
@@ -104,8 +106,8 @@ declare module '@feasibleone/blong' {
 
 ## Step 2 – Add `mockDispatch`
 
-`mockDispatch` wires the `test/mock/` handler group to the `mock` namespace.
-It is only active in the `integration` environment (the `default` activation is empty).
+`mockDispatch` wires the `test/mock/` handler group to the `mock` namespace. It is only active in
+the `integration` environment (the `default` activation is empty).
 
 ```ts
 // realmname/test/mockDispatch.ts
@@ -157,18 +159,17 @@ export default orchestrator(blong => ({
 
 ## Step 4 – Write test handlers
 
-Test handlers call the real business handler and assert on the results.
-They live in `test/test/` and follow the [blong-test](../test) pattern.
+Test handlers call the real business handler and assert on the results. They live in `test/test/`
+and follow the [blong-test](../test) pattern.
 
 ```ts
 // realmname/test/test/testEipClaim.ts
-import {type IMeta, handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(({lib: {group}, handler: {eipMessageClaim}}) => ({
     testEipClaim: ({name = 'claim check'}: {name?: string}, $meta: IMeta) =>
         group(name)([
-            async function claimCheck(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+            async function claimCheck(assert: IAssert, {$meta}: {$meta: IMeta}) {
                 const result = (await eipMessageClaim(
                     {large: 'payload', sensitive: true},
                     $meta,
@@ -206,8 +207,8 @@ export default realm(blong => ({
 
 ## Step 6 – Enable in-process calls in the root server
 
-In the root `server.ts` (loaded by the test runner), set `remote.canSkipSocket: true`,
-set the servers to listen on random ports and list the test entry-points in `watch.test`:
+In the root `server.ts` (loaded by the test runner), set `remote.canSkipSocket: true`, set the
+servers to listen on random ports and list the test entry-points in `watch.test`:
 
 ```ts
 // server.ts (root)
@@ -236,8 +237,8 @@ export default server(blong => ({
 }));
 ```
 
-`canSkipSocket: true` tells the framework to resolve `mock.*`, `eip.*`, and `test.*` calls
-through the in-process local registry instead of going through the RPC transport layer.
+`canSkipSocket: true` tells the framework to resolve `mock.*`, `eip.*`, and `test.*` calls through
+the in-process local registry instead of going through the RPC transport layer.
 
 ## Step 7 – Write the test runner
 
@@ -274,10 +275,10 @@ export default handler(
 );
 ```
 
-In production, `eipDispatch` imports the handler group from a real SQL adapter.
-In integration tests, `mockDispatch` registers `mockDataSave` / `mockDataGet` under the `mock`
-namespace and the same `handler` proxy resolves them in-process. No code in the business
-handler changes between environments.
+In production, `eipDispatch` imports the handler group from a real SQL adapter. In integration
+tests, `mockDispatch` registers `mockDataSave` / `mockDataGet` under the `mock` namespace and the
+same `handler` proxy resolves them in-process. No code in the business handler changes between
+environments.
 
 ## Mock handler patterns
 
@@ -344,4 +345,5 @@ See `core/blong-eip/` for a working reference:
 - **blong-test** – general test handler patterns and parallel execution
 - **blong-eip** – EIP pattern handlers that use this testing approach
 - **blong-handler** – how business handlers are written
-- [Server-side testing with mocks](../../docs/blong/docs/patterns/mock-test) – conceptual documentation
+- [Server-side testing with mocks](../../docs/blong/docs/patterns/mock-test) – conceptual
+  documentation

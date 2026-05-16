@@ -2,7 +2,7 @@ import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {group}, handler: {authRealmFind}}) => ({
-    testKeycloakRealmFind: ({name = 'keycloak realm list'}, $meta) =>
+    testKeycloakRealmFind: ({name = 'keycloak realm list'}: {name?: string}) =>
         group(name)([
             async function listRealms(assert: typeof Assert, {$meta}) {
                 const result = await authRealmFind({}, $meta);

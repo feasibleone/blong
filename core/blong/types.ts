@@ -735,7 +735,7 @@ export interface ILib {
      * ])
      */
     checkpoint: (name: string, ...markers: string[]) => string[] & {name: string};
-    assert: typeof Assert | undefined;
+    assert: IAssert | undefined;
     yaml: {
         parse: <T>(source: string, options?: unknown) => T;
         parseAllDocuments: <T>(source: string, options?: unknown) => T;

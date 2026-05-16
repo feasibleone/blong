@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {mongoDocumentAdd, mongoDocumentFind}}) => ({
-        testMongodbDocumentInsert: ({name = 'mongodb document insert'}, $meta) =>
+        testMongodbDocumentInsert: ({name = 'mongodb document insert'}: {name?: string}) =>
             group(name)([
                 async function insertDocument(assert: typeof Assert, {$meta}) {
                     const testData = {testField: 'hello-from-blong-test', testTs: Date.now()};

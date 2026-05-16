@@ -167,8 +167,7 @@ core/blong-ttk/                     # Main package
 ```typescript
 // collections/hub/golden_path/p2p.ts
 import {handler} from '@feasibleone/blong';
-import type Assert from 'node:assert';
-import type {IMeta} from '@feasibleone/blong';
+import type {IAssert, IMeta} from '@feasibleone/blong';
 
 export default handler(
     ({lib: {group}, handler: {
@@ -179,7 +178,7 @@ export default handler(
     }}) => ({
         testP2pTransfer: ({name = 'P2P Transfer E2E'}, $meta: IMeta) =>
             group(name)([
-                async function createParties(assert: typeof Assert, {$meta}) {
+                async function createParties(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const payer = await provisionPartyCreate({
                         type: 'MSISDN',
                         currency: 'USD',
@@ -191,7 +190,7 @@ export default handler(
                     return {payer, payee};
                 },
 
-                async function requestQuote(assert: typeof Assert, {createParties, $meta}) {
+                async function requestQuote(assert: IAssert, {createParties, $meta}: {createParties: any, $meta: IMeta}) {
                     const {payer, payee} = await createParties;
                     const result = await quoteQuoteCreate({
                         payer: payer.partyId,
@@ -207,7 +206,10 @@ export default handler(
                     return {quoteId: result.quoteId, condition: callback.body.condition};
                 },
 
-                async function executeTransfer(assert: typeof Assert, {requestQuote, createParties, $meta}) {
+                async function executeTransfer(
+                  assert: IAssert,
+                  {requestQuote, createParties, $meta}: {requestQuote: any, createParties: any, $meta: IMeta}
+                ) {
                     const {quoteId, condition} = await requestQuote;
                     const {payer, payee} = await createParties;
                     const result = await transferTransferCreate({

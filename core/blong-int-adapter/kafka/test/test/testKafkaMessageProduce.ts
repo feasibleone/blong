@@ -2,7 +2,7 @@ import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {group}, handler: {brokerMessageProduce}}) => ({
-    testKafkaMessageProduce: ({name = 'kafka message produce'}, $meta) =>
+    testKafkaMessageProduce: ({name = 'kafka message produce'}: {name?: string}) =>
         group(name)([
             async function produceMessage(assert: typeof Assert, {$meta}) {
                 const result = await brokerMessageProduce(

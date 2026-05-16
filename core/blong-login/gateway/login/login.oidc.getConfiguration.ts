@@ -1,6 +1,6 @@
 import { validation } from '@feasibleone/blong';
 
-export default validation(proxy => function loginOidcGetConfiguration() {
+export default validation(() => function loginOidcGetConfiguration() {
     return {
         security: true,
         method: 'GET',

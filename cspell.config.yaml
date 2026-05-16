@@ -2,7 +2,7 @@
 # VSCode reads this file via cSpell.import in .vscode/settings.json
 # CLI/CI: cspell --config cspell.config.yaml <files>
 version: "0.2"
-
+language: en-GB
 words:
     - adaptername
     - Ambrym
@@ -93,6 +93,99 @@ words:
     - ungroup
     - unrole
     - userpass
+    # Marine biology taxonomy (blong-marine)
+    - Acroporidae
+    - Alcyonacea
+    - Amphiprion
+    - Anthoathecata
+    - Anthozoa
+    - Antipatharia
+    - Antipathidae
+    - azooxanthellate
+    - Chelonia
+    - cirratum
+    - Clownfish
+    - deepwater
+    - Dendrophylliidae
+    - detritivore
+    - Detritivore
+    - Elkhorn
+    - elkhorn
+    - Faviidae
+    - Fungiidae
+    - GBIF
+    - Ginglymostoma
+    - Gorgoniidae
+    - hepatus
+    - Hydrozoa
+    - Indo
+    - Mandarinfish
+    - mesophotic
+    - Mesophotic
+    - Milleporidae
+    - mydas
+    - nematocysts
+    - ocellaris
+    - Paracanthurus
+    - Pterois
+    - Scleractinia
+    - seagrass
+    - Seagrass
+    - Siderastreidae
+    - splendidus
+    - Staghorn
+    - staghorn
+    - Synchiropus
+    - volitans
+    # Mojaloop / DFSP financial infrastructure (blong-ttk, blong-log)
+    - DFSP
+    - DFSPs
+    - dfsp
+    - MSISDN
+    - Mojaloop
+    - mojaloop
+    - payerfsp
+    # Payshield / HSM crypto terms (blong-sim-tcp, test)
+    - ARQC
+    - Arqc
+    - arqc
+    - ARYZ
+    - binhex
+    - ivac
+    - mkac
+    - MPVV
+    - nscfg
+    - payshieldsim
+    - payshieldport
+    - Rndi
+    - ZCMK
+    # SQL column types (blong, blong-kopi, blong-int-sql)
+    - LONGTEXT
+    - mediumint
+    - MEDIUMINT
+    - MEDIUMTEXT
+    - savepoint
+    - tinyint
+    - TINYINT
+    - TINYTEXT
+    # Network / authentication terms (blong)
+    - APIV
+    - capath
+    - ntlm
+    - Ntlm
+    # Domain / infrastructure terms
+    - allurerc
+    - drpp
+    - mocktime
+    - onprem
+    - softwaregroup
+    - svar
+    - WHATWG
+    - worldtimeapi
+    - YHHHHCC
+    - zoomin
+    - gogo
+    - Upserted
 
 ignorePaths:
     - package-lock.json

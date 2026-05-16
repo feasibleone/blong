@@ -5,7 +5,7 @@ import {orchestrator} from '@feasibleone/blong';
  * Registers the 'test' namespace and imports all payshield.test handlers.
  * Activated in integration mode for internal API testing.
  */
-export default orchestrator(blong => ({
+export default orchestrator(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {},

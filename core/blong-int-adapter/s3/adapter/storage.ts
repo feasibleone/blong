@@ -16,8 +16,8 @@ export default adapter<{
                 region: 'us-east-1',
                 endpoint: 'http://localhost:9000',
                 credentials: {
-                    accessKeyId: 'minioadmin',
-                    secretAccessKey: 'minioadmin',
+                    accessKeyId: 'blong-admin',
+                    secretAccessKey: 'password',
                 },
                 forcePathStyle: true,
             },

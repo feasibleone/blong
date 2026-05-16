@@ -109,7 +109,7 @@ export default handler(
 
 ```typescript
 $meta.checkpoints = [];
-const result = await orderOrderCreate({items: [...], customerId: 'cust-1'}, $meta);
+const result = await orderOrderCreate({items: [...], customerId: 'customer-1'}, $meta);
 
 assert.equal(result.total, 200);
 const checkpoints = $meta.checkpoints!;

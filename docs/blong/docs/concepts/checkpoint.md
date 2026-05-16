@@ -55,13 +55,12 @@ export default handler(({handler: {accountGet, transferCreate}}) =>
 Tests can assert on checkpoints captured during handler execution:
 
 ```typescript
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 export default handler(({handler: {paymentTransferExecute}}) => ({
     // No 'name' parameter — context name is injected into $meta by the framework proxy
     testPaymentCheckpoints: (params: Record<string, unknown>, $meta: IMeta) => [
-        async function executeAndVerify(assert: typeof Assert, {$meta}: {$meta: IMeta}) {
+        async function executeAndVerify(assert: IAssert, {$meta}: {$meta: IMeta}) {
             const result = await paymentTransferExecute(
                 {accountId: 'acc-1', amount: 100},
                 $meta,

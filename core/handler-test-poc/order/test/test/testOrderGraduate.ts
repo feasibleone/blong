@@ -30,7 +30,7 @@ export default handler(
                 const order = (await orderOrderCreate(
                     {
                         items: [{name: 'Book', price: 30, quantity: 4}],
-                        customerId: 'cust-2',
+                        customerId: 'customer-2',
                     },
                     $meta,
                 )) as {orderId: string; total: number; discountedTotal: number};
@@ -56,7 +56,7 @@ export default handler(
                 const result = (await orderFlowExecute(
                     {
                         items: [{name: 'Book', price: 30, quantity: 4}],
-                        customerId: 'cust-3',
+                        customerId: 'customer-3',
                         paymentMethod: 'bank',
                     },
                     $meta,

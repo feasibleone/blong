@@ -97,11 +97,10 @@ gateway flag — the flag only controls whether the **public API** accepts the
 The most common usage is inside a test handler using `assert.rejects`:
 
 ```typescript
-import {handler, type IMeta} from '@feasibleone/blong';
-import type Assert from 'node:assert';
+import {handler, type IAssert, type IMeta} from '@feasibleone/blong';
 
 export default handler(({handler: {parkingTest}}) => ({
-    testParkingInvalidZone: async (_, $meta: IMeta) =>
+    testParkingInvalidZone: async (assert: IAssert, $meta: IMeta) =>
         assert.rejects(
             parkingTest({zone: 'red'}, {...$meta, expect: 'parking.invalidZone'}),
             {type: 'parking.invalidZone'},

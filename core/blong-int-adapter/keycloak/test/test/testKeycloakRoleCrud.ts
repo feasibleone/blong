@@ -17,9 +17,9 @@ export default handler(
         handler: {authRoleAdd, authRoleFind, authRoleGet, authRoleEdit, authRoleRemove},
     }) => ({
         testKeycloakRoleCrud: ({name = 'keycloak role CRUD'}: {name?: string}) =>
-            group(name, {mask: ['id']})([
+            group(name, {mask: ['id', 'containerId']})([
                 // ── 1. Clean up leftover test role if present ──────────────
-                async function ensureClean(assert: typeof Assert, {$meta}: StepMeta) {
+                async function ensureClean(assert: IAssert, {$meta}: StepMeta) {
                     try {
                         await authRoleRemove(
                             {realm: testRole.realm, roleName: testRole.roleName},
@@ -34,7 +34,7 @@ export default handler(
 
                 // ── 2. add — create the test role ─────────────────────────
                 async function addRole(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, ensureClean}: StepMeta & {ensureClean: Promise<unknown>},
                 ) {
                     await ensureClean;
@@ -45,7 +45,7 @@ export default handler(
 
                 // ── 3. find — list roles and verify the new role is present
                 async function findRoles(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, addRole}: StepMeta & {addRole: Promise<unknown>},
                 ) {
                     await addRole;
@@ -73,7 +73,7 @@ export default handler(
 
                 // ── 5. edit — update the role description ─────────────────
                 async function editRole(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, getRole}: StepMeta & {getRole: Promise<RoleResult>},
                 ) {
                     await getRole;
@@ -104,7 +104,7 @@ export default handler(
 
                 // ── 7. remove — delete the test role ──────────────────────
                 async function removeRole(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {
                         $meta,
                         verifyEdit,
@@ -126,7 +126,7 @@ export default handler(
 
                 // ── 8. find — verify the role is gone ─────────────────────
                 async function verifyRemoval(
-                    assert: typeof Assert,
+                    assert: IAssert,
                     {$meta, removeRole}: StepMeta & {removeRole: Promise<unknown>},
                 ) {
                     await removeRole;
