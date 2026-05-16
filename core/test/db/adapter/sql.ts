@@ -1,3 +1,4 @@
+// @ts-expect-error -- no type declarations for ut-port-sql
 import sqlPort from 'ut-port-sql';
 export default (layer: {config?: {test?: unknown}}): unknown =>
     class extends sqlPort(layer) {

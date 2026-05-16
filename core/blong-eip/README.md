@@ -35,7 +35,7 @@ This package serves two purposes:
 
 ## Package structure
 
-```
+```text
 blong-eip/
 ├── eip/                         # Child realm "@feasibleone/blong-eip"
 │   ├── server.ts                # Server-side realm entry (activates orchestrator + test layers)

@@ -6,7 +6,7 @@ export default handler(
     ({lib: {sum}}) =>
         async function subjectNumberSum(
             params: Parameters<Handler>[0],
-            $meta: IMeta,
+            _$meta: IMeta,
         ): ReturnType<Handler> {
             return sum(params);
         },

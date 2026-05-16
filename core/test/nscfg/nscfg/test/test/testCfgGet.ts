@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {cfgGet}}) => ({
-        testCfgGet: ({name = 'namespace config'}: {name?: string}, $meta: IMeta) =>
+        testCfgGet: ({name = 'namespace config'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function configTsActivationApplied(
                     assert: typeof Assert,

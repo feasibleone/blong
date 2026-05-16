@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageRecipient}}) => ({
-        testEipRecipient: ({name = 'eip recipient'}: {name?: string}, $meta: IMeta) =>
+        testEipRecipient: ({name = 'eip recipient'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function recipientParallel(
                     assert: typeof Assert,

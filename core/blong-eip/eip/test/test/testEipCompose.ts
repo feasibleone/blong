@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageCompose}}) => ({
-        testEipCompose: ({name = 'eip compose'}: {name?: string}, $meta: IMeta) =>
+        testEipCompose: ({name = 'eip compose'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function compose(
                     assert: typeof Assert,

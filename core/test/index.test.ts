@@ -8,8 +8,8 @@ const platforms = await Promise.all([
     load(server, 'impl', 'impl', ['microservice', 'integration', 'dev']),
     load(browser, 'impl', 'impl', ['microservice', 'integration', 'dev']),
 ]);
-for (const platform of platforms) await platform.start();
-await tap.test('blong test', async test => {
+for (const platform of platforms) await platform.start({});
+await tap.test('blong test', async () => {
     await platforms[1].test();
 });
 for (const platform of platforms) await platform.stop();

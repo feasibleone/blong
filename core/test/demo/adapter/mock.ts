@@ -1,5 +1,5 @@
 export default {
     namespace: 'db/subject',
     schema: [],
-    subjectObjectPredicate(params: unknown, $meta: unknown) {}
+    subjectObjectPredicate(_params: unknown, _$meta: unknown) {},
 };

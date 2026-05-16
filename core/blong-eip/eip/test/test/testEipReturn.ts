@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageReturn}}) => ({
-        testEipReturn: ({name = 'eip return'}: {name?: string}, $meta: IMeta) =>
+        testEipReturn: ({name = 'eip return'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function requestReply(
                     assert: typeof Assert,

@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageDynamic}}) => ({
-        testEipDynamic: ({name = 'eip dynamic'}: {name?: string}, $meta: IMeta) =>
+        testEipDynamic: ({name = 'eip dynamic'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function dynamicToA(
                     assert: typeof Assert,

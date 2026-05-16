@@ -1,7 +1,7 @@
 import {library} from '@feasibleone/blong';
 
 export default library(
-    proxy =>
+    () =>
         function age(birthDate: Date) {
             const otherDate = new Date();
             let years = otherDate.getFullYear() - birthDate.getFullYear();

@@ -5,7 +5,7 @@ type Handler = (params: unknown) => Promise<{
 }>;
 
 export default handler(
-    proxy =>
+    () =>
         async function subjectHello(
             params: Parameters<Handler>[0],
             $meta: IMeta,

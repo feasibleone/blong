@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageRoute}}) => ({
-        testEipRoute: ({name = 'eip route'}: {name?: string}, $meta: IMeta) =>
+        testEipRoute: ({name = 'eip route'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function routeToA(
                     assert: typeof Assert,

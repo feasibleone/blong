@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageEnrich}}) => ({
-        testEipEnrich: ({name = 'eip enrich'}: {name?: string}, $meta: IMeta) =>
+        testEipEnrich: ({name = 'eip enrich'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function contentEnricher(
                     assert: typeof Assert,

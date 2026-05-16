@@ -7,7 +7,7 @@ export default handler(
     () =>
         async function eipMessageReturn(
             params: Parameters<Handler>[0],
-            $meta: IMeta,
+            _$meta: IMeta,
         ): ReturnType<Handler> {
             return params.result;
         },

@@ -55,6 +55,8 @@ words:
     - rdkafka
     - realmname
     - replicaset
+    - Resequencer
+    - resequencer
     - replicasets
     - restfs
     - rolebinding

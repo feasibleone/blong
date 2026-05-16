@@ -1,6 +1,6 @@
 import {adapter, type IMeta} from '@feasibleone/blong';
 
-export default adapter(blong => ({
+export default adapter(() => ({
     extends: 'adapter.tcp',
     activation: {
         default: {
@@ -18,11 +18,15 @@ export default adapter(blong => ({
     },
     receive(params: unknown, $meta: IMeta) {
         if ($meta.mtid === 'request') {
-            $meta.dispatch = (params: {data: unknown}, dispatchMeta) => {
+            $meta.dispatch = (msg: object = {}, dispatchMeta?: IMeta) => {
+                if (!dispatchMeta) return;
                 dispatchMeta.mtid = 'response';
                 switch (dispatchMeta.method) {
                     case 'echo': {
-                        return [{data: params.data, errorCode: '00'}, dispatchMeta];
+                        return [
+                            {data: (msg as {data?: unknown}).data, errorCode: '00'},
+                            dispatchMeta,
+                        ] as [object, IMeta];
                     }
                 }
             };

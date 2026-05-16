@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageWrap}}) => ({
-        testEipWrap: ({name = 'eip wrap'}: {name?: string}, $meta: IMeta) =>
+        testEipWrap: ({name = 'eip wrap'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function envelopeWrapper(
                     assert: typeof Assert,

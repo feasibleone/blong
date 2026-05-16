@@ -1,4 +1,5 @@
 import {realm, type ModuleApi} from '@feasibleone/blong';
+// @ts-expect-error -- no type declarations for ut-port-sql
 import sqlPort from 'ut-port-sql';
 
 export default realm(blong => ({
@@ -31,7 +32,7 @@ export default realm(blong => ({
                             ].filter(Boolean),
                         };
                     }
-                }
+                },
             );
         },
     ],

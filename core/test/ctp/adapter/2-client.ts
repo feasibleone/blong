@@ -1,7 +1,7 @@
 import {adapter} from '@feasibleone/blong';
 import {dirname, join} from 'node:path';
 
-export default adapter(blong => ({
+export default adapter(() => ({
     extends: 'adapter.tcp',
     activation: {
         default: {

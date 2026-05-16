@@ -4,7 +4,7 @@ export default handler(
     () =>
         async function mockDataGet(
             params: {id: string},
-            $meta: IMeta,
+            _$meta: IMeta,
         ): Promise<{id: string; payload: unknown}> {
             return {id: params.id, payload: 'stored-data'};
         },

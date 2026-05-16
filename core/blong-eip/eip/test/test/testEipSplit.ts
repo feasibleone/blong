@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageSplit}}) => ({
-        testEipSplit: ({name = 'eip split'}: {name?: string}, $meta: IMeta) =>
+        testEipSplit: ({name = 'eip split'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function splitParallel(
                     assert: typeof Assert,

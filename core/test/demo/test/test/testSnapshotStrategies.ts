@@ -28,7 +28,7 @@ export default handler(
         // the step function name.  No assert.snapshot() calls needed anywhere.
         // Ideal for migrating an existing test collection: add the config flag
         // and get regression coverage with zero per-step changes.
-        testSnapshotStrategyA: ({name = 'snapshot — A autoSnapshot'}, $meta) =>
+        testSnapshotStrategyA: ({name = 'snapshot — A autoSnapshot'}: {name?: string}, $meta: IMeta) =>
             group(name, {autoSnapshot: true})([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -48,7 +48,7 @@ export default handler(
         // ['*'] checkpoint — one declarative marker at the end of the array.
         // The executor waits for all steps then snapshots the full accumulated
         // context.  Object.assign gives the snapshot a stable name.
-        testSnapshotStrategyB: ({name = 'snapshot — B checkpoint *'}, $meta) =>
+        testSnapshotStrategyB: ({name = 'snapshot — B checkpoint *'}: {name?: string}, $meta: IMeta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -69,7 +69,7 @@ export default handler(
         // Phase checkpoints — named markers capture subsets of the context at
         // phase boundaries.  The executor waits ONLY for the listed steps
         // so parallel steps in other phases keep running.
-        testSnapshotStrategyC: ({name = 'snapshot — C phase checkpoints'}, $meta) =>
+        testSnapshotStrategyC: ({name = 'snapshot — C phase checkpoints'}: {name?: string}, $meta: IMeta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -98,7 +98,7 @@ export default handler(
         // assert.snapshot() no-args — call inside a step; the executor captures
         // the return value and calls matchSnapshot(result, stepName) after the
         // function resolves.  The step name becomes the snapshot key.
-        testSnapshotStrategyD: ({name = 'snapshot — D per-step'}, $meta) =>
+        testSnapshotStrategyD: ({name = 'snapshot — D per-step'}: {name?: string}, $meta: IMeta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),
@@ -120,7 +120,7 @@ export default handler(
         // assert.equal / assert.rejects for business rules (explicit intent)
         // assert.snapshot() in sentinel steps (lock in their full shape)
         // ['*'] at the end for comprehensive regression coverage
-        testSnapshotHybrid: ({name = 'snapshot — hybrid'}, $meta) =>
+        testSnapshotHybrid: ({name = 'snapshot — hybrid'}: {name?: string}, $meta: IMeta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),

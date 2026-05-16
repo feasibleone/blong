@@ -3,7 +3,7 @@ import {validationHandlers} from '@feasibleone/blong';
 export default validationHandlers({});
 
 declare module '@feasibleone/blong' {
-    interface IRemoteHandler {
+    interface ISchema {
         // Mock handler signatures
         mockPipeA<T = Promise<unknown>>(params: unknown, $meta: IMeta): T;
         mockPipeB<T = Promise<unknown>>(params: unknown, $meta: IMeta): T;

@@ -1,8 +1,11 @@
 import {library} from '@feasibleone/blong';
 
 export default library(
-    proxy =>
-        function upperCaseObject(data: object, nonCorrectableFields: object) {
+    () =>
+        function upperCaseObject(
+            data: Record<string, unknown>,
+            nonCorrectableFields: Record<string, unknown>,
+        ) {
             return Object.keys(data).reduce((acc, curr) => {
                 const param =
                     (!nonCorrectableFields[curr] &&
@@ -11,5 +14,5 @@ export default library(
                     data[curr];
                 return Object.assign(acc, {[curr]: param});
             }, {});
-        }
+        },
 );

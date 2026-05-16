@@ -28,9 +28,7 @@ export default handler(
                 abbreviation: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 client_ip: $meta.ipAddress,
                 datetime: now.toString(),
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 day_of_week: now.getDay(),
-                // eslint-disable-next-line @typescript-eslint/naming-convention
                 day_of_year: now.getDate(),
                 dst: dst_offset !== 0,
                 dst_offset,

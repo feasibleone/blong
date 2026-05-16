@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageScatter}}) => ({
-        testEipScatter: ({name = 'eip scatter'}: {name?: string}, $meta: IMeta) =>
+        testEipScatter: ({name = 'eip scatter'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function scatter(
                     assert: typeof Assert,

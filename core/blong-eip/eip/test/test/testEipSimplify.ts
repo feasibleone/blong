@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageSimplify}}) => ({
-        testEipSimplify: ({name = 'eip simplify'}: {name?: string}, $meta: IMeta) =>
+        testEipSimplify: ({name = 'eip simplify'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function contentFilter(
                     assert: typeof Assert,

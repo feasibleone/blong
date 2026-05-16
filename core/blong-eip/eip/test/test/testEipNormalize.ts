@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageNormalize}}) => ({
-        testEipNormalize: ({name = 'eip normalize'}: {name?: string}, $meta: IMeta) =>
+        testEipNormalize: ({name = 'eip normalize'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function normalizeUppercase(
                     assert: typeof Assert,

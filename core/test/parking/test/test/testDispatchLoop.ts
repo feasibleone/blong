@@ -2,7 +2,7 @@ import {type IMeta, handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 
 export default handler(({lib: {group}, handler: {testLoginTokenCreate, parkingTest}}) => ({
-    testDispatchLoop: ({name = 'ports'}, $meta) =>
+    testDispatchLoop: ({name = 'ports'}: {name?: string}, $meta: IMeta) =>
         group(name)([
             testLoginTokenCreate({}, $meta),
             async function dispatch(assert: typeof Assert, {$meta}: {$meta: IMeta}) {

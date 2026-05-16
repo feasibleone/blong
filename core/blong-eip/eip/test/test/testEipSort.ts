@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageSort}}) => ({
-        testEipSort: ({name = 'eip sort'}: {name?: string}, $meta: IMeta) =>
+        testEipSort: ({name = 'eip sort'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function resequencer(
                     assert: typeof Assert,

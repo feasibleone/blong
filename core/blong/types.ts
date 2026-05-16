@@ -16,6 +16,7 @@ import {
     type TArray,
     type TBoolean,
     type TFunction,
+    type TIntersect,
     type TNever,
     type TNumber,
     type TObject,
@@ -636,7 +637,7 @@ export interface IStep {
 }
 export type Sequence = (boolean | string | IStep)[];
 
-export type ApiSchema = TObject | TArray | TBoolean | TString | TNumber | TUnknown;
+export type ApiSchema = TObject | TArray | TBoolean | TString | TNumber | TUnknown | TIntersect;
 
 export type GatewaySchema = (
     | {

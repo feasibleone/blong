@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageClaim}}) => ({
-        testEipClaim: ({name = 'eip claim'}: {name?: string}, $meta: IMeta) =>
+        testEipClaim: ({name = 'eip claim'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function claimCheck(
                     assert: typeof Assert,

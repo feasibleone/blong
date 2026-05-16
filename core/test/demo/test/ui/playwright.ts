@@ -1,4 +1,4 @@
-export default (blong): unknown =>
+export default (blong: {config?: {type?: unknown}}): unknown =>
     function playwright() {
         return [
             {

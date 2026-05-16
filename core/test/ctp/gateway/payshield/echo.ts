@@ -4,10 +4,10 @@ export default validation(
     ({lib: {type}}) =>
         function payshieldEcho() {
             return {
-                params: type.Any(),
+                params: type.Unknown(),
                 result: type.Object({
-                    data: type.Any(),
+                    data: type.Unknown(),
                 }),
             };
-        }
+        },
 );

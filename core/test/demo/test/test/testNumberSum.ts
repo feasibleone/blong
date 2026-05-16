@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {testLoginTokenCreate, testUserAdminLogin, subjectNumberSum}}) => ({
-        testNumberSum: ({name = 'demo'}, $meta) =>
+        testNumberSum: ({name = 'demo'}: {name?: string}, $meta: IMeta) =>
             group(name)([
                 testLoginTokenCreate({}, $meta),
                 testUserAdminLogin({}, $meta),

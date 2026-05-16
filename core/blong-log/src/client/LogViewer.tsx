@@ -577,7 +577,7 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
                             ))}
                         </div>
                     )}
-                    {row.req.body && (
+                    {!!row.req.body && (
                         <div
                             style={{
                                 marginTop: '6px',
@@ -633,7 +633,7 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
                                     <span
                                         style={{
                                             color:
-                                                (row.res.statusCode ?? 200) < 400
+                                                (row.res?.statusCode ?? 200) < 400
                                                     ? '#22c55e'
                                                     : '#ef4444',
                                         }}
@@ -645,7 +645,7 @@ function MessageCell({row}: {row: LogEntry}): React.ReactElement {
                             ))}
                         </div>
                     )}
-                    {row.res.body && (
+                    {!!row.res.body && (
                         <div
                             style={{
                                 marginTop: '6px',
@@ -1078,7 +1078,7 @@ function EntryModal({
                                     </table>
                                 </div>
                             )}
-                            {entry.req.body && (
+                            {!!entry.req.body && (
                                 <div>
                                     <div
                                         style={{
@@ -1166,7 +1166,7 @@ function EntryModal({
                                     </table>
                                 </div>
                             )}
-                            {entry.res.body && (
+                            {!!entry.res.body && (
                                 <div>
                                     <div
                                         style={{

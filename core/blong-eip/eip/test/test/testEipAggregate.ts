@@ -3,7 +3,7 @@ import type Assert from 'node:assert';
 
 export default handler(
     ({lib: {group}, handler: {eipMessageAggregate}}) => ({
-        testEipAggregate: ({name = 'eip aggregate'}: {name?: string}, $meta: IMeta) =>
+        testEipAggregate: ({name = 'eip aggregate'}: {name?: string}, _$meta: IMeta) =>
             group(name)([
                 async function aggregateMessages(
                     assert: typeof Assert,
