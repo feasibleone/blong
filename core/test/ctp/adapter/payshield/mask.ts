@@ -1,10 +1,10 @@
 import {library} from '@feasibleone/blong';
 
 export default library(
-    proxy =>
+    () =>
         function mask(
             message: string,
-            data: object,
+            data: Record<string, string>,
             {
                 pattern,
                 maskedKeys,
@@ -19,15 +19,15 @@ export default library(
                 }[];
                 maskedKeys: string[];
                 maskSymbol: string;
-            }
+            },
         ) {
             return (maskedKeys || [])
                 .filter(key => pattern.find(element => element.name === key))
                 .map(key => {
                     const patternElement = pattern.find(v => key === v.name);
-                    switch (patternElement.type) {
+                    switch (patternElement!.type) {
                         case 'string':
-                            if (patternElement.binhex) {
+                            if (patternElement!.binhex) {
                                 return (
                                     (data[key] && {
                                         key,
@@ -36,9 +36,9 @@ export default library(
                                     }) ||
                                     false
                                 );
-                            } else if (patternElement.binary) {
+                            } else if (patternElement!.binary) {
                                 return false;
-                            } else if (patternElement.z) {
+                            } else if (patternElement!.z) {
                                 return false;
                             } else {
                                 return (
@@ -57,9 +57,9 @@ export default library(
                 .filter(Boolean)
                 .reduce(
                     (buf, maskThis) =>
-                        maskThis && buf.split(maskThis.value).join(maskThis.replaceValue),
-                    message
+                        maskThis ? buf.split(maskThis.value).join(maskThis.replaceValue) : buf,
+                    message,
                 )
                 .toUpperCase();
-        }
+        },
 );

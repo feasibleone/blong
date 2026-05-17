@@ -1,8 +1,25 @@
-import {handler, type IContext, type ILogger, type IMeta} from '@feasibleone/blong';
+import {handler, type Errors, type IContext, type ILogger, type IMeta} from '@feasibleone/blong';
 import {createRequire} from 'node:module';
 import bitsyntax from 'ut-bitsyntax';
 
-export default handler(({config, lib: {errors, commands, lmk, upperCaseObject, mask}}) => {
+export default handler(({config, lib, lib: {lmk, upperCaseObject, mask}}) => {
+    const errors = lib.errors as unknown as Errors<{
+        'payshield.parser.request': unknown;
+        'payshield.parser.parserResponse': unknown;
+        'payshield.parser.header': unknown;
+        'payshield.parser.body': unknown;
+        'payshield.notImplemented': unknown;
+    }>;
+    const commands = lib.commands as unknown as Record<
+        string,
+        {
+            pattern: {name: string; size: number}[];
+            code: string;
+            warnings?: string[];
+            method: string;
+            mtid: string;
+        }
+    >;
     const nonCorrectableFields = Object.assign(
         {},
         createRequire(import.meta.url)('./fields.json'),
@@ -16,10 +33,15 @@ export default handler(({config, lib: {errors, commands, lmk, upperCaseObject, m
         throw errors['payshield.parser.header']({});
     }
 
-    const headerNoSize = headerPattern.filter(value => value.name === 'headerNo').pop().size;
+    const headerNoSize = headerPattern.filter(value => value.name === 'headerNo').pop()!.size;
     const maxTrace = parseInt('9'.repeat(headerNoSize));
 
-    return function encode(data: object, $meta: IMeta, context: IContext, log: ILogger) {
+    return function encode(
+        data: object,
+        $meta: IMeta,
+        context: IContext & {trace: number},
+        log: ILogger,
+    ) {
         const commandName = $meta.method!.split('.').pop() + ':' + $meta.mtid;
 
         if (commands[commandName] === undefined)

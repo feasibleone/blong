@@ -6,7 +6,6 @@
  */
 
 declare module 'reconnect-core' {
-    type Connect = (...args: unknown[]) => unknown;
     type Reconnect = {
         on(event: string, handler: (...args: unknown[]) => void): Reconnect;
         connect(opts?: object): Reconnect;
@@ -23,6 +22,8 @@ declare module 'ut-bitsyntax' {
     const bitSyntax: {
         builder(pattern: string): (data: object) => Buffer;
         matcher(pattern: string): (...args: unknown[]) => unknown;
+        parse(pattern: string): {name: string; size: number}[] | false;
+        build(pattern: {name: string; size: number}[], data: unknown): Buffer | false;
     };
     export default bitSyntax;
 }

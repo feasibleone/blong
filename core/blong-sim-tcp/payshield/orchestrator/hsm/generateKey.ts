@@ -38,7 +38,13 @@ export default library<{
             }: Record<string, string>,
             $meta: IMeta,
         ) {
-            const keyTypeCode = check(!pciDssMode, true, 'keyTypeCodeNonPci', 'keyTypeCodePci');
+            const keyTypeCode = check(
+                !pciDssMode,
+                true,
+                'keyTypeCodeNonPci',
+                'keyTypeCodePci',
+            ) as string;
+            const keys = keysByType as unknown as Record<string, Record<string, string>>;
             let delimiter;
             let tr31BlockDataLen;
 
@@ -50,9 +56,9 @@ export default library<{
                     dukptMasterKey = '';
                     ksn = '';
                     zkaMasterKeyType = check(
-                        !!keysByType[zkaMasterKeyType],
+                        !!keys[zkaMasterKeyType],
                         true,
-                        keysByType[zkaMasterKeyType][keyTypeCode],
+                        keys[zkaMasterKeyType][keyTypeCode],
                         '',
                     );
                     zkaRndi = check(zkaOption, '0', zkaRndi, '');
@@ -118,12 +124,7 @@ export default library<{
             const {key, rest} = await generateKey<{key: string; rest: string}>(
                 {
                     mode,
-                    keyType: check(
-                        !!keysByType[keyType],
-                        true,
-                        keysByType[keyType][keyTypeCode],
-                        '',
-                    ),
+                    keyType: check(!!keys[keyType], true, keys[keyType][keyTypeCode], ''),
                     keySchemeLmk,
                     deriveKeyModeLen,
                     deriveKeyMode,
@@ -157,7 +158,10 @@ export default library<{
             );
 
             let counter = 0;
-            const restString = String.fromCharCode.apply(null, Buffer.from(rest, 'hex'));
+            const restString = String.fromCharCode.apply(
+                null,
+                Array.from(Buffer.from(rest, 'hex')),
+            );
             let returnResult: {key: string; keyZmk?: string; kcv?: string; zkaRndi?: string} = {
                 key,
             };
