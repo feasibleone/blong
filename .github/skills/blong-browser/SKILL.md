@@ -657,6 +657,36 @@ synchronous, arbitrary `setTimeout` waits are not needed. `await findByTestId(..
 `await act(async () => { await new Promise(r => setTimeout(r, N)); })` guards unless a test
 genuinely depends on real elapsed time (e.g. debounce logic).
 
+**`act()` warnings from PrimeReact**: PrimeReact's Dropdown/Select components schedule
+focus-management callbacks via `setTimeout(0)`. These fire during `@testing-library/react`'s
+`waitFor()` polling window, where `IS_REACT_ACT_ENVIRONMENT` is temporarily set to `false` by the
+library's internal `asyncWrapper`. The combination produces harmless "not configured to support
+act" noise in console output when play() functions call `canvas.findByText()` or similar async
+queries. `src/test/setup.ts` suppresses this specific message globally (and only this message) since
+it is a known PrimeReact + testing-library incompatibility — not a defect in our code. All other
+console.error output is preserved.
+
+**`flushEffects` helper** (`src/test/render.tsx`): Drains the macrotask queue inside `act()` so
+PrimeReact's post-interaction focus-management timers are flushed before the final
+`findByTestId` snapshot assertion. Use it after `await act(() => Story.play!({...}))` calls
+that trigger user interactions on PrimeReact components, and before play() is called (to drain
+initial-render timers):
+
+```tsx
+if (MyStory.play) {
+    await flushEffects(); // drain initial-render PrimeReact timers
+    await act(() =>
+        MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}),
+    );
+    await flushEffects(); // drain post-interaction timers
+}
+```
+
+**Zustand store mutations in tests**: If a test mutates global Zustand store state (e.g. calling
+`useAppStore.getState().setTranslations(...)`) and components that subscribe to that store are
+mounted, wrap the mutations in `await act(async () => { ... })` so React processes the resulting
+re-renders inside act. This applies to both setup and teardown (`finally`) blocks.
+
 **Snapshot tests**:
 
 ```tsx
@@ -666,15 +696,17 @@ it('Basic render equals snapshot', async () => {
 });
 ```
 
-After interactions via a `play()` function, wrap it in `act` so React flushes before the snapshot:
+After interactions via a `play()` function, wrap it in `act` and flush PrimeReact timers:
 
 ```tsx
 it('After interaction equals snapshot', async () => {
     const {findByTestId, container} = render(<MyStory />, {dispatch});
     if (MyStory.play) {
+        await flushEffects(); // drain PrimeReact init timers before play() calls findByText
         await act(() =>
             MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}),
         );
+        await flushEffects(); // drain post-interaction PrimeReact timers
     }
     expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
 });

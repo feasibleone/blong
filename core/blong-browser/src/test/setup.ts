@@ -12,6 +12,33 @@ declare global {
 // exits; setting it here makes the default true for the whole suite.
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+// PrimeReact's Dropdown / Select components schedule focus-management callbacks
+// via setTimeout(0).  These fire during @testing-library/react's waitFor()
+// polling window, where IS_REACT_ACT_ENVIRONMENT is temporarily set to false by
+// the library's asyncWrapper.  The combination produces harmless "The current
+// testing environment is not configured to support act(...)" noise from
+// PrimeReact internals — not from our code.
+//
+// With IS_REACT_ACT_ENVIRONMENT = true (set above), genuine act() omissions in
+// *our* code surface instead as "An update to X was not wrapped in act(...)" —
+// a different message that is NOT suppressed here.  The suppressed message
+// structurally requires IS_REACT_ACT_ENVIRONMENT to be false, which in this
+// suite only happens inside @testing-library's asyncWrapper window.
+//
+// To make the suppression more surgical (catching cases where a test explicitly
+// sets IS_REACT_ACT_ENVIRONMENT = false), move it into the specific describe()
+// blocks that render PrimeReact Dropdown/Select components via beforeAll/afterAll.
+//
+// All other console.error output is preserved.
+const _origConsoleError = console.error.bind(console);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+console.error = (...args: any[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('not configured to support act')) {
+        return;
+    }
+    _origConsoleError(...args);
+};
+
 // Normalise PrimeReact's internal pr_id_* counters in DOM snapshots.
 //
 // PrimeReact assigns a global incrementing integer to each component instance.

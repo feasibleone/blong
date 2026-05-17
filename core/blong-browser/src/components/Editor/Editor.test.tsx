@@ -5,7 +5,7 @@ import React from 'react';
 import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 import {bgTranslations} from '../../../.storybook/dispatch.js';
 import {useAppStore} from '../../state/appStore.js';
-import {render} from '../../test/render.js';
+import {flushEffects, render} from '../../test/render.js';
 import {widgetRegistry} from '../../widgets/index.js';
 import {Editor, resolveTabTitle} from './Editor.js';
 
@@ -95,9 +95,11 @@ describe('<Editor />', () => {
     it('CascadedDropdowns render equals snapshot', async () => {
         const {findByTestId, container} = render(<CascadedDropdowns />, {dispatch});
         if (CascadedDropdowns.play) {
+            await flushEffects(); // drain PrimeReact init timers before play() calls findByText
             await act(() =>
                 CascadedDropdowns.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -111,9 +113,11 @@ describe('<Editor />', () => {
     it('CascadedTables render equals snapshot', async () => {
         const {findByTestId, container} = render(<CascadedTables />, {dispatch});
         if (CascadedTables.play) {
+            await flushEffects();
             await act(() =>
                 CascadedTables.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -138,9 +142,11 @@ describe('<Editor />', () => {
     it('MasterDetail render equals snapshot', async () => {
         const {findByTestId, container} = render(<MasterDetail />, {dispatch});
         if (MasterDetail.play) {
+            await flushEffects();
             await act(() =>
                 MasterDetail.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -153,12 +159,14 @@ describe('<Editor />', () => {
     it('MasterDetailPolymorphic render equals snapshot', async () => {
         const {findByTestId, container} = render(<MasterDetailPolymorphic />, {dispatch});
         if (MasterDetailPolymorphic.play) {
+            await flushEffects();
             await act(() =>
                 MasterDetailPolymorphic.play!({
                     canvas: within(container),
                     userEvent: userEvent.setup(),
                 }),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -218,9 +226,11 @@ describe('<Editor />', () => {
     it('Submit render equals snapshot', async () => {
         const {findByTestId, container} = render(<Submit />, {dispatch});
         if (Submit.play) {
+            await flushEffects();
             await act(() =>
                 Submit.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -229,9 +239,11 @@ describe('<Editor />', () => {
         // Apply story args explicitly — Template.bind({}) doesn't forward .args in JSX render.
         const {findByTestId, container} = render(Validation(Validation.args ?? {}), {dispatch});
         if (Validation.play) {
+            await flushEffects();
             await act(() =>
                 Validation.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -243,21 +255,27 @@ describe('<Editor />', () => {
      * Cleaned up to English after the test.
      */
     it('ValidationBG render equals snapshot', async () => {
-        useAppStore.getState().setTranslations(bgTranslations);
-        useAppStore.getState().setLanguage('bg');
+        await act(async () => {
+            useAppStore.getState().setTranslations(bgTranslations);
+            useAppStore.getState().setLanguage('bg');
+        });
         try {
             const {findByTestId, container} = render(ValidationBG(ValidationBG.args ?? {}), {
                 dispatch,
             });
             if (ValidationBG.play) {
+                await flushEffects();
                 await act(() =>
                     ValidationBG.play!({canvas: within(container), userEvent: userEvent.setup()}),
                 );
+                await flushEffects();
             }
             expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
         } finally {
-            useAppStore.getState().setTranslations({});
-            useAppStore.getState().setLanguage('en');
+            await act(async () => {
+                useAppStore.getState().setTranslations({});
+                useAppStore.getState().setLanguage('en');
+            });
         }
     });
 
@@ -267,9 +285,11 @@ describe('<Editor />', () => {
             dispatch,
         });
         if (ServerValidation.play) {
+            await flushEffects();
             await act(() =>
                 ServerValidation.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -288,7 +308,9 @@ describe('<Editor />', () => {
     it('Files render equals snapshot', async () => {
         const {findByTestId, container} = render(<Files />, {dispatch});
         if (Files.play) {
+            await flushEffects();
             await act(() => Files.play!({canvas: within(container), userEvent: userEvent.setup()}));
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -300,9 +322,11 @@ describe('<Editor />', () => {
     it('FilesInTab render equals snapshot', async () => {
         const {findByTestId, container} = render(<FilesInTab />, {dispatch});
         if (FilesInTab.play) {
+            await flushEffects();
             await act(() =>
                 FilesInTab.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -315,9 +339,11 @@ describe('<Editor />', () => {
     it('StepsDisabledBack render equals snapshot', async () => {
         const {findByTestId, container} = render(<StepsDisabledBack />, {dispatch});
         if (StepsDisabledBack.play) {
+            await flushEffects();
             await act(() =>
                 StepsDisabledBack.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -325,9 +351,11 @@ describe('<Editor />', () => {
     it('StepsHiddenBack render equals snapshot', async () => {
         const {findByTestId, container} = render(<StepsHiddenBack />, {dispatch});
         if (StepsHiddenBack.play) {
+            await flushEffects();
             await act(() =>
                 StepsHiddenBack.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
@@ -341,9 +369,11 @@ describe('<Editor />', () => {
     it('EditorTabsExplorer render equals snapshot', async () => {
         const {findByTestId, container} = render(<EditorWithExplorer />, {dispatch});
         if (EditorWithExplorer.play) {
+            await flushEffects();
             await act(() =>
                 EditorWithExplorer.play!({canvas: within(container), userEvent: userEvent.setup()}),
             );
+            await flushEffects();
         }
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
