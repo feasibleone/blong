@@ -9,8 +9,8 @@
         "./browser.ts": "./browser.ts"
     },
     "scripts": {
-        "ci-lint": "blong-ci lint",
-        "build": "true"
+        "build": "true",
+        "ci-lint": "blong-dev lint"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

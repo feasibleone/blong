@@ -4,9 +4,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "ci-lint": "blong-ci lint",
         "build": "true",
-        "ci-integration": "../../test/integration/wait.sh mysql && tap index.test.ts --allow-incomplete-coverage"
+        "ci-integration": "../../test/integration/wait.sh mysql && tap index.test.ts --allow-incomplete-coverage",
+        "ci-lint": "blong-dev lint"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

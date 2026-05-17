@@ -22,10 +22,10 @@
         "blong-log": "./src/cli.ts"
     },
     "scripts": {
-        "ci-lint": "blong-ci lint",
         "build": "heft build --clean && node build-client.js",
         "build-storybook": "storybook build -o storybook-static",
         "ci-chromatic": "../common/chromatic.sh",
+        "ci-lint": "blong-dev lint",
         "storybook": "storybook dev -p 6006",
         "storybook:test": "test-storybook",
         "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",

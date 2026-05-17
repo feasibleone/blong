@@ -6,13 +6,13 @@
 # This hook was installed by Rush. To learn more about Rush, visit: https://rushjs.io
 # To learn more about Git hooks, visit: https://git-scm.com/docs/githooks
 #
-# TODO: Activate by removing the "exit 0" line below once blong-ci is wired up:
+# TODO: Activate by removing the "exit 0" line below once blong-dev is wired up:
 #
 #   1. Add @feasibleone/blong-dev as a devDependency to each package that needs linting
-#   2. Set "ci-lint": "blong-ci lint" in each package's scripts
+#   2. Set "ci-lint": "blong-dev lint" in each package's scripts
 #
-# How it works: blong-ci lint-staged reads staged files from git, maps them to their
-# owning Rush package (via rush.json projectFolder), and runs `blong-ci lint <files>`
+# How it works: blong-dev lint-staged reads staged files from git, maps them to their
+# owning Rush package (via rush.json projectFolder), and runs `blong-dev lint <files>`
 # in each affected package directory.  Each package's node_modules/.bin is used to
 # resolve tsc / cspell / eslint so no global installs are required.
 #
@@ -20,4 +20,4 @@
 
 exit 0  # remove this line to activate
 
-node /home/kalin/work/blong/blong/core/blong-dev/bin/blong-dev.ts lint-staged || exit $?
+node core/blong-dev/bin/blong-dev.ts lint-staged || exit $?

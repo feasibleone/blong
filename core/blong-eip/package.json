@@ -4,8 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "ci-lint": "blong-ci lint",
         "build": "true",
+        "ci-lint": "blong-dev lint",
         "ci-unit": "tap index.test.ts --allow-incomplete-coverage"
     },
     "dependencies": {

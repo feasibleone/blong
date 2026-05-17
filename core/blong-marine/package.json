@@ -1,7 +1,7 @@
 {
     "name": "@feasibleone/blong-marine",
     "version": "1.0.0",
-    "description": "Marine biology demo realm \u2014 shared schema, fixtures, and model specs for the Blong ecosystem",
+    "description": "Marine biology demo realm — shared schema, fixtures, and model specs for the Blong ecosystem",
     "type": "module",
     "exports": {
         "./browser.ts": "./browser.ts",
@@ -21,8 +21,8 @@
         }
     },
     "scripts": {
-        "ci-lint": "blong-ci lint",
-        "build": "true"
+        "build": "true",
+        "ci-lint": "blong-dev lint"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0"

@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "bin": {
-        "blong-ci": "bin/blong-dev.ts"
+        "blong-dev": "bin/blong-dev.ts"
     },
     "scripts": {
         "build": "true",

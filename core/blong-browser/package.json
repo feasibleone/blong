@@ -44,7 +44,7 @@
         "build-storybook": "storybook build -o storybook-static",
         "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
         "ci-chromatic": "../common/chromatic.sh",
-        "ci-lint": "blong-ci lint",
+        "ci-lint": "blong-dev lint",
         "ci-unit": "node --run test",
         "storybook": "storybook dev --port 6006",
         "storybook:test": "test-storybook",

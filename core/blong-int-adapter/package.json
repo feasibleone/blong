@@ -4,7 +4,6 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "ci-lint": "blong-ci lint",
         "build": "true",
         "ci-coverage": "test -f coverage/lcov.info || ./integration-test.sh report",
         "ci-integration": "./integration-test.sh",
@@ -15,7 +14,8 @@
         "ci-integration-mongodb": "./integration-test.sh mongodb",
         "ci-integration-mysql": "./integration-test.sh mysql",
         "ci-integration-s3": "./integration-test.sh s3",
-        "ci-integration-vault": "./integration-test.sh vault"
+        "ci-integration-vault": "./integration-test.sh vault",
+        "ci-lint": "blong-dev lint"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

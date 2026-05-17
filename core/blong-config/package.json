@@ -7,8 +7,8 @@
         ".": "./index.ts"
     },
     "scripts": {
-        "ci-lint": "blong-ci lint",
-        "build": "true"
+        "build": "true",
+        "ci-lint": "blong-dev lint"
     },
     "dependencies": {
         "minimist": "^1.2.8",
