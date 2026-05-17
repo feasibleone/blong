@@ -12,6 +12,7 @@
     },
     "dependencies": {
         "cspell": "^8.0.0",
+        "eslint": "^10.2.1",
         "strip-json-comments": "5.0.3"
     },
     "devDependencies": {
