@@ -1,6 +1,6 @@
 import assert from 'assert';
 import tap from 'tap';
-import {TestExecutor} from './index.js';
+import {TestExecutor, type StepArray} from './index.js';
 
 // ============================================================================
 // Timing Analysis Test: Parallel Execution Performance Validation
@@ -32,41 +32,41 @@ tap.test('Timing Analysis: Parallel Execution Performance', async t => {
         });
     });
 
-    const steps = [
-        async function loadProduct(assert: typeof import('assert'), context) {
+    const steps: StepArray = [
+        async function loadProduct() {
             await new Promise(resolve => setTimeout(resolve, 30));
             return {productId: 'PROD-123', price: 99.99, inStock: true};
         },
 
-        async function loadUserCart(assert: typeof import('assert'), context) {
+        async function loadUserCart() {
             await new Promise(resolve => setTimeout(resolve, 30));
             return {cartId: 'CART-456', items: 2};
         },
 
-        async function validateInventory(assert: typeof import('assert'), context) {
-            const product = await context.loadProduct;
-            assert.ok(product.inStock);
+        async function validateInventory(assert: typeof import('node:assert'), context) {
+            const product = (await context.loadProduct) as {inStock: boolean};
+            assert.ok(product.inStock, 'Product should be in stock');
             await new Promise(resolve => setTimeout(resolve, 20));
             return {inventoryValid: true, reservationId: 'RES-789'};
         },
 
-        async function calculateShipping(assert: typeof import('assert'), context) {
-            const cart = await context.loadUserCart;
+        async function calculateShipping(assert, context) {
+            const cart = (await context.loadUserCart) as {cartId: string; items: number};
             assert.equal(cart.items, 2);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {shippingCost: 9.99, estimatedDays: 3};
         },
 
-        async function calculateTax(assert: typeof import('assert'), context) {
-            const product = await context.loadProduct;
+        async function calculateTax(assert, context) {
+            const product = (await context.loadProduct) as {price: number};
             await new Promise(resolve => setTimeout(resolve, 20));
             return {taxAmount: product.price * 0.08};
         },
 
-        async function calculateTotal(assert: typeof import('assert'), context) {
-            const product = await context.loadProduct;
-            const shipping = await context.calculateShipping;
-            const tax = await context.calculateTax;
+        async function calculateTotal(assert, context) {
+            const product = (await context.loadProduct) as {price: number};
+            const shipping = (await context.calculateShipping) as {shippingCost: number};
+            const tax = (await context.calculateTax) as {taxAmount: number};
 
             const total = product.price + shipping.shippingCost + tax.taxAmount;
             return {
@@ -79,19 +79,19 @@ tap.test('Timing Analysis: Parallel Execution Performance', async t => {
             };
         },
 
-        async function processPayment(assert: typeof import('assert'), context) {
-            const total = await context.calculateTotal;
-            const inventory = await context.validateInventory;
+        async function processPayment(assert: typeof import('node:assert'), context) {
+            const total = (await context.calculateTotal) as {total: number};
+            const inventory = (await context.validateInventory) as {inventoryValid: boolean};
 
-            assert.ok(inventory.inventoryValid);
+            assert.ok(inventory.inventoryValid as boolean, 'Inventory should be valid');
             await new Promise(resolve => setTimeout(resolve, 40));
 
             return {paymentId: 'PAY-999', amount: total.total, status: 'completed'};
         },
 
-        async function createOrder(assert: typeof import('assert'), context) {
-            const payment = await context.processPayment;
-            const cart = await context.loadUserCart;
+        async function createOrder(assert, context) {
+            const payment = (await context.processPayment) as {paymentId: string; status: string};
+            const cart = (await context.loadUserCart) as {cartId: string; items: number};
 
             assert.equal(payment.status, 'completed');
             await new Promise(resolve => setTimeout(resolve, 30));
@@ -99,15 +99,15 @@ tap.test('Timing Analysis: Parallel Execution Performance', async t => {
             return {orderId: 'ORD-111', paymentId: payment.paymentId, cartId: cart.cartId};
         },
 
-        async function sendConfirmationEmail(assert: typeof import('assert'), context) {
-            const order = await context.createOrder;
+        async function sendConfirmationEmail(assert, context) {
+            const order = (await context.createOrder) as {orderId: string};
             await new Promise(resolve => setTimeout(resolve, 20));
             return {emailSent: true, orderId: order.orderId};
         },
 
-        async function updateInventory(assert: typeof import('assert'), context) {
+        async function updateInventory(assert, context) {
             await context.createOrder;
-            const inventory = await context.validateInventory;
+            const inventory = (await context.validateInventory) as {reservationId: string};
 
             await new Promise(resolve => setTimeout(resolve, 20));
             return {inventoryUpdated: true, reservationReleased: inventory.reservationId};

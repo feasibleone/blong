@@ -12,7 +12,7 @@
  */
 
 import {describe, it} from 'node:test';
-import {TestExecutor} from '../index.js';
+import {TestExecutor, type StepArray} from '../index.js';
 
 describe('Error Reporting Demo', () => {
     it('shows error in nested output with full details', async t => {
@@ -35,7 +35,7 @@ describe('Error Reporting Demo', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {}, t);
 
         // Verify error was tracked
         const progress = executor.getProgress();
@@ -60,7 +60,7 @@ describe('Error Reporting Demo', () => {
 
         const executor = new TestExecutor({concurrency: 10});
 
-        const databaseOps = [
+        const databaseOps: StepArray = [
             async function connect() {
                 console.log('  ✅ Connecting to database...');
                 return {connected: true};
@@ -73,7 +73,7 @@ describe('Error Reporting Demo', () => {
                 console.log('  ✅ Running successful query...');
                 return {rows: 10};
             },
-        ] as any;
+        ];
         databaseOps.name = 'Database Operations';
 
         const steps = [
@@ -88,7 +88,7 @@ describe('Error Reporting Demo', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {}, t);
 
         const progress = executor.getProgress();
         console.log(`\n📈 Progress Summary:`);
@@ -104,12 +104,12 @@ describe('Error Reporting Demo', () => {
 
         const executor = new TestExecutor({concurrency: 10});
 
-        const level2 = [
+        const level2: StepArray = [
             async function level2Error() {
                 console.log('    ❌ Error at level 2');
                 throw new Error('Level 2 failure');
             },
-        ] as any;
+        ];
         level2.name = 'Level 2 Group';
 
         const steps = [
@@ -124,7 +124,7 @@ describe('Error Reporting Demo', () => {
             level2,
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {}, t);
 
         const progress = executor.getProgress();
         console.log(`\n📈 Progress Summary:`);

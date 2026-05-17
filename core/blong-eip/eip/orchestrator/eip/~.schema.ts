@@ -124,7 +124,7 @@ export default validationHandlers({
 });
 
 declare module '@feasibleone/blong' {
-    interface IRemoteHandler {
+    interface ISchema {
         eipMessageReturn<T = ReturnType<eipMessageReturn>>(
             params: Parameters<eipMessageReturn>[0],
             $meta: IMeta,

@@ -16,6 +16,7 @@
 // ============================================================================
 // Minimal Stream Interfaces (replacing 'stream' module)
 // ============================================================================
+/* eslint-disable */
 
 interface ReadableStreamKnex {
     readable: boolean;

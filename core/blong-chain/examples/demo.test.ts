@@ -3,46 +3,50 @@
  * Run with: node --test demo.test.js
  */
 
-import {strict as assert} from 'node:assert';
+import {strict} from 'node:assert';
 import {describe, it} from 'node:test';
 import {TestExecutor} from '../index.js';
+import type {StepArray} from '../test-types.js';
 
 describe('Demo: Nested Test Context with Automatic Indentation', () => {
     it('demonstrates nested test hierarchy', async t => {
         const executor = new TestExecutor({concurrency: 10});
 
         // Define nested test groups
-        const databaseOperations = [
+        const databaseOperations: StepArray = [
             async function connectToDatabase() {
                 console.log('Connecting to database...');
                 return {connection: 'db-connection-123', status: 'connected'};
             },
             async function createTable(assert, context) {
-                const db = await context.connectToDatabase;
+                const db = (await context.connectToDatabase) as {
+                    connection: string;
+                    status: string;
+                };
                 console.log(`Creating table using ${db.connection}`);
                 assert.equal(db.status, 'connected');
                 return {table: 'users', created: true};
             },
-        ] as any;
+        ];
         databaseOperations.name = 'Database Setup';
 
-        const userOperations = [
+        const userOperations: StepArray = [
             async function createUser(assert, context) {
-                const table = await context.createTable;
+                const table = (await context.createTable) as {table: string; created: boolean};
                 console.log(`Creating user in ${table.table} table`);
                 assert.equal(table.created, true);
                 return {userId: 1, name: 'Alice'};
             },
             async function updateUser(assert, context) {
-                const user = await context.createUser;
+                const user = (await context.createUser) as {userId: number; name: string};
                 console.log(`Updating user ${user.name} (ID: ${user.userId})`);
                 return {userId: user.userId, name: user.name, updated: true};
             },
-        ] as any;
+        ];
         userOperations.name = 'User Operations';
 
         // Main test steps
-        const steps = [
+        const steps: StepArray = [
             async function initializeSystem() {
                 console.log('Initializing system...');
                 return {systemReady: true, timestamp: Date.now()};
@@ -50,8 +54,15 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
             databaseOperations, // Nested group 1
             userOperations, // Nested group 2
             async function verifySystem(assert, context) {
-                const system = await context.initializeSystem;
-                const user = await context.updateUser;
+                const system = (await context.initializeSystem) as {
+                    systemReady: boolean;
+                    timestamp: number;
+                };
+                const user = (await context.updateUser) as {
+                    userId: number;
+                    name: string;
+                    updated: boolean;
+                };
                 console.log('Verifying system state...');
                 assert.equal(system.systemReady, true);
                 assert.equal(user.updated, true);
@@ -61,12 +72,12 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
         ];
 
         // Execute with test context for automatic indentation
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {}, t);
 
         // Verify results
         const progress = executor.getProgress();
-        assert.equal(progress.completedSteps, 6);
-        assert.equal(progress.status, 'completed');
+        strict.equal(progress.completedSteps, 6);
+        strict.equal(progress.status, 'completed');
     });
 
     it('demonstrates deeply nested hierarchy', async t => {
@@ -77,7 +88,7 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
                 console.log('Executing deep operation at level 3');
                 return {level: 3, data: 'deep-data'};
             },
-        ] as any;
+        ] as StepArray;
         level3.name = 'Level 3: Deep Processing';
 
         const level2 = [
@@ -86,19 +97,19 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
                 return {level: 2, data: 'mid-data'};
             },
             level3, // Nested within level 2
-        ] as any;
+        ] as StepArray;
         level2.name = 'Level 2: Processing';
 
-        const steps = [
+        const steps: StepArray = [
             async function topOperation() {
                 console.log('Executing top operation at level 1');
                 return {level: 1, data: 'top-data'};
             },
             level2, // Nested within level 1
             async function summary(assert, context) {
-                const top = await context.topOperation;
-                const mid = await context.midOperation;
-                const deep = await context.deepOperation;
+                const top = (await context.topOperation) as {level: number; data: string};
+                const mid = (await context.midOperation) as {level: number; data: string};
+                const deep = (await context.deepOperation) as {level: number; data: string};
                 console.log('Summary of all levels:');
                 console.log(`  Level 1: ${top.data}`);
                 console.log(`  Level 2: ${mid.data}`);
@@ -108,16 +119,16 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {}, t);
 
         const progress = executor.getProgress();
-        assert.equal(progress.completedSteps, 4);
+        strict.equal(progress.completedSteps, 4);
     });
 
     it('shows parallel execution within groups', async t => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const parallelTasks = [
+        const parallelTasks: StepArray = [
             async function task1() {
                 console.log('Task 1 starting...');
                 await new Promise(resolve => setTimeout(resolve, 50));
@@ -136,19 +147,19 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
                 console.log('Task 3 completed');
                 return {task: 3, result: 'done'};
             },
-        ] as any;
+        ];
         parallelTasks.name = 'Parallel Task Execution';
 
-        const steps = [
+        const steps: StepArray = [
             async function setup() {
                 console.log('Setup phase');
                 return {ready: true};
             },
             parallelTasks, // These will run in parallel
             async function verify(assert, context) {
-                const t1 = await context.task1;
-                const t2 = await context.task2;
-                const t3 = await context.task3;
+                const t1 = (await context.task1) as {task: number; result: string};
+                const t2 = (await context.task2) as {task: number; result: string};
+                const t3 = (await context.task3) as {task: number; result: string};
                 console.log('All tasks verified');
                 assert.equal(t1.result, 'done');
                 assert.equal(t2.result, 'done');
@@ -157,9 +168,9 @@ describe('Demo: Nested Test Context with Automatic Indentation', () => {
             },
         ];
 
-        await executor.execute(steps, {}, t as any);
+        await executor.execute(steps, {}, t);
 
         const progress = executor.getProgress();
-        assert.equal(progress.completedSteps, 5);
+        strict.equal(progress.completedSteps, 5);
     });
 });

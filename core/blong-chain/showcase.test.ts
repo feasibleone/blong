@@ -18,7 +18,7 @@
 
 import assert from 'node:assert/strict';
 import tap from 'tap';
-import {TestExecutor} from './index.js';
+import {TestExecutor, type ITestContext, type StepArray, type StepFunction} from './index.js';
 
 // ============================================================================
 // Test 1: Core Features Showcase
@@ -40,9 +40,9 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
 
     const executionOrder: Array<{step: string; event: string; time: number}> = [];
 
-    const steps = [
+    const steps: StepArray = [
         // Independent steps - should run in parallel
-        async function fetchUserData(assert: typeof import('assert'), context) {
+        async function fetchUserData() {
             executionOrder.push({step: 'fetchUserData', event: 'start', time: Date.now()});
             await new Promise(resolve => setTimeout(resolve, 50));
             const userData = {id: 1, name: 'Alice', email: 'alice@example.com'};
@@ -50,7 +50,7 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
             return userData;
         },
 
-        async function fetchAccountData(assert: typeof import('assert'), context) {
+        async function fetchAccountData() {
             executionOrder.push({step: 'fetchAccountData', event: 'start', time: Date.now()});
             await new Promise(resolve => setTimeout(resolve, 50));
             const accountData = {accountId: 'ACC-001', balance: 1000};
@@ -58,7 +58,7 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
             return accountData;
         },
 
-        async function loadConfiguration(assert: typeof import('assert'), context) {
+        async function loadConfiguration() {
             executionOrder.push({step: 'loadConfiguration', event: 'start', time: Date.now()});
             await new Promise(resolve => setTimeout(resolve, 30));
             const config = {theme: 'dark', language: 'en'};
@@ -67,9 +67,9 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         },
 
         // Pattern 1: await context.propertyName
-        async function validateUser(assert: typeof import('assert'), context) {
+        async function validateUser(assert, context) {
             executionOrder.push({step: 'validateUser', event: 'start', time: Date.now()});
-            const user = await context.fetchUserData;
+            const user = (await context.fetchUserData) as {id: number; name: string; email: string};
             assert.equal(user.name, 'Alice');
             assert.equal(user.email, 'alice@example.com');
             executionOrder.push({step: 'validateUser', event: 'end', time: Date.now()});
@@ -77,11 +77,11 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         },
 
         // Pattern 2: {propertyName} then await propertyName
-        async function enrichUserWithAccount(assert: typeof import('assert'), context) {
+        async function enrichUserWithAccount(assert, context) {
             executionOrder.push({step: 'enrichUserWithAccount', event: 'start', time: Date.now()});
             const {fetchUserData, fetchAccountData} = context;
-            const user = await fetchUserData;
-            const account = await fetchAccountData;
+            const user = (await fetchUserData) as {id: number; name: string; email: string};
+            const account = (await fetchAccountData) as {accountId: string; balance: number};
             executionOrder.push({step: 'enrichUserWithAccount', event: 'end', time: Date.now()});
             return {
                 user: user.name,
@@ -91,29 +91,27 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         },
 
         // Pattern 3: {propertyName} then await propertyName.nestedProperty
-        async function displayUserName(assert: typeof import('assert'), context) {
+        async function displayUserName(assert, context) {
             executionOrder.push({step: 'displayUserName', event: 'start', time: Date.now()});
             const {fetchUserData} = context;
-            const userName = await fetchUserData.name;
-            assert.equal(userName, 'Alice');
+            const userName = (await fetchUserData) as {id: number; name: string; email: string};
+            assert.equal(userName.name, 'Alice');
             executionOrder.push({step: 'displayUserName', event: 'end', time: Date.now()});
             return {displayName: userName};
         },
 
         // Pattern 4: {propertyName: {nestedProperty}} then await nestedProperty
-        async function checkBalance(assert: typeof import('assert'), context) {
+        async function checkBalance(assert, context) {
             executionOrder.push({step: 'checkBalance', event: 'start', time: Date.now()});
-            const {
-                fetchAccountData: {balance},
-            } = context;
-            const currentBalance = await balance;
+            const {fetchAccountData} = context;
+            const currentBalance = ((await fetchAccountData) as {balance: number}).balance;
             assert.equal(currentBalance, 1000);
             executionOrder.push({step: 'checkBalance', event: 'end', time: Date.now()});
             return {hasPositiveBalance: currentBalance > 0};
         },
 
         // $meta is always available directly
-        async function logTestInfo(assert: typeof import('assert'), context) {
+        async function logTestInfo(assert, context) {
             executionOrder.push({step: 'logTestInfo', event: 'start', time: Date.now()});
             assert.equal(context.$meta.testId, 'showcase-001');
             assert.equal(context.$meta.environment, 'test');
@@ -122,12 +120,19 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         },
 
         // Multiple dependencies - waits for all
-        async function generateReport(assert: typeof import('assert'), context) {
+        async function generateReport(assert: Parameters<StepFunction>[0], context) {
             executionOrder.push({step: 'generateReport', event: 'start', time: Date.now()});
-            const userData = await context.fetchUserData;
-            const accountData = await context.fetchAccountData;
-            const config = await context.loadConfiguration;
-            const validation = await context.validateUser;
+            const userData = (await context.fetchUserData) as {
+                id: number;
+                name: string;
+                email: string;
+            };
+            const accountData = (await context.fetchAccountData) as {
+                accountId: string;
+                balance: number;
+            };
+            const config = (await context.loadConfiguration) as {theme: string};
+            const validation = (await context.validateUser) as {validated: boolean};
 
             assert.ok(validation.validated);
             executionOrder.push({step: 'generateReport', event: 'end', time: Date.now()});
@@ -140,17 +145,21 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         },
 
         // Multiple steps awaiting same property (shared dependency)
-        async function cacheUserData(assert: typeof import('assert'), context) {
+        async function cacheUserData(assert, context) {
             executionOrder.push({step: 'cacheUserData', event: 'start', time: Date.now()});
-            const user = await context.fetchUserData;
+            const user = (await context.fetchUserData) as {id: number; name: string; email: string};
             executionOrder.push({step: 'cacheUserData', event: 'end', time: Date.now()});
             return {cached: true, cachedId: user.id};
         },
 
         // Final step depends on report
-        async function sendNotification(assert: typeof import('assert'), context) {
+        async function sendNotification(assert: Parameters<StepFunction>[0], context) {
             executionOrder.push({step: 'sendNotification', event: 'start', time: Date.now()});
-            const report = await context.generateReport;
+            const report = (await context.generateReport) as {
+                report: string;
+                theme: string;
+                timestamp: number;
+            };
             assert.ok(report.report.includes('Alice'));
             executionOrder.push({step: 'sendNotification', event: 'end', time: Date.now()});
             return {notified: true, reportSent: report.timestamp};
@@ -310,21 +319,21 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
 tap.test('Feature Showcase: Nested Steps & Test Context Integration', async t => {
     const executor = new TestExecutor({concurrency: 10});
 
-    const databaseOperations = [
-        async function connectDatabase(assert: typeof import('assert'), context) {
+    const databaseOperations: StepArray = [
+        async function connectDatabase() {
             await new Promise(resolve => setTimeout(resolve, 20));
             return {connected: true, connectionId: 'conn-123'};
         },
 
-        async function createSchema(assert: typeof import('assert'), context) {
-            const connection = await context.connectDatabase;
+        async function createSchema(assert: Parameters<StepFunction>[0], context) {
+            const connection = (await context.connectDatabase) as {connected: boolean};
             assert.ok(connection.connected);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {schema: 'users', created: true};
         },
 
-        async function seedData(assert: typeof import('assert'), context) {
-            const schema = await context.createSchema;
+        async function seedData(assert: Parameters<StepFunction>[0], context) {
+            const schema = (await context.createSchema) as {created: boolean};
             assert.ok(schema.created);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {
@@ -334,46 +343,46 @@ tap.test('Feature Showcase: Nested Steps & Test Context Integration', async t =>
                 ],
             };
         },
-    ] as any;
+    ];
     databaseOperations.name = 'Database Setup';
 
-    const apiOperations = [
-        async function startServer(assert: typeof import('assert'), context) {
-            const dbData = await context.seedData;
+    const apiOperations: StepArray = [
+        async function startServer(assert, context) {
+            const dbData = (await context.seedData) as {users: unknown[]};
             assert.equal(dbData.users.length, 2);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {serverRunning: true, port: 3000};
         },
 
-        async function registerRoutes(assert: typeof import('assert'), context) {
-            const server = await context.startServer;
+        async function registerRoutes(assert: Parameters<StepFunction>[0], context) {
+            const server = (await context.startServer) as {serverRunning: boolean};
             assert.ok(server.serverRunning);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {routes: ['/users', '/accounts', '/health']};
         },
-    ] as any;
+    ];
     apiOperations.name = 'API Setup';
 
-    const testOperations = [
-        async function callHealthEndpoint(assert: typeof import('assert'), context) {
-            const routes = await context.registerRoutes;
+    const testOperations: StepArray = [
+        async function callHealthEndpoint(assert: Parameters<StepFunction>[0], context) {
+            const routes = (await context.registerRoutes) as {routes: string[]};
             assert.ok(routes.routes.includes('/health'));
             await new Promise(resolve => setTimeout(resolve, 20));
             return {status: 200, body: {healthy: true}};
         },
 
-        async function callUsersEndpoint(assert: typeof import('assert'), context) {
-            const routes = await context.registerRoutes;
-            const dbData = await context.seedData;
+        async function callUsersEndpoint(assert: Parameters<StepFunction>[0], context) {
+            const routes = (await context.registerRoutes) as {routes: string[]};
+            const dbData = (await context.seedData) as {users: unknown[]};
             assert.ok(routes.routes.includes('/users'));
             await new Promise(resolve => setTimeout(resolve, 20));
             return {status: 200, users: dbData.users};
         },
-    ] as any;
+    ];
     testOperations.name = 'API Tests';
 
-    const steps = [
-        async function initialize(assert: typeof import('assert'), context) {
+    const steps: StepArray = [
+        async function initialize() {
             return {initialized: true, timestamp: Date.now()};
         },
 
@@ -381,9 +390,12 @@ tap.test('Feature Showcase: Nested Steps & Test Context Integration', async t =>
         apiOperations,
         testOperations,
 
-        async function cleanup(assert: typeof import('assert'), context) {
-            const health = await context.callHealthEndpoint;
-            const users = await context.callUsersEndpoint;
+        async function cleanup(assert, context) {
+            const health = (await context.callHealthEndpoint) as {
+                status: number;
+                body: {healthy: boolean};
+            };
+            const users = (await context.callUsersEndpoint) as {status: number; users: unknown[]};
             assert.equal(health.status, 200);
             assert.equal(users.users.length, 2);
             return {cleanedUp: true};
@@ -449,35 +461,35 @@ tap.test('Feature Showcase: Error Handling & Recovery', async t => {
     const events: Array<{event: string; step?: string}> = [];
     executor.on('step:start', name => events.push({event: 'start', step: name}));
     executor.on('step:end', name => events.push({event: 'end', step: name}));
-    executor.on('step:error', (name, error) => events.push({event: 'error', step: name}));
+    executor.on('step:error', (name, _error) => events.push({event: 'error', step: name}));
 
-    const steps = [
-        async function successfulSetup(assert: typeof import('assert'), context) {
+    const steps: StepArray = [
+        async function successfulSetup() {
             return {setupComplete: true};
         },
 
-        async function independentOperation1(assert: typeof import('assert'), context) {
+        async function independentOperation1() {
             await new Promise(resolve => setTimeout(resolve, 20));
             return {op1: 'success'};
         },
 
-        async function independentOperation2(assert: typeof import('assert'), context) {
+        async function independentOperation2() {
             await new Promise(resolve => setTimeout(resolve, 20));
             return {op2: 'success'};
         },
 
-        async function failingStep(assert: typeof import('assert'), context) {
+        async function failingStep(assert: Parameters<StepFunction>[0], context) {
             // This step intentionally fails
-            const setup = await context.successfulSetup;
+            const setup = (await context.successfulSetup) as {setupComplete: boolean};
             assert.ok(setup.setupComplete);
             throw new Error('Intentional failure for demonstration');
         },
 
-        async function independentSuccess(assert: typeof import('assert'), context) {
+        async function independentSuccess(assert, context) {
             // This runs independently and should succeed
             await new Promise(resolve => setTimeout(resolve, 20));
-            const op1 = await context.independentOperation1;
-            const op2 = await context.independentOperation2;
+            const op1 = (await context.independentOperation1) as {op1: string};
+            const op2 = (await context.independentOperation2) as {op2: string};
             assert.equal(op1.op1, 'success');
             assert.equal(op2.op2, 'success');
             return {independentResult: 'completed'};
@@ -488,7 +500,7 @@ tap.test('Feature Showcase: Error Handling & Recovery', async t => {
     // Note: Without test context, errors propagate up, so we catch them here
     try {
         await executor.execute(steps, {testId: 'error-showcase'});
-    } catch (error) {
+    } catch (_error) {
         // Expected - failingStep throws an intentional error
         // The executor still tracks all error details in progress
     }
@@ -590,8 +602,8 @@ tap.test('Feature Showcase: Error Handling & Recovery', async t => {
 tap.test('Feature Showcase: Promise Resolution Patterns', async t => {
     const executor = new TestExecutor({concurrency: 10});
 
-    const steps = [
-        async function createComplexObject(assert: typeof import('assert'), context) {
+    const steps: StepArray = [
+        async function createComplexObject() {
             return {
                 user: {
                     id: 1,
@@ -617,52 +629,94 @@ tap.test('Feature Showcase: Promise Resolution Patterns', async t => {
         },
 
         // Access whole object
-        async function useWholeObject(assert: typeof import('assert'), context) {
-            const data = await context.createComplexObject;
+        async function getWholeObject(assert, context) {
+            const data = (await context.createComplexObject) as {
+                user: {
+                    name: string;
+                };
+                account: {balance: number; currency: string};
+            };
             assert.equal(data.user.name, 'Alice');
             assert.equal(data.account.balance, 1000);
             return {processed: true};
         },
 
         // Access nested property
-        async function useNestedProperty1(assert: typeof import('assert'), context) {
-            const {createComplexObject} = context;
-            const userName = await createComplexObject.user.name;
+        async function getNestedProperty1(assert, context) {
+            const {createComplexObject} = context as {
+                createComplexObject?: {
+                    user: {
+                        name: Promise<string>;
+                    };
+                };
+            };
+            const userName = await createComplexObject!.user.name;
             assert.equal(userName, 'Alice');
             return {userName};
         },
 
         // Access deeply nested property
-        async function useDeepProperty(assert: typeof import('assert'), context) {
-            const {createComplexObject} = context;
-            const theme = await createComplexObject.user.profile.preferences.theme;
+        async function getDeepProperty(assert, context) {
+            const {createComplexObject} = context as {
+                createComplexObject?: {
+                    user: {
+                        profile: {
+                            preferences: {
+                                theme: Promise<string>;
+                            };
+                        };
+                    };
+                };
+            };
+            const theme = await createComplexObject!.user.profile.preferences.theme;
             assert.equal(theme, 'dark');
             return {userTheme: theme};
         },
 
         // Multiple steps await same nested property
-        async function useNestedProperty2(assert: typeof import('assert'), context) {
-            const {createComplexObject} = context;
-            const userName = await createComplexObject.user.name;
+        async function getNestedProperty2(assert, context) {
+            const {createComplexObject} = context as {
+                createComplexObject?: {
+                    user: {
+                        name: Promise<string>;
+                    };
+                };
+            };
+            const userName = await createComplexObject!.user.name;
             assert.equal(userName, 'Alice');
             return {duplicateUserName: userName};
         },
 
-        async function useNestedProperty3(assert: typeof import('assert'), context) {
-            const {createComplexObject} = context;
-            const userName = await createComplexObject.user.name;
+        async function getNestedProperty3(assert, context) {
+            const {createComplexObject} = context as {
+                createComplexObject?: {
+                    user: {
+                        name: Promise<string>;
+                    };
+                };
+            };
+            const userName = await createComplexObject!.user.name;
             assert.equal(userName, 'Alice');
             return {triplicateUserName: userName};
         },
 
         // Destructure multiple nested properties
-        async function useMultipleNested(assert: typeof import('assert'), context) {
+        async function getMultipleNested(assert, context) {
             const {
                 createComplexObject: {
                     user: {name},
                     account: {balance},
                 },
-            } = context;
+            } = context as unknown as {
+                createComplexObject: {
+                    user: {
+                        name: Promise<string>;
+                    };
+                    account: {
+                        balance: Promise<number>;
+                    };
+                };
+            };
 
             const userName = await name;
             const accountBalance = await balance;
@@ -674,13 +728,13 @@ tap.test('Feature Showcase: Promise Resolution Patterns', async t => {
         },
 
         // Verify all previous steps
-        async function verifyAll(assert: typeof import('assert'), context) {
-            const whole = await context.useWholeObject;
-            const nested1 = await context.useNestedProperty1;
-            const deep = await context.useDeepProperty;
-            const nested2 = await context.useNestedProperty2;
-            const nested3 = await context.useNestedProperty3;
-            const multiple = await context.useMultipleNested;
+        async function verifyAll(assert: Parameters<StepFunction>[0], context) {
+            const whole = (await context.getWholeObject) as {processed: boolean};
+            const nested1 = (await context.getNestedProperty1) as {userName: string};
+            const deep = (await context.getDeepProperty) as {userTheme: string};
+            const nested2 = (await context.getNestedProperty2) as {duplicateUserName: string};
+            const nested3 = (await context.getNestedProperty3) as {triplicateUserName: string};
+            const multiple = (await context.getMultipleNested) as {summary: string};
 
             assert.ok(whole.processed);
             assert.equal(nested1.userName, 'Alice');
@@ -745,41 +799,56 @@ tap.test('Feature Showcase: Complete Integration Test', async t => {
     executor.on('test:end', () => executionLog.push('TEST_END'));
 
     // Realistic e-commerce checkout scenario
-    const steps = [
-        async function loadProduct(assert: typeof import('assert'), context) {
+    const steps: StepArray = [
+        async function loadProduct() {
             await new Promise(resolve => setTimeout(resolve, 30));
             return {productId: 'PROD-123', price: 99.99, inStock: true};
         },
 
-        async function loadUserCart(assert: typeof import('assert'), context) {
+        async function loadUserCart() {
             await new Promise(resolve => setTimeout(resolve, 30));
             return {cartId: 'CART-456', items: 2};
         },
 
-        async function validateInventory(assert: typeof import('assert'), context) {
-            const product = await context.loadProduct;
+        async function validateInventory(assert: Parameters<StepFunction>[0], context) {
+            const product = (await context.loadProduct) as {
+                productId: string;
+                price: number;
+                inStock: boolean;
+            };
             assert.ok(product.inStock);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {inventoryValid: true, reservationId: 'RES-789'};
         },
 
-        async function calculateShipping(assert: typeof import('assert'), context) {
-            const cart = await context.loadUserCart;
+        async function calculateShipping(assert, context) {
+            const cart = (await context.loadUserCart) as {cartId: string; items: number};
             assert.equal(cart.items, 2);
             await new Promise(resolve => setTimeout(resolve, 20));
             return {shippingCost: 9.99, estimatedDays: 3};
         },
 
-        async function calculateTax(assert: typeof import('assert'), context) {
-            const product = await context.loadProduct;
+        async function calculateTax(assert, context) {
+            const product = (await context.loadProduct) as {
+                productId: string;
+                price: number;
+                inStock: boolean;
+            };
             await new Promise(resolve => setTimeout(resolve, 20));
             return {taxAmount: product.price * 0.08};
         },
 
-        async function calculateTotal(assert: typeof import('assert'), context) {
-            const product = await context.loadProduct;
-            const shipping = await context.calculateShipping;
-            const tax = await context.calculateTax;
+        async function calculateTotal(assert, context) {
+            const product = (await context.loadProduct) as {
+                productId: string;
+                price: number;
+                inStock: boolean;
+            };
+            const shipping = (await context.calculateShipping) as {
+                shippingCost: number;
+                estimatedDays: number;
+            };
+            const tax = (await context.calculateTax) as {taxAmount: number};
 
             const total = product.price + shipping.shippingCost + tax.taxAmount;
             return {
@@ -792,9 +861,15 @@ tap.test('Feature Showcase: Complete Integration Test', async t => {
             };
         },
 
-        async function processPayment(assert: typeof import('assert'), context) {
-            const total = await context.calculateTotal;
-            const inventory = await context.validateInventory;
+        async function processPayment(assert: Parameters<StepFunction>[0], context) {
+            const total = (await context.calculateTotal) as {
+                total: number;
+                breakdown: {product: number; shipping: number; tax: number};
+            };
+            const inventory = (await context.validateInventory) as {
+                inventoryValid: boolean;
+                reservationId: string;
+            };
 
             assert.ok(inventory.inventoryValid);
             await new Promise(resolve => setTimeout(resolve, 40));
@@ -802,9 +877,13 @@ tap.test('Feature Showcase: Complete Integration Test', async t => {
             return {paymentId: 'PAY-999', amount: total.total, status: 'completed'};
         },
 
-        async function createOrder(assert: typeof import('assert'), context) {
-            const payment = await context.processPayment;
-            const cart = await context.loadUserCart;
+        async function createOrder(assert, context) {
+            const payment = (await context.processPayment) as {
+                paymentId: string;
+                amount: number;
+                status: string;
+            };
+            const cart = (await context.loadUserCart) as {cartId: string; items: number};
 
             assert.equal(payment.status, 'completed');
             await new Promise(resolve => setTimeout(resolve, 30));
@@ -812,15 +891,22 @@ tap.test('Feature Showcase: Complete Integration Test', async t => {
             return {orderId: 'ORD-111', paymentId: payment.paymentId, cartId: cart.cartId};
         },
 
-        async function sendConfirmationEmail(assert: typeof import('assert'), context) {
-            const order = await context.createOrder;
+        async function sendConfirmationEmail(assert, context) {
+            const order = (await context.createOrder) as {
+                orderId: string;
+                paymentId: string;
+                cartId: string;
+            };
             await new Promise(resolve => setTimeout(resolve, 20));
             return {emailSent: true, orderId: order.orderId};
         },
 
-        async function updateInventory(assert: typeof import('assert'), context) {
+        async function updateInventory(assert, context) {
             await context.createOrder;
-            const inventory = await context.validateInventory;
+            const inventory = (await context.validateInventory) as {
+                inventoryValid: boolean;
+                reservationId: string;
+            };
 
             await new Promise(resolve => setTimeout(resolve, 20));
             return {inventoryUpdated: true, reservationReleased: inventory.reservationId};
@@ -944,9 +1030,9 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
     const executionLog: Array<{step: string; event: string; timestamp: number}> = [];
     const startTime = Date.now();
 
-    const steps = [
+    const steps: StepArray = [
         // Phase 1: Initialization (runs in parallel)
-        async function loadConfig(assert: typeof import('assert')) {
+        async function loadConfig() {
             executionLog.push({
                 step: 'loadConfig',
                 event: 'start',
@@ -961,7 +1047,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             return {apiUrl: 'https://api.example.com', timeout: 5000};
         },
 
-        async function initializeCache(assert: typeof import('assert')) {
+        async function initializeCache() {
             executionLog.push({
                 step: 'initCache',
                 event: 'start',
@@ -972,7 +1058,7 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             return {cached: true, size: 1000};
         },
 
-        async function setupLogging(assert: typeof import('assert')) {
+        async function setupLogging() {
             executionLog.push({
                 step: 'setupLog',
                 event: 'start',
@@ -987,14 +1073,13 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
         [],
 
         // Phase 2: Data loading (depends on initialization, runs in parallel)
-        async function loadUsers(assert: typeof import('assert'), context: any) {
+        async function loadUsers(assert: Parameters<StepFunction>[0], context: ITestContext) {
             executionLog.push({
                 step: 'loadUsers',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
-            const {loadConfig} = context;
-            const config = await loadConfig;
+            const config = (await context.loadConfig) as {apiUrl: string; timeout: number};
             assert.ok(config.apiUrl);
             await new Promise(resolve => setTimeout(resolve, 50));
             executionLog.push({step: 'loadUsers', event: 'end', timestamp: Date.now() - startTime});
@@ -1006,14 +1091,13 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             };
         },
 
-        async function loadProducts(assert: typeof import('assert'), context: any) {
+        async function loadProducts(assert: Parameters<StepFunction>[0], context: ITestContext) {
             executionLog.push({
                 step: 'loadProducts',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
-            const {loadConfig} = context;
-            const config = await loadConfig;
+            const config = (await context.loadConfig) as {apiUrl: string; timeout: number};
             assert.ok(config.apiUrl);
             await new Promise(resolve => setTimeout(resolve, 50));
             executionLog.push({
@@ -1029,14 +1113,13 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             };
         },
 
-        async function loadOrders(assert: typeof import('assert'), context: any) {
+        async function loadOrders(assert: Parameters<StepFunction>[0], context: ITestContext) {
             executionLog.push({
                 step: 'loadOrders',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
-            const {loadConfig} = context;
-            const config = await loadConfig;
+            const config = (await context.loadConfig) as {apiUrl: string; timeout: number};
             assert.ok(config.apiUrl);
             await new Promise(resolve => setTimeout(resolve, 50));
             executionLog.push({
@@ -1051,15 +1134,16 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
         [],
 
         // Phase 3: Processing (depends on all data, runs in parallel)
-        async function generateUserReport(assert: typeof import('assert'), context: any) {
+        async function generateUserReport(assert, context: ITestContext) {
             executionLog.push({
                 step: 'genUserReport',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
-            const {loadUsers, loadOrders} = context;
-            const users = await loadUsers;
-            const orders = await loadOrders;
+            const users = (await context.loadUsers) as {users: {id: number; name: string}[]};
+            const _orders = (await context.loadOrders) as {
+                orders: {orderId: string; total: number}[];
+            };
             assert.equal(users.users.length, 2);
             await new Promise(resolve => setTimeout(resolve, 30));
             executionLog.push({
@@ -1070,15 +1154,21 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             return {report: 'User report with orders', userCount: users.users.length};
         },
 
-        async function generateProductReport(assert: typeof import('assert'), context: any) {
+        async function generateProductReport(
+            assert: Parameters<StepFunction>[0],
+            context: ITestContext,
+        ) {
             executionLog.push({
                 step: 'genProdReport',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
-            const {loadProducts, loadOrders} = context;
-            const products = await loadProducts;
-            const orders = await loadOrders;
+            const products = (await context.loadProducts) as {
+                products: {id: string; name: string}[];
+            };
+            const orders = (await context.loadOrders) as {
+                orders: {orderId: string; total: number}[];
+            };
             assert.equal(products.products.length, 2);
             assert.ok(orders.orders.length > 0);
             await new Promise(resolve => setTimeout(resolve, 30));
@@ -1090,16 +1180,15 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
             return {report: 'Product report with orders', productCount: products.products.length};
         },
 
-        async function calculateMetrics(assert: typeof import('assert'), context: any) {
+        async function calculateMetrics(assert, context: ITestContext) {
             executionLog.push({
                 step: 'calcMetrics',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
-            const {loadUsers, loadProducts, loadOrders} = context;
-            const users = await loadUsers;
-            const products = await loadProducts;
-            const orders = await loadOrders;
+            const users = (await context.loadUsers) as {users: unknown[]};
+            const products = (await context.loadProducts) as {products: unknown[]};
+            const orders = (await context.loadOrders) as {orders: unknown[]};
             await new Promise(resolve => setTimeout(resolve, 30));
             executionLog.push({
                 step: 'calcMetrics',
@@ -1117,16 +1206,16 @@ tap.test('Feature Showcase: Checkpoints and Synchronization Barriers', async t =
         [],
 
         // Phase 4: Finalization (single step that needs everything)
-        async function saveAnalytics(assert: typeof import('assert'), context: any) {
+        async function saveAnalytics(assert: Parameters<StepFunction>[0], context: ITestContext) {
             executionLog.push({
                 step: 'saveAnalytics',
                 event: 'start',
                 timestamp: Date.now() - startTime,
             });
             const {generateUserReport, generateProductReport, calculateMetrics} = context;
-            const userReport = await generateUserReport;
-            const productReport = await generateProductReport;
-            const metrics = await calculateMetrics;
+            const userReport = (await generateUserReport) as {report: unknown};
+            const productReport = (await generateProductReport) as {report: unknown};
+            const metrics = (await calculateMetrics) as {totalUsers: unknown};
 
             assert.ok(userReport.report);
             assert.ok(productReport.report);

@@ -89,7 +89,7 @@ await executor.execute(steps, {testId: 'nested-showcase'}, t);
 
 **Output:**
 
-```
+```text
 ▶ Feature Showcase: Nested Steps & Test Context Integration
   ✔ initialize
   ▶ Database Setup
@@ -214,23 +214,23 @@ const steps = [
     async function loadConfig() { /* ... */ },
     async function initializeCache() { /* ... */ },
     async function setupLogging() { /* ... */ },
-    
+
     [], // Checkpoint 1: Wait for all initialization
-    
+
     // Phase 2: Data loading (parallel, after Phase 1)
     async function loadUsers({loadConfig}) { /* ... */ },
     async function loadProducts({loadConfig}) { /* ... */ },
     async function loadOrders({loadConfig}) { /* ... */ },
-    
+
     [], // Checkpoint 2: Wait for all data loading
-    
+
     // Phase 3: Processing (parallel, after Phase 2)
     async function generateUserReport({loadUsers, loadOrders}) { /* ... */ },
     async function generateProductReport({loadProducts, loadOrders}) { /* ... */ },
     async function calculateMetrics({loadUsers, loadProducts, loadOrders}) { /* ... */ },
-    
+
     [], // Checkpoint 3: Wait for all processing
-    
+
     // Phase 4: Finalization (after Phase 3)
     async function saveAnalytics({generateUserReport, generateProductReport, calculateMetrics}) { /* ... */ },
 ];

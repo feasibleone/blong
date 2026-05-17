@@ -1,3 +1,9 @@
+import nodeAssert from 'node:assert';
+
+declare module 'node:assert' {
+    function snapshot(value?: unknown, name?: string, opts?: {mask?: string[]}): void;
+}
+
 /**
  * Type definitions for the Blong parallel test framework
  */
@@ -37,7 +43,10 @@ export interface ITestContext {
  * @param context - Test context with $meta and outputs from previous steps
  * @returns The output to be stored in context under the function's name
  */
-export type StepFunction = (assert: unknown, context: ITestContext) => unknown | Promise<unknown>;
+export type StepFunction = (
+    assert: typeof nodeAssert,
+    context: ITestContext,
+) => unknown | Promise<unknown>;
 
 /**
  * A snapshot checkpoint — an array of step-name strings placed inside the
@@ -78,6 +87,8 @@ export interface IMeta {
 export interface ITestFrameworkContext {
     /** Creates a nested test scope for proper indentation */
     test: (name: string, fn: (t: unknown) => void | Promise<void>) => unknown;
+    /** Captures a snapshot of a value under the given name */
+    matchSnapshot?: (value: unknown, name: string) => void;
 }
 
 // ============================================================================

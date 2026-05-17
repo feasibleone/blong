@@ -13,19 +13,24 @@
 
 import assert from 'assert';
 import tap from 'tap';
-import {TestExecutor} from './index.js';
+import {
+    TestExecutor,
+    type ITestContext,
+    type ITestFrameworkContext,
+    type StepArray,
+} from './index.js';
 
 tap.test('TestExecutor - Thenable Proxy Patterns', async t => {
     t.test('Pattern 1: await context.propertyName', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {userId: 'user-123', name: 'Alice'};
             },
             async function processData(assert, context) {
                 // Pattern 1: Direct context access
-                const data = await context.setupData;
+                const data = (await context.setupData) as {userId: string; name: string};
                 assert.equal(data.userId, 'user-123');
                 assert.equal(data.name, 'Alice');
                 return {processed: true};
@@ -43,14 +48,14 @@ tap.test('TestExecutor - Thenable Proxy Patterns', async t => {
     t.test('Pattern 2: {propertyName} then await propertyName', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {userId: 'user-456', email: 'bob@example.com'};
             },
-            async function verifyData(assert: any, context: any) {
+            async function verifyData(assert, context) {
                 // Pattern 2: Single-level destructuring, then await
                 const {setupData} = context;
-                const data = await setupData;
+                const data = (await setupData) as {userId: string; email: string};
                 assert.equal(data.userId, 'user-456');
                 assert.equal(data.email, 'bob@example.com');
             },
@@ -67,18 +72,20 @@ tap.test('TestExecutor - Thenable Proxy Patterns', async t => {
     t.test('Pattern 3: {propertyName} then await propertyName.nestedProperty', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupUser() {
                 return {
                     id: 'user-789',
                     profile: {name: 'Charlie', age: 30},
                 };
             },
-            async function verifyProfile(assert: any, context: any) {
+            async function verifyProfile(assert, context) {
                 // Pattern 3: Property access after destructuring
-                const {setupUser} = context;
-                const name = await setupUser.profile.name;
-                const age = await setupUser.profile.age;
+                const setupUser = (await context.setupUser) as {
+                    profile: {name: string; age: number};
+                };
+                const name = setupUser.profile.name;
+                const age = setupUser.profile.age;
                 assert.equal(name, 'Charlie');
                 assert.equal(age, 30);
             },
@@ -90,39 +97,36 @@ tap.test('TestExecutor - Thenable Proxy Patterns', async t => {
         assert.equal(progress.status, 'completed');
     });
 
-    t.test(
-        'Pattern 4: {propertyName: {nestedProperty}} then await nestedProperty',
-        async () => {
-            const executor = new TestExecutor({concurrency: 10});
+    t.test('Pattern 4: {propertyName: {nestedProperty}} then await nestedProperty', async () => {
+        const executor = new TestExecutor({concurrency: 10});
 
-            const steps = [
-                async function setupAccount() {
-                    return {
-                        accountId: 'acct-999',
-                        owner: {name: 'Diana', email: 'diana@example.com'},
-                    };
-                },
-                async function processOwner(assert: any, context: any) {
-                    // Pattern 4: Nested destructuring, then await
-                    const {
-                        setupAccount: {owner},
-                    } = context;
-                    const ownerData = await owner;
-                    assert.equal(ownerData.name, 'Diana');
-                    assert.equal(ownerData.email, 'diana@example.com');
-                },
-            ];
+        const steps: StepArray = [
+            async function setupAccount() {
+                return {
+                    accountId: 'acct-999',
+                    owner: {name: 'Diana', email: 'diana@example.com'},
+                };
+            },
+            async function processOwner(assert, context) {
+                // Pattern 4: Nested destructuring, then await
+                const setupAccount = (await context.setupAccount) as {
+                    owner: {name: string; email: string};
+                };
+                const ownerData = setupAccount.owner;
+                assert.equal(ownerData.name, 'Diana');
+                assert.equal(ownerData.email, 'diana@example.com');
+            },
+        ];
 
-            await executor.execute(steps, {});
-        },
-    );
+        await executor.execute(steps, {});
+    });
 
     t.test('$meta is always available directly without await', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
         const testMeta = {testId: 'test-123', environment: 'dev'};
 
-        const steps = [
+        const steps: StepArray = [
             async function checkMeta(assert, context) {
                 // $meta should be directly accessible, not a thenable proxy
                 assert.equal(context.$meta.testId, 'test-123');
@@ -142,7 +146,7 @@ tap.test('TestExecutor - Parallel Execution', async t => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
-        const steps = [
+        const steps: StepArray = [
             async function stepA() {
                 executionOrder.push('A-start');
                 await new Promise(resolve => setTimeout(resolve, 50));
@@ -166,7 +170,7 @@ tap.test('TestExecutor - Parallel Execution', async t => {
         await executor.execute(steps, {});
 
         // All steps should start before any end (parallel execution)
-        const startCount = executionOrder.filter(e => e.endsWith('-start')).length;
+        const _startCount = executionOrder.filter(e => e.endsWith('-start')).length;
         const firstEndIndex = executionOrder.findIndex(e => e.endsWith('-end'));
         const startsBeforeFirstEnd = executionOrder
             .slice(0, firstEndIndex)
@@ -182,17 +186,17 @@ tap.test('TestExecutor - Parallel Execution', async t => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
-        const steps = [
+        const steps: StepArray = [
             async function setupDatabase() {
                 executionOrder.push('DB-start');
                 await new Promise(resolve => setTimeout(resolve, 50));
                 executionOrder.push('DB-end');
                 return {dbId: 'db-123'};
             },
-            async function queryDatabase(assert: any, context: any) {
+            async function queryDatabase(assert, context) {
                 executionOrder.push('Query-start');
                 const {setupDatabase} = context;
-                const db = await setupDatabase;
+                const db = (await setupDatabase) as {dbId: string};
                 executionOrder.push('Query-end');
                 assert.equal(db.dbId, 'db-123');
                 return {results: []};
@@ -231,7 +235,7 @@ tap.test('TestExecutor - Parallel Execution', async t => {
             Object.defineProperty(step, 'name', {value: `step${i}`, configurable: true});
         });
 
-        await executor.execute(steps as any, {});
+        await executor.execute(steps, {});
 
         assert.ok(maxConcurrent <= 2, `Max concurrent should be <= 2, was ${maxConcurrent}`);
     });
@@ -241,11 +245,11 @@ tap.test('TestExecutor - Dependency Graph', async t => {
     t.test('tracks simple dependency', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function stepA() {
                 return {value: 'A'};
             },
-            async function stepB(assert: any, context: any) {
+            async function stepB(assert, context) {
                 const {stepA} = context;
                 await stepA;
                 return {value: 'B'};
@@ -265,17 +269,17 @@ tap.test('TestExecutor - Dependency Graph', async t => {
     t.test('tracks multiple dependencies', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupUser() {
                 return {userId: 'user-1'};
             },
             async function setupAccount() {
                 return {accountId: 'acct-1'};
             },
-            async function linkAccounts(assert: any, context: any) {
+            async function linkAccounts(assert, context) {
                 const {setupUser, setupAccount} = context;
-                const user = await setupUser;
-                const account = await setupAccount;
+                await setupUser;
+                await setupAccount;
                 return {linked: true};
             },
         ];
@@ -294,14 +298,14 @@ tap.test('TestExecutor - Dependency Graph', async t => {
     t.test('tracks nested property dependencies', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {user: {name: 'Alice', email: 'alice@example.com'}};
             },
-            async function processData(assert: any, context: any) {
+            async function processData(assert, context) {
                 const {setupData} = context;
-                const email = await setupData.user.email;
-                return {processed: email};
+                const email = (await setupData) as {user: {name: string; email: string}};
+                return {processed: email.user.email};
             },
         ];
 
@@ -318,7 +322,7 @@ tap.test('TestExecutor - Progress Tracking', async t => {
     t.test('tracks overall test progress', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 return {v: 1};
             },
@@ -348,7 +352,7 @@ tap.test('TestExecutor - Progress Tracking', async t => {
     t.test('tracks individual step progress', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function processData() {
                 await new Promise(resolve => setTimeout(resolve, 50));
                 return {result: 'done'};
@@ -376,7 +380,7 @@ tap.test('TestExecutor - Progress Tracking', async t => {
         executor.on('step:end', name => events.push(`step:end:${name}`));
         executor.on('test:end', () => events.push('test:end'));
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 return {};
             },
@@ -398,11 +402,11 @@ tap.test('TestExecutor - Error Handling', async t => {
     t.test('captures step errors with context', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {userId: 'user-1'};
             },
-            async function failingStep(assert: any, context: any) {
+            async function failingStep(assert, context) {
                 const {setupData} = context;
                 await setupData;
                 throw new Error('Intentional test failure');
@@ -424,16 +428,16 @@ tap.test('TestExecutor - Error Handling', async t => {
     t.test('includes dependency chain in error', async () => {
         const executor = new TestExecutor({concurrency: 10, captureStackTraces: true});
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 return {data: 'step1'};
             },
-            async function step2(assert: any, context: any) {
+            async function step2(assert, context) {
                 const {step1} = context;
                 await step1;
                 return {data: 'step2'};
             },
-            async function step3(assert: any, context: any) {
+            async function step3(assert, context) {
                 const {step2} = context;
                 await step2;
                 throw new Error('Failed in step3');
@@ -450,7 +454,7 @@ tap.test('TestExecutor - Error Handling', async t => {
     t.test('captures source location for failed steps', async () => {
         const executor = new TestExecutor({concurrency: 10, captureStackTraces: true});
 
-        const steps = [
+        const steps: StepArray = [
             async function testStep() {
                 throw new Error('Test error');
             },
@@ -473,7 +477,7 @@ tap.test('TestExecutor - Latency Metrics', async t => {
     t.test('tracks step latency', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function slowStep() {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 return {done: true};
@@ -494,12 +498,12 @@ tap.test('TestExecutor - Latency Metrics', async t => {
     t.test('distinguishes queue time, wait time, and execution time', async () => {
         const executor = new TestExecutor({concurrency: 1}); // Force queueing
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 await new Promise(resolve => setTimeout(resolve, 50));
                 return {data: 'step1'};
             },
-            async function step2(assert: any, context: any) {
+            async function step2(assert, context) {
                 const {step1} = context;
                 await step1; // Wait for dependency
                 await new Promise(resolve => setTimeout(resolve, 30));
@@ -534,18 +538,18 @@ tap.test('TestExecutor - Latency Metrics', async t => {
     t.test('identifies critical path', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 await new Promise(resolve => setTimeout(resolve, 20));
                 return {data: 'step1'};
             },
-            async function step2(assert: any, context: any) {
+            async function step2(assert, context) {
                 const {step1} = context;
                 await step1;
                 await new Promise(resolve => setTimeout(resolve, 30));
                 return {data: 'step2'};
             },
-            async function step3(assert: any, context: any) {
+            async function step3(assert, context) {
                 const {step2} = context;
                 await step2;
                 await new Promise(resolve => setTimeout(resolve, 40));
@@ -574,7 +578,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 executionOrder.push('step1');
                 return {v: 1};
@@ -588,10 +592,10 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
                     executionOrder.push('step3');
                     return {v: 3};
                 },
-            ] as any,
+            ],
         ];
 
-        await executor.execute(steps as any, {});
+        await executor.execute(steps, {});
 
         // step1 should complete before nested array starts
         const step1Index = executionOrder.indexOf('step1');
@@ -605,7 +609,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
         const executionOrder: Array<{step: string; event: string; time: number}> = [];
         const startTime = Date.now();
 
-        const steps = [
+        const steps: StepArray = [
             async function parallelStep1() {
                 executionOrder.push({
                     step: 'parallel1',
@@ -694,7 +698,7 @@ tap.test('TestExecutor - Nested Steps (Sequential Execution)', async t => {
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
-        const steps = [
+        const steps: StepArray = [
             async function phase1Step1() {
                 await new Promise(resolve => setTimeout(resolve, 30));
                 executionOrder.push('phase1-1');
@@ -760,12 +764,12 @@ tap.test('TestExecutor - Promise Resolution', async t => {
     t.test('resolves main step promise', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function producer() {
                 return {value: 42};
             },
             async function consumer(assert, context) {
-                const result = await context.producer;
+                const result = (await context.producer) as {value: number};
                 assert.equal(result.value, 42);
             },
         ];
@@ -776,7 +780,7 @@ tap.test('TestExecutor - Promise Resolution', async t => {
     t.test('resolves nested property promises', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function producer() {
                 return {
                     user: {name: 'Alice', age: 30},
@@ -784,8 +788,12 @@ tap.test('TestExecutor - Promise Resolution', async t => {
                 };
             },
             async function consumer(assert, context) {
-                const name = await context.producer.user.name;
-                const age = await context.producer.user.age;
+                const producerResult = (await context.producer) as {
+                    user: {name: string; age: number};
+                    meta: {timestamp: number};
+                };
+                const name = producerResult.user.name;
+                const age = producerResult.user.age;
                 assert.equal(name, 'Alice');
                 assert.equal(age, 30);
             },
@@ -797,17 +805,17 @@ tap.test('TestExecutor - Promise Resolution', async t => {
     t.test('multiple steps can await same property', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function producer() {
                 return {shared: 'value'};
             },
             async function consumer1(assert, context) {
-                const result = await context.producer;
+                const result = (await context.producer) as {shared: string};
                 assert.equal(result.shared, 'value');
                 return {c1: true};
             },
             async function consumer2(assert, context) {
-                const result = await context.producer;
+                const result = (await context.producer) as {shared: string};
                 assert.equal(result.shared, 'value');
                 return {c2: true};
             },
@@ -824,12 +832,12 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
     t.test('executes steps with nested test context for proper indentation', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupDatabase() {
                 return {connected: true};
             },
             async function queryUsers(assert, context) {
-                const db = await context.setupDatabase;
+                const db = (await context.setupDatabase) as {connected: boolean};
                 assert.equal(db.connected, true);
                 return {users: ['alice', 'bob']};
             },
@@ -845,26 +853,26 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
     t.test('handles nested arrays with automatic indentation', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const nestedSteps = [
+        const nestedSteps: StepArray = [
             async function createUser() {
                 return {userId: 123};
             },
             async function verifyUser(assert, context) {
-                const user = await context.createUser;
+                const user = (await context.createUser) as {userId: number};
                 assert.equal(user.userId, 123);
                 return {verified: true};
             },
-        ] as any;
+        ];
         nestedSteps.name = 'User Management';
 
-        const steps = [
+        const steps: StepArray = [
             async function setupSystem() {
                 return {ready: true};
             },
             nestedSteps,
             async function finalCheck(assert, context) {
-                const system = await context.setupSystem;
-                const verified = await context.verifyUser;
+                const system = (await context.setupSystem) as {ready: boolean};
+                const verified = (await context.verifyUser) as {verified: boolean};
                 assert.equal(system.ready, true);
                 assert.equal(verified.verified, true);
                 return {complete: true};
@@ -881,30 +889,30 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
     t.test('handles deeply nested arrays with proper hierarchy', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const level3Steps = [
+        const level3Steps: StepArray = [
             async function deepOperation() {
                 return {level: 3};
             },
-        ] as any;
+        ];
         level3Steps.name = 'Level 3 Operations';
 
-        const level2Steps = [
+        const level2Steps: StepArray = [
             async function midOperation() {
                 return {level: 2};
             },
             level3Steps,
-        ] as any;
+        ];
         level2Steps.name = 'Level 2 Operations';
 
-        const steps = [
+        const steps: StepArray = [
             async function topOperation() {
                 return {level: 1};
             },
             level2Steps,
             async function finalOperation(assert, context) {
-                const top = await context.topOperation;
-                const mid = await context.midOperation;
-                const deep = await context.deepOperation;
+                const top = (await context.topOperation) as {level: number};
+                const mid = (await context.midOperation) as {level: number};
+                const deep = (await context.deepOperation) as {level: number};
                 assert.equal(top.level, 1);
                 assert.equal(mid.level, 2);
                 assert.equal(deep.level, 3);
@@ -923,7 +931,7 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
         const executor = new TestExecutor({concurrency: 10});
         const executionOrder: string[] = [];
 
-        const parallelGroup = [
+        const parallelGroup: StepArray = [
             async function parallelStep1() {
                 executionOrder.push('p1-start');
                 await new Promise(resolve => setTimeout(resolve, 50));
@@ -936,10 +944,10 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
                 executionOrder.push('p2-end');
                 return {p2: true};
             },
-        ] as any;
+        ];
         parallelGroup.name = 'Parallel Group';
 
-        const steps = [
+        const steps: StepArray = [
             async function setup() {
                 executionOrder.push('setup');
                 return {ready: true};
@@ -963,14 +971,14 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
     t.test('works without test context (backward compatibility)', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const nestedSteps = [
+        const nestedSteps: StepArray = [
             async function nestedOp() {
                 return {nested: true};
             },
-        ] as any;
+        ];
         nestedSteps.name = 'Nested';
 
-        const steps = [
+        const steps: StepArray = [
             async function topOp() {
                 return {top: true};
             },
@@ -988,12 +996,12 @@ tap.test('TestExecutor - Nested Test Context (node:test integration)', async t =
     t.test('error reporting tracked in progress even with test context', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {data: 'test'};
             },
             async function workingStep(assert, context) {
-                const data = await context.setupData;
+                const data = (await context.setupData) as {data: string};
                 assert.equal(data.data, 'test');
                 return {result: 'success'};
             },
@@ -1014,7 +1022,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
         // Run WITHOUT test context so our assertions can pass while demonstrating tracking
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {data: 'test'};
             },
@@ -1031,7 +1039,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
         // Execute without test context for this verification test
         try {
             await executor.execute(steps, {});
-        } catch (error) {
+        } catch {
             // Expected - error thrown but should be tracked
         }
 
@@ -1055,24 +1063,24 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
     t.test('reports errors in nested groups with proper indentation', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const problemGroup = [
+        const problemGroup: StepArray = [
             async function goodStep() {
                 return {good: true};
             },
             async function badStep() {
                 throw new Error('Error in nested group');
             },
-        ] as any;
+        ];
         problemGroup.name = 'Problem Group';
 
-        const steps = [
+        const steps: StepArray = [
             async function setupOk() {
                 return {setup: true};
             },
             problemGroup,
             async function cleanupStep(assert, context) {
                 // This runs in parallel (no dependency on badStep)
-                const setup = await context.setupOk;
+                const setup = (await context.setupOk) as {setup: boolean};
                 assert.equal(setup.setup, true);
                 return {cleanup: true};
             },
@@ -1080,7 +1088,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
 
         try {
             await executor.execute(steps, {});
-        } catch (error) {
+        } catch {
             // Expected error - one of the steps failed
         }
 
@@ -1113,7 +1121,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
         const executor = new TestExecutor({concurrency: 10});
 
         // Create two parallel failing steps at the same level
-        const steps = [
+        const steps: StepArray = [
             async function failAtRoot1() {
                 throw new Error('Root error 1');
             },
@@ -1124,7 +1132,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
 
         try {
             await executor.execute(steps, {});
-        } catch (error) {
+        } catch {
             // Expected errors - both run in parallel so both should fail
         }
 
@@ -1148,7 +1156,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
         const executor = new TestExecutor({concurrency: 10});
         const executionLog: string[] = [];
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 executionLog.push('step1');
                 return {result: 1};
@@ -1165,7 +1173,7 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
 
         try {
             await executor.execute(steps, {});
-        } catch (error) {
+        } catch {
             // Expected error
         }
 
@@ -1182,16 +1190,15 @@ tap.test('TestExecutor - Error Reporting with Nested Context', async t => {
     t.test('error details are captured with source location when enabled', async () => {
         const executor = new TestExecutor({concurrency: 10, captureStackTraces: true});
 
-        const steps = [
+        const steps: StepArray = [
             async function errorWithContext() {
-                const contextInfo = {user: 'test', operation: 'process'};
                 throw new Error('Error with context details');
             },
         ];
 
         try {
             await executor.execute(steps, {});
-        } catch (error) {
+        } catch {
             // Expected error
         }
 
@@ -1213,7 +1220,7 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         const executor = new TestExecutor({concurrency: 10});
 
         // Create steps with duplicate function names
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {value: 'first'};
             },
@@ -1225,14 +1232,14 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         // Should throw error about duplicate step name
         await assert.rejects(
             executor.execute(steps, {}),
-            /Duplicate step name detected: "setupData"/
+            /Duplicate step name detected: "setupData"/,
         );
     });
 
     t.test('throws error on duplicate anonymous function names', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async () => {
                 return {value: 1};
             },
@@ -1244,28 +1251,28 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         // Anonymous functions all have name "anonymous" so should throw
         await assert.rejects(
             executor.execute(steps, {}),
-            /Duplicate step name detected: "anonymous"/
+            /Duplicate step name detected: "anonymous"/,
         );
     });
 
     t.test('throws error on duplicate function names across nested groups', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const group1 = [
+        const group1: StepArray = [
             async function stepA() {
                 return {group: 1};
             },
-        ] as any;
+        ];
         group1.name = 'Group 1';
 
-        const group2 = [
+        const group2: StepArray = [
             async function stepA() {
                 return {group: 2};
             },
-        ] as any;
+        ];
         group2.name = 'Group 2';
 
-        const steps = [
+        const steps: StepArray = [
             async function stepA() {
                 return {top: true};
             },
@@ -1274,16 +1281,13 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         ];
 
         // This should throw because all stepA functions share the same context
-        await assert.rejects(
-            executor.execute(steps, {}),
-            /Duplicate step name detected: "stepA"/
-        );
+        await assert.rejects(executor.execute(steps, {}), /Duplicate step name detected: "stepA"/);
     });
 
     t.test('unique names work correctly - no duplicates', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function fetchUsers() {
                 return {id: 1, value: 'users'};
             },
@@ -1291,8 +1295,8 @@ tap.test('TestExecutor - Unique Step Names', async t => {
                 return {id: 2, value: 'products'};
             },
             async function validateData(assert, context) {
-                const users = await context.fetchUsers;
-                const products = await context.fetchProducts;
+                const users = (await context.fetchUsers) as {id: number; value: string};
+                const products = (await context.fetchProducts) as {id: number; value: string};
                 assert.equal(users.id, 1);
                 assert.equal(products.id, 2);
                 return {validated: true};
@@ -1310,7 +1314,7 @@ tap.test('TestExecutor - Unique Step Names', async t => {
     t.test('error message includes step name', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function processItem() {
                 return {value: 'first'};
             },
@@ -1322,10 +1326,10 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         try {
             await executor.execute(steps, {});
             assert.fail('Should have thrown an error');
-        } catch (error: any) {
-            assert.ok(error.message.includes('Duplicate step name detected'));
-            assert.ok(error.message.includes('processItem'));
-            assert.ok(error.message.includes('unique function name'));
+        } catch (error: unknown) {
+            assert.ok((error as Error).message.includes('Duplicate step name detected'));
+            assert.ok((error as Error).message.includes('processItem'));
+            assert.ok((error as Error).message.includes('unique function name'));
         }
     });
 
@@ -1353,7 +1357,7 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         // First execution should fail due to duplicate
         await assert.rejects(
             executor.execute(stepsWithDuplicate, {testId: 'first'}),
-            /Duplicate step name detected: "myStep"/
+            /Duplicate step name detected: "myStep"/,
         );
 
         // Second execution with different steps should succeed (tracking is reset)
@@ -1366,7 +1370,7 @@ tap.test('TestExecutor - Unique Step Names', async t => {
         // Third execution with duplicate again should fail
         await assert.rejects(
             executor.execute(stepsWithDuplicate, {testId: 'third'}),
-            /Duplicate step name detected: "myStep"/
+            /Duplicate step name detected: "myStep"/,
         );
     });
 });
@@ -1375,52 +1379,52 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
     t.test('detects direct reference to non-existent step', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {userId: 'user-123'};
             },
-            async function processData(assert: any, context: any) {
+            async function processData(assert, context) {
                 // Reference a step that doesn't exist
-                const data = await context.nonExistentStep;
+                const _data = await context.nonExistentStep;
                 return {processed: true};
             },
         ];
 
         await assert.rejects(
             executor.execute(steps, {}),
-            /Invalid step reference\(s\) detected.*nonExistentStep/
+            /Invalid step reference\(s\) detected.*nonExistentStep/,
         );
     });
 
     t.test('detects nested property reference to non-existent step', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {userId: 'user-123'};
             },
-            async function processData(assert: any, context: any) {
+            async function processData(assert, context) {
                 // Reference a nested property of a step that doesn't exist
-                const name = await context.invalidStep.user.name;
+                const _name = await (context.invalidStep as {user: {name: string}}).user.name;
                 return {processed: true};
             },
         ];
 
         await assert.rejects(
             executor.execute(steps, {}),
-            /Invalid step reference\(s\) detected.*invalidStep/
+            /Invalid step reference\(s\) detected.*invalidStep/,
         );
     });
 
     t.test('error message includes which step made the invalid reference', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 return {data: 'step1'};
             },
-            async function step2(assert: any, context: any) {
-                const data = await context.missingStep;
+            async function step2(assert, context) {
+                const _data = await context.missingStep;
                 return {data: 'step2'};
             },
         ];
@@ -1428,25 +1432,25 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
         try {
             await executor.execute(steps, {});
             assert.fail('Should have thrown an error');
-        } catch (error: any) {
-            assert.ok(error.message.includes('step2'));
-            assert.ok(error.message.includes('missingStep'));
-            assert.ok(error.message.includes('context.missingStep'));
+        } catch (error: unknown) {
+            assert.ok((error as Error).message.includes('step2'));
+            assert.ok((error as Error).message.includes('missingStep'));
+            assert.ok((error as Error).message.includes('context.missingStep'));
         }
     });
 
     t.test('error message lists available steps', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {data: 'setup'};
             },
             async function processData() {
                 return {data: 'processed'};
             },
-            async function verifyData(assert: any, context: any) {
-                const data = await context.invalidStep;
+            async function verifyData(assert, context) {
+                const _data = await context.invalidStep;
                 return {verified: true};
             },
         ];
@@ -1454,24 +1458,24 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
         try {
             await executor.execute(steps, {});
             assert.fail('Should have thrown an error');
-        } catch (error: any) {
-            assert.ok(error.message.includes('Available steps:'));
-            assert.ok(error.message.includes('setupData'));
-            assert.ok(error.message.includes('processData'));
-            assert.ok(error.message.includes('verifyData'));
+        } catch (error: unknown) {
+            assert.ok((error as Error).message.includes('Available steps:'));
+            assert.ok((error as Error).message.includes('setupData'));
+            assert.ok((error as Error).message.includes('processData'));
+            assert.ok((error as Error).message.includes('verifyData'));
         }
     });
 
     t.test('detects multiple invalid references', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function step1() {
                 return {data: 'step1'};
             },
-            async function step2(assert: any, context: any) {
-                const a = await context.missing1;
-                const b = await context.missing2;
+            async function step2(assert, context) {
+                await context.missing1;
+                await context.missing2;
                 return {data: 'step2'};
             },
         ];
@@ -1479,27 +1483,27 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
         try {
             await executor.execute(steps, {});
             assert.fail('Should have thrown an error');
-        } catch (error: any) {
+        } catch (error: unknown) {
             // Should detect at least one invalid reference (first one accessed)
-            assert.ok(error.message.includes('missing1'));
-            assert.ok(error.message.includes('Invalid step reference(s) detected'));
+            assert.ok((error as Error).message.includes('missing1'));
+            assert.ok((error as Error).message.includes('Invalid step reference(s) detected'));
         }
     });
 
     t.test('does not flag valid step references', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupData() {
                 return {userId: 'user-123', name: 'Alice'};
             },
-            async function processData(assert: any, context: any) {
-                const data = await context.setupData;
+            async function processData(assert, context) {
+                const data = (await context.setupData) as {userId: string; name: string};
                 assert.equal(data.userId, 'user-123');
                 return {processed: true};
             },
-            async function verifyData(assert: any, context: any) {
-                const data = await context.processData;
+            async function verifyData(assert, context) {
+                const data = (await context.processData) as {processed: boolean};
                 assert.equal(data.processed, true);
                 return {verified: true};
             },
@@ -1517,18 +1521,18 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
     t.test('does not flag nested property access of valid steps', async () => {
         const executor = new TestExecutor({concurrency: 10});
 
-        const steps = [
+        const steps: StepArray = [
             async function setupUser() {
                 return {
                     id: 'user-123',
                     profile: {name: 'Alice', age: 30},
                 };
             },
-            async function processUser(assert: any, context: any) {
-                const name = await context.setupUser.profile.name;
-                const age = await context.setupUser.profile.age;
-                assert.equal(name, 'Alice');
-                assert.equal(age, 30);
+            async function processUser(assert, context) {
+                const name = (await context.setupUser) as {profile: {name: string; age: number}};
+                const age = (await context.setupUser) as {profile: {name: string; age: number}};
+                assert.equal(name.profile.name, 'Alice');
+                assert.equal(age.profile.age, 30);
                 return {processed: true};
             },
         ];
@@ -1545,12 +1549,12 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
         const executor = new TestExecutor({concurrency: 10});
 
         // First test run with valid references
-        const validSteps = [
+        const validSteps: StepArray = [
             async function step1() {
                 return {data: 'step1'};
             },
-            async function step2(assert: any, context: any) {
-                const data = await context.step1;
+            async function step2(assert, context) {
+                const _data = (await context.step1) as {data: string};
                 return {data: 'step2'};
             },
         ];
@@ -1560,19 +1564,19 @@ tap.test('TestExecutor - Invalid Step Reference Validation', async t => {
         assert.equal(progress1.status, 'completed');
 
         // Second test run with invalid reference
-        const invalidSteps = [
+        const invalidSteps: StepArray = [
             async function stepA() {
                 return {data: 'stepA'};
             },
-            async function stepB(assert: any, context: any) {
-                const data = await context.nonExistent;
+            async function stepB(assert, context) {
+                const _data = (await context.nonExistent) as {data: string};
                 return {data: 'stepB'};
             },
         ];
 
         await assert.rejects(
             executor.execute(invalidSteps, {}),
-            /Invalid step reference\(s\) detected/
+            /Invalid step reference\(s\) detected/,
         );
 
         // Third test run with valid references again
@@ -1591,7 +1595,7 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
 
         let attempts = 0;
 
-        const steps = [
+        const steps: StepArray = [
             async function flakyStep() {
                 attempts++;
                 if (attempts < 3) {
@@ -1601,7 +1605,7 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
             },
         ];
 
-        await executor.execute(steps as any, {});
+        await executor.execute(steps, {});
 
         assert.equal(attempts, 3, 'should have tried 3 times (1 initial + 2 retries)');
         const progress = executor.getProgress();
@@ -1617,17 +1621,14 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
 
         let attempts = 0;
 
-        const steps = [
+        const steps: StepArray = [
             async function alwaysFails() {
                 attempts++;
                 throw new Error('persistent error');
             },
         ];
 
-        await assert.rejects(
-            executor.execute(steps as any, {}),
-            /persistent error/,
-        );
+        await assert.rejects(executor.execute(steps, {}), /persistent error/);
 
         assert.equal(attempts, 2, 'should have tried 2 times (1 initial + 1 retry)');
         const progress = executor.getProgress();
@@ -1639,7 +1640,7 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
 
         let attempts = 0;
 
-        const steps = [
+        const steps: StepArray = [
             async function failsOnce() {
                 attempts++;
                 if (attempts === 1) throw new Error('first attempt error');
@@ -1647,10 +1648,7 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
             },
         ];
 
-        await assert.rejects(
-            executor.execute(steps as any, {}),
-            /first attempt error/,
-        );
+        await assert.rejects(executor.execute(steps, {}), /first attempt error/);
 
         assert.equal(attempts, 1, 'should only try once when rerun is disabled');
     });
@@ -1664,14 +1662,18 @@ tap.test('TestExecutor - Rerun (Phase 1)', async t => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Build a minimal TAP-like test context that captures matchSnapshot calls. */
-function makeCapturingContext(): {ctx: unknown; captured: Array<[unknown, string]>} {
+function makeCapturingContext(): {ctx: ITestFrameworkContext; captured: Array<[unknown, string]>} {
     const captured: Array<[unknown, string]> = [];
     const ctx = {
         matchSnapshot(v: unknown, n: string) {
             captured.push([v, n]);
         },
-        test(_name: string, fn: (t: unknown) => Promise<void>) {
-            return fn({matchSnapshot(v: unknown, n: string) { captured.push([v, n]); }});
+        test(_name: string, fn: (t: unknown) => Promise<void> | void) {
+            return fn({
+                matchSnapshot(v: unknown, n: string) {
+                    captured.push([v, n]);
+                },
+            });
         },
     };
     return {ctx, captured};
@@ -1681,12 +1683,12 @@ tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
     t.test('masks listed paths using chain-level mask', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['id']});
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot({id: 'abc-123', name: 'Alice'}, 'myStep');
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal(captured.length, 1);
         assert.equal((captured[0][0] as Record<string, unknown>).id, '<masked>');
         assert.equal((captured[0][0] as Record<string, unknown>).name, 'Alice');
@@ -1696,12 +1698,14 @@ tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
     t.test('merges chain-level mask with per-call mask', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['id']});
-        const steps = [
-            async function myStep(assert: any) {
-                assert.snapshot({id: 'x', createdAt: '2024', name: 'A'}, 'myStep', {mask: ['createdAt']});
+        const steps: StepArray = [
+            async function myStep(assert) {
+                assert.snapshot({id: 'x', createdAt: '2024', name: 'A'}, 'myStep', {
+                    mask: ['createdAt'],
+                });
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         const result = captured[0][0] as Record<string, unknown>;
         assert.equal(result.id, '<masked>');
         assert.equal(result.createdAt, '<masked>');
@@ -1711,24 +1715,24 @@ tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
     t.test('passes value unchanged when no mask configured', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot({id: 'abc-123', name: 'Alice'}, 'myStep');
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal((captured[0][0] as Record<string, unknown>).id, 'abc-123');
     });
 
     t.test('masks nested dot-path fields', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['user.userId']});
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot({user: {userId: 'u1', role: 'admin'}}, 'myStep');
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         const result = captured[0][0] as {user: Record<string, unknown>};
         assert.equal(result.user.userId, '<masked>');
         assert.equal(result.user.role, 'admin');
@@ -1737,12 +1741,12 @@ tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
     t.test('wildcard * masks field in every direct child', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['*.id']});
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot({a: {id: '1', x: 'keep'}, b: {id: '2', y: 'keep'}}, 'myStep');
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         const result = captured[0][0] as Record<string, Record<string, unknown>>;
         assert.equal(result.a.id, '<masked>');
         assert.equal(result.b.id, '<masked>');
@@ -1752,13 +1756,16 @@ tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
 
     t.test('ignores prototype-polluting mask paths', async () => {
         const {ctx, captured} = makeCapturingContext();
-        const executor = new TestExecutor({concurrency: 1, mask: ['__proto__.toString', 'constructor']});
-        const steps = [
-            async function myStep(assert: any) {
+        const executor = new TestExecutor({
+            concurrency: 1,
+            mask: ['__proto__.toString', 'constructor'],
+        });
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot({name: 'Bob'}, 'myStep');
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         const result = captured[0][0] as Record<string, unknown>;
         assert.equal(result.name, 'Bob');
         assert.equal(typeof result.constructor, 'function', 'constructor should be unchanged');
@@ -1767,12 +1774,12 @@ tap.test('assert.snapshot — explicit call (value + name + opts)', async t => {
     t.test('assert.snapshot is not available without TAP context', async () => {
         const executor = new TestExecutor({concurrency: 1});
         let snapshotFn: unknown;
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 snapshotFn = assert.snapshot;
             },
         ];
-        await executor.execute(steps as any, {});  // no test context
+        await executor.execute(steps, {}); // no test context
         assert.equal(snapshotFn, undefined, 'snapshot is undefined without TAP context');
     });
 });
@@ -1781,13 +1788,13 @@ tap.test('assert.snapshot() — deferred (no-args / opts-only)', async t => {
     t.test('assert.snapshot() snapshots return value under step name', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
-        const steps = [
-            async function myStep(assert: any) {
-                assert.snapshot();   // deferred — executor takes the snapshot
+        const steps: StepArray = [
+            async function myStep(assert) {
+                assert.snapshot(); // deferred — executor takes the snapshot
                 return {name: 'Alice', value: 42};
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal(captured.length, 1);
         assert.equal((captured[0][0] as Record<string, unknown>).name, 'Alice');
         assert.equal(captured[0][1], 'myStep');
@@ -1796,13 +1803,13 @@ tap.test('assert.snapshot() — deferred (no-args / opts-only)', async t => {
     t.test('assert.snapshot({mask}) merges per-call mask with chain-level mask', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['id']});
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot({mask: ['createdAt']});
                 return {id: 'x', createdAt: '2024', name: 'A'};
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         const result = captured[0][0] as Record<string, unknown>;
         assert.equal(result.id, '<masked>');
         assert.equal(result.createdAt, '<masked>');
@@ -1812,13 +1819,13 @@ tap.test('assert.snapshot() — deferred (no-args / opts-only)', async t => {
     t.test('deferred snapshot wins; no extra autoSnapshot snapshot is taken', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, autoSnapshot: true});
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 assert.snapshot();
                 return {v: 1};
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         // Only one snapshot even though autoSnapshot is enabled — deferred wins
         assert.equal(captured.length, 1);
     });
@@ -1827,15 +1834,15 @@ tap.test('assert.snapshot() — deferred (no-args / opts-only)', async t => {
         // Without TAP context, assert has no snapshot method — nothing is taken.
         const executor = new TestExecutor({concurrency: 1});
         const results: unknown[] = [];
-        const steps = [
-            async function myStep(assert: any) {
+        const steps: StepArray = [
+            async function myStep(assert) {
                 if (assert.snapshot) assert.snapshot();
                 results.push('ran');
                 return {v: 1};
             },
         ];
-        await executor.execute(steps as any, {});  // no TAP ctx
-        assert.equal(results.length, 1);  // step ran fine
+        await executor.execute(steps, {}); // no TAP ctx
+        assert.equal(results.length, 1); // step ran fine
     });
 });
 
@@ -1843,11 +1850,15 @@ tap.test('autoSnapshot: true', async t => {
     t.test('snapshots every step result under its function name', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, autoSnapshot: true});
-        const steps = [
-            async function stepA() { return {a: 1}; },
-            async function stepB() { return {b: 2}; },
+        const steps: StepArray = [
+            async function stepA() {
+                return {a: 1};
+            },
+            async function stepB() {
+                return {b: 2};
+            },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal(captured.length, 2);
         const names = captured.map(c => c[1]);
         assert.ok(names.includes('stepA'));
@@ -1857,21 +1868,25 @@ tap.test('autoSnapshot: true', async t => {
     t.test('applies chain-level mask before snapshotting', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, autoSnapshot: true, mask: ['id']});
-        const steps = [
-            async function myStep() { return {id: 'dynamic', name: 'Alice'}; },
+        const steps: StepArray = [
+            async function myStep() {
+                return {id: 'dynamic', name: 'Alice'};
+            },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal((captured[0][0] as Record<string, unknown>).id, '<masked>');
         assert.equal((captured[0][0] as Record<string, unknown>).name, 'Alice');
     });
 
     t.test('does nothing when no TAP context is supplied', async () => {
         const executor = new TestExecutor({concurrency: 1, autoSnapshot: true});
-        const steps = [
-            async function stepA() { return {v: 1}; },
+        const steps: StepArray = [
+            async function stepA() {
+                return {v: 1};
+            },
         ];
         // Should not throw — just skips snapshotting
-        await executor.execute(steps as any, {});
+        await executor.execute(steps, {});
         const progress = executor.getProgress();
         assert.equal(progress.completedSteps, 1);
     });
@@ -1881,12 +1896,16 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
     t.test("['*'] snapshots all completed steps into a context object", async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
-        const steps = [
-            async function stepA() { return {a: 1}; },
-            async function stepB() { return {b: 2}; },
+        const steps: StepArray = [
+            async function stepA() {
+                return {a: 1};
+            },
+            async function stepB() {
+                return {b: 2};
+            },
             ['*'],
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal(captured.length, 1);
         const snapshot = captured[0][0] as Record<string, unknown>;
         assert.deepStrictEqual((snapshot.stepA as Record<string, unknown>).a, 1);
@@ -1897,24 +1916,32 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
     t.test("named ['*'] checkpoint uses .name property for snapshot name", async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
-        const steps = [
-            async function stepA() { return {a: 1}; },
+        const steps: StepArray = [
+            async function stepA() {
+                return {a: 1};
+            },
             Object.assign(['*'], {name: 'my-flow'}),
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal(captured[0][1], 'my-flow');
     });
 
     t.test("['step1', 'step2'] snapshots only named steps", async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1});
-        const steps = [
-            async function stepA() { return {a: 1}; },
-            async function stepB() { return {b: 2}; },
-            async function stepC() { return {c: 3}; },
+        const steps: StepArray = [
+            async function stepA() {
+                return {a: 1};
+            },
+            async function stepB() {
+                return {b: 2};
+            },
+            async function stepC() {
+                return {c: 3};
+            },
             ['stepA', 'stepC'],
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         assert.equal(captured.length, 1);
         const snapshot = captured[0][0] as Record<string, unknown>;
         assert.ok('stepA' in snapshot);
@@ -1925,12 +1952,16 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
     t.test('checkpoint applies chain-level mask to context snapshot', async () => {
         const {ctx, captured} = makeCapturingContext();
         const executor = new TestExecutor({concurrency: 1, mask: ['id']});
-        const steps = [
-            async function stepA() { return {id: 'dynamic', name: 'A'}; },
-            async function stepB() { return {id: 'dynamic2', name: 'B'}; },
+        const steps: StepArray = [
+            async function stepA() {
+                return {id: 'dynamic', name: 'A'};
+            },
+            async function stepB() {
+                return {id: 'dynamic2', name: 'B'};
+            },
             ['*'],
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         const snapshot = captured[0][0] as Record<string, Record<string, unknown>>;
         assert.equal(snapshot.stepA.id, '<masked>');
         assert.equal(snapshot.stepB.id, '<masked>');
@@ -1944,19 +1975,27 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
         // concurrency: 10 so all steps can run in parallel
         const executor = new TestExecutor({concurrency: 10});
         const delay = (ms: number) => new Promise<void>(res => setTimeout(res, ms));
-        const steps = [
-            async function fast() { await delay(10); order.push('fast'); return {x: 1}; },
-            async function slow() { await delay(80); order.push('slow'); return {y: 2}; },
+        const steps: StepArray = [
+            async function fast() {
+                await delay(10);
+                order.push('fast');
+                return {x: 1};
+            },
+            async function slow() {
+                await delay(80);
+                order.push('slow');
+                return {y: 2};
+            },
             // Snapshot only 'fast' (which finishes first) — 'slow' keeps running
             ['fast'],
             // stepC can start immediately after the checkpoint, 'slow' still running
-            async function stepC(_a: any, ctx: any) {
-                await ctx.slow;  // wait for slow via context, not checkpoint
+            async function stepC(_a: unknown, ctx: ITestContext) {
+                await ctx.slow; // wait for slow via context, not checkpoint
                 order.push('C');
                 return {z: 3};
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
+        await executor.execute(steps, {}, ctx);
         // 'fast' should be snapshotted, 'slow' should NOT be in that snapshot
         assert.equal(captured.length, 1);
         const snapshot = captured[0][0] as Record<string, unknown>;
@@ -1972,19 +2011,20 @@ tap.test("checkpoint markers — ['*'] and ['step1','step2']", async t => {
         const {ctx, captured} = makeCapturingContext();
         const order: string[] = [];
         const executor = new TestExecutor({concurrency: 10});
-        const steps = [
-            async function stepA() { order.push('A'); return {a: 1}; },
+        const steps: StepArray = [
+            async function stepA() {
+                order.push('A');
+                return {a: 1};
+            },
             [],
-            async function stepB(assert: any, context: any) {
+            async function stepB(assert, context) {
                 await context.stepA;
                 order.push('B');
                 return {b: 2};
             },
         ];
-        await executor.execute(steps as any, {}, ctx as any);
-        assert.equal(captured.length, 0);  // [] takes no snapshot
+        await executor.execute(steps, {}, ctx);
+        assert.equal(captured.length, 0); // [] takes no snapshot
         assert.ok(order.indexOf('A') < order.indexOf('B'));
     });
 });
-
-

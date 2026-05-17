@@ -25,6 +25,7 @@ import type {
     ITestContext,
     ITestEvents,
     ITestExecutorConfig,
+    ITestFrameworkContext,
     ITestLatency,
     ITestLogger,
     ITestProgress,
@@ -49,16 +50,16 @@ function createThenableProxy<T = unknown>(
     const promiseEntry = promiseManager.getOrCreate(path);
 
     // Create a proxy that intercepts property access
-    const proxy = new Proxy(promiseEntry.promise as any, {
-        get(target: Promise<T>, prop: string | symbol): any {
+    const proxy = new Proxy(promiseEntry.promise, {
+        get(target: Promise<T> & Record<symbol, unknown>, prop: string | symbol) {
             // Promise methods: delegate to the real promise
             if (prop === 'then' || prop === 'catch' || prop === 'finally') {
-                return (target as any)[prop].bind(target);
+                return target[prop].bind(target);
             }
 
             // Symbol properties (like Symbol.toStringTag)
             if (typeof prop === 'symbol') {
-                return (target as any)[prop];
+                return target[prop];
             }
 
             // Property access: return nested thenable proxy
@@ -161,12 +162,12 @@ class PromiseManager {
     /**
      * Gets nested value from an object by path
      */
-    private _getNestedValue(obj: any, path: string): any {
+    private _getNestedValue(obj: unknown, path: string): unknown {
         const parts = path.split('.');
         let current = obj;
         for (const part of parts) {
             if (current && typeof current === 'object') {
-                current = current[part];
+                current = (current as Record<string, unknown>)[part];
             } else {
                 return undefined;
             }
@@ -199,11 +200,11 @@ class PromiseManager {
     /**
      * Recursively resolves promises for nested properties
      */
-    private _resolveNestedProperties(basePath: string, obj: any, depth = 0): void {
+    private _resolveNestedProperties(basePath: string, obj: unknown, depth = 0): void {
         // Limit recursion depth to avoid infinite loops
         if (depth > 10) return;
 
-        for (const [key, value] of Object.entries(obj)) {
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
             const nestedPath = `${basePath}.${key}`;
 
             if (this.promises.has(nestedPath)) {
@@ -240,7 +241,7 @@ function createContextProxy(
     dependencyTracker: DependencyTracker,
 ): ITestContext {
     return new Proxy(realContext as ITestContext, {
-        get(target: any, prop: string | symbol): any {
+        get(target: ITestContext & Record<symbol, unknown>, prop: string | symbol) {
             // Special case: $meta is always available directly
             if (prop === '$meta') {
                 return target.$meta;
@@ -325,7 +326,7 @@ class DependencyTracker {
 /**
  * Captures source location information for error reporting
  */
-function captureSourceLocation(fn: Function): ISourceLocation {
+function captureSourceLocation(): ISourceLocation {
     try {
         const stack = new Error().stack || '';
         const lines = stack.split('\n');
@@ -355,7 +356,7 @@ function captureSourceLocation(fn: Function): ISourceLocation {
                 }
             }
         }
-    } catch (error) {
+    } catch {
         // If parsing fails, return unknown location
     }
 
@@ -442,7 +443,7 @@ export class TestExecutor extends EventEmitter {
     private promiseManager: PromiseManager;
 
     // Test framework context for nested test output
-    private testContext?: import('./test-types.js').ITestFrameworkContext;
+    private testContext?: ITestFrameworkContext;
 
     // Track step names to detect duplicates
     private stepNamesUsed = new Set<string>();
@@ -474,7 +475,7 @@ export class TestExecutor extends EventEmitter {
     async execute(
         steps: StepArray,
         $meta: IMeta,
-        testContext?: import('./test-types.js').ITestFrameworkContext,
+        testContext?: ITestFrameworkContext,
     ): Promise<void> {
         // Store test context for nested execution
         this.testContext = testContext;
@@ -514,7 +515,7 @@ export class TestExecutor extends EventEmitter {
 
         try {
             // Execute all steps
-            await this._executeSteps(steps, [], this.testContext as any);
+            await this._executeSteps(steps, [], this.testContext);
 
             // Mark as completed
             this.progress.status = 'completed';
@@ -537,7 +538,7 @@ export class TestExecutor extends EventEmitter {
     private async _executeSteps(
         steps: StepArray,
         groupPath: string[],
-        parentTestContext?: unknown,
+        parentTestContext?: ITestFrameworkContext,
     ): Promise<void> {
         const stepPromises: Promise<void>[] = [];
         const namedPromises = new Map<string, Promise<void>>();
@@ -578,7 +579,8 @@ export class TestExecutor extends EventEmitter {
                             ? `context`
                             : checkpoint.join('-'));
                     // Disambiguate when the same name is used more than once
-                    const snapshotName = checkpointIndex === 0 ? cpName : `${cpName}-${checkpointIndex}`;
+                    const snapshotName =
+                        checkpointIndex === 0 ? cpName : `${cpName}-${checkpointIndex}`;
                     checkpointIndex++;
 
                     const stepsToSnapshot =
@@ -591,15 +593,15 @@ export class TestExecutor extends EventEmitter {
                               );
 
                     const contextSnapshot = Object.fromEntries(
-                        stepsToSnapshot.map(name => [name, this._applyMask(this.realContext[name])]),
+                        stepsToSnapshot.map(name => [
+                            name,
+                            this._applyMask(this.realContext[name]),
+                        ]),
                     );
 
                     const snapshotTarget = parentTestContext;
-                    if (
-                        snapshotTarget &&
-                        typeof (snapshotTarget as any).matchSnapshot === 'function'
-                    ) {
-                        (snapshotTarget as any).matchSnapshot(contextSnapshot, snapshotName);
+                    if (snapshotTarget && typeof snapshotTarget.matchSnapshot === 'function') {
+                        snapshotTarget.matchSnapshot(contextSnapshot, snapshotName);
                     }
                     continue;
                 }
@@ -613,18 +615,26 @@ export class TestExecutor extends EventEmitter {
                 // If we have a test context, use it to create nested test scope
                 if (this.testContext && parentTestContext) {
                     const nestedName = step.name || `group-${groupPath.length}`;
-                    await (this.testContext.test as any).call(
+                    await this.testContext.test.call(
                         parentTestContext,
                         nestedName,
                         async (nestedContext: unknown) => {
-                            await this._executeSteps(step, nestedGroupPath, nestedContext);
+                            await this._executeSteps(
+                                step,
+                                nestedGroupPath,
+                                nestedContext as ITestFrameworkContext,
+                            );
                         },
                     );
                 } else if (this.testContext && groupPath.length === 0) {
                     // Top-level nested array
                     const nestedName = step.name || `group-${groupPath.length}`;
                     await this.testContext.test(nestedName, async (nestedContext: unknown) => {
-                        await this._executeSteps(step, nestedGroupPath, nestedContext);
+                        await this._executeSteps(
+                            step,
+                            nestedGroupPath,
+                            nestedContext as ITestFrameworkContext,
+                        );
                     });
                 } else {
                     // No test context, execute directly
@@ -657,9 +667,7 @@ export class TestExecutor extends EventEmitter {
         this._checkForDuplicateStepName(stepName);
 
         // Capture source location if enabled
-        const sourceLocation = this.config.captureStackTraces
-            ? captureSourceLocation(fn)
-            : undefined;
+        const sourceLocation = this.config.captureStackTraces ? captureSourceLocation() : undefined;
 
         // Initialize step progress
         const stepProgress: IStepProgress = {
@@ -699,11 +707,12 @@ export class TestExecutor extends EventEmitter {
         //                                              step's return value
         //   assert.snapshot()                        — deferred, no extra mask
         // Deferred snapshots are taken after fn() returns, under the step name.
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
-        const executeStepFn = async (stepTestContext?: unknown) => {
+        const executeStepFn = async (stepTestContext?: ITestFrameworkContext) => {
             const hasSnapshotTarget =
                 stepTestContext !== undefined &&
-                typeof (stepTestContext as Record<string, unknown>).matchSnapshot === 'function';
+                typeof stepTestContext.matchSnapshot === 'function';
 
             // Tracks a deferred assert.snapshot() call made inside the step.
             const snapshotRequest: {deferred?: {mask?: string[]}} = {};
@@ -711,8 +720,7 @@ export class TestExecutor extends EventEmitter {
             const stepAssert = hasSnapshotTarget
                 ? new Proxy(assert, {
                       get(target, prop) {
-                          if (prop === 'matchSnapshot')
-                              return (stepTestContext as any).matchSnapshot;
+                          if (prop === 'matchSnapshot') return stepTestContext?.matchSnapshot;
                           if (prop === 'snapshot')
                               return (
                                   valueOrOpts?: unknown,
@@ -726,7 +734,10 @@ export class TestExecutor extends EventEmitter {
                                               message: `snapshot "${nameOrNothing}": value is falsy`,
                                           });
                                       const masked = self._applyMask(valueOrOpts, opts?.mask);
-                                      (stepTestContext as any).matchSnapshot(masked, nameOrNothing);
+                                      stepTestContext.matchSnapshot!(
+                                          masked,
+                                          nameOrNothing as string,
+                                      );
                                   } else {
                                       // Deferred: assert.snapshot() or assert.snapshot({mask})
                                       const deferOpts =
@@ -763,8 +774,9 @@ export class TestExecutor extends EventEmitter {
                 );
 
                 // Execute the step (with optional retry loop)
-                const maxRetries =
-                    this.config.rerun?.enabled ? (this.config.rerun.maxRetries ?? DEFAULT_MAX_RETRIES) : 0;
+                const maxRetries = this.config.rerun?.enabled
+                    ? (this.config.rerun.maxRetries ?? DEFAULT_MAX_RETRIES)
+                    : 0;
                 let result: unknown;
                 let lastError: Error | undefined;
 
@@ -797,7 +809,7 @@ export class TestExecutor extends EventEmitter {
                             message: `snapshot "${stepName}": step returned a falsy value`,
                         });
                     const masked = self._applyMask(result, snapshotRequest.deferred.mask);
-                    (stepTestContext as any).matchSnapshot(masked, stepName);
+                    stepTestContext.matchSnapshot!(masked, stepName);
                 } else if (self.config.autoSnapshot && hasSnapshotTarget) {
                     // Auto-snapshot: capture result automatically, no assert.snapshot() needed
                     if (!result)
@@ -805,7 +817,7 @@ export class TestExecutor extends EventEmitter {
                             message: `snapshot "${stepName}": step returned a falsy value`,
                         });
                     const masked = self._applyMask(result);
-                    (stepTestContext as any).matchSnapshot(masked, stepName);
+                    stepTestContext.matchSnapshot!(masked, stepName);
                 }
 
                 // Store result in real context
@@ -874,14 +886,14 @@ export class TestExecutor extends EventEmitter {
         if (this.testContext && parentTestContext) {
             await this.queue.add(async () => {
                 try {
-                    await (this.testContext!.test as any).call(
+                    await this.testContext!.test.call(
                         parentTestContext,
                         stepName,
                         async (stepT: unknown) => {
-                            await executeStepFn(stepT);
+                            await executeStepFn(stepT as ITestFrameworkContext);
                         },
                     );
-                } catch (error) {
+                } catch {
                     // Error already handled in executeStepFn, don't rethrow to break the queue
                     // The test framework will report it
                 }
@@ -891,15 +903,15 @@ export class TestExecutor extends EventEmitter {
             await this.queue.add(async () => {
                 try {
                     await this.testContext!.test(stepName, async (stepT: unknown) => {
-                        await executeStepFn(stepT);
+                        await executeStepFn(stepT as ITestFrameworkContext);
                     });
-                } catch (error) {
+                } catch {
                     // Error already handled in executeStepFn, don't rethrow to break the queue
                 }
             });
         } else {
             // No test context or not at top level
-            await this.queue.add(executeStepFn);
+            await this.queue.add(executeStepFn as () => Promise<void>);
         }
     }
 
@@ -1097,7 +1109,7 @@ export class TestExecutor extends EventEmitter {
      * Type-safe event emitter
      */
     on<E extends keyof ITestEvents>(event: E, handler: ITestEvents[E]): this {
-        return super.on(event, handler as any);
+        return super.on(event, handler);
     }
 
     emit<E extends keyof ITestEvents>(event: E, ...args: Parameters<ITestEvents[E]>): boolean {
