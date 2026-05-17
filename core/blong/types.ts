@@ -873,7 +873,6 @@ export abstract class Internal {
     public async stop(): Promise<unknown> {
         return this;
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async start(..._args: unknown[]): Promise<unknown> {
         return this;
     }

@@ -17,6 +17,7 @@
 // Minimal Stream Interfaces (replacing 'stream' module)
 // ============================================================================
 /* eslint-disable */
+/* cSpell:disable */
 
 interface ReadableStreamKnex {
     readable: boolean;
@@ -409,7 +410,7 @@ declare namespace Knex {
         withSchema: WithSchema<TRecord, TResult>;
         withWrapped: WithWrapped<TRecord, TResult>;
 
-        // Wheres
+        // Where
         where: Where<TRecord, TResult>;
         andWhere: Where<TRecord, TResult>;
         orWhere: Where<TRecord, TResult>;
