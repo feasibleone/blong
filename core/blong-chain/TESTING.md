@@ -122,7 +122,7 @@ The `test:examples:ci` script:
 This ensures error reporting functionality works correctly without
 treating intentional failures as CI failures.
 
-### Expected CI Behavior
+### Expected CI Behaviour
 
 ✅ **Should Pass:** All 54 tests in `index.test.ts`
 ❌ **Should NOT Run in CI:** Example tests in `examples/` directory
@@ -152,7 +152,7 @@ treating intentional failures as CI failures.
 ℹ fail 0
 ```
 
-All checkmarks (✔) indicate successful verification.
+All check-marks (✔) indicate successful verification.
 
 ### Example Test Output
 

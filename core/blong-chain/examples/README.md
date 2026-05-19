@@ -87,5 +87,5 @@ Test frameworks like `node:test` mark parent tests as failed when child tests fa
 By separating demonstration tests:
 
 - Main test suite (`index.test.ts`) verifies functionality (54 tests, all pass)
-- Examples show visual output and behavior (contains intentional failures)
+- Examples show visual output and behaviour (contains intentional failures)
 - CI can verify both sets without false negatives

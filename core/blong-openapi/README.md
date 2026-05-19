@@ -212,7 +212,7 @@ Generated handlers follow the pattern: `{namespace}{operationId}`
 | ----------- | ------------- | -------------- |
 | weather | GetForecast | `weatherGetForecast` |
 | payment | CreateTransaction | `paymentCreateTransaction` |
-| k8s | listNamespaces | `k8slistNamespaces` |
+| k8s | listNamespaces | `k8sListNamespaces` |
 
 Names are case-sensitive and trimmed of whitespace.
 

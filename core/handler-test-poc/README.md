@@ -48,7 +48,7 @@ Tests verify structural properties (invariants) of handlers:
 
 - Total is always sum of (price × quantity)
 - Discounted total ≤ total
-- Discount boundary behavior at exactly 100
+- Discount boundary behaviour at exactly 100
 
 See: `order/test/test/testOrderInvariant.ts`
 

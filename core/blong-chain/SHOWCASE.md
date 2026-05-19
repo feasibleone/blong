@@ -237,6 +237,7 @@ const steps = [
 ```
 
 **Benefits:**
+
 - Clear separation of execution phases
 - Controlled resource usage
 - Predictable execution order while maintaining parallelism
@@ -347,7 +348,7 @@ All verification subtests within "Error Handling & Recovery" should pass:
 
 The showcase demonstrates realistic performance patterns:
 
-- **Parallel speedup**: Multiple independent operations run simultaneously
+- **Parallel speed-up**: Multiple independent operations run simultaneously
 - **Efficient dependency resolution**: Steps start as soon as dependencies complete
 - **Minimal overhead**: Framework overhead is negligible compared to actual work
 - **Scalable**: Configurable concurrency supports different workload patterns
@@ -356,7 +357,7 @@ The showcase demonstrates realistic performance patterns:
 
 - Sequential time (if all steps ran one after another): ~400ms
 - Actual parallel execution time: ~240ms
-- Parallel efficiency: ~1.67x speedup
+- Parallel efficiency: ~1.67x speed-up
 
 ## Usage as Documentation
 
@@ -364,7 +365,7 @@ Each test suite in the showcase serves as a reference implementation:
 
 1. **Study the patterns**: See how features are used in realistic scenarios
 2. **Copy and adapt**: Use test patterns as templates for your own tests
-3. **Understand behavior**: Observe how features interact and compose
+3. **Understand behaviour**: Observe how features interact and compose
 4. **Verify functionality**: Ensure the framework works as documented
 
 ## Extending the Showcase
@@ -375,7 +376,7 @@ To add new feature demonstrations:
 2. Include comprehensive verification subtests
 3. Add documentation to this file
 4. Update the feature checklist
-5. Document expected behavior and results
+5. Document expected behaviour and results
 
 ## See Also
 

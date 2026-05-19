@@ -10,7 +10,7 @@ The `ThemeConfig.syntax` colors (string, number, boolean, null, key) are already
 
 - Add a `SyntaxHighlight` component that tokenizes a JSON string and wraps each
   token in a `<span>` with the corresponding color from `theme.syntax`.
-- Use it in the **EntryModal** to render the full log entry with colored JSON
+- Use it in the **EntryModal** to render the full log entry with coloured JSON
   instead of plain `<pre>`.
 - Use it in the **MessageCell**: when `row.msg` parses as valid JSON, render it
   with syntax highlighting (truncated in the grid cell, full in the modal).
