@@ -3,13 +3,12 @@ language: en-GB
 words:
   - ACMR
   - Acropora
-  - cleanup
-  - Cleanup
   - Acroporidae
   - adaptername
   - Alcyonacea
   - allurerc
   - Ambrym
+  - amodio
   - Amphiprion
   - analyzed
   - Analyzed
@@ -40,6 +39,8 @@ words:
   - cervicornis
   - Chelonia
   - cirratum
+  - cleanup
+  - Cleanup
   - Clownfish
   - clusterrole
   - clusterrolebinding
@@ -57,6 +58,7 @@ words:
   - darkorange
   - datatable
   - datetime
+  - dbaeumer
   - dedup
   - deepwater
   - Dendrophylliidae

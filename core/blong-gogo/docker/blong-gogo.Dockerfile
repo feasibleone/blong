@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY --chown=node --from=builder --exclude=**/.rush --exclude=**/docker/ --exclude=**/rush-logs /opt/blong/common/deploy /opt/blong/common/deploy
 RUN ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong.ts /usr/local/bin/blong && \
-    ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong-dev.ts /usr/local/bin/blong-dev
+    ln -s /opt/blong/common/deploy/core/blong-gogo/bin/blong-watch.ts /usr/local/bin/blong-watch
 WORKDIR /opt/deploy
 USER node
 

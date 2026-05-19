@@ -11,9 +11,9 @@
         "ci-lint": "tsc --noEmit"
     },
     "dependencies": {
-        "cspell": "^8.0.0",
-        "eslint": "^10.2.1",
-        "strip-json-comments": "5.0.3"
+        "cspell": "^10.0.0",
+        "eslint": "^10.4.0",
+        "strip-json-comments": "^5.0.3"
     },
     "devDependencies": {
         "@types/node": "^24",

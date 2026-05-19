@@ -1,8 +1,8 @@
-import {join} from 'node:path';
-import {fileURLToPath} from 'node:url';
-import {hasEslintConfig, hasTsConfig} from '../utils/discover.ts';
-import {findUp} from '../utils/findConfig.ts';
-import {runTool, type RunOptions} from '../utils/runTool.ts';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { hasEslintConfig, hasTsConfig } from '../utils/discover.ts';
+import { findUp } from '../utils/findConfig.ts';
+import { runTool, type RunOptions } from '../utils/runTool.ts';
 
 // Tools bundled with blong-dev (e.g. cspell) live in blong-dev's own node_modules.
 // lint.ts is at src/commands/lint.ts → ../../node_modules/.bin is the package root's bin dir.
@@ -10,6 +10,7 @@ const blongDevBin = fileURLToPath(new URL('../../node_modules/.bin', import.meta
 
 const TS_EXT = /\.[cm]?tsx?$/i;
 const SPELL_EXT = /\.([cm]?tsx?|md)$/i;
+const LINT_EXT = /\.[cm]?[jt]sx?$/i;
 const PATH_SEP = process.platform === 'win32' ? ';' : ':';
 
 /**
@@ -25,6 +26,7 @@ export async function lint(fileArgs: string[]): Promise<void> {
     const staged = fileArgs.length > 0;
     const tsFiles = staged ? fileArgs.filter(f => TS_EXT.test(f)) : [];
     const spellFiles = staged ? fileArgs.filter(f => SPELL_EXT.test(f)) : [];
+    const lintFiles = staged ? fileArgs.filter(f => LINT_EXT.test(f)) : [];
 
     // Augment PATH: target package's .bin first, then blong-dev's own .bin
     // (provides cspell and other bundled tools), then the inherited PATH.
@@ -64,9 +66,11 @@ export async function lint(fileArgs: string[]): Promise<void> {
     // ── eslint ───────────────────────────────────────────────────────────────
     // Applied only when an ESLint config file is present in the package root.
     if (hasEslintConfig(cwd)) {
-        const targets = staged ? fileArgs : ['.'];
-        const code = await run('eslint', ['--max-warnings', '0', ...targets]);
-        if (code !== 0) exitCode = code;
+        const targets = staged ? lintFiles : ['.'];
+        if (targets.length > 0) {
+            const code = await run('eslint', ['--max-warnings', '0', ...targets]);
+            if (code !== 0) exitCode = code;
+        }
     }
 
     if (exitCode !== 0) process.exit(exitCode);
