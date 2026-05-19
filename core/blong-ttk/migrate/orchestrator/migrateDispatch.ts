@@ -4,7 +4,7 @@
 
 import {orchestrator} from '@feasibleone/blong';
 
-export default orchestrator(blong => ({
+export default orchestrator(_blong => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {

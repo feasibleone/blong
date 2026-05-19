@@ -62,7 +62,7 @@ export default adapter<IConfig>(({utError}) => {
                 //         rejectUnauthorized: false,
                 //     }),
                 // },
-            }) as any;
+            });
 
             this.config.context = {kcAdminClient};
             _authenticated = false;
@@ -87,6 +87,7 @@ export default adapter<IConfig>(({utError}) => {
                 password?: string;
                 totp?: string;
             } = {},
+            $meta?: IMeta,
         ) {
             if (_authenticated) return;
             // Authenticate with Keycloak
@@ -114,7 +115,8 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 _authenticated = true;
             } catch (cause) {
-                throw _errors['keycloak.authFailed']({cause});
+                if (typeof (cause as {type?: string}).type === 'string') throw cause;
+                throw this.error(_errors['keycloak.authFailed'](cause), $meta as IMeta);
             }
         },
         async stop(...params: unknown[]) {
@@ -166,8 +168,9 @@ export default adapter<IConfig>(({utError}) => {
                       briefRepresentation?: boolean;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, resourceType, operation] = method!.split('.');
             const targetRealm =
                 (!Array.isArray(params) && params.realm) ||
@@ -175,9 +178,9 @@ export default adapter<IConfig>(({utError}) => {
                 'master';
             await (
                 this as unknown as {
-                    authenticate: (args: unknown, options: unknown) => Promise<void>;
+                    authenticate: (args: unknown, $meta?: IMeta) => Promise<void>;
                 }
-            ).authenticate({}, arguments[1]);
+            ).authenticate({}, $meta);
             const client = this.config.context.kcAdminClient!;
             client.setConfig({realmName: targetRealm});
             const config = this.config;
@@ -772,16 +775,19 @@ export default adapter<IConfig>(({utError}) => {
                 const keycloakError = error as {
                     response?: {status?: number; data?: {error?: string}};
                 };
+                let err;
                 if (keycloakError.response?.status === 404) {
-                    throw _errors['keycloak.notFound']();
+                    err = _errors['keycloak.notFound']();
                 } else if (keycloakError.response?.status === 401) {
-                    throw _errors['keycloak.unauthorized']();
+                    err = _errors['keycloak.unauthorized']();
                 } else if (keycloakError.response?.status === 403) {
-                    throw _errors['keycloak.forbidden']();
+                    err = _errors['keycloak.forbidden']();
                 } else if (keycloakError.response?.status === 409) {
-                    throw _errors['keycloak.exists']();
+                    err = _errors['keycloak.exists']();
+                } else {
+                    err = _errors['keycloak.generic']();
                 }
-                throw _errors['keycloak.generic']();
+                throw this.error(err, $meta);
             }
         },
     };

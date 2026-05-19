@@ -9,8 +9,8 @@
 import React, {
     type CSSProperties,
     createContext,
+    use,
     useCallback,
-    useContext,
     useEffect,
     useMemo,
     useRef,
@@ -80,7 +80,7 @@ function highlightSearch(text: string, search: string): React.ReactNode {
     return parts.map((part, i) =>
         part.toLowerCase() === search.toLowerCase() ? (
             <mark
-                key={i}
+                key={i} // eslint-disable-line @eslint-react/no-array-index-key
                 style={{
                     background: '#e3b341',
                     color: '#000',
@@ -155,7 +155,7 @@ function CopyButton({text, isDark = true}: {text: string; isDark?: boolean}): Re
 // ── SVAR Grid Cell Components ─────────────────────────────────────────────────
 
 function LevelCell({row}: {row: LogEntry}): React.ReactElement {
-    const {theme} = useContext(ViewerContext);
+    const {theme} = use(ViewerContext);
     const [isHovered, setIsHovered] = useState(false);
     const name = row.levelName ?? LEVEL_NAME[row.level ?? 30] ?? 'unknown';
     const colors = theme.levels ?? {};
@@ -214,7 +214,7 @@ function LevelCell({row}: {row: LogEntry}): React.ReactElement {
 }
 
 function NameCell({row}: {row: LogEntry}): React.ReactElement {
-    const {searchText, theme} = useContext(ViewerContext);
+    const {searchText, theme} = use(ViewerContext);
     const [isHovered, setIsHovered] = useState(false);
     const isDark = theme.mode === 'dark';
 
@@ -259,7 +259,7 @@ function NameCell({row}: {row: LogEntry}): React.ReactElement {
 }
 
 function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
-    const {clientConfig, onTraceFilter, theme} = useContext(ViewerContext);
+    const {clientConfig, onTraceFilter, theme} = use(ViewerContext);
     const [isHovered, setIsHovered] = useState(false);
 
     if (!row.traceId) return null;
@@ -342,8 +342,8 @@ function TraceLinkCell({row}: {row: LogEntry}): React.ReactElement | null {
 }
 
 function MessageCell({row}: {row: LogEntry}): React.ReactElement {
-    const {searchText, theme, onToggleExpanded} = useContext(ViewerContext);
-    const expandedRows = React.useContext(ExpandedRowsContext);
+    const {searchText, theme, onToggleExpanded} = use(ViewerContext);
+    const expandedRows = React.use(ExpandedRowsContext);
     const isExpanded = expandedRows?.has(row.id) ?? false;
     const [isHovered, setIsHovered] = useState(false);
     const isDark = isDarkMode(theme);
@@ -683,8 +683,8 @@ function isDarkMode(theme: ThemeConfig): boolean {
 }
 
 function JSONCell({row}: {row: LogEntry}): React.ReactElement {
-    const {theme, searchText, onToggleExpanded} = useContext(ViewerContext);
-    const expandedRows = React.useContext(ExpandedRowsContext);
+    const {theme, searchText, onToggleExpanded} = use(ViewerContext);
+    const expandedRows = React.use(ExpandedRowsContext);
     const isExpanded = expandedRows?.has(row.id) ?? false;
     const [isHovered, setIsHovered] = useState(false);
     const isDark = isDarkMode(theme);
@@ -801,6 +801,7 @@ function JSONCell({row}: {row: LogEntry}): React.ReactElement {
     );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function HttpCell({row}: {row: LogEntry}): React.ReactElement {
     const statusColor = row.res
         ? (row.res.statusCode ?? 200) < 400
@@ -914,6 +915,7 @@ function SyntaxHighlight({
 
 // ── Entry Detail Modal ────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function EntryModal({
     entry,
     isDark,
@@ -924,7 +926,7 @@ function EntryModal({
     onClose: () => void;
 }): React.ReactElement {
     const [wrapText, setWrapText] = useState(false);
-    const {theme, searchText} = useContext(ViewerContext);
+    const {theme, searchText} = use(ViewerContext);
     const jsonString = JSON.stringify(entry, null, 2);
 
     const sectionHeaderStyle: CSSProperties = {
@@ -1245,10 +1247,13 @@ export function LogViewer({
     const [connected, setConnected] = useState(false);
     const [filters, setFilters] = useState<FilterOptions>({});
     const [searchText, setSearchText] = useState(initialSearchText);
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(initialExpandedRows ?? new Set());
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(
+        () => initialExpandedRows ?? new Set(),
+    );
     const [autoScroll, setAutoScroll] = useState(false);
     const [timeMode, setTimeMode] = useState<'absolute' | 'relative'>('absolute');
     const wsRef = useRef<WebSocket | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const gridApiRef = useRef<any>(null);
     const lastIdRef = useRef<string>('');
     const entriesRef = useRef<LogEntry[]>([]);
@@ -1278,6 +1283,7 @@ export function LogViewer({
 
     useEffect(() => {
         if (typeof configProp === 'object' && configProp) {
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
             setClientConfig(configProp);
             return;
         }
@@ -1356,7 +1362,7 @@ export function LogViewer({
             if (ws) ws.close();
             wsRef.current = null;
         };
-    }, [clientConfig]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [clientConfig]);
 
     // ── Re-subscribe when filters change ──────────────────────────────────
     // Note: We do client-side filtering in displayEntries, so we don't clear
@@ -1492,6 +1498,7 @@ export function LogViewer({
                 ),
                 width: timeMode === 'absolute' ? 105 : 65,
                 cell: ({row}: {row: LogEntry}) => {
+                    // eslint-disable-next-line @eslint-react/rules-of-hooks
                     const [isHovered, setIsHovered] = useState(false);
                     const timeText =
                         timeMode === 'absolute' ? formatTimestamp(row.time) : timeAgo(row.time);
@@ -1581,17 +1588,18 @@ export function LogViewer({
                 cell: JSONCell,
             },
         ],
-        [timeMode],
+        [timeMode, isDark],
     );
 
     // ── Grid init (stable ref to avoid re-initialization) ─────────────────
 
     const initGrid = useCallback(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api: any) => {
             gridApiRef.current = api;
             // Removed select-row handler - expansion is now handled by MessageCell and JSONCell clicks
         },
-        [], // eslint-disable-line react-hooks/exhaustive-deps
+        [],
     );
 
     // ── Row height calculation ────────────────────────────────────────────
@@ -1734,8 +1742,8 @@ export function LogViewer({
     // ── Render ────────────────────────────────────────────────────────────
 
     return (
-        <ViewerContext.Provider value={contextValue}>
-            <ExpandedRowsContext.Provider value={expandedRows}>
+        <ViewerContext value={contextValue}>
+            <ExpandedRowsContext value={expandedRows}>
                 <div
                     style={{
                         display: 'flex',
@@ -1902,6 +1910,7 @@ export function LogViewer({
                                     autoRowHeight: true,
                                     init: initGrid,
                                     onFilterTrace: handleFilterTrace,
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 } as any)}
                             />
                         </ThemeWrapper>
@@ -1929,8 +1938,8 @@ export function LogViewer({
                         </span>
                     </div>
                 </div>
-            </ExpandedRowsContext.Provider>
-        </ViewerContext.Provider>
+            </ExpandedRowsContext>
+        </ViewerContext>
     );
 }
 

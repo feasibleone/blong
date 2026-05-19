@@ -1,4 +1,3 @@
-/// <reference path="./globals.d.ts" />
 import {watch} from 'chokidar';
 import type {Dirent} from 'fs';
 import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';
@@ -8,6 +7,7 @@ import {createRequire} from 'node:module';
 import {hrtime} from 'node:process';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
 import ConfigRuntime from './ConfigRuntime.ts';
+import './globals.d.ts';
 import load from './load.ts';
 import timing from './timing.ts';
 

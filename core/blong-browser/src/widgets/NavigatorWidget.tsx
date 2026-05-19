@@ -109,6 +109,7 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
 
     useEffect(() => {
         if (!listAction) return;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setLoading(true);
         const params = widget?.listParams ?? {};
         void (dispatch(listAction, params) as Promise<Record<string, unknown>>)

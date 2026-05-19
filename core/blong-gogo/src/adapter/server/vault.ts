@@ -71,7 +71,7 @@ async function authenticateVault(this: {config: IConfig}): Promise<void> {
                 throw _errors['vault.authFailed']();
         }
     } catch (error) {
-        throw _errors['vault.authFailed']();
+        throw _errors['vault.authFailed'](error);
     }
 }
 
@@ -131,15 +131,15 @@ export default adapter<IConfig>(({utError}) => {
                       metadata?: Record<string, unknown>;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, resource, operation] = method!.split('.');
             let secretPath = resource;
             let actualParams = params;
 
             if (!Array.isArray(params) && params.path) {
                 secretPath = params.path;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const {path: _pathParam, ...rest} = params;
                 actualParams = rest;
             }
@@ -148,43 +148,56 @@ export default adapter<IConfig>(({utError}) => {
                 case 'read':
                 case 'get': {
                     // Read secret from Vault
-                    if (Array.isArray(actualParams)) throw _errors['vault.invalid']();
-                    if (!secretPath) throw _errors['vault.missingPath']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['vault.invalid'](), $meta);
+                    }
+                    if (!secretPath) {
+                        throw this.error(_errors['vault.missingPath'](), $meta);
+                    }
 
                     try {
                         const result = await this.config.context.vault!.read(secretPath);
                         return result.data;
                     } catch (error: unknown) {
-                        if (
-                            (error as {response?: {statusCode?: number}})?.response?.statusCode ===
-                            404
-                        ) {
-                            throw _errors['vault.notFound']();
-                        }
-                        throw _errors['vault.generic']();
+                        throw this.error(
+                            (error as {response?: {statusCode?: number}})?.response?.statusCode === 404
+                                ? _errors['vault.notFound'](error)
+                                : _errors['vault.generic'](error),
+                            $meta,
+                        );
                     }
                 }
                 case 'write':
                 case 'put': {
                     // Write secret to Vault
-                    if (Array.isArray(actualParams)) throw _errors['vault.invalid']();
-                    if (!secretPath) throw _errors['vault.missingPath']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['vault.invalid'](), $meta);
+                    }
+                    if (!secretPath) {
+                        throw this.error(_errors['vault.missingPath'](), $meta);
+                    }
 
                     const {data, metadata} = actualParams;
-                    if (!data) throw _errors['vault.missingKey']({key: 'data'});
+                    if (!data) {
+                        throw this.error(_errors['vault.missingKey']({key: 'data'}), $meta);
+                    }
 
                     try {
                         const writeParams = metadata ? {data, metadata} : data;
                         return await this.config.context.vault!.write(secretPath, writeParams);
                     } catch (error: unknown) {
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
                 case 'delete':
                 case 'remove': {
                     // Delete secret from Vault
-                    if (Array.isArray(actualParams)) throw _errors['vault.invalid']();
-                    if (!secretPath) throw _errors['vault.missingPath']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['vault.invalid'](), $meta);
+                    }
+                    if (!secretPath) {
+                        throw this.error(_errors['vault.missingPath'](), $meta);
+                    }
 
                     const {version} = actualParams;
 
@@ -199,13 +212,17 @@ export default adapter<IConfig>(({utError}) => {
                             return await this.config.context.vault!.delete(secretPath);
                         }
                     } catch (error: unknown) {
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
                 case 'list': {
                     // List secrets at path
-                    if (Array.isArray(actualParams)) throw _errors['vault.invalid']();
-                    if (!secretPath) throw _errors['vault.missingPath']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['vault.invalid'](), $meta);
+                    }
+                    if (!secretPath) {
+                        throw this.error(_errors['vault.missingPath'](), $meta);
+                    }
 
                     try {
                         const result = await this.config.context.vault!.list(secretPath);
@@ -217,15 +234,21 @@ export default adapter<IConfig>(({utError}) => {
                         ) {
                             return {keys: []};
                         }
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
                 case 'mount': {
                     // Mount secret engine
-                    if (Array.isArray(actualParams)) throw _errors['vault.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['vault.invalid'](), $meta);
+                    }
                     const {mount_point, type, description, config} = actualParams;
-                    if (!mount_point) throw _errors['vault.missingKey']({key: 'mount_point'});
-                    if (!type) throw _errors['vault.missingKey']({key: 'type'});
+                    if (!mount_point) {
+                        throw this.error(_errors['vault.missingKey']({key: 'mount_point'}), $meta);
+                    }
+                    if (!type) {
+                        throw this.error(_errors['vault.missingKey']({key: 'type'}), $meta);
+                    }
 
                     try {
                         return await this.config.context.vault!.mount({
@@ -235,19 +258,23 @@ export default adapter<IConfig>(({utError}) => {
                             config,
                         });
                     } catch (error: unknown) {
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
                 case 'unmount': {
                     // Unmount secret engine
-                    if (Array.isArray(actualParams)) throw _errors['vault.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['vault.invalid'](), $meta);
+                    }
                     const {mount_point} = actualParams;
-                    if (!mount_point) throw _errors['vault.missingKey']({key: 'mount_point'});
+                    if (!mount_point) {
+                        throw this.error(_errors['vault.missingKey']({key: 'mount_point'}), $meta);
+                    }
 
                     try {
                         return await this.config.context.vault!.unmount({mount_point});
                     } catch (error: unknown) {
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
                 case 'health': {
@@ -255,7 +282,7 @@ export default adapter<IConfig>(({utError}) => {
                     try {
                         return await this.config.context.vault!.health();
                     } catch (error: unknown) {
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
                 case 'status': {
@@ -263,11 +290,11 @@ export default adapter<IConfig>(({utError}) => {
                     try {
                         return await this.config.context.vault!.status();
                     } catch (error: unknown) {
-                        throw _errors['vault.generic']();
+                        throw this.error(_errors['vault.generic'](error), $meta);
                     }
                 }
             }
-            throw _errors['vault.generic']();
+            throw this.error(_errors['vault.generic']({}), $meta);
         },
     };
 });

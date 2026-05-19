@@ -256,7 +256,7 @@ export default handler(
             .join('\n');
     }
 
-    private _paramType(param: {}): string {
+    private _paramType(param: object): string {
         if (!('type' in param)) return 'unknown';
         switch (param.type) {
             case 'string':
@@ -294,7 +294,9 @@ export default handler(
     public async generateFile(filename: string): Promise<boolean> {
         if (this.#config.generate === false) return false;
         if (this.#platform.statSync(filename).size !== 0) return false;
-        let content = this.#platform.readFileSync(filename, {encoding: 'utf-8'}).toString('utf-8');
+        const content = this.#platform
+            .readFileSync(filename, {encoding: 'utf-8'})
+            .toString('utf-8');
         if (content.includes('import unchanged from')) {
             this.#generateFile.add(filename);
             return false;

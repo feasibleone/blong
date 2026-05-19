@@ -30,7 +30,7 @@ export default adapter<IConfig>(({utError}) => {
         },
         start() {
             this.config.context = {
-                slack: new IncomingWebhook(this.config.slack.webhookUrl!) as any,
+                slack: new IncomingWebhook(this.config.slack.webhookUrl!),
             };
             super.connect();
             return super.start();
@@ -52,8 +52,9 @@ export default adapter<IConfig>(({utError}) => {
                 unfurlLinks?: boolean;
                 unfurlMedia?: boolean;
             } & Record<string, unknown>,
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, , operation] = method!.split('.');
             switch (operation) {
                 case 'send':
@@ -74,9 +75,7 @@ export default adapter<IConfig>(({utError}) => {
                     } = params;
 
                     if (!text && !blocks && !attachments) {
-                        throw _errors['slack.invalid']({
-                            message: 'Must provide text, blocks, or attachments',
-                        });
+                        throw this.error(_errors['slack.invalid']({message: 'Must provide text, blocks, or attachments'}), $meta);
                     }
 
                     const payload: Record<string, unknown> = {};
@@ -94,11 +93,11 @@ export default adapter<IConfig>(({utError}) => {
                     try {
                         return await this.config.context.slack!.send(payload);
                     } catch (error) {
-                        throw _errors['slack.generic'](error);
+                        throw this.error(_errors['slack.generic'](error), $meta);
                     }
                 }
             }
-            throw _errors['slack.invalid']({operation});
+            throw this.error(_errors['slack.invalid']({operation}), $meta);
         },
     };
 });

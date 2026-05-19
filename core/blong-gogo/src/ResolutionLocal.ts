@@ -21,8 +21,8 @@ export default class ResolutionLocal extends Internal implements IResolution {
 
     public async resolve(
         service: string,
-        invalidate: boolean,
-        namespace: string,
+        // invalidate: boolean,
+        // namespace: string,
     ): ReturnType<IResolution['resolve']> {
         return {
             // hostname: `${service}-service.${this.#config.domain}`,
@@ -33,7 +33,7 @@ export default class ResolutionLocal extends Internal implements IResolution {
         };
     }
 
-    public announce(service: string, port: number): void {}
+    public announce(): void {}
 
     public async start(): Promise<void> {}
 

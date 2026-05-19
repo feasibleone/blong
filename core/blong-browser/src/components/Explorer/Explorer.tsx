@@ -720,8 +720,8 @@ export function Explorer({
                             />
                         )}
                         {toolbar.map((btn, i) => (
-                            <ActionButton
-                                key={i}
+                            // eslint-disable-next-line @eslint-react/no-array-index-key
+                            <ActionButton key={i}
                                 {...btn}
                                 params={resolveTemplate(btn.params, templateContext)}
                                 enabled={undefined}
@@ -737,8 +737,8 @@ export function Explorer({
                 end={
                     <div className="blong-toolbar-right">
                         {toolbarRight.map((btn, i) => (
-                            <ActionButton
-                                key={i}
+                            // eslint-disable-next-line @eslint-react/no-array-index-key
+                            <ActionButton key={i}
                                 {...btn}
                                 params={resolveTemplate(btn.params, templateContext)}
                                 enabled={undefined}

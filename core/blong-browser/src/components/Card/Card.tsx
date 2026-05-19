@@ -265,25 +265,31 @@ function FieldRow({
 
     const rawSchema: IEnrichedFieldSchema | undefined = resolveFieldSchema(schema, fieldName);
     const dropdownKey = rawSchema?.widget?.dropdown;
-    const fieldSchema: IEnrichedFieldSchema | undefined =
-        dropdowns && dropdownKey && dropdowns[dropdownKey] && rawSchema
-            ? ({
-                  ...rawSchema,
-                  widget: {
-                      ...rawSchema.widget!,
-                      options: dropdowns[dropdownKey],
-                      dropdown: undefined,
-                  },
-              } as IEnrichedFieldSchema)
-            : rawSchema;
+    const fieldSchema = useMemo<IEnrichedFieldSchema | undefined>(
+        () =>
+            dropdowns && dropdownKey && dropdowns[dropdownKey] && rawSchema
+                ? ({
+                      ...rawSchema,
+                      widget: {
+                          ...rawSchema.widget!,
+                          options: dropdowns[dropdownKey],
+                          dropdown: undefined,
+                      },
+                  } as IEnrichedFieldSchema)
+                : rawSchema,
+        [dropdowns, dropdownKey, rawSchema],
+    );
     // Apply column override from ICardWidgetEntry (e.g. show only certain columns in a table)
-    const effectiveSchema: IEnrichedFieldSchema | undefined =
-        fieldSchema && columnOverride
-            ? ({
-                  ...fieldSchema,
-                  widget: {...fieldSchema.widget, columns: columnOverride},
-              } as IEnrichedFieldSchema)
-            : fieldSchema;
+    const effectiveSchema = useMemo<IEnrichedFieldSchema | undefined>(
+        () =>
+            fieldSchema && columnOverride
+                ? ({
+                      ...fieldSchema,
+                      widget: {...fieldSchema.widget, columns: columnOverride},
+                  } as IEnrichedFieldSchema)
+                : fieldSchema,
+        [fieldSchema, columnOverride],
+    );
 
     const WidgetComponent = effectiveSchema
         ? widgetRegistry.get(resolveWidgetType(effectiveSchema))
@@ -469,6 +475,8 @@ function FieldRow({
             handleTableSelect,
             translations,
             log,
+            getValues,
+            setValue,
         ],
     );
 
@@ -564,7 +572,14 @@ function CustomInput({
     const dropdownKey = fieldSchema.widget?.dropdown;
     const effectiveSchema: IEnrichedFieldSchema =
         dropdowns && dropdownKey && dropdowns[dropdownKey]
-            ? {...fieldSchema, widget: {...fieldSchema.widget!, options: dropdowns[dropdownKey], dropdown: undefined}}
+            ? {
+                  ...fieldSchema,
+                  widget: {
+                      ...fieldSchema.widget!,
+                      options: dropdowns[dropdownKey],
+                      dropdown: undefined,
+                  },
+              }
             : fieldSchema;
 
     const containerClass = className ?? fieldClass ?? '';
@@ -591,16 +606,16 @@ function CustomInput({
                         onChange={(val: unknown) => {
                             field.onChange(val);
                             onChange?.(
-                                setFieldValue(
-                                    getValues!() as Record<string, unknown>,
-                                    name,
-                                    val,
-                                ),
+                                setFieldValue(getValues!() as Record<string, unknown>, name, val),
                             );
                         }}
                         onBlur={field.onBlur}
                         error={fieldState.error}
-                        readOnly={fieldDisabled || effectiveSchema.readOnly || effectiveSchema.widget?.readOnly}
+                        readOnly={
+                            fieldDisabled ||
+                            effectiveSchema.readOnly ||
+                            effectiveSchema.widget?.readOnly
+                        }
                         dropdowns={dropdowns}
                     />
                 </div>
@@ -627,7 +642,10 @@ function CustomLabel({
     const title = labelOverride ?? fieldSchema?.title ?? name;
     if (!title) return null;
     return (
-        <label htmlFor={name?.replace(/\./g, '-')} className={className}>
+        <label
+            htmlFor={name?.replace(/\./g, '-')}
+            className={className}
+        >
             <Text>{title}</Text>
         </label>
     );

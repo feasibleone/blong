@@ -14,7 +14,7 @@ interface IToken {
     access_token: string;
     expires_in: number;
     refresh_token?: string;
-    refresh_token_expires_in?: number; // eslint-disable-line @typescript-eslint/naming-convention
+    refresh_token_expires_in?: number;
 }
 
 export default handler<{
@@ -143,7 +143,7 @@ export default handler<{
                         window.location.protocol === 'https:'
                             ? "Your browser doesn't support SubtleCrypto interface of the Web Crypto API"
                             : 'SubtleCrypto interface of the Web Crypto API is available only in secure contexts (HTTPS) ';
-                    window.alert(errorMessage); // eslint-disable-line no-alert
+                    window.alert(errorMessage);
                     throw new Error(errorMessage);
                 }
                 jose = await joseFactory(mleKey.clientKey);

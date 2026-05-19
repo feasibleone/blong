@@ -14,7 +14,7 @@ export default async function loadApi(
     if (typeof locations === 'object' && 'assets' in locations) {
         locations = Object.entries(locations.assets)
             .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-            .map(([key, value]) => value);
+            .map(([, value]) => value);
     }
 
     for (const location of ([] as unknown[]).concat(locations as unknown)) {

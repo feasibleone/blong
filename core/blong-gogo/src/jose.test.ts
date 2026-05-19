@@ -3,7 +3,7 @@ import {test} from 'tap';
 
 import jose from './jose.ts';
 
-await test('jose', async t => {
+await test('jose', async () => {
     const {signEncrypt, decryptVerify} = await jose({
         encrypt: {
             kty: 'EC',

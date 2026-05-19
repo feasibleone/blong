@@ -1,5 +1,5 @@
 import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
-import {pino, type Logger, type LogFn, type LoggerOptions} from 'pino';
+import {pino, type LogFn, type Logger, type LoggerOptions} from 'pino';
 import {monotonicFactory} from 'ulidx';
 import type {CacacheTransportOptions} from './pino-cacache.js';
 
@@ -110,15 +110,15 @@ export default class Log extends Internal implements ILog {
         switch (level) {
             case 'trace':
                 result.trace = child.trace.bind(child);
-            case 'debug': // eslint-disable-line no-fallthrough
+            case 'debug':
                 result.debug = child.debug.bind(child);
-            case 'info': // eslint-disable-line no-fallthrough
+            case 'info':
                 result.info = child.info.bind(child);
-            case 'warn': // eslint-disable-line no-fallthrough
+            case 'warn':
                 result.warn = child.warn.bind(child);
-            case 'error': // eslint-disable-line no-fallthrough
+            case 'error':
                 result.error = child.error.bind(child);
-            case 'fatal': // eslint-disable-line no-fallthrough
+            case 'fatal':
                 result.fatal = child.fatal.bind(child);
         }
         return result as unknown as ILogger;

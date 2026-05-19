@@ -88,7 +88,7 @@ export default adapter<IConfig>(({utError}) => {
                 form: Record<string, string>;
                 json: unknown;
             },
-            _meta: IMeta,
+            $meta: IMeta,
         ) {
             try {
                 this.log?.debug?.({
@@ -132,7 +132,7 @@ export default adapter<IConfig>(({utError}) => {
                 });
                 return result;
             } catch (error) {
-                throw _errors['http.generic'](error);
+                throw this.error(_errors['http.generic'](error), $meta);
             }
         },
     };

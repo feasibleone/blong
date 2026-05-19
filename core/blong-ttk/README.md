@@ -106,7 +106,7 @@ See [ALLURE_REPORTING_GUIDE.md](../../plans/ttk/ALLURE_REPORTING_GUIDE.md) for d
 
 ## Package Structure
 
-```
+```text
 core/blong-ttk/
 ├── engine/              # Test execution engine
 │   ├── orchestrator/

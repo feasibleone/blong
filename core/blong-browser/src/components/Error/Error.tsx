@@ -52,8 +52,8 @@ export function ErrorDialog() {
                 <p className="blong-error-dialog__message">{error.print ?? error.message}</p>
                 {error.validation && error.validation.length > 0 && (
                     <ul className="blong-error-dialog__validation">
-                        {error.validation.map((v, i) => (
-                            <li key={i}>
+                        {error.validation.map(v => (
+                            <li key={v.field}>
                                 <strong>{v.field}:</strong> {v.message}
                             </li>
                         ))}

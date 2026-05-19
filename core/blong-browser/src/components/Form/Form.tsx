@@ -236,7 +236,7 @@ export function Form({
         reset(value ?? {});
         // `value` and `reset` intentionally omitted: this effect should fire only when
         // resetKey changes, not whenever value changes (the effect above handles that).
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line @eslint-react/exhaustive-deps
     }, [resetKey]);
 
     // Push server-side validation errors into react-hook-form
@@ -295,8 +295,6 @@ export function Form({
             onFieldChange,
             editors,
         }),
-        // control, setValue and getValues are excluded: see comment above.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [
             effectiveSchema,
             cards,
@@ -311,6 +309,9 @@ export function Form({
             methods,
             onFieldChange,
             editors,
+            control,
+            getValues,
+            setValue,
         ],
     );
 

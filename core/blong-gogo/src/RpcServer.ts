@@ -47,11 +47,11 @@ export default class RpcServer extends Internal implements IRpcServer {
         name: string,
         callback: () => unknown,
         object: object,
-        pkg: unknown,
+        _pkg: unknown,
     ): void {
         const url = `/rpc/${namespace}/${name.split('.').join('/')}`;
         const attachCheckpoint = this.#attachCheckpoint;
-        async function handle(request: FastifyRequest, reply: FastifyReply): Promise<object> {
+        async function handle(request: FastifyRequest, _reply: FastifyReply): Promise<object> {
             const {id, method, params} = request.body as {
                 id: string;
                 method: string;
@@ -65,15 +65,17 @@ export default class RpcServer extends Internal implements IRpcServer {
                 opcode: method.split('.').pop(),
             };
             attachCheckpoint?.(newMeta as IMeta);
-            const result = await (callback as (...args: unknown[]) => Promise<unknown>).apply(object, [
-                ...params,
-                newMeta,
-            ]);
+            const result = await (callback as (...args: unknown[]) => Promise<unknown>).apply(
+                object,
+                [...params, newMeta],
+            );
             return {
                 jsonrpc: '2.0',
                 id,
                 result,
-                ...(((newMeta as {checkpoints?: unknown[]}).checkpoints?.length) && {checkpoints: (newMeta as {checkpoints?: unknown[]}).checkpoints}),
+                ...((newMeta as {checkpoints?: unknown[]}).checkpoints?.length && {
+                    checkpoints: (newMeta as {checkpoints?: unknown[]}).checkpoints,
+                }),
             };
         }
         const prevHandler = this.#handlers.get(url);
@@ -108,7 +110,13 @@ export default class RpcServer extends Internal implements IRpcServer {
         } else {
             Object.keys(methods).forEach(key => {
                 if ((methods as Record<string, unknown>)[key] instanceof Function) {
-                    this._register(namespace, key, (methods as Record<string, unknown>)[key] as () => unknown, methods, pkg);
+                    this._register(
+                        namespace,
+                        key,
+                        (methods as Record<string, unknown>)[key] as () => unknown,
+                        methods,
+                        pkg,
+                    );
                 }
             });
         }

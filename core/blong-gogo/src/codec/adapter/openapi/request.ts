@@ -5,7 +5,7 @@ import interpolate from 'ut-function.interpolate';
 import {snakeToCamel} from '../../../lib.ts';
 
 export default library(
-    proxy =>
+    () =>
         function request({
             url,
             method,

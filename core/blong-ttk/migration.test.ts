@@ -5,9 +5,10 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from 'tap';
-import { emitCollection } from './library/emitter.js';
-import { parseCollection } from './library/parser.js';
+import {test} from 'tap';
+import {emitCollection} from './library/emitter.js';
+import {parseCollection} from './library/parser.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ITtkCollection } from './types.js';
 
 test('migration - parse and emit produces valid TypeScript', async t => {

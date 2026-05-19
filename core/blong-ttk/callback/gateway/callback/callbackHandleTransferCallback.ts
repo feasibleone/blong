@@ -15,7 +15,7 @@ export default handler(({handler: {callbackCallbackReceive}}) => ({
     callbackHandleTransferCallback: async (
         params: {
             id: string;
-            body: any;
+            body: unknown;
             headers: Record<string, string>;
         },
         $meta: IMeta,

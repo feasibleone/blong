@@ -76,8 +76,9 @@ export default adapter<IConfig>(({utError}) => {
                 limit: number;
                 offset: number;
             } & Record<string, unknown>,
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, table, operation] = method!.split('.');
             switch (operation) {
                 case 'get': {
@@ -107,8 +108,9 @@ export default adapter<IConfig>(({utError}) => {
                         .update(update);
                 }
                 case 'remove':
-                    if (!(table + 'Id' in params))
-                        throw _errors['knex.missingKey']({key: table + 'Id'});
+                    if (!(table + 'Id' in params)) {
+                        throw this.error(_errors['knex.missingKey']({key: table + 'Id'}), $meta);
+                    }
                     return this.config.context
                         .queryBuilder!(table)
                         .where({[table + 'Id']: params[table + 'Id']})
@@ -129,7 +131,7 @@ export default adapter<IConfig>(({utError}) => {
                 case 'delete':
                     return this.config.context.queryBuilder!(table).where(params).del();
             }
-            throw _errors['knex.generic']();
+            throw this.error(_errors['knex.generic']({}), $meta);
         },
     };
 });

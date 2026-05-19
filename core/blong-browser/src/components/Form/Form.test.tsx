@@ -156,29 +156,30 @@ describe('Form', () => {
 // subscribes and all sibling widgets rerender on every keystroke.  This test
 // catches that regression.
 
+const formSpyRenderCounts: Record<string, number> = {};
+
+const FormSpyWidget = React.memo(function FormSpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
+    formSpyRenderCounts[name] = (formSpyRenderCounts[name] ?? 0) + 1;
+    return (
+        <input
+            data-testid={name}
+            value={String(value ?? '')}
+            onChange={e => onChange(e.target.value)}
+            onBlur={onBlur}
+        />
+    );
+});
+
 describe('Form render isolation', () => {
     // Unique widget type used only in this describe block so we don't pollute
     // the global registry for other tests.
     const SPY_TYPE = '_spy';
 
     // Render counts keyed by field name. Reset before each test.
-    const renderCounts: Record<string, number> = {};
+    const renderCounts: Record<string, number> = formSpyRenderCounts;
 
-    // Stable spy widget component. Created once so its identity never changes
-    // (important: a new function reference on every render would force React to
-    //  unmount/remount the component on every Controller render, which would
-    //  make the count meaningless and break the Controller memoisation).
-    const SpyWidget = React.memo(function SpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
-        renderCounts[name] = (renderCounts[name] ?? 0) + 1;
-        return (
-            <input
-                data-testid={name}
-                value={String(value ?? '')}
-                onChange={e => onChange(e.target.value)}
-                onBlur={onBlur}
-            />
-        );
-    });
+    // Stable spy widget component.
+    const SpyWidget = FormSpyWidget;
 
     // Register and clean up around each test so the global registry is not
     // permanently modified by this test suite.

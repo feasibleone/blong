@@ -2,16 +2,17 @@
  * Convert ml-testing-toolkit rule files to @infitx/decision YAML
  */
 
-import {handler} from '@feasibleone/blong';
-import {readFile, writeFile, mkdir} from 'node:fs/promises';
-import {dirname} from 'node:path';
 import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {dirname} from 'node:path';
 import type {IRuleConversionResult} from '../../../types.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default handler(() => ({
     /**
      * Convert json-rules-engine JSON to @infitx/decision YAML
-     * 
+     *
      * @param params - Conversion parameters
      * @param $meta - Metadata
      */
@@ -20,7 +21,7 @@ export default handler(() => ({
             sourcePath: string;
             targetPath: string;
         },
-        $meta: IMeta,
+        _$meta: IMeta,
     ): Promise<IRuleConversionResult> => {
         const warnings: string[] = [];
 
@@ -79,7 +80,7 @@ function convertRule(rule: any, warnings: string[]): string[] {
 
     // Rule header
     lines.push(`  - rule: rule-${rule.ruleId || 'unknown'}`);
-    
+
     if (rule.priority !== undefined) {
         lines.push(`    priority: ${rule.priority}`);
     }
@@ -99,7 +100,7 @@ function convertRule(rule: any, warnings: string[]): string[] {
         const decisionKey = convertEventType(rule.event.type);
         lines.push(`    then:`);
         lines.push(`      ${decisionKey}:`);
-        
+
         if (rule.event.params) {
             lines.push(...convertParams(rule.event.params, '        '));
         }
@@ -137,11 +138,11 @@ function convertConditions(conditions: any, indent: string, warnings: string[]):
 /**
  * Convert a single condition
  */
-function convertCondition(condition: any, indent: string, warnings: string[]): string[] {
+function convertCondition(condition: any, indent: string, _warnings: string[]): string[] {
     const lines: string[] = [];
     const fact = condition.fact;
     const path = condition.path;
-    const operator = condition.operator;
+    const _operator = condition.operator;
     const value = condition.value;
 
     // Build path to fact
@@ -160,7 +161,7 @@ function convertCondition(condition: any, indent: string, warnings: string[]): s
  */
 function buildYamlPath(parts: string[], value: any, indent: string): string[] {
     const lines: string[] = [];
-    
+
     if (parts.length === 1) {
         lines.push(`${indent}${parts[0]}: ${formatValue(value)}`);
     } else {
@@ -177,13 +178,13 @@ function buildYamlPath(parts: string[], value: any, indent: string): string[] {
  */
 function convertEventType(eventType: string): string {
     const mapping: Record<string, string> = {
-        'FIXED_CALLBACK': 'fixedCallback',
-        'MOCK_CALLBACK': 'mockCallback',
-        'FIXED_ERROR_CALLBACK': 'fixedErrorCallback',
-        'MOCK_ERROR_CALLBACK': 'mockErrorCallback',
-        'NO_CALLBACK': 'noCallback',
-        'FIXED_RESPONSE': 'fixedResponse',
-        'MOCK_RESPONSE': 'mockResponse',
+        FIXED_CALLBACK: 'fixedCallback',
+        MOCK_CALLBACK: 'mockCallback',
+        FIXED_ERROR_CALLBACK: 'fixedErrorCallback',
+        MOCK_ERROR_CALLBACK: 'mockErrorCallback',
+        NO_CALLBACK: 'noCallback',
+        FIXED_RESPONSE: 'fixedResponse',
+        MOCK_RESPONSE: 'mockResponse',
     };
 
     return mapping[eventType] || eventType.toLowerCase();
@@ -218,6 +219,6 @@ function formatValue(value: any): string {
         }
         return value;
     }
-    
+
     return JSON.stringify(value);
 }

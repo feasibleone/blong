@@ -5,8 +5,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Blong Dev",
-            "program": "${workspaceFolder}/core/blong-gogo/bin/blong-dev.ts",
+            "name": "Blong Watch",
+            "program": "${workspaceFolder}/core/blong-gogo/bin/blong-watch.ts",
             "request": "launch",
             "cwd": "${workspaceFolder}/core/${input:blong-package}",
             "skipFiles": ["<node_internals>/**"],

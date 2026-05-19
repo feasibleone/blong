@@ -8,6 +8,7 @@
 import type {IMeta} from '@feasibleone/blong';
 import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default handler(
     ({
@@ -17,7 +18,7 @@ export default handler(
         /**
          * Onboard multiple DFSPs in parallel
          */
-        mojaloopOnboarding: ({name = 'DFSP Onboarding'}: {name?: string} = {}, $meta: IMeta) =>
+        mojaloopOnboarding: ({name = 'DFSP Onboarding'}: {name?: string} = {}, _$meta: IMeta) =>
             group(name)([
                 // These run in parallel - no dependencies between them
                 async function onboardPayerFsp(assert: typeof Assert, {$meta}: any) {
@@ -115,7 +116,7 @@ export default handler(
                 // This step waits for all previous steps to complete
                 async function verifyOnboarding(
                     assert: typeof Assert,
-                    {onboardPayerFsp, onboardPayeeFsp, onboardHubFsp, $meta}: any,
+                    {onboardPayerFsp, onboardPayeeFsp, onboardHubFsp, $meta: _$meta}: any,
                 ) {
                     const payer = (await onboardPayerFsp) as any;
                     const payee = (await onboardPayeeFsp) as any;

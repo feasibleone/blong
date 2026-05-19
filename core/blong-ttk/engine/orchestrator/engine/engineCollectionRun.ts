@@ -81,14 +81,14 @@ export default handler(() => ({
                 failed: steps.filter(s => s.status === 'failed').length,
                 duration: (progress.endTime ?? Date.now()) - progress.startTime,
             };
-        } catch (error: any) {
+        } catch (error: unknown) {
             // End Allure session even on error
             await allureSessionEnd(allureConfig);
 
             return {
                 success: false,
-                error: error.message,
-                stack: error.stack,
+                error: (error as {message: string}).message,
+                stack: (error as {stack?: string}).stack,
             };
         }
     },

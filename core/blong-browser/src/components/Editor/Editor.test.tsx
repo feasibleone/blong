@@ -421,22 +421,26 @@ describe('<Editor />', () => {
 // Before the fix, handleFormChange called setLocalValue and setIsDirty on every keystroke,
 // which caused Editor → Form → all widgets to rerender.  This suite catches that regression.
 
+const editorSpyRenderCounts: Record<string, number> = {};
+
+const EditorSpyWidget = React.memo(function EditorSpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
+    editorSpyRenderCounts[name] = (editorSpyRenderCounts[name] ?? 0) + 1;
+    return (
+        <input
+            data-testid={name}
+            value={String(value ?? '')}
+            onChange={e => onChange(e.target.value)}
+            onBlur={onBlur}
+        />
+    );
+});
+
 describe('Editor render isolation', () => {
     const SPY_TYPE = '_editor_spy';
 
-    const renderCounts: Record<string, number> = {};
+    const renderCounts: Record<string, number> = editorSpyRenderCounts;
 
-    const SpyWidget = React.memo(function SpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
-        renderCounts[name] = (renderCounts[name] ?? 0) + 1;
-        return (
-            <input
-                data-testid={name}
-                value={String(value ?? '')}
-                onChange={e => onChange(e.target.value)}
-                onBlur={onBlur}
-            />
-        );
-    });
+    const SpyWidget = EditorSpyWidget;
 
     let prevWidget: React.ComponentType<IWidgetProps> | undefined;
     beforeAll(() => {

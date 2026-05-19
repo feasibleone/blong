@@ -399,7 +399,6 @@ export function Editor({
     // every keystroke and cause Form to re-render too. Dirty-state is tracked via
     // onDirtyChange (backed by react-hook-form's formState.isDirty) which fires only on
     // transitions, not on every keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleFormChange = useCallback(() => {
         setSavedSuccess(false);
         setValidationHint(undefined);
@@ -583,6 +582,7 @@ export function Editor({
                     return (
                         <button
                             ref={actionName === '__cancel__' ? cancelButtonRef : undefined}
+                            // eslint-disable-next-line @eslint-react/no-array-index-key
                             key={i}
                             type="button"
                             className={`p-button p-component p-button-icon-only mr-2${isDisabled ? ' p-disabled' : ''}`}
@@ -600,6 +600,7 @@ export function Editor({
                     return (
                         <button
                             ref={saveButtonRef}
+                            // eslint-disable-next-line @eslint-react/no-array-index-key
                             key={i}
                             type="submit"
                             form={formId}
@@ -630,6 +631,7 @@ export function Editor({
                     if (actionName === '__design__') {
                         return (
                             <span
+                                // eslint-disable-next-line @eslint-react/no-array-index-key
                                 key={i}
                                 className="blong-design-toolbar"
                             >

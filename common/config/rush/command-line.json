@@ -23,6 +23,7 @@
             "name": "ci-unit",
             "summary": "Run unit tests",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": true,
             "enableParallelism": true
         },
@@ -31,6 +32,7 @@
             "name": "ci-chromatic",
             "summary": "Run Chromatic",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": true,
             "enableParallelism": true
         },
@@ -39,6 +41,7 @@
             "name": "ci-integration",
             "summary": "Run integration tests",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": true,
             "enableParallelism": true
         },
@@ -54,6 +57,7 @@
             "commandKind": "bulk",
             "name": "ci-audit",
             "summary": "Run audit",
+            "ignoreDependencyOrder": true,
             "ignoreMissingScript": true,
             "enableParallelism": true
         },
@@ -62,6 +66,7 @@
             "name": "ci-lint",
             "summary": "Run lint",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "enableParallelism": true
         },
         {
@@ -69,6 +74,7 @@
             "name": "ci-deprecation",
             "summary": "Run deprecation",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "enableParallelism": true
         },
         {
@@ -76,6 +82,7 @@
             "name": "ci-ui",
             "summary": "Run UI tests (Playwright)",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": true,
             "enableParallelism": true
         },
@@ -84,6 +91,7 @@
             "name": "ci-storybook",
             "summary": "Run Storybook interaction + visual regression tests",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": false,
             "enableParallelism": false
         },
@@ -100,6 +108,7 @@
             "name": "format",
             "summary": "Format source files with Prettier across the monorepo",
             "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": true,
             "enableParallelism": true
         }

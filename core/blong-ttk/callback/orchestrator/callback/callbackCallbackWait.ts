@@ -19,7 +19,7 @@ export default handler(() => ({
      */
     callbackCallbackWait: async (
         params: {correlationId: string; type?: string},
-        $meta: IMeta,
+        _$meta: IMeta,
     ) => {
         const {correlationId} = params;
         const pendingCallbacks = getPendingCallbacks();
@@ -38,7 +38,7 @@ export default handler(() => ({
             const result = await new Promise((resolve, reject) => {
                 // Replace the stored handlers to capture the result here
                 const original = pending;
-                pending.resolve = (value: any) => {
+                pending.resolve = (value: unknown) => {
                     clearTimeout(original.timeout);
                     pendingCallbacks.delete(correlationId);
                     resolve(value);
@@ -51,8 +51,8 @@ export default handler(() => ({
             });
 
             return result;
-        } catch (error: any) {
-            throw new Error(`Callback wait failed: ${error.message}`);
+        } catch (error: unknown) {
+            throw new Error(`Callback wait failed: ${(error as {message: string}).message}`);
         }
     },
 }));

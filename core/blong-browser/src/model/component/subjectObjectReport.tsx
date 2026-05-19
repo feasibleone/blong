@@ -17,6 +17,7 @@ export async function subjectObjectReport(
                 import('../../components/Report/Report.js'),
             ]);
 
+            // eslint-disable-next-line @eslint-react/component-hook-factories
             return function ReportPage(props: Record<string, unknown>) {
                 return (
                     <Report

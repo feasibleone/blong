@@ -1,4 +1,9 @@
-import {act, render as tlRender, type RenderOptions, type RenderResult} from '@testing-library/react';
+import {
+    act,
+    render as tlRender,
+    type RenderOptions,
+    type RenderResult,
+} from '@testing-library/react';
 import React, {type ReactElement} from 'react';
 import {vi} from 'vitest';
 import {BlongUiProvider, type DispatchFn} from '../context/BlongUiContext.js';
@@ -9,6 +14,7 @@ export interface IRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 }
 
 function makeWrapper(dispatch: DispatchFn) {
+    // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
             <PrimeReactProvider value={{cssTransition: false, ripple: false}}>
@@ -31,7 +37,7 @@ export function render(
 }
 
 /**
- * Flush all pending macrotask callbacks (e.g. PrimeReact focus/overlay management
+ * Flush all pending macro-task callbacks (e.g. PrimeReact focus/overlay management
  * scheduled via setTimeout) inside act() so they don't fire during a later
  * findByTestId / waitFor polling window — which would produce "not configured to
  * support act" warnings because @testing-library temporarily sets

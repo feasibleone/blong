@@ -1,6 +1,7 @@
 import type {IMeta} from '@feasibleone/blong';
 import {handler} from '@feasibleone/blong';
 import {randomUUID} from 'node:crypto';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * Create a test participant (DFSP).

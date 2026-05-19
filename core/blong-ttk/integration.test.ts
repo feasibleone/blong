@@ -8,6 +8,7 @@ import {allureResultWrite, allureSessionEnd, allureSessionStart} from '@feasible
 import {TestExecutor} from '@feasibleone/blong-chain';
 import {rm} from 'node:fs/promises';
 import {test} from 'tap';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 test('integration - execute example collection with TestExecutor', async t => {
     // Import the example collection
@@ -19,7 +20,7 @@ test('integration - execute example collection with TestExecutor', async t => {
     t.equal(typeof collection, 'function');
 
     // Create TestExecutor
-    const executor = new TestExecutor({
+    const _executor = new TestExecutor({
         concurrency: 2,
     });
 
@@ -28,7 +29,7 @@ test('integration - execute example collection with TestExecutor', async t => {
         // Get the handler function
         const handler = (collection as any)({
             lib: {
-                group: (name: string) => (steps: any[]) => steps,
+                group: (_name: string) => (steps: any[]) => steps,
             },
             handler: {},
         });

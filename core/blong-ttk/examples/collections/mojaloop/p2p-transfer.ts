@@ -12,6 +12,7 @@ import type {IMeta} from '@feasibleone/blong';
 import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
 import {randomUUID} from 'node:crypto';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default handler(
     ({
@@ -43,7 +44,7 @@ export default handler(
                 amount?: string;
                 currency?: string;
             } = {},
-            $meta: IMeta,
+            _$meta: IMeta,
         ) =>
             group(name)([
                 async function lookupParty(assert: typeof Assert, {$meta}: any) {
@@ -221,7 +222,7 @@ export default handler(
 
                 async function verifyTransfer(
                     assert: typeof Assert,
-                    {executeTransfer, $meta}: any,
+                    {executeTransfer, $meta: _$meta}: any,
                 ) {
                     const transfer = (await executeTransfer) as any;
 

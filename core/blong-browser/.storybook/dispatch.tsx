@@ -322,6 +322,39 @@ export type Handler = (params?: Record<string, unknown>) => Promise<unknown>;
  *   <entity><Entity>EditError — save, server validation failure
  *   <entity><Entity>Find     — list/search, returns empty result set
  */
+function SelfRegistrationPlaceholder({page}: {page: string | undefined}) {
+    return (
+        <div
+            className="blong-login__card"
+            style={{maxWidth: 400, marginTop: '2rem'}}
+        >
+            <h3 style={{textAlign: 'center', marginBottom: '1rem'}}>Create Account</h3>
+            <p
+                style={{
+                    color: 'var(--text-color-secondary)',
+                    fontSize: '0.9rem',
+                    marginBottom: '1.5rem',
+                }}
+            >
+                Registration form placeholder. Configure a <code>portal.component.get</code>{' '}
+                dispatch handler for page <em>{page}</em> to provide the real registration
+                form.
+            </p>
+            <pre
+                style={{
+                    fontSize: '0.75rem',
+                    background: 'var(--surface-hover)',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    overflow: 'auto',
+                }}
+            >
+                {`// In your dispatch overrides:\n'portal.component.get': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
+            </pre>
+        </div>
+    );
+}
+
 export const defaultHandlers: Record<string, Handler> = {
     // ── Coral editor entity (Editor stories: load/save/error) ─────────────────
 
@@ -499,37 +532,7 @@ export const defaultHandlers: Record<string, Handler> = {
             page?.endsWith('Register') ||
             page?.endsWith('SelfRegister')
         ) {
-            const SelfRegistrationPlaceholder: React.FC = () => (
-                <div
-                    className="blong-login__card"
-                    style={{maxWidth: 400, marginTop: '2rem'}}
-                >
-                    <h3 style={{textAlign: 'center', marginBottom: '1rem'}}>Create Account</h3>
-                    <p
-                        style={{
-                            color: 'var(--text-color-secondary)',
-                            fontSize: '0.9rem',
-                            marginBottom: '1.5rem',
-                        }}
-                    >
-                        Registration form placeholder. Configure a <code>portal.component.get</code>{' '}
-                        dispatch handler for page <em>{page}</em> to provide the real registration
-                        form.
-                    </p>
-                    <pre
-                        style={{
-                            fontSize: '0.75rem',
-                            background: 'var(--surface-hover)',
-                            padding: '0.75rem',
-                            borderRadius: '4px',
-                            overflow: 'auto',
-                        }}
-                    >
-                        {`// In your dispatch overrides:\n'portal.component.get': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
-                    </pre>
-                </div>
-            );
-            return Promise.resolve(SelfRegistrationPlaceholder);
+            return Promise.resolve(SelfRegistrationPlaceholder.bind(null, {page}));
         }
         return Promise.resolve(null);
     },
@@ -600,6 +603,7 @@ export function withDispatch(
         ]),
     );
 
+    // eslint-disable-next-line @eslint-react/component-hook-factories
     return function WithDispatch(Story, context) {
         const ctx = context as
             | {args?: Record<string, unknown>; parameters?: Record<string, unknown>}

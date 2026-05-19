@@ -9,7 +9,6 @@ import {LRUCache} from 'lru-cache';
 import {type IGatewayCodec} from './GatewayCodec.ts';
 
 declare module 'fastify' {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     interface FastifyRequest {
         auth: {
             credentials: {
@@ -22,7 +21,6 @@ declare module 'fastify' {
             };
         };
     }
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     interface FastifyReply {
         unstate: (name: string) => this;
         state: (name: string, value: string, options: unknown) => this;
@@ -43,7 +41,7 @@ export default fp<{
             ![0, false, 'false'].includes(cacheConfig as string | number | boolean) &&
             new LRUCache({max: 1000, ...cacheConfig});
         await fastify.register(basic, {
-            async validate(username: string, password: string, req: unknown, reply: unknown) {},
+            async validate(_username: string, _password: string, _req: unknown, _reply: unknown) {},
         });
         fastify.addHook(
             'preValidation',
@@ -72,7 +70,7 @@ export default fp<{
                 const decoded = await verify(token, {audience});
                 const {
                     // standard
-                    exp, // eslint-disable-line @typescript-eslint/no-unused-vars
+                    exp,
                     aud, // eslint-disable-line @typescript-eslint/no-unused-vars
                     iss, // eslint-disable-line @typescript-eslint/no-unused-vars
                     iat, // eslint-disable-line @typescript-eslint/no-unused-vars

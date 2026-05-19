@@ -14,8 +14,8 @@
     },
     "bin": {
         "blong": "./bin/blong.ts",
-        "blong-dev": "./bin/blong-dev.ts",
-        "blong-gogo": "./bin/blong-gogo.sh"
+        "blong-gogo": "./bin/blong-gogo.sh",
+        "blong-watch": "./bin/blong-watch.ts"
     },
     "scripts": {
         "browser-check": "node scripts/browser-compat-check.mjs",

@@ -120,12 +120,15 @@ async function importKey(
     };
 }
 
-async function exportKey(key: KeyLike | Uint8Array | JWK, priv: boolean = false): Promise<JWK> {
+async function exportKey(
+    key: KeyLike | Uint8Array | JWK,
+    returnPrivate: boolean = false,
+): Promise<JWK> {
     const jwk: JWK = (await isKey(key))
         ? await exportJWK(key as KeyLike | Uint8Array)
         : (key as JWK);
     if (!jwk.kid) jwk.kid = ((await calculateJwkThumbprint(jwk)) as string) ?? undefined;
-    if (priv) return jwk;
+    if (returnPrivate) return jwk;
     const {d, p, q, dp, dq, qi, ...publicJwk} = jwk; // eslint-disable-line @typescript-eslint/no-unused-vars
     return publicJwk;
 }
@@ -213,11 +216,11 @@ async function signEncrypt(
     options?: {encrypt?: Parameters<typeof encrypt>[4]; sign?: Parameters<typeof sign>[2]},
 ): ReturnType<typeof encrypt> {
     return encrypt(
-        (await sign(message, mlsk, options?.sign!)) as string,
+        (await sign(message, mlsk, options?.sign as Parameters<typeof sign>[2])) as string,
         mlekPub!,
         protectedHeader!,
         unprotectedHeader!,
-        options?.encrypt!,
+        options?.encrypt as Parameters<typeof encrypt>[4],
     );
 }
 

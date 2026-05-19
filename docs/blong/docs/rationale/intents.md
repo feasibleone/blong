@@ -100,7 +100,7 @@ write → reload → test cycle into a single `blong` invocation.
 
 ### CLI Parsing Fix
 
-`bin/blong.ts` (and `bin/blong-dev.ts`) now correctly separate the optional
+`bin/blong.ts` (and `bin/blong-watch.ts`) now correctly separate the optional
 target from the intent list:
 
 ```typescript
@@ -137,4 +137,3 @@ per platform without requiring separate files.
 
 - [Intents concept](../concepts/intents.md) — concise reference for day-to-day use
 - **blong-intent** agent skill — step-by-step guide for creating a new intent
-

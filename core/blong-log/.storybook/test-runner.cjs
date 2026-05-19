@@ -19,13 +19,16 @@
  *   src/client/__markup_snapshots__/
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('path');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require('fs');
 
 /** @type {import('@storybook/test-runner').TestRunnerConfig} */
 module.exports = {
     async postVisit(page, context) {
         // Lazily extend expect inside the Jest test context
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const {toMatchImageSnapshot} = require('jest-image-snapshot');
         expect.extend({toMatchImageSnapshot});
 

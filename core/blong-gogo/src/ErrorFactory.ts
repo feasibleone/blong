@@ -32,7 +32,7 @@ export default class ErrorFactory extends Internal implements IErrorFactory {
         return this.#error.register(errors);
     }
 
-    public get(name: string): unknown {
+    public get(name: string) {
         return this.#error.get(name);
     }
 

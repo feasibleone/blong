@@ -2,15 +2,18 @@
  * Analyze collection for duplication patterns
  */
 
-import {handler} from '@feasibleone/blong';
 import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
+import {
+    analyzeCollectionDuplication,
+    calculateReductionPercentage,
+} from '../../../library/dedup.js';
 import {parseCollection} from '../../../library/parser.js';
-import {analyzeCollectionDuplication, calculateReductionPercentage} from '../../../library/dedup.js';
 
 export default handler(() => ({
     /**
      * Analyze a collection for duplication and suggest refactorings
-     * 
+     *
      * @param params - Analysis parameters
      * @param $meta - Metadata
      */
@@ -18,7 +21,7 @@ export default handler(() => ({
         params: {
             sourcePath: string;
         },
-        $meta: IMeta,
+        _$meta: IMeta,
     ) => {
         // Parse the collection
         const collection = await parseCollection(params.sourcePath);
@@ -34,7 +37,7 @@ export default handler(() => ({
         console.log(`Duplicated Assertion Patterns: ${analysis.duplicatedAssertions}`);
         console.log(`Duplicated Script Patterns: ${analysis.duplicatedScripts}`);
         console.log(`Potential Code Reduction: ~${reductionPct}%`);
-        
+
         if (analysis.suggestions.length > 0) {
             console.log(`\n=== Top Duplication Patterns ===`);
             analysis.suggestions
@@ -46,7 +49,7 @@ export default handler(() => ({
                     console.log(`  Locations: ${s.locations.slice(0, 3).join(', ')}...`);
                 });
         }
-        
+
         console.log(`\n=====================================\n`);
 
         return {

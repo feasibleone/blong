@@ -18,17 +18,17 @@ export default handler(() => ({
      */
     engineCollectionList: async (
         params: {directory?: string; pattern?: string},
-        $meta: IMeta,
+        _$meta: IMeta,
     ): Promise<ICollectionMetadata[]> => {
         const directory = params.directory || './collections';
-        const pattern = params.pattern || '**/*.ts';
+        const _pattern = params.pattern || '**/*.ts';
 
         const collections: ICollectionMetadata[] = [];
 
         try {
             await scanDirectory(directory, collections);
-        } catch (error: any) {
-            throw new Error(`Failed to scan directory ${directory}: ${error.message}`);
+        } catch (error: unknown) {
+            throw new Error(`Failed to scan directory ${directory}: ${(error as {message: string}).message}`);
         }
 
         return collections;
@@ -60,7 +60,7 @@ async function scanDirectory(
                 });
             }
         }
-    } catch (error) {
+    } catch (_error) {
         // Ignore errors (directory not found, permission denied, etc.)
     }
 }

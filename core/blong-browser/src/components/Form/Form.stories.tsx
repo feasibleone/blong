@@ -433,20 +433,22 @@ InputBG.play = Input.play;
 
 // ── Table — four sub-tables showing all widget types as columns ──────────────
 
+function TableStory() {
+    const [value, setValue] = useState<Record<string, unknown>>({});
+    return (
+        <Form
+            schema={inputSchema}
+            cards={inputCards}
+            layouts={{default: ['table']}}
+            dropdowns={inputDropdowns}
+            value={value}
+            onChange={setValue}
+        />
+    );
+}
+
 export const Table: Story = {
-    render: () => {
-        const [value, setValue] = useState<Record<string, unknown>>({});
-        return (
-            <Form
-                schema={inputSchema}
-                cards={inputCards}
-                layouts={{default: ['table']}}
-                dropdowns={inputDropdowns}
-                value={value}
-                onChange={setValue}
-            />
-        );
-    },
+    render: () => <TableStory />,
 };
 
 Table.play = async ({canvas}) => {
@@ -521,19 +523,21 @@ const diffCards: Record<string, ICardConfig> = {
     current: {label: 'Current', className: 'xl:col-6', widgets: ['current']},
 };
 
+function DiffStory() {
+    const [value] = useState({previous: diffPrevious, current: diffCurrent});
+    return (
+        <Form
+            schema={diffSchema}
+            cards={diffCards}
+            layouts={{default: ['previous', 'current']}}
+            value={value}
+            readOnly
+        />
+    );
+}
+
 export const Diff: Story = {
-    render: () => {
-        const [value] = useState({previous: diffPrevious, current: diffCurrent});
-        return (
-            <Form
-                schema={diffSchema}
-                cards={diffCards}
-                layouts={{default: ['previous', 'current']}}
-                value={value}
-                readOnly
-            />
-        );
-    },
+    render: () => <DiffStory />,
 };
 
 export const DiffBG: Story = {

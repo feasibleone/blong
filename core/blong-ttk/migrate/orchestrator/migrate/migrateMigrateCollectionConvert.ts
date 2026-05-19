@@ -2,18 +2,18 @@
  * Convert JSON collection to TypeScript
  */
 
-import {handler} from '@feasibleone/blong';
-import {writeFile, mkdir} from 'node:fs/promises';
-import {dirname} from 'node:path';
 import type {IMeta} from '@feasibleone/blong';
-import {parseCollection} from '../../../library/parser.js';
+import {handler} from '@feasibleone/blong';
+import {mkdir, writeFile} from 'node:fs/promises';
+import {dirname} from 'node:path';
 import {emitCollection} from '../../../library/emitter.js';
+import {parseCollection} from '../../../library/parser.js';
 import type {IMigrationResult} from '../../../types.js';
 
 export default handler(() => ({
     /**
      * Convert ml-testing-toolkit JSON collection to TypeScript
-     * 
+     *
      * @param params - Conversion parameters
      * @param $meta - Metadata
      */
@@ -22,7 +22,7 @@ export default handler(() => ({
             sourcePath: string;
             targetPath: string;
         },
-        $meta: IMeta,
+        _$meta: IMeta,
     ): Promise<IMigrationResult> => {
         const errors: string[] = [];
         const warnings: string[] = [];
@@ -46,12 +46,12 @@ export default handler(() => ({
             console.log(`✓ Migration complete: ${params.targetPath}`);
 
             // Add warnings for manual review items
-            if (collection.test_cases.some(tc => 
-                tc.requests.some(r => r.scripts?.preRequest || r.scripts?.postRequest)
-            )) {
-                warnings.push(
-                    'Collection contains JavaScript scripts that may need manual review',
-                );
+            if (
+                collection.test_cases.some(tc =>
+                    tc.requests.some(r => r.scripts?.preRequest || r.scripts?.postRequest),
+                )
+            ) {
+                warnings.push('Collection contains JavaScript scripts that may need manual review');
             }
 
             return {
@@ -61,9 +61,9 @@ export default handler(() => ({
                 errors: errors.length > 0 ? errors : undefined,
                 warnings: warnings.length > 0 ? warnings : undefined,
             };
-        } catch (error: any) {
-            errors.push(error.message);
-            
+        } catch (error: unknown) {
+            errors.push((error as {message: string}).message);
+
             return {
                 sourcePath: params.sourcePath,
                 targetPath: params.targetPath,

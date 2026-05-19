@@ -195,14 +195,14 @@ async function sendEncode(
                 : 0;
         encodeBuffer = (adapter.imported.pack as unknown as (...args: unknown[]) => unknown)(
             {
-                size: (encodeBuffer as {length?: number})?.length! + sizeAdjust!,
+                size: (encodeBuffer as {length?: number})?.length ?? 0 + (sizeAdjust ?? 0),
                 data: encodeBuffer as Buffer,
             },
             {},
         );
         encodeBuffer = (encodeBuffer as Buffer).slice(
             0,
-            (encodeBuffer as Buffer).length - sizeAdjust!,
+            (encodeBuffer as Buffer).length - (sizeAdjust ?? 0),
         );
         adapter.bytesSent?.((encodeBuffer as Buffer).length);
     }

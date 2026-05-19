@@ -329,7 +329,7 @@ export default class ConfigRuntime implements IConfigRuntime {
     }
 
     /**
-     * Register a subscriber.  Returns an unsubscribe function for clean teardown.
+     * Register a subscriber.  Returns an unsubscribe function for clean tear-down.
      */
     public subscribe(fn: ConfigSubscriber): () => void {
         this.#subscribers.add(fn);

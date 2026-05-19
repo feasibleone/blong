@@ -61,6 +61,7 @@ export function Page({
                                 <div className="blong-toolbar-left">
                                     {toolbar.map((btn, i) => (
                                         <ActionButton
+                                            // eslint-disable-next-line @eslint-react/no-array-index-key
                                             key={i}
                                             {...btn}
                                             formId={formId}
@@ -74,6 +75,7 @@ export function Page({
                                 <div className="blong-toolbar-right">
                                     {toolbarRight.map((btn, i) => (
                                         <ActionButton
+                                            // eslint-disable-next-line @eslint-react/no-array-index-key
                                             key={i}
                                             {...btn}
                                             formId={formId}

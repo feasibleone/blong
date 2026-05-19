@@ -183,7 +183,7 @@ describe('Login — newPassword step (initialStep="newPassword")', () => {
         );
         const newPassInput = screen.getByLabelText(/^New Password/i);
         const confirmInput = screen.getByLabelText(/Confirm Password/i);
-        fireEvent.change(newPassInput, {target: {value: 'newpass1'}});
+        fireEvent.change(newPassInput, {target: {value: 'new-pass1'}});
         fireEvent.change(confirmInput, {target: {value: 'different'}});
         const form = document.querySelector('.blong-login__form')!;
         fireEvent.submit(form);
@@ -226,8 +226,8 @@ describe('Login — newPassword step (initialStep="newPassword")', () => {
         );
         const newPassInput = screen.getByLabelText(/^New Password/i);
         const confirmInput = screen.getByLabelText(/Confirm Password/i);
-        fireEvent.change(newPassInput, {target: {value: 'weakpass'}});
-        fireEvent.change(confirmInput, {target: {value: 'weakpass'}});
+        fireEvent.change(newPassInput, {target: {value: 'weak-pass'}});
+        fireEvent.change(confirmInput, {target: {value: 'weak-pass'}});
         const form = document.querySelector('.blong-login__form')!;
         fireEvent.submit(form);
         await waitFor(() => {

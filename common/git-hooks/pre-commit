@@ -18,6 +18,6 @@
 #
 # See: https://heft.rushstack.io/pages/intro/rig_packages/ for future rig alignment.
 
-exit 0  # remove this line to activate
+# exit 0  # remove this line to activate
 
 node core/blong-dev/bin/blong-dev.ts lint-staged || exit $?

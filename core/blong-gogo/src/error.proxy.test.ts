@@ -6,6 +6,7 @@
 
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import ErrorFactory from './error.ts';
 
 describe('Error Proxy System', () => {
@@ -24,10 +25,7 @@ describe('Error Proxy System', () => {
     });
 
     it('should support old dot notation access (backwards compatibility)', () => {
-        const errors = errorFactory.get() as Record<
-            string,
-            (...args: unknown[]) => {message: string}
-        >;
+        const errors = errorFactory.get() as any;
 
         assert.ok(errors['release.jobTrigger'], 'Error accessible via dot notation');
         assert.strictEqual(errors['release.jobTrigger']().message, 'Job trigger failed');
@@ -124,7 +122,7 @@ describe('Error Proxy System', () => {
         // This should throw during destructuring, catching typos early
         assert.throws(
             () => {
-                const {errorTypoInName} = errors;
+                const {errorTypoInName: _errorTypoInName} = errors;
             },
             /Error 'errorTypoInName' not found/,
             'Should throw immediately when destructuring non-existent error',
@@ -133,7 +131,10 @@ describe('Error Proxy System', () => {
         // Multiple destructuring with one typo
         assert.throws(
             () => {
-                const {errorReleaseJobTrigger, errorTypoError} = errors;
+                const {
+                    errorReleaseJobTrigger: _errorReleaseJobTrigger,
+                    errorTypoError: _errorTypoError,
+                } = errors;
             },
             /Error 'errorTypoError' not found/,
             'Should throw on first non-existent error during destructuring',

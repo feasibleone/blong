@@ -47,7 +47,6 @@ const errorMap: IErrorMap = {
 };
 
 declare module 'fastify' {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     interface FastifyContextConfig {
         auth: unknown;
         mle?: unknown;
@@ -105,7 +104,7 @@ function operationParams(
                                     Object.assign(result, request.body);
                                 else if (parameter.schema?.properties)
                                     Object.entries(parameter.schema.properties).forEach(
-                                        ([name, value]) => {
+                                        ([name]) => {
                                             if (name in (request.body as Record<string, unknown>))
                                                 result[snakeToCamel(name)] = (
                                                     request.body as Record<string, unknown>
@@ -132,7 +131,7 @@ function operationParams(
         if ('additionalProperties' in bodySchema && bodySchema.additionalProperties)
             Object.assign(result, request.body);
         else if (bodySchema.properties)
-            Object.entries(bodySchema.properties).forEach(([name, value]) => {
+            Object.entries(bodySchema.properties).forEach(([name]) => {
                 if (name in (request.body as Record<string, unknown>))
                     result[snakeToCamel(name)] = (request.body as Record<string, unknown>)[name];
             });
@@ -351,7 +350,6 @@ export default class Gateway extends Internal implements IGateway {
                                 }),
                             }
                           : undefined),
-                    /* eslint-disable @typescript-eslint/naming-convention */
                     ...('response' in value && value.response
                         ? {response: {'2xx': value.response}}
                         : 'result' in value
@@ -391,7 +389,6 @@ export default class Gateway extends Internal implements IGateway {
                                           },
                             }
                           : undefined),
-                    /* eslint-enable @typescript-eslint/naming-convention */
                     security: [
                         value.auth === false
                             ? {}
@@ -473,7 +470,7 @@ export default class Gateway extends Internal implements IGateway {
                         } else if (id == null) {
                             const pub = this.#local.get(pubName);
                             if (!pub) return notfound();
-                            pub.method(params, meta).catch(error => {});
+                            pub.method(params, meta).catch(() => {});
                             return {
                                 jsonrpc: '2.0',
                                 result: true,
@@ -500,7 +497,9 @@ export default class Gateway extends Internal implements IGateway {
                             httpResponse?: unknown;
                             [key: string]: unknown;
                         };
-                        if (isExpectedError(typedError.type as string | undefined, resolvedExpect)) {
+                        if (
+                            isExpectedError(typedError.type as string | undefined, resolvedExpect)
+                        ) {
                             request.log.debug(
                                 {err: error, method: methodName},
                                 'gateway expected error',

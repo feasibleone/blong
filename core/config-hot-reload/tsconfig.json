@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
-        "rootDir": ".",
         "allowJs": true,
         "checkJs": false,
         "moduleResolution": "bundler",
         "esModuleInterop": true,
         "module": "preserve",
         "sourceMap": true,
+        "jsx": "react",
         "allowImportingTsExtensions": true,
         "noEmit": true,
         "outDir": "dist",
@@ -15,5 +15,12 @@
         "skipLibCheck": true,
         "strict": true
     },
-    "exclude": ["node_modules", "dist"]
+    "ts-node": {
+        "esm": true,
+        "swc": true,
+        "transpileOnly": true,
+        "files": true,
+        "experimentalResolver": true
+    },
+    "exclude": ["node_modules", ".lint", ".docusaurus", "dist"]
 }

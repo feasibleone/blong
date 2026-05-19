@@ -1,9 +1,13 @@
 import {type ILocal, Internal} from '@feasibleone/blong/types';
 
 export default class Local extends Internal implements ILocal {
-    #mapLocal: Record<string, {method: unknown}> = {};
+    #mapLocal: Record<string, {method: (...params: unknown[]) => Promise<unknown[]>}> = {};
 
-    private _localRegister(namespace: string, name: string, method: string): void {
+    private _localRegister(
+        namespace: string,
+        name: string,
+        method: (...params: unknown[]) => Promise<unknown[]>,
+    ): void {
         const local = this.#mapLocal[namespace + '.' + name];
         if (local) {
             local.method = method;
@@ -13,21 +17,31 @@ export default class Local extends Internal implements ILocal {
     }
 
     public register(
-        methods: object,
+        methods:
+            | Record<string, (...params: unknown[]) => Promise<unknown>>
+            | Array<(...params: unknown[]) => Promise<unknown>>,
         namespace: string,
-        reply: boolean,
-        pkg: {version: string},
+        // reply: boolean,
+        // pkg: {version: string},
     ): void {
         if (methods instanceof Array) {
             methods.forEach(fn => {
                 if (fn instanceof Function && fn.name) {
-                    this._localRegister(namespace, fn.name, fn);
+                    this._localRegister(
+                        namespace,
+                        fn.name,
+                        fn as (...params: unknown[]) => Promise<unknown[]>,
+                    );
                 }
             });
         } else {
             Object.keys(methods).forEach(key => {
                 if ((methods as Record<string, unknown>)[key] instanceof Function) {
-                    this._localRegister(namespace, key, (methods as Record<string, Function>)[key].bind(methods));
+                    this._localRegister(
+                        namespace,
+                        key,
+                        methods[key].bind(methods) as (...params: unknown[]) => Promise<unknown[]>,
+                    );
                 }
             });
         }

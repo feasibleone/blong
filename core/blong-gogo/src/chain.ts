@@ -34,7 +34,7 @@ const runSteps =
 
         // Execute with parallel executor, passing test context for nested output
         try {
-            await executor.execute(resolvedSteps as any, results.$meta || {}, t as any);
+            await executor.execute(resolvedSteps, results.$meta || {}, t);
 
             // Copy results from executor context to results object
             const progress = executor.getProgress();

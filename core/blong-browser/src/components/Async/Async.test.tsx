@@ -3,6 +3,14 @@ import {describe, expect, it} from 'vitest';
 import {act, render, screen, waitFor} from '../../test/render.js';
 import {Async} from './Async.js';
 
+function FakeCompLoaded() {
+    return <div data-testid="loaded">Loaded!</div>;
+}
+
+function FakeCompWithParams(props: {message?: string}) {
+    return <div data-testid="with-params">{props.message}</div>;
+}
+
 describe('Async', () => {
     it('shows fallback while loading', async () => {
         let resolve!: (v: React.ComponentType) => void;
@@ -24,18 +32,14 @@ describe('Async', () => {
     });
 
     it('renders the loaded component', async () => {
-        const FakeComp = () => <div data-testid="loaded">Loaded!</div>;
-        render(<Async component={() => Promise.resolve(FakeComp as React.ComponentType)} />);
+        render(<Async component={() => Promise.resolve(FakeCompLoaded as React.ComponentType)} />);
         await waitFor(() => expect(screen.getByTestId('loaded')).toBeInTheDocument());
     });
 
     it('passes params to the loaded component', async () => {
-        const FakeComp = (props: {message?: string}) => (
-            <div data-testid="with-params">{props.message}</div>
-        );
         render(
             <Async
-                component={() => Promise.resolve(FakeComp as unknown as React.ComponentType)}
+                component={() => Promise.resolve(FakeCompWithParams as unknown as React.ComponentType)}
                 params={{message: 'Hello World'}}
             />,
         );

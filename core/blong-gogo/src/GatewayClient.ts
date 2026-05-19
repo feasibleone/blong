@@ -58,9 +58,7 @@ export default class GatewayClientImpl extends Remote implements IGatewayClient 
 
     public gateway(..._args: unknown[]): void {}
 
-    protected sender(
-        methodType: 'request' | 'publish',
-    ): (...params: unknown[]) => Promise<unknown> {
+    protected sender(): (...params: unknown[]) => Promise<unknown> {
         return async (...rest) => {
             const {stream, ...$meta} = rest.pop() as IMeta;
             const params = rest;

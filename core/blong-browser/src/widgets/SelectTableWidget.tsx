@@ -39,7 +39,7 @@ export function SelectTableWidget({
         columns,
     } = schema.widget ?? {};
     const {dispatch} = useBlongUi();
-    const [rows, setRows] = useState<Row[]>(staticOptions ? toOptions(staticOptions) : []);
+    const [rows, setRows] = useState<Row[]>(() => staticOptions ? toOptions(staticOptions) : []);
 
     useEffect(() => {
         if (staticOptions) return;

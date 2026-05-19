@@ -86,27 +86,33 @@ export default adapter<IConfig>(({utError}) => {
                       sourceKey?: string;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, , operation] = method!.split('.');
             let bucket: string | undefined;
             let actualParams = params;
 
             if (!Array.isArray(params) && params.bucket) {
                 bucket = params.bucket;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const {bucket: _bucketParam, ...rest} = params;
                 actualParams = rest;
             }
 
-            if (!bucket && !this.config.bucket?.Bucket) throw _errors['s3.missingBucket']();
+            if (!bucket && !this.config.bucket?.Bucket) {
+                throw this.error(_errors['s3.missingBucket'](), $meta);
+            }
 
             switch (operation) {
                 case 'get': {
                     // Get object from S3
-                    if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
                     const {key} = actualParams;
-                    if (!key) throw _errors['s3.missingKey']({key: 'key'});
+                    if (!key) {
+                        throw this.error(_errors['s3.missingKey']({key: 'key'}), $meta);
+                    }
 
                     const command = new GetObjectCommand({
                         Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
@@ -124,10 +130,14 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 case 'add': {
                     // Put object to S3
-                    if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
                     const {url, key, metadata} = actualParams;
                     let {body, contentType} = actualParams;
-                    if (!key) throw _errors['s3.missingKey']({key: 'key'});
+                    if (!key) {
+                        throw this.error(_errors['s3.missingKey']({key: 'key'}), $meta);
+                    }
                     let contentLength: number | undefined;
                     if (url && !body) {
                         if (/^https?:\/\//.test(url)) {
@@ -154,7 +164,9 @@ export default adapter<IConfig>(({utError}) => {
                         }
                     }
 
-                    if (body === undefined) throw _errors['s3.missingKey']({key: 'body'});
+                    if (body === undefined) {
+                        throw this.error(_errors['s3.missingKey']({key: 'body'}), $meta);
+                    }
 
                     const command = new PutObjectCommand({
                         Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
@@ -171,9 +183,13 @@ export default adapter<IConfig>(({utError}) => {
                 case 'delete':
                 case 'remove': {
                     // Delete object from S3
-                    if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
                     const {key} = actualParams;
-                    if (!key) throw _errors['s3.missingKey']({key: 'key'});
+                    if (!key) {
+                        throw this.error(_errors['s3.missingKey']({key: 'key'}), $meta);
+                    }
 
                     const command = new DeleteObjectCommand({
                         Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
@@ -184,7 +200,9 @@ export default adapter<IConfig>(({utError}) => {
                 case 'list':
                 case 'find': {
                     // List objects in S3 bucket
-                    if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
                     const {prefix, maxKeys = 1000} = actualParams;
 
                     const command = new ListObjectsV2Command({
@@ -197,9 +215,13 @@ export default adapter<IConfig>(({utError}) => {
                 case 'head':
                 case 'metadata': {
                     // Get object metadata
-                    if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
                     const {key} = actualParams;
-                    if (!key) throw _errors['s3.missingKey']({key: 'key'});
+                    if (!key) {
+                        throw this.error(_errors['s3.missingKey']({key: 'key'}), $meta);
+                    }
 
                     const command = new HeadObjectCommand({
                         Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
@@ -209,11 +231,19 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 case 'copy': {
                     // Copy object within S3
-                    if (Array.isArray(actualParams)) throw _errors['s3.invalid']();
+                    if (Array.isArray(actualParams)) {
+                        throw this.error(_errors['s3.invalid'](), $meta);
+                    }
                     const {key, sourceBucket, sourceKey} = actualParams;
-                    if (!key) throw _errors['s3.missingKey']({key: 'key'});
-                    if (!sourceBucket) throw _errors['s3.missingKey']({key: 'sourceBucket'});
-                    if (!sourceKey) throw _errors['s3.missingKey']({key: 'sourceKey'});
+                    if (!key) {
+                        throw this.error(_errors['s3.missingKey']({key: 'key'}), $meta);
+                    }
+                    if (!sourceBucket) {
+                        throw this.error(_errors['s3.missingKey']({key: 'sourceBucket'}), $meta);
+                    }
+                    if (!sourceKey) {
+                        throw this.error(_errors['s3.missingKey']({key: 'sourceKey'}), $meta);
+                    }
 
                     const command = new CopyObjectCommand({
                         Bucket: bucket ?? this.config.bucket?.Bucket ?? '',
@@ -223,7 +253,7 @@ export default adapter<IConfig>(({utError}) => {
                     return this.config.context.s3!.send(command);
                 }
             }
-            throw _errors['s3.generic']();
+            throw this.error(_errors['s3.generic']({}), $meta);
         },
     };
 });

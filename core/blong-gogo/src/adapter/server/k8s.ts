@@ -141,8 +141,9 @@ export default adapter<IConfig>(({utError}) => {
                       onWatch?: (watch: {existing: unknown}) => void;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, _resourceType, operation] = method!.split('.');
             const namespace =
                 (!Array.isArray(params) && params.namespace) ||
@@ -250,9 +251,7 @@ export default adapter<IConfig>(({utError}) => {
             // Validate custom resource params
             if (isCustomResource) {
                 if (!params.group || !params.version || !params.plural) {
-                    throw _errors['k8s.missingKey']({
-                        key: 'group, version, and plural for custom resources',
-                    });
+                    throw this.error(_errors['k8s.missingKey']({key: 'group, version, and plural for custom resources'}), $meta);
                 }
             }
 
@@ -315,23 +314,29 @@ export default adapter<IConfig>(({utError}) => {
                         buildOptions(options),
                     );
                 }
-                throw _errors['k8s.invalid']();
+                throw this.error(_errors['k8s.invalid'](), $meta);
             };
 
             try {
                 switch (operation) {
                     case 'get': {
                         // Get single resource
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {name} = params;
-                        if (!name) throw _errors['k8s.missingKey']({key: 'name'});
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
+                        }
 
                         return await callApi(isCustomResource ? 'get' : 'read', {name});
                     }
                     case 'list':
                     case 'find': {
                         // List resources
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {
                             labelSelector,
                             fieldSelector,
@@ -349,32 +354,46 @@ export default adapter<IConfig>(({utError}) => {
                     case 'create':
                     case 'add': {
                         // Create resource
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {manifest, body} = params;
                         const resourceBody = manifest || body;
-                        if (!resourceBody)
-                            throw _errors['k8s.missingKey']({key: 'manifest or body'});
+                        if (!resourceBody) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'manifest or body'}), $meta);
+                        }
 
                         return await callApi('create', {body: resourceBody});
                     }
                     case 'update':
                     case 'replace': {
                         // Update/replace resource
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {name, manifest, body} = params;
-                        if (!name) throw _errors['k8s.missingKey']({key: 'name'});
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
+                        }
                         const resourceBody = manifest || body;
-                        if (!resourceBody)
-                            throw _errors['k8s.missingKey']({key: 'manifest or body'});
+                        if (!resourceBody) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'manifest or body'}), $meta);
+                        }
 
                         return await callApi('replace', {name, body: resourceBody});
                     }
                     case 'patch': {
                         // Patch resource
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {name, body} = params;
-                        if (!name) throw _errors['k8s.missingKey']({key: 'name'});
-                        if (!body) throw _errors['k8s.missingKey']({key: 'body'});
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
+                        }
+                        if (!body) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'body'}), $meta);
+                        }
 
                         return await callApi('patch', {
                             name,
@@ -391,29 +410,38 @@ export default adapter<IConfig>(({utError}) => {
                     case 'delete':
                     case 'remove': {
                         // Delete resource
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {name} = params;
-                        if (!name) throw _errors['k8s.missingKey']({key: 'name'});
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
+                        }
 
                         return await callApi('delete', {name});
                     }
                     case 'apply': {
                         // Apply resource (create or update)
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {manifest, body} = params;
                         const resourceBody = manifest || body;
-                        if (!resourceBody)
-                            throw _errors['k8s.missingKey']({key: 'manifest or body'});
+                        if (!resourceBody) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'manifest or body'}), $meta);
+                        }
 
                         const name = (resourceBody as {metadata?: {name?: string}}).metadata?.name;
-                        if (!name) throw _errors['k8s.missingKey']({key: 'name in manifest'});
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name in manifest'}), $meta);
+                        }
 
                         try {
                             // Try to get existing resource
                             await callApi(isCustomResource ? 'get' : 'read', {name});
                             // Resource exists, update it
                             return await callApi('replace', {name, body: resourceBody});
-                        } catch (error) {
+                        } catch (_error) {
                             // Resource doesn't exist, create it
                             return await callApi('create', {body: resourceBody});
                         }
@@ -421,14 +449,19 @@ export default adapter<IConfig>(({utError}) => {
                     case 'scale': {
                         // Scale deployment/replicaset (not supported for custom resources)
                         if (isCustomResource) {
-                            throw _errors['k8s.invalid']();
+                            throw this.error(_errors['k8s.invalid'](), $meta);
                         }
 
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {name, replicas} = params;
-                        if (!name) throw _errors['k8s.missingKey']({key: 'name'});
-                        if (replicas === undefined)
-                            throw _errors['k8s.missingKey']({key: 'replicas'});
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
+                        }
+                        if (replicas === undefined) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'replicas'}), $meta);
+                        }
 
                         if (resourceType === 'deployment' || resourceType === 'deployments') {
                             // First get the current deployment
@@ -455,10 +488,12 @@ export default adapter<IConfig>(({utError}) => {
                                 });
                             return result;
                         }
-                        throw _errors['k8s.invalid']();
+                        throw this.error(_errors['k8s.invalid'](), $meta);
                     }
                     case 'watch': {
-                        if (Array.isArray(params)) throw _errors['k8s.invalid']();
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
                         const {labelSelector, fieldSelector, timeout = 30000} = params;
 
                         // Get existing resources using list
@@ -543,22 +578,27 @@ export default adapter<IConfig>(({utError}) => {
                     }
                 }
             } catch (error: unknown) {
+                // Re-throw already-typed blong errors without wrapping
+                if (typeof (error as {type?: string}).type === 'string') throw error;
                 const k8sError = error as {
                     response?: {statusCode?: number; body?: {message?: string}};
                 };
+                let err;
                 if (k8sError.response?.statusCode === 404) {
-                    throw _errors['k8s.notFound']();
+                    err = _errors['k8s.notFound'](error);
                 } else if (k8sError.response?.statusCode === 401) {
-                    throw _errors['k8s.unauthorized']();
+                    err = _errors['k8s.unauthorized'](error);
                 } else if (k8sError.response?.statusCode === 403) {
-                    throw _errors['k8s.forbidden']();
+                    err = _errors['k8s.forbidden'](error);
                 } else if (k8sError.response?.statusCode === 409) {
-                    throw _errors['k8s.exists']();
+                    err = _errors['k8s.exists'](error);
+                } else {
+                    err = _errors['k8s.generic'](error);
                 }
-                throw _errors['k8s.generic'](error);
+                throw this.error(err, $meta);
             }
 
-            throw _errors['k8s.generic']();
+            throw this.error(_errors['k8s.generic']({}), $meta);
         },
     };
 });

@@ -16,28 +16,28 @@ const eipMessagePipes = Type.Function([Type.Object({})], Type.Promise(Type.Unkno
 
 type eipMessageRoute = Static<typeof eipMessageRoute>;
 const eipMessageRoute = Type.Function(
-    [Type.Object({destination: Type.String()})],
+    [Type.Object({destination: Type.String()}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Unknown()),
     {description: 'Content Based Router: routes to handler A or B based on destination'},
 );
 
 type eipMessageDynamic = Static<typeof eipMessageDynamic>;
 const eipMessageDynamic = Type.Function(
-    [Type.Object({destination: Type.String()})],
+    [Type.Object({destination: Type.String()}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Unknown()),
     {description: 'Dynamic Router: routes to a handler by dynamic name'},
 );
 
 type eipMessageFilter = Static<typeof eipMessageFilter>;
 const eipMessageFilter = Type.Function(
-    [Type.Object({condition: Type.Boolean()})],
+    [Type.Object({condition: Type.Boolean()}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Unknown()),
     {description: 'Message Filter: passes message only if condition is true'},
 );
 
 type eipMessageRecipient = Static<typeof eipMessageRecipient>;
 const eipMessageRecipient = Type.Function(
-    [Type.Object({sequential: Type.Optional(Type.Boolean())})],
+    [Type.Object({sequential: Type.Optional(Type.Boolean())}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Array(Type.Unknown())),
     {description: 'Recipient List: sends to both handler A and B (parallel or sequential)'},
 );
@@ -56,7 +56,7 @@ const eipMessageAggregate = Type.Function([Type.Object({})], Type.Promise(Type.U
 
 type eipMessageSort = Static<typeof eipMessageSort>;
 const eipMessageSort = Type.Function(
-    [Type.Object({order: Type.Number()})],
+    [Type.Object({order: Type.Number()}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Array(Type.Unknown())),
     {description: 'Resequencer: collects messages until batch size (3), sorts by order'},
 );
@@ -70,7 +70,7 @@ const eipMessageCompose = Type.Function(
 
 type eipMessageScatter = Static<typeof eipMessageScatter>;
 const eipMessageScatter = Type.Function(
-    [Type.Object({destinations: Type.Array(Type.String())})],
+    [Type.Object({destinations: Type.Array(Type.String())}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Array(Type.Unknown())),
     {description: 'Scatter Gatherer: calls each destination handler and collects results'},
 );
@@ -87,7 +87,7 @@ const eipMessageEnrich = Type.Function([Type.Object({})], Type.Promise(Type.Unkn
 
 type eipMessageSimplify = Static<typeof eipMessageSimplify>;
 const eipMessageSimplify = Type.Function(
-    [Type.Object({skip: Type.Optional(Type.Unknown())})],
+    [Type.Object({skip: Type.Optional(Type.Unknown())}, {additionalProperties: Type.Unknown()})],
     Type.Promise(Type.Unknown()),
     {description: 'Content Filter: removes the skip field before calling mockItemProcess'},
 );
@@ -134,19 +134,19 @@ declare module '@feasibleone/blong' {
             $meta: IMeta,
         ): T;
         eipMessageRoute<T = ReturnType<eipMessageRoute>>(
-            params: Parameters<eipMessageRoute>[0],
+            params: Parameters<eipMessageRoute>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageDynamic<T = ReturnType<eipMessageDynamic>>(
-            params: Parameters<eipMessageDynamic>[0],
+            params: Parameters<eipMessageDynamic>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageFilter<T = ReturnType<eipMessageFilter>>(
-            params: Parameters<eipMessageFilter>[0],
+            params: Parameters<eipMessageFilter>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageRecipient<T = ReturnType<eipMessageRecipient>>(
-            params: Parameters<eipMessageRecipient>[0],
+            params: Parameters<eipMessageRecipient>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageSplit<T = ReturnType<eipMessageSplit>>(
@@ -158,7 +158,7 @@ declare module '@feasibleone/blong' {
             $meta: IMeta,
         ): T;
         eipMessageSort<T = ReturnType<eipMessageSort>>(
-            params: Parameters<eipMessageSort>[0],
+            params: Parameters<eipMessageSort>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageCompose<T = ReturnType<eipMessageCompose>>(
@@ -166,7 +166,7 @@ declare module '@feasibleone/blong' {
             $meta: IMeta,
         ): T;
         eipMessageScatter<T = ReturnType<eipMessageScatter>>(
-            params: Parameters<eipMessageScatter>[0],
+            params: Parameters<eipMessageScatter>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageWrap<T = ReturnType<eipMessageWrap>>(
@@ -178,7 +178,7 @@ declare module '@feasibleone/blong' {
             $meta: IMeta,
         ): T;
         eipMessageSimplify<T = ReturnType<eipMessageSimplify>>(
-            params: Parameters<eipMessageSimplify>[0],
+            params: Parameters<eipMessageSimplify>[0] & {[key: string]: unknown},
             $meta: IMeta,
         ): T;
         eipMessageClaim<T = ReturnType<eipMessageClaim>>(

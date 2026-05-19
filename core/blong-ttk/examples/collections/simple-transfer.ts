@@ -7,14 +7,15 @@
 import type {IMeta} from '@feasibleone/blong';
 import {handler} from '@feasibleone/blong';
 import type Assert from 'node:assert';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export default handler(({lib: {group}}) => ({
     /**
      * Example test collection showing basic patterns
      */
-    exampleSimpleTransfer: ({name = 'Simple Transfer Example'}: {name?: string}, $meta: IMeta) =>
+    exampleSimpleTransfer: ({name = 'Simple Transfer Example'}: {name?: string}, _$meta: IMeta) =>
         group(name)([
-            async function prepareTestData(assert: typeof Assert, {$meta}: any) {
+            async function prepareTestData(_assert: typeof Assert, {$meta: _$meta}: any) {
                 // In a real test, this would call provisioning handlers
                 // For this example, we just create mock data
                 const transferId = 'test-transfer-' + Date.now();
@@ -23,7 +24,10 @@ export default handler(({lib: {group}}) => ({
                 return {transferId, amount};
             },
 
-            async function initiateTransfer(assert: typeof Assert, {prepareTestData, $meta}: any) {
+            async function initiateTransfer(
+                assert: typeof Assert,
+                {prepareTestData, $meta: _$meta}: any,
+            ) {
                 const {transferId, amount} = (await prepareTestData) as Awaited<
                     ReturnType<typeof prepareTestData>
                 >;
@@ -43,7 +47,7 @@ export default handler(({lib: {group}}) => ({
 
             async function verifyTransferStatus(
                 assert: typeof Assert,
-                {initiateTransfer, $meta}: any,
+                {initiateTransfer, $meta: _$meta}: any,
             ) {
                 const transfer = (await initiateTransfer) as any;
 

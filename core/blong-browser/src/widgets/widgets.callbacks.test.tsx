@@ -1,7 +1,7 @@
 /**
  * Widget callback coverage tests.
  * These tests mock PrimeReact's Calendar and SelectButton to cover the
- * onChange/onValueChange inline callbacks not triggerable through jsdom events.
+ * onChange/onValueChange inline callbacks not trigger-able through jsdom events.
  */
 import {describe, expect, it, vi} from 'vitest';
 import {fireEvent, render} from '../test/render.js';

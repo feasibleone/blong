@@ -38,14 +38,15 @@ style.textContent = `
 document.head.appendChild(style);
 
 export default browser =>
-    function withBlong(Story: React.ComponentType) {
-        let result: IRegistry | undefined;
+    // eslint-disable-next-line @eslint-react/component-hook-factories
+    function WithBlong(Story: React.ComponentType) {
         const [blong, setBlong] = React.useState<{
             registry: IRegistry | null;
             dispatch: DispatchFn | null;
             log?: ILogger;
         }>({registry: null, dispatch: null});
         React.useEffect(() => {
+            let result: IRegistry | undefined;
             load(
                 browser,
                 'ui-demo',
@@ -81,10 +82,10 @@ export default browser =>
                                 {...rpcParams, $meta: {method}},
                                 'Dispatching method',
                             );
-                            const result = await adapter?.dispatch?.(rpcParams, {
+                            const result = (await adapter?.dispatch?.(rpcParams, {
                                 method,
                                 mtid: 'request',
-                            });
+                            })) as unknown[];
                             return result[0];
                         },
                         log: adapter?.log,

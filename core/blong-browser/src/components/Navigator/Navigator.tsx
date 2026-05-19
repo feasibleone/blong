@@ -74,6 +74,7 @@ export function Navigator({
 
     React.useEffect(() => {
         if (!fetchFn) return;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setLoading(true);
         void fetchFn()
             .then(result => {

@@ -1,6 +1,6 @@
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {hasTsConfig, hasEslintConfig} from '../utils/discover.ts';
+import {hasEslintConfig, hasTsConfig} from '../utils/discover.ts';
 import {findUp} from '../utils/findConfig.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 
@@ -9,6 +9,7 @@ import {runTool, type RunOptions} from '../utils/runTool.ts';
 const blongDevBin = fileURLToPath(new URL('../../node_modules/.bin', import.meta.url));
 
 const TS_EXT = /\.[cm]?tsx?$/i;
+const SPELL_EXT = /\.([cm]?tsx?|md)$/i;
 const PATH_SEP = process.platform === 'win32' ? ';' : ':';
 
 /**
@@ -23,6 +24,7 @@ export async function lint(fileArgs: string[]): Promise<void> {
     const cwd = process.cwd();
     const staged = fileArgs.length > 0;
     const tsFiles = staged ? fileArgs.filter(f => TS_EXT.test(f)) : [];
+    const spellFiles = staged ? fileArgs.filter(f => SPELL_EXT.test(f)) : [];
 
     // Augment PATH: target package's .bin first, then blong-dev's own .bin
     // (provides cspell and other bundled tools), then the inherited PATH.
@@ -47,13 +49,13 @@ export async function lint(fileArgs: string[]): Promise<void> {
 
     // ── cspell ───────────────────────────────────────────────────────────────
     // Always applicable — uses the repo-level cspell.config.yaml found by
-    // walking up from CWD.  In staged mode, only the staged TS files are
-    // checked.  In full-package mode, all .ts files are checked.
+    // walking up from CWD.  In staged mode, only the staged TS/MD files are
+    // checked.  In full-package mode, all .ts/.tsx/.md files are checked.
     {
         const cspellConfig = findUp(cwd, 'cspell.config.yaml');
-        const args = ['--no-progress'];
+        const args = ['--no-progress', '--no-summary', '--no-must-find-files'];
         if (cspellConfig) args.push('--config', cspellConfig);
-        args.push(...(tsFiles.length > 0 ? tsFiles : ['**/*.ts']));
+        args.push(...(spellFiles.length > 0 ? spellFiles : ['**/*.ts', '**/*.tsx', '**/*.md']));
 
         const code = await run('cspell', args);
         if (code !== 0) exitCode = code;
@@ -63,7 +65,7 @@ export async function lint(fileArgs: string[]): Promise<void> {
     // Applied only when an ESLint config file is present in the package root.
     if (hasEslintConfig(cwd)) {
         const targets = staged ? fileArgs : ['.'];
-        const code = await run('eslint', targets);
+        const code = await run('eslint', ['--max-warnings', '0', ...targets]);
         if (code !== 0) exitCode = code;
     }
 

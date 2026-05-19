@@ -193,7 +193,8 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                         });
                     } else if (typeof body === 'object' && 'result' in body && !('error' in body)) {
                         const result = await decode(body.result);
-                        if (/\.service\.get$/.test(method!)) Object.assign((result as Record<string, unknown>[])[0], requestParams);
+                        if (/\.service\.get$/.test(method!))
+                            Object.assign((result as Record<string, unknown>[])[0], requestParams);
                         if ((body as unknown as {checkpoints?: unknown[]}).checkpoints?.length) {
                             ((callerMeta as {checkpoints?: unknown[]}).checkpoints ??= []).push(
                                 ...(body as unknown as {checkpoints: unknown[]}).checkpoints,
@@ -211,7 +212,7 @@ export default class RpcClientImpl extends RemoteImpl implements IRpcClient {
                             case 'ETIMEDOUT':
                             case 'ESOCKETTIMEDOUT':
                                 if (!typedError.connect) break; // https://www.npmjs.com/package/request#timeouts
-                            case 'ENOTFOUND': // eslint-disable-line no-fallthrough
+                            case 'ENOTFOUND':
                             case 'ECONNREFUSED':
                                 Object.assign(
                                     requestParams,

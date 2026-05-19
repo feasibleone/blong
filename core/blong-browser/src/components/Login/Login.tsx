@@ -108,6 +108,7 @@ export function Login({
     initialStep = 'credentials',
 }: ILoginProps) {
     const {dispatch} = useBlongUi();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [step, setStep] = useState<LoginStep>(initialStep);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');

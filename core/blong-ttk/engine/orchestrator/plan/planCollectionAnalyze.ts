@@ -24,7 +24,7 @@ export default handler(() => ({
         }: {
             collectionPath: string;
         },
-        $meta: IMeta,
+        _$meta: IMeta,
     ) {
         // Resolve path
         const absolutePath = resolve(collectionPath);
@@ -54,7 +54,7 @@ export default handler(() => ({
  * Extract collection metadata from source
  */
 function extractMetadata(content: string) {
-    const metadata: any = {
+    const metadata: Record<string, unknown[]> = {
         handlers: [],
         imports: [],
         groups: [],

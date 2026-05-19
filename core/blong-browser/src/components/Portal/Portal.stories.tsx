@@ -21,16 +21,6 @@ import {Default as ExplorerDefault} from '../Explorer/Explorer.stories.js';
 import {Explorer} from '../Explorer/Explorer.js';
 import {Portal} from './Portal.js';
 
-// ── Story type ─────────────────────────────────────────────────────────────
-
-type StoryFn = ((args: Record<string, unknown>) => React.ReactElement) & {
-    args?: Record<string, unknown>;
-    play?: (ctx: {canvas: ReturnType<typeof within>; userEvent: UserEvent}) => Promise<void>;
-    decorators?: Array<(Story: React.ComponentType) => React.ReactElement>;
-    parameters?: Record<string, unknown>;
-    storyName?: string;
-};
-
 // ── Meta ───────────────────────────────────────────────────────────────────
 
 const meta: Meta = {
@@ -60,7 +50,7 @@ function PortalSetup({tabs, menuConfig}: {tabs: ITab[]; menuConfig?: IPortalConf
         return () => {
             useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line @eslint-react/exhaustive-deps -- run once on mount
     }, []);
     return <Portal />;
 }
@@ -151,36 +141,38 @@ MultiplePages.play = async ({canvas, userEvent}) => {
  *
  * The actions are registered via registerActions so openByAction can resolve them.
  */
+function WithMenuStory() {
+    useEffect(() => {
+        const store = useAppStore.getState();
+        // Register page actions so the Portal can load components when menu items are clicked
+        store.registerActions({
+            'view.pageOne': {title: 'Page 1', component: () => Promise.resolve(PageOne)},
+            'view.pageTwo': {title: 'Page 2', component: () => Promise.resolve(PageTwo)},
+        });
+        // Configure menu
+        store.setMenuConfig({
+            name: 'demo',
+            title: 'Demo Portal',
+            menu: [
+                {
+                    title: 'View',
+                    items: [
+                        {title: 'Page 1', action: 'view.pageOne'},
+                        {title: 'Page 2', action: 'view.pageTwo'},
+                    ],
+                },
+            ],
+        });
+        useAppStore.setState(s => ({portal: {...s.portal, tabs: [], activeTabId: null}}));
+        return () => {
+            useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+        };
+    }, []);
+    return <Portal />;
+}
+
 export const WithMenu: Story = {
-    render: () => {
-        useEffect(() => {
-            const store = useAppStore.getState();
-            // Register page actions so the Portal can load components when menu items are clicked
-            store.registerActions({
-                'view.pageOne': {title: 'Page 1', component: () => Promise.resolve(PageOne)},
-                'view.pageTwo': {title: 'Page 2', component: () => Promise.resolve(PageTwo)},
-            });
-            // Configure menu
-            store.setMenuConfig({
-                name: 'demo',
-                title: 'Demo Portal',
-                menu: [
-                    {
-                        title: 'View',
-                        items: [
-                            {title: 'Page 1', action: 'view.pageOne'},
-                            {title: 'Page 2', action: 'view.pageTwo'},
-                        ],
-                    },
-                ],
-            });
-            useAppStore.setState(s => ({portal: {...s.portal, tabs: [], activeTabId: null}}));
-            return () => {
-                useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
-            };
-        }, []);
-        return <Portal />;
-    },
+    render: () => <WithMenuStory />,
 };
 
 WithMenu.play = async ({canvas, userEvent}) => {
@@ -265,28 +257,27 @@ export const WithEditor: Story = {
  * Reuses the `Default` story args from Explorer.stories — same columns, toolbar,
  * and list action.
  */
+function ExplorerTab(props: Record<string, unknown>) {
+    return (
+        <Explorer
+            {...(ExplorerDefault.args as Record<string, unknown>)}
+            {...props}
+        />
+    );
+}
+
 export const WithExplorer: Story = {
-    render: () => {
-        function ExplorerTab(props: Record<string, unknown>) {
-            return (
-                <Explorer
-                    {...(ExplorerDefault.args as Record<string, unknown>)}
-                    {...props}
-                />
-            );
-        }
-        return (
-            <PortalSetup
-                tabs={[
-                    {
-                        id: 'explorer',
-                        actionName: 'explorer',
-                        params: {},
-                        title: 'Coral List',
-                        component: ExplorerTab,
-                    },
-                ]}
-            />
-        );
-    },
+    render: () => (
+        <PortalSetup
+            tabs={[
+                {
+                    id: 'explorer',
+                    actionName: 'explorer',
+                    params: {},
+                    title: 'Coral List',
+                    component: ExplorerTab,
+                },
+            ]}
+        />
+    ),
 };

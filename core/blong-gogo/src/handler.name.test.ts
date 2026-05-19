@@ -8,19 +8,19 @@ import {describe, it} from 'node:test';
 
 describe('Handler naming', () => {
     it('should preserve explicit handler names when they match expected name', () => {
-        const namedHandler = handler(function myHandler({config}) {
+        const namedHandler = handler(function myHandler({config: _config}) {
             return {send() {}};
         });
 
         assert.strictEqual(
-            (namedHandler as Function).name,
+            (namedHandler as {name: string}).name,
             'myHandler',
             'Named handler should preserve its name',
         );
     });
 
     it('should allow setting name on anonymous handlers', () => {
-        const anonymousHandler = handler(({config}) => {
+        const anonymousHandler = handler(({config: _config}) => {
             return {send() {}};
         });
 
@@ -32,39 +32,39 @@ describe('Handler naming', () => {
         });
 
         assert.strictEqual(
-            (anonymousHandler as Function).name,
+            (anonymousHandler as {name: string}).name,
             'send',
             'Handler name should be settable',
         );
     });
 
     it('should ensure names are unique per file', () => {
-        const handler1 = handler(({config}) => ({send() {}}));
-        const handler2 = handler(({config}) => ({receive() {}}));
+        const handler1 = handler(({config: _config}) => ({send() {}}));
+        const handler2 = handler(({config: _config}) => ({receive() {}}));
 
         // Simulate loading from different files
         Object.defineProperty(handler1, 'name', {value: 'send', configurable: true});
         Object.defineProperty(handler2, 'name', {value: 'receive', configurable: true});
 
-        assert.strictEqual((handler1 as Function).name, 'send');
-        assert.strictEqual((handler2 as Function).name, 'receive');
+        assert.strictEqual((handler1 as {name: string}).name, 'send');
+        assert.strictEqual((handler2 as {name: string}).name, 'receive');
         assert.notStrictEqual(
-            (handler1 as Function).name,
-            (handler2 as Function).name,
+            (handler1 as {name: string}).name,
+            (handler2 as {name: string}).name,
             'Handlers should have unique names',
         );
     });
 
     it('should detect mismatch between handler name and expected name', () => {
         // This test verifies that Watch.ts would throw an error for mismatched names
-        const namedHandler = handler(function wrongName({config}) {
+        const namedHandler = handler(function wrongName({config: _config}) {
             return {send() {}};
         });
 
         // In Watch.ts, this would trigger an error like:
         // "Handler name mismatch in 'send.ts': function is named 'wrongName' but file is named 'send.ts'"
 
-        const actualName = (namedHandler as Function).name;
+        const actualName = (namedHandler as {name: string}).name;
         const expectedName = 'send';
 
         assert.notStrictEqual(actualName, expectedName, 'Mismatch should be detectable');

@@ -1,7 +1,7 @@
 /**
  * useAsync — async loader with status tracking.
  */
-import {useEffect, useState, type DependencyList} from 'react';
+import {useEffect, useRef, useState, type DependencyList} from 'react';
 import type {IBlongError} from '../types/action.js';
 
 export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -22,13 +22,18 @@ export function useAsync<T>(
     const [data, setData] = useState<T | undefined>();
     const [error, setError] = useState<IBlongError | Error | undefined>();
     const [reloadKey, setReloadKey] = useState(0);
+    const asyncFnRef = useRef(asyncFn);
+    asyncFnRef.current = asyncFn;
 
     useEffect(() => {
         let cancelled = false;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setStatus('loading');
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setError(undefined);
 
-        asyncFn()
+        asyncFnRef
+            .current()
             .then(result => {
                 if (!cancelled) {
                     setData(result);
@@ -45,7 +50,7 @@ export function useAsync<T>(
         return () => {
             cancelled = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line @eslint-react/exhaustive-deps -- spread deps from caller are intentional
     }, [...deps, reloadKey]);
 
     return {

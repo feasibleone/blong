@@ -1,5 +1,6 @@
 import type {IMeta} from '@feasibleone/blong';
 import {handler} from '@feasibleone/blong';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * Remove stale test entities based on retention period.

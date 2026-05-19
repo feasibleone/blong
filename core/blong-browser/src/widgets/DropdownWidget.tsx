@@ -1,10 +1,10 @@
 import {Dropdown} from '../primereact/index.js';
 
 import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
-import React, {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {useWatch, type Control} from 'react-hook-form';
-import {useBlongUi} from '../context/BlongUiContext.js';
 import {useBlongForm} from '../components/Form/FormContext.js';
+import {useBlongUi} from '../context/BlongUiContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
@@ -44,7 +44,7 @@ function DropdownCore({
     const {dispatch} = useBlongUi();
 
     const [options, setOptions] = useState<SelectOption[]>(
-        staticOptions ? toOptions(staticOptions) : [],
+        () => staticOptions ? toOptions(staticOptions) : [],
     );
 
     // Clear this widget's value when the parent selection changes
@@ -55,8 +55,7 @@ function DropdownCore({
             prevParentValueRef.current = parentValue;
             if (value !== undefined && value !== null) onChange(undefined);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [parentValue]);
+    }, [parentValue, parent, onChange, value]);
 
     useEffect(() => {
         let cancelled = false;
@@ -100,6 +99,7 @@ function DropdownCore({
         return () => {
             cancelled = true;
         };
+        // eslint-disable-next-line @eslint-react/exhaustive-deps -- parent and staticOptions intentionally omitted
     }, [fetchAction, dropdownKey, dispatch, parentValue]);
 
     // Filter options by parent value (client-side cascade).

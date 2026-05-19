@@ -37,7 +37,7 @@ import {useDesignMode} from '../../design/useDesignMode.js';
 import type {FlatLayoutConfig, IResolvedCard, IResolvedTab} from '../../hooks/useLayout.js';
 import {PanelMenu, Splitter, SplitterPanel, Steps, TabMenu} from '../../primereact/index.js';
 import {Card} from '../Card/Card.js';
-import {useBlongForm, useBlongFormState} from '../Form/FormContext.js';
+import {useBlongForm, useBlongFormState, type IFormContext} from '../Form/FormContext.js';
 
 export interface IDeckProps {
     id: string;
@@ -71,8 +71,8 @@ function TabContent({
                 const firstResolved = groupNames.map(n => cards[n]).find(Boolean);
                 const colClass = firstResolved?.config.className ?? 'col-12 xl:col-6';
                 return (
-                    <Deck
-                        key={groupIdx}
+                    // eslint-disable-next-line @eslint-react/no-array-index-key
+                    <Deck key={groupIdx}
                         id={`deck-tab-${groupIdx}`}
                         className={colClass}
                         cardNames={groupNames}
@@ -84,7 +84,7 @@ function TabContent({
 }
 
 // ── Root layout mode ──────────────────────────────────────────────────────────
-
+const noCards: IFormContext['cards'] = {};
 /**
  * RootDeck — renders the top-level layout grid (flat, tabs, steps, split).
  *
@@ -95,15 +95,33 @@ function TabContent({
  */
 const RootDeck = memo(function RootDeck() {
     const formCtx = useBlongForm();
-    // Safety guard: RootDeck is only rendered by Deck when FormContext is present
-    if (!formCtx?.layoutResult) return null;
-    const {layoutResult, layout, formId, onLayoutChange, cards} = formCtx;
-    const {layoutType, rows, tabs, orientation, panels} = layoutResult;
 
     const designCtx = useDesignMode();
     const sensors = useSensors(useSensor(PointerSensor, {activationConstraint: {distance: 5}}));
     const [activeDragLabel, setActiveDragLabel] = useState<string | null>(null);
     const [activeTabIndex, setActiveTabIndex] = useState(0);
+
+    const rows: string[][] = useMemo(
+        () => formCtx?.layoutResult?.rows ?? [],
+        [formCtx?.layoutResult?.rows],
+    );
+    const cards = formCtx?.cards ?? noCards;
+    const columnDecks = useMemo(
+        () =>
+            rows.map(columnCards => {
+                const hiddenCards = columnCards.filter(name => cards[name]?.config.hidden);
+                const nonHiddenCards = columnCards.filter(name => !cards[name]?.config.hidden);
+                const firstCard = nonHiddenCards[0] ? cards[nonHiddenCards[0]] : undefined;
+                const colClass = firstCard?.config.className ?? 'col-12 xl:col-6';
+                return {hiddenCards, nonHiddenCards, colClass};
+            }),
+        [rows, cards],
+    );
+
+    // Safety guard: RootDeck is only rendered by Deck when FormContext is present
+    if (!formCtx?.layoutResult) return null;
+    const {layoutResult, layout, formId, onLayoutChange} = formCtx;
+    const {layoutType, tabs, orientation, panels} = layoutResult;
 
     // ── Split layout ───────────────────────────────────────────────────────
     if (layoutType === 'split') {
@@ -116,8 +134,8 @@ const RootDeck = memo(function RootDeck() {
                 style={{height: '100%'}}
             >
                 {splitPanels.map((panel, idx) => (
-                    <SplitterPanel
-                        key={idx}
+                    // eslint-disable-next-line @eslint-react/no-array-index-key
+                    <SplitterPanel key={idx}
                         size={panel.size}
                         minSize={panel.minSize ?? 5}
                         style={{overflow: 'auto'}}
@@ -371,27 +389,13 @@ const RootDeck = memo(function RootDeck() {
         }
     };
 
-    // Memoize the per-column card split so child Deck components receive stable
-    // array references when rows/cards haven't changed, preventing unnecessary rerenders.
-    const columnDecks = useMemo(
-        () =>
-            rows.map(columnCards => {
-                const hiddenCards = columnCards.filter(name => cards[name]?.config.hidden);
-                const nonHiddenCards = columnCards.filter(name => !cards[name]?.config.hidden);
-                const firstCard = nonHiddenCards[0] ? cards[nonHiddenCards[0]] : undefined;
-                const colClass = firstCard?.config.className ?? 'col-12 xl:col-6';
-                return {hiddenCards, nonHiddenCards, colClass};
-            }),
-        [rows, cards],
-    );
-
     const gridContent = (
         <div className="grid col align-self-start max-w-screen">
             {columnDecks.map(({hiddenCards, nonHiddenCards, colClass}, colIdx) => {
                 if (!nonHiddenCards.length && !hiddenCards.length) return null;
                 return (
-                    <Deck
-                        key={colIdx}
+                    // eslint-disable-next-line @eslint-react/no-array-index-key
+                    <Deck key={colIdx}
                         id={`deck-${colIdx}`}
                         className={colClass}
                         cardNames={nonHiddenCards}
@@ -517,15 +521,14 @@ export function Deck({id, cardNames, hiddenCardNames, children, className}: IDec
         );
     } else {
         // Passthrough mode — add mb-3 to every child except the last
-        const childArray = React.Children.toArray(children);
-        body = childArray.map((child, idx) => {
-            const isLast = idx === childArray.length - 1;
-            if (isLast || !React.isValidElement(child)) return child;
-            const currentClass = (child.props as {className?: string}).className ?? '';
-            return React.cloneElement(child as React.ReactElement<{className?: string}>, {
-                className: [currentClass, 'mb-3'].filter(Boolean).join(' '),
-            });
-        });
+        /* eslint-disable @eslint-react/no-children-count, @eslint-react/no-children-map */
+        const childCount = React.Children.count(children);
+        body = React.Children.map(children, (child, idx) =>
+            React.isValidElement(child) && idx < childCount - 1
+                ? <div className="mb-3">{child}</div>
+                : child
+        ) ?? [];
+        /* eslint-enable @eslint-react/no-children-count, @eslint-react/no-children-map */
     }
 
     return (

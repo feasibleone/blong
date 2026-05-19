@@ -2,17 +2,17 @@
  * Analyze ml-testing-toolkit rule files
  */
 
+import type {IMeta} from '@feasibleone/blong';
 import {handler} from '@feasibleone/blong';
 import {readFile, readdir} from 'node:fs/promises';
 import {join} from 'node:path';
-import type {IMeta} from '@feasibleone/blong';
 
 export default handler(() => ({
     /**
      * Analyze ml-testing-toolkit rule JSON files
-     * 
+     *
      * Summarizes rule types, event types, and complexity
-     * 
+     *
      * @param params - Analysis parameters
      * @param $meta - Metadata
      */
@@ -20,7 +20,7 @@ export default handler(() => ({
         params: {
             rulesDir: string;
         },
-        $meta: IMeta,
+        _$meta: IMeta,
     ) => {
         const ruleFiles = await readdir(params.rulesDir);
         const jsonFiles = ruleFiles.filter(f => f.endsWith('.json'));

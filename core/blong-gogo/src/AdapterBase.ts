@@ -177,13 +177,14 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         );
     }
 
-    error(error: ITypedError, $meta: IMeta): void {
+    error(error: ITypedError, $meta: IMeta): ITypedError {
         if ($meta) error.method = $meta.method;
         if (isExpectedError(error.type, $meta?.expect)) {
             (this.log as {debug?: (...args: unknown[]) => void})?.debug?.(error);
-            return;
+            return error;
         }
         (this.log as {error?: (...args: unknown[]) => void})?.error?.(error);
+        return error;
     }
 
     findValidation(): unknown {
@@ -271,7 +272,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         return result;
     }
 
-    drain(): void {}
+    async drain(): Promise<void> {}
 
     findHandler(methodName: string): unknown {
         methodName = this._methodId(methodName);
@@ -303,8 +304,8 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         const {req, pub} = this.forNamespaces(
             (
                 prev: {
-                    req: Record<string, (...args: unknown[]) => unknown>;
-                    pub: Record<string, (...args: unknown[]) => unknown>;
+                    req: Record<string, (...args: unknown[]) => Promise<unknown>>;
+                    pub: Record<string, (...args: unknown[]) => Promise<unknown>>;
                 },
                 next,
             ) => {
@@ -318,7 +319,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         );
         this._register(req, 'ports', this.config.id, this.config.pkg);
         this._subscribe(pub, 'ports', this.config.id, this.config.pkg);
-        const {context, ...config} = this.config; // eslint-disable-line @typescript-eslint/no-unused-vars
+        const {context: _, ...config} = this.config;
         return this.event('start', {configBase: this.configBase, config});
     }
 

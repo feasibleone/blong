@@ -65,8 +65,9 @@ export default adapter<IConfig>(({utError}) => {
                       operators?: object;
                   } & Record<string, unknown>)
                 | unknown[],
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, _table, operation] = method!.split('.');
             let table = _table;
             if (!Array.isArray(params) && _table === 'collection') {
@@ -80,7 +81,9 @@ export default adapter<IConfig>(({utError}) => {
             switch (operation) {
                 case 'get': {
                     // get single document
-                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     const nonArrayParams = params as Record<string, unknown>;
                     const {select = '*', sort, [key]: _id, ...where} = nonArrayParams;
                     return this.config.context
@@ -108,7 +111,9 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 case 'find': {
                     // find multiple documents
-                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     const {select = '*', order, limit, offset, [key]: _id, ...where} = params;
                     return this.config.context
                         .mongodb!.db()
@@ -150,7 +155,9 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 case 'add': {
                     // add single document
-                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     const {[key]: _id, ...rest} = params;
                     return this.config.context
                         .mongodb!.db()
@@ -159,7 +166,9 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 case 'edit': {
                     // edit single document with full replace
-                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     const {[key]: _id, where, operators, ...rest} = params;
                     return this.config.context
                         .mongodb!.db()
@@ -170,7 +179,9 @@ export default adapter<IConfig>(({utError}) => {
                         );
                 }
                 case 'remove': // remove single document
-                    if (!(key in params)) throw _errors['mongodb.missingKey']({key});
+                    if (!(key in params)) {
+                        throw this.error(_errors['mongodb.missingKey']({key}), $meta);
+                    }
                     return this.config.context
                         .mongodb!.db()
                         .collection(table)
@@ -182,7 +193,9 @@ export default adapter<IConfig>(({utError}) => {
 
                 case 'merge': {
                     // edit single document with partial update
-                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     const {[key]: _id, ...rest} = params;
                     return this.config.context
                         .mongodb!.db()
@@ -195,14 +208,18 @@ export default adapter<IConfig>(({utError}) => {
                 }
                 case 'insert': {
                     // insert multiple documents
-                    if (!Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (!Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     return this.config.context
                         .mongodb!.db()
                         .collection(table)
                         .insertMany(params as OptionalId<BSON.Document>[]);
                 }
                 case 'update': {
-                    if (Array.isArray(params)) throw _errors['mongodb.invalid']();
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
                     const {[key]: _id, update, ...where} = params;
                     return this.config.context
                         .mongodb!.db()
@@ -218,7 +235,7 @@ export default adapter<IConfig>(({utError}) => {
                         .collection(table)
                         .deleteMany(params as Filter<BSON.Document>);
             }
-            throw _errors['mongodb.generic']();
+            throw this.error(_errors['mongodb.generic'](), $meta);
         },
     };
 });

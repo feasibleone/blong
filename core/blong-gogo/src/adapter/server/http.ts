@@ -85,8 +85,9 @@ export default adapter<IConfig>(({utError}) => {
                 form?: Options['form'];
                 json?: Options['json'];
             },
-            {stream}: IMeta,
+            $meta: IMeta,
         ) {
+            const {stream} = $meta;
             try {
                 if (host) url.hostname = host;
                 if (port) url.port = String(port);
@@ -105,7 +106,7 @@ export default adapter<IConfig>(({utError}) => {
                     isStream: !!stream,
                 });
             } catch (error) {
-                throw _errors['http.generic'](error);
+                throw this.error(_errors['http.generic'](error), $meta);
             }
         },
     };

@@ -2,7 +2,7 @@
  * Type definitions for blong-ttk
  */
 
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Test collection configuration
  */

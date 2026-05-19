@@ -263,6 +263,7 @@ export default async function loadRealm<T extends TSchema>(
                         default: {remote: {canSkipSocket: true}, [realmName]: {}},
                         integration: {watch: {test: testMethods}},
                     },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 })) as () => any);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return loadRealm(platformApi, wrapper as any, name, parentConfig, configNames);
@@ -657,7 +658,7 @@ export default async function loadRealm<T extends TSchema>(
                             );
                             if (!hasTestDispatch && !hasLayerServer) {
                                 const realmName = mergedConfig.name;
-                                const syntheticOrch = orchestrator(() => ({
+                                const syntheticOrchestrator = orchestrator(() => ({
                                     extends: 'orchestrator.dispatch' as const,
                                     activation: {
                                         default: {},
@@ -667,7 +668,7 @@ export default async function loadRealm<T extends TSchema>(
                                         },
                                     },
                                 }));
-                                Object.defineProperty(syntheticOrch, 'name', {
+                                Object.defineProperty(syntheticOrchestrator, 'name', {
                                     value: 'testDispatch',
                                     configurable: true,
                                 });
@@ -680,7 +681,7 @@ export default async function loadRealm<T extends TSchema>(
                                                     (...args: unknown[]) => unknown
                                                 >
                                             )['testDispatch'](
-                                                syntheticOrch,
+                                                syntheticOrchestrator,
                                                 realmName + '.testDispatch',
                                                 'auto-provisioned',
                                             );

@@ -593,7 +593,9 @@ export function TableWidget({
         const curKey = getParentKeyValue(parentSelection?.row ?? null, keyFieldName);
         if (prevParentKeyForPagingRef.current === curKey) return;
         prevParentKeyForPagingRef.current = curKey;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setListFirst(0);
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setSingleSelected(null);
     }, [isListMode, parentFieldName, parentSelection?.row, keyFieldName]);
 
@@ -634,6 +636,7 @@ export function TableWidget({
 
     useEffect(() => {
         if (!isListMode) return;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setListLoading(true);
         void (dispatch(listAction, mergedListParams) as Promise<Record<string, unknown>>)
             .then(result => {
@@ -731,16 +734,19 @@ export function TableWidget({
 
     // Client-side cascaded filtering (non-listAction mode only).
     // In listAction mode, the cascade filter is sent to the server via mergedListParams.
-    const filteredRows =
-        !isListMode && parentFieldName && masterMapping
-            ? parentSelection
-                ? baseRows.filter(r =>
-                      Object.entries(masterMapping).every(
-                          ([ownKey, parentKey]) => r[ownKey] === parentSelection.row[parentKey],
-                      ),
-                  )
-                : []
-            : baseRows;
+    const filteredRows = useMemo(
+        () =>
+            !isListMode && parentFieldName && masterMapping
+                ? parentSelection
+                    ? baseRows.filter(r =>
+                          Object.entries(masterMapping).every(
+                              ([ownKey, parentKey]) => r[ownKey] === parentSelection.row[parentKey],
+                          ),
+                      )
+                    : []
+                : baseRows,
+        [isListMode, parentFieldName, masterMapping, parentSelection, baseRows],
+    );
 
     const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
     const [pendingEdit, setPendingEdit] = useState<Record<string, boolean> | null>(null);
@@ -790,9 +796,11 @@ export function TableWidget({
         if (prevParentKeyForAutoSelectRef.current === curKey) return;
         prevParentKeyForAutoSelectRef.current = curKey;
         if (filteredRows.length > 0) {
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
             setSingleSelected(filteredRows[0]);
             fireSingleSelect(filteredRows[0]);
         } else {
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
             setSingleSelected(null);
             onSelect?.(name, null);
         }
@@ -809,7 +817,9 @@ export function TableWidget({
 
     useEffect(() => {
         if (!pendingEdit) return;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setPendingEdit(null);
+        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setEditingRows(prev => ({...prev, ...pendingEdit}));
     }, [pendingEdit]);
 

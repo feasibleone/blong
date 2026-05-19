@@ -2,21 +2,24 @@
  * Register an expected callback
  */
 
-import type { IMeta } from '@feasibleone/blong';
-import { handler } from '@feasibleone/blong';
-import type { ICallbackRegistration } from '../../../types.js';
+import type {IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
+import type {ICallbackRegistration} from '../../../types.js';
 
 /**
  * Store for pending callback promises
  * Key: correlationId
  * Value: {resolve, reject, timeout, type}
  */
-const pendingCallbacks = new Map<string, {
-    resolve: (value: any) => void;
-    reject: (error: Error) => void;
-    timeout: NodeJS.Timeout;
-    type: string;
-}>();
+const pendingCallbacks = new Map<
+    string,
+    {
+        resolve: (value: unknown) => void;
+        reject: (error: Error) => void;
+        timeout: NodeJS.Timeout;
+        type: string;
+    }
+>();
 
 export default handler(() => ({
     /**
@@ -28,18 +31,16 @@ export default handler(() => ({
      * @param registration - Callback registration details
      * @param $meta - Metadata
      */
-    callbackCallbackRegister: (registration: ICallbackRegistration, $meta: IMeta) => {
+    callbackCallbackRegister: (registration: ICallbackRegistration, _$meta: IMeta) => {
         const {correlationId, type, timeout = 30000} = registration;
 
         // Check if already registered
         if (pendingCallbacks.has(correlationId)) {
-            throw new Error(
-                `Callback already registered for correlation ID: ${correlationId}`,
-            );
+            throw new Error(`Callback already registered for correlation ID: ${correlationId}`);
         }
 
         // Create the pending promise
-        let resolve: (value: any) => void;
+        let resolve: (value: unknown) => void;
         let reject: (error: Error) => void;
 
         const promise = new Promise((res, rej) => {
@@ -52,7 +53,7 @@ export default handler(() => ({
         // callbackCallbackWait may replace pending.reject; using the entry object
         // ensures the timeout always calls the most-recent reject.
         const entry: {
-            resolve: (value: any) => void;
+            resolve: (value: unknown) => void;
             reject: (error: Error) => void;
             timeout: NodeJS.Timeout;
             type: string;

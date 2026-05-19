@@ -1,4 +1,4 @@
-import type {IAdapterFactory, IAdapterRegistry, ILog, IRegistry} from '@feasibleone/blong/types';
+import type {IAdapterRegistry, ILog, IRegistry} from '@feasibleone/blong/types';
 
 export interface IRealm {
     addModule: (name: string, mod: IRegistry) => void;

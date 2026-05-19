@@ -1,4 +1,10 @@
-import {adapter, type Adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
+import {
+    adapter,
+    type Adapter,
+    type Errors,
+    type IErrorMap,
+    type IMeta,
+} from '@feasibleone/blong/types';
 import got, {type HttpsOptions, type Options} from 'got';
 import {Duplex, Readable, Writable} from 'stream';
 
@@ -50,17 +56,19 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                 objectMode: true,
                 read() {},
             });
-            const self = this;
-
             local.register(
                 {
                     [`${this.config.namespace}Webhook.request`]: async (
                         params: unknown,
-                        $meta: IMeta,
+                        $meta: unknown,
                     ) =>
                         new Promise((resolve, reject) => {
-                            ($meta as Record<string, unknown>)['dispatch'] = function (...packet: unknown[]) {
-                                (self.dispatch as (...args: unknown[]) => Promise<unknown>)(...packet).then(resolve, reject);
+                            ($meta as Record<string, unknown>)['dispatch'] = (
+                                ...packet: unknown[]
+                            ) => {
+                                (this.dispatch as (...args: unknown[]) => Promise<unknown[]>)(
+                                    ...packet,
+                                ).then(resolve, reject);
                             };
                             readable.push([params, $meta]);
                         }),
@@ -82,7 +90,7 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                             {
                                 path = '',
                                 query: searchParams,
-                                url = new URL(path, self.config.url),
+                                url = new URL(path, this.config.url),
                                 responseType = 'json',
                                 method,
                                 headers,
@@ -123,14 +131,17 @@ export default adapter<IConfig>(({utError, local, registry}) => {
                                 followRedirect: false,
                                 // isStream: false,
                             };
-                            if (self.log?.trace) self.log.trace(request);
-                            else self.log?.info?.(`${(request.method as string).toUpperCase()} ${url}`);
+                            if (this.log?.trace) this.log.trace(request);
+                            else
+                                this.log?.info?.(
+                                    `${(request.method as string).toUpperCase()} ${url}`,
+                                );
                             {
                                 const result = await got(request);
                                 const {headers, body, statusCode, statusMessage} = result;
-                                if (self.log?.trace) self.log.trace({headers, body, statusCode});
+                                if (this.log?.trace) this.log.trace({headers, body, statusCode});
                                 else
-                                    self.log?.info?.(
+                                    this.log?.info?.(
                                         `${statusCode} ${statusMessage} ${(request.method as string).toUpperCase()} ${url}`,
                                     );
                                 if (!$meta.trace)

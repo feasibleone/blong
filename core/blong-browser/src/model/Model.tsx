@@ -36,6 +36,7 @@ export function Model({
         return () => {
             useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
         };
+        // eslint-disable-next-line @eslint-react/exhaustive-deps -- run once on mount
     }, []);
     return <Portal />;
 }

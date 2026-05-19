@@ -166,7 +166,7 @@ export interface IPlatformApi {
 }
 
 export interface IErrorFactory {
-    get(type?: string): unknown;
+    get(type?: string): Record<string | symbol, {message: string; print?: string} | string>;
     fetch(type: string): object;
     define(
         id: string,
@@ -238,7 +238,14 @@ export interface IRpcServer {
 }
 
 export interface ILocal {
-    register: (methods: object, namespace: string, reply: boolean, pkg: {version: string}) => void;
+    register: (
+        methods:
+            | Record<string, (...params: unknown[]) => Promise<unknown>>
+            | Array<(...params: unknown[]) => Promise<unknown>>,
+        namespace: string,
+        reply: boolean,
+        pkg: {version: string},
+    ) => void;
     unregister: (methods: string[], namespace: string) => void;
     get: (name: string) => {method: (...params: unknown[]) => Promise<unknown[]>};
 }
@@ -308,9 +315,23 @@ export interface IApi {
     rpc: IRpcServer;
     local: ILocal;
     registry: IRegistry;
-    register: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
+    register: (
+        methods:
+            | Record<string, (...params: unknown[]) => Promise<unknown>>
+            | Array<(...params: unknown[]) => Promise<unknown>>,
+        namespace: string,
+        id: string,
+        pkg: {version: string},
+    ) => void;
     unregister: (methods: string[], namespace: string) => void;
-    subscribe: (methods: object, namespace: string, id: string, pkg: {version: string}) => void;
+    subscribe: (
+        methods:
+            | Record<string, (...params: unknown[]) => Promise<unknown>>
+            | Array<(...params: unknown[]) => Promise<unknown>>,
+        namespace: string,
+        id: string,
+        pkg: {version: string},
+    ) => void;
     unsubscribe: (methods: string[], namespace: string) => void;
     dispatch: (...params: unknown[]) => boolean | Promise<unknown>;
     methodId: (name: string) => string;

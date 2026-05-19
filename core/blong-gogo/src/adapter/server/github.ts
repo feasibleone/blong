@@ -66,10 +66,26 @@ export default adapter<IConfig>(({utError}) => {
                 page?: number;
                 perPage?: number;
             } & Record<string, unknown>,
-            {method}: IMeta,
+            $meta: IMeta,
         ) {
+            const {method} = $meta;
             const [, , operation] = method!.split('.');
             const {octokit} = this.config.context;
+
+            const mapGithubError = (error: unknown): ReturnType<(typeof _errors)[keyof typeof _errors]> => {
+                const e = error as {status?: number; message?: string};
+                if (e.status === 404) return _errors['github.notFound'](error);
+                if (e.status === 401) return _errors['github.unauthorized'](error);
+                if (e.status === 403) return _errors['github.forbidden'](error);
+                if (e.status === 422) {
+                    const vErr = _errors['github.validationFailed'](
+                        {params: {message: e.message || 'Validation failed'}},
+                    );
+                    if (error instanceof Error) vErr.cause = error;
+                    return vErr;
+                }
+                return _errors['github.generic'](error);
+            };
 
             switch (operation) {
                 case 'get':
@@ -77,8 +93,12 @@ export default adapter<IConfig>(({utError}) => {
                     // Get a release by ID or tag
                     const {owner, repo, releaseId, tag} = params;
 
-                    if (!owner) throw _errors['github.missingParameter']({parameter: 'owner'});
-                    if (!repo) throw _errors['github.missingParameter']({parameter: 'repo'});
+                    if (!owner) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'owner'}), $meta);
+                    }
+                    if (!repo) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'repo'}), $meta);
+                    }
 
                     try {
                         if (releaseId) {
@@ -105,23 +125,20 @@ export default adapter<IConfig>(({utError}) => {
                             });
                             return response.data;
                         }
-                    } catch (error: any) {
-                        if (error.status === 404) {
-                            throw _errors['github.notFound'](error);
-                        } else if (error.status === 401) {
-                            throw _errors['github.unauthorized'](error);
-                        } else if (error.status === 403) {
-                            throw _errors['github.forbidden'](error);
-                        }
-                        throw _errors['github.generic'](error);
+                    } catch (error: unknown) {
+                        throw this.error(mapGithubError(error), $meta);
                     }
                 }
                 case 'list': {
                     // List releases for a repository
                     const {owner, repo, page = 1, perPage = 30} = params;
 
-                    if (!owner) throw _errors['github.missingParameter']({parameter: 'owner'});
-                    if (!repo) throw _errors['github.missingParameter']({parameter: 'repo'});
+                    if (!owner) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'owner'}), $meta);
+                    }
+                    if (!repo) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'repo'}), $meta);
+                    }
 
                     try {
                         const response = await octokit!.repos.listReleases({
@@ -131,15 +148,8 @@ export default adapter<IConfig>(({utError}) => {
                             per_page: perPage,
                         });
                         return response.data;
-                    } catch (error: any) {
-                        if (error.status === 404) {
-                            throw _errors['github.notFound'](error);
-                        } else if (error.status === 401) {
-                            throw _errors['github.unauthorized'](error);
-                        } else if (error.status === 403) {
-                            throw _errors['github.forbidden'](error);
-                        }
-                        throw _errors['github.generic'](error);
+                    } catch (error: unknown) {
+                        throw this.error(mapGithubError(error), $meta);
                     }
                 }
                 case 'create':
@@ -157,9 +167,15 @@ export default adapter<IConfig>(({utError}) => {
                         generateReleaseNotes = false,
                     } = params;
 
-                    if (!owner) throw _errors['github.missingParameter']({parameter: 'owner'});
-                    if (!repo) throw _errors['github.missingParameter']({parameter: 'repo'});
-                    if (!tagName) throw _errors['github.missingParameter']({parameter: 'tagName'});
+                    if (!owner) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'owner'}), $meta);
+                    }
+                    if (!repo) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'repo'}), $meta);
+                    }
+                    if (!tagName) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'tagName'}), $meta);
+                    }
 
                     try {
                         const response = await octokit!.repos.createRelease({
@@ -174,19 +190,8 @@ export default adapter<IConfig>(({utError}) => {
                             generate_release_notes: generateReleaseNotes,
                         });
                         return response.data;
-                    } catch (error: any) {
-                        if (error.status === 404) {
-                            throw _errors['github.notFound'](error);
-                        } else if (error.status === 401) {
-                            throw _errors['github.unauthorized'](error);
-                        } else if (error.status === 403) {
-                            throw _errors['github.forbidden'](error);
-                        } else if (error.status === 422) {
-                            throw _errors['github.validationFailed']({
-                                message: error.message || 'Validation failed',
-                            });
-                        }
-                        throw _errors['github.generic'](error);
+                    } catch (error: unknown) {
+                        throw this.error(mapGithubError(error), $meta);
                     }
                 }
                 case 'update':
@@ -204,10 +209,15 @@ export default adapter<IConfig>(({utError}) => {
                         prerelease,
                     } = params;
 
-                    if (!owner) throw _errors['github.missingParameter']({parameter: 'owner'});
-                    if (!repo) throw _errors['github.missingParameter']({parameter: 'repo'});
-                    if (!releaseId)
-                        throw _errors['github.missingParameter']({parameter: 'releaseId'});
+                    if (!owner) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'owner'}), $meta);
+                    }
+                    if (!repo) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'repo'}), $meta);
+                    }
+                    if (!releaseId) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'releaseId'}), $meta);
+                    }
 
                     try {
                         const response = await octokit!.repos.updateRelease({
@@ -222,15 +232,8 @@ export default adapter<IConfig>(({utError}) => {
                             prerelease,
                         });
                         return response.data;
-                    } catch (error: any) {
-                        if (error.status === 404) {
-                            throw _errors['github.notFound'](error);
-                        } else if (error.status === 401) {
-                            throw _errors['github.unauthorized'](error);
-                        } else if (error.status === 403) {
-                            throw _errors['github.forbidden'](error);
-                        }
-                        throw _errors['github.generic'](error);
+                    } catch (error: unknown) {
+                        throw this.error(mapGithubError(error), $meta);
                     }
                 }
                 case 'delete':
@@ -238,10 +241,15 @@ export default adapter<IConfig>(({utError}) => {
                     // Delete a release
                     const {owner, repo, releaseId} = params;
 
-                    if (!owner) throw _errors['github.missingParameter']({parameter: 'owner'});
-                    if (!repo) throw _errors['github.missingParameter']({parameter: 'repo'});
-                    if (!releaseId)
-                        throw _errors['github.missingParameter']({parameter: 'releaseId'});
+                    if (!owner) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'owner'}), $meta);
+                    }
+                    if (!repo) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'repo'}), $meta);
+                    }
+                    if (!releaseId) {
+                        throw this.error(_errors['github.missingParameter']({parameter: 'releaseId'}), $meta);
+                    }
 
                     try {
                         await octokit!.repos.deleteRelease({
@@ -250,19 +258,13 @@ export default adapter<IConfig>(({utError}) => {
                             release_id: releaseId,
                         });
                         return {success: true};
-                    } catch (error: any) {
-                        if (error.status === 404) {
-                            throw _errors['github.notFound'](error);
-                        } else if (error.status === 401) {
-                            throw _errors['github.unauthorized'](error);
-                        } else if (error.status === 403) {
-                            throw _errors['github.forbidden'](error);
-                        }
-                        throw _errors['github.generic'](error);
+                    } catch (error: unknown) {
+                        throw this.error(mapGithubError(error), $meta);
                     }
                 }
-                default:
-                    throw _errors['github.invalid']({operation});
+                default: {
+                    throw this.error(_errors['github.invalid']({operation}), $meta);
+                }
             }
         },
     };

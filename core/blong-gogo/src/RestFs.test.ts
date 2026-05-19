@@ -9,7 +9,6 @@ import {join} from 'node:path';
 import {after, before, describe, it} from 'node:test';
 
 import fastify, {type FastifyInstance} from 'fastify';
-import fp from 'fastify-plugin';
 import RestFs from './RestFs.ts';
 
 /**
@@ -21,21 +20,31 @@ async function setup(options?: {shell?: boolean}): Promise<{
     baseDir: string;
     cleanup: () => Promise<void>;
 }> {
-    const baseDir = join(tmpdir(), `restfs-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const baseDir = join(
+        tmpdir(),
+        `restfs-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
     await mkdir(baseDir, {recursive: true});
 
     // RestFs expects a gateway with registerPlugin — we accumulate the plugin and register it ourselves
-    let capturedPlugin: unknown;
-    let capturedOptions: unknown;
+    let capturedPlugin: Parameters<FastifyInstance['register']>[0] | null = null;
+    let capturedOptions: Parameters<FastifyInstance['register']>[1] | null = null;
     const fakeGateway = {
-        registerPlugin(plugin: unknown, opts?: unknown) {
+        registerPlugin(plugin: typeof capturedPlugin, opts: typeof capturedOptions) {
             capturedPlugin = plugin;
             capturedOptions = opts;
         },
     };
 
-    const restFs = new (RestFs as any)(
-        {enabled: true, baseDir, routePrefix: '/api/fs', maxFileSize: 52428800, auth: false, shell: options?.shell ?? false},
+    const restFs = new RestFs(
+        {
+            enabled: true,
+            baseDir,
+            routePrefix: '/api/fs',
+            maxFileSize: 52428800,
+            auth: false,
+            shell: options?.shell ?? false,
+        },
         {gateway: fakeGateway},
     );
     await restFs.init();
@@ -43,7 +52,7 @@ async function setup(options?: {shell?: boolean}): Promise<{
     const server = fastify();
     // Stub auth config so routes don't require it
     server.addHook('preValidation', (_req, _reply, done) => done());
-    if (capturedPlugin) await server.register(capturedPlugin as any, capturedOptions as any);
+    if (capturedPlugin) await server.register(capturedPlugin, capturedOptions!);
     await server.ready();
 
     return {
@@ -161,7 +170,10 @@ describe('RestFs', () => {
         });
 
         it('DELETE /delete/* — deletes a file', async () => {
-            const res = await server.inject({method: 'DELETE', url: '/api/fs/delete/test-dir/copied.txt'});
+            const res = await server.inject({
+                method: 'DELETE',
+                url: '/api/fs/delete/test-dir/copied.txt',
+            });
             assert.strictEqual(res.statusCode, 200);
             assert.deepStrictEqual(res.json(), {success: true});
         });
@@ -189,7 +201,10 @@ describe('RestFs', () => {
         // endpoints (rename, copy) below, which bypass URL normalization.
 
         it('rejects .. traversal in URL (Fastify normalizes → 404)', async () => {
-            const res = await server.inject({method: 'GET', url: '/api/fs/stat/../../../etc/passwd'});
+            const res = await server.inject({
+                method: 'GET',
+                url: '/api/fs/stat/../../../etc/passwd',
+            });
             assert.strictEqual(res.statusCode, 404);
         });
 
@@ -279,8 +294,15 @@ describe('RestFs disabled', () => {
                 registered = true;
             },
         };
-        const restFs = new (RestFs as any)(
-            {enabled: false, baseDir: '/tmp', routePrefix: '/api/fs', maxFileSize: 1024, auth: false, shell: false},
+        const restFs = new RestFs(
+            {
+                enabled: false,
+                baseDir: '/tmp',
+                routePrefix: '/api/fs',
+                maxFileSize: 1024,
+                auth: false,
+                shell: false,
+            },
             {gateway: fakeGateway},
         );
         await restFs.init();
@@ -288,8 +310,15 @@ describe('RestFs disabled', () => {
     });
 
     it('does not register plugin when gateway is missing', async () => {
-        const restFs = new (RestFs as any)(
-            {enabled: true, baseDir: '/tmp', routePrefix: '/api/fs', maxFileSize: 1024, auth: false, shell: false},
+        const restFs = new RestFs(
+            {
+                enabled: true,
+                baseDir: '/tmp',
+                routePrefix: '/api/fs',
+                maxFileSize: 1024,
+                auth: false,
+                shell: false,
+            },
             {},
         );
         // Should not throw
@@ -299,11 +328,11 @@ describe('RestFs disabled', () => {
 
 describe('RestFs shell endpoint', () => {
     let server: FastifyInstance;
-    let baseDir: string;
+    let _baseDir: string;
     let cleanup: () => Promise<void>;
 
     before(async () => {
-        ({server, baseDir, cleanup} = await setup({shell: true}));
+        ({server, baseDir: _baseDir, cleanup} = await setup({shell: true}));
     });
 
     after(async () => {

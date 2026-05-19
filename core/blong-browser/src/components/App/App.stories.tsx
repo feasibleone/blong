@@ -123,8 +123,7 @@ function PortalApp({tabs, menuConfig}: {tabs: ITab[]; menuConfig?: IPortalConfig
             useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
             store.logout();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [tabs, menuConfig]);
     return <Portal />;
 }
 
@@ -326,6 +325,14 @@ export const BulgarianPortal: Story = {
     ),
 };
 
+/** Ensures the app is in unauthenticated state when the story mounts. */
+function LogoutOnMount() {
+    useEffect(() => {
+        useAppStore.getState().logout();
+    }, []);
+    return <></>;
+}
+
 /**
  * Login — app in unauthenticated state: shows the login form with brand area.
  * The `loginComponent` parameter is forwarded to <App> by the global `withDispatch`
@@ -334,13 +341,7 @@ export const BulgarianPortal: Story = {
  */
 export const Login: Story = {
     parameters: {loginComponent: LoginPage},
-    render: () => {
-        useEffect(() => {
-            // Ensure unauthenticated so the App shell shows loginComponent.
-            useAppStore.getState().logout();
-        }, []);
-        return <></>;
-    },
+    render: () => <LogoutOnMount />,
 };
 
 /**
@@ -349,12 +350,7 @@ export const Login: Story = {
  */
 export const LoginWithTitle: Story = {
     parameters: {loginComponent: LoginPageWithTitle},
-    render: () => {
-        useEffect(() => {
-            useAppStore.getState().logout();
-        }, []);
-        return <></>;
-    },
+    render: () => <LogoutOnMount />,
 };
 LoginWithTitle.storyName = 'Login With Title';
 
@@ -366,12 +362,7 @@ LoginWithTitle.storyName = 'Login With Title';
  */
 export const LoginWithRegister: Story = {
     parameters: {loginComponent: LoginPageWithRegister},
-    render: () => {
-        useEffect(() => {
-            useAppStore.getState().logout();
-        }, []);
-        return <></>;
-    },
+    render: () => <LogoutOnMount />,
 };
 LoginWithRegister.storyName = 'Login With Register';
 
@@ -381,12 +372,7 @@ LoginWithRegister.storyName = 'Login With Register';
 export const BulgarianLogin: Story = {
     args: {lang: 'bg'},
     parameters: {loginComponent: BulgarianLoginPage},
-    render: () => {
-        useEffect(() => {
-            useAppStore.getState().logout();
-        }, []);
-        return <></>;
-    },
+    render: () => <LogoutOnMount />,
 };
 BulgarianLogin.storyName = 'Bulgarian Login';
 
@@ -400,10 +386,5 @@ export const LoginError: Story = {
         await userEvent.type(await canvas.findByLabelText('Password' as never), 'wrongpass');
         await userEvent.click(await canvas.findByRole('button' as never, {name: /^login$/i}));
     },
-    render: () => {
-        useEffect(() => {
-            useAppStore.getState().logout();
-        }, []);
-        return <></>;
-    },
+    render: () => <LogoutOnMount />,
 };

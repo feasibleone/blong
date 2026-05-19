@@ -2,15 +2,20 @@
  * Tests for blong-ttk
  */
 
-import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { test } from 'tap';
-import { analyzeCollectionDuplication, calculateReductionPercentage } from './library/dedup.js';
-import { emitCollection } from './library/emitter.js';
-import { extractCollectionVariables, extractVariableReferences, parseCollection } from './library/parser.js';
-import type { ITtkCollection } from './types.js';
+import {mkdir, rm, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {test} from 'tap';
+import {analyzeCollectionDuplication, calculateReductionPercentage} from './library/dedup.js';
+import {emitCollection} from './library/emitter.js';
+import {
+    extractCollectionVariables,
+    extractVariableReferences,
+    parseCollection,
+} from './library/parser.js';
+import type {ITtkCollection} from './types.js';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 test('blong-ttk package loads', async t => {
     const pkg = await import('./package.json', {with: {type: 'json'}});
     t.equal(pkg.default.name, '@feasibleone/blong-ttk');
@@ -133,9 +138,7 @@ test('analyzeCollectionDuplication - detects duplicated assertions', async t => 
                         method: 'post',
                         operationPath: '/test',
                         tests: {
-                            assertions: [
-                                {id: 1, description: 'Status is 202', exec: []},
-                            ],
+                            assertions: [{id: 1, description: 'Status is 202', exec: []}],
                         },
                     },
                     {
@@ -144,9 +147,7 @@ test('analyzeCollectionDuplication - detects duplicated assertions', async t => 
                         method: 'post',
                         operationPath: '/test2',
                         tests: {
-                            assertions: [
-                                {id: 2, description: 'Status is 202', exec: []},
-                            ],
+                            assertions: [{id: 2, description: 'Status is 202', exec: []}],
                         },
                     },
                 ],
@@ -244,11 +245,20 @@ test('emitCollection - includes assertions', async t => {
 test('emitCollection - GET without path param generates Find', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1,
-            name: 'Test',
-            requests: [{id: 1, description: 'List transfers', method: 'get', operationPath: '/transfers'}],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'List transfers',
+                        method: 'get',
+                        operationPath: '/transfers',
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('transferTransferFind'), 'GET /transfers → transferTransferFind');
@@ -257,11 +267,20 @@ test('emitCollection - GET without path param generates Find', async t => {
 test('emitCollection - GET with path param generates Get', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1,
-            name: 'Test',
-            requests: [{id: 1, description: 'Get transfer', method: 'get', operationPath: '/transfers/{ID}'}],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Get transfer',
+                        method: 'get',
+                        operationPath: '/transfers/{ID}',
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('transferTransferGet'), 'GET /transfers/{ID} → transferTransferGet');
@@ -270,11 +289,20 @@ test('emitCollection - GET with path param generates Get', async t => {
 test('emitCollection - irregular plural parties → party', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1,
-            name: 'Test',
-            requests: [{id: 1, description: 'Get party', method: 'get', operationPath: '/parties/{Type}/{ID}'}],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Get party',
+                        method: 'get',
+                        operationPath: '/parties/{Type}/{ID}',
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('partyPartyGet'), 'GET /parties/{Type}/{ID} → partyPartyGet');
@@ -283,17 +311,21 @@ test('emitCollection - irregular plural parties → party', async t => {
 test('emitCollection - body emitted as TypeScript object literal', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1,
-            name: 'Test',
-            requests: [{
+        test_cases: [
+            {
                 id: 1,
-                description: 'Create transfer',
-                method: 'post',
-                operationPath: '/transfers',
-                body: {transferId: 'abc', amount: {amount: '100', currency: 'USD'}},
-            }],
-        }],
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Create transfer',
+                        method: 'post',
+                        operationPath: '/transfers',
+                        body: {transferId: 'abc', amount: {amount: '100', currency: 'USD'}},
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     // Should use object literal not JSON spread
@@ -350,9 +382,7 @@ test('callbackRuleDispatch - method mismatch does not match rule', async t => {
             path: '/transfers',
             method: 'get', // rule expects POST — note: method is uppercased internally
             rules: {
-                rules: [
-                    {when: {method: 'POST', path: '/transfers'}, then: {fixedCallback: {}}},
-                ],
+                rules: [{when: {method: 'POST', path: '/transfers'}, then: {fixedCallback: {}}}],
             },
         },
         {} as any,
@@ -365,10 +395,11 @@ test('callbackRuleDispatch - method mismatch does not match rule', async t => {
 
 test('callback store coordination', async t => {
     // Import the callback handlers to test promise coordination
-    const {getPendingCallbacks} = await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
+    const {getPendingCallbacks} =
+        await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
 
     const pending = getPendingCallbacks();
-    const initialSize = pending.size;
+    const _initialSize = pending.size;
 
     // Verify the store exists and is accessible
     t.ok(pending instanceof Map);
@@ -381,10 +412,12 @@ test('callback store coordination', async t => {
 });
 
 test('callback register → wait → receive full coordination flow', async t => {
-    const {getPendingCallbacks} = await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
+    const {getPendingCallbacks} =
+        await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
 
     // Import all three handlers
-    const registerMod = await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
+    const registerMod =
+        await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
     const waitMod = await import('./callback/orchestrator/callback/callbackCallbackWait.js');
     const receiveMod = await import('./callback/orchestrator/callback/callbackCallbackReceive.js');
 
@@ -440,7 +473,8 @@ test('callback register → wait → receive full coordination flow', async t =>
 });
 
 test('callback register throws on duplicate correlationId', async t => {
-    const registerMod = await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
+    const registerMod =
+        await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
     const registerHandlers = (registerMod.default as any)({lib: {}, handler: {}});
     const {getPendingCallbacks} = registerMod;
 
@@ -453,10 +487,17 @@ test('callback register throws on duplicate correlationId', async t => {
 
     const correlationId = 'dup-test-' + Date.now();
 
-    registerHandlers.callbackCallbackRegister({correlationId, type: 'PUT /transfers/{ID}', timeout: 100}, {} as any);
+    registerHandlers.callbackCallbackRegister(
+        {correlationId, type: 'PUT /transfers/{ID}', timeout: 100},
+        {} as any,
+    );
 
     t.throws(
-        () => registerHandlers.callbackCallbackRegister({correlationId, type: 'PUT /transfers/{ID}', timeout: 100}, {} as any),
+        () =>
+            registerHandlers.callbackCallbackRegister(
+                {correlationId, type: 'PUT /transfers/{ID}', timeout: 100},
+                {} as any,
+            ),
         /already registered/,
         'Throws on duplicate correlationId',
     );
@@ -467,7 +508,13 @@ test('callbackReceive returns not-found for unregistered correlationId', async t
     const receiveHandlers = (receiveMod.default as any)({lib: {}, handler: {}});
 
     const result = receiveHandlers.callbackCallbackReceive(
-        {correlationId: 'nonexistent-999', type: 'PUT /transfers/{ID}', status: 200, headers: {}, body: {}},
+        {
+            correlationId: 'nonexistent-999',
+            type: 'PUT /transfers/{ID}',
+            status: 200,
+            headers: {},
+            body: {},
+        },
         {} as any,
     );
 
@@ -487,7 +534,8 @@ test('callbackCallbackWait throws when no prior register', async t => {
 });
 
 test('callbackCallbackWait rejects on timeout', async t => {
-    const registerMod = await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
+    const registerMod =
+        await import('./callback/orchestrator/callback/callbackCallbackRegister.js');
     const waitMod = await import('./callback/orchestrator/callback/callbackCallbackWait.js');
     const registerHandlers = (registerMod.default as any)({lib: {}, handler: {}});
     const waitHandlers = (waitMod.default as any)({lib: {}, handler: {}});
@@ -518,7 +566,8 @@ test('callbackCallbackWait rejects on timeout', async t => {
 // ===== Script Deduplication Tests =====
 
 test('analyzeCollectionDuplication - detects duplicated scripts', async t => {
-    const sharedScript = 'pm.environment.set("transferId", pm.utils.uuid());\nconst token = pm.environment.get("token");';
+    const sharedScript =
+        'pm.environment.set("transferId", pm.utils.uuid());\nconst token = pm.environment.get("token");';
     const collection: ITtkCollection = {
         name: 'Script Dup Test',
         test_cases: [
@@ -548,20 +597,37 @@ test('analyzeCollectionDuplication - detects duplicated scripts', async t => {
     const analysis = analyzeCollectionDuplication(collection);
 
     t.ok(analysis.duplicatedScripts > 0, 'Detects duplicated scripts');
-    t.ok(analysis.suggestions.some(s => s.type === 'script'), 'Has script suggestion');
+    t.ok(
+        analysis.suggestions.some(s => s.type === 'script'),
+        'Has script suggestion',
+    );
 });
 
 test('analyzeCollectionDuplication - ignores short scripts', async t => {
     const collection: ITtkCollection = {
         name: 'Short Script Test',
-        test_cases: [{
-            id: 1,
-            name: 'Test',
-            requests: [
-                {id: 1, description: 'R1', method: 'post', operationPath: '/a', scripts: {preRequest: {exec: ['x=1']}}},
-                {id: 2, description: 'R2', method: 'post', operationPath: '/b', scripts: {preRequest: {exec: ['x=1']}}},
-            ],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'R1',
+                        method: 'post',
+                        operationPath: '/a',
+                        scripts: {preRequest: {exec: ['x=1']}},
+                    },
+                    {
+                        id: 2,
+                        description: 'R2',
+                        method: 'post',
+                        operationPath: '/b',
+                        scripts: {preRequest: {exec: ['x=1']}},
+                    },
+                ],
+            },
+        ],
     };
 
     const analysis = analyzeCollectionDuplication(collection);
@@ -569,38 +635,72 @@ test('analyzeCollectionDuplication - ignores short scripts', async t => {
 });
 
 test('analyzeCollectionDuplication - detects duplicated postRequest scripts', async t => {
-    const longScript = 'pm.environment.set("quoteId", response.body.quoteId);\npm.environment.set("transferId", response.body.transferId);';
+    const longScript =
+        'pm.environment.set("quoteId", response.body.quoteId);\npm.environment.set("transferId", response.body.transferId);';
     const collection: ITtkCollection = {
         name: 'PostRequest Script Dup Test',
-        test_cases: [{
-            id: 1, name: 'Test',
-            requests: [
-                {id: 1, description: 'R1', method: 'post', operationPath: '/quotes', scripts: {postRequest: {exec: [longScript]}}},
-                {id: 2, description: 'R2', method: 'post', operationPath: '/transfers', scripts: {postRequest: {exec: [longScript]}}},
-            ],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'R1',
+                        method: 'post',
+                        operationPath: '/quotes',
+                        scripts: {postRequest: {exec: [longScript]}},
+                    },
+                    {
+                        id: 2,
+                        description: 'R2',
+                        method: 'post',
+                        operationPath: '/transfers',
+                        scripts: {postRequest: {exec: [longScript]}},
+                    },
+                ],
+            },
+        ],
     };
 
     const analysis = analyzeCollectionDuplication(collection);
     t.ok(analysis.duplicatedScripts > 0, 'Detects duplicated postRequest scripts');
     t.ok(
-        analysis.suggestions.some(s => s.type === 'script' && s.locations.some(l => l.includes('postRequest'))),
+        analysis.suggestions.some(
+            s => s.type === 'script' && s.locations.some(l => l.includes('postRequest')),
+        ),
         'postRequest label in suggestion locations',
     );
 });
 
 test('analyzeCollectionDuplication - truncates long script pattern for display', async t => {
     // Script > 100 chars, duplicated in two requests
-    const longLine = 'pm.environment.set("a", "1"); pm.environment.set("b", "2"); pm.environment.set("c", "3"); pm.environment.set("d", "4");';
+    const longLine =
+        'pm.environment.set("a", "1"); pm.environment.set("b", "2"); pm.environment.set("c", "3"); pm.environment.set("d", "4");';
     const collection: ITtkCollection = {
         name: 'Long Script Test',
-        test_cases: [{
-            id: 1, name: 'Test',
-            requests: [
-                {id: 1, description: 'R1', method: 'post', operationPath: '/a', scripts: {preRequest: {exec: [longLine]}}},
-                {id: 2, description: 'R2', method: 'post', operationPath: '/b', scripts: {preRequest: {exec: [longLine]}}},
-            ],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'R1',
+                        method: 'post',
+                        operationPath: '/a',
+                        scripts: {preRequest: {exec: [longLine]}},
+                    },
+                    {
+                        id: 2,
+                        description: 'R2',
+                        method: 'post',
+                        operationPath: '/b',
+                        scripts: {preRequest: {exec: [longLine]}},
+                    },
+                ],
+            },
+        ],
     };
 
     const analysis = analyzeCollectionDuplication(collection);
@@ -614,26 +714,63 @@ test('analyzeCollectionDuplication - truncates long script pattern for display',
 test('emitCollection - to.be.empty → assert.equal(x.length, 0)', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1, name: 'Test', requests: [{
-                id: 1, description: 'Req', method: 'get', operationPath: '/test',
-                tests: {assertions: [{id: 1, description: 'Empty check', exec: ['expect(response.body).to.be.empty']}]},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'get',
+                        operationPath: '/test',
+                        tests: {
+                            assertions: [
+                                {
+                                    id: 1,
+                                    description: 'Empty check',
+                                    exec: ['expect(response.body).to.be.empty'],
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
-    t.ok(ts.includes('assert.equal') && ts.includes('.length, 0'), 'to.be.empty converts correctly');
+    t.ok(
+        ts.includes('assert.equal') && ts.includes('.length, 0'),
+        'to.be.empty converts correctly',
+    );
 });
 
 test('emitCollection - to.not.be.empty → assert.ok(x)', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1, name: 'Test', requests: [{
-                id: 1, description: 'Req', method: 'get', operationPath: '/test',
-                tests: {assertions: [{id: 1, description: 'Not empty check', exec: ['expect(response.body.items).to.not.be.empty']}]},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'get',
+                        operationPath: '/test',
+                        tests: {
+                            assertions: [
+                                {
+                                    id: 1,
+                                    description: 'Not empty check',
+                                    exec: ['expect(response.body.items).to.not.be.empty'],
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('assert.ok'), 'to.not.be.empty converts to assert.ok');
@@ -642,12 +779,29 @@ test('emitCollection - to.not.be.empty → assert.ok(x)', async t => {
 test('emitCollection - unrecognised Chai → TODO comment', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1, name: 'Test', requests: [{
-                id: 1, description: 'Req', method: 'get', operationPath: '/test',
-                tests: {assertions: [{id: 1, description: 'Custom check', exec: ['expect(x).to.have.length(3)']}]},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'get',
+                        operationPath: '/test',
+                        tests: {
+                            assertions: [
+                                {
+                                    id: 1,
+                                    description: 'Custom check',
+                                    exec: ['expect(x).to.have.length(3)'],
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('// TODO:'), 'Unrecognised Chai wrapped in TODO comment');
@@ -656,13 +810,23 @@ test('emitCollection - unrecognised Chai → TODO comment', async t => {
 test('emitCollection - embedded environment var becomes template literal', async t => {
     const collection: ITtkCollection = {
         name: 'Test',
-        test_cases: [{
-            id: 1, name: 'Test', requests: [{
-                id: 1, description: 'Create',
-                method: 'post', operationPath: '/transfers',
-                body: {note: 'Transfer for {$environment.CUSTOMER_ID} to {$environment.PAYEE_ID}'},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'Test',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Create',
+                        method: 'post',
+                        operationPath: '/transfers',
+                        body: {
+                            note: 'Transfer for {$environment.CUSTOMER_ID} to {$environment.PAYEE_ID}',
+                        },
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     // String with embedded refs should become a template literal
@@ -703,18 +867,22 @@ test('parseCollection - preserves headers and params', async t => {
     try {
         const collectionData = {
             name: 'Headers Test',
-            test_cases: [{
-                id: 1,
-                name: 'Case 1',
-                requests: [{
+            test_cases: [
+                {
                     id: 1,
-                    description: 'Get with headers',
-                    method: 'get',
-                    operationPath: '/transfers/{ID}',
-                    headers: {'Authorization': 'Bearer token', 'Accept': 'application/json'},
-                    params: {ID: 'test-id'},
-                }],
-            }],
+                    name: 'Case 1',
+                    requests: [
+                        {
+                            id: 1,
+                            description: 'Get with headers',
+                            method: 'get',
+                            operationPath: '/transfers/{ID}',
+                            headers: {Authorization: 'Bearer token', Accept: 'application/json'},
+                            params: {ID: 'test-id'},
+                        },
+                    ],
+                },
+            ],
         };
 
         const collectionPath = pjoin(tmpDir, 'collection.json');
@@ -722,7 +890,7 @@ test('parseCollection - preserves headers and params', async t => {
 
         const parsed = await parseCollection(collectionPath);
 
-        t.match(parsed.test_cases[0].requests[0].headers, {'Authorization': 'Bearer token'});
+        t.match(parsed.test_cases[0].requests[0].headers, {Authorization: 'Bearer token'});
         t.match(parsed.test_cases[0].requests[0].params!, {ID: 'test-id'});
     } finally {
         await rmrf(tmpDir, {recursive: true, force: true});
@@ -734,27 +902,35 @@ test('parseCollection - preserves headers and params', async t => {
 test('extractCollectionVariables - picks up vars from scripts and assertions', async t => {
     const collection: ITtkCollection = {
         name: 'VarExtract',
-        test_cases: [{
-            id: 1,
-            name: 'Test',
-            requests: [{
+        test_cases: [
+            {
                 id: 1,
-                description: 'Req',
-                method: 'post',
-                operationPath: '/test',
-                scripts: {
-                    preRequest:  {exec: ['pm.environment.set("id", "{$environment.SENDER_ID}")']},
-                    postRequest: {exec: ['console.log("{$response.body.transferId}")']},
-                },
-                tests: {
-                    assertions: [{
+                name: 'Test',
+                requests: [
+                    {
                         id: 1,
-                        description: 'Check',
-                        exec: ['expect("{$environment.AMOUNT}").to.equal("100")'],
-                    }],
-                },
-            }],
-        }],
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/test',
+                        scripts: {
+                            preRequest: {
+                                exec: ['pm.environment.set("id", "{$environment.SENDER_ID}")'],
+                            },
+                            postRequest: {exec: ['console.log("{$response.body.transferId}")']},
+                        },
+                        tests: {
+                            assertions: [
+                                {
+                                    id: 1,
+                                    description: 'Check',
+                                    exec: ['expect("{$environment.AMOUNT}").to.equal("100")'],
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        ],
     };
 
     const vars = extractCollectionVariables(collection);
@@ -782,12 +958,21 @@ test('calculateReductionPercentage - returns 0 when totalRequests is 0', async t
 test('emitCollection - body with empty array emits []', async t => {
     const collection: ITtkCollection = {
         name: 'ArrayTest',
-        test_cases: [{
-            id: 1, name: 'T', requests: [{
-                id: 1, description: 'Req', method: 'post', operationPath: '/test',
-                body: {items: [], flag: true, count: 42},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'T',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/test',
+                        body: {items: [], flag: true, count: 42},
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('items: []'), 'Empty array emits []');
@@ -799,16 +984,25 @@ test('emitCollection - large object body triggers multi-line format', async t =>
     // Build an object whose inline representation exceeds 60 chars
     const collection: ITtkCollection = {
         name: 'BigBody',
-        test_cases: [{
-            id: 1, name: 'T', requests: [{
-                id: 1, description: 'Req', method: 'post', operationPath: '/test',
-                body: {
-                    transferId: 'some-long-uuid-value-here',
-                    payerFsp: 'payer-fsp-name',
-                    payeeFsp: 'payee-fsp-name',
-                },
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'T',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/test',
+                        body: {
+                            transferId: 'some-long-uuid-value-here',
+                            payerFsp: 'payer-fsp-name',
+                            payeeFsp: 'payee-fsp-name',
+                        },
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     // Multi-line object: each property on its own line with a trailing comma
@@ -819,12 +1013,21 @@ test('emitCollection - large object body triggers multi-line format', async t =>
 test('emitCollection - empty object body emits {}', async t => {
     const collection: ITtkCollection = {
         name: 'EmptyBody',
-        test_cases: [{
-            id: 1, name: 'T', requests: [{
-                id: 1, description: 'Req', method: 'post', operationPath: '/test',
-                body: {},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'T',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/test',
+                        body: {},
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     t.ok(ts.includes('{}'), 'Empty object body emits {}');
@@ -841,12 +1044,21 @@ test('operationToHandlerName - unknown method → Execute', async t => {
 test('emitCollection - array body emits {} placeholder', async t => {
     const collection: ITtkCollection = {
         name: 'ArrayBodyTest',
-        test_cases: [{
-            id: 1, name: 'T', requests: [{
-                id: 1, description: 'Req', method: 'post', operationPath: '/transfers',
-                body: ['item1', 'item2'] as any, // array body edge case
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'T',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/transfers',
+                        body: ['item1', 'item2'] as any, // array body edge case
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     // emitObjectLiteral returns `{},` for array/non-object bodies
@@ -863,25 +1075,36 @@ test('parseCollection - parses preRequest and postRequest scripts', async t => {
     try {
         const data = {
             name: 'Scripts Collection',
-            test_cases: [{
-                id: 1, name: 'TC',
-                requests: [{
-                    id: 1, description: 'Scripted request',
-                    method: 'post',
-                    operationPath: '/transfers',
-                    scripts: {
-                        preRequest: {exec: ['pm.environment.set("id", "123")']},
-                        postRequest: {exec: ['pm.environment.set("result", response.body.id)']},
-                    },
-                }],
-            }],
+            test_cases: [
+                {
+                    id: 1,
+                    name: 'TC',
+                    requests: [
+                        {
+                            id: 1,
+                            description: 'Scripted request',
+                            method: 'post',
+                            operationPath: '/transfers',
+                            scripts: {
+                                preRequest: {exec: ['pm.environment.set("id", "123")']},
+                                postRequest: {
+                                    exec: ['pm.environment.set("result", response.body.id)'],
+                                },
+                            },
+                        },
+                    ],
+                },
+            ],
         };
         const p = pj2(dir, 'col.json');
         await wf2(p, JSON.stringify(data), 'utf-8');
         const parsed = await parseCollection(p);
         const req = parsed.test_cases[0].requests[0];
         t.equal(req.scripts?.preRequest?.exec[0], 'pm.environment.set("id", "123")');
-        t.equal(req.scripts?.postRequest?.exec[0], 'pm.environment.set("result", response.body.id)');
+        t.equal(
+            req.scripts?.postRequest?.exec[0],
+            'pm.environment.set("result", response.body.id)',
+        );
     } finally {
         await rmrf2(dir, {recursive: true, force: true});
     }
@@ -918,22 +1141,32 @@ test('parseCollection - uses req.path when operationPath absent', async t => {
         const p = pj2(dir, 'col.json');
         const data = {
             name: 'Path Fallback',
-            test_cases: [{
-                id: 1, name: 'TC',
-                requests: [{
-                    id: 1, description: 'Use path field',
-                    method: 'get',
-                    path: '/fallback-path',  // operationPath absent
-                    scripts: {
-                        postRequest: {exec: ['console.log("done")']},
-                        // no preRequest — exercises the undefined branch
-                    },
-                }],
-            }],
+            test_cases: [
+                {
+                    id: 1,
+                    name: 'TC',
+                    requests: [
+                        {
+                            id: 1,
+                            description: 'Use path field',
+                            method: 'get',
+                            path: '/fallback-path', // operationPath absent
+                            scripts: {
+                                postRequest: {exec: ['console.log("done")']},
+                                // no preRequest — exercises the undefined branch
+                            },
+                        },
+                    ],
+                },
+            ],
         };
         await wf2(p, JSON.stringify(data), 'utf-8');
         const parsed = await parseCollection(p);
-        t.equal(parsed.test_cases[0].requests[0].operationPath, '/fallback-path', 'req.path used as fallback');
+        t.equal(
+            parsed.test_cases[0].requests[0].operationPath,
+            '/fallback-path',
+            'req.path used as fallback',
+        );
         t.ok(parsed.test_cases[0].requests[0].scripts?.postRequest, 'postRequest parsed');
         t.notOk(parsed.test_cases[0].requests[0].scripts?.preRequest, 'preRequest is undefined');
     } finally {
@@ -946,30 +1179,53 @@ test('parseCollection - uses req.path when operationPath absent', async t => {
 test('emitCollection - body with non-empty array emits array literal', async t => {
     const collection: ITtkCollection = {
         name: 'ArrayBody',
-        test_cases: [{
-            id: 1, name: 'T', requests: [{
-                id: 1, description: 'Req', method: 'post', operationPath: '/test',
-                body: {ids: ['abc', 'def', 'ghi']},
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'T',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/test',
+                        body: {ids: ['abc', 'def', 'ghi']},
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
-    t.ok(ts.includes("'abc'") && ts.includes("'def'") && ts.includes("'ghi'"), 'Array values emitted');
+    t.ok(
+        ts.includes("'abc'") && ts.includes("'def'") && ts.includes("'ghi'"),
+        'Array values emitted',
+    );
 });
 
 test('emitCollection - deeply nested body triggers multi-line object', async t => {
     // The inline representation of this nested object will exceed 60 chars
     const collection: ITtkCollection = {
         name: 'DeepNested',
-        test_cases: [{
-            id: 1, name: 'T', requests: [{
-                id: 1, description: 'Req', method: 'post', operationPath: '/test',
-                body: {
-                    amount: {amount: '100.00', currency: 'USD'},
-                    payer: {partyIdInfo: {partyIdType: 'MSISDN', partyIdentifier: '123456789'}},
-                },
-            }],
-        }],
+        test_cases: [
+            {
+                id: 1,
+                name: 'T',
+                requests: [
+                    {
+                        id: 1,
+                        description: 'Req',
+                        method: 'post',
+                        operationPath: '/test',
+                        body: {
+                            amount: {amount: '100.00', currency: 'USD'},
+                            payer: {
+                                partyIdInfo: {partyIdType: 'MSISDN', partyIdentifier: '123456789'},
+                            },
+                        },
+                    },
+                ],
+            },
+        ],
     };
     const ts = emitCollection(collection);
     // Multi-line rendering means we get newlines between properties

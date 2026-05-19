@@ -9,7 +9,7 @@ export default handler(({handler: {callbackCallbackReceive}}) => ({
     callbackHandleTransferErrorCallback: async (
         params: {
             id: string;
-            body: any;
+            body: unknown;
             headers: Record<string, string>;
         },
         $meta: IMeta,

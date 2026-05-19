@@ -92,32 +92,34 @@ test('deepDiff — deeply nested multi-change', async t => {
 
 test('createConfigProxy — reads current values', async t => {
     const store = {db: {host: 'localhost', port: 5432}};
-    const {proxy} = createConfigProxy(store);
-    t.equal((proxy as any).db.host, 'localhost');
-    t.equal((proxy as any).db.port, 5432);
+    const {proxy}: {proxy: typeof store} = createConfigProxy(store);
+    t.equal(proxy.db.host, 'localhost');
+    t.equal(proxy.db.port, 5432);
 });
 
 test('createConfigProxy — reflects updated values after update()', async t => {
     const store = {db: {host: 'localhost'}};
-    const {proxy, update} = createConfigProxy(store);
+    const {proxy, update}: {proxy: typeof store; update: (newStore: typeof store) => void} =
+        createConfigProxy(store);
 
-    t.equal((proxy as any).db.host, 'localhost');
+    t.equal(proxy.db.host, 'localhost');
 
-    update({db: {host: '10.0.0.1'}} as any);
+    update({db: {host: '10.0.0.1'}});
 
-    t.equal((proxy as any).db.host, '10.0.0.1', 'proxy reflects updated value');
+    t.equal(proxy.db.host, '10.0.0.1', 'proxy reflects updated value');
 });
 
 test('createConfigProxy — proxy reference remains stable across updates', async t => {
     const store = {a: 1};
-    const {proxy, update} = createConfigProxy(store);
+    const {proxy, update}: {proxy: typeof store; update: (newStore: typeof store) => void} =
+        createConfigProxy(store);
 
     const ref1 = proxy;
-    update({a: 2} as any);
+    update({a: 2});
     const ref2 = proxy;
 
     t.equal(ref1, ref2, 'same proxy reference after update');
-    t.equal((ref1 as any).a, 2, 'old reference reflects new value');
+    t.equal(ref1.a, 2, 'old reference reflects new value');
 });
 
 test('createConfigProxy — has/ownKeys/enumeration work correctly', async t => {
@@ -135,8 +137,8 @@ test('createConfigProxy — has/ownKeys/enumeration work correctly', async t => 
 
 test('createConfigProxy — undefined properties return undefined', async t => {
     const store = {a: 1};
-    const {proxy} = createConfigProxy(store);
-    t.equal((proxy as any).nonExistent, undefined);
+    const {proxy}: {proxy: {a: number; nonExistent?: unknown}} = createConfigProxy(store);
+    t.equal(proxy.nonExistent, undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -162,7 +164,13 @@ test('createConfigProxy — undefined properties return undefined', async t => {
 
 test('partial destructuring — theme sub-object is a live proxy node that reflects current values after update', async t => {
     const initialStore = {theme: {name: 'light', mode: 'day'}};
-    const {proxy, update} = createConfigProxy(initialStore);
+    const {
+        proxy,
+        update,
+    }: {
+        proxy: {theme: {name: string; mode: string}};
+        update: (newStore: typeof initialStore) => void;
+    } = createConfigProxy(initialStore);
 
     // Simulate factory-time partial destructuring: extract the `theme` sub-object
     // (as would happen in `handler(({ config: { theme } }) => ...)`)
@@ -179,12 +187,16 @@ test('partial destructuring — theme sub-object is a live proxy node that refle
     //     root `current` cell, so it reflects the new values after update() ---
     t.equal(theme.name, 'dark', 'sub-proxy theme.name reflects update via path traversal');
     t.equal(theme.mode, 'night', 'sub-proxy theme.mode reflects update via path traversal');
-    t.equal((proxy as any).theme.name, 'dark', 'root proxy.theme.name also reflects update');
+    t.equal(proxy.theme.name, 'dark', 'root proxy.theme.name also reflects update');
 });
 
 test('full destructuring — scalar captured at factory time does NOT reflect later updates', async t => {
     const initialStore = {theme: {name: 'light'}};
-    const {proxy, update} = createConfigProxy(initialStore);
+    const {
+        proxy,
+        update,
+    }: {proxy: {theme: {name: string}}; update: (newStore: typeof initialStore) => void} =
+        createConfigProxy(initialStore);
 
     // Simulate the UNSAFE pattern: extract a leaf primitive at factory time
     // (as would happen in `handler(({ config: { theme: { name } } }) => ...)`)
@@ -201,7 +213,7 @@ test('full destructuring — scalar captured at factory time does NOT reflect la
     t.equal(capturedName, 'light', 'captured scalar is stale after config update');
 
     // Root proxy reflects the new value
-    t.equal((proxy as any).theme.name, 'dark', 'root proxy reflects updated value');
+    t.equal(proxy.theme.name, 'dark', 'root proxy reflects updated value');
 
     // This proves: NEVER destructure leaf primitives at handler factory time.
     t.not(
@@ -233,12 +245,19 @@ test('root proxy access — always reflects current values regardless of nesting
 // ---------------------------------------------------------------------------
 
 test('factory phase guard — throws on primitive read in default throw mode', async t => {
-    const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost', port: 5432});
-    const p = proxy as any;
+    const {
+        proxy,
+        enterConfig,
+        exitConfig,
+    }: {
+        proxy: {host: string; port: number};
+        enterConfig: (mode?: 'throw' | 'collect') => void;
+        exitConfig: () => Error[];
+    } = createConfigProxy({host: 'localhost', port: 5432});
 
     enterConfig(); // default mode = 'throw'
     t.throws(
-        () => p.host,
+        () => proxy.host,
         /anti-pattern/,
         'reading a primitive during factory phase throws by default',
     );
@@ -247,7 +266,7 @@ test('factory phase guard — throws on primitive read in default throw mode', a
 
 test('factory phase guard — collects errors in collect mode without throwing', async t => {
     const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost', port: 5432});
-    const p = proxy as any;
+    const p = proxy as {host: string; port: number};
 
     enterConfig('collect');
     t.doesNotThrow(() => p.host, 'no throw in collect mode');
@@ -261,7 +280,7 @@ test('factory phase guard — collects errors in collect mode without throwing',
 
 test('factory phase guard — sub-object read is NOT flagged (safe partial destructuring)', async t => {
     const {proxy, enterConfig, exitConfig} = createConfigProxy({theme: {name: 'light'}});
-    const p = proxy as any;
+    const p = proxy as {theme: {name: string}};
 
     enterConfig(); // throw mode
     t.doesNotThrow(
@@ -273,7 +292,7 @@ test('factory phase guard — sub-object read is NOT flagged (safe partial destr
 
 test('factory phase guard — undefined read is NOT flagged', async t => {
     const {proxy, enterConfig, exitConfig} = createConfigProxy({a: 1});
-    const p = proxy as any;
+    const p = proxy as {a: number; nonExistent?: unknown};
 
     enterConfig();
     t.doesNotThrow(
@@ -285,7 +304,7 @@ test('factory phase guard — undefined read is NOT flagged', async t => {
 
 test('factory phase guard — guard is inactive after exitConfigFactoryPhase', async t => {
     const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost'});
-    const p = proxy as any;
+    const p = proxy as {host: string};
 
     enterConfig();
     exitConfig(); // exit immediately
@@ -295,11 +314,11 @@ test('factory phase guard — guard is inactive after exitConfigFactoryPhase', a
 
 test('factory phase guard — exitConfigFactoryPhase returns empty array in throw mode', async t => {
     const {proxy, enterConfig, exitConfig} = createConfigProxy({host: 'localhost'});
-    const p = proxy as any;
+    const p = proxy as {host: string};
 
     enterConfig(); // throw mode — errors are not collected
     try {
-        p.host; // would throw
+        void p.host; // would throw
     } catch (_) {
         // expected
     }

@@ -132,13 +132,16 @@ export function DateRange({
         if (typeof value === 'string' && !value.startsWith('[') && RELATIVE_RE.test(value)) {
             const preset = PRESETS.find(p => p.from === value || p.display === value);
             const [f, t] = computeRelative(preset?.from ?? value, exclusive, timeOnly);
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
             setDisplayText(preset?.display ?? value);
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
             setDisplayFrom(f);
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
             setDisplayTo(t);
             onChange?.({value: [f, t]});
         }
         // Only run when `value` identity changes (not on every render)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line @eslint-react/exhaustive-deps -- exclusive/onChange/timeOnly intentionally omitted
     }, [value]);
 
     const openPanel = React.useCallback(

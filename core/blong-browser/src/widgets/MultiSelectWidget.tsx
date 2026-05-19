@@ -34,7 +34,7 @@ export function MultiSelectWidget({
     } = schema.widget ?? {};
     const {dispatch} = useBlongUi();
     const [options, setOptions] = useState<SelectOption[]>(
-        staticOptions ? toOptions(staticOptions) : [],
+        () => staticOptions ? toOptions(staticOptions) : [],
     );
 
     useEffect(() => {

@@ -4,6 +4,14 @@ import {useAppStore} from '../../state/appStore.js';
 import {fireEvent, render, screen} from '../../test/render.js';
 import {Portal} from './Portal.js';
 
+function FakeTabContent() {
+    return <div data-testid="tab-content">Tab Content</div>;
+}
+
+function FakeTabSimple() {
+    return <div>Tab</div>;
+}
+
 beforeEach(() => {
     useAppStore.setState(s => ({
         ...s,
@@ -66,14 +74,13 @@ describe('Portal', () => {
     });
 
     it('renders tabs when they exist in the store', () => {
-        const FakeComp = () => <div data-testid="tab-content">Tab Content</div>;
         act(() => {
             useAppStore.getState().openTab({
                 id: 'tab-1',
                 actionName: 'test.tab',
                 params: {},
                 title: 'Test Tab',
-                component: FakeComp,
+                component: FakeTabContent,
             });
         });
         const {container} = render(<Portal />);
@@ -109,14 +116,13 @@ describe('Portal', () => {
     });
 
     it('closes a tab when close button is clicked', () => {
-        const FakeComp = () => <div>Tab</div>;
         act(() => {
             useAppStore.getState().openTab({
                 id: 'close-tab',
                 actionName: 'test',
                 params: {},
                 title: 'Close Me',
-                component: FakeComp,
+                component: FakeTabSimple,
             });
         });
         const {container} = render(<Portal />);

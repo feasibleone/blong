@@ -17,7 +17,7 @@ export default handler(() => ({
      * @param receipt - Callback data
      * @param $meta - Metadata
      */
-    callbackCallbackReceive: (receipt: ICallbackReceipt, $meta: IMeta) => {
+    callbackCallbackReceive: (receipt: ICallbackReceipt, _$meta: IMeta) => {
         const {correlationId, type, status, headers, body} = receipt;
         const pendingCallbacks = getPendingCallbacks();
 

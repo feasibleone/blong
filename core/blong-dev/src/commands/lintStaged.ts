@@ -83,6 +83,7 @@ export async function lintStaged(): Promise<void> {
 
     let failed = false;
     for (const [projectFolder, files] of byProject) {
+        process.stderr.write(`\nblong-dev lint-staged: ${projectFolder} (${files.join(', ')})\n`);
         const pkgDir = join(repoRoot, projectFolder);
         // Prepend the package's own node_modules/.bin so it can find tsc/cspell/eslint
         const env: NodeJS.ProcessEnv = {
@@ -93,7 +94,10 @@ export async function lintStaged(): Promise<void> {
             cwd: pkgDir,
             env,
         });
-        if (code !== 0) failed = true;
+        if (code !== 0) {
+            process.stderr.write(`blong-dev lint-staged: FAILED ${projectFolder} (exit ${code})\n`);
+            failed = true;
+        }
     }
 
     if (failed) process.exit(1);

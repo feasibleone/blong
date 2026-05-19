@@ -62,9 +62,11 @@ export type {TreeNode} from 'primereact/treenode';
 export type {TreeSelectProps} from 'primereact/treeselect';
 export type {TreeTableProps} from 'primereact/treetable';
 /** Compatibility alias: renamed/split in PrimeReact 10 — use onSelectionChange event directly for new code. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DataTableSelectionChangeParams = {value: any; originalEvent?: any};
 /** Sort event type extracted from DataTableProps (DataTableStateEvent is not exported in v10). */
 export type DataTableSortParams = Parameters<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     NonNullable<import('primereact/datatable').DataTableProps<Record<string, any>[]>['onSort']>
 >[0];
 /** TabPanelProps extended with the `__TYPE` discriminator PrimeReact TabView uses to identify
@@ -354,7 +356,7 @@ export function ConfirmPopup({dismissable = true, ...props}: ConfirmPopupProps) 
 //             loadingIcon:'pi pi-spinner', expandedRowIcon:'pi pi-chevron-down',
 //             collapsedRowIcon:'pi pi-chevron-right', tabIndex:0, scrollDirection:'vertical',
 //             stateStorage:'session', compareSelectionBy:'deepEquals'
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DataTable = PrimeDataTable<any>;
 // Wrapper accepts any DataTable-compatible props. We use a permissive index signature here
 // because DataTableProps<T> is a discriminated union (single/multiple/cell-single/cell-multiple)
@@ -384,7 +386,9 @@ export function DataTable({
     compareSelectionBy = 'deepEquals',
     ...props
 }: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ref?: React.Ref<PrimeDataTable<any>>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }) {
     return (
@@ -496,7 +500,6 @@ export function Dropdown({
 }
 
 // FileUpload — mode:'advanced', previewWidth:50
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type FileUpload = PrimeFileUpload;
 export function FileUpload({
     ref,
@@ -615,7 +618,6 @@ export function MultiSelect({
 }
 
 // OverlayPanel — dismissable:true
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type OverlayPanel = PrimeOverlayPanel;
 export function OverlayPanel({
     ref,
@@ -804,7 +806,6 @@ export function TabView({activeIndex = 0, renderActiveOnly = true, ...props}: Ta
 }
 
 // Toast — position:'top-right', baseZIndex:0, appendTo:'self'
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type Toast = PrimeToast;
 export function Toast({
     ref,

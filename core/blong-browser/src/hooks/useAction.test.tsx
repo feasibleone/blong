@@ -8,6 +8,7 @@ import {useAction} from './useAction.js';
 function makeWrapper(
     dispatch: (method: string, params?: Record<string, unknown>) => Promise<unknown>,
 ) {
+    // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
             <BlongUiProvider

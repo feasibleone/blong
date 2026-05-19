@@ -3,7 +3,7 @@
  * When active=false, all design concerns are zero-cost no-ops.
  */
 import type {ICardConfig, IEnrichedFieldSchema} from '@feasibleone/blong';
-import {createContext, useCallback, useContext, useState, type ReactNode} from 'react';
+import {createContext, use, useCallback, useState, type ReactNode} from 'react';
 import type {LayoutConfig} from '../hooks/useLayout.js';
 
 export type DesignElementType = 'card' | 'field' | 'deck' | 'widget';
@@ -47,7 +47,7 @@ export interface IDesignModeContextValue {
 export const DesignModeContext = createContext<IDesignModeContextValue | null>(null);
 
 export function useDesignModeContext(): IDesignModeContextValue {
-    const ctx = useContext(DesignModeContext);
+    const ctx = use(DesignModeContext);
     if (!ctx)
         throw new Error(
             '[blong-browser] useDesignModeContext must be used inside DesignModeProvider',
@@ -135,7 +135,7 @@ export function DesignModeProvider({
 
     if (!active) {
         return (
-            <DesignModeContext.Provider value={inertContext}>{children}</DesignModeContext.Provider>
+            <DesignModeContext value={inertContext}>{children}</DesignModeContext>
         );
     }
 
@@ -155,5 +155,5 @@ export function DesignModeProvider({
         saveConfig,
     };
 
-    return <DesignModeContext.Provider value={value}>{children}</DesignModeContext.Provider>;
+    return <DesignModeContext value={value}>{children}</DesignModeContext>;
 }

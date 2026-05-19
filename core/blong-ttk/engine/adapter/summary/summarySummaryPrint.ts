@@ -21,7 +21,7 @@ export default handler(() => ({
             duration: number;
             outputDir?: string;
         },
-        $meta: IMeta,
+        _$meta: IMeta,
     ) => {
         console.log('\n=== Test Execution Summary ===');
         console.log(`Total Tests:  ${results.totalTests}`);

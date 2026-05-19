@@ -24,7 +24,7 @@ export default browser(blong => ({
 
 ## Architecture
 
-```
+```text
 Suite browser.ts
 │
 └── blong-browser realm (browser.ts)
@@ -48,7 +48,7 @@ Connects to the server-side HTTP API. Extends `adapter.http` and uses `codec.jso
 
 Every call in the `backend.*` namespace is forwarded to the server as a JSON-RPC request. Suites and realms reach server-side business logic exclusively through this adapter, e.g.:
 
-```
+```text
 backend.login.token.create  →  POST /ports/login/request
 backend.marine.coral.find   →  POST /ports/marine/request
 ```

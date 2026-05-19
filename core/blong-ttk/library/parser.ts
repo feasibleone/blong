@@ -1,20 +1,16 @@
 /**
  * ml-testing-toolkit JSON parser
- * 
+ *
  * Parses the ml-testing-toolkit JSON test collection format into structured objects.
  */
 
 import {readFile} from 'node:fs/promises';
-import type {
-    ITtkCollection,
-    ITtkTestCase,
-    ITtkRequest,
-    ITtkAssertion,
-} from '../types.js';
+import type {ITtkAssertion, ITtkCollection, ITtkRequest, ITtkTestCase} from '../types.js';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * Parse ml-testing-toolkit JSON collection file
- * 
+ *
  * @param filepath - Path to JSON collection file
  * @returns Parsed collection structure
  */
@@ -57,17 +53,25 @@ function parseRequest(req: any): ITtkRequest {
         headers: req.headers || {},
         body: req.body,
         params: req.params,
-        tests: req.tests ? {
-            assertions: (req.tests.assertions || []).map(parseAssertion),
-        } : undefined,
-        scripts: req.scripts ? {
-            preRequest: req.scripts.preRequest ? {
-                exec: req.scripts.preRequest.exec || [],
-            } : undefined,
-            postRequest: req.scripts.postRequest ? {
-                exec: req.scripts.postRequest.exec || [],
-            } : undefined,
-        } : undefined,
+        tests: req.tests
+            ? {
+                  assertions: (req.tests.assertions || []).map(parseAssertion),
+              }
+            : undefined,
+        scripts: req.scripts
+            ? {
+                  preRequest: req.scripts.preRequest
+                      ? {
+                            exec: req.scripts.preRequest.exec || [],
+                        }
+                      : undefined,
+                  postRequest: req.scripts.postRequest
+                      ? {
+                            exec: req.scripts.postRequest.exec || [],
+                        }
+                      : undefined,
+              }
+            : undefined,
     };
 }
 
@@ -84,7 +88,7 @@ function parseAssertion(assertion: any): ITtkAssertion {
 
 /**
  * Extract environment variable references from scripts and body
- * 
+ *
  * Finds patterns like:
  * - {$environment.VARIABLE_NAME}
  * - {$request.body.path}
