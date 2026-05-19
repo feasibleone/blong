@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-ttk-v1.1.1...blong-ttk-v1.2.0) (2026-05-19)
+
+
+### Features
+
+* blong-dev ([8eb1aa4](https://github.com/feasibleone/blong/commit/8eb1aa4a8acb6a3dcdd52fb51582e0403efa4064))
+
+
+### Bug Fixes
+
+* lint ([8cde9a7](https://github.com/feasibleone/blong/commit/8cde9a7b9d54d4556bf33b4f8f61d5c5597ca108))
+* linting ([46d7549](https://github.com/feasibleone/blong/commit/46d7549477c6b863e09972e8c6903a38b5836a8e))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-ttk-v1.1.0...blong-ttk-v1.1.1) (2026-04-26)
 
 

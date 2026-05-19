@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-config-v1.0.4...blong-config-v1.1.0) (2026-05-19)
+
+
+### Features
+
+* blong-dev ([8eb1aa4](https://github.com/feasibleone/blong/commit/8eb1aa4a8acb6a3dcdd52fb51582e0403efa4064))
+
+
+### Bug Fixes
+
+* lint ([9fa11d1](https://github.com/feasibleone/blong/commit/9fa11d15495a801b63668cb0c8399bae5e9fd6e1))
+* lint ([8cde9a7](https://github.com/feasibleone/blong/commit/8cde9a7b9d54d4556bf33b4f8f61d5c5597ca108))
+* linting ([27102ca](https://github.com/feasibleone/blong/commit/27102ca91ddf21124439452486a086aa68fc8886))
+* linting ([46d7549](https://github.com/feasibleone/blong/commit/46d7549477c6b863e09972e8c6903a38b5836a8e))
+
 ## [1.0.4](https://github.com/feasibleone/blong/compare/blong-config-v1.0.3...blong-config-v1.0.4) (2026-04-29)
 
 
