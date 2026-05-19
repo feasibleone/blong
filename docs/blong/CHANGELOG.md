@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.15.0...blong-docs-v1.15.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* lint ([8cde9a7](https://github.com/feasibleone/blong/commit/8cde9a7b9d54d4556bf33b4f8f61d5c5597ca108))
+* linting ([27102ca](https://github.com/feasibleone/blong/commit/27102ca91ddf21124439452486a086aa68fc8886))
+
 ## [1.15.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.14.0...blong-docs-v1.15.0) (2026-05-15)
 
 

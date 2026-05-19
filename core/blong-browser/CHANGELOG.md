@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.6.2...blong-browser-v1.7.0) (2026-05-19)
+
+
+### Features
+
+* blong-dev ([8eb1aa4](https://github.com/feasibleone/blong/commit/8eb1aa4a8acb6a3dcdd52fb51582e0403efa4064))
+
+
+### Bug Fixes
+
+* lint ([8cde9a7](https://github.com/feasibleone/blong/commit/8cde9a7b9d54d4556bf33b4f8f61d5c5597ca108))
+* UI test warnings ([93db65f](https://github.com/feasibleone/blong/commit/93db65f71d93e2bc892445409a1e7a2ec360f716))
+
 ## [1.6.2](https://github.com/feasibleone/blong/compare/blong-browser-v1.6.1...blong-browser-v1.6.2) (2026-05-15)
 
 
