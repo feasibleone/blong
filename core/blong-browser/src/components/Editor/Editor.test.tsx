@@ -378,6 +378,80 @@ describe('<Editor />', () => {
         expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
     });
 
+    // ── Refresh button — invalidates listAction queries ───────────────────────
+    //
+    // The __refresh__ toolbar action calls queryClient.invalidateQueries with a
+    // predicate that matches all queries whose key starts with refreshNamespace + '.'.
+    // TableWidget uses useQuery([listAction, params]) so invalidating the
+    // 'test.coral.' namespace re-triggers the fetch.
+
+    it('__refresh__ button triggers listAction re-fetch via query invalidation', async () => {
+        const listDispatch = vi.fn().mockResolvedValue({
+            items: [{coralId: 1, coralName: 'Staghorn Coral'}],
+            pagination: {recordsTotal: 1},
+        });
+
+        const {container} = render(
+            <Editor
+                schema={{
+                    properties: {
+                        coral: {
+                            title: '',
+                            type: 'array',
+                            widget: {
+                                type: 'table',
+                                listAction: 'test.coral.find',
+                                keyField: 'coralId',
+                                columns: ['coralName'],
+                            } as never,
+                            items: {
+                                properties: {
+                                    coralId: {title: 'ID'},
+                                    coralName: {title: 'Name'},
+                                },
+                            },
+                        },
+                    },
+                }}
+                cards={{browse: {label: 'Coral', widgets: ['coral']}}}
+                layout="browse"
+                layouts={{browse: ['browse']}}
+                toolbar={[
+                    {label: '', icon: 'pi pi-refresh', action: '__refresh__', title: 'Refresh'},
+                ]}
+                editable={false}
+                editMode={false}
+                refreshNamespace="test.coral"
+            />,
+            {dispatch: listDispatch},
+        );
+
+        // Wait for the initial listAction fetch to complete.
+        await waitFor(() => {
+            expect(listDispatch).toHaveBeenCalledWith('test.coral.find', expect.any(Object));
+        });
+        const callsBefore = listDispatch.mock.calls.filter(
+            ([m]: unknown[]) => m === 'test.coral.find',
+        ).length;
+
+        // Click the Refresh button — this invalidates 'test.coral.*' queries.
+        const refreshBtn = container.querySelector(
+            '[aria-label="Refresh"]',
+        ) as HTMLButtonElement | null;
+        expect(refreshBtn).toBeTruthy();
+        await act(async () => {
+            fireEvent.click(refreshBtn!);
+        });
+
+        // The listAction must be called again as the query is invalidated and refetched.
+        await waitFor(() => {
+            const callsAfter = listDispatch.mock.calls.filter(
+                ([m]: unknown[]) => m === 'test.coral.find',
+            ).length;
+            expect(callsAfter).toBeGreaterThan(callsBefore);
+        });
+    });
+
     // ── Structural assertions (verify DOM structure rather than exact HTML) ────
 
     it('Basic: role="toolbar" element is present', async () => {
@@ -920,5 +994,99 @@ describe('createAction / saveAction separation', () => {
         expect(screen.getByRole('button', {name: 'Save'})).toBeDisabled();
         // Reset is also disabled
         expect(screen.getByRole('button', {name: 'Reset'})).toBeDisabled();
+    });
+});
+
+// ── mode='new' typed value stability ─────────────────────────────────────────
+//
+// Regression suite for the bug in subjectObjectNew where `value: {}` was an
+// inline object literal inside the NewPage render function.  Every time
+// NewPage re-rendered (e.g. when isDirty transitioned to true on the first
+// keystroke), a *new* {} reference was produced.  Form's useEffect([value, reset])
+// fired and called reset({}) — clearing the user's input.
+//
+// The fix: hoist `const defaultValue = {}` outside the NewPage function body so
+// the reference is stable across re-renders (see subjectObjectNew.ts).
+//
+// Test 1 & 2 verify the correct contract: stable value prop → typing is preserved.
+// Test 3 calls Editor as a function with an inline value: {} to document exactly
+// HOW the bug manifested so the root cause is unambiguous.
+
+describe("mode='new' — typed value stability", () => {
+    const schema = {properties: {coralName: {title: 'Coral Name'}}};
+    const cards = {edit: {label: 'Coral', widgets: ['coralName']}};
+    // newEdit layout ensures mode='new' resolves to the 'edit' card set.
+    const layouts = {edit: ['edit'], newEdit: ['edit']};
+
+    it('typing preserves the entered value after dirty-state transition', async () => {
+        // Stable reference — identical object on every render, so Form's
+        // useEffect([value, reset]) never fires after the initial mount.
+        const stableValue: Record<string, unknown> = {};
+        render(<Editor schema={schema} cards={cards} layouts={layouts} mode="new" value={stableValue} />);
+        await act(async () => {});
+
+        const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
+
+        // Typing triggers a dirty-state transition which re-renders the Editor.
+        await act(async () => {
+            fireEvent.change(input, {target: {value: 'Staghorn'}});
+        });
+
+        // Save becomes enabled (dirty), and the typed value must still be present.
+        await waitFor(() => {
+            expect(screen.getByRole('button', {name: 'Save'})).not.toBeDisabled();
+        });
+        expect(input.value).toBe('Staghorn');
+    });
+
+    it('multiple sequential keystrokes are all preserved', async () => {
+        const stableValue: Record<string, unknown> = {};
+        render(<Editor schema={schema} cards={cards} layouts={layouts} mode="new" value={stableValue} />);
+        await act(async () => {});
+
+        const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
+
+        // Simulate typing a full name character by character.
+        for (const val of ['S', 'St', 'Sta', 'Stag', 'Staghorn']) {
+            await act(async () => {
+                fireEvent.change(input, {target: {value: val}});
+            });
+        }
+
+        // Final value must be the last typed string — no intermediate reset.
+        await waitFor(() => {
+            expect(input.value).toBe('Staghorn');
+        });
+    });
+
+    it('calling Editor({value: {}}) as a function resets the form on dirty — documents root cause', async () => {
+        // Simulate exactly the original subjectObjectNew bug:
+        // Editor is called as a plain function inside a React component, passing
+        // value: {} inline.  All of Editor's hooks run under BuggyNewPage's fiber.
+        // When isDirty transitions to true, BuggyNewPage re-renders, Editor() is
+        // re-invoked with a brand-new {} reference, and Form resets.
+        //
+        // This test documents that the root cause is the unstable value prop — the
+        // fix must be in the caller (hoist defaultValue outside the function body),
+        // NOT in the Editor or Form internals.
+        function BuggyNewPage() {
+            // value: {} is a new object reference on every BuggyNewPage render.
+            return Editor({schema, cards, layouts, mode: 'new', value: {}});
+        }
+
+        render(<BuggyNewPage />);
+        await act(async () => {});
+
+        const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
+
+        await act(async () => {
+            fireEvent.change(input, {target: {value: 'Staghorn'}});
+        });
+
+        // The dirty-state transition re-renders BuggyNewPage → new {} → Form reset.
+        // After the reset, the input is empty again.
+        await waitFor(() => {
+            expect(input.value).toBe('');
+        });
     });
 });

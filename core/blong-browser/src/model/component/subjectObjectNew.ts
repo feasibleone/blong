@@ -22,6 +22,11 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
             const schema = blong.lib.merge({}, model.schema, schemaOverride);
             // Hoisted outside NewPage so the object reference is stable across renders —
             // an inline object literal would create a new identity on every render and
+            // trigger the Form's value-sync effect (useEffect([value, reset])) on every
+            // dirty-state transition, calling reset({}) and wiping the user's input.
+            const defaultValue: Record<string, unknown> = {};
+            // Hoisted outside NewPage so the object reference is stable across renders —
+            // an inline object literal would create a new identity on every render and
             // trigger the Editor's tab-title effect every time, causing an infinite loop.
             const title = {new: `Create ${objectTitle}`, edit: `Edit ${objectTitle}`};
             function NewPage(props: Record<string, unknown>) {
@@ -33,7 +38,7 @@ export async function subjectObjectNew(model: IResolvedModelSpec, blong: IHandle
                     loadAction: methods.get,
                     createAction: methods.add,
                     saveAction: methods.edit,
-                    value: {},
+                    value: defaultValue,
                     mode: 'new',
                     editable: false,
                     title,

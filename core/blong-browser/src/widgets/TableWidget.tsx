@@ -17,6 +17,7 @@ import {
 } from '../primereact/index.js';
 
 import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '@feasibleone/blong';
+import {useQuery} from '@tanstack/react-query';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/Button.js';
 import {Text} from '../components/Text/Text.js';
@@ -559,9 +560,6 @@ export function TableWidget({
     const [listSortOrder, setListSortOrder] = useState<1 | -1>(1);
     const [listFirst, setListFirst] = useState(0);
     const [listPageSize, setListPageSize] = useState(initialPageSize);
-    const [listLoading, setListLoading] = useState(false);
-    const [listRows, setListRows] = useState<Row[]>([]);
-    const [listTotal, setListTotal] = useState(0);
     const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -634,34 +632,32 @@ export function TableWidget({
         listPageSize,
     ]);
 
-    useEffect(() => {
-        if (!isListMode) return;
-        // eslint-disable-next-line @eslint-react/set-state-in-effect
-        setListLoading(true);
-        void (dispatch(listAction, mergedListParams) as Promise<Record<string, unknown>>)
-            .then(result => {
-                let rows: Row[];
-                if (resultSet && Array.isArray((result as Record<string, unknown>)[resultSet])) {
-                    rows = (result as Record<string, unknown>)[resultSet] as Row[];
-                } else if (Array.isArray(result)) {
-                    rows = result as Row[];
-                } else {
-                    rows = [];
-                }
-                const total =
-                    typeof (result as {pagination?: {recordsTotal?: number}}).pagination
-                        ?.recordsTotal === 'number'
-                        ? (result as {pagination: {recordsTotal: number}}).pagination.recordsTotal
-                        : rows.length;
-                setListRows(rows);
-                setListTotal(total);
-            })
-            .catch(() => {
-                setListRows([]);
-                setListTotal(0);
-            })
-            .finally(() => setListLoading(false));
-    }, [isListMode, listAction, mergedListParams, dispatch, resultSet]);
+    type ListResult = Record<string, unknown>;
+    const {
+        data: listQueryData,
+        isFetching: listLoading,
+    } = useQuery<ListResult>({
+        queryKey: [listAction, mergedListParams],
+        queryFn: () => dispatch(listAction, mergedListParams) as Promise<ListResult>,
+        enabled: isListMode,
+        staleTime: 0,
+        placeholderData: previousData => previousData,
+    });
+
+    const listRows: Row[] = useMemo(() => {
+        if (!listQueryData) return [];
+        if (resultSet && Array.isArray((listQueryData as Record<string, unknown>)[resultSet])) {
+            return (listQueryData as Record<string, unknown>)[resultSet] as Row[];
+        }
+        if (Array.isArray(listQueryData)) return listQueryData as Row[];
+        return [];
+    }, [listQueryData, resultSet]);
+
+    const listTotal: number = useMemo(() => {
+        if (!listQueryData) return 0;
+        const pagination = (listQueryData as {pagination?: {recordsTotal?: number}}).pagination;
+        return typeof pagination?.recordsTotal === 'number' ? pagination.recordsTotal : listRows.length;
+    }, [listQueryData, listRows.length]);
 
     const handleSearchChange = useCallback((v: string) => {
         setSearchInput(v);
