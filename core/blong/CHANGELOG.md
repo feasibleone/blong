@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.1](https://github.com/feasibleone/blong/compare/blong-v1.20.0...blong-v1.20.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* refresh after delete ([d59d71d](https://github.com/feasibleone/blong/commit/d59d71d32eff795cd8a53fd72b2d58e80f994bc1))
+
 ## [1.20.0](https://github.com/feasibleone/blong/compare/blong-v1.19.0...blong-v1.20.0) (2026-05-19)
 
 
