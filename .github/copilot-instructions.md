@@ -162,7 +162,7 @@ rules as the authoritative guide and prioritize the API definition as the primar
 1. **`dev/` is gitignored — never commit code there.**.
 
 1. Always lint the files changed during the session. Use either vscode's built-in error reporting or
-   run `node --run ci-lint -- [files...]`
+   run `node --run ci-lint -- [files...]` for each of the packages affected by the changes.
 
 ---
 
@@ -492,17 +492,18 @@ the full reference.
 
 **Standard intents:**
 
-| Intent | Purpose | Process lifetime |
-|--------|---------|------------------|
-| `default` | Base configuration (always active) | — |
-| `dev` | Development — verbose logs, hot-reload | Long-running, restarts on file changes |
-| `prod` | Production/UAT environments | Long-running |
-| `integration` | Integration testing — enables watch/test mode | Long-running, reruns tests on change |
-| `microservice` | Activates the layers needed to run a realm as a standalone microservice | Long-running |
-| `db` | Database creation / seeding | **Short-lived** — exits after completion |
-| `debug` | Enable `/api/sys/*` introspection, stack traces | No effect on lifetime |
+| Intent         | Purpose                                                                 | Process lifetime                         |
+| -------------- | ----------------------------------------------------------------------- | ---------------------------------------- |
+| `default`      | Base configuration (always active)                                      | —                                        |
+| `dev`          | Development — verbose logs, hot-reload                                  | Long-running, restarts on file changes   |
+| `prod`         | Production/UAT environments                                             | Long-running                             |
+| `integration`  | Integration testing — enables watch/test mode                           | Long-running, reruns tests on change     |
+| `microservice` | Activates the layers needed to run a realm as a standalone microservice | Long-running                             |
+| `db`           | Database creation / seeding                                             | **Short-lived** — exits after completion |
+| `debug`        | Enable `/api/sys/*` introspection, stack traces                         | No effect on lifetime                    |
 
 **Platform intents (implicit — added by the framework, never passed on CLI):**
+
 - `server` — always present on the server platform
 - `browser` — always present on the browser platform
 
@@ -639,8 +640,11 @@ The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in co
 - **Error definitions:** See **blong-error** for typed error patterns
 - **Validation:** See **blong-validation** for input/output validation
 - **Real-time logging:** See **blong-log** for log viewer setup and monitoring
-- **Troubleshooting runtime state:** Enable `systemDebug: {enabled: true}` in suite `dev` config to expose `/api/sys/*` introspection endpoints — see Runtime Introspection section above
-- **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then set `$meta.expect` in test calls — see [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
+- **Troubleshooting runtime state:** Enable `systemDebug: {enabled: true}` in suite `dev` config to
+  expose `/api/sys/*` introspection endpoints — see Runtime Introspection section above
+- **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then
+  set `$meta.expect` in test calls — see
+  [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
 
@@ -667,14 +671,14 @@ interactively after each edit.
 When working on `core/blong-int-adapter/` or running its integration tests, the required backend
 services are usually already started. The expected ports are:
 
-| Port  | Service              |
-| ----- | -------------------- |
-| 8180  | Keycloak             |
-| 9092  | Kafka                |
-| 27017 | MongoDB              |
-| 3306  | MySQL / MariaDB      |
-| 9000  | MinIO (S3-compatible)|
-| 8200  | Vault                |
+| Port  | Service               |
+| ----- | --------------------- |
+| 8180  | Keycloak              |
+| 9092  | Kafka                 |
+| 27017 | MongoDB               |
+| 3306  | MySQL / MariaDB       |
+| 9000  | MinIO (S3-compatible) |
+| 8200  | Vault                 |
 
 **Check if backends are running:**
 
