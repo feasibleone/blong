@@ -261,6 +261,9 @@ importers:
 
   ../../core/blong-config:
     dependencies:
+      '@feasibleone/blong-template':
+        specifier: workspace:*
+        version: link:../blong-template
       minimist:
         specifier: ^1.2.8
         version: 1.2.8
@@ -276,9 +279,6 @@ importers:
       ut-function.merge:
         specifier: ^1.5.6
         version: 1.5.6
-      ut-function.template:
-        specifier: ^1.7.6
-        version: 1.7.6
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
@@ -1000,6 +1000,21 @@ importers:
       '@swc/core':
         specifier: ^1.7.14
         version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../core/blong-template:
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
       '@types/node':
         specifier: ^24
         version: 24.12.0
@@ -12835,9 +12850,6 @@ packages:
 
   ut-function.ngram@1.1.0:
     resolution: {integrity: sha512-ZIC6a//PEgcIeV8c9oFiuEG+TGHq0TGNushZIj1hR1cvrg+XRhuLli1Tk8YZ+pOxBRJON2w6nwP4r8WFDGL86A==}
-
-  ut-function.template@1.7.6:
-    resolution: {integrity: sha512-4ZRJ7rYP3r31gUHSvpTZpjvn9YEMDGTTR0pSKyyekpcSpTdhyV0gtHzAWFAtoPJHNc7cc72bZl1Y4NFj41EN7Q==}
 
   ut-port-script@7.2.1:
     resolution: {integrity: sha512-kvU3f/Sd9wkBPrW2Dm4L+BvjOltRmuEhtPEtEdABy2assXkhjw9E0ovwloyMUytyuKzhL0s2Id1gjMjTju3CNw==}
@@ -28521,10 +28533,6 @@ snapshots:
       ut-function.equals: 1.1.3
 
   ut-function.ngram@1.1.0: {}
-
-  ut-function.template@1.7.6:
-    dependencies:
-      acorn: 8.16.0
 
   ut-port-script@7.2.1: {}
 

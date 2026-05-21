@@ -458,6 +458,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-template",
+            "projectFolder": "core/blong-template",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-dev",
             "projectFolder": "core/blong-dev",
             "reviewCategory": "core",

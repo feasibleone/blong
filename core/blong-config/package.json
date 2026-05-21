@@ -11,12 +11,12 @@
         "ci-lint": "blong-dev lint"
     },
     "dependencies": {
+        "@feasibleone/blong-template": "workspace:*",
         "minimist": "^1.2.8",
         "rc": "^1.2.8",
         "strip-json-comments": "^5.0.3",
         "ut-function.cbc": "^1.1.6",
         "ut-function.merge": "^1.5.6",
-        "ut-function.template": "^1.7.6",
         "yaml": "^2.8.3"
     },
     "devDependencies": {

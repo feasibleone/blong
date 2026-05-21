@@ -1,0 +1,31 @@
+{
+    "name": "@feasibleone/blong-template",
+    "version": "1.0.0",
+    "description": "TypeScript template engine for the Blong framework — trusted and sandboxed modes with XML/HTML/JSON escaping helpers",
+    "keywords": [
+        "blong",
+        "template",
+        "interpolation",
+        "escaping",
+        "sandbox"
+    ],
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
+        "test": "tap index.test.ts"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

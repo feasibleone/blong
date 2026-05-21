@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "rootDir": ".",
+        "allowJs": true,
+        "checkJs": false,
+        "moduleResolution": "NodeNext",
+        "esModuleInterop": true,
+        "module": "NodeNext",
+        "sourceMap": true,
+        "target": "ES2022",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "resolveJsonModule": true
+    },
+    "ts-node": {
+        "esm": true,
+        "swc": true,
+        "transpileOnly": true,
+        "files": true,
+        "experimentalResolver": true
+    },
+    "include": ["./package.json", "**/*.ts"],
+    "exclude": ["node_modules", ".lint"]
+}

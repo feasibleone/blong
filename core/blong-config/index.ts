@@ -1,9 +1,9 @@
+import {renderAll} from '@feasibleone/blong-template';
 import minimist from 'minimist';
 import rc from 'rc';
 import stripJsonComments from 'strip-json-comments';
 import cbc from 'ut-function.cbc';
 import merge from 'ut-function.merge';
-import template from 'ut-function.template';
 import yaml from 'yaml';
 
 function parse(content: string): object {
@@ -94,7 +94,7 @@ function load({
 
     return !context && !process.env.BLONG_MASTER_KEY
         ? merge(configs, mergeOptions)
-        : template(merge(configs, mergeOptions), {
+        : renderAll(merge(configs, mergeOptions), {
               ...context,
               ...(process.env.BLONG_MASTER_KEY && cbc(process.env.BLONG_MASTER_KEY)),
           });
