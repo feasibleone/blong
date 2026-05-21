@@ -15,10 +15,19 @@ export default model(
                         coral: {
                             properties: {
                                 coralId: {},
-                                coralName: {title: 'Name', filter: true, sort: true, required: true},
+                                coralName: {
+                                    title: 'Name',
+                                    filter: true,
+                                    sort: true,
+                                    required: true,
+                                },
                                 familyId: {
                                     title: 'Family',
-                                    widget: {type: 'dropdown', dropdown: 'marine.family', required: true},
+                                    widget: {
+                                        type: 'dropdown',
+                                        dropdown: 'marine.family',
+                                        required: true,
+                                    },
                                 },
                                 habitatId: {
                                     title: 'Habitat',
@@ -208,6 +217,7 @@ export default model(
                             confirm: 'Delete selected coral record?',
                             method: 'marine.coral.remove',
                             params: {coralId: '${coralId}'},
+                            refresh: true,
                         },
                     ],
                 },

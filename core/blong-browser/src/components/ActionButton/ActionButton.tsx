@@ -11,6 +11,7 @@
 import {confirmDialog, SplitButton} from '../../primereact/index.js';
 
 import {useRef, useState} from 'react';
+import {useQueryClient} from '@tanstack/react-query';
 import {useAction} from '../../hooks/useAction.js';
 import {usePermission} from '../../hooks/usePermission.js';
 import type {IToolbarButton} from '../../index.js';
@@ -40,6 +41,7 @@ export function ActionButton({
     menu,
     params: extraParams,
     successHint,
+    refresh,
     formId,
     className = '',
     onBusyChange,
@@ -47,6 +49,7 @@ export function ActionButton({
 }: IActionButtonProps) {
     const permitted = usePermission(permission);
     const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
     const actionName = typeof actionRef === 'string' ? actionRef : actionRef?.name;
     const actionParamsOverride =
         typeof actionRef === 'object' && actionRef !== null ? actionRef.params : undefined;
@@ -83,6 +86,13 @@ export function ActionButton({
         onBusyChange?.(true);
         try {
             await call(callParams);
+            if (refresh && directMethod) {
+                const ns = directMethod.split('.').slice(0, -1).join('.');
+                if (ns) {
+                    void queryClient.invalidateQueries({queryKey: [ns + '.find']});
+                    void queryClient.invalidateQueries({queryKey: [ns + '.get']});
+                }
+            }
             if (successHint) showHint(hintTargetRef.current, successHint, false);
         } catch (err: unknown) {
             const e = err as {print?: string; message?: string};

@@ -344,6 +344,13 @@ export interface IToolbarButton {
     params?: Record<string, unknown> | string;
     /** Success hint text shown in an overlay near the button after the action completes */
     successHint?: string;
+    /**
+     * When true, invalidates the list/detail queries for the method's namespace after a
+     * successful call. Derives the namespace from the `method` name by dropping the last
+     * segment (e.g. `marine.coral.remove` → invalidates `marine.coral.find` and
+     * `marine.coral.get`). Useful for delete/remove toolbar actions on browse pages.
+     */
+    refresh?: boolean;
 }
 
 export type LayoutRow = string | (string | string[])[];
