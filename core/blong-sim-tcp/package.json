@@ -22,6 +22,6 @@
         "@swc/core": "^1.7.14",
         "@types/node": "^24",
         "tap": "^21.6.3",
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     }
 }

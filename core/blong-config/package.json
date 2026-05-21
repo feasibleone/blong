@@ -26,6 +26,6 @@
         "@rushstack/heft-typescript-plugin": "^1.3.1",
         "@types/node": "^24",
         "tap": "^21.6.3",
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     }
 }

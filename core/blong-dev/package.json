@@ -13,10 +13,10 @@
     "dependencies": {
         "cspell": "^10.0.0",
         "eslint": "^10.4.0",
-        "strip-json-comments": "^5.0.3"
+        "strip-json-comments": "^5.0.3",
+        "typescript": "^6.0.3"
     },
     "devDependencies": {
-        "@types/node": "^24",
-        "typescript": "^5.9.3"
+        "@types/node": "^24"
     }
 }

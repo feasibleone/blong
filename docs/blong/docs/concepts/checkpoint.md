@@ -89,7 +89,7 @@ Each checkpoint records:
 
 ## Modes
 
-| Environment | `checkpoint` value | Behavior |
+| Environment | `checkpoint` value | Behaviour |
 |-------------|-------------------|----------|
 | Production | `undefined` | No-op via `?.` — zero overhead |
 | Monitoring | logging function | Emits structured log entries |

@@ -42,7 +42,7 @@ Implement an automatic rerun mechanism that:
 Not all tests should be rerun. The rerun mechanism should:
 
 - Rerun only tests that failed (not skipped or passed tests)
-- Include setup and teardown steps required by the failing tests
+- Include setup and tear-down steps required by the failing tests
 - Respect test dependencies tracked by `blong-chain`
 - Allow configuration of maximum rerun count (default: 1)
 

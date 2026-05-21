@@ -42,8 +42,8 @@ entire dispatch chain without modification. Because `expect` is part of
 `$meta`, it reaches every adapter and handler involved in processing the
 request, including those running in separate microservice pods.
 
-For internal RPC calls (microservice-to-microservice), `$meta` is serialised
-as the last element of the `params` array and deserialised on the receiving
+For internal RPC calls (microservice-to-microservice), `$meta` is serialized
+as the last element of the `params` array and deserialized on the receiving
 end by `RpcServer`, so `expect` is always available to handlers and adapters
 on the remote side.
 

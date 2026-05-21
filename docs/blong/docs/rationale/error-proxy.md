@@ -177,7 +177,7 @@ const {errorReleaseJobTrigger, errorWrongName} = errors;
 // Error: Error 'errorWrongName' not found. Available errors: ...
 ```
 
-This behavior ensures that typos and incorrect error names are caught immediately during development, rather than failing silently or at runtime.
+This behaviour ensures that typos and incorrect error names are caught immediately during development, rather than failing silently or at runtime.
 
 ## Migration Guide
 
@@ -255,7 +255,7 @@ node --test src/error.proxy.test.ts
    so that `errors.errorReleaseJobTrigger` is type-checked against the defined
    error registry without runtime cost.
 
-2. **Namespace subsetting** — allow `errors.subset('release')` to return a
+2. **Namespace sub-setting** — allow `errors.subset('release')` to return a
    proxy that only exposes `release.*` errors. This reduces the surface area
    visible in a handler and makes it easier to understand which errors a given
    handler can throw.

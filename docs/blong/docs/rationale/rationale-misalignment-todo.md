@@ -21,7 +21,7 @@ recommendation to help decide whether to update the docs, the code, or both.
   → `ConfigRuntime.reload()` → `configChanged` on affected ports. The full
   pipeline is implemented and matches the rationale description.
 
-**~~3. `createConfigProxy` partial-destructuring caveat is underdocumented in code.~~ ✅ Resolved**
+**~~3. `createConfigProxy` partial-destructuring caveat is under-documented in code.~~ ✅ Resolved**
 
 - `ConfigRuntime.ts` contains comprehensive JSDoc explaining the mutation
   contract and proxy semantics. The documentation is complete.

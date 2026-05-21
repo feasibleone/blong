@@ -35,7 +35,7 @@ Blong has similarities with approaches also described elsewhere:
 
 - [Uber: Introducing Domain-Oriented Microservice Architecture](https://www.uber.com/blog/microservice-architecture/)
 - [Redhat: Distributed transaction patterns](https://developers.redhat.com/articles/2021/09/21/distributed-transaction-patterns-microservices-compared)
-- [Voxer Engineering: Backpressure and Unbounded Concurrency in Node.js](https://engineering.voxer.com/2013/09/16/backpressure-in-nodejs/)
+- [Voxer Engineering: Back-pressure and Unbounded Concurrency in Node.js](https://engineering.voxer.com/2013/09/16/backpressure-in-nodejs/)
 - [Microsoft: Data-tier applications (DAC)](https://learn.microsoft.com/en-us/sql/relational-databases/data-tier-applications/data-tier-applications)
 
 ## Design: How Paradigms Map to Framework Features

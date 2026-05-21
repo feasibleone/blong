@@ -128,7 +128,7 @@ When the reload pipeline finishes diffing, it calls `configChanged` on every
 port whose configuration namespace was affected. The `diff` argument describes
 exactly which keys changed.
 
-**Default behavior** (no hook): if a port's config changed and it has no hook,
+**Default behaviour** (no hook): if a port's config changed and it has no hook,
 the registry falls back to a full port stop/start cycle.
 
 **Example — real Knex adapter reconnection** (`core/blong-gogo/src/adapter/server/knex.ts`):
@@ -171,7 +171,7 @@ Every reload emits a log entry with:
 {
   "$meta": {"mtid": "event", "method": "watch.config.reload"},
   "changed": ["db.knex.connection.host"],
-  "portsAffected": ["myapp.db"],
+  "portsAffected": ["core.db"],
   "action": "configChanged"
 }
 ```

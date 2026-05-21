@@ -31,7 +31,7 @@
         "@types/node": "^24",
         "allure": "^3.6.2",
         "tap": "^21.6.3",
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     },
     "peerDependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

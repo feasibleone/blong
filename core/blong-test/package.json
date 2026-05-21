@@ -37,7 +37,7 @@
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "tap": "^21.6.3",
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     },
     "peerDependencies": {
         "@feasibleone/blong": "^1.0.0"

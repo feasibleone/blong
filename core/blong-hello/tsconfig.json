@@ -1,20 +1,19 @@
 {
     "compilerOptions": {
+        "rootDir": ".",
         "allowJs": true,
         "checkJs": false,
-        "moduleResolution": "bundler",
+        "moduleResolution": "NodeNext",
         "esModuleInterop": true,
-        "module": "preserve",
+        "module": "NodeNext",
         "sourceMap": true,
         "jsx": "react",
-        "allowImportingTsExtensions": true,
-        "noEmit": true,
         "outDir": "dist",
         "target": "ES2022",
+        "declaration": true,
+        "declarationMap": true,
         "resolveJsonModule": true,
-        "skipLibCheck": true,
-        "strict": true,
-        "types": ["node"]
+        "strict": true
     },
     "ts-node": {
         "esm": true,
@@ -23,5 +22,6 @@
         "files": true,
         "experimentalResolver": true
     },
+    "include": ["./package.json", "**/*.ts"],
     "exclude": ["node_modules", ".lint", ".docusaurus", "dist"]
 }

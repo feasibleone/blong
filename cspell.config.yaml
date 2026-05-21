@@ -21,6 +21,7 @@ words:
   - apidevtools
   - APIV
   - approle
+  - APTRA
   - arqc
   - Arqc
   - ARQC
@@ -62,6 +63,7 @@ words:
   - dedup
   - deepwater
   - Dendrophylliidae
+  - destructures
   - detritivore
   - Detritivore
   - dfsp
@@ -76,11 +78,14 @@ words:
   - elkhorn
   - Elkhorn
   - endregion
+  - ERRORRELEASEJOBTRIGGER
+  - errorreleasjobtrigger
   - ESOCKETTIMEDOUT
   - fallbacks
   - fastify
   - Faviidae
   - feasibleone
+  - franca
   - fspiop
   - FSPIOP
   - Fungiidae
@@ -99,11 +104,13 @@ words:
   - inputtext
   - inputtextarea
   - ivac
+  - jobtriger
   - kalinkrustev
   - keyblock
   - knex
   - kopi
   - kubeconfig
+  - kustomization
   - lightgreen
   - LONGTEXT
   - Mandarinfish
@@ -153,8 +160,10 @@ words:
   - pino
   - pkce
   - pnpmfile
+  - primefaces
   - primeflex
   - primeicons
+  - primelocale
   - primereact
   - priorityclass
   - progressspinner
@@ -164,6 +173,7 @@ words:
   - refetches
   - reflow
   - regen
+  - releasejobtrigger
   - releasjobtrigger
   - reorderable
   - replicaset
@@ -183,10 +193,12 @@ words:
   - seagrass
   - Seagrass
   - selectbutton
+  - SEPA
   - serialisable
   - Siderastreidae
   - singularize
   - Singularize
+  - SMPP
   - softwaregroup
   - spanid
   - splendidus
@@ -223,6 +235,7 @@ words:
   - userpass
   - vars
   - volitans
+  - Voxer
   - webcamera
   - WHATWG
   - worldtimeapi
@@ -237,13 +250,18 @@ words:
   - Група
   - Данни
   - динамичен
+  - задължително
+  - Запази
   - морска
   - Описание
   - Организация
+  - Отказ
+  - открити
   - Портал
   - Потребител
   - Права
   - Продукт
+  - резултати
   - Роля
   - Сметка
   - Справки

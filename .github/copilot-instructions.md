@@ -161,6 +161,9 @@ rules as the authoritative guide and prioritize the API definition as the primar
 
 1. **`dev/` is gitignored — never commit code there.**.
 
+1. Always lint the files changed during the session. Use either vscode's built-in error reporting or
+   run `node --run ci-lint -- [files...]`
+
 ---
 
 ## Architecture Hierarchy
@@ -640,6 +643,46 @@ The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in co
 - **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then set `$meta.expect` in test calls — see [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
+
+## Local Development Environment
+
+### Storybook (blong-browser / ui-demo)
+
+When working on `core/blong-browser/` or `core/ui-demo/`, Storybook may already be running on
+`http://localhost:6006`. A shared browser tab pointing to it may also be available in the session.
+
+**Check if Storybook is running and which package it belongs to:**
+
+```bash
+PID=$(ss -tlnp | grep ':6006' | grep -oP 'pid=\K[0-9]+'); [ -n "$PID" ] && readlink /proc/$PID/cwd || echo "Storybook not running"
+```
+
+This prints the working directory of the Storybook process (e.g. `.../core/ui-demo` or
+`.../core/blong-browser`), making it clear which package's Storybook is running. If the port is
+listening, open or reuse the shared browser tab at `http://localhost:6006` to validate UI changes
+interactively after each edit.
+
+### Integration test backends (blong-int-adapter)
+
+When working on `core/blong-int-adapter/` or running its integration tests, the required backend
+services are usually already started. The expected ports are:
+
+| Port  | Service              |
+| ----- | -------------------- |
+| 8180  | Keycloak             |
+| 9092  | Kafka                |
+| 27017 | MongoDB              |
+| 3306  | MySQL / MariaDB      |
+| 9000  | MinIO (S3-compatible)|
+| 8200  | Vault                |
+
+**Check if backends are running:**
+
+```bash
+ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200'
+```
+
+Any port not listed in the output means that service is not yet started.
 
 ## Architecture & Design Documents
 

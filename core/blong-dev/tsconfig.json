@@ -9,7 +9,8 @@
         "allowImportingTsExtensions": true,
         "noEmit": true,
         "target": "ES2022",
-        "strict": true
+        "strict": true,
+        "types": ["node"]
     },
     "include": ["src/**/*.ts", "bin/**/*.ts"],
     "exclude": ["node_modules"]
