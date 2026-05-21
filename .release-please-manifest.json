@@ -1,5 +1,5 @@
 {
-    "core/blong": "1.20.0",
+    "core/blong": "1.20.1",
     "core/blong-login": "1.7.0",
     "docs/blong": "1.15.1",
     "core/blong-test": "1.8.0",
@@ -15,7 +15,7 @@
     "core/blong-sim-api": "1.2.0",
     "core/blong-sim-tcp": "1.1.0",
     "core/blong-ttk": "1.2.0",
-    "core/blong-browser": "1.7.0",
+    "core/blong-browser": "1.7.1",
     "core/ui-demo": "1.4.0",
     "core/blong-dev": "1.0.0"
 }
