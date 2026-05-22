@@ -1,8 +1,8 @@
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { hasEslintConfig, hasTsConfig } from '../utils/discover.ts';
-import { findUp } from '../utils/findConfig.ts';
-import { runTool, type RunOptions } from '../utils/runTool.ts';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {hasEslintConfig, hasTsConfig} from '../utils/discover.ts';
+import {findUp} from '../utils/findConfig.ts';
+import {runTool, type RunOptions} from '../utils/runTool.ts';
 
 // Tools bundled with blong-dev (e.g. cspell) live in blong-dev's own node_modules.
 // lint.ts is at src/commands/lint.ts → ../../node_modules/.bin is the package root's bin dir.
@@ -38,6 +38,8 @@ export async function lint(fileArgs: string[]): Promise<void> {
     const run = (cmd: string, args: string[]) =>
         runTool(cmd, args, {cwd, env} satisfies RunOptions);
 
+    const ok = (tool: string, scope: string) => console.log(`  ✓ ${tool}: ${scope}`);
+
     let exitCode = 0;
 
     // ── tsc ──────────────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ export async function lint(fileArgs: string[]): Promise<void> {
     if (hasTsConfig(cwd) && (!staged || tsFiles.length > 0)) {
         const code = await run('tsc', ['--noEmit']);
         if (code !== 0) exitCode = code;
+        else ok('tsc', staged ? `${tsFiles.length} file(s)` : 'full package');
     }
 
     // ── cspell ───────────────────────────────────────────────────────────────
@@ -57,10 +60,13 @@ export async function lint(fileArgs: string[]): Promise<void> {
         const cspellConfig = findUp(cwd, 'cspell.config.yaml');
         const args = ['--no-progress', '--no-summary', '--no-must-find-files'];
         if (cspellConfig) args.push('--config', cspellConfig);
-        args.push(...(spellFiles.length > 0 ? spellFiles : ['**/*.ts', '**/*.tsx', '**/*.md']));
+        const spellTargets =
+            spellFiles.length > 0 ? spellFiles : ['**/*.ts', '**/*.tsx', '**/*.md'];
+        args.push(...spellTargets);
 
         const code = await run('cspell', args);
         if (code !== 0) exitCode = code;
+        else ok('cspell', staged ? `${spellFiles.length} file(s)` : '**/*.ts, **/*.tsx, **/*.md');
     }
 
     // ── eslint ───────────────────────────────────────────────────────────────
@@ -70,6 +76,7 @@ export async function lint(fileArgs: string[]): Promise<void> {
         if (targets.length > 0) {
             const code = await run('eslint', ['--max-warnings', '0', ...targets]);
             if (code !== 0) exitCode = code;
+            else ok('eslint', staged ? `${lintFiles.length} file(s)` : 'full package');
         }
     }
 
