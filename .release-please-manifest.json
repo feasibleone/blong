@@ -1,5 +1,5 @@
 {
-    "core/blong": "1.20.1",
+    "core/blong": "1.21.0",
     "core/blong-login": "1.7.0",
     "docs/blong": "1.15.1",
     "core/blong-test": "1.8.0",
@@ -10,12 +10,12 @@
     "core/blong-openapi": "1.2.0",
     "core/test": "1.12.0",
     "core/blong-log": "1.4.0",
-    "core/blong-config": "1.1.0",
+    "core/blong-config": "1.2.0",
     "core/blong-int-sql": "1.2.0",
     "core/blong-sim-api": "1.2.0",
     "core/blong-sim-tcp": "1.1.0",
     "core/blong-ttk": "1.2.0",
-    "core/blong-browser": "1.7.1",
+    "core/blong-browser": "1.8.0",
     "core/ui-demo": "1.4.0",
-    "core/blong-dev": "1.0.0"
+    "core/blong-dev": "1.0.1"
 }
