@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.21.0](https://github.com/feasibleone/blong/compare/blong-v1.20.1...blong-v1.21.0) (2026-05-22)
+
+
+### Features
+
+* component widget ([4e84310](https://github.com/feasibleone/blong/commit/4e843109127397217a51a01cc2ddd421a57c2669))
+* model report ([9944b8f](https://github.com/feasibleone/blong/commit/9944b8f903930312d200605bdc7722ae7551d0a2))
+
 ## [1.20.1](https://github.com/feasibleone/blong/compare/blong-v1.20.0...blong-v1.20.1) (2026-05-21)
 
 

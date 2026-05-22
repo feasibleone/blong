@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-config-v1.1.0...blong-config-v1.2.0) (2026-05-22)
+
+
+### Features
+
+* blong-template ([0af207a](https://github.com/feasibleone/blong/commit/0af207a9c795279da5c86ec49d1fd596a3239dc7))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-config-v1.0.4...blong-config-v1.1.0) (2026-05-19)
 
 
