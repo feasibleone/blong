@@ -113,6 +113,17 @@ export interface IFormStateContext {
     editorMode?: string;
     /** Effective resolved layout key — forwarded from the parent Editor for debug display */
     editorLayout?: string;
+    /**
+     * When true, the Editor is in "report" mode (queryAction is set).
+     * Table widgets with `listAction` will not fetch until `reportParams` is defined.
+     */
+    reportMode?: boolean;
+    /**
+     * Filter params submitted by the report's "Run Report" button.
+     * Set to a plain object when the user runs the report, undefined before the first run.
+     * Table widgets merge these into their list query params (before paging/sort/filter).
+     */
+    reportParams?: Record<string, unknown>;
 }
 
 export const FormStateContext = createContext<IFormStateContext | null>(null);

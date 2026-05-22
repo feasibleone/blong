@@ -115,6 +115,16 @@ export interface IFormProps {
      * Does not affect form behaviour — purely informational.
      */
     editorLayout?: string;
+    /**
+     * When true, signals that the Editor is in "report" mode.
+     * Table widgets will not fetch until `reportParams` is non-undefined.
+     */
+    reportMode?: boolean;
+    /**
+     * Filter params submitted by the report's "Run Report" button.
+     * Set after the first run; undefined means no report has been run yet.
+     */
+    reportParams?: Record<string, unknown>;
 }
 
 export function Form({
@@ -141,6 +151,8 @@ export function Form({
     editors,
     editorMode,
     editorLayout,
+    reportMode,
+    reportParams,
 }: IFormProps) {
     const fallbackId = useId();
     const formId = id ?? fallbackId;
@@ -318,8 +330,8 @@ export function Form({
     // Slow-changing state: changes on user actions (row selection, save, edit toggle)
     // but NOT on every keystroke.
     const stateContextValue = useMemo(
-        () => ({tableSelections, readOnly, loading, editorMode, editorLayout}),
-        [tableSelections, readOnly, loading, editorMode, editorLayout],
+        () => ({tableSelections, readOnly, loading, editorMode, editorLayout, reportMode, reportParams}),
+        [tableSelections, readOnly, loading, editorMode, editorLayout, reportMode, reportParams],
     );
 
     // Layout rendering is delegated to the root Deck (id="root", no cardNames).

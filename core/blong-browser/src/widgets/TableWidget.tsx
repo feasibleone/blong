@@ -570,6 +570,10 @@ export function TableWidget({
     // TableWidget is used outside a Form (e.g. in standalone stories / tests).
     const formState = useBlongFormState();
 
+    // ── Report params (from report "Run" button) ──────────────────────────
+    const reportMode = formState?.reportMode ?? false;
+    const reportParams = formState?.reportParams;
+
     // ── Cascaded table filtering ───────────────────────────────────────────
     const parentFieldName = resolveParentField(schema.widget?.parent);
     const masterMapping = schema.widget?.master;
@@ -597,6 +601,18 @@ export function TableWidget({
         setSingleSelected(null);
     }, [isListMode, parentFieldName, parentSelection?.row, keyFieldName]);
 
+    // Reset paging when report params change (new "Run Report" submission).
+    const prevReportParamsRef = useRef<Record<string, unknown> | undefined>(undefined);
+    useEffect(() => {
+        if (!isListMode || !reportMode) return;
+        if (prevReportParamsRef.current === reportParams) return;
+        prevReportParamsRef.current = reportParams;
+        if (reportParams !== undefined) {
+            // eslint-disable-next-line @eslint-react/set-state-in-effect
+            setListFirst(0);
+        }
+    }, [isListMode, reportMode, reportParams]);
+
     const mergedListParams = useMemo(() => {
         const filterBy = Object.fromEntries(
             Object.entries(committedFilters).filter(([, v]) => v !== ''),
@@ -610,6 +626,8 @@ export function TableWidget({
         }
         return {
             ...(listParams ?? {}),
+            // Report params are merged before cascade/column filters so column filters take precedence
+            ...(reportParams ?? {}),
             ...cascadeFilter,
             ...(Object.keys(filterBy).length > 0 ? {filterBy} : {}),
             ...(committedSearch ? {search: committedSearch} : {}),
@@ -620,6 +638,7 @@ export function TableWidget({
         };
     }, [
         listParams,
+        reportParams,
         isListMode,
         parentFieldName,
         masterMapping,
@@ -639,7 +658,8 @@ export function TableWidget({
     } = useQuery<ListResult>({
         queryKey: [listAction, mergedListParams],
         queryFn: () => dispatch(listAction, mergedListParams) as Promise<ListResult>,
-        enabled: isListMode,
+        // In report mode, wait until the user submits params (reportParams becomes defined)
+        enabled: isListMode && (!reportMode || reportParams !== undefined),
         staleTime: 0,
         placeholderData: previousData => previousData,
     });

@@ -13,8 +13,18 @@ export default async (models: IModelSpec[], blong: IHandlerProxy<unknown>) => {
         components[`${subject}.${object}.browse`] = await subjectObjectBrowse(model, blong);
         components[`${subject}.${object}.new`] = await subjectObjectNew(model, blong);
         components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);
-        if (model.report?.permission)
+        if (model.report?.permission) {
+            // Default report — always registered when report permission is set
             components[`${subject}.${object}.report`] = await subjectObjectReport(model, blong);
+            // Named reports — one component per entry in model.reports
+            for (const reportId of Object.keys(model.reports)) {
+                components[`${subject}.${object}.report.${reportId}`] = await subjectObjectReport(
+                    model,
+                    blong,
+                    reportId,
+                );
+            }
+        }
     }
 
     return components;

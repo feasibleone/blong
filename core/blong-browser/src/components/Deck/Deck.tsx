@@ -71,8 +71,9 @@ function TabContent({
                 const firstResolved = groupNames.map(n => cards[n]).find(Boolean);
                 const colClass = firstResolved?.config.className ?? 'col-12 xl:col-6';
                 return (
-                    // eslint-disable-next-line @eslint-react/no-array-index-key
-                    <Deck key={groupIdx}
+                    <Deck
+                        // eslint-disable-next-line @eslint-react/no-array-index-key
+                        key={groupIdx}
                         id={`deck-tab-${groupIdx}`}
                         className={colClass}
                         cardNames={groupNames}
@@ -134,8 +135,9 @@ const RootDeck = memo(function RootDeck() {
                 style={{height: '100%'}}
             >
                 {splitPanels.map((panel, idx) => (
-                    // eslint-disable-next-line @eslint-react/no-array-index-key
-                    <SplitterPanel key={idx}
+                    <SplitterPanel
+                        // eslint-disable-next-line @eslint-react/no-array-index-key
+                        key={idx}
                         size={panel.size}
                         minSize={panel.minSize ?? 5}
                         style={{overflow: 'auto'}}
@@ -394,8 +396,9 @@ const RootDeck = memo(function RootDeck() {
             {columnDecks.map(({hiddenCards, nonHiddenCards, colClass}, colIdx) => {
                 if (!nonHiddenCards.length && !hiddenCards.length) return null;
                 return (
-                    // eslint-disable-next-line @eslint-react/no-array-index-key
-                    <Deck key={colIdx}
+                    <Deck
+                        // eslint-disable-next-line @eslint-react/no-array-index-key
+                        key={colIdx}
                         id={`deck-${colIdx}`}
                         className={colClass}
                         cardNames={nonHiddenCards}
@@ -523,11 +526,14 @@ export function Deck({id, cardNames, hiddenCardNames, children, className}: IDec
         // Passthrough mode — add mb-3 to every child except the last
         /* eslint-disable @eslint-react/no-children-count, @eslint-react/no-children-map */
         const childCount = React.Children.count(children);
-        body = React.Children.map(children, (child, idx) =>
-            React.isValidElement(child) && idx < childCount - 1
-                ? <div className="mb-3">{child}</div>
-                : child
-        ) ?? [];
+        body =
+            React.Children.map(children, (child, idx) =>
+                React.isValidElement(child) && idx < childCount - 1 ? (
+                    <div className="mb-3">{child}</div>
+                ) : (
+                    child
+                ),
+            ) ?? [];
         /* eslint-enable @eslint-react/no-children-count, @eslint-react/no-children-map */
     }
 

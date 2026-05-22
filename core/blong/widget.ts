@@ -214,6 +214,7 @@ export interface ICardConfig {
     /** Alias for fields — supports plain field names or ICardWidgetEntry objects for column-subset table views */
     widgets?: (string | ICardWidgetEntry)[];
     className?: string;
+    fieldClass?: string;
     readOnly?: boolean;
     collapsible?: boolean;
     loading?: boolean;

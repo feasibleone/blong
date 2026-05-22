@@ -125,6 +125,15 @@ export interface IEditorProps {
      * to `{subject}.{object}` (e.g. `'marine.coral'`).
      */
     refreshNamespace?: string;
+    /**
+     * Action name to call when the "Run Report" button is clicked.
+     * When set, the Editor enters "report" mode:
+     * - No Save / Reset buttons; only a "Run Report" submit button.
+     * - On form submit the form values are passed as `reportParams` to the table widget
+     *   (via FormStateContext) so the table re-fetches with those params.
+     * - The form is always editable (params input).
+     */
+    queryAction?: string;
 }
 
 /** Editor interaction mode. */
@@ -273,6 +282,7 @@ export function Editor({
     title: titleProp,
     tabId,
     refreshNamespace,
+    queryAction,
 }: IEditorProps) {
     const formId = useId();
     const [currentMode, setCurrentMode] = useState<EditorMode>(
@@ -302,6 +312,15 @@ export function Editor({
     const [localLayouts, setLocalLayouts] = useState<Record<string, LayoutConfig> | undefined>(
         () => layouts,
     );
+    /**
+     * Report params submitted by the "Run Report" button.
+     * Undefined until the first report run; set to the submitted form values on each run.
+     * Passed to Form → FormStateContext → TableWidget to trigger a re-fetch with new filter params.
+     */
+    const [reportParams, setReportParams] = useState<Record<string, unknown> | undefined>(
+        undefined,
+    );
+    const isReportMode = !!queryAction;
 
     // ── Table selection tracking (for toolbar button enabled/params resolution) ──
     /**
@@ -440,6 +459,12 @@ export function Editor({
     }, [validationHint]);
 
     const handleSubmit = async (formValue: Record<string, unknown>) => {
+        // ── Report mode: update params to trigger table re-fetch ──────────
+        if (isReportMode) {
+            setReportParams(formValue);
+            return;
+        }
+
         setServerErrors(undefined);
         const isCreate = currentMode === 'new';
         try {
@@ -482,22 +507,27 @@ export function Editor({
 
     // Build default toolbar buttons based on current mode
     const leftButtons: IToolbarButton[] = [
-        // 'view' mode + editable — show Edit button to enter edit mode
-        ...(editable && currentMode === 'view'
-            ? [{label: 'Edit', icon: 'pi pi-pencil', action: '__edit__'}]
-            : []),
-        // 'new' and 'edit' modes — show Save + Reset buttons
-        ...(editMode
-            ? [
-                  {
-                      label: 'Save',
-                      icon: savedSuccess ? 'pi pi-check' : 'pi pi-save',
-                      submit: true,
-                      action: '__save__',
-                  },
-                  {label: 'Reset', icon: 'pi pi-replay', action: '__cancel__'},
-              ]
-            : []),
+        // Report mode — show "Run Report" instead of Save/Edit/Reset
+        ...(isReportMode
+            ? [{label: 'Run Report', icon: 'pi pi-play', submit: true, title: 'Run Report'}]
+            : [
+                  // 'view' mode + editable — show Edit button to enter edit mode
+                  ...(editable && currentMode === 'view'
+                      ? [{label: 'Edit', icon: 'pi pi-pencil', action: '__edit__'}]
+                      : []),
+                  // 'new' and 'edit' modes — show Save + Reset buttons
+                  ...(editMode
+                      ? [
+                            {
+                                label: 'Save',
+                                icon: savedSuccess ? 'pi pi-check' : 'pi pi-save',
+                                submit: true,
+                                action: '__save__',
+                            },
+                            {label: 'Reset', icon: 'pi pi-replay', action: '__cancel__'},
+                        ]
+                      : []),
+              ]),
         ...toolbar,
     ];
 
@@ -692,15 +722,17 @@ export function Editor({
                 layouts={localLayouts}
                 value={entityValue}
                 onChange={handleFormChange}
-                onSubmit={(saveAction || createAction) ? handleSubmit : undefined}
+                onSubmit={isReportMode || saveAction || createAction ? handleSubmit : undefined}
                 onDirtyChange={setIsDirty}
                 resetKey={formResetKey}
                 onTableSelect={handleTableSelect}
                 readOnly={
-                    !editMode ||
-                    activeSaving ||
-                    toolbarBusy > 0 ||
-                    loader.loading
+                    isReportMode
+                        ? false
+                        : !editMode ||
+                          activeSaving ||
+                          toolbarBusy > 0 ||
+                          loader.loading
                 }
                 loading={loader.loading}
                 serverErrors={serverErrors}
@@ -713,6 +745,8 @@ export function Editor({
                 rightPanel={designable ? <PropertyEditor /> : undefined}
                 editorMode={currentMode}
                 editorLayout={resolvedLayout}
+                reportMode={isReportMode}
+                reportParams={reportParams}
             />
         </div>
     );

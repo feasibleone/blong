@@ -225,12 +225,14 @@ function setFieldValue(
  */
 function FieldRow({
     fieldName,
+    fieldClass,
     cardReadOnly,
     isLast,
     columnOverride,
     log,
 }: {
     fieldName: string;
+    fieldClass?: string;
     cardReadOnly: boolean | undefined;
     isLast: boolean;
     columnOverride?: string[];
@@ -514,7 +516,7 @@ function FieldRow({
     }
 
     return (
-        <div className={`field grid${isLast ? ' mb-0' : ''}`}>
+        <div className={`field grid${isLast ? ' mb-0' : ''}${fieldClass ? ' ' + fieldClass : ''}`}>
             {hasLabel && (
                 <label
                     htmlFor={instanceId}
@@ -911,6 +913,7 @@ export function Card({
                         <FieldRow
                             key={fieldName}
                             fieldName={fieldName}
+                            fieldClass={resolved.config.fieldClass}
                             cardReadOnly={cardReadOnly}
                             isLast={isLast}
                             columnOverride={resolved.columnOverrides?.[fieldName]}

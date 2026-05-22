@@ -189,6 +189,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                     ],
                 },
             },
+            reports: {},
             methods: {
                 find: `${subject}.${object}.find`,
                 get: `${subject}.${object}.get`,

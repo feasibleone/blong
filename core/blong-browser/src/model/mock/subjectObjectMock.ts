@@ -134,18 +134,71 @@ export default async function mock(
             },
             async [`${subject}.${object}.report`](
                 this: IAdapter<object, object>,
-                params: Record<string, unknown>,
+                {
+                    paging: {pageNumber, pageSize} = {pageNumber: 1, pageSize: 25},
+                    paging,
+                    orderBy,
+                    search,
+                    ...filterParams
+                }: {
+                    paging?: {pageNumber: number; pageSize: number};
+                    orderBy?: (string | {field: string; dir: 'ASC' | 'DESC'})[];
+                    search?: string;
+                    [key: string]: unknown;
+                },
             ) {
                 this.log?.info?.(
                     {
-                        ...params,
+                        paging,
+                        orderBy,
+                        search,
+                        ...filterParams,
                         $meta: {method: `${subject}.${object}.report`},
                     },
                     'Mock report',
                 );
-                return {
-                    rows: await fixture(`${subject}.${object}`),
-                };
+                const allRows = await fixture(`${subject}.${object}`);
+                let result = structuredClone(allRows);
+                // Apply flat filter params (e.g. {coralName: 'Pink'})
+                for (const [key, value] of Object.entries(filterParams)) {
+                    if (value !== undefined && value !== null && value !== '') {
+                        result = result.filter(item =>
+                            String(item[key] ?? '')
+                                .toLowerCase()
+                                .includes(String(value).toLowerCase()),
+                        );
+                    }
+                }
+                if (search) {
+                    const s = String(search).toLowerCase();
+                    result = result.filter(item =>
+                        Object.values(item).some(v =>
+                            String(v ?? '')
+                                .toLowerCase()
+                                .includes(s),
+                        ),
+                    );
+                }
+                if (orderBy?.length) {
+                    result = result.sort((a, b) => {
+                        for (const order of orderBy!) {
+                            const field = typeof order === 'string' ? order : order.field;
+                            const dir = typeof order === 'string' ? 'ASC' : (order.dir ?? 'ASC');
+                            const av = a[field];
+                            const bv = b[field];
+                            if (av === bv) continue;
+                            if (typeof av === 'number' && typeof bv === 'number') {
+                                return dir === 'ASC' ? av - bv : bv - av;
+                            }
+                            const cmp = String(av ?? '').localeCompare(String(bv ?? ''));
+                            return dir === 'ASC' ? cmp : -cmp;
+                        }
+                        return 0;
+                    });
+                }
+                const recordsTotal = result.length;
+                const items = result.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+                return {items, pagination: {recordsTotal}};
             },
             async [`${subject}.${object}.edit`](
                 this: IAdapter<object, object>,

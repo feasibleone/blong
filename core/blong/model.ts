@@ -120,6 +120,38 @@ export interface IReportConfig {
     permission?: string;
 }
 
+/**
+ * Named report definition — describes one named report variant for a model.
+ * A report with id `${subject}${Capital(object)}List` is auto-generated from the
+ * model spec; other ids require explicit definition in `IModelSpec.reports`.
+ */
+export interface IReportDefinition {
+    /** Report title shown in the tab */
+    title?: string;
+    /** Permission required. Falls back to model's report permission */
+    permission?: string;
+    /**
+     * Backend action to call when "Run Report" is submitted.
+     * Defaults to `methods.find` for the auto-generated list report.
+     */
+    action?: string;
+    /**
+     * Field names to include in the params card (flat, from the object's properties).
+     * Defaults to all fields with `filter: true` in the model schema.
+     */
+    params?: string[];
+    /**
+     * Column field names to show in the result table.
+     * Defaults to the browse columns defined in the model.
+     */
+    columns?: string[];
+    /**
+     * Key in the action response that holds the rows array.
+     * Defaults to `'items'` (consistent with `find` response shape).
+     */
+    resultSet?: string;
+}
+
 /** Method name overrides — defaults to semantic triple naming */
 export interface IMethodsConfig {
     find?: string;
@@ -156,6 +188,12 @@ export interface IModelSpec {
     editor?: IEditorConfig;
     /** Report page configuration */
     report?: IReportConfig;
+    /**
+     * Named report definitions keyed by report id.
+     * The id `${subject}${Capital(object)}List` is auto-generated from the model;
+     * all other ids require an explicit entry here.
+     */
+    reports?: Record<string, IReportDefinition>;
     /** Tab layouts for editor */
     layouts?: Record<string, LayoutConfig>;
     /** Method name overrides */
@@ -173,6 +211,7 @@ export interface IResolvedModelSpec extends Required<IModelSpec> {
     browser: Required<IBrowserConfig> & IBrowserConfigOptional;
     editor: Required<IEditorConfig>;
     report: Required<IReportConfig>;
+    reports: Record<string, IReportDefinition>;
     methods: Required<IMethodsConfig>;
 }
 
