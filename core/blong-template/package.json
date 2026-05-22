@@ -14,13 +14,22 @@
     },
     "type": "module",
     "exports": {
-        ".": "./index.ts"
+        ".": {
+            "types": "./types/index.d.ts",
+            "browser": {
+                "types": "./types/browser.d.ts",
+                "default": "./browser.ts"
+            },
+            "default": "./index.ts"
+        }
     },
     "scripts": {
-        "build": "true",
+        "build": "tsc -p tsconfig.build.json",
         "ci-lint": "blong-dev lint",
-        "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
-        "test": "tap index.test.ts"
+        "ci-unit": "tap *.test.ts --allow-incomplete-coverage"
+    },
+    "dependencies": {
+        "acorn": "^8.16.0"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

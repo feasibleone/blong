@@ -39,6 +39,7 @@ export {useToast} from './hooks/useToast.js';
 export {ActionButton} from './components/ActionButton/ActionButton.js';
 export {App, type IAppProps} from './components/App/App.js';
 export {Async} from './components/Async/Async.js';
+export {ComponentWidget} from './widgets/ComponentWidget.js';
 export {Card} from './components/Card/Card.js';
 export {DateRange} from './components/DateRange/DateRange.js';
 export {Deck} from './components/Deck/Deck.js';

@@ -98,9 +98,10 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                     if (action && 'component' in action) {
                         component = await (action as IPageAction).component({});
                     } else {
-                        component = (await dispatch('portal.component.get', {
-                            page: actionName,
-                        })) as React.ComponentType<Record<string, unknown>>;
+                        component = (await dispatch(
+                            `component/${actionName}`,
+                            {},
+                        )) as React.ComponentType<Record<string, unknown>>;
                     }
                     if (component) updateTabComponent(actionName, component);
                 } catch {
@@ -175,8 +176,13 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
                                         }
                                     >
                                         {React.createElement(
-                                            tab.component as React.ComponentType<Record<string, unknown>>,
-                                            {...(tab.params as Record<string, unknown>), tabId: tab.id},
+                                            tab.component as React.ComponentType<
+                                                Record<string, unknown>
+                                            >,
+                                            {
+                                                ...(tab.params as Record<string, unknown>),
+                                                tabId: tab.id,
+                                            },
                                         )}
                                     </Suspense>
                                 </TabErrorBoundary>

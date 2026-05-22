@@ -34,6 +34,8 @@ import {
 } from '@feasibleone/blong-marine/meta/storybook.js';
 import React from 'react';
 import {App} from '../src/components/App/App.js';
+import {Explorer} from '../src/components/Explorer/Explorer.js';
+import {useBlongForm} from '../src/components/Form/FormContext.js';
 import {Hint} from '../src/components/Hint/Hint.js';
 import type {DispatchFn} from '../src/context/BlongUiContext.js';
 import type {IModelSpec} from '../src/index.js';
@@ -336,9 +338,8 @@ function SelfRegistrationPlaceholder({page}: {page: string | undefined}) {
                     marginBottom: '1.5rem',
                 }}
             >
-                Registration form placeholder. Configure a <code>portal.component.get</code>{' '}
-                dispatch handler for page <em>{page}</em> to provide the real registration
-                form.
+                Registration form placeholder. Configure a <code>component/{page}</code> dispatch
+                handler for page <em>{page}</em> to provide the real registration form.
             </p>
             <pre
                 style={{
@@ -349,8 +350,85 @@ function SelfRegistrationPlaceholder({page}: {page: string | undefined}) {
                     overflow: 'auto',
                 }}
             >
-                {`// In your dispatch overrides:\n'portal.component.get': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
+                {`// In your dispatch overrides:\n'component/${page}': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
             </pre>
+        </div>
+    );
+}
+
+/**
+ * Demo Explorer component returned by `component/${page}` handlers.
+ *
+ * Used by the PortalComponent story to demonstrate ComponentWidget loading
+ * a component dynamically via dispatch.
+ */
+function DemoExplorer() {
+    return (
+        <Explorer
+            className="w-full"
+            keyField="coralId"
+            columns={[
+                {field: 'coralId', header: 'ID'},
+                {field: 'coralName', header: 'Name'},
+                {field: 'coralType', header: 'Type'},
+            ]}
+            listAction="coralCoralFind"
+        />
+    );
+}
+
+/**
+ * Type-specific coral explorer returned by the `portal.{type}.explorer` handlers.
+ *
+ * Reads the resolved params from the dispatch call via the Storybook registry
+ * — but more relevantly for the TemplatedComponent story, reads `coralId` and
+ * `coralName` directly from the form context (the correct blong pattern: loaded
+ * components access form data via `useBlongForm()` rather than receiving it as
+ * props).  The params passed to dispatch are still the driver of WHICH component
+ * is returned; the component itself uses context to stay stateless.
+ */
+function CoralExplorer() {
+    const form = useBlongForm();
+    const values = form?.getValues() as Record<string, unknown> | undefined;
+    const {coralId, coralName} = values ?? {};
+    return (
+        <div
+            style={{display: 'flex', flexDirection: 'column', height: '100%'}}
+            className="w-full"
+        >
+            {(coralId !== undefined || coralName !== undefined) && (
+                <div
+                    style={{
+                        padding: '0.5rem 1rem',
+                        background: 'var(--surface-ground)',
+                        borderBottom: '1px solid var(--surface-border)',
+                        fontSize: '0.875rem',
+                        color: 'var(--text-color-secondary)',
+                    }}
+                >
+                    {coralId !== undefined && (
+                        <span style={{marginRight: '1.5rem'}}>
+                            <code>coralId</code>: <strong>{String(coralId)}</strong>
+                        </span>
+                    )}
+                    {coralName !== undefined && (
+                        <span>
+                            <code>coralName</code>: <strong>{String(coralName)}</strong>
+                        </span>
+                    )}
+                </div>
+            )}
+            <div style={{flex: 1, minHeight: 0}}>
+                <Explorer
+                    keyField="coralId"
+                    columns={[
+                        {field: 'coralId', header: 'ID'},
+                        {field: 'coralName', header: 'Name'},
+                        {field: 'coralType', header: 'Type'},
+                    ]}
+                    listAction="coralCoralFind"
+                />
+            </div>
         </div>
     );
 }
@@ -515,7 +593,6 @@ export const defaultHandlers: Record<string, Handler> = {
             Object.fromEntries(names.map(n => [n, marineDropdownData[n] ?? []])),
         );
     },
-
     /**
      * Resolve a page component by name.
      * Called by Portal's `openByAction` and by Login's `registerPage` mechanism.
@@ -525,17 +602,25 @@ export const defaultHandlers: Record<string, Handler> = {
      * stories without a real backend.
      *
      */
-    'portal.component.get': params => {
-        const page = params?.page as string | undefined;
-        if (
-            page?.endsWith('Registration') ||
-            page?.endsWith('Register') ||
-            page?.endsWith('SelfRegister')
-        ) {
-            return Promise.resolve(SelfRegistrationPlaceholder.bind(null, {page}));
-        }
-        return Promise.resolve(null);
-    },
+    'component/portal.explorerDemo': () =>
+        new Promise(resolve => setTimeout(() => resolve(DemoExplorer), 1500)),
+
+    /**
+     * Type-specific coral explorer components — used by the TemplatedComponent
+     * story to demonstrate `component: 'portal.${coralType}.explorer'`.
+     * Each real coral type (hard, soft, fire, black) resolves to CoralExplorer;
+     * in a production realm these would be different components per type.
+     */
+    'component/portal.hard.explorer': () =>
+        new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
+    'component/portal.soft.explorer': () =>
+        new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
+    'component/portal.fire.explorer': () =>
+        new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
+    'component/portal.black.explorer': () =>
+        new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
+    'component/user.selfRegistration': () =>
+        Promise.resolve(SelfRegistrationPlaceholder.bind(null, {page: 'user.selfRegistration'})),
 };
 
 // ── Dispatch function ──────────────────────────────────────────────────────────

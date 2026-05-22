@@ -16,7 +16,7 @@ type Story = StoryObj<typeof Explorer>;
 // ── Shared columns ─────────────────────────────────────────────────────────
 
 const columns = [
-    {field: 'speciesName', header: 'Species Name', sortable: true},
+    {field: 'coralName', header: 'Name', sortable: true},
     {field: 'coralType', header: 'Type', sortable: true},
     {field: 'maxDepth', header: 'Max Depth', sortable: true},
     {field: 'endangered', header: 'Endangered', sortable: false},
@@ -50,6 +50,7 @@ const toolbar = [
 /** Default — full-featured coral list with toolbar and pagination. */
 export const Default: Story = {
     args: {
+        keyField: 'coralId',
         columns,
         listAction: 'coralCoralFind',
         selectionMode: 'multiple',
@@ -131,7 +132,7 @@ export const Details: Story = {
                 {row ? (
                     <>
                         <div>
-                            <strong>Species:</strong> {String(row.speciesName ?? '')}
+                            <strong>Name:</strong> {String(row.coralName ?? '')}
                         </div>
                         <div>
                             <strong>Type:</strong> {String(row.coralType ?? '')}
@@ -216,7 +217,7 @@ export const GridFlex: Story = {
                         style={{color: 'var(--text-color-secondary)'}}
                     />
                     <span style={{flex: 1, fontSize: '0.875rem', fontWeight: 600}}>
-                        {String(row.speciesName ?? '')}
+                        {String(row.coralName ?? '')}
                     </span>
                     <span style={{fontSize: '0.875rem', color: 'var(--text-color-secondary)'}}>
                         {String(row.coralType ?? '')}
@@ -247,7 +248,7 @@ export const WithStaticData: Story = {
 
 // ── Submit ─────────────────────────────────────────────────────────────────
 // Demonstrates:
-//   • ${id}            — passes the keyField value of the current row
+//   • ${coralId}       — passes the keyField value of the current row
 //   • ${current}       — passes the entire current row
 //   • ${selected}      — passes all selected rows
 //   • ${current.field} — passes a single field from the current row
@@ -257,8 +258,8 @@ export const WithStaticData: Story = {
 
 const submitColumns = [
     {
-        field: 'speciesName',
-        header: 'Species Name',
+        field: 'coralName',
+        header: 'Name',
         sortable: true,
         filterable: true,
         action: 'coralCoralOpen',
@@ -288,14 +289,14 @@ export const Submit: Story = {
         columns: submitColumns,
         listAction: 'coralCoralFind',
         selectionMode: 'multiple',
-        keyField: 'id',
+        keyField: 'coralId',
         toolbar: [
             {
                 label: 'Submit id',
                 icon: 'pi pi-send',
                 enabled: 'current',
                 method: 'coralCoralSubmit',
-                params: '${id}',
+                params: '${coralId}',
             },
             {
                 label: 'Submit current',
@@ -316,7 +317,7 @@ export const Submit: Story = {
                 icon: 'pi pi-file-export',
                 enabled: 'current',
                 method: 'coralCoralSubmit',
-                params: {id: '${id}', maxDepth: '${current.maxDepth}'},
+                params: {coralId: '${coralId}', maxDepth: '${current.maxDepth}'},
             },
             {
                 label: 'Error',

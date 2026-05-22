@@ -7,6 +7,7 @@ import type React from 'react';
 import {AutoCompleteWidget} from './AutoCompleteWidget.js';
 import {BooleanWidget} from './BooleanWidget.js';
 import {ChipsWidget} from './ChipsWidget.js';
+import {ComponentWidget} from './ComponentWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
 import {DateRangeWidget} from './DateRangeWidget.js';
 import {DateTimeWidget} from './DateTimeWidget.js';
@@ -83,6 +84,7 @@ const builtins: Array<[WidgetType, React.ComponentType<IWidgetProps>]> = [
     ['file', FileWidget as React.ComponentType<IWidgetProps>],
     ['image', ImageWidget as React.ComponentType<IWidgetProps>],
     ['imageUpload', ImageUploadWidget as React.ComponentType<IWidgetProps>],
+    ['component', ComponentWidget as React.ComponentType<IWidgetProps>],
 ];
 
 /** Register all built-in widgets synchronously */

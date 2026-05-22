@@ -136,6 +136,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-template':
+        specifier: workspace:*
+        version: link:../blong-template
       '@tanstack/react-query':
         specifier: ^5.67.3
         version: 5.95.2(react@19.2.4)
@@ -1011,6 +1014,10 @@ importers:
         version: 6.0.3
 
   ../../core/blong-template:
+    dependencies:
+      acorn:
+        specifier: ^8.16.0
+        version: 8.16.0
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*

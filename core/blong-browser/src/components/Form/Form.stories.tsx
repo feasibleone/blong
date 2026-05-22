@@ -25,8 +25,8 @@ type Story = Omit<StoryObj<typeof meta>, 'play'> & {
 const coralSchema: IEnrichedSchema = {
     title: 'Coral Species',
     properties: {
-        speciesName: {
-            title: 'Species Name',
+        coralName: {
+            title: 'Name',
             type: 'string',
             required: true,
             widget: {type: 'input'},
@@ -48,11 +48,11 @@ const coralSchema: IEnrichedSchema = {
         endangered: {title: 'Endangered', type: 'boolean', widget: {type: 'boolean'}},
         description: {title: 'Description', type: 'string', widget: {type: 'textArea'}},
     },
-    required: ['speciesName'],
+    required: ['coralName'],
 };
 
 const brainCoral = {
-    speciesName: 'Brain Coral',
+    coralName: 'Brain Coral',
     coralType: 'hard',
 };
 export const Basic: Story = {
@@ -72,7 +72,7 @@ export const ReadOnly: Story = {
             <Form
                 schema={coralSchema}
                 value={{
-                    speciesName: 'Staghorn Coral',
+                    coralName: 'Staghorn Coral',
                     scientificName: 'Acropora cervicornis',
                     coralType: 'hard',
                     maxDepth: 30,

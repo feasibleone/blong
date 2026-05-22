@@ -209,7 +209,7 @@ function LoginPageWithTitle(_: {dispatch: DispatchFn}) {
 /**
  * LoginPageWithRegister — demonstrates `registerPage` registration mechanism.
  * - Shows a "Register" button in the top-right corner.
- * - Clicking it dispatches `portal.component.get` with page `'user.selfRegistration'`.
+ * - Clicking it dispatches `component/xxx` with page `'user.selfRegistration'`.
  * - The global dispatch mock returns a placeholder registration form for page names
  *   ending in 'Registration' / 'Register' / 'SelfRegister'.
  */
@@ -356,7 +356,7 @@ LoginWithTitle.storyName = 'Login With Title';
 
 /**
  * LoginWithRegister — login screen with a "Register" button.
- * Clicking Register dispatches `portal.component.get` with page `'user.selfRegistration'`.
+ * Clicking Register dispatches `component/xxx` with page `'user.selfRegistration'`.
  * The global mock returns a placeholder registration component for page names
  * ending with 'Registration', 'Register', or 'SelfRegister'.
  */

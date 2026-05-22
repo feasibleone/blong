@@ -215,9 +215,9 @@ export const coralCategoryFixtures = [
 ];
 
 export const coralFixtures = [...Array(55).keys()].map(i => ({
-    id: i,
+    coralId: i,
     categoryId: (i % 4) + 1,
-    speciesName: marineCoralNames[i % marineCoralNames.length],
+    coralName: marineCoralNames[i % marineCoralNames.length],
     coralType: coralTypesList[i % coralTypesList.length],
     maxDepth: (i + 1) * 5,
     endangered: i % 3 === 0,

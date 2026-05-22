@@ -23,7 +23,7 @@
  *
  * Registration mechanism:
  *   Pass `registerPage` (an action name) and the framework dispatches
- *   `portal.component.get` when the Register button is clicked.
+ *   `component/${registerPage}` when the Register button is clicked.
  *   The resolved component replaces the login form.
  */
 import './Login.css';
@@ -74,7 +74,7 @@ export interface ILoginProps {
     /** URL for the org logo image (renders instead of orgIcon when set). */
     orgLogoUrl?: string;
     /**
-     * Action name dispatched as `portal.component.get` when the Register button is
+     * Action name dispatched as `component/${registerPage}` when the Register button is
      * clicked.  The resolved component is shown in place of the login form.
      *
      * When set, a "Register" button appears in the top-right corner.
@@ -178,7 +178,7 @@ export function Login({
     const handleRegister = async () => {
         if (!registerPage) return;
         try {
-            const comp = await dispatch('portal.component.get', {page: registerPage});
+            const comp = await dispatch(`component/${registerPage}`, {});
             if (comp) setRegisterComp(() => comp as React.ComponentType);
         } catch {
             /* ignore — dispatch may show its own error */

@@ -42,6 +42,7 @@ export type WidgetType =
     | 'divider'
     | 'label'
     | 'link'
+    | 'component'
     | 'custom';
 
 /** Base widget configuration (stored in schema x-widget) */
@@ -87,8 +88,13 @@ export interface IWidgetConfig {
     valueField?: string;
     /** Render this widget in read-only display mode regardless of card/form edit-ability */
     readOnly?: boolean;
-    /** Custom component type (for 'custom' type) */
-    component?: React.ComponentType<IWidgetProps>;
+    /**
+     * Portal component key dispatched via `component/xxx` (for `type: 'component'`).
+     * The framework resolves this key to a React component at runtime.
+     */
+    component?: string;
+    /** Extra params merged into the `component/xxx` dispatch call (for `type: 'component'`) */
+    params?: Record<string, unknown>;
     /** Table action permissions */
     actions?: {
         allowAdd?: boolean;

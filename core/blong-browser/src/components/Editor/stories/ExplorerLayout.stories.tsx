@@ -20,8 +20,8 @@
 import type {Meta} from '@storybook/react-vite';
 import type {ISplitLayoutConfig} from '../../../hooks/useLayout.js';
 import type {IWidgetConfig} from '../../../index.js';
-import type {StoryFn} from '../Editor.stories.js';
 import {Editor} from '../Editor.js';
+import type {StoryFn} from '../Editor.stories.js';
 
 const meta: Meta<typeof Editor> = {
     title: 'Editor/Explorer',
@@ -60,14 +60,14 @@ const coralTableField = {
         type: 'table',
         listAction: 'coralCoralFind',
         resultSet: 'items',
-        keyField: 'id',
+        keyField: 'coralId',
         selectionMode: 'single',
-        columns: ['speciesName', 'coralType', 'maxDepth', 'endangered'],
+        columns: ['coralName', 'coralType', 'maxDepth', 'endangered'],
     } as IWidgetConfig,
     items: {
         properties: {
-            id: {title: 'ID', readOnly: true},
-            speciesName: {title: 'Species Name'},
+            coralId: {title: 'ID', readOnly: true},
+            coralName: {title: 'Name'},
             coralType: {title: 'Type'},
             maxDepth: {title: 'Max Depth'},
             endangered: {title: 'Endangered', type: 'boolean'},
@@ -118,7 +118,7 @@ export const WithDetails: StoryFn = () => (
                 readOnly: true,
                 watch: '$.selected.coral',
                 widgets: [
-                    '$.edit.coral.speciesName',
+                    '$.edit.coral.coralName',
                     '$.edit.coral.coralType',
                     '$.edit.coral.maxDepth',
                     '$.edit.coral.endangered',
@@ -184,9 +184,9 @@ export const WithNavigator: StoryFn = () => (
                     widget: {
                         type: 'table',
                         listAction: 'coralCoralFind',
-                        keyField: 'id',
+                        keyField: 'coralId',
                         selectionMode: 'single',
-                        columns: ['speciesName', 'coralType', 'maxDepth'],
+                        columns: ['coralName', 'coralType', 'maxDepth'],
                         parent: '$.selected.category',
                         master: {categoryId: 'id'},
                     },
@@ -194,7 +194,7 @@ export const WithNavigator: StoryFn = () => (
                         properties: {
                             id: {title: 'ID'},
                             categoryId: {title: 'Category', readOnly: true},
-                            speciesName: {title: 'Species'},
+                            coralName: {title: 'Name'},
                             coralType: {title: 'Type'},
                             maxDepth: {title: 'Max Depth'},
                         },
@@ -212,7 +212,7 @@ export const WithNavigator: StoryFn = () => (
                 readOnly: true,
                 watch: '$.selected.coral',
                 widgets: [
-                    '$.edit.coral.speciesName',
+                    '$.edit.coral.coralName',
                     '$.edit.coral.coralType',
                     '$.edit.coral.maxDepth',
                 ],
@@ -296,7 +296,7 @@ export const SplitVertical: StoryFn = () => (
                 readOnly: true,
                 watch: '$.selected.coral',
                 widgets: [
-                    '$.edit.coral.speciesName',
+                    '$.edit.coral.coralName',
                     '$.edit.coral.coralType',
                     '$.edit.coral.maxDepth',
                 ],
@@ -341,7 +341,7 @@ export const Designable: StoryFn = () => (
                     readOnly: true,
                     watch: '$.selected.coral',
                     widgets: [
-                        '$.edit.coral.speciesName',
+                        '$.edit.coral.coralName',
                         '$.edit.coral.coralType',
                         '$.edit.coral.maxDepth',
                     ],
