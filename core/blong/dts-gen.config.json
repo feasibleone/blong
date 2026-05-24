@@ -8,6 +8,7 @@
                     "@aws-sdk/client-s3",
                     "@keycloak/keycloak-admin-client",
                     "@kubernetes/client-node",
+                    "@microsoft/kiota-abstractions",
                     "@slack/types",
                     "@slack/webhook",
                     "@types/request",
