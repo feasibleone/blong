@@ -6,9 +6,15 @@
  * realm browser layers (matched by regex), plus the ui.portal handler group.
  */
 import {orchestrator, type IHandlerProxy} from '@feasibleone/blong';
+import type {IPortalConfig} from '../src/index.ts';
 import component from '../src/model/component/subjectObjectComponent.ts';
 
-export default orchestrator(() => ({
+export default orchestrator<{
+    portal?: IPortalConfig;
+    context?: {
+        menus?: Record<string, unknown[]>;
+    };
+}>(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {
@@ -27,7 +33,7 @@ export default orchestrator(() => ({
     }) {
         if (kind === 'model') {
             const models = await Promise.all(Object.values(handlers).map(model => model()));
-            return await component(models, layerApi);
+            return await component.apply(this, [models, layerApi]);
         }
     },
 }));

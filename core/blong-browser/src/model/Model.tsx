@@ -15,7 +15,7 @@ export function Model({
     const {dispatch} = useBlongUi();
     useEffect(() => {
         // Reset first to avoid bleed-through from previous stories
-        useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+        useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
         const store = useAppStore.getState();
         store.setPermissions(true);
 
@@ -34,7 +34,7 @@ export function Model({
         })();
 
         return () => {
-            useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+            useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
         };
         // eslint-disable-next-line @eslint-react/exhaustive-deps -- run once on mount
     }, []);

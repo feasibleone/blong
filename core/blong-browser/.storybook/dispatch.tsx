@@ -621,6 +621,24 @@ export const defaultHandlers: Record<string, Handler> = {
         new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
     'component/user.selfRegistration': () =>
         Promise.resolve(SelfRegistrationPlaceholder.bind(null, {page: 'user.selfRegistration'})),
+    'component/view.pageOne': async () => ({
+        title: 'Page 1',
+        component: () => () => (
+            <div style={{padding: '1rem'}}>
+                <h2>Page One</h2>
+                <p>This page was loaded via dispatch with the name "component/view.pageOne".</p>
+            </div>
+        ),
+    }),
+    'component/view.pageTwo': async () => ({
+        title: 'Page 2',
+        component: () => () => (
+            <div style={{padding: '1rem'}}>
+                <h2>Page Two</h2>
+                <p>This page was loaded via dispatch with the name "component/view.pageTwo".</p>
+            </div>
+        ),
+    }),
 };
 
 // ── Dispatch function ──────────────────────────────────────────────────────────

@@ -205,6 +205,7 @@ export type IPartialModelSpec = IModelSpec;
 
 /** Fully resolved model spec — all defaults filled in */
 export interface IResolvedModelSpec extends Required<IModelSpec> {
+    subjectTitle: string;
     objectTitle: string;
     keyField: string;
     nameField: string;

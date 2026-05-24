@@ -33,7 +33,13 @@ export default browser(blong => ({
             remote: {
                 canSkipSocket: true,
             },
-            blongUi: {},
+            blongUi: {
+                portal: {
+                    portal: {
+                        title: 'UI Demo',
+                    },
+                },
+            },
             marine: {},
         },
         dev: {

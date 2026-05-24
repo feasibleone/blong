@@ -9,7 +9,7 @@ export interface IUsePortalResult {
     tabs: ITab[];
     activeTabId: string | null;
     activeTab: ITab | undefined;
-    menuConfig: IPortalConfig | null;
+    portalConfig: IPortalConfig | null;
     openTab: (tab: ITab) => void;
     closeTab: (id: string) => void;
     setActiveTab: (id: string) => void;
@@ -17,7 +17,7 @@ export interface IUsePortalResult {
 }
 
 export function usePortal(): IUsePortalResult {
-    const {tabs, activeTabId, menuConfig} = useAppStore(s => s.portal);
+    const {tabs, activeTabId, portalConfig} = useAppStore(s => s.portal);
     const openTab = useAppStore(s => s.openTab);
     const closeTab = useAppStore(s => s.closeTab);
     const setActiveTab = useAppStore(s => s.setActiveTab);
@@ -30,5 +30,14 @@ export function usePortal(): IUsePortalResult {
         [setTabDirtyStore],
     );
 
-    return {tabs, activeTabId, activeTab, menuConfig, openTab, closeTab, setActiveTab, setTabDirty};
+    return {
+        tabs,
+        activeTabId,
+        activeTab,
+        portalConfig,
+        openTab,
+        closeTab,
+        setActiveTab,
+        setTabDirty,
+    };
 }

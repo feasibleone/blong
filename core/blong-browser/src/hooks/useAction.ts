@@ -8,22 +8,22 @@ import {useBlongUi} from '../context/BlongUiContext.js';
 import {ulid} from '../lib/ulid.js';
 import {useAppStore} from '../state/appStore.js';
 import type {
-    IAction,
     IBlongError,
     IMutationAction,
     IPageAction,
     IQueryAction,
+    ITypedAction,
     IUseActionResult,
 } from '../types/action.js';
 import type {ITab} from '../types/portal.js';
 
-function isComponentAction(a?: IAction): a is IPageAction {
+function isComponentAction(a?: ITypedAction): a is IPageAction {
     return !a || 'component' in a;
 }
-function isMutationAction(a: IAction): a is IMutationAction {
+function isMutationAction(a: ITypedAction): a is IMutationAction {
     return a && 'mutates' in a && a.mutates === true;
 }
-function isQueryAction(a: IAction): a is IQueryAction {
+function isQueryAction(a: ITypedAction): a is IQueryAction {
     return a && 'method' in a && !('mutates' in a);
 }
 
@@ -52,7 +52,7 @@ export function useAction<TResult = unknown>(
                     method: actionName,
                     type: type || 'query',
                     ...(type === 'mutation' && {mutates: true}),
-                } as IAction)),
+                } as ITypedAction)),
         [actionName, actions, type],
     );
 
@@ -84,7 +84,7 @@ export function useAction<TResult = unknown>(
     const open = useCallback(
         async (callParams?: Record<string, unknown>) => {
             const resolved = mergedParams(callParams);
-            const componentAction: IAction | undefined =
+            const componentAction: ITypedAction | undefined =
                 action || (await dispatch(actionName, resolved));
             if (componentAction && isComponentAction(componentAction)) {
                 try {

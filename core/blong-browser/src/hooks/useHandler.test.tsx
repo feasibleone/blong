@@ -26,7 +26,7 @@ describe('useHandler', () => {
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual({items: [1, 2]});
-        expect(dispatch).toHaveBeenCalledWith('my.list.find', {page: 1});
+        expect(dispatch).toHaveBeenCalledWith('my.list.find', {page: 1}, undefined);
     });
 
     it('respects enabled=false option', async () => {
@@ -60,7 +60,7 @@ describe('useHandlerMutation', () => {
             data = await result.current.mutateAsync({name: 'Test'});
         });
         expect(data).toEqual({id: 10});
-        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'Test'});
+        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'Test'}, undefined);
     });
 
     it('supports invalidateQueries list', async () => {
@@ -86,7 +86,7 @@ describe('useHandlerCall', () => {
             res = await result.current({id: 5});
         });
         expect(res).toEqual({status: 'ok'});
-        expect(dispatch).toHaveBeenCalledWith('action.run', {id: 5});
+        expect(dispatch).toHaveBeenCalledWith('action.run', {id: 5}, undefined);
     });
 
     it('calls dispatch with undefined params when no args passed', async () => {
@@ -97,6 +97,6 @@ describe('useHandlerCall', () => {
         await act(async () => {
             await result.current();
         });
-        expect(dispatch).toHaveBeenCalledWith('bare.call', undefined);
+        expect(dispatch).toHaveBeenCalledWith('bare.call', undefined, undefined);
     });
 });

@@ -3,9 +3,12 @@
  * Portal manages tabs, navigation, and menu configuration.
  */
 
+import type {IAction} from '@feasibleone/blong';
+
 /** A single open tab in the portal */
 export interface ITab {
     id: string;
+    /** The action that opened this tab */
     /** The action name that opened this tab */
     actionName: string;
     /** Parameters that were passed to the action */
@@ -17,32 +20,31 @@ export interface ITab {
     /** The loaded React component (after phase 2 resolution) */
     component?: React.ComponentType;
 }
-
 /** Menu item — can be a group or a leaf */
-export interface IMenuItem {
-    title?: string;
-    /** Action name for leaf items */
-    action?: string;
-    icon?: string;
-    items?: IMenuItem[];
-}
+export type IMenuItem =
+    | IAction
+    | {
+          title: string;
+          permission?: string;
+          icon?: string;
+          items: IMenuItem[];
+      };
 
 /** Portal configuration YAML shape */
 export interface IPortalConfig {
     name: string;
     title: string;
     theme?: string;
-    /** Action name for the home (default) page */
-    home?: string;
+    home?: IAction;
     menu?: IMenuItem[];
-    rightMenu?: string[];
+    rightMenu?: IMenuItem[];
 }
 
 /** Portal tab state managed by Zustand */
 export interface IPortalState {
     tabs: ITab[];
     activeTabId: string | null;
-    menuConfig: IPortalConfig | null;
+    portalConfig: IPortalConfig | null;
 }
 
 /** Navigator node for hierarchical navigation */

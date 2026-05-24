@@ -13,7 +13,12 @@ export default model(
                     properties: {
                         species: {
                             widget: {
-                                columns: ['speciesName', 'scientificName', 'familyId', 'conservationStatus'],
+                                columns: [
+                                    'speciesName',
+                                    'scientificName',
+                                    'familyId',
+                                    'conservationStatus',
+                                ],
                                 /** Filter table rows by the selected navigator family. */
                                 master: {familyId: 'familyId'},
                             },
@@ -108,14 +113,23 @@ export default model(
                     editThumbIndex: {
                         orientation: 'left',
                         items: [
-                            {id: 'taxonomy', label: 'Taxonomy', icon: 'pi pi-book', widgets: ['edit']},
-                            {id: 'biology', label: 'Biology', icon: 'pi pi-heart', widgets: ['editBio']},
+                            {
+                                id: 'taxonomy',
+                                label: 'Taxonomy',
+                                icon: 'pi pi-book',
+                                widgets: ['edit'],
+                            },
+                            {
+                                id: 'biology',
+                                label: 'Biology',
+                                icon: 'pi pi-heart',
+                                widgets: ['editBio'],
+                            },
                         ],
                     },
                 },
 
                 browser: {
-                    title: 'Species List',
                     icon: 'pi pi-th-large',
                     toolbar: [
                         {

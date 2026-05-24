@@ -4,6 +4,26 @@
  */
 import type React from 'react';
 
+export type IAction =
+    | string
+    | {
+          /** method name to invoke (query or mutation action). */
+          method?: string;
+          /** Static params merged into every invocation. */
+          params?:
+              | Record<string, unknown>
+              | ((params: Record<string, unknown>) => Record<string, unknown>);
+          title?: string;
+          permission?: string;
+          icon?: string;
+          /** Lazy-load a page component (page action). */
+          component?: () => Promise<unknown>;
+          /** When true the action mutates data and should invalidate related caches. */
+          mutates?: boolean;
+          /** Action names whose query caches should be invalidated on success. */
+          invalidates?: string[];
+      };
+
 /** All supported widget types */
 export type WidgetType =
     | 'input'
@@ -318,12 +338,6 @@ export interface IEnrichedSchema {
     name?: string;
 }
 
-/** Extended action reference — action name plus static params override */
-export interface IActionRef {
-    name: string;
-    params?: Record<string, unknown>;
-}
-
 /** Toolbar button configuration */
 export interface IToolbarButton {
     label?: string;
@@ -331,7 +345,7 @@ export interface IToolbarButton {
     /** Tooltip / aria title for icon-only buttons */
     title?: string;
     /** Action name (string) or extended ref */
-    action?: string | IActionRef;
+    action?: IAction;
     /** Direct RPC method name (bypass action registry) */
     method?: string;
     permission?: string;

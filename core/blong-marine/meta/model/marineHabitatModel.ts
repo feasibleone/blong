@@ -13,7 +13,13 @@ export default model(
                     properties: {
                         habitat: {
                             widget: {
-                                columns: ['habitatName', 'habitatType', 'zone', 'region', 'maxDepth'],
+                                columns: [
+                                    'habitatName',
+                                    'habitatType',
+                                    'zone',
+                                    'region',
+                                    'maxDepth',
+                                ],
                             },
                             properties: {
                                 habitatId: {},
@@ -50,8 +56,14 @@ export default model(
                                         type: 'select',
                                         options: [
                                             {value: 'sunlight', label: 'Sunlight Zone (0–200 m)'},
-                                            {value: 'twilight', label: 'Twilight Zone (200–1000 m)'},
-                                            {value: 'midnight', label: 'Midnight Zone (1000–4000 m)'},
+                                            {
+                                                value: 'twilight',
+                                                label: 'Twilight Zone (200–1000 m)',
+                                            },
+                                            {
+                                                value: 'midnight',
+                                                label: 'Midnight Zone (1000–4000 m)',
+                                            },
                                             {value: 'abyssal', label: 'Abyssal Zone (4000+ m)'},
                                         ],
                                     },
@@ -124,14 +136,23 @@ export default model(
                     editThumbIndex: {
                         orientation: 'left',
                         items: [
-                            {id: 'details', label: 'Details', icon: 'pi pi-info-circle', widgets: ['edit']},
-                            {id: 'coords', label: 'Location', icon: 'pi pi-map', widgets: ['editCoords', 'editTemp']},
+                            {
+                                id: 'details',
+                                label: 'Details',
+                                icon: 'pi pi-info-circle',
+                                widgets: ['edit'],
+                            },
+                            {
+                                id: 'coords',
+                                label: 'Location',
+                                icon: 'pi pi-map',
+                                widgets: ['editCoords', 'editTemp'],
+                            },
                         ],
                     },
                 },
 
                 browser: {
-                    title: 'Habitat List',
                     icon: 'pi pi-globe',
                     toolbar: [
                         {

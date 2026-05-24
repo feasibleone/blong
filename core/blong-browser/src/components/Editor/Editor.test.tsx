@@ -428,7 +428,11 @@ describe('<Editor />', () => {
 
         // Wait for the initial listAction fetch to complete.
         await waitFor(() => {
-            expect(listDispatch).toHaveBeenCalledWith('test.coral.find', expect.any(Object));
+            expect(listDispatch).toHaveBeenCalledWith(
+                'test.coral.find',
+                expect.any(Object),
+                undefined,
+            );
         });
         const callsBefore = listDispatch.mock.calls.filter(
             ([m]: unknown[]) => m === 'test.coral.find',
@@ -497,7 +501,12 @@ describe('<Editor />', () => {
 
 const editorSpyRenderCounts: Record<string, number> = {};
 
-const EditorSpyWidget = React.memo(function EditorSpyWidget({name, value, onChange, onBlur}: IWidgetProps) {
+const EditorSpyWidget = React.memo(function EditorSpyWidget({
+    name,
+    value,
+    onChange,
+    onBlur,
+}: IWidgetProps) {
     editorSpyRenderCounts[name] = (editorSpyRenderCounts[name] ?? 0) + 1;
     return (
         <input
@@ -1022,7 +1031,15 @@ describe("mode='new' — typed value stability", () => {
         // Stable reference — identical object on every render, so Form's
         // useEffect([value, reset]) never fires after the initial mount.
         const stableValue: Record<string, unknown> = {};
-        render(<Editor schema={schema} cards={cards} layouts={layouts} mode="new" value={stableValue} />);
+        render(
+            <Editor
+                schema={schema}
+                cards={cards}
+                layouts={layouts}
+                mode="new"
+                value={stableValue}
+            />,
+        );
         await act(async () => {});
 
         const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
@@ -1041,7 +1058,15 @@ describe("mode='new' — typed value stability", () => {
 
     it('multiple sequential keystrokes are all preserved', async () => {
         const stableValue: Record<string, unknown> = {};
-        render(<Editor schema={schema} cards={cards} layouts={layouts} mode="new" value={stableValue} />);
+        render(
+            <Editor
+                schema={schema}
+                cards={cards}
+                layouts={layouts}
+                mode="new"
+                value={stableValue}
+            />,
+        );
         await act(async () => {});
 
         const input = screen.getByLabelText('Coral Name') as HTMLInputElement;

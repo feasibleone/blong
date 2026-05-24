@@ -15,7 +15,7 @@ function FakeTabSimple() {
 beforeEach(() => {
     useAppStore.setState(s => ({
         ...s,
-        portal: {tabs: [], activeTabId: null, menuConfig: null},
+        portal: {tabs: [], activeTabId: null, portalConfig: null},
     }));
 });
 
@@ -41,13 +41,13 @@ describe('Portal', () => {
         expect(container.querySelector('.blong-portal.my-portal')).toBeInTheDocument();
     });
 
-    it('renders brand title from menuConfig when no logo prop', () => {
+    it('renders brand title from portalConfig when no logo prop', () => {
         act(() => {
             useAppStore.setState(s => ({
                 ...s,
                 portal: {
                     ...s.portal,
-                    menuConfig: {
+                    portalConfig: {
                         name: 'app',
                         title: 'My App',
                         menu: [],
@@ -89,21 +89,21 @@ describe('Portal', () => {
         expect(useAppStore.getState().portal.tabs).toHaveLength(1);
     });
 
-    it('renders menu items from menuConfig', () => {
+    it('renders menu items from portalConfig', async () => {
         act(() => {
             useAppStore.setState(s => ({
                 ...s,
                 portal: {
                     ...s.portal,
-                    menuConfig: {
+                    portalConfig: {
                         name: 'app',
                         title: 'App',
                         menu: [
-                            {title: 'Home', icon: 'pi pi-home', action: 'home.page'},
+                            {title: 'Home', icon: 'pi pi-home'},
                             {
                                 title: 'Admin',
                                 icon: 'pi pi-cog',
-                                items: [{title: 'Users', action: 'admin.users'}],
+                                items: [{title: 'Users'}],
                             },
                         ],
                     },
@@ -111,8 +111,8 @@ describe('Portal', () => {
             }));
         });
         render(<Portal />);
-        expect(screen.getByText('Home')).toBeInTheDocument();
-        expect(screen.getByText('Admin')).toBeInTheDocument();
+        expect(await screen.findByText('Home')).toBeInTheDocument();
+        expect(await screen.findByText('Admin')).toBeInTheDocument();
     });
 
     it('closes a tab when close button is clicked', () => {
@@ -144,7 +144,7 @@ describe('Portal', () => {
                 ...s,
                 portal: {
                     ...s.portal,
-                    menuConfig: {
+                    portalConfig: {
                         name: 'app',
                         title: 'App',
                         menu: [{title: 'Home', icon: 'pi pi-home', action: 'home.page'}],
@@ -153,10 +153,10 @@ describe('Portal', () => {
             }));
         });
         render(<Portal />);
-        // Get the menuConfig to build menu model and invoke command directly
-        const menuConfig = useAppStore.getState().portal.menuConfig;
+        // Get the portalConfig to build menu model and invoke command directly
+        const portalConfig = useAppStore.getState().portal.portalConfig;
         // The menu model is built internally - clicking in Menubar is hard in jsdom
-        // But we can verify the menuConfig is set
-        expect(menuConfig?.menu).toHaveLength(1);
+        // But we can verify the portalConfig is set
+        expect(portalConfig?.menu).toHaveLength(1);
     });
 });

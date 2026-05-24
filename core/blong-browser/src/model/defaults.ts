@@ -76,6 +76,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     return deepMerge<[IResolvedModelSpec, IModelSpec]>(
         {
             subject,
+            subjectTitle: capital(subject),
             object,
             objectTitle,
             keyField,
@@ -137,7 +138,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                 },
             },
             browser: {
-                title: `${objectTitle} List`,
+                title: `Browse ${objectTitle}`,
                 icon: 'pi pi-list',
                 permission: {
                     browse: `${subject}.${object}.browse`,

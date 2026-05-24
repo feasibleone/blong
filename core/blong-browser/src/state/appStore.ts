@@ -58,7 +58,7 @@ export interface IAppActions {
         id: string,
         component: React.ComponentType<Record<string, unknown>>,
     ) => void;
-    setMenuConfig: (config: IPortalConfig | null) => void;
+    setPortalConfig: (config: IPortalConfig | null) => void;
 
     // Toasts
     showToast: (toast: Omit<IToast, 'id'>) => void;
@@ -94,7 +94,7 @@ const initialAuth: IAuthState = {
 const initialPortal: IPortalState = {
     tabs: [],
     activeTabId: null,
-    menuConfig: null,
+    portalConfig: null,
 };
 
 let toastIdCounter = 0;
@@ -181,7 +181,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
                 tabs: state.portal.tabs.map(t => (t.id === id ? {...t, component} : t)),
             },
         })),
-    setMenuConfig: config => set(state => ({portal: {...state.portal, menuConfig: config}})),
+    setPortalConfig: config => set(state => ({portal: {...state.portal, portalConfig: config}})),
 
     // Toast actions
     showToast: toast => {

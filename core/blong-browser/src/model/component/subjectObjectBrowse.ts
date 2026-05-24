@@ -30,6 +30,7 @@ export async function subjectObjectBrowse(
                     editable: false,
                     editMode: false,
                     refreshNamespace: `${subject}.${object}`,
+                    title: browser.title,
                     ...props,
                 });
             }

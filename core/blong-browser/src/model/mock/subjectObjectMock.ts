@@ -1,13 +1,26 @@
 import type {IAdapter, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
 import {withDefaults} from '../defaults.js';
 
-const fixtureData: Record<string, Record<string, Record<string, unknown>[]>> = {};
-const subjectObject: Record<string, Record<string, IModelSpec>> = {};
 export default async function mock(
-    this: IAdapter<object, object>,
+    this: IAdapter<
+        {
+            context: {
+                fixtureData?: Record<string, Record<string, Record<string, unknown>[]>>;
+                subjectObject?: Record<string, Record<string, IModelSpec>>;
+            };
+            portal?: object;
+        },
+        object
+    >,
     models: IModelSpec[],
     blong: IHandlerProxy<unknown>,
 ) {
+    this.config!.context ||= {};
+    this.config!.context.fixtureData ||= {};
+    this.config!.context.subjectObject ||= {};
+    const fixtureData = this.config!.context.fixtureData;
+    const subjectObject = this.config!.context.subjectObject;
+
     const mocks: Record<string, () => Promise<object>> = {};
     const fixture = async (name: string) => {
         const subject = name.split('.')[0];

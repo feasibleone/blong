@@ -13,12 +13,12 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPortalConfig, ITab} from '../../types/portal.js';
 import {Basic as EditorBasic} from '../Editor/Editor.stories.js';
-import {Default as ExplorerDefault} from '../Explorer/Explorer.stories.js';
 import {Explorer} from '../Explorer/Explorer.js';
+import {Default as ExplorerDefault} from '../Explorer/Explorer.stories.js';
 import {Portal} from './Portal.js';
 
 // ── Meta ───────────────────────────────────────────────────────────────────
@@ -40,15 +40,15 @@ type Story = Omit<StoryObj<typeof meta>, 'play'> & {
  * Seed the portal Zustand store with tabs (and optional menu config) and
  * clean up on unmount.  Wraps Portal so stories are self-contained.
  */
-function PortalSetup({tabs, menuConfig}: {tabs: ITab[]; menuConfig?: IPortalConfig}) {
+function PortalSetup({tabs, portalConfig}: {tabs: ITab[]; portalConfig?: IPortalConfig}) {
     useEffect(() => {
         // Reset first to avoid bleed-through from previous stories
-        useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+        useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
         const store = useAppStore.getState();
         tabs.forEach(tab => store.openTab(tab));
-        if (menuConfig) store.setMenuConfig(menuConfig);
+        if (portalConfig) store.setPortalConfig(portalConfig);
         return () => {
-            useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+            useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
         };
         // eslint-disable-next-line @eslint-react/exhaustive-deps -- run once on mount
     }, []);
@@ -150,22 +150,19 @@ function WithMenuStory() {
             'view.pageTwo': {title: 'Page 2', component: () => Promise.resolve(PageTwo)},
         });
         // Configure menu
-        store.setMenuConfig({
+        store.setPortalConfig({
             name: 'demo',
             title: 'Demo Portal',
             menu: [
                 {
                     title: 'View',
-                    items: [
-                        {title: 'Page 1', action: 'view.pageOne'},
-                        {title: 'Page 2', action: 'view.pageTwo'},
-                    ],
+                    items: ['view.pageOne', 'view.pageTwo'],
                 },
             ],
         });
         useAppStore.setState(s => ({portal: {...s.portal, tabs: [], activeTabId: null}}));
         return () => {
-            useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+            useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
         };
     }, []);
     return <Portal />;
@@ -178,9 +175,9 @@ export const WithMenu: Story = {
 WithMenu.play = async ({canvas, userEvent}) => {
     // Open the "View" menu
     await userEvent.click(await canvas.findByText('View' as never));
+    await new Promise(r => setTimeout(r, 200));
     // Click "Page 1"
     await userEvent.click(await canvas.findByText('Page 1' as never));
-    await new Promise(r => setTimeout(r, 200));
 };
 
 /**

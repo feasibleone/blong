@@ -2,7 +2,7 @@
  * BlongUiContext — the central provider that wires together all blong-browser
  * infrastructure: method registry dispatch, schema fetching, QueryClient, etc.
  */
-import type {ILogger} from '@feasibleone/blong';
+import type {ILogger, IMeta} from '@feasibleone/blong';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {createContext, use, useMemo, type ReactNode} from 'react';
 import {blongEvents} from '../lib/eventBus.js';
@@ -15,6 +15,7 @@ import type {ISchemaRegistry} from '../types/schema.js';
 export type DispatchFn = <T>(
     method: string,
     params?: Record<string, unknown>,
+    $meta?: IMeta,
 ) => Promise<T> | undefined;
 
 /** Context value shape */
@@ -107,10 +108,10 @@ export function BlongUiProvider({
      */
     const wrappedDispatch = useMemo<DispatchFn>(
         () =>
-            (async (method, params) => {
+            (async (method, params, meta) => {
                 blongEvents.emit('action:before', {method, params});
                 try {
-                    const result = await dispatch(method, params);
+                    const result = await dispatch(method, params, meta);
                     blongEvents.emit('action:success', {method, params, result});
                     return result;
                 } catch (err) {

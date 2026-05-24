@@ -49,7 +49,7 @@ describe('useAction — no action registered (direct dispatch)', () => {
         await act(async () => {
             await result.current.call({name: 'test'});
         });
-        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'test'});
+        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'test'}, undefined);
     });
 });
 
@@ -67,7 +67,7 @@ describe('useAction — query action', () => {
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
         });
-        expect(dispatch).toHaveBeenCalledWith('entity.entity.find', {});
+        expect(dispatch).toHaveBeenCalledWith('entity.entity.find', {}, undefined);
     });
 });
 
@@ -84,7 +84,7 @@ describe('useAction — mutation action', () => {
         await act(async () => {
             await result.current.call({name: 'New Entity'});
         });
-        expect(dispatch).toHaveBeenCalledWith('entity.entity.add', {name: 'New Entity'});
+        expect(dispatch).toHaveBeenCalledWith('entity.entity.add', {name: 'New Entity'}, undefined);
     });
 
     it('returns loading=false after successful mutation', async () => {
@@ -101,7 +101,7 @@ describe('useAction — mutation action', () => {
             await result.current.call({id: 99});
         });
         expect(result.current.loading).toBe(false);
-        expect(dispatch).toHaveBeenCalledWith('entity.entity.remove', {id: 99});
+        expect(dispatch).toHaveBeenCalledWith('entity.entity.remove', {id: 99}, undefined);
     });
 });
 
@@ -153,7 +153,7 @@ describe('useAction — page action', () => {
         await act(async () => {
             await result.current.open({param: 'value'});
         });
-        expect(dispatch).toHaveBeenCalledWith('unregistered.action', {param: 'value'});
+        expect(dispatch).toHaveBeenCalledWith('unregistered.action', {param: 'value'}, undefined);
     });
 });
 
@@ -176,6 +176,7 @@ describe('useAction — with static params', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'entity.entity.find',
             expect.objectContaining({type: 'static', extra: 'base', dynamic: 'value'}),
+            undefined,
         );
     });
 
@@ -197,6 +198,7 @@ describe('useAction — with static params', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'x.y.find',
             expect.objectContaining({derived: 'hello', input: 'hello'}),
+            undefined,
         );
     });
 });

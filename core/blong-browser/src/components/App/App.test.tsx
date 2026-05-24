@@ -6,7 +6,7 @@ import {App} from './App.js';
 beforeEach(() => {
     useAppStore.setState(s => ({
         ...s,
-        portal: {tabs: [], activeTabId: null, menuConfig: null},
+        portal: {tabs: [], activeTabId: null, portalConfig: null},
     }));
 });
 

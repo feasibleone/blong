@@ -59,7 +59,6 @@ export default model(
                 },
 
                 browser: {
-                    title: 'Family List',
                     icon: 'pi pi-sitemap',
                     toolbar: [
                         {

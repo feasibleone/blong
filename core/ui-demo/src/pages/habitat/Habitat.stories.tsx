@@ -13,20 +13,20 @@ const meta: Meta = {
 export default meta;
 
 // ── Browse ───────────────────────────────────────────────────────────────────
-export const HabitatBrowse = page('marine.habitat.browse');
+export const Browse = page('marine.habitat.browse');
 
 // ── Open ─────────────────────────────────────────────────────────────────────
 /** Open habitat #1 (Great Barrier Reef) */
-export const HabitatOpen = page('marine.habitat.open', 1);
+export const Open = page('marine.habitat.open', 1);
 /** Split layout — details on left, coordinates on right */
-export const HabitatOpenSplit = page('marine.habitat.open', 1, {layout: 'editSplit'});
+export const OpenSplit = page('marine.habitat.open', 1, {layout: 'editSplit'});
 /** Thumb-index tab layout */
-export const HabitatOpenThumbIndex = page('marine.habitat.open', 1, {layout: 'editThumbIndex'});
+export const OpenThumbIndex = page('marine.habitat.open', 1, {layout: 'editThumbIndex'});
 
 // ── New ──────────────────────────────────────────────────────────────────────
-export const HabitatNew = page('marine.habitat.new');
-export const HabitatNewSplit = page('marine.habitat.new', {layout: 'editSplit'});
-export const HabitatNewThumbIndex = page('marine.habitat.new', {layout: 'editThumbIndex'});
+export const New = page('marine.habitat.new');
+export const NewSplit = page('marine.habitat.new', {layout: 'editSplit'});
+export const NewThumbIndex = page('marine.habitat.new', {layout: 'editThumbIndex'});
 
 // ── Report ───────────────────────────────────────────────────────────────────
-export const HabitatReport = page('marine.habitat.report');
+export const Report = page('marine.habitat.report');

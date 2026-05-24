@@ -919,53 +919,6 @@ export interface IComponent {
     component: (params?: Record<string, unknown>) => Promise<unknown>;
 }
 
-/** Action definition for use with `defineActions`. */
-export interface IActionDef {
-    title?: string;
-    permission?: string;
-    icon?: string;
-    /** Lazy-load a page component (page action). */
-    component?: () => Promise<unknown>;
-    /** Bus method name to invoke (query or mutation action). */
-    method?: string;
-    /** When true the action mutates data and should invalidate related caches. */
-    mutates?: boolean;
-    /** Action names whose query caches should be invalidated on success. */
-    invalidates?: string[];
-    /** Static params merged into every invocation. */
-    params?:
-        | Record<string, unknown>
-        | ((params: Record<string, unknown>) => Record<string, unknown>);
-}
-
-/**
- * Register action metadata for a realm's browser layer.
- *
- * Returns a handler-compatible function that the blong framework loads from
- * the realm's `actions/` or `action/` folder.  Each entry in `actions` is
- * wrapped in a no-argument function so the framework can call it as a method.
- *
- * @example
- * ```ts
- * // marine/actions/index.ts
- * export default defineActions({
- *   'marine.coral.browse': {
- *     title: 'Browse Corals',
- *     permission: 'marine.coral.browse',
- *     component: () => import('./components/CoralBrowse.js'),
- *   },
- * });
- * ```
- */
-export const defineActions = (
-    actions: Record<string, IActionDef>,
-): ((_blong: unknown) => Record<string, () => IActionDef>) =>
-    Object.defineProperty(
-        () => Object.fromEntries(Object.entries(actions).map(([key, value]) => [key, () => value])),
-        Kind,
-        {value: 'handler'},
-    );
-
 export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T> =>
     Object.defineProperty(definition, Kind, {value: 'lib'});
 export const validation = (validation: ValidationDefinition): ValidationDefinition =>
@@ -1050,7 +1003,6 @@ export const kind = (what: {[Kind]: Kinds | undefined}): Kinds => what[Kind] || 
 
 export default {
     handler,
-    defineActions,
     library,
     validation,
     api,

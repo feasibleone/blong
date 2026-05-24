@@ -10,8 +10,8 @@
  */
 import {confirmDialog, SplitButton} from '../../primereact/index.js';
 
-import {useRef, useState} from 'react';
 import {useQueryClient} from '@tanstack/react-query';
+import {useRef, useState} from 'react';
 import {useAction} from '../../hooks/useAction.js';
 import {usePermission} from '../../hooks/usePermission.js';
 import type {IToolbarButton} from '../../index.js';
@@ -50,7 +50,7 @@ export function ActionButton({
     const permitted = usePermission(permission);
     const [loading, setLoading] = useState(false);
     const queryClient = useQueryClient();
-    const actionName = typeof actionRef === 'string' ? actionRef : actionRef?.name;
+    const actionMethod = typeof actionRef === 'string' ? actionRef : actionRef?.method;
     const actionParamsOverride =
         typeof actionRef === 'object' && actionRef !== null ? actionRef.params : undefined;
     // extraParams may be a pre-resolved Record; if it arrives as a non-object (rare, e.g. a
@@ -63,7 +63,7 @@ export function ActionButton({
         extraParams !== null && typeof extraParams === 'object' && !Array.isArray(extraParams)
             ? mergedParams
             : ((extraParams as Record<string, unknown> | undefined) ?? mergedParams);
-    const directMethod = method ?? actionName ?? '';
+    const directMethod = method ?? actionMethod ?? '';
     const {call} = useAction(directMethod, 'mutation', mergedParams);
     const clearError = useAppStore(s => s.clearError);
     const showHint = useAppStore(s => s.showHint);
@@ -130,7 +130,8 @@ export function ActionButton({
             label: item.label,
             icon: item.icon,
             command: () => {
-                const subAction = typeof item.action === 'string' ? item.action : item.action?.name;
+                const subAction =
+                    typeof item.action === 'string' ? item.action : item.action?.method;
                 if (subAction) void call({...mergedParams, _action: subAction});
             },
         }));

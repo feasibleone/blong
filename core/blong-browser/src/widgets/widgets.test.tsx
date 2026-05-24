@@ -4,9 +4,8 @@
  */
 import type {IWidgetProps} from '@feasibleone/blong';
 import {describe, expect, it, vi} from 'vitest';
-import React from 'react';
-import {act, fireEvent, render} from '../test/render.js';
 import {FormStateContext} from '../components/Form/FormContext.js';
+import {act, fireEvent, render} from '../test/render.js';
 
 import {BooleanWidget} from './BooleanWidget.js';
 import {CurrencyWidget} from './CurrencyWidget.js';
@@ -587,7 +586,7 @@ describe('TableWidget — listAction mode', () => {
             {dispatch},
         );
         expect(await findByText('Alpha')).toBeTruthy();
-        expect(dispatch).toHaveBeenCalledWith('testAction', expect.any(Object));
+        expect(dispatch).toHaveBeenCalledWith('testAction', expect.any(Object), undefined);
     });
 
     it('merges listParams into the dispatch call', async () => {
@@ -611,6 +610,7 @@ describe('TableWidget — listAction mode', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'testAction',
             expect.objectContaining({tenantId: 42}),
+            undefined,
         );
         // Drain the resolved dispatch promise so no state updates leak outside the test.
         await act(async () => {});
@@ -650,6 +650,7 @@ describe('TableWidget — listAction mode', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'coralFind',
             expect.objectContaining({categoryId: 99}),
+            undefined,
         );
         // Drain the resolved dispatch promise so no state updates leak outside the test.
         await act(async () => {});
@@ -774,6 +775,7 @@ describe('NavigatorWidget', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'categoryFind',
             expect.objectContaining({tenantId: 5}),
+            undefined,
         );
     });
 

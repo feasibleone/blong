@@ -40,6 +40,7 @@ export type {InputNumberProps} from 'primereact/inputnumber';
 export type {InputTextProps} from 'primereact/inputtext';
 export type {InputTextareaProps} from 'primereact/inputtextarea';
 export type {MenubarProps} from 'primereact/menubar';
+export type {MenuItem} from 'primereact/menuitem';
 export type {MessageProps} from 'primereact/message';
 export type {MultiSelectProps} from 'primereact/multiselect';
 export type {OverlayPanelProps} from 'primereact/overlaypanel';

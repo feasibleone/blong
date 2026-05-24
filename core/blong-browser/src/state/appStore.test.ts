@@ -31,8 +31,12 @@ describe('appStore — auth', () => {
 
     it('sets permissions', () => {
         useAppStore.getState().setPermissions({'portal.design': true, 'user.admin': false});
-        expect((useAppStore.getState().auth.permissions as Record<string, boolean>)['portal.design']).toBe(true);
-        expect((useAppStore.getState().auth.permissions as Record<string, boolean>)['user.admin']).toBe(false);
+        expect(
+            (useAppStore.getState().auth.permissions as Record<string, boolean>)['portal.design'],
+        ).toBe(true);
+        expect(
+            (useAppStore.getState().auth.permissions as Record<string, boolean>)['user.admin'],
+        ).toBe(false);
     });
 
     it('clears profile and permissions on logout', () => {
@@ -153,13 +157,13 @@ describe('appStore — actions', () => {
 
 describe('appStore — menu config', () => {
     it('sets menu config', () => {
-        const config = {name: 'test', title: 'Test', menu: [], home: ''};
-        useAppStore.getState().setMenuConfig(config);
-        expect(useAppStore.getState().portal.menuConfig).toEqual(config);
+        const config = {name: 'test', title: 'Test', home: ''};
+        useAppStore.getState().setPortalConfig(config);
+        expect(useAppStore.getState().portal.portalConfig).toEqual(config);
     });
 
     it('clears menu config', () => {
-        useAppStore.getState().setMenuConfig(null);
-        expect(useAppStore.getState().portal.menuConfig).toBeNull();
+        useAppStore.getState().setPortalConfig(null);
+        expect(useAppStore.getState().portal.portalConfig).toBeNull();
     });
 });

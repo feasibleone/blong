@@ -4,7 +4,13 @@
  * Renders a Menubar at the top, a TabView of open pages below it,
  * and wires menu item clicks to action dispatches.
  */
-import {Menubar, ProgressSpinner, TabPanel, TabView} from '../../primereact/index.js';
+import {
+    Menubar,
+    ProgressSpinner,
+    TabPanel,
+    TabView,
+    type MenuItem,
+} from '../../primereact/index.js';
 import './Portal.css';
 
 import React, {Suspense, useCallback} from 'react';
@@ -12,7 +18,6 @@ import {useBlongUi} from '../../context/BlongUiContext.js';
 import {usePortal} from '../../hooks/usePortal.js';
 import testid from '../../lib/testid.js';
 import {useAppStore} from '../../state/appStore.js';
-import type {IPageAction} from '../../types/action.js';
 import type {IMenuItem} from '../../types/portal.js';
 import {Button} from '../Button/Button.js';
 import {ErrorDialog} from '../Error/Error.js';
@@ -51,23 +56,46 @@ class TabErrorBoundary extends React.Component<
 
 // ── Menu helpers ───────────────────────────────────────────────────────────
 
-function buildMenuModel(items: IMenuItem[], openAction: (actionName: string) => void): object[] {
-    return items.map(item => {
-        if (item.items?.length) {
-            return {
-                label: item.title,
-                icon: item.icon,
-                items: buildMenuModel(item.items, openAction),
-            };
-        }
-        return {
-            label: item.title,
-            icon: item.icon,
-            command: () => {
-                if (item.action) openAction(item.action);
-            },
-        };
-    });
+async function buildMenuModel(
+    items: IMenuItem[] | undefined,
+    command: MenuItem['command'],
+    dispatch: ReturnType<typeof useBlongUi>['dispatch'],
+): Promise<MenuItem[] | undefined> {
+    if (!items) return undefined;
+    return Promise.all(
+        items.map(async item => {
+            const action = typeof item === 'string' ? {method: item} : item;
+            if ('items' in action) {
+                return {
+                    label: action.title,
+                    icon: action.icon,
+                    items: await buildMenuModel(action.items, command, dispatch),
+                } as MenuItem;
+            } else if ('method' in action) {
+                const {title, permission, icon, component} = (await dispatch(
+                    `component/${action.method}`,
+                    typeof action.params === 'function' ? action.params({}) : action.params,
+                )) as {
+                    title: string;
+                    permission?: string;
+                    icon?: string;
+                    component: React.ComponentType;
+                };
+                return {
+                    label: title,
+                    icon,
+                    data: {
+                        action: action.method,
+                        params: action.params,
+                        title,
+                        permission,
+                        component,
+                    },
+                    command,
+                } as MenuItem;
+            } else return {label: action.title, icon: action.icon};
+        }),
+    );
 }
 
 export interface IPortalProps {
@@ -79,46 +107,48 @@ export interface IPortalProps {
 }
 
 export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
-    const {tabs, activeTabId, setActiveTab, closeTab, menuConfig} = usePortal();
+    const {tabs, activeTabId, setActiveTab, closeTab, portalConfig} = usePortal();
     const {dispatch} = useBlongUi();
-    const openAction = useAppStore(s => s.openTab);
-    const actions = useAppStore(s => s.actions);
-    const updateTabComponent = useAppStore(s => s.updateTabComponent);
+    const openTab = useAppStore(s => s.openTab);
 
-    const openByAction = useCallback(
-        (actionName: string) => {
-            const action = actions[actionName];
-            const title = (action && 'title' in action ? action.title : null) ?? actionName;
-            openAction({id: actionName, actionName, params: {}, title});
-
-            // Resolve the component asynchronously
+    const command = useCallback(
+        ({
+            item: {
+                data: {component, title, action, params},
+            },
+        }: {
+            item: MenuItem;
+        }) => {
             void (async () => {
                 try {
-                    let component: React.ComponentType<Record<string, unknown>>;
-                    if (action && 'component' in action) {
-                        component = await (action as IPageAction).component({});
-                    } else {
-                        component = (await dispatch(
-                            `component/${actionName}`,
-                            {},
-                        )) as React.ComponentType<Record<string, unknown>>;
-                    }
-                    if (component) updateTabComponent(actionName, component);
+                    openTab({
+                        id: `${action}?${JSON.stringify(params)}`,
+                        actionName: action,
+                        params,
+                        title,
+                        component: await component(),
+                    });
                 } catch {
                     // Tab stays as loading spinner; dispatch may have shown an error already
                 }
             })();
         },
-        [actions, dispatch, openAction, updateTabComponent],
+        [openTab],
     );
 
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);
-    const menuModel = menuConfig?.menu ? buildMenuModel(menuConfig.menu, openByAction) : [];
+    const [menu, setMenu] = React.useState<MenuItem[] | undefined>(undefined);
+    React.useEffect(() => {
+        buildMenuModel(portalConfig?.menu, command, dispatch).then(result => {
+            debugger;
+            setMenu(result);
+        });
+    }, [portalConfig?.menu, command, dispatch]);
 
     const start =
         logo ??
-        (menuConfig?.title ? (
-            <span className="blong-portal-brand">{menuConfig.title}</span>
+        (portalConfig?.title ? (
+            <span className="blong-portal-brand">{portalConfig.title}</span>
         ) : undefined);
 
     return (
@@ -128,10 +158,10 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
             <ErrorDialog />
 
             <Menubar
-                model={menuModel}
                 start={start}
                 end={menubarEnd}
                 className="blong-portal-menubar"
+                {...(menu && {model: menu})}
             />
 
             <div className="blong-portal-body">

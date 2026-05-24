@@ -1,15 +1,30 @@
-import type {IComponent, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
+import type {IAdapter, IComponent, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
+import type {IPortalConfig} from '../../index.js';
 import {withDefaults} from '../defaults.js';
 import {subjectObjectBrowse} from './subjectObjectBrowse.js';
 import {subjectObjectNew} from './subjectObjectNew.js';
 import {subjectObjectOpen} from './subjectObjectOpen.js';
 import {subjectObjectReport} from './subjectObjectReport.js';
 
-export default async (models: IModelSpec[], blong: IHandlerProxy<unknown>) => {
-    const components: Record<string, () => Promise<IComponent>> = {};
+export default async function component(
+    this: IAdapter<
+        {
+            portal?: IPortalConfig;
+            context?: {
+                menus?: Record<string, unknown[]>;
+            };
+        },
+        object
+    >,
+    models: IModelSpec[],
+    blong: IHandlerProxy<unknown>,
+) {
+    const components: Record<string, () => Promise<IComponent | IPortalConfig>> = {};
+    this.config!.context ||= {menus: {}};
+    this.config!.context.menus ||= {};
     for (const rawModel of models) {
         const model = withDefaults(rawModel);
-        const {subject, object} = model;
+        const {subject, object, subjectTitle} = model;
         components[`${subject}.${object}.browse`] = await subjectObjectBrowse(model, blong);
         components[`${subject}.${object}.new`] = await subjectObjectNew(model, blong);
         components[`${subject}.${object}.open`] = await subjectObjectOpen(model, blong);
@@ -25,7 +40,24 @@ export default async (models: IModelSpec[], blong: IHandlerProxy<unknown>) => {
                 );
             }
         }
+        this.config!.context.menus[`${subjectTitle}`] ||= [];
+        this.config!.context.menus[`${subjectTitle}`].push(`${subject}.${object}.browse`);
     }
 
+    components['portal.config.get'] = async () => {
+        return blong.lib.merge(
+            {},
+            {
+                menu: Object.entries(this.config!.context?.menus || {}).map(([subject, items]) => ({
+                    title: subject,
+                    items,
+                })),
+                title: 'Blong',
+                name: 'blong-portal',
+            },
+            this.config!.portal,
+        );
+    };
+
     return components;
-};
+}

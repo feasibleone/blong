@@ -7,6 +7,7 @@
 import {confirmPopup, OverlayPanel, Toolbar} from '../../primereact/index.js';
 
 import type {ICardConfig, IEnrichedSchema} from '@feasibleone/blong';
+import {useQueryClient} from '@tanstack/react-query';
 import {useCallback, useEffect, useId, useRef, useState} from 'react';
 import {DesignModeProvider} from '../../design/DesignModeContext.js';
 import {
@@ -14,15 +15,14 @@ import {
     DesignAddFieldButton,
     PropertyEditor,
 } from '../../design/PropertyEditor.js';
-import {useQueryClient} from '@tanstack/react-query';
 import {useAction} from '../../hooks/useAction.js';
 import {type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import type {IToolbarButton} from '../../index.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IBlongError} from '../../types/action.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
-import type {ITableSelection} from '../Form/FormContext.js';
 import {Form} from '../Form/Form.js';
+import type {ITableSelection} from '../Form/FormContext.js';
 
 export interface IEditorProps {
     /** Schema for the entity being edited */
@@ -182,7 +182,10 @@ function resolveLayoutKey(
  *   ('view', 'viewDefault')     → 'View'  ('default' suffix filtered out)
  */
 export function resolveTabTitle(mode: EditorMode, resolvedLayout: string): string {
-    const words = resolvedLayout.replace(/([A-Z])/g, ' $1').trim().split(/\s+/);
+    const words = resolvedLayout
+        .replace(/([A-Z])/g, ' $1')
+        .trim()
+        .split(/\s+/);
     const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     // If the layout key starts with the mode, use trailing words as suffix
     const suffix: string[] =
@@ -285,8 +288,8 @@ export function Editor({
     queryAction,
 }: IEditorProps) {
     const formId = useId();
-    const [currentMode, setCurrentMode] = useState<EditorMode>(
-        () => deriveInitialMode(initialModeProp, initialEditMode),
+    const [currentMode, setCurrentMode] = useState<EditorMode>(() =>
+        deriveInitialMode(initialModeProp, initialEditMode),
     );
     // 'new' and 'edit' modes are both editable; 'view' is read-only
     const editMode = currentMode !== 'view';
@@ -424,12 +427,9 @@ export function Editor({
     }, []);
 
     // Stable onLayoutChange callback for design mode.
-    const handleLayoutChange = useCallback(
-        (key: string, newLayout: FlatLayoutConfig) => {
-            setLocalLayouts(prev => ({...(prev ?? {}), [key]: newLayout as FlatLayoutConfig}));
-        },
-        [],
-    );
+    const handleLayoutChange = useCallback((key: string, newLayout: FlatLayoutConfig) => {
+        setLocalLayouts(prev => ({...(prev ?? {}), [key]: newLayout as FlatLayoutConfig}));
+    }, []);
 
     // Load action (skipped when static value is provided)
     const loader = useAction<Record<string, unknown>>(
@@ -468,7 +468,9 @@ export function Editor({
         setServerErrors(undefined);
         const isCreate = currentMode === 'new';
         try {
-            const result = (await activeSaver.call(formValue)) as Record<string, unknown> | undefined;
+            const result = (await activeSaver.call(formValue)) as
+                | Record<string, unknown>
+                | undefined;
             // Use the server-returned value — the back end may apply side-effect updates
             // (timestamps, computed fields, etc.) that the client form does not know about.
             const savedValue = result ?? formValue;
@@ -604,11 +606,15 @@ export function Editor({
         <div className="blong-toolbar-left">
             {leftButtons.map((btn, i) => {
                 const actionName =
-                    typeof btn.action === 'string' ? btn.action : (btn.action?.name ?? '');
+                    typeof btn.action === 'string' ? btn.action : (btn.action?.method ?? '');
                 const isDisabled =
                     (actionName === '__save__' || actionName === '__cancel__') &&
                     (!isDirty || activeSaving || toolbarBusy > 0);
-                if (actionName === '__edit__' || actionName === '__cancel__' || actionName === '__refresh__') {
+                if (
+                    actionName === '__edit__' ||
+                    actionName === '__cancel__' ||
+                    actionName === '__refresh__'
+                ) {
                     return (
                         <button
                             ref={actionName === '__cancel__' ? cancelButtonRef : undefined}
@@ -657,7 +663,7 @@ export function Editor({
             <div className="blong-toolbar-right">
                 {rightButtons.map((btn, i) => {
                     const actionName =
-                        typeof btn.action === 'string' ? btn.action : (btn.action?.name ?? '');
+                        typeof btn.action === 'string' ? btn.action : (btn.action?.method ?? '');
                     if (actionName === '__design__') {
                         return (
                             <span
@@ -729,10 +735,7 @@ export function Editor({
                 readOnly={
                     isReportMode
                         ? false
-                        : !editMode ||
-                          activeSaving ||
-                          toolbarBusy > 0 ||
-                          loader.loading
+                        : !editMode || activeSaving || toolbarBusy > 0 || loader.loading
                 }
                 loading={loader.loading}
                 serverErrors={serverErrors}

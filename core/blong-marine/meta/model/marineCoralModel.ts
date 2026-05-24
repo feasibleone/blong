@@ -158,7 +158,6 @@ export default model(
                 },
 
                 browser: {
-                    title: 'Coral List',
                     icon: 'pi pi-star',
                     toolbar: [
                         {

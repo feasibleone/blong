@@ -1,10 +1,7 @@
-import {handler} from '@feasibleone/blong';
+import {handler, type IMeta} from '@feasibleone/blong';
 import type {JSX} from 'react/jsx-runtime';
 
-export default handler<
-    {shouldRender?: boolean},
-    {container?: (params: object) => JSX.Element}
->(
+export default handler<{shouldRender?: boolean}, {container?: (params: object) => JSX.Element}>(
     ({handler: proxy, config: {shouldRender}}) =>
         async function ready(params, _$meta) {
             const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
@@ -13,10 +10,11 @@ export default handler<
                 import('../../src/components/App/App.js'),
             ]);
 
-            const dispatch = <T>(method: string, rpcParams: Record<string, unknown> = {}) =>
-                (proxy as unknown as Record<string, (p: unknown) => Promise<T>>)[method](
-                    rpcParams ?? {},
-                );
+            const dispatch = <T>(
+                method: string,
+                rpcParams: Record<string, unknown> = {},
+                $meta: IMeta = {},
+            ) => proxy[method](rpcParams ?? {}, $meta) as Promise<T>;
             this.config.context ||= {};
             this.config.context.container = params =>
                 React.createElement(App, {dispatch, ...params});

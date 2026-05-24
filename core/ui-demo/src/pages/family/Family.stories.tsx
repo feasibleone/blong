@@ -13,17 +13,17 @@ const meta: Meta = {
 export default meta;
 
 // ── Browse ───────────────────────────────────────────────────────────────────
-export const FamilyBrowse = page('marine.family.browse');
+export const Browse = page('marine.family.browse');
 
 // ── Open ─────────────────────────────────────────────────────────────────────
 /** Open family #1 (Acroporidae) */
-export const FamilyOpen = page('marine.family.open', 1);
+export const Open = page('marine.family.open', 1);
 /** Open family #1 — full layout with parentFamilyId field */
-export const FamilyOpenFull = page('marine.family.open', 1, {layout: 'editFull'});
+export const OpenFull = page('marine.family.open', 1, {layout: 'editFull'});
 
 // ── New ──────────────────────────────────────────────────────────────────────
-export const FamilyNew = page('marine.family.new');
-export const FamilyNewFull = page('marine.family.new', {layout: 'editFull'});
+export const New = page('marine.family.new');
+export const NewFull = page('marine.family.new', {layout: 'editFull'});
 
 // ── Report ───────────────────────────────────────────────────────────────────
-export const FamilyReport = page('marine.family.report');
+export const Report = page('marine.family.report');

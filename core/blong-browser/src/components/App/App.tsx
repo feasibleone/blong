@@ -20,6 +20,7 @@ import type {ILogger} from '@feasibleone/blong';
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
+import type {IPortalConfig} from '../../storybook.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {ActionHint} from '../Hint/Hint.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
@@ -71,10 +72,17 @@ function AppShell({
     portalProps: IPortalProps;
 }) {
     const isAuthenticated = useAppStore(s => s.auth.isAuthenticated);
+    React.useEffect(() => {
+        if (dispatch && isAuthenticated) {
+            dispatch('portal.config.get', {})?.then(config => {
+                useAppStore.getState().setPortalConfig(config as IPortalConfig);
+            });
+        }
+    }, [dispatch, isAuthenticated]);
     if (LoginComponent && !isAuthenticated) {
         return <LoginComponent dispatch={dispatch} />;
     }
-    return <>{children ?? <Portal {...portalProps} />}</>;
+    return children ?? <Portal {...portalProps} />;
 }
 
 export function App({

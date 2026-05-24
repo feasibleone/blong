@@ -80,15 +80,15 @@ function ReportsPage() {
 
 // ── Shared portal config ───────────────────────────────────────────────────
 
-const portalMenuConfig: IPortalConfig = {
+const portalConfig: IPortalConfig = {
     name: 'marine-biology',
     title: 'Marine Biology Portal',
     menu: [
         {
             title: 'Data',
             items: [
-                {title: 'Species', action: 'app.species', icon: 'pi pi-list'},
-                {title: 'Reports', action: 'app.reports', icon: 'pi pi-chart-bar'},
+                {title: 'Species', method: 'app.species', icon: 'pi pi-list'},
+                {title: 'Reports', method: 'app.reports', icon: 'pi pi-chart-bar'},
             ],
         },
     ],
@@ -106,24 +106,24 @@ const portalInitialTabs: ITab[] = [
 
 // ── Helper: seed portal store ──────────────────────────────────────────────
 
-function PortalApp({tabs, menuConfig}: {tabs: ITab[]; menuConfig?: IPortalConfig}) {
+function PortalApp({tabs, portalConfig}: {tabs: ITab[]; portalConfig?: IPortalConfig}) {
     useEffect(() => {
-        useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+        useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
         const store = useAppStore.getState();
         // Authenticate so the App shell shows the portal (not the login page).
         store.setToken('demo-token');
         tabs.forEach(tab => store.openTab(tab));
-        if (menuConfig) store.setMenuConfig(menuConfig);
+        if (portalConfig) store.setPortalConfig(portalConfig);
         // Register page actions for menu navigation
         store.registerActions({
             'app.species': {title: 'Species', component: () => Promise.resolve(SpeciesListPage)},
             'app.reports': {title: 'Reports', component: () => Promise.resolve(ReportsPage)},
         });
         return () => {
-            useAppStore.setState({portal: {tabs: [], activeTabId: null, menuConfig: null}});
+            useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
             store.logout();
         };
-    }, [tabs, menuConfig]);
+    }, [tabs, portalConfig]);
     return <Portal />;
 }
 
@@ -267,7 +267,7 @@ export const WithPortal: Story = {
     render: () => (
         <PortalApp
             tabs={portalInitialTabs}
-            menuConfig={portalMenuConfig}
+            portalConfig={portalConfig}
         />
     ),
 };
@@ -279,7 +279,7 @@ export const Navigate: Story = {
     render: () => (
         <PortalApp
             tabs={portalInitialTabs}
-            menuConfig={portalMenuConfig}
+            portalConfig={portalConfig}
         />
     ),
     play: async ({canvas, userEvent}) => {
@@ -308,15 +308,15 @@ export const BulgarianPortal: Story = {
                     component: DashboardPage,
                 },
             ]}
-            menuConfig={{
-                ...portalMenuConfig,
+            portalConfig={{
+                ...portalConfig,
                 title: 'Портал за морска биология',
                 menu: [
                     {
                         title: 'Данни',
                         items: [
-                            {title: 'Видове', action: 'app.species', icon: 'pi pi-list'},
-                            {title: 'Справки', action: 'app.reports', icon: 'pi pi-chart-bar'},
+                            {title: 'Видове', method: 'app.species', icon: 'pi pi-list'},
+                            {title: 'Справки', method: 'app.reports', icon: 'pi pi-chart-bar'},
                         ],
                     },
                 ],

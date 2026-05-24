@@ -19,10 +19,9 @@
  *  - `idOrParams` object  → merged with `extraParams` as component params.
  *  - `extraParams`        → always merged last (highest precedence).
  */
-import React from 'react';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — resolved via Vite's dev export condition; tsc sees no dist yet
-import {Model} from '@feasibleone/blong-browser';
+import {Model, Portal, useAppStore} from '@feasibleone/blong-browser';
 import type {StoryObj} from '@storybook/react-vite';
 
 /**
@@ -47,6 +46,20 @@ export function page(
     }
 
     return {
-        render: () => <Model componentName={componentName} params={params} />,
+        render: () => (
+            <Model
+                componentName={componentName}
+                params={params}
+            />
+        ),
+    };
+}
+
+export function portal(): StoryObj {
+    return {
+        render: () => {
+            useAppStore.getState().setToken('storybook');
+            return <Portal />;
+        },
     };
 }

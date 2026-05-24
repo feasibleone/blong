@@ -53,10 +53,10 @@ export interface IMutationAction {
     params?: ParamsResolver;
 }
 
-export type IAction = IPageAction | IQueryAction | IMutationAction;
+export type ITypedAction = IPageAction | IQueryAction | IMutationAction;
 
 /** Registry of named actions */
-export type ActionRegistry = Record<string, IAction>;
+export type ActionRegistry = Record<string, ITypedAction>;
 
 /** Return type of useAction hook */
 export interface IUseActionResult<TResult = unknown> {
