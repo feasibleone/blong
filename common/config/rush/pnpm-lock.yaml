@@ -32,8 +32,8 @@ importers:
         specifier: workspace:*
         version: link:../blong-dev
       '@keycloak/keycloak-admin-client':
-        specifier: ^26.5.4
-        version: 26.5.6
+        specifier: ^26.6.2
+        version: 26.6.2
       '@kubernetes/client-node':
         specifier: ^1.4.0
         version: 1.4.0
@@ -232,7 +232,7 @@ importers:
         version: 4.5.4(@types/node@24.12.0)(typescript@6.0.3)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
       vitest:
         specifier: ^4.1.5
-        version: 4.1.5(@types/node@24.12.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
+        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@24.12.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
 
   ../../core/blong-chain:
     dependencies:
@@ -446,8 +446,8 @@ importers:
         specifier: workspace:^1.0.0
         version: link:../blong-kopi
       '@keycloak/keycloak-admin-client':
-        specifier: ^26.5.4
-        version: 26.5.6
+        specifier: ^26.6.2
+        version: 26.6.2
       '@kubernetes/client-node':
         specifier: ^1.4.0
         version: 1.4.0
@@ -4002,8 +4002,8 @@ packages:
     peerDependencies:
       tslib: '2'
 
-  '@keycloak/keycloak-admin-client@26.5.6':
-    resolution: {integrity: sha512-APCPQ7gjB3r6s66N8vjAoXpxDkwJ5Huna9PlWIg+WMnrKzQkOBkxj+mmBduxjkt9uqQVaUtmy6/vZZerwQ/ltw==}
+  '@keycloak/keycloak-admin-client@26.6.2':
+    resolution: {integrity: sha512-CEqQ/fzJPkWOTM0LaUeH5KAKlCQGkqlydhpnxFM9Vx1rLyjr9AIqrENPNzt0owYDPIqrl6OYaFZJBAoH8woDpA==}
     engines: {node: '>=18'}
 
   '@keyv/serialize@1.1.1':
@@ -4037,6 +4037,24 @@ packages:
   '@microsoft/api-extractor@7.58.0':
     resolution: {integrity: sha512-XcHlDylX5GblbGbs1eBoexjVyvdJMioTPuBCgCorE2rqijzTYxi6eudXyez3xACRxtH9aDtahoL9fYM4XTvQmg==}
     hasBin: true
+
+  '@microsoft/kiota-abstractions@1.0.0-preview.100':
+    resolution: {integrity: sha512-3s2WYKQ6WLB/0pyDmmv9bigH/3LZ0Mm4ldHskNLBj0U8DYjFzfG729snnEij+hZN0l2XHr37pGBr1MZK8vM7zQ==}
+
+  '@microsoft/kiota-http-fetchlibrary@1.0.0-preview.100':
+    resolution: {integrity: sha512-uS2rhKKjbYiT8JWG8GGVOALB+s4HdDc9hg5tTZMVf3qY5b/us1OKLQ6WgW6USq/kZAuKKWkIq/BQgPCWbHtFTQ==}
+
+  '@microsoft/kiota-serialization-form@1.0.0-preview.100':
+    resolution: {integrity: sha512-SR/yWBtvKYhN2ARR4wVMFb91XgN32DBmLLQmtemdKgL1YWBxVCNAUP/qHbZhrTX7q4kh7jl/S9yrr1S8ySS7AA==}
+
+  '@microsoft/kiota-serialization-json@1.0.0-preview.100':
+    resolution: {integrity: sha512-4qatf5j0Aeaakdw24jMuIX7W6mf/W2rU9UyAjkIrSjaB7W5n8gsUvhoTcRpPTAFN7pvzQkCbO7Z0paRfdYzhIw==}
+
+  '@microsoft/kiota-serialization-multipart@1.0.0-preview.100':
+    resolution: {integrity: sha512-zwWoLZH6+KsAl05Ijd8HpbU+mct5wb0//ZCGdCkQ/UqsAaoe2xYSoKicxQbVGv9VvSTq0as7iVLwqDeqEI9rDw==}
+
+  '@microsoft/kiota-serialization-text@1.0.0-preview.100':
+    resolution: {integrity: sha512-x2Epz0StHLBkVJKeEmwrXSh6SJuxZ72VVBNO53uHUNZ/Y7X8tZuSQR7X74EO69mEi4zAF21X2jbkF9/dhlARog==}
 
   '@microsoft/tsdoc-config@0.18.1':
     resolution: {integrity: sha512-9brPoVdfN9k9g0dcWkFeA7IH9bbcttzDJlXvkf8b2OBzd5MueR1V2wkKBL0abn0otvmkHJC6aapBOTJDDeMCZg==}
@@ -4249,6 +4267,10 @@ packages:
 
   '@octokit/types@16.0.0':
     resolution: {integrity: sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg==}
+
+  '@opentelemetry/api@1.9.1':
+    resolution: {integrity: sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==}
+    engines: {node: '>=8.0.0'}
 
   '@oxc-project/types@0.124.0':
     resolution: {integrity: sha512-VBFWMTBvHxS11Z5Lvlr3IWgrwhMTXV+Md+EQF0Xf60+wAdsGFTBx7X7K/hP4pi8N7dcm1RvcHwDxZ16Qx8keUg==}
@@ -4841,6 +4863,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@std-uritemplate/std-uritemplate@2.0.10':
+    resolution: {integrity: sha512-EGxlaZDK+CcvMYzxLWKgQlhNiyGIoznEi/CVnzM1DCiQQh/EwSH0ThvseXJ4g6btu1hvlUZ70SrZD6ahsglXcw==}
 
   '@storybook/addon-a11y@10.3.6':
     resolution: {integrity: sha512-cbwXIT5CeHZ9AFbTKQ6YB7Ct6TAl/kKOgALbvzzVtFfRvm51JYygGaiJaB7PbPWn9wgJP2olJcFt+erlEc6cRw==}
@@ -12480,6 +12505,9 @@ packages:
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
 
+  tinyduration@3.4.1:
+    resolution: {integrity: sha512-NemFoamVYn7TmtwZKZ3OiliM9fZkr6EWiTM+wKknco6POSy2gS689xx/pXip0JYp40HXpUw6k65CUYHWYUXdaA==}
+
   tinyexec@1.1.1:
     resolution: {integrity: sha512-VKS/ZaQhhkKFMANmAOhhXVoIfBXblQxGX1myCQ2faQrfmobMftXeJPcZGp0gS07ocvGJWDLZGyOZDadDBqYIJg==}
     engines: {node: '>=18'}
@@ -17541,8 +17569,14 @@ snapshots:
       '@jsonjoy.com/codegen': 17.67.0(tslib@2.8.1)
       tslib: 2.8.1
 
-  '@keycloak/keycloak-admin-client@26.5.6':
+  '@keycloak/keycloak-admin-client@26.6.2':
     dependencies:
+      '@microsoft/kiota-abstractions': 1.0.0-preview.100
+      '@microsoft/kiota-http-fetchlibrary': 1.0.0-preview.100
+      '@microsoft/kiota-serialization-form': 1.0.0-preview.100
+      '@microsoft/kiota-serialization-json': 1.0.0-preview.100
+      '@microsoft/kiota-serialization-multipart': 1.0.0-preview.100
+      '@microsoft/kiota-serialization-text': 1.0.0-preview.100
       camelize-ts: 3.0.0
       url-template: 3.1.1
 
@@ -17645,6 +17679,39 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - '@types/node'
+
+  '@microsoft/kiota-abstractions@1.0.0-preview.100':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+      '@std-uritemplate/std-uritemplate': 2.0.10
+      tinyduration: 3.4.1
+      tslib: 2.8.1
+
+  '@microsoft/kiota-http-fetchlibrary@1.0.0-preview.100':
+    dependencies:
+      '@microsoft/kiota-abstractions': 1.0.0-preview.100
+      '@opentelemetry/api': 1.9.1
+      tslib: 2.8.1
+
+  '@microsoft/kiota-serialization-form@1.0.0-preview.100':
+    dependencies:
+      '@microsoft/kiota-abstractions': 1.0.0-preview.100
+      tslib: 2.8.1
+
+  '@microsoft/kiota-serialization-json@1.0.0-preview.100':
+    dependencies:
+      '@microsoft/kiota-abstractions': 1.0.0-preview.100
+      tslib: 2.8.1
+
+  '@microsoft/kiota-serialization-multipart@1.0.0-preview.100':
+    dependencies:
+      '@microsoft/kiota-abstractions': 1.0.0-preview.100
+      tslib: 2.8.1
+
+  '@microsoft/kiota-serialization-text@1.0.0-preview.100':
+    dependencies:
+      '@microsoft/kiota-abstractions': 1.0.0-preview.100
+      tslib: 2.8.1
 
   '@microsoft/tsdoc-config@0.18.1':
     dependencies:
@@ -18052,6 +18119,8 @@ snapshots:
   '@octokit/types@16.0.0':
     dependencies:
       '@octokit/openapi-types': 27.0.0
+
+  '@opentelemetry/api@1.9.1': {}
 
   '@oxc-project/types@0.124.0': {}
 
@@ -18823,6 +18892,8 @@ snapshots:
       tslib: 2.8.1
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@std-uritemplate/std-uritemplate@2.0.10': {}
 
   '@storybook/addon-a11y@10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
@@ -20235,7 +20306,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.5(@types/node@24.12.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
+      vitest: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@24.12.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
 
   '@vitest/expect@3.2.4':
     dependencies:
@@ -28143,6 +28214,8 @@ snapshots:
 
   tinybench@2.9.0: {}
 
+  tinyduration@3.4.1: {}
+
   tinyexec@1.1.1: {}
 
   tinyglobby@0.2.16:
@@ -28656,7 +28729,7 @@ snapshots:
       terser: 5.46.1
       yaml: 2.8.3
 
-  vitest@4.1.5(@types/node@24.12.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)):
+  vitest@4.1.5(@opentelemetry/api@1.9.1)(@types/node@24.12.0)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.5
       '@vitest/mocker': 4.1.5(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
@@ -28679,6 +28752,7 @@ snapshots:
       vite: 8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
+      '@opentelemetry/api': 1.9.1
       '@types/node': 24.12.0
       '@vitest/coverage-v8': 4.1.5(vitest@4.1.5)
       jsdom: 26.1.0

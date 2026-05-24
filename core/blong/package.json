@@ -33,7 +33,7 @@
     "devDependencies": {
         "@aws-sdk/client-s3": "^3.1037.0",
         "@feasibleone/blong-dev": "workspace:*",
-        "@keycloak/keycloak-admin-client": "^26.5.4",
+        "@keycloak/keycloak-admin-client": "^26.6.2",
         "@kubernetes/client-node": "^1.4.0",
         "@rushstack/heft": "^1.2.6",
         "@rushstack/heft-lint-plugin": "^1.2.6",
