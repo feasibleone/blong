@@ -8,7 +8,7 @@ const PATH_SEP = process.platform === 'win32' ? ';' : ':';
 /**
  * Run tap tests in the current working directory.
  */
-export async function test(): Promise<void> {
+export async function test(args: string[]): Promise<void> {
     const cwd = process.cwd();
     const localBin = join(cwd, 'node_modules', '.bin');
     const env: NodeJS.ProcessEnv = {
@@ -23,6 +23,7 @@ export async function test(): Promise<void> {
         '**/*.test.ts',
         '--allow-incomplete-coverage',
         '--coverage-report=none',
+        ...args,
     ]);
 
     process.exitCode = exitCode;

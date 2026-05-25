@@ -10,7 +10,7 @@ switch (command) {
         await (await import('./commands/lintStaged.ts')).lintStaged();
         break;
     case 'test':
-        await (await import('./commands/test.ts')).test();
+        await (await import('./commands/test.ts')).test(args);
         break;
     default:
         process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);

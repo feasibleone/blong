@@ -5,7 +5,7 @@
     "scripts": {
         "build": "true",
         "ci-lint": "blong-dev lint",
-        "ci-test": "blong-dev test"
+        "ci-test": "blong-dev test --jobs=1"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
