@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.25.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.25.0...blong-gogo-v1.25.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* dependencies ([cc6ba83](https://github.com/feasibleone/blong/commit/cc6ba830a721dfb063f5331d44e26a97e28c7f9a))
+* improve testing ([2b1d862](https://github.com/feasibleone/blong/commit/2b1d862fda71ed7910bc99f4bbbe11ef17be098c))
+
 ## [1.25.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.24.0...blong-gogo-v1.25.0) (2026-05-19)
 
 

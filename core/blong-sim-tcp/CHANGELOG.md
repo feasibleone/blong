@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-sim-tcp-v1.1.0...blong-sim-tcp-v1.1.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* improve testing ([2b1d862](https://github.com/feasibleone/blong/commit/2b1d862fda71ed7910bc99f4bbbe11ef17be098c))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-sim-tcp-v1.0.1...blong-sim-tcp-v1.1.0) (2026-05-19)
 
 

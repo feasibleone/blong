@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.8.0...blong-browser-v1.9.0) (2026-05-25)
+
+
+### Features
+
+* portal menu ([e4c04f4](https://github.com/feasibleone/blong/commit/e4c04f470dfe751aa63b264c4f03fd39ba721942))
+
+
+### Bug Fixes
+
+* improve testing ([c0af118](https://github.com/feasibleone/blong/commit/c0af1184ee7799e8b61917811caaa5b13a05def7))
+* improve testing ([2b1d862](https://github.com/feasibleone/blong/commit/2b1d862fda71ed7910bc99f4bbbe11ef17be098c))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.7.1...blong-browser-v1.8.0) (2026-05-22)
 
 

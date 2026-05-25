@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/feasibleone/blong/compare/blong-docs-v1.15.1...blong-docs-v1.15.2) (2026-05-25)
+
+
+### Bug Fixes
+
+* improve testing ([2b1d862](https://github.com/feasibleone/blong/commit/2b1d862fda71ed7910bc99f4bbbe11ef17be098c))
+
 ## [1.15.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.15.0...blong-docs-v1.15.1) (2026-05-19)
 
 
