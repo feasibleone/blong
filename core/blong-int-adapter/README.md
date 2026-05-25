@@ -23,14 +23,14 @@ Each adapter realm is **opt-in**: it only activates when its dedicated config na
 
 ```bash
 # Run a specific adapter (backend must be running)
-BLONG_ENV=adapter.mysql npm run ci-integration-mysql
-BLONG_ENV=adapter.mongodb npm run ci-integration-mongodb
-BLONG_ENV=adapter.http npm run ci-integration-http       # no backend needed
-BLONG_ENV=adapter.s3 npm run ci-integration-s3
-BLONG_ENV=adapter.kafka npm run ci-integration-kafka
-BLONG_ENV=adapter.vault npm run ci-integration-vault
-BLONG_ENV=adapter.keycloak npm run ci-integration-keycloak
-BLONG_ENV=adapter.k8s npm run ci-integration-k8s         # k3d cluster needed
+node mysql.test.ts
+node mongodb.test.ts
+node http.test.ts      # no backend needed, uses in-process echo server
+node s3.test.ts
+node kafka.test.ts
+node vault.test.ts
+node keycloak.test.ts
+node k8s.test.ts
 ```
 
 ## Activation Model

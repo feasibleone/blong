@@ -20,10 +20,10 @@
     "scripts": {
         "browser-check": "node scripts/browser-compat-check.mjs",
         "build": "true",
-        "ci-coverage": "../common/run-coverage.sh report",
+        "ci-coverage": "./run-coverage.sh",
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "ci-unit": "../common/run-coverage.sh"
+        "ci-test": "blong-dev test"
     },
     "dependencies": {
         "@apidevtools/swagger-parser": "^12.1.0",

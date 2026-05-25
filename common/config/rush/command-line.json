@@ -20,8 +20,8 @@
         },
         {
             "commandKind": "bulk",
-            "name": "ci-unit",
-            "summary": "Run unit tests",
+            "name": "ci-test",
+            "summary": "Run tests",
             "ignoreMissingScript": true,
             "ignoreDependencyOrder": true,
             "allowWarningsInSuccessfulBuild": true,
@@ -38,17 +38,8 @@
         },
         {
             "commandKind": "bulk",
-            "name": "ci-integration",
-            "summary": "Run integration tests",
-            "ignoreMissingScript": true,
-            "ignoreDependencyOrder": true,
-            "allowWarningsInSuccessfulBuild": true,
-            "enableParallelism": true
-        },
-        {
-            "commandKind": "bulk",
             "name": "ci-coverage",
-            "summary": "Run code coverage",
+            "summary": "Run code coverage reports",
             "allowWarningsInSuccessfulBuild": true,
             "ignoreMissingScript": true,
             "enableParallelism": true

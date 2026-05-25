@@ -71,7 +71,7 @@ blong-eip/
 ## Running the tests
 
 ```bash
-npm run ci-unit
+npm run ci-test
 ```
 
 The test runner loads the server realm with the `integration` configuration active,

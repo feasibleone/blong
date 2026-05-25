@@ -24,8 +24,8 @@
     "scripts": {
         "build": "heft build --clean",
         "ci-lint": "blong-dev lint",
-        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "ci-unit": "true"
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
+
     },
     "dependencies": {},
     "devDependencies": {

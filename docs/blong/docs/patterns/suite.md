@@ -243,7 +243,7 @@ A complete working example is in the [blong-eip](https://github.com/feasibleone/
 ### Integration tests with K8s test back ends
 
 When testing adapters against a real back end that is unavailable in developer environments, the
-back end can be provisioned automatically in a temporary Kubernetes cluster during CI.
+back end can be provisioned automatically in a temporary Kubernetes cluster.
 
 **How it works:**
 
@@ -251,21 +251,20 @@ back end can be provisioned automatically in a temporary Kubernetes cluster duri
    resource manifests (Deployments, Services, ConfigMaps, PVCs) that provision the test back end.
 2. In CI the GitHub Actions `integration` job creates a k3d cluster and deploys the services:
 
-   ```
+   ```text
    kubectl apply -k test/integration/
    ```
 
-3. The Rush `ci-integration` bulk command then runs each package's `ci-integration` npm script.
-4. The `ci-integration` script is typically a `wait.sh` shell script that:
+3. The Rush `ci-test` bulk command then runs each package's `ci-test` npm script.
+4. The `ci-test` in case of integration tests:
    - Waits for all deployments in the test namespace to become `Available`
-   - Runs `tap index.test.ts --allow-incomplete-coverage`
-   - Optionally captures back-end logs for debugging
-5. `index.test.ts` is the tap-wrapped entry point that loads only the server platform with the
+   - Runs `blong-dev test`
+5. `*.test.ts` is the tap-wrapped entry point that loads only the server platform with the
    `integration` activation and calls `platform.test(test)`.
 
 **`test/integration/` folder structure:**
 
-```
+```text
 test/
 └── integration/
     ├── kustomization.yaml     # Kustomize entry point
@@ -280,34 +279,17 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: blong-integration
 resources:
+  - namespace.yaml
   - mysql-deployment.yaml
+  - mongodb-deployment.yaml
+  - keycloak-deployment.yaml
+  - keycloak-init-job.yaml
+  - minio-deployment.yaml
+  - kafka-deployment.yaml
+  - vault-deployment.yaml
 ```
 
-**`test/integration/wait.sh`:**
-
-```bash
-#!/bin/bash
-
-timeout=60
-interval=1
-elapsed=0
-
-while [ $elapsed -lt $timeout ]; do
-  if kubectl -n blong-integration get deployments \
-      -o jsonpath='{.items[*].status.conditions[?(@.type=="Available")].status}' \
-      | grep -q "False"; then
-    echo "Waiting for all deployments to be ready..."
-    sleep $interval
-    elapsed=$((elapsed + interval))
-  else
-    break
-  fi
-done
-
-tap index.test.ts --allow-incomplete-coverage
-```
-
-**`index.test.ts`** — tap entry point for the integration run:
+**`test.ts`** — tap entry point for the integration run:
 
 ```ts
 import load from '@feasibleone/blong-gogo';
@@ -315,31 +297,43 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const platform = await load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']);
-await platform.start();
-await tap.test('suite integration tests', async test => {
-    await platform.test(test);
-});
-await platform.stop();
+export default async function test(
+    intents: string[] = [],
+    config: string | object = 'suite-name',
+) {
+    const platform = await load(server, 'suite-name', config, ['integration'].concat(intents));
+    await platform.start({});
+    await tap.test('blong suite-name', async test => {
+        await platform.test(test);
+    });
+    await platform.stop();
+}
+
+if (import.meta.main) {
+    test().catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
+}
 ```
 
-**`package.json`** — hooks the wait script into the Rush `ci-integration` command:
+**`package.json`** — hooks the wait script into the Rush `ci-test` command:
 
 ```json
 {
     "scripts": {
-        "ci-integration": "../../test/integration/wait.sh"
+        "ci-test": "../../test/integration/wait.sh && blong-dev test"
     }
 }
 ```
 
-**Realm configuration** — the test layer is only activated under `integration`:
+**Realm configuration** — the `test` and `sim` layers are only activated under `adapter.xxx`:
 
 ```ts
 config: {
     default: {},
     microservice: {adapter: true},
-    integration: {test: true},
+    'adapter.xxx': {test: true, sim: true},
 }
 ```
 
@@ -347,15 +341,15 @@ config: {
 
 ```ts
 config: {
-    integration: {
+    'adapter.xxx': {
         watch: {
-            test: ['test.realm.query'],
+            test: ['test.xxx.case1', 'test.xxx.case2'],
         },
     },
 },
 ```
 
-A complete working example is in the [blong-int-sql](https://github.com/feasibleone/blong/tree/main/core/blong-int-sql)
+A complete working example is in the [blong-int-adapter](https://github.com/feasibleone/blong/tree/main/core/blong-int-adapter)
 package.
 
 ## UI tests

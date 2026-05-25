@@ -4,29 +4,33 @@
  * Re-generate by setting TAP_SNAPSHOT=1 and running tests.
  * Make sure to inspect the output below.  Do not ignore changes!
  */
-'use strict'
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > addJsonObject > addJsonObject 1`] = `
+'use strict';
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > addJsonObject > addJsonObject 1`] =
+    `
 Object {
   "etag": "<masked>",
   "key": "test/blong-json.json",
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > addObjectWithMetadata > addObjectWithMetadata 1`] = `
+exports[
+    `s3.test.ts > TAP > blong int-adapter > s3 object CRUD > addObjectWithMetadata > addObjectWithMetadata 1`
+] = `
 Object {
   "etag": "<masked>",
   "key": "test/blong-with-meta.txt",
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > addTextObject > addTextObject 1`] = `
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > addTextObject > addTextObject 1`] =
+    `
 Object {
   "etag": "<masked>",
   "key": "test/blong-text.txt",
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > findObjects > findObjects 1`] = `
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > findObjects > findObjects 1`] = `
 Object {
   "$metadata": Object {
     "attempts": 1,
@@ -64,9 +68,9 @@ Object {
   "Name": "blong-integration",
   "Prefix": "test/blong",
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > getNewKey > getNewKey 1`] = `
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > getNewKey > getNewKey 1`] = `
 Object {
   "body": "<masked>",
   "contentLength": 35,
@@ -75,9 +79,10 @@ Object {
   "lastModified": "<masked>",
   "metadata": Object {},
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > getTextObject > getTextObject 1`] = `
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > getTextObject > getTextObject 1`] =
+    `
 Object {
   "body": "<masked>",
   "contentLength": 35,
@@ -86,9 +91,9 @@ Object {
   "lastModified": "<masked>",
   "metadata": Object {},
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > headObject > headObject 1`] = `
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > headObject > headObject 1`] = `
 Object {
   "$metadata": Object {
     "attempts": 1,
@@ -104,9 +109,9 @@ Object {
   "LastModified": "<masked>",
   "Metadata": Object {},
 }
-`
+`;
 
-exports[`index.test.ts adapter.s3 > TAP > blong int-adapter > s3 object CRUD > object-reads 1`] = `
+exports[`s3.test.ts > TAP > blong int-adapter > s3 object CRUD > object-reads 1`] = `
 Object {
   "findObjects": Object {
     "$metadata": Object {
@@ -177,4 +182,4 @@ Object {
     "Metadata": Object {},
   },
 }
-`
+`;

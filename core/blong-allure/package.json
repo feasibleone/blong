@@ -18,7 +18,7 @@
     "scripts": {
         "build": "heft build --clean",
         "ci-lint": "blong-dev lint",
-        "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
+        "ci-test": "blong-dev test",
         "test": "tap *.test.ts"
     },
     "devDependencies": {

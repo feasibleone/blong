@@ -59,5 +59,5 @@ The graph visualizes these key Blong framework concepts:
 npm run build
 
 # Run tests
-npm run ci-unit
+npm run ci-test
 ```

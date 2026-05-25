@@ -18,7 +18,12 @@ export async function runPlatform(
     name: string,
     intents: string[] = [...DEFAULT_INTENTS],
 ): Promise<void> {
-    const platform = await load(serverDef as unknown as Parameters<typeof load>[0], name, name, intents);
+    const platform = await load(
+        serverDef as unknown as Parameters<typeof load>[0],
+        name,
+        name,
+        intents,
+    );
     await platform.start!({});
     await platform.test!(undefined);
     if (process.env.CI) await platform.stop!();

@@ -1,17 +1,21 @@
 ---
 name: blong-suite
-description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Use this skill for each of the following distinct tasks
-  - (1) Creating a new top-level solution or Blong project — follow the server/browser entry point patterns.
-  - (2) Configuring test runners — follow the index.ts and internal.test.ts patterns.
-  - (3) Wiring up multiple realms into a suite — follow the children and config patterns.
-  Use this skill when the user explicitly requests any of these tasks, or when their request clearly aligns with one of them.
+description:
+    Create and configure suites in the Blong framework. Suites are the top-level organizational unit
+    that group related realms and define multi-platform entry points (server, browser, desktop). Use
+    this skill for each of the following distinct tasks - (1) Creating a new top-level solution or
+    Blong project — follow the server/browser entry point patterns. - (2) Configuring test runners —
+    follow the index.ts and internal.test.ts patterns. - (3) Wiring up multiple realms into a suite
+    — follow the children and config patterns. Use this skill when the user explicitly requests any
+    of these tasks, or when their request clearly aligns with one of them.
 ---
 
 # Implementing a Suite
 
 ## Overview
 
-A suite is the top-level organizational unit in the Blong framework. It groups related realms together and defines the entry points for different platforms (server, browser, desktop). Suites:
+A suite is the top-level organizational unit in the Blong framework. It groups related realms
+together and defines the entry points for different platforms (server, browser, desktop). Suites:
 
 - Glue reusable realms from packages together with local custom realms
 - Take architectural decisions on how the solution is deployed
@@ -36,7 +40,8 @@ suite-root/
 
 ## Server Entry Point
 
-The `server.ts` file defines the server-side suite. It imports reusable realms from packages and includes local custom realm folders.
+The `server.ts` file defines the server-side suite. It imports reusable realms from packages and
+includes local custom realm folders.
 
 ```typescript
 // server.ts
@@ -71,7 +76,8 @@ export default server(blong => ({
 
 ## Browser Entry Point
 
-The `browser.ts` file defines the browser-side suite. It mirrors the server entry point but imports the browser platform of each realm.
+The `browser.ts` file defines the browser-side suite. It mirrors the server entry point but imports
+the browser platform of each realm.
 
 ```typescript
 // browser.ts
@@ -104,7 +110,9 @@ export default browser(blong => ({
 
 ## API Test Runner (index.ts)
 
-The `index.ts` file is the primary test entry point. It loads both the server and browser platforms and runs tests from the browser side. This simulates the most common interaction — application front ends — at the lowest possible latency.
+The `index.ts` file is the primary test entry point. It loads both the server and browser platforms
+and runs tests from the browser side. This simulates the most common interaction — application front
+ends — at the lowest possible latency.
 
 The browser platform is preferred for API tests because:
 
@@ -142,7 +150,9 @@ export default async (load: Load): Promise<void> => {
 
 ## Internal API Tests (internal.test.ts)
 
-Internal API tests load only the server platform and run tests from the server side. They use the `tap` testing framework to generate coverage reports. Use these when testing orchestrator logic directly (without going through the browser/gateway).
+Internal API tests load only the server platform and run tests from the server side. They use the
+`tap` testing framework to generate coverage reports. Use these when testing orchestrator logic
+directly (without going through the browser/gateway).
 
 ```typescript
 // internal.test.ts
@@ -153,8 +163,8 @@ import server from './server.js';
 
 const platform = await load(server, 'suite-name', 'suite-name', [
     'microservice', // microservice deployment wiring
-    'integration',  // enables test layer, watch mode
-    'dev',          // verbose logging, relaxed config
+    'integration', // enables test layer, watch mode
+    'dev', // verbose logging, relaxed config
 ]);
 await platform.start();
 await tap.test('internal api', async test => {
@@ -165,14 +175,15 @@ await platform.stop();
 
 ## The `load` Function
 
-Suites are launched by the framework via the `blong` CLI. The `load` function passed to `index.ts` has the following signature:
+Suites are launched by the framework via the `blong` CLI. The `load` function passed to `index.ts`
+has the following signature:
 
 ```typescript
 type Load = (
     definition: object, // default export of server.ts or browser.ts
-    suiteName: string,  // determines config file name and k8s namespace
+    suiteName: string, // determines config file name and k8s namespace
     parentConfig: string | object, // config overrides, avoids extra config files in tests
-    intents: string[],  // CLI intents to apply (e.g. 'microservice', 'dev', 'integration')
+    intents: string[], // CLI intents to apply (e.g. 'microservice', 'dev', 'integration')
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -184,15 +195,15 @@ The `intents` array controls which config blocks inside each realm/adapter/orche
 in. These correspond to positional CLI arguments: `blong integration dev` passes
 `['integration', 'dev']` as intents. Standard intents:
 
-| Intent         | Purpose                                       | Process lifetime |
-| -------------- | --------------------------------------------- | ---------------- |
-| `default`      | Always active (base config — cannot be removed) | — |
-| `dev`          | Development — verbose logs, hot-reload        | Long-running, restarts on file changes |
-| `prod`         | Production / UAT environments                 | Long-running |
-| `integration`  | Integration testing; enables watch/test mode  | Long-running, reruns tests on change |
-| `microservice` | Enables per-layer deployment activation       | Long-running |
-| `db`           | Database creation / seeding                   | Short-lived — exits after completion |
-| `debug`        | Expose `/api/sys/*`, include stack traces     | No effect on lifetime |
+| Intent         | Purpose                                         | Process lifetime                       |
+| -------------- | ----------------------------------------------- | -------------------------------------- |
+| `default`      | Always active (base config — cannot be removed) | —                                      |
+| `dev`          | Development — verbose logs, hot-reload          | Long-running, restarts on file changes |
+| `prod`         | Production / UAT environments                   | Long-running                           |
+| `integration`  | Integration testing; enables watch/test mode    | Long-running, reruns tests on change   |
+| `microservice` | Enables per-layer deployment activation         | Long-running                           |
+| `db`           | Database creation / seeding                     | Short-lived — exits after completion   |
+| `debug`        | Expose `/api/sys/*`, include stack traces       | No effect on lifetime                  |
 
 See the **blong-intent** skill for the full intents reference and how to create custom intents.
 
@@ -254,82 +265,35 @@ export default browser(blong => ({
 
 ### API Tests
 
-Cover the most common interaction — application front ends calling the API gateway. Both server and browser are loaded; tests run from the browser side. Defined in `index.ts`. Run during development for fast feedback.
+Cover the most common interaction — application front ends calling the API gateway. Both server and
+browser are loaded; tests run from the browser side. Defined in `index.ts`. Run during development
+for fast feedback.
 
 ### Internal API Tests
 
-Cover direct calls to orchestrators (without gateway). Only the server is loaded. Defined in `internal.test.ts`. Use `tap` for test coverage. Run in CI for coverage reports.
+Cover direct calls to orchestrators (without gateway). Only the server is loaded. Defined in
+`internal.test.ts`. Use `tap` for test coverage. Run in CI for coverage reports.
 
-## Coverage for unit tests (ci-unit / ci-coverage)
+## Coverage for tests (ci-test / ci-coverage)
 
-All packages that cover `blong-gogo` source files share a single script:
-`core/common/run-coverage.sh`. It runs `tap` and (when called with `report`) generates
-`coverage/lcov.info` via `c8`.
+- each package runs `blong-dev test`, which wraps `tap` with the correct parameters
+- `tap` collects V8 coverage by default into `.tap/coverage/` — no `--coverage-map` needed.
+- `--allow-incomplete-coverage --coverage-report=none` prevent tap from printing a table or failing
+  on thresholds; the report is generated separately by `c8`.
+- the `ci-coverage` script in `blong-gogo` runs `c8 report` from the root repository folder and
+  includes the source code from several packages, so that the final `lcov.info` contains coverage
+  for all of them in one file. The output is generated in the `coverage/` folder at the repository
+  root.
 
-### How it works
-
-- `tap` v21 collects V8 coverage by default into `.tap/coverage/` — no `--coverage-map` needed.
-- `--allow-incomplete-coverage --coverage-report=none` prevent tap from printing a table or
-  failing on thresholds; the report is generated separately by `c8`.
-- `c8 report` runs from `REPORT_CWD` (defaults to `core/`) so the `--include` glob
-  `blong-gogo/src/**/*.ts` resolves correctly against sibling-package source files.
-- `COVERAGE_INCLUDE` and `COVERAGE_EXCLUDE` default to `blong-gogo/src/**/*.ts` — hardcoded
-  because the script is purpose-built to track that package's coverage.
-
-**Why not `--coverage-map`:** passing it with TypeScript paths causes tap to exit 1 with
-"No coverage generated" because tsx compiles files in-memory and V8 coverage data doesn't
-match the original `.ts` file paths.
-
-### package.json scripts
-
-Packages call the shared script directly — no per-package wrapper needed:
-
-```json
-{
-    "scripts": {
-        "ci-unit":     "../common/run-coverage.sh",
-        "ci-coverage": "../common/run-coverage.sh report"
-    }
-}
-```
+**Why not `--coverage-map`:** passing it with TypeScript paths causes tap to exit 1 with "No
+coverage generated" because tsx compiles files in-memory and V8 coverage data doesn't match the
+original `.ts` file paths.
 
 **Key constraints:**
-- `c8` must be run from a directory that is an ancestor of all source files being reported on
+
+- `c8` must be run from the repository root, so that the path mappings in `lcov.info` are correct
+  for subsequent GitHub Actions steps
 - Use `-o <absolute-path>` not `--reports-directory` for the output directory
-- `ci-coverage` is self-contained (runs tests first) — safe to run on any CI machine
-
-### CI artifact pipeline
-`ci-coverage` is self-contained (runs tests + emits `coverage/lcov.info` in one step) so it works
-correctly when the `coverage` job runs on a separate CI machine from `unit-tests`.
-
-The `coverage` job downloads both `unit-coverage` and `integration-coverage`, merges them, and
-posts a PR comment using `romeovs/lcov-reporter-action`:
-```yaml
-coverage:
-  needs: [setup, unit-tests, integration]
-  if: always() && needs.setup.result == 'success' && needs.unit-tests.result != 'cancelled'
-  permissions:
-    pull-requests: write
-  steps:
-    - uses: actions/checkout@v6
-    - uses: actions/download-artifact@v5
-      continue-on-error: true
-      with: {name: unit-coverage}
-    - uses: actions/download-artifact@v5
-      continue-on-error: true
-      with: {name: integration-coverage}
-    - name: Merge lcov files
-      id: merge
-      run: |
-        shopt -s globstar extglob nullglob
-        files=(+(app|core|ext|library)/*/coverage/lcov.info)
-        [[ ${#files[@]} -gt 0 ]] && echo "exists=true" >> $GITHUB_OUTPUT && cat "${files[@]}" > merged-lcov.info || echo "exists=false" >> $GITHUB_OUTPUT
-    - if: steps.merge.outputs.exists == 'true'
-      uses: romeovs/lcov-reporter-action@v0.4.0
-      with:
-        lcov-file: merged-lcov.info
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-```
 
 ### UI Tests
 
@@ -337,7 +301,8 @@ Not yet implemented. Planned to run full browser app with Playwright.
 
 ### Edge Device Tests
 
-Simulate interactions from edge devices (ATM, POS, IoT). Loaded separately with device-specific activations.
+Simulate interactions from edge devices (ATM, POS, IoT). Loaded separately with device-specific
+activations.
 
 ## Suite Naming Convention
 
@@ -352,7 +317,8 @@ Use lowercase, no spaces.
 
 The framework recognizes four interaction origins that suites should be designed to handle:
 
-- **Application front ends** — browser, desktop, mobile apps (administration, management, user-facing)
+- **Application front ends** — browser, desktop, mobile apps (administration, management,
+  user-facing)
 - **Edge devices** — ATM, POS, IoT
 - **Third-party systems** — core banking, payment systems, external APIs
 - **Automated processes** — scheduled tasks, event-driven processes
@@ -383,8 +349,8 @@ blong path/to/custom-runner.ts
 | `server.ts` only           | Internal API testing: load server platform, test directly  |
 | None of the above          | Error — not a valid suite or realm folder                  |
 
-For suites that only have `server.ts` (e.g., `blong-sim-tcp`, `blong-eip`), running `blong` from
-the folder automatically starts the server, runs tests, and (in CI mode) stops the suite:
+For suites that only have `server.ts` (e.g., `blong-sim-tcp`, `blong-eip`), running `blong` from the
+folder automatically starts the server, runs tests, and (in CI mode) stops the suite:
 
 ```bash
 # In CI: runs tests and exits when done (process.env.CI is set)
@@ -392,8 +358,8 @@ CI=true blong
 ```
 
 This makes it easy to test individual realms during development without needing a full suite setup.
-When a realm has an `index.ts`, it is loaded directly — useful when the realm depends on other realms
-and needs custom initialization.
+When a realm has an `index.ts`, it is loaded directly — useful when the realm depends on other
+realms and needs custom initialization.
 
 ## Debug Configuration
 
@@ -453,6 +419,6 @@ systemDebug: {
 
 > **Never enable `systemDebug` in production.** The `/api/sys/config` endpoint returns the full
 > merged configuration snapshot. Any secrets present in the config (database passwords, API keys,
-> signing keys, etc.) will be exposed as plaintext JSON. If you need to inspect config in a
-> non-dev environment, set `auth: 'jwt'` and scope access to trusted users only, or exclude
-> sensitive realms from the suite before starting.
+> signing keys, etc.) will be exposed as plaintext JSON. If you need to inspect config in a non-dev
+> environment, set `auth: 'jwt'` and scope access to trusted users only, or exclude sensitive realms
+> from the suite before starting.

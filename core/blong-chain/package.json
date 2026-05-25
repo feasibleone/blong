@@ -16,11 +16,11 @@
     },
     "scripts": {
         "build": "heft build --clean",
-        "ci-all": "npm run ci-unit && npm run ci-examples",
+        "ci-all": "npm run ci-test && npm run ci-examples",
         "ci-examples": "npm run test:examples",
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "ci-unit": "npm run test;./test-examples-ci.sh",
+        "ci-test": "npm run test;./test-examples-ci.sh",
         "test": "tap *.test.ts",
         "test:examples": "node --test dist/examples/*.test.js"
     },

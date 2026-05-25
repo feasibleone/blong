@@ -70,7 +70,7 @@ The example tests are verified in CI using pattern matching rather than pass/fai
 
 ```bash
 # Recommended for CI - runs both unit tests and example verification
-npm run ci-unit
+npm run ci-test
 ```
 
 This ensures:

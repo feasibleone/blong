@@ -5,8 +5,8 @@
     "type": "module",
     "scripts": {
         "build": "true",
-        "ci-integration": "../../test/integration/wait.sh mysql && tap index.test.ts --allow-incomplete-coverage",
-        "ci-lint": "blong-dev lint"
+        "ci-lint": "blong-dev lint",
+        "ci-test": "../../test/integration/wait.sh mysql && blong-dev test"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

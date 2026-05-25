@@ -2,7 +2,7 @@
 
 ## Overview
 
-`@feasibleone/blong-cucumber` brings [Behavior-Driven Development (BDD)](https://cucumber.io/docs/bdd/)
+`@feasibleone/blong-cucumber` brings [Behaviour-Driven Development (BDD)](https://cucumber.io/docs/bdd/)
 to the blong test framework. It provides:
 
 - A fully compliant Gherkin parser (via `@cucumber/gherkin`)
@@ -164,6 +164,7 @@ Scenario Outline: Parameterized calculation
 ```
 
 Produces two concrete scenarios:
+
 - `"Parameterized calculation | 1, 2, 3"` — `Then 1 plus 2 equals 3`
 - `"Parameterized calculation | 10, 20, 30"` — `Then 10 plus 20 equals 30`
 
@@ -203,7 +204,7 @@ config: {
 Run with:
 
 ```bash
-npm run ci-unit
+npm run ci-test
 ```
 
 ## Low-level API

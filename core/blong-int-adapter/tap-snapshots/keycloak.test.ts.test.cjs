@@ -4,8 +4,10 @@
  * Re-generate by setting TAP_SNAPSHOT=1 and running tests.
  * Make sure to inspect the output below.  Do not ignore changes!
  */
-'use strict'
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak client CRUD > client-read-snapshots 1`] = `
+'use strict';
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak client CRUD > client-read-snapshots 1`
+] = `
 Object {
   "getClient": Object {
     "access": Object {
@@ -96,9 +98,11 @@ Object {
     "webOrigins": Array [],
   },
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak client CRUD > getClient > getClient 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak client CRUD > getClient > getClient 1`
+] = `
 Object {
   "access": Object {
     "configure": true,
@@ -143,9 +147,11 @@ Object {
   "surrogateAuthRequired": false,
   "webOrigins": Array [],
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak client CRUD > verifyEdit > verifyEdit 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak client CRUD > verifyEdit > verifyEdit 1`
+] = `
 Object {
   "access": Object {
     "configure": true,
@@ -190,9 +196,11 @@ Object {
   "surrogateAuthRequired": false,
   "webOrigins": Array [],
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak group CRUD > getGroup > getGroup 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak group CRUD > getGroup > getGroup 1`
+] = `
 Object {
   "access": Object {
     "manage": true,
@@ -210,9 +218,11 @@ Object {
   "subGroupCount": 0,
   "subGroups": Array [],
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak group CRUD > group-read-snapshots 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak group CRUD > group-read-snapshots 1`
+] = `
 Object {
   "getGroup": Object {
     "access": Object {
@@ -249,9 +259,11 @@ Object {
     "subGroups": Array [],
   },
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak group CRUD > verifyEdit > verifyEdit 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak group CRUD > verifyEdit > verifyEdit 1`
+] = `
 Object {
   "access": Object {
     "manage": true,
@@ -269,9 +281,11 @@ Object {
   "subGroupCount": 0,
   "subGroups": Array [],
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak realm CRUD > getRealm > getRealm 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak realm CRUD > getRealm > getRealm 1`
+] = `
 Object {
   "accessCodeLifespan": 60,
   "accessCodeLifespanLogin": 1800,
@@ -413,9 +427,11 @@ Object {
   ],
   "webAuthnPolicyUserVerificationRequirement": "not specified",
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak realm CRUD > realm-read-snapshots 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak realm CRUD > realm-read-snapshots 1`
+] = `
 Object {
   "getRealm": Object {
     "accessCodeLifespan": 60,
@@ -700,9 +716,11 @@ Object {
     "webAuthnPolicyUserVerificationRequirement": "not specified",
   },
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak realm CRUD > verifyEdit > verifyEdit 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak realm CRUD > verifyEdit > verifyEdit 1`
+] = `
 Object {
   "accessCodeLifespan": 60,
   "accessCodeLifespanLogin": 1800,
@@ -844,9 +862,9 @@ Object {
   ],
   "webAuthnPolicyUserVerificationRequirement": "not specified",
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak role CRUD > getRole > getRole 1`] = `
+exports[`keycloak.test.ts > TAP > blong int-adapter > keycloak role CRUD > getRole > getRole 1`] = `
 Object {
   "attributes": Object {},
   "clientRole": false,
@@ -856,9 +874,10 @@ Object {
   "id": "<masked>",
   "name": "blong-test-role",
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak role CRUD > role-read-snapshots 1`] = `
+exports[`keycloak.test.ts > TAP > blong int-adapter > keycloak role CRUD > role-read-snapshots 1`] =
+    `
 Object {
   "getRole": Object {
     "attributes": Object {},
@@ -879,9 +898,11 @@ Object {
     "name": "blong-test-role",
   },
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak role CRUD > verifyEdit > verifyEdit 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak role CRUD > verifyEdit > verifyEdit 1`
+] = `
 Object {
   "attributes": Object {},
   "clientRole": false,
@@ -891,9 +912,9 @@ Object {
   "id": "<masked>",
   "name": "blong-test-role",
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak user CRUD > getUser > getUser 1`] = `
+exports[`keycloak.test.ts > TAP > blong int-adapter > keycloak user CRUD > getUser > getUser 1`] = `
 Object {
   "access": Object {
     "impersonate": true,
@@ -915,9 +936,10 @@ Object {
   "totp": false,
   "username": "blong-test-crud",
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak user CRUD > user-read-snapshots 1`] = `
+exports[`keycloak.test.ts > TAP > blong int-adapter > keycloak user CRUD > user-read-snapshots 1`] =
+    `
 Object {
   "getUser": Object {
     "access": Object {
@@ -962,9 +984,11 @@ Object {
     "username": "blong-test-crud",
   },
 }
-`
+`;
 
-exports[`index.test.ts adapter.keycloak > TAP > blong int-adapter > keycloak user CRUD > verifyEdit > verifyEdit 1`] = `
+exports[
+    `keycloak.test.ts > TAP > blong int-adapter > keycloak user CRUD > verifyEdit > verifyEdit 1`
+] = `
 Object {
   "access": Object {
     "impersonate": true,
@@ -986,4 +1010,4 @@ Object {
   "totp": false,
   "username": "blong-test-crud",
 }
-`
+`;

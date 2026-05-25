@@ -43,13 +43,13 @@ npm run build
 # Run CI test suite (all tests should pass)
 npm test
 # or equivalently:
-npm run ci-unit
+npm run ci-test
 
 # Run example verification (verifies error patterns)
 npm run ci-examples
 
 # Run complete CI suite (unit tests + example verification)
-npm run ci-unit
+npm run ci-test
 ```
 
 **Expected Result:**
@@ -75,11 +75,11 @@ npm run test:all
 ### Package.json Scripts
 
 - `npm test` - Runs only the main test suite (for CI)
-- `npm run ci-unit` - Alias for `npm test`
+- `npm run ci-test` - Alias for `npm test`
 - `npm run test:examples` - Runs example demonstrations (not for CI)
 - `npm run test:examples:ci` - Verifies example output contains expected error patterns
 - `npm run ci-examples` - Alias for `npm run test:examples:ci`
-- `npm run ci-unit` - Runs unit tests and example verification
+- `npm run ci-test` - Runs unit tests and example verification
   (recommended for CI)
 - `npm run test:all` - Runs all tests including examples
 
@@ -91,7 +91,7 @@ npm run test:all
 - name: Run tests
   run: |
     npm run build
-    npm run ci-unit
+    npm run ci-test
 ```
 
 This runs both:
@@ -103,7 +103,7 @@ This runs both:
 
 ```yaml
 - name: Run tests
-  run: npm run ci-unit
+  run: npm run ci-test
 ```
 
 ### How Example Verification Works

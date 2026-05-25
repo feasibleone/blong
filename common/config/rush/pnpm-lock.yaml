@@ -362,6 +362,9 @@ importers:
       strip-json-comments:
         specifier: ^5.0.3
         version: 5.0.3
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

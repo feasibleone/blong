@@ -1,6 +1,11 @@
 ---
 name: blong-test-int
-description: Provision and use real backend services in Kubernetes for Blong integration tests. Covers the test/integration/ kustomization.yaml structure, k3d cluster setup in CI, the ci-integration Rush bulk command, wait.sh pattern, and tap-wrapped index.test.ts. Use this skill only when the user explicitly requests CI integration tests with real databases or services in a k3d cluster, asks how to configure the ci-integration script, or needs to wire Kubernetes manifests for a test backend.
+description:
+    Provision and use real backend services in Kubernetes for Blong integration tests. Covers the
+    test/integration/ kustomization.yaml structure, k3d cluster setup in CI, the ci-test Rush bulk
+    command, wait.sh pattern, and tap-wrapped index.test.ts. Use this skill only when the user
+    explicitly requests CI integration tests with real databases or services in a k3d cluster, or
+    needs to wire Kubernetes manifests for a test backend.
 ---
 
 # Integration Tests with Kubernetes Backends
@@ -13,24 +18,23 @@ This approach gives the highest confidence because it exercises the complete sta
 
 ## How it works
 
-| Step | What happens |
-|---|---|
-| 1. Manifests | `test/integration/` contains `kustomization.yaml` and resource manifests (e.g., MySQL) |
-| 2. Cluster | CI creates a k3d cluster and runs `kubectl apply -k test/integration/` |
-| 3. Rush command | `ci-integration` bulk command runs each package's `ci-integration` script |
-| 4. Wait & run | Script waits for the deployment to be ready, then runs `tap` against `index.test.ts` |
-| 5. Activation | The realm's test layer activates only under the `integration` config |
+| Step            | What happens                                                                           |
+| --------------- | -------------------------------------------------------------------------------------- |
+| 1. Manifests    | `test/integration/` contains `kustomization.yaml` and resource manifests (e.g., MySQL) |
+| 2. Cluster      | CI creates a k3d cluster and runs `kubectl apply -k test/integration/`                 |
+| 3. Rush command | `ci-test` bulk command runs each package's `ci-test` script                            |
+| 4. Wait & run   | Script waits for the deployment to be ready, then runs `blong-dev test`                |
+| 5. Activation   | The realm's test layer activates only under the `integration` config                   |
 
 ### Details
 
-1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and Kubernetes
-   resource manifests that provision the test backend (e.g., a MySQL deployment)
+1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and
+   Kubernetes resource manifests that provision the test backend (e.g., a MySQL deployment)
 2. In CI, the GitHub Actions `integration` job creates a k3d cluster and deploys the services via
    `kubectl apply -k test/integration/`
-3. The Rush `ci-integration` bulk command runs each package's `ci-integration` script against the
-   live Kubernetes backend
-4. Each package's `ci-integration` script waits for the Kubernetes deployment to become ready, then
-   runs the integration tests using `tap` directly against the `index.test.ts` file
+3. The Rush `ci-test` bulk command runs each package's `ci-test` script
+4. Each package's `ci-test` script can wait for the Kubernetes deployment to become ready, then runs
+   the tests using `blong-dev test` or other means.
 5. The realm activates the test layer only under the `integration` config activation
 
 ## File structure
@@ -44,8 +48,9 @@ This approach gives the highest confidence because it exercises the complete sta
         └── wait.sh             # Wait for deployments ready, then run tests
 
 <suite>/
-├── package.json               # "ci-integration": "../../test/integration/wait.sh"
-├── index.test.ts              # tap-wrapped server-only test runner for CI
+├── package.json               # "ci-test": "../../test/integration/wait.sh && blong-dev test"
+├── test.ts                    # tap-wrapped server-only test runner for CI
+├── <realm>.test.ts            # runs the specific adapter tests, thin wrapper around test.ts
 └── <realm>/
     ├── server.ts              # Realm with integration-activated test layer
     └── test/
@@ -54,9 +59,15 @@ This approach gives the highest confidence because it exercises the complete sta
             └── testSubjectQuery.ts  # Test handler calling the adapter
 ```
 
+Note that Blong allows all the integration tests to be run from a single entry point, but the reason
+to have multiple `<realm>.test.ts` files is to run them in parallel and keep separate snapshots for
+each adapter. It also allows to run them easily in isolation when troubleshooting a specific
+adapter.
+
 ## Realm configuration
 
-Activate the test layer only under the `integration` config to avoid running it in other environments:
+Activate the test layer only under the `integration` config to avoid running it in other
+environments:
 
 ```typescript
 // realm/server.ts
@@ -67,101 +78,53 @@ config: {
 },
 ```
 
-## package.json ci-integration script
+## package.json ci-test script
 
 ```json
 {
     "scripts": {
-        "ci-integration": "../../test/integration/wait.sh && node --import tsx index.test.ts"
+        "ci-test": "../../test/integration/wait.sh && blong-dev test"
     }
 }
 ```
 
-## index.test.ts pattern
+## test.ts pattern
 
 ```typescript
+import load from '@feasibleone/blong-gogo';
 import tap from 'tap';
+
 import server from './server.ts';
 
-tap.test('integration', async t => {
-    const [platform] = await Promise.all([
-        load(server, 'suite-name', 'suite-name', ['microservice', 'integration']),
-    ]);
-    await platform.start();
-    await platform.test();
+export default async function test(intents: string[] = [], config: string | object = 'suite-name') {
+    const platform = await load(server, 'suite-name', config, ['integration'].concat(intents));
+    await platform.start({});
+    await tap.test('blong suite-name', async test => {
+        await platform.test(test);
+    });
     await platform.stop();
-});
+}
+
+if (import.meta.main) {
+    test().catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
+}
 ```
 
 ## Complete example
 
-A complete working example is in the [`core/blong-int-sql`](../../../core/blong-int-sql) package.
+A complete working example is in the [`core/blong-int-adapter`](../../../core/blong-int-adapter)
+package.
 
 ## Choosing the right CI test approach
 
-| Situation | Use |
-|---|---|
-| Real backend can be provisioned in K8s automatically | **blong-test-int** (this skill) |
-| Backend too complex or costly to run in CI | **blong-test-sim** (local sim server) |
-| Backend not needed at all for the tests | **blong-mock-test** (mock orchestrator) |
-
-## Coverage for integration tests
-
-Because each adapter is exercised in a separate `tap` run, coverage files must be accumulated
-across all runs and reported together. The pattern used in `core/blong-int-adapter`:
-
-### coverage-map.mjs
-```js
-// Maps every test file to the adapter source files in the sibling blong-gogo package.
-// tap resolves the globs relative to the package root, so use a relative path with `..`.
-export default () => [
-    '../blong-gogo/src/adapter/server/*.ts',
-];
-```
-
-### integration-test.sh skeleton
-```bash
-#!/bin/bash
-# Accumulate V8 coverage from each adapter run into .tap/coverage-all/
-rm -rf .tap/coverage-all && mkdir -p .tap/coverage-all
-
-run_adapter() {
-    local name=$1
-    local wait_arg="${WAIT_SERVICE[$name]:-}"
-    [[ -n "$wait_arg" ]] && ../../test/integration/wait.sh "$wait_arg" || { echo "skipping $name"; return 1; }
-    tap index.test.ts --allow-incomplete-coverage --coverage-map=./coverage-map.mjs \
-        --coverage-report=none --test-arg="adapter.$name"
-}
-
-for adapter in "${ADAPTERS[@]}"; do
-    run_adapter "$adapter"; RESULTS[$adapter]=$?
-    cp .tap/coverage/*.json .tap/coverage-all/ 2>/dev/null || true
-done
-
-# Report: run c8 from the *parent* (core/) so sibling source paths resolve
-C8=../../common/temp/node_modules/.pnpm/node_modules/.bin/c8
-(cd .. && "$C8" report --temp-directory <pkg>/.tap/coverage-all \
-    --include 'blong-gogo/src/adapter/server/*.ts' \
-    --reporter text --reporter lcov -o <pkg>/coverage)
-```
-
-**Key constraints:**
-- `tap report` cannot be used here — it hardcodes `cwd=projectRoot` and `tempDirectory=.tap/coverage`, with no CLI overrides
-- `c8` must run from the parent directory (`core/`) so that source file paths from the sibling package resolve correctly under its `cwd`
-- Use `-o <absolute-path>` (not `--reports-directory`) for the output directory
-
-### CI artifact upload
-Add to the `integration` job in the workflow so coverage survives to the `coverage` job:
-
-```yaml
-- name: Upload integration coverage
-  if: always()
-  uses: actions/upload-artifact@v5
-  with:
-    name: integration-coverage
-    path: +(app|core|ext|library)/*/coverage/lcov.info
-    if-no-files-found: ignore
-```
+| Situation                                            | Use                                     |
+| ---------------------------------------------------- | --------------------------------------- |
+| Real backend can be provisioned in K8s automatically | **blong-test-int** (this skill)         |
+| Backend too complex or costly to run in CI           | **blong-test-sim** (local sim server)   |
+| Backend not needed at all for the tests              | **blong-mock-test** (mock orchestrator) |
 
 ## Related skills
 

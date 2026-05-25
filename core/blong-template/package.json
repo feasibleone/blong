@@ -26,7 +26,7 @@
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
         "ci-lint": "blong-dev lint",
-        "ci-unit": "tap *.test.ts --allow-incomplete-coverage"
+        "ci-test": "blong-dev test"
     },
     "dependencies": {
         "acorn": "^8.16.0"

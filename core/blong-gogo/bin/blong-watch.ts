@@ -9,7 +9,7 @@ const argv: {_: string[]} = minimist(process.argv.slice(2));
 
 // The first positional arg is an optional file/folder target; the rest are intents.
 const [maybeTarget, ...rest] = argv._;
-const target = maybeTarget && existsSync(resolve(maybeTarget)) ? maybeTarget : undefined;
+const target = maybeTarget && existsSync(resolve(maybeTarget)) ? resolve(maybeTarget) : undefined;
 const intents = target ? rest : argv._;
 
 await autoRun({cwd: process.cwd(), target, intents});

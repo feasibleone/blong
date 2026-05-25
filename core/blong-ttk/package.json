@@ -19,8 +19,7 @@
     "scripts": {
         "build": "heft build --clean",
         "ci-lint": "blong-dev lint",
-        "ci-unit": "tap index.test.ts --allow-incomplete-coverage",
-        "test": "tap *.test.ts"
+        "ci-test": "blong-dev test"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

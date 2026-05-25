@@ -9,6 +9,9 @@ switch (command) {
     case 'lint-staged':
         await (await import('./commands/lintStaged.ts')).lintStaged();
         break;
+    case 'test':
+        await (await import('./commands/test.ts')).test();
+        break;
     default:
         process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
         process.stderr.write('Usage:\n');
@@ -18,5 +21,6 @@ switch (command) {
         process.stderr.write(
             '  blong-dev lint-staged        Lint git staged files across all affected packages\n',
         );
+        process.stderr.write('  blong-dev test               Run tap tests in current package\n');
         process.exit(1);
 }

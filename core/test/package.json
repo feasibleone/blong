@@ -4,9 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "true",
-        "ci-coverage": "../common/run-coverage.sh report",
         "ci-lint": "blong-dev lint",
-        "ci-unit": "../common/run-coverage.sh"
+        "ci-test": "blong-dev test"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

@@ -5,17 +5,8 @@
     "type": "module",
     "scripts": {
         "build": "true",
-        "ci-coverage": "test -f coverage/lcov.info || ./integration-test.sh report",
-        "ci-integration": "./integration-test.sh",
-        "ci-integration-http": "./integration-test.sh http",
-        "ci-integration-k8s": "./integration-test.sh k8s",
-        "ci-integration-kafka": "./integration-test.sh kafka",
-        "ci-integration-keycloak": "./integration-test.sh keycloak",
-        "ci-integration-mongodb": "./integration-test.sh mongodb",
-        "ci-integration-mysql": "./integration-test.sh mysql",
-        "ci-integration-s3": "./integration-test.sh s3",
-        "ci-integration-vault": "./integration-test.sh vault",
-        "ci-lint": "blong-dev lint"
+        "ci-lint": "blong-dev lint",
+        "ci-test": "../../test/integration/wait.sh && blong-dev test"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
