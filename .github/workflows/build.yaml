@@ -13,5 +13,7 @@ jobs:
       security-events: write
       pull-requests: write
     uses: infitx-org/actions/.github/workflows/rush.yaml@main
+    with:
+      ci-test-jobs: 2
     secrets:
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
