@@ -1,7 +1,7 @@
 import {act} from '@testing-library/react';
 import {beforeEach, describe, expect, it} from 'vitest';
 import {useAppStore} from '../../state/appStore.js';
-import {fireEvent, render, screen} from '../../test/render.js';
+import {fireEvent, flushEffects, render, screen} from '../../test/render.js';
 import {Portal} from './Portal.js';
 
 function FakeTabContent() {
@@ -41,7 +41,7 @@ describe('Portal', () => {
         expect(container.querySelector('.blong-portal.my-portal')).toBeInTheDocument();
     });
 
-    it('renders brand title from portalConfig when no logo prop', () => {
+    it('renders brand title from portalConfig when no logo prop', async () => {
         act(() => {
             useAppStore.setState(s => ({
                 ...s,
@@ -56,6 +56,7 @@ describe('Portal', () => {
             }));
         });
         render(<Portal />);
+        await flushEffects();
         expect(screen.getByText('My App')).toBeInTheDocument();
     });
 
@@ -115,7 +116,7 @@ describe('Portal', () => {
         expect(await screen.findByText('Admin')).toBeInTheDocument();
     });
 
-    it('closes a tab when close button is clicked', () => {
+    it('closes a tab when close button is clicked', async () => {
         act(() => {
             useAppStore.getState().openTab({
                 id: 'close-tab',
@@ -126,6 +127,7 @@ describe('Portal', () => {
             });
         });
         const {container} = render(<Portal />);
+        await flushEffects();
         // Find the close button (×) and click it
         const closeBtn = container.querySelector(
             '.blong-tab-close, .blong-portal-tab-close, [aria-label="close"]',
@@ -138,7 +140,7 @@ describe('Portal', () => {
         }
     });
 
-    it('opens a tab when menu item command is triggered', () => {
+    it('opens a tab when menu item command is triggered', async () => {
         act(() => {
             useAppStore.setState(s => ({
                 ...s,
@@ -153,6 +155,7 @@ describe('Portal', () => {
             }));
         });
         render(<Portal />);
+        await flushEffects();
         // Get the portalConfig to build menu model and invoke command directly
         const portalConfig = useAppStore.getState().portal.portalConfig;
         // The menu model is built internally - clicking in Menubar is hard in jsdom
