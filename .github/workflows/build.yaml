@@ -16,4 +16,5 @@ jobs:
     with:
       ci-test-jobs: 2
     secrets:
+      REPORT_TOKEN: ${{ secrets.REPORT_TOKEN }}
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
