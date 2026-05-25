@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.4.0...ui-demo-v1.5.0) (2026-05-25)
+
+
+### Features
+
+* portal menu ([e4c04f4](https://github.com/feasibleone/blong/commit/e4c04f470dfe751aa63b264c4f03fd39ba721942))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.3.1...ui-demo-v1.4.0) (2026-05-19)
 
 

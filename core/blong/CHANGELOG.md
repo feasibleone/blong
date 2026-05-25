@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-v1.21.0...blong-v1.22.0) (2026-05-25)
+
+
+### Features
+
+* portal menu ([e4c04f4](https://github.com/feasibleone/blong/commit/e4c04f470dfe751aa63b264c4f03fd39ba721942))
+
+
+### Bug Fixes
+
+* build ([9b8abb7](https://github.com/feasibleone/blong/commit/9b8abb7f2778c0c39e2d888a0e8268f35f7bdf55))
+* dependencies ([cc6ba83](https://github.com/feasibleone/blong/commit/cc6ba830a721dfb063f5331d44e26a97e28c7f9a))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-v1.20.1...blong-v1.21.0) (2026-05-22)
 
 

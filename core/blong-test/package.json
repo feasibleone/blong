@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-test",
-    "version": "1.8.0",
+    "version": "1.8.1",
     "description": "Development and unit testing utilities for the Blong framework",
     "keywords": [
         "blong",
@@ -25,7 +25,6 @@
         "build": "heft build --clean",
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance"
-
     },
     "dependencies": {},
     "devDependencies": {
