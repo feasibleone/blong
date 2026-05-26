@@ -29,9 +29,9 @@ export default handler<{
 
     const encrypt = (msg: unknown, protectedHeader?: object): unknown => {
         return jose
-            ? global.window &&
+            ? globalThis.window &&
               msg &&
-              (msg as Record<string, unknown>).formData instanceof window.FormData
+              (msg as Record<string, unknown>).formData instanceof globalThis.window.FormData
                 ? msg
                 : jose.signEncrypt(
                       msg as object,

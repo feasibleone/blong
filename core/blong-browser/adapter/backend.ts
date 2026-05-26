@@ -6,7 +6,7 @@ export default adapter(() => ({
         default: {
             namespace: 'backend',
             imports: ['codec.jsonrpc', 'codec.mle'],
-            url: 'http://localhost:8080',
+            url: globalThis.window?.location?.origin ?? 'http://localhost:8080',
         },
     },
 }));

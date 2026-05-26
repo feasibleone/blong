@@ -28,12 +28,12 @@ export async function lint(fileArgs: string[]): Promise<void> {
     const spellFiles = staged ? fileArgs.filter(f => SPELL_EXT.test(f)) : [];
     const lintFiles = staged ? fileArgs.filter(f => LINT_EXT.test(f)) : [];
 
-    // Augment PATH: target package's .bin first, then blong-dev's own .bin
+    // Augment PATH: target blong-dev's own .bin first, then package's .bin
     // (provides cspell and other bundled tools), then the inherited PATH.
     const localBin = join(cwd, 'node_modules', '.bin');
     const env: NodeJS.ProcessEnv = {
         ...process.env,
-        PATH: [localBin, blongDevBin, process.env['PATH'] ?? ''].join(PATH_SEP),
+        PATH: [blongDevBin, localBin, process.env['PATH'] ?? ''].join(PATH_SEP),
     };
     const run = (cmd: string, args: string[]) =>
         runTool(cmd, args, {cwd, env} satisfies RunOptions);

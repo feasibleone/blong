@@ -133,12 +133,18 @@ async function exportKey(
     return publicJwk;
 }
 
+const encode = (payload: string | Uint8Array | object): Uint8Array => {
+    return payload instanceof Uint8Array
+        ? payload
+        : new TextEncoder().encode(typeof payload === 'string' ? payload : JSON.stringify(payload));
+};
+
 async function sign(
     message: object,
     {key, alg}: {key: KeyLike | Uint8Array; alg: string},
     options: {serialization?: unknown},
 ): Promise<FlattenedJWS | GeneralJWS | string> {
-    const payload = Buffer.isBuffer(message) ? message : Buffer.from(JSON.stringify(message));
+    const payload = encode(message);
     switch (options?.serialization) {
         case 'general':
             return new GeneralSign(payload).addSignature(key).setProtectedHeader({alg}).sign();
@@ -150,7 +156,7 @@ async function sign(
 }
 
 function encrypt(
-    jws: string | Buffer,
+    jws: string | Uint8Array,
     {key, alg}: {key: KeyLike | Uint8Array; alg: string},
     protectedHeader: object,
     unprotectedHeader: JWEHeaderParameters,
@@ -158,7 +164,7 @@ function encrypt(
 ): Promise<string | FlattenedJWE | GeneralJWE> {
     switch (options?.serialization) {
         case 'compact':
-            return new CompactEncrypt(Buffer.from(jws))
+            return new CompactEncrypt(encode(jws))
                 .setProtectedHeader({
                     alg,
                     enc: 'A128CBC-HS256',
@@ -166,7 +172,7 @@ function encrypt(
                 })
                 .encrypt(key);
         case 'flattened':
-            return new FlattenedEncrypt(Buffer.from(jws))
+            return new FlattenedEncrypt(encode(jws))
                 .setProtectedHeader({
                     alg,
                     enc: 'A128CBC-HS256',
@@ -174,7 +180,7 @@ function encrypt(
                 })
                 .encrypt(key);
         default:
-            return new GeneralEncrypt(Buffer.from(jws))
+            return new GeneralEncrypt(encode(jws))
                 .setProtectedHeader({
                     alg,
                     enc: 'A128CBC-HS256',

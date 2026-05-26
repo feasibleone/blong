@@ -74,23 +74,23 @@ function topoSort(items: InfraItem[]): InfraItem[] {
 const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     api: {server: {default: true}, browser: {default: true}},
     init: {server: {default: true}, browser: {default: true}},
-    'server/init': {server: {default: true}},
-    'server/api': {server: {integration: true}},
-    'browser/init': {browser: {default: true}},
-    'browser/api': {browser: {integration: true}},
     error: {server: {integration: true}},
     sim: {server: {integration: true}},
     adapter: {server: {integration: true}},
     orchestrator: {server: {integration: true}},
     gateway: {server: {integration: true}},
-    browser: {server: {integration: true}},
     backend: {browser: {integration: true}},
     component: {browser: {integration: true}},
     action: {browser: {integration: true}},
     actions: {browser: {integration: true}},
     test: {browser: {integration: true}},
+    'server/api': {server: {integration: true}},
+    'server/init': {server: {default: true}},
     'server/test': {server: {integration: true}},
+    'browser/api': {browser: {integration: true}},
+    'browser/init': {browser: {default: true}},
     'browser/test': {browser: {integration: true}},
+    'browser/orchestrator': {browser: {integration: true}},
 };
 
 /**
@@ -569,18 +569,25 @@ export default async function loadRealm<T extends TSchema>(
                             isFile: value,
                         });
                     } else {
-                        const target = (globFolders[`${segments[0]}/${segments[1]}`] ||= {});
+                        const target = (globFolders[platformApi.dirname(segments.join('/'))] ||=
+                            {});
                         target[segments.join('/')] = value;
                     }
                 }
             });
         Object.entries(globFolders).forEach(([path, isDirectory]) => {
             extraChildren.push({
-                name: path.split('/')[0],
+                name: platformApi.dirname(path),
                 path,
                 isDirectory,
             });
         });
+        for (const child of extraChildren) {
+            const folderName = typeof child === 'object' && child.name;
+            if (!folderName || folderName in mergedConfig) continue;
+            const activation = WELL_KNOWN_LAYERS[folderName]?.[rootKind];
+            if (activation) merge(mergedConfig, {[folderName]: activation});
+        }
     }
 
     let realm: IRealm;

@@ -9,38 +9,35 @@
  * PRIMEREACT_PALETTE_THEMES to look up which CSS file to load for a
  * given palette + dark-mode combination.
  */
+import 'primeflex/primeflex.css';
+import 'primeicons/primeicons.css';
+import 'primereact/resources/primereact.min.css';
+
 import {addLocale, locale} from '../../primereact/index.js';
 
 import {type ReactNode, useEffect} from 'react';
 import {useAppStore} from '../../state/appStore.js';
 
-export type PaletteType = 'light' | 'dark' | 'big' | 'compact' | 'light-compact' | 'dark-compact';
+export type PaletteType = 'light' | 'dark';
+export type ThemeType = 'big' | 'compact';
 
 /**
  * Maps each palette to the PrimeReact theme name for light and dark modes.
  * Theme CSS is at: `primereact/resources/themes/<name>/theme.css`
  */
-export const PRIMEREACT_PALETTE_THEMES: Record<PaletteType, {light: string; dark: string}> = {
-    light: {light: 'lara-light-blue', dark: 'lara-dark-blue'},
-    dark: {light: 'lara-light-blue', dark: 'lara-dark-blue'},
+export const PRIMEREACT_PALETTE_THEMES: Record<ThemeType, Record<PaletteType, string>> = {
     big: {light: 'lara-light-blue', dark: 'lara-dark-blue'},
     compact: {light: 'saga-blue', dark: 'vela-blue'},
-    'light-compact': {light: 'saga-blue', dark: 'vela-blue'},
-    'dark-compact': {light: 'vela-blue', dark: 'saga-blue'},
 };
 
 /** Font size in px for each palette — compact variants use 14, others 16. */
-export const PALETTE_FONT_SIZES: Record<PaletteType, number> = {
-    light: 16,
-    dark: 16,
+export const PALETTE_FONT_SIZES: Record<ThemeType, number> = {
     big: 16,
     compact: 14,
-    'light-compact': 14,
-    'dark-compact': 14,
 };
 
 export interface IThemeConfig {
-    name: string;
+    type?: ThemeType;
     palette?: PaletteType;
     direction?: 'ltr' | 'rtl';
     primary?: string;
@@ -74,9 +71,10 @@ export function Theme({theme, children}: IThemeProps) {
         locale(language && language !== 'en' ? language : 'en');
     }, [language]);
 
+    const palette = theme.palette ?? 'dark';
+    const type = theme.type ?? 'compact';
     useEffect(() => {
-        const palette = theme.palette ?? 'dark-compact';
-        const fontSize = theme.fontSize ?? PALETTE_FONT_SIZES[palette];
+        const fontSize = theme.fontSize ?? PALETTE_FONT_SIZES[type];
 
         // Apply direction
         document.documentElement.dir = theme.direction ?? 'ltr';
@@ -89,15 +87,29 @@ export function Theme({theme, children}: IThemeProps) {
         if (theme.primary) {
             document.documentElement.style.setProperty('--p-primary-color', theme.primary);
         }
-    }, [theme]);
+        switch (PRIMEREACT_PALETTE_THEMES[type][palette] || 'vela-blue') {
+            case 'vela-blue':
+                import('primereact/resources/themes/vela-blue/theme.css');
+                break;
+            case 'saga-blue':
+                import('primereact/resources/themes/saga-blue/theme.css');
+                break;
+            case 'lara-light-blue':
+                import('primereact/resources/themes/lara-light-blue/theme.css');
+                break;
+            case 'lara-dark-blue':
+                import('primereact/resources/themes/lara-dark-blue/theme.css');
+                break;
+        }
+    }, [palette, theme.direction, theme.fontSize, theme.primary, type]);
 
-    const palette = theme.palette ?? 'dark-compact';
     return (
         <div
             className={[
                 'blong-app',
-                `blong-app--${palette}`,
-                theme.direction === 'rtl' ? 'blong-app--rtl' : '',
+                `blong-app-${palette}`,
+                `blong-app-${type}`,
+                theme.direction === 'rtl' ? 'blong-app-rtl' : '',
             ]
                 .filter(Boolean)
                 .join(' ')}

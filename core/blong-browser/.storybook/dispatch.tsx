@@ -775,7 +775,7 @@ export function withDispatch(
             <App
                 dispatch={dispatch}
                 schemaUrl="/schema.json"
-                theme={{name: 'vela-blue', palette: 'dark-compact', languages: themeLanguages}}
+                theme={{type: 'compact', palette: 'dark', languages: themeLanguages}}
                 loginRoute={loginRoute}
                 loginComponent={loginComponentParam}
                 debug={true}

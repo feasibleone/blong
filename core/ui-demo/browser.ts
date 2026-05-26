@@ -44,9 +44,7 @@ export default browser(blong => ({
         },
         dev: {
             blongUi: {
-                adapter: {
-                    url: 'http://localhost:8080',
-                },
+                adapter: {},
             },
         },
     },

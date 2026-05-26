@@ -277,7 +277,7 @@ export default class Registry extends Internal implements IRegistry {
                         if (local.namespace)
                             target.config.namespace = target.config.namespace
                                 ? ([] as string[]).concat(target.config.namespace, local.namespace)
-                                : local.namespace;
+                                : ([] as string[]).concat(local.namespace);
                     }
                     literals.forEach(literal => Object.setPrototypeOf(literal, target.imported));
                     Object.setPrototypeOf(local, info.parent);

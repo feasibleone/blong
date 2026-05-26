@@ -275,7 +275,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     async drain(): Promise<void> {}
 
     findHandler(methodName: string): unknown {
-        methodName = this._methodId(methodName);
+        methodName = this.methodPath(this._methodId(methodName));
         return this.imported[methodName];
     }
 

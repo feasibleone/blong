@@ -35,9 +35,13 @@ export default realm(blong => ({
         default: {
             orchestrator: true,
             backend: false,
+            mock: false,
         },
         microservice: {
             backend: true,
+        },
+        storybook: {
+            mock: true,
         },
     },
 }));

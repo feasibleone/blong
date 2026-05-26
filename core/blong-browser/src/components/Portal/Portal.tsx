@@ -139,10 +139,7 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);
     const [menu, setMenu] = React.useState<MenuItem[] | undefined>(undefined);
     React.useEffect(() => {
-        buildMenuModel(portalConfig?.menu, command, dispatch).then(result => {
-            debugger;
-            setMenu(result);
-        });
+        buildMenuModel(portalConfig?.menu, command, dispatch).then(setMenu);
     }, [portalConfig?.menu, command, dispatch]);
 
     const start =

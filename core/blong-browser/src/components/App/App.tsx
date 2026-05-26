@@ -20,13 +20,14 @@ import type {ILogger} from '@feasibleone/blong';
 import React from 'react';
 import {BlongUiProvider, type DispatchFn} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
-import type {IPortalConfig} from '../../storybook.js';
+import {type IPortalConfig} from '../../storybook.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {ActionHint} from '../Hint/Hint.js';
+import {Login} from '../Login/Login.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
 
-const DEFAULT_THEME: IThemeConfig = {name: 'lara-light-blue', palette: 'light'};
+const DEFAULT_THEME: IThemeConfig = {type: 'compact', palette: 'dark'};
 
 export interface IAppProps extends IPortalProps {
     /** Method dispatch — routes calls through the browser handler registry */
@@ -79,8 +80,21 @@ function AppShell({
             });
         }
     }, [dispatch, isAuthenticated]);
-    if (LoginComponent && !isAuthenticated) {
-        return <LoginComponent dispatch={dispatch} />;
+    if (!isAuthenticated) {
+        return LoginComponent ? (
+            <LoginComponent dispatch={dispatch} />
+        ) : (
+            <Login
+                onLogin={async () => {
+                    await new Promise(r => setTimeout(r, 800));
+                    useAppStore.getState().setToken('demo-token');
+                }}
+                logoIcon="pi pi-globe"
+                title="Blong Portal"
+                // titleComponent={}
+                // orgComponent={}
+            />
+        );
     }
     return children ?? <Portal {...portalProps} />;
 }
