@@ -44,7 +44,7 @@ export default async function component(
         this.config!.context.menus[`${subjectTitle}`].push(`${subject}.${object}.browse`);
     }
 
-    components['portal.config.get'] = async () => {
+    components.portalConfigGet = async () => {
         return blong.lib.merge(
             {},
             {

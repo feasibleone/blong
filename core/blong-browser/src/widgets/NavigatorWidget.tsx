@@ -17,7 +17,7 @@
  */
 import type {IWidgetProps} from '@feasibleone/blong';
 import React, {useEffect, useState} from 'react';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {Tree, type TreeNode} from '../primereact/index.js';
 
 type Row = Record<string, unknown>;
@@ -56,7 +56,7 @@ function buildTree(
 }
 
 export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
-    const {dispatch} = useBlongUi();
+    const {handler, log} = useBlong();
 
     const widget = schema.widget;
     const listAction = widget?.listAction ?? '';
@@ -65,7 +65,6 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
     const parentField = widget?.parentField ?? 'parentId';
     const labelField = widget?.labelField ?? 'name';
     const title = widget?.label;
-    const log = useBlongUi().log;
 
     // Use field value as static data when listAction is not set
     const staticRows = !listAction && Array.isArray(value) ? (value as Row[]) : undefined;
@@ -112,7 +111,7 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
         // eslint-disable-next-line @eslint-react/set-state-in-effect
         setLoading(true);
         const params = widget?.listParams ?? {};
-        void (dispatch(listAction, params) as Promise<Record<string, unknown>>)
+        void (handler[listAction](params, {}) as Promise<Record<string, unknown>>)
             .then(result => {
                 let items: Row[];
                 if (resultSet && Array.isArray((result as Record<string, unknown>)[resultSet])) {
@@ -145,7 +144,7 @@ export function NavigatorWidget({name, schema, value, onSelect}: IWidgetProps) {
         keyField,
         parentField,
         labelField,
-        dispatch,
+        handler,
         setTreeDataAndExpand,
         log,
     ]);

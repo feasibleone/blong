@@ -9,12 +9,12 @@
  */
 
 // ── Context ──────────────────────────────────────────────────────────────────
-export {BlongUiProvider, useBlongUi} from './context/BlongUiContext.js';
+export {BlongProvider, makeHandlerProxy, useBlong} from './context/BlongContext.js';
 export type {
-    DispatchFn,
-    IBlongUiContextValue,
-    IBlongUiProviderProps,
-} from './context/BlongUiContext.js';
+    IBlongContextValue,
+    IBlongPortalConfig,
+    IBlongProviderProps,
+} from './context/BlongContext.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 export {useAppStore} from './state/appStore.js';

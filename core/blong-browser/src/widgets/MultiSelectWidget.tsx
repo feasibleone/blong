@@ -2,7 +2,7 @@ import {MultiSelect} from '../primereact/index.js';
 
 import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
@@ -32,7 +32,7 @@ export function MultiSelectWidget({
         dropdown: dropdownKey,
         type: widgetType,
     } = schema.widget ?? {};
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     const [options, setOptions] = useState<SelectOption[]>(
         () => staticOptions ? toOptions(staticOptions) : [],
     );
@@ -45,7 +45,7 @@ export function MultiSelectWidget({
         if (dropdownKey) {
             const loader = (key: string) =>
                 (
-                    dispatch('portal.dropdown.list', {names: [key]}) as Promise<
+                    handler.portalDropdownList({names: [key]}, {}) as Promise<
                         Record<string, unknown>
                     >
                 ).then(result => toOptions(result[key]));
@@ -64,7 +64,7 @@ export function MultiSelectWidget({
 
         // Priority 2: explicit fetch action
         if (!fetchAction) return;
-        (dispatch(fetchAction, {}) as Promise<unknown>)
+        (handler[fetchAction]({}, {}) as Promise<unknown>)
             .then(data => {
                 if (!cancelled) setOptions(toOptions(data));
             })
@@ -72,7 +72,7 @@ export function MultiSelectWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, dispatch, staticOptions]);
+    }, [fetchAction, dropdownKey, handler, staticOptions]);
 
     const arrValue: unknown[] = Array.isArray(value) ? value : value != null ? [value] : [];
 

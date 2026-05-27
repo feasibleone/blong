@@ -4,7 +4,7 @@
  */
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useCallback, useMemo} from 'react';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {ulid} from '../lib/ulid.js';
 import {useAppStore} from '../state/appStore.js';
 import type {
@@ -38,7 +38,7 @@ export function useAction<TResult = unknown>(
     type?: 'page' | 'query' | 'mutation',
     params?: Record<string, unknown>,
 ): IUseActionResult<TResult> {
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     const queryClient = useQueryClient();
     const actions = useAppStore(s => s.actions);
     const openTab = useAppStore(s => s.openTab);
@@ -85,7 +85,7 @@ export function useAction<TResult = unknown>(
         async (callParams?: Record<string, unknown>) => {
             const resolved = mergedParams(callParams);
             const componentAction: ITypedAction | undefined =
-                action || (await dispatch(actionName, resolved));
+                action || (await handler[actionName](resolved, {}));
             if (componentAction && isComponentAction(componentAction)) {
                 try {
                     const component = await componentAction.component(resolved);
@@ -107,7 +107,7 @@ export function useAction<TResult = unknown>(
                 });
             }
         },
-        [action, actionName, mergedParams, openTab, showError, dispatch],
+        [action, actionName, mergedParams, openTab, showError, handler],
     );
 
     // ── Query action ─────────────────────────────────────────────────────
@@ -119,15 +119,15 @@ export function useAction<TResult = unknown>(
         refetch,
     } = useQuery<TResult, IBlongError>({
         queryKey: [method, params ?? {}],
-        queryFn: () => dispatch(method, mergedParams()) as Promise<TResult>,
+        queryFn: () => handler[method](mergedParams(), {}) as Promise<TResult>,
         enabled: !!action && isQueryAction(action),
         staleTime: 0,
     });
 
     const queryCall = useCallback(
         (callParams?: Record<string, unknown>) =>
-            dispatch(method, mergedParams(callParams)) as Promise<TResult>,
-        [method, mergedParams, dispatch],
+            handler[method](mergedParams(callParams), {}) as Promise<TResult>,
+        [method, mergedParams, handler],
     );
 
     // ── Mutation action ────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ export function useAction<TResult = unknown>(
         isPending,
         error: mutationError,
     } = useMutation<TResult, IBlongError, Record<string, unknown>>({
-        mutationFn: callParams => dispatch(method, mergedParams(callParams)) as Promise<TResult>,
+        mutationFn: callParams => handler[method](mergedParams(callParams), {}) as Promise<TResult>,
         onSuccess: () => {
             if (isMutationAction(action)) {
                 const invalidates = (action as IMutationAction).invalidates ?? [];

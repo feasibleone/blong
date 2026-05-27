@@ -1,6 +1,6 @@
 import type {IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 import {Column, TreeTable, type TreeNode} from '../primereact/index.js';
 
@@ -15,7 +15,7 @@ export function MultiSelectTreeTableWidget({
     disabled,
 }: IWidgetProps) {
     const {fetch: fetchAction, options: staticOptions, dropdown: dropdownKey} = schema.widget ?? {};
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     const [options, setOptions] = useState<unknown[]>(staticOptions ?? []);
 
     useEffect(() => {
@@ -25,7 +25,7 @@ export function MultiSelectTreeTableWidget({
         if (dropdownKey) {
             const loader = (key: string) =>
                 (
-                    dispatch('portal.dropdown.list', {names: [key]}) as Promise<
+                    handler.portalDropdownList({names: [key]}, {}) as Promise<
                         Record<string, unknown>
                     >
                 ).then(result => result[key] as unknown[]);
@@ -41,7 +41,7 @@ export function MultiSelectTreeTableWidget({
         }
 
         if (!fetchAction) return;
-        (dispatch(fetchAction, {}) as Promise<unknown[]>)
+        (handler[fetchAction]({}, {}) as Promise<unknown[]>)
             .then(data => {
                 if (!cancelled) setOptions(Array.isArray(data) ? data : []);
             })
@@ -49,7 +49,7 @@ export function MultiSelectTreeTableWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, dispatch, staticOptions]);
+    }, [fetchAction, dropdownKey, handler, staticOptions]);
 
     return (
         <TreeTable

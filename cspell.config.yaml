@@ -20,10 +20,9 @@ words:
   - Antipathidae
   - apidevtools
   - APIV
+  - apos
   - approle
   - APTRA
-  - apos
-  - quasis
   - arqc
   - Arqc
   - ARQC
@@ -71,6 +70,7 @@ words:
   - dfsp
   - DFSP
   - DFSPs
+  - dialog
   - Diebold
   - dismissable
   - dont
@@ -170,9 +170,11 @@ words:
   - priorityclass
   - progressspinner
   - Pterois
+  - quasis
   - quot
   - rdkafka
   - realmname
+  - Redux
   - refetches
   - reflow
   - regen
@@ -237,6 +239,7 @@ words:
   - Upserted
   - userpass
   - vars
+  - vitest
   - volitans
   - Voxer
   - webcamera
@@ -247,6 +250,7 @@ words:
   - YHHHHCC
   - ZCMK
   - zoomin
+  - Zustand
   - биология
   - Видове
   - График

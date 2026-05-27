@@ -91,7 +91,7 @@ GetError.args = {loadAction: 'coralCoralGetError', editMode: true};
 /**
  * DropdownError — dropdown loading rejects.
  * Uses `dropdown: 'marine.coralTypeError'` / `'marine.zoneError'` widget keys so
- * `portal.dropdown.list` receives an Error-suffixed name and rejects.
+ * `portalDropdownList` receives an Error-suffixed name and rejects.
  */
 export const DropdownError: StoryFn = (args = {}) => (
     <Editor

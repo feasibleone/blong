@@ -1,17 +1,16 @@
 import {renderHook} from '@testing-library/react';
 import React from 'react';
 import {describe, expect, it, vi} from 'vitest';
-import {BlongUiProvider} from '../context/BlongUiContext.js';
+import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {useLayout} from './useLayout.js';
 
 const dispatch = vi.fn();
 const wrapper = ({children}: {children: React.ReactNode}) => (
-    <BlongUiProvider
-        dispatch={dispatch}
-        schemaUrl="/test.json"
+    <BlongProvider
+        handlerProxy={makeHandlerProxy(dispatch)}
     >
         {children}
-    </BlongUiProvider>
+    </BlongProvider>
 );
 
 const schema = {

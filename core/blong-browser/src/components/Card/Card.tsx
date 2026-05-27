@@ -29,7 +29,7 @@ import {DropZone} from '../../design/DropZone.js';
 import {SelectionIndicator} from '../../design/SelectionIndicator.js';
 import {useDesignable} from '../../design/useDesignable.js';
 import {useDesignMode} from '../../design/useDesignMode.js';
-import {useBlongUi} from '../../index.js';
+import {useBlong} from '../../index.js';
 import {buildValidationRules} from '../../schema/validate.js';
 import {useAppStore} from '../../state/appStore.js';
 import {widgetRegistry} from '../../widgets/index.js';
@@ -835,7 +835,7 @@ export function Card({
     const resolvedTitle: string | ReactNode | undefined = resolved ? resolved.label : title;
     const titleLabel = typeof resolvedTitle === 'string' ? resolvedTitle : (cardName ?? elementId);
 
-    const {log} = useBlongUi();
+    const {log} = useBlong();
     const {isSelected, select, dragProps, setRef, designClass, style} = useDesignable(
         elementId,
         'card',

@@ -1,17 +1,16 @@
 import {act, renderHook} from '@testing-library/react';
 import React from 'react';
 import {describe, expect, it, vi} from 'vitest';
-import {BlongUiProvider} from '../context/BlongUiContext.js';
+import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {useAppStore} from '../state/appStore.js';
 import {usePortal} from './usePortal.js';
 
 const wrapper = ({children}: {children: React.ReactNode}) => (
-    <BlongUiProvider
-        dispatch={vi.fn()}
-        schemaUrl="/test.json"
+    <BlongProvider
+        handlerProxy={makeHandlerProxy(vi.fn())}
     >
         {children}
-    </BlongUiProvider>
+    </BlongProvider>
 );
 
 describe('usePortal', () => {

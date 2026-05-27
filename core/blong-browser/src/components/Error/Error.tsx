@@ -3,7 +3,7 @@
  */
 import {Dialog} from '../../primereact/index.js';
 
-import {useBlongUi} from '../../context/BlongUiContext.js';
+import {useBlong} from '../../context/BlongContext.js';
 import {useAppStore} from '../../state/appStore.js';
 import {Button} from '../Button/Button.js';
 
@@ -23,7 +23,8 @@ function isAuthError(type?: string) {
 export function ErrorDialog() {
     const error = useAppStore(s => s.error);
     const clearError = useAppStore(s => s.clearError);
-    const {loginRoute} = useBlongUi();
+    const {config: {portal}} = useBlong();
+    const loginRoute = portal?.loginRoute;
 
     if (!error) return null;
 

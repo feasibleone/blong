@@ -20,7 +20,7 @@ import './Explorer.css';
 
 import type {IEnrichedSchema} from '@feasibleone/blong';
 import {useCallback, useMemo, useRef, useState, type ReactNode} from 'react';
-import {useBlongUi} from '../../context/BlongUiContext.js';
+import {useBlong} from '../../context/BlongContext.js';
 import {useAction} from '../../hooks/useAction.js';
 import type {IToolbarButton} from '../../index.js';
 import {ActionButton} from '../ActionButton/ActionButton.js';
@@ -258,7 +258,7 @@ export function Explorer({
     const dataTableRef = useRef<DataTable>(null);
     const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
 
     // Build query params: filter, sort, paging — React Query auto-refetches on change
     const mergedParams = useMemo(() => {
@@ -443,7 +443,7 @@ export function Explorer({
         <Navigator
             fetch={
                 navigator.listAction
-                    ? () => dispatch(navigator.listAction, {}) as Promise<Record<string, unknown[]>>
+                    ? () => handler[navigator.listAction]({}, {}) as Promise<Record<string, unknown[]>>
                     : undefined
             }
             keyField={navigator.keyField ?? 'id'}

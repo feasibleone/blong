@@ -4,7 +4,7 @@ import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useRef, useState} from 'react';
 import {useWatch, type Control} from 'react-hook-form';
 import {useBlongForm} from '../components/Form/FormContext.js';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 
 type SelectOption = IDropdownOption;
@@ -41,7 +41,7 @@ function DropdownCore({
         dropdown: dropdownKey,
         parent,
     } = schema.widget ?? {};
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
 
     const [options, setOptions] = useState<SelectOption[]>(
         () => staticOptions ? toOptions(staticOptions) : [],
@@ -67,7 +67,7 @@ function DropdownCore({
         if (dropdownKey) {
             const loader = (key: string) =>
                 (
-                    dispatch('portal.dropdown.list', {names: [key]}) as Promise<
+                    handler.portalDropdownList({names: [key]}, {}) as Promise<
                         Record<string, unknown>
                     >
                 ).then(result => toOptions(result[key]));
@@ -91,7 +91,7 @@ function DropdownCore({
         if (!fetchAction) return;
         const params: Record<string, unknown> = {};
         if (parent && parentValue !== undefined) params[parent] = parentValue;
-        (dispatch(fetchAction, params) as Promise<unknown>)
+        (handler[fetchAction](params, {}) as Promise<unknown>)
             .then(data => {
                 if (!cancelled) setOptions(toOptions(data));
             })
@@ -100,7 +100,7 @@ function DropdownCore({
             cancelled = true;
         };
         // eslint-disable-next-line @eslint-react/exhaustive-deps -- parent and staticOptions intentionally omitted
-    }, [fetchAction, dropdownKey, dispatch, parentValue]);
+    }, [fetchAction, dropdownKey, handler, parentValue]);
 
     // Filter options by parent value (client-side cascade).
     // Supports both named-key format ({continent: 1}) and generic parent key ({parent: 1}).

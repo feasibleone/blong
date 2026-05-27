@@ -31,7 +31,7 @@ import './Login.css';
 import {InputText, Message, Password} from '../../primereact/index.js';
 
 import React, {useState} from 'react';
-import {useBlongUi} from '../../context/BlongUiContext.js';
+import {useBlong} from '../../context/BlongContext.js';
 import {Button} from '../Button/Button.js';
 
 type LoginStep = 'credentials' | 'otp' | 'newPassword';
@@ -107,7 +107,7 @@ export function Login({
     loading: externalLoading,
     initialStep = 'credentials',
 }: ILoginProps) {
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [step, setStep] = useState<LoginStep>(initialStep);
     const [username, setUsername] = useState('');
@@ -178,7 +178,7 @@ export function Login({
     const handleRegister = async () => {
         if (!registerPage) return;
         try {
-            const comp = await dispatch(`component/${registerPage}`, {});
+            const comp = await handler[`component/${registerPage}`]({}, {});
             if (comp) setRegisterComp(() => comp as React.ComponentType);
         } catch {
             /* ignore — dispatch may show its own error */

@@ -22,7 +22,6 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import {useEffect} from 'react';
-import type {DispatchFn} from '../../context/BlongUiContext.js';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPortalConfig, ITab} from '../../types/portal.js';
 import {Login as LoginForm} from '../Login/Login.js';
@@ -149,7 +148,7 @@ function MarineTitleComponent() {
  * LoginPage — basic login wrapping Login component.
  * Clicking "Sign In" sets a demo token (transitions App shell to portal).
  */
-function LoginPage(_: {dispatch: DispatchFn}) {
+function LoginPage(_: Record<string, never>) {
     return (
         <LoginForm
             onLogin={async () => {
@@ -191,7 +190,7 @@ function MarineOrgComponent() {
  * LoginPageWithTitle — demonstrates the `titleComponent` slot (product area) above the brand
  * and the `orgComponent` slot (org brand area) below — both equal-height to keep the card centred.
  */
-function LoginPageWithTitle(_: {dispatch: DispatchFn}) {
+function LoginPageWithTitle(_: Record<string, never>) {
     return (
         <LoginForm
             onLogin={async () => {
@@ -213,7 +212,7 @@ function LoginPageWithTitle(_: {dispatch: DispatchFn}) {
  * - The global dispatch mock returns a placeholder registration form for page names
  *   ending in 'Registration' / 'Register' / 'SelfRegister'.
  */
-function LoginPageWithRegister(_: {dispatch: DispatchFn}) {
+function LoginPageWithRegister(_: Record<string, never>) {
     return (
         <LoginForm
             onLogin={async () => {
@@ -230,7 +229,7 @@ function LoginPageWithRegister(_: {dispatch: DispatchFn}) {
 }
 
 /** Same as LoginPage but with Bulgarian title (i18n demo). */
-function BulgarianLoginPage(_: {dispatch: DispatchFn}) {
+function BulgarianLoginPage(_: Record<string, never>) {
     return (
         <LoginForm
             onLogin={async () => {
@@ -244,7 +243,7 @@ function BulgarianLoginPage(_: {dispatch: DispatchFn}) {
 }
 
 /** Login page that always rejects — demonstrates the inline error message. */
-function LoginErrorPage(_: {dispatch: DispatchFn}) {
+function LoginErrorPage(_: Record<string, never>) {
     return (
         <LoginForm
             onLogin={async () => {

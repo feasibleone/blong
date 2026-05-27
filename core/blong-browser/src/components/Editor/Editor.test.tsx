@@ -431,7 +431,7 @@ describe('<Editor />', () => {
             expect(listDispatch).toHaveBeenCalledWith(
                 'test.coral.find',
                 expect.any(Object),
-                undefined,
+                {},
             );
         });
         const callsBefore = listDispatch.mock.calls.filter(

@@ -1,11 +1,11 @@
-import type {ILogger, IRegistry} from '@feasibleone/blong';
+import type {IRegistry} from '@feasibleone/blong';
 import load from '@feasibleone/blong-gogo';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import 'primereact/resources/primereact.min.css';
 import 'primereact/resources/themes/vela-blue/theme.css';
 import React from 'react';
-import {App, Hint, type DispatchFn} from './src/index.ts';
+import {Hint, useAppStore} from './src/index.ts';
 
 // Ensure proper height propagation for fullscreen stories
 const style = document.createElement('style');
@@ -37,15 +37,15 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-export default browser =>
+export default (browser: Parameters<typeof load>[0]) =>
     // eslint-disable-next-line @eslint-react/component-hook-factories
     function WithBlong(Story: React.ComponentType) {
-        const [blong, setBlong] = React.useState<{
-            registry: IRegistry | null;
-            dispatch: DispatchFn | null;
-            log?: ILogger;
-        }>({registry: null, dispatch: null});
+        const [App, setApp] = React.useState<React.ComponentType<{
+            children?: React.ReactNode;
+        }> | null>(null);
         React.useEffect(() => {
+            useAppStore.getState().setToken('storybook-token');
+
             let result: IRegistry | undefined;
             load(
                 browser,
@@ -71,26 +71,11 @@ export default browser =>
             )
                 .then(platform => platform.start({}))
                 .then(registry => {
-                    const adapter = registry.getPort('blongUi.portal');
-                    setBlong({
-                        registry,
-                        dispatch: async (
-                            method: string,
-                            rpcParams: Record<string, unknown> = {},
-                        ) => {
-                            adapter?.log?.info?.(
-                                {...rpcParams, $meta: {method}},
-                                'Dispatching method',
-                            );
-                            const result = (await adapter?.dispatch?.(rpcParams, {
-                                method,
-                                mtid: 'request',
-                            })) as unknown[];
-                            return result[0];
-                        },
-                        log: adapter?.log,
-                    });
-                    result = registry;
+                    setApp(
+                        () =>
+                            registry.getPort('blongUi.portal')!.config.context
+                                ?.container as React.ComponentType,
+                    );
                 })
                 .catch(err => {
                     console.error('Failed to load Blong platform:', err);
@@ -100,15 +85,8 @@ export default browser =>
             };
         }, []);
 
-        return blong.dispatch ? (
-            <App
-                dispatch={blong.dispatch}
-                schemaUrl="/schema.json"
-                theme={{name: 'vela-blue', palette: 'dark-compact'}}
-                loginRoute="/login"
-                log={blong.log}
-                debug
-            >
+        return App ? (
+            <App>
                 <Story />
                 <Hint />
             </App>

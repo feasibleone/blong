@@ -1,7 +1,7 @@
 import {act, renderHook, waitFor} from '@testing-library/react';
 import React from 'react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {BlongUiProvider, type DispatchFn} from '../context/BlongUiContext.js';
+import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {useAppStore} from '../state/appStore.js';
 import {useAction} from './useAction.js';
 
@@ -11,12 +11,11 @@ function makeWrapper(
     // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
-            <BlongUiProvider
-                dispatch={dispatch as DispatchFn}
-                schemaUrl="/test.json"
+            <BlongProvider
+                handlerProxy={makeHandlerProxy(dispatch)}
             >
                 {children}
-            </BlongUiProvider>
+            </BlongProvider>
         );
     };
 }
@@ -49,7 +48,7 @@ describe('useAction — no action registered (direct dispatch)', () => {
         await act(async () => {
             await result.current.call({name: 'test'});
         });
-        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'test'}, undefined);
+        expect(dispatch).toHaveBeenCalledWith('entity.add', {name: 'test'}, {});
     });
 });
 
@@ -67,7 +66,7 @@ describe('useAction — query action', () => {
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
         });
-        expect(dispatch).toHaveBeenCalledWith('entity.entity.find', {}, undefined);
+        expect(dispatch).toHaveBeenCalledWith('entity.entity.find', {}, {});
     });
 });
 
@@ -84,7 +83,7 @@ describe('useAction — mutation action', () => {
         await act(async () => {
             await result.current.call({name: 'New Entity'});
         });
-        expect(dispatch).toHaveBeenCalledWith('entity.entity.add', {name: 'New Entity'}, undefined);
+        expect(dispatch).toHaveBeenCalledWith('entity.entity.add', {name: 'New Entity'}, {});
     });
 
     it('returns loading=false after successful mutation', async () => {
@@ -101,7 +100,7 @@ describe('useAction — mutation action', () => {
             await result.current.call({id: 99});
         });
         expect(result.current.loading).toBe(false);
-        expect(dispatch).toHaveBeenCalledWith('entity.entity.remove', {id: 99}, undefined);
+        expect(dispatch).toHaveBeenCalledWith('entity.entity.remove', {id: 99}, {});
     });
 });
 
@@ -153,7 +152,7 @@ describe('useAction — page action', () => {
         await act(async () => {
             await result.current.open({param: 'value'});
         });
-        expect(dispatch).toHaveBeenCalledWith('unregistered.action', {param: 'value'}, undefined);
+        expect(dispatch).toHaveBeenCalledWith('unregistered.action', {param: 'value'}, {});
     });
 });
 
@@ -176,7 +175,7 @@ describe('useAction — with static params', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'entity.entity.find',
             expect.objectContaining({type: 'static', extra: 'base', dynamic: 'value'}),
-            undefined,
+            {},
         );
     });
 
@@ -198,7 +197,7 @@ describe('useAction — with static params', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'x.y.find',
             expect.objectContaining({derived: 'hello', input: 'hello'}),
-            undefined,
+            {},
         );
     });
 });

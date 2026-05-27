@@ -6,24 +6,23 @@ import {
 } from '@testing-library/react';
 import React, {type ReactElement} from 'react';
 import {vi} from 'vitest';
-import {BlongUiProvider, type DispatchFn} from '../context/BlongUiContext.js';
+import {BlongProvider, makeHandlerProxy} from '../context/BlongContext.js';
 import {PrimeReactProvider} from '../primereact/index.js';
 
 export interface IRenderOptions extends Omit<RenderOptions, 'wrapper'> {
-    dispatch?: DispatchFn;
+    dispatch?: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
 }
 
-function makeWrapper(dispatch: DispatchFn) {
+function makeWrapper(dispatch: (method: string, params?: Record<string, unknown>) => Promise<unknown>) {
     // eslint-disable-next-line @eslint-react/component-hook-factories
     return function Wrapper({children}: {children: React.ReactNode}) {
         return (
             <PrimeReactProvider value={{cssTransition: false, ripple: false}}>
-                <BlongUiProvider
-                    dispatch={dispatch}
-                    schemaUrl="/test-schema.json"
+                <BlongProvider
+                    handlerProxy={makeHandlerProxy(dispatch)}
                 >
                     {children}
-                </BlongUiProvider>
+                </BlongProvider>
             </PrimeReactProvider>
         );
     };

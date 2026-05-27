@@ -1,7 +1,7 @@
 import type {IComponent} from '@feasibleone/blong';
 import {useEffect} from 'react';
 import {Portal} from '../components/Portal/Portal.js';
-import {useBlongUi} from '../index.js';
+import {useBlong} from '../index.js';
 import {useAppStore} from '../state/appStore.js';
 import type {ITab} from '../types/portal.js';
 
@@ -12,7 +12,7 @@ export function Model({
     componentName: string;
     params?: Record<string, unknown>;
 }) {
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     useEffect(() => {
         // Reset first to avoid bleed-through from previous stories
         useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
@@ -21,7 +21,7 @@ export function Model({
 
         void (async () => {
             try {
-                const component = await dispatch<IComponent>(`component/${componentName}`);
+                const component = await (handler[`component/${componentName}`]({}, {}) as Promise<IComponent>);
                 const tab: ITab = {
                     id: 'test-tab',
                     actionName: 'test-action',

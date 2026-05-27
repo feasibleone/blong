@@ -14,7 +14,7 @@ import {
 import './Portal.css';
 
 import React, {Suspense, useCallback} from 'react';
-import {useBlongUi} from '../../context/BlongUiContext.js';
+import {useBlong} from '../../context/BlongContext.js';
 import {usePortal} from '../../hooks/usePortal.js';
 import testid from '../../lib/testid.js';
 import {useAppStore} from '../../state/appStore.js';
@@ -59,7 +59,7 @@ class TabErrorBoundary extends React.Component<
 async function buildMenuModel(
     items: IMenuItem[] | undefined,
     command: MenuItem['command'],
-    dispatch: ReturnType<typeof useBlongUi>['dispatch'],
+    handler: ReturnType<typeof useBlong>['handler'],
 ): Promise<MenuItem[] | undefined> {
     if (!items) return undefined;
     return Promise.all(
@@ -69,13 +69,12 @@ async function buildMenuModel(
                 return {
                     label: action.title,
                     icon: action.icon,
-                    items: await buildMenuModel(action.items, command, dispatch),
+                    items: await buildMenuModel(action.items, command, handler),
                 } as MenuItem;
             } else if ('method' in action) {
-                const {title, permission, icon, component} = (await dispatch(
-                    `component/${action.method}`,
-                    typeof action.params === 'function' ? action.params({}) : action.params,
-                )) as {
+                const {title, permission, icon, component} = (await handler[
+                    `component/${action.method}`
+                ](typeof action.params === 'function' ? action.params({}) : (action.params as Record<string, unknown>) ?? {}, {})) as {
                     title: string;
                     permission?: string;
                     icon?: string;
@@ -108,7 +107,7 @@ export interface IPortalProps {
 
 export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     const {tabs, activeTabId, setActiveTab, closeTab, portalConfig} = usePortal();
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     const openTab = useAppStore(s => s.openTab);
 
     const command = useCallback(
@@ -139,8 +138,8 @@ export function Portal({logo, menubarEnd, className = ''}: IPortalProps) {
     const activeIndex = tabs.findIndex(t => t.id === activeTabId);
     const [menu, setMenu] = React.useState<MenuItem[] | undefined>(undefined);
     React.useEffect(() => {
-        buildMenuModel(portalConfig?.menu, command, dispatch).then(setMenu);
-    }, [portalConfig?.menu, command, dispatch]);
+        buildMenuModel(portalConfig?.menu, command, handler).then(setMenu);
+    }, [portalConfig?.menu, command, handler]);
 
     const start =
         logo ??

@@ -59,7 +59,7 @@ NewSoft.play = async ({canvasElement, userEvent}) => {
         };
         check();
     });
-    await userEvent.tripleClick(nameInput);
+    await userEvent.clear(nameInput);
     await userEvent.type(nameInput, 'Pink Soft Coral');
     // Wait for RHF dirty state to propagate (Save button becomes enabled)
     await new Promise(resolve => setTimeout(resolve, 200));

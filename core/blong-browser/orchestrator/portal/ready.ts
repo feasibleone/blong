@@ -1,23 +1,20 @@
-import {handler, type IMeta} from '@feasibleone/blong';
+import {handler} from '@feasibleone/blong';
 import type {JSX} from 'react/jsx-runtime';
+import type {IBlongPortalConfig} from '../../src/context/BlongContext.js';
 
-export default handler<{shouldRender?: boolean}, {container?: (params: object) => JSX.Element}>(
-    ({handler: proxy, config: {shouldRender}}) =>
-        async function ready(params, _$meta) {
+export default handler<{shouldRender?: boolean; portal?: IBlongPortalConfig}, {container?: (params: object) => JSX.Element}>(
+    (blong) => {
+        const {config: {shouldRender}} = blong;
+        return async function ready(params, _$meta) {
             const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
                 import('react'),
                 import('react-dom/client'),
                 import('../../src/components/App/App.js'),
             ]);
 
-            const dispatch = <T>(
-                method: string,
-                rpcParams: Record<string, unknown> = {},
-                $meta: IMeta = {},
-            ) => proxy[method](rpcParams ?? {}, $meta) as Promise<T>;
             this.config.context ||= {};
             this.config.context.container = params =>
-                React.createElement(App, {dispatch, ...params});
+                React.createElement(App, {handlerProxy: blong, log: this.log, ...params});
             if (shouldRender !== undefined && !shouldRender) return;
             const rootEl =
                 document.getElementById('root') ??
@@ -29,5 +26,6 @@ export default handler<{shouldRender?: boolean}, {container?: (params: object) =
                 })();
             const root = ReactDOM.createRoot(rootEl);
             root.render(this.config.context.container(params));
-        },
+        };
+    },
 );

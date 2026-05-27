@@ -18,7 +18,7 @@ import './Form.css';
 import type {ICardConfig, IEnrichedFieldSchema, IEnrichedSchema} from '@feasibleone/blong';
 import React, {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useForm, type FieldErrors, type SubmitHandler} from 'react-hook-form';
-import {useBlongUi} from '../../context/BlongUiContext.js';
+import {useBlong} from '../../context/BlongContext.js';
 import {FormInspector, useDesignMode} from '../../design/index.js';
 import {useLayout, type FlatLayoutConfig, type LayoutConfig} from '../../hooks/useLayout.js';
 import {useAppStore} from '../../state/appStore.js';
@@ -56,7 +56,7 @@ export interface IFormProps {
     checkPermission?: (permission: string) => boolean;
     /**
      * Static dropdown data. When provided, widgets whose `schema.widget.dropdown` key matches
-     * an entry here will use the static options without dispatching portal.dropdown.list.
+     * an entry here will use the static options without dispatching portalDropdownList.
      */
     dropdowns?: Record<string, {value: unknown; label: string}[]>;
     /**
@@ -276,7 +276,8 @@ export function Form({
         });
     };
 
-    const {debug} = useBlongUi();
+    const {config: {portal}} = useBlong();
+    const debug = portal?.debug ?? false;
 
     // ── Memoised context values ────────────────────────────────────────────────
     //

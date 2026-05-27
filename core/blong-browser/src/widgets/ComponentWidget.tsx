@@ -16,12 +16,12 @@ import type {IWidgetProps} from '@feasibleone/blong';
 import {renderAll} from '@feasibleone/blong-template';
 import React from 'react';
 import {useBlongForm} from '../components/Form/FormContext.js';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {ProgressSpinner} from '../primereact/index.js';
 
 export function ComponentWidget(widgetProps: IWidgetProps) {
     const {schema, loading} = widgetProps;
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     const formCtx = useBlongForm();
     const page = schema.widget?.component ?? '';
     const params = schema.widget?.params;
@@ -48,15 +48,15 @@ export function ComponentWidget(widgetProps: IWidgetProps) {
             setErrorRender(error as Error);
             return;
         }
-        void dispatch<React.ComponentType | null>(`component/${resolvedPage}`, {
+        void (handler[`component/${resolvedPage}`]({
             ...resolvedParams,
-        })?.then(component => {
+        }, {}) as Promise<React.ComponentType | null>)?.then(component => {
             if (component) {
                 setErrorRender(null);
                 setLoadedComponent(() => component as React.ComponentType<IWidgetProps>);
             }
         });
-    }, [page, params, formCtx, dispatch, loading, vars]);
+    }, [page, params, formCtx, handler, loading, vars]);
 
     if (!LoadedComponent) {
         return (

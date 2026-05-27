@@ -2,7 +2,7 @@ import {Column, DataTable, type DataTableSelectionChangeParams} from '../primere
 
 import type {IDropdownOption, IWidgetProps} from '@feasibleone/blong';
 import {useEffect, useState} from 'react';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {dropdownRegistry} from '../model/dropdownRegistry.js';
 
 type Row = IDropdownOption & Record<string, unknown>;
@@ -38,7 +38,7 @@ export function SelectTableWidget({
         selectionMode = 'single',
         columns,
     } = schema.widget ?? {};
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
     const [rows, setRows] = useState<Row[]>(() => staticOptions ? toOptions(staticOptions) : []);
 
     useEffect(() => {
@@ -48,7 +48,7 @@ export function SelectTableWidget({
         if (dropdownKey) {
             const loader = (key: string) =>
                 (
-                    dispatch('portal.dropdown.list', {names: [key]}) as Promise<
+                    handler.portalDropdownList({names: [key]}, {}) as Promise<
                         Record<string, unknown>
                     >
                 ).then(result => toOptions(result[key]));
@@ -64,7 +64,7 @@ export function SelectTableWidget({
         }
 
         if (!fetchAction) return;
-        (dispatch(fetchAction, {}) as Promise<unknown>)
+        (handler[fetchAction]({}, {}) as Promise<unknown>)
             .then(data => {
                 if (!cancelled) setRows(toOptions(data));
             })
@@ -72,7 +72,7 @@ export function SelectTableWidget({
         return () => {
             cancelled = true;
         };
-    }, [fetchAction, dropdownKey, dispatch, staticOptions]);
+    }, [fetchAction, dropdownKey, handler, staticOptions]);
 
     const isSingle = selectionMode === 'single';
 

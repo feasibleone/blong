@@ -18,7 +18,7 @@
 
 /**
  * Coral type options — shared between model `select` widgets and storybook
- * `portal.dropdown.list` data.  Defined once here; imported by
+ * `portalDropdownList` data.  Defined once here; imported by
  * `marineCoralModel.ts` (inline widget options) and `meta/storybook.ts`
  * (dropdown lookup table).
  */

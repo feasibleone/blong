@@ -586,7 +586,7 @@ describe('TableWidget — listAction mode', () => {
             {dispatch},
         );
         expect(await findByText('Alpha')).toBeTruthy();
-        expect(dispatch).toHaveBeenCalledWith('testAction', expect.any(Object), undefined);
+        expect(dispatch).toHaveBeenCalledWith('testAction', expect.any(Object), {});
     });
 
     it('merges listParams into the dispatch call', async () => {
@@ -610,7 +610,7 @@ describe('TableWidget — listAction mode', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'testAction',
             expect.objectContaining({tenantId: 42}),
-            undefined,
+            {},
         );
         // Drain the resolved dispatch promise so no state updates leak outside the test.
         await act(async () => {});
@@ -650,7 +650,7 @@ describe('TableWidget — listAction mode', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'coralFind',
             expect.objectContaining({categoryId: 99}),
-            undefined,
+            {},
         );
         // Drain the resolved dispatch promise so no state updates leak outside the test.
         await act(async () => {});
@@ -775,7 +775,7 @@ describe('NavigatorWidget', () => {
         expect(dispatch).toHaveBeenCalledWith(
             'categoryFind',
             expect.objectContaining({tenantId: 5}),
-            undefined,
+            {},
         );
     });
 

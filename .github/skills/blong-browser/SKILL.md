@@ -55,7 +55,7 @@ core/blong-browser/
       authSessionGet.ts
   src/
     components/           ← React UI components
-    context/              ← BlongUiContext (dispatch, schema, TanStack Query)
+    context/              ← BlongContext (handlerProxy, useBlong, BlongProvider, makeHandlerProxy)
     hooks/                ← useAction, usePortal, useLayout, useAuth, etc.
     schema/               ← SchemaRegistry (fetches + enriches OpenAPI spec)
     state/                ← appStore (Zustand — auth, tabs, toasts, loader)
@@ -89,43 +89,63 @@ async function blongUi() {
 }
 ```
 
-### `portalReady` — mounting React into the DOM
+### `ready` handler — mounting React into the DOM
 
-`portalReady` is called by blong-gogo once the browser registry is ready. It receives a `proxy`
-(handler proxy object) and mounts `<App dispatch={dispatch}>` into the DOM:
+`portalReady` is called by blong-gogo once the browser registry is ready. The full handler proxy
+(`blong`) is passed to `<App handlerProxy={blong}>`. Portal configuration (`schemaUrl`,
+`loginRoute`, `debug`) is declared in the realm's config under `portal:` and accessed via
+`blong.config.portal`:
 
 ```ts
-export default handler(
-    ({handler: proxy}) =>
-        async function portalReady(params) {
+export default handler<{shouldRender?: boolean; portal?: IBlongPortalConfig}, {container?: ...}>(
+    (blong) => {
+        const {config: {shouldRender}} = blong;
+        return async function ready(params, _$meta) {
             const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
                 import('react'),
                 import('react-dom/client'),
-                import('../../src/components/App/index.js'),
+                import('../../src/components/App/App.js'),
             ]);
-            const dispatch = (method, rpcParams = {}) => (proxy as any)[method](rpcParams);
-            ReactDOM.createRoot(rootEl).render(React.createElement(App, {dispatch, ...params}));
-            return true;
-        },
+            this.config.context ||= {};
+            this.config.context.container = params =>
+                React.createElement(App, {handlerProxy: blong, log: this.log, ...params});
+            if (shouldRender !== undefined && !shouldRender) return;
+            ReactDOM.createRoot(rootEl).render(this.config.context.container(params));
+        };
+    },
 );
 ```
 
-`dispatch` is the critical bridge: calling `dispatch('marine.coral.fetch', {...})` routes through
-the browser handler registry (orchestrators → adapters → HTTP).
+The `handler` property on the proxy is wrapped with a JS Proxy that automatically emits
+`blongEvents` and shows the error dialog for non-validation errors.
 
 ### `App` component
 
-`App` wraps everything in `BlongUiProvider` + `Theme`, then renders the `Portal` shell:
+`App` accepts an `IHandlerProxy` and wraps everything in `BlongProvider` + `Theme`, then renders the
+`Portal` shell:
 
 ```
 App
-  └── BlongUiProvider  (dispatch, schemaRegistry, TanStack QueryClient)
+  └── BlongProvider  (handlerProxy, schemaRegistry, TanStack QueryClient)
         └── Theme
               ├── Portal  (Menubar + TabView of open pages)
               └── ErrorDialog
 ```
 
 For Storybook / testing, pass `children` instead of portal props to skip the shell.
+
+**`App` props:**
+
+| Prop             | Type                  | Purpose                                              |
+| ---------------- | --------------------- | ---------------------------------------------------- |
+| `handlerProxy`   | `IHandlerProxy`       | Required. Provides handler, config, lib, errors      |
+| `log`            | `ILogger`             | Optional logger instance                             |
+| `theme`          | `IThemeConfig`        | PrimeReact theme config                              |
+| `loginComponent` | `React.ComponentType` | Shown when unauthenticated (no dispatch prop needed) |
+| `children`       | `ReactNode`           | Bypass the portal shell (for tests/Storybook)        |
+
+Portal config (`schemaUrl`, `loginRoute`, `debug`) goes in `handlerProxy.config.portal` (type
+`IBlongPortalConfig`), not as direct `App` props.
 
 ---
 
@@ -179,14 +199,14 @@ Enter or clicking a submit button causes browser navigation.
 
 The Editor orchestrates load and save via action names:
 
-| Prop           | Purpose                                                                              |
-| -------------- | ------------------------------------------------------------------------------------ |
-| `loadAction`   | Action name whose result populates the form (skipped when `value` is provided)       |
-| `loadParams`   | Static params passed to the load action                                              |
-| `createAction` | Action called on the **first** save when `mode='new'` (creates the record)           |
-| `saveAction`   | Action called on save in `mode='edit'` (fallback for create when no `createAction`)  |
+| Prop           | Purpose                                                                             |
+| -------------- | ----------------------------------------------------------------------------------- |
+| `loadAction`   | Action name whose result populates the form (skipped when `value` is provided)      |
+| `loadParams`   | Static params passed to the load action                                             |
+| `createAction` | Action called on the **first** save when `mode='new'` (creates the record)          |
+| `saveAction`   | Action called on save in `mode='edit'` (fallback for create when no `createAction`) |
 | `onSave`       | Callback receiving the saved value on success (e.g. show a toast)                   |
-| `value`        | Static initial value — bypasses `loadAction` entirely                                |
+| `value`        | Static initial value — bypasses `loadAction` entirely                               |
 
 **`mode='new'` lifecycle:** When `createAction` and `saveAction` are both set, the Editor calls
 `createAction` on the first save, then automatically switches to `mode='edit'` so all subsequent
@@ -204,9 +224,9 @@ again. **Never use a single `saveAction` pointing to `.add` for a create form** 
 />
 ```
 
-**Tab title for mode-switching forms:** Pass `title` as a `Record<string, string>` keyed by mode
-so the portal tab title updates when the Editor switches from `'new'` to `'edit'` after the first
-save. This is JSON-serializable and translation-friendly (each string is a discrete lookup key):
+**Tab title for mode-switching forms:** Pass `title` as a `Record<string, string>` keyed by mode so
+the portal tab title updates when the Editor switches from `'new'` to `'edit'` after the first save.
+This is JSON-serializable and translation-friendly (each string is a discrete lookup key):
 
 ```ts
 // Hoisted OUTSIDE the render function — inline object literals cause an infinite update loop
@@ -275,19 +295,19 @@ toolbarRight={[{label: 'Export', icon: 'pi pi-download', action: 'marine.coral.e
 edit mode). Use `editable={true} editMode={true}` for forms that are always editable.
 
 `IToolbarButton` key props: `label`, `icon`, `title` (native tooltip for icon-only buttons),
-`action`, `method`, `enabled` (`boolean | 'dirty' | 'clean' | 'current' | 'selected'`),
-`confirm`, `submit`, `menu`, `params`, `successHint`.
+`action`, `method`, `enabled` (`boolean | 'dirty' | 'clean' | 'current' | 'selected'`), `confirm`,
+`submit`, `menu`, `params`, `successHint`.
 
 **Internal action names** (`__xxx__`) are handled directly by the Editor toolbar render loop and
 never dispatched as RPC methods. Current internal actions:
 
-| Name           | Effect                                                          |
-| -------------- | --------------------------------------------------------------- |
-| `__save__`     | Submit the form (type="submit")                                 |
-| `__cancel__`   | Reset / cancel edits (confirms if dirty)                        |
-| `__edit__`     | Switch to edit mode                                             |
-| `__refresh__`  | Invalidate TanStack Query caches for `refreshNamespace`         |
-| `__design__`   | Toggle design mode (toolbar right only)                         |
+| Name          | Effect                                                  |
+| ------------- | ------------------------------------------------------- |
+| `__save__`    | Submit the form (type="submit")                         |
+| `__cancel__`  | Reset / cancel edits (confirms if dirty)                |
+| `__edit__`    | Switch to edit mode                                     |
+| `__refresh__` | Invalidate TanStack Query caches for `refreshNamespace` |
+| `__design__`  | Toggle design mode (toolbar right only)                 |
 
 Do **not** pass an `__xxx__` action name to `ActionButton` — it will attempt an RPC call and fail
 with a "Method binding failed" error. All internal actions must be handled inside `Editor.tsx`'s
@@ -302,15 +322,15 @@ a `DndContext` for drag-and-drop.
 
 ### Form Inspector (debug)
 
-When the `BlongUiProvider` is configured with `debug={true}`, a **Form Inspector** side panel
-appears next to the form showing live state useful for development:
+When the `BlongProvider` is configured with `config.portal.debug: true`, a **Form Inspector** side
+panel appears next to the form showing live state useful for development:
 
-| Section            | Shows                                                              |
-| ------------------ | ------------------------------------------------------------------ |
-| **Fields**         | Per-field dirty (D) / touched (T) / error (E) badges              |
-| **Values**         | Live form values (updates on every keystroke via `useWatch`)       |
-| **Table Selections** | Row/index selection state for table widgets                      |
-| **State**          | `editorMode`, `editorLayout`, `readOnly`, `loading`, `isDirty`, `isValid`, `submitCount` |
+| Section              | Shows                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| **Fields**           | Per-field dirty (D) / touched (T) / error (E) badges                                     |
+| **Values**           | Live form values (updates on every keystroke via `useWatch`)                             |
+| **Table Selections** | Row/index selection state for table widgets                                              |
+| **State**            | `editorMode`, `editorLayout`, `readOnly`, `loading`, `isDirty`, `isValid`, `submitCount` |
 
 `editorMode` (`'new'` / `'edit'` / `'view'`) and `editorLayout` (resolved layout key, e.g.
 `'editSplit'`) are passed from the Editor down into the Form's `IFormStateContext` so the Inspector
@@ -352,8 +372,8 @@ layouts={{ edit: { items: [
 
 `icon` uses PrimeIcons format: `'pi pi-user'`.
 
-**Steps layout** — same as tab but with `type: 'steps'`; renders ← [indicator] → nav bar. The
-forward → button is `type="submit"` on the last step, triggering form submission.
+**Steps layout** — same as tab but with `type: 'steps'`; renders ← indicator → nav bar. The forward
+→ button is `type="submit"` on the last step, triggering form submission.
 
 **Left/right sidebar layout** — `orientation: 'left'` or `'right'` renders a `PanelMenu` vertical
 accordion nav instead of a `TabMenu`. Used for thumb-index style navigation.
@@ -383,7 +403,7 @@ Each card entry in `cards` has:
 - `label` — card title
 - `widgets` or `fields` — list of field names to render
 - `className` — PrimeFlex grid class (e.g. `'col-12 md:col-4'`)
-- `watch` — makes a reaktive detail card (see Master-Detail below)
+- `watch` — makes a reactive detail card (see Master-Detail below)
 - `permission` — hide card if `checkPermission(key)` returns false
 - `hidden` — render as hidden inputs only
 - `collapsible` — adds collapse toggle to card header
@@ -522,8 +542,8 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 
 ## Event bus
 
-`blongEvents` is a singleton typed event bus emitted automatically by `BlongUiContext`'s
-`wrappedDispatch`. Subscribe with `blongEvents.on(event, handler)` — returns an unsubscribe fn.
+`blongEvents` is a singleton typed event bus emitted automatically by `BlongContext`'s
+`wrapHandlerProxy`. Subscribe with `blongEvents.on(event, handler)` — returns an unsubscribe fn.
 
 | Event            | Payload                    | When fired                     |
 | ---------------- | -------------------------- | ------------------------------ |
@@ -533,12 +553,45 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 
 ---
 
-## Schema registry
+## React context — `useBlong`
 
-`schemaRegistry` fetches `/openapi.json` on first use and caches enriched schemas per component
-name. `useBlongUi().schemaRegistry.resolve('ModelName')` returns an `IEnrichedSchema`. Widget config
-(`x-widget`) drives: widget type resolution, validation rules, label display, required marker, and
-layout inference.
+`useBlong()` is the primary context hook. It returns an `IBlongContextValue`:
+
+```ts
+const {handler, config, lib, errors, schemaRegistry, queryClient, log} = useBlong();
+```
+
+| Property         | Type                                                      | Purpose                                               |
+| ---------------- | --------------------------------------------------------- | ----------------------------------------------------- |
+| `handler`        | `IRemoteHandler` (Proxy)                                  | Call any registered method: `handler[method]({}, {})` |
+| `config`         | `Record<string, unknown> & {portal?: IBlongPortalConfig}` | Runtime config (includes `portal.schemaUrl` etc.)     |
+| `lib`            | `ILib`                                                    | Library functions from the handler proxy              |
+| `errors`         | `object`                                                  | Typed domain errors                                   |
+| `schemaRegistry` | `ISchemaRegistry`                                         | Fetch + cache enriched OpenAPI schemas                |
+| `queryClient`    | `QueryClient`                                             | TanStack Query client                                 |
+| `log`            | `ILogger`                                                 | Logger instance                                       |
+
+`BlongProvider` is the context provider. `makeHandlerProxy(dispatch, config?)` creates a minimal
+`IHandlerProxy` from a dispatch function — used in tests and Storybook:
+
+```ts
+import {BlongProvider, makeHandlerProxy, useBlong} from '@feasibleone/blong-browser';
+
+// In a component:
+const {handler, config} = useBlong();
+const loginRoute = config.portal?.loginRoute;
+await handler['marine.coral.find']({}, {});
+
+// In tests / Storybook:
+<BlongProvider handlerProxy={makeHandlerProxy(dispatchFn, {portal: {schemaUrl: '/schema.json'}})}>
+    ...
+</BlongProvider>
+```
+
+**`handler` call convention:** Always pass two arguments — `(params, $meta)`. Use `{}` for both when
+no specific params or meta are needed: `handler['method.name']({}, {})`.
+
+**`IBlongPortalConfig`** fields: `schemaUrl`, `baseUrl`, `debug`, `loginRoute`.
 
 ---
 
@@ -575,18 +628,29 @@ There are **two Storybook setups**:
 Stories live in `src/components/*/` as `*.stories.tsx`. Used for developing and testing individual
 components (`Editor`, `Explorer`, `Form`, widgets) in isolation.
 
-The `.storybook/dispatch.tsx` provides a mock dispatch. Fixture data and handler stubs come from
-`@feasibleone/blong-marine/meta/storybook.js`. Use `withDispatch(overrides)` as a decorator:
+The `.storybook/dispatch.tsx` provides a mock handler proxy. Fixture data and handler stubs come
+from `@feasibleone/blong-marine/meta/storybook.js`. Use `withDispatch(overrides)` as a decorator:
 
 ```ts
 export default {
-    decorators: [withDispatch({
-        coralCoralGet: () => Promise.resolve(coralStoryValue),
-    })],
+    decorators: [
+        withDispatch({
+            coralCoralGet: () => Promise.resolve(coralStoryValue),
+        }),
+    ],
 };
 ```
 
+`withDispatch` internally calls `makeDispatch(overrides)` which returns an `IHandlerProxy` built
+with `makeHandlerProxy`. Portal config (`schemaUrl`, `loginRoute`, `debug`) is embedded in
+`handlerProxy.config.portal` and passed to `<App handlerProxy={...}>`.
+
+`makeDispatch(overrides?)` — exported utility that builds a standalone handler proxy from the
+default handlers merged with overrides. Useful for unit tests that need a handler proxy without a
+React tree.
+
 Named handlers in `dispatch.tsx` follow the pattern `{entity}{Entity}{Verb}`:
+
 - `coralCoralGet` — resolves immediately with fixture data
 - `coralCoralLoad` — never resolves (skeleton state)
 - `coralCoralEditError` — rejects with server-side validation errors
@@ -644,10 +708,10 @@ Tests live in `src/**/*.test.tsx` and run with Vitest (`npx vitest run`).
 
 **Test render wrapper** (`src/test/render.tsx`): Use `render()` from `../../test/render.js` — it
 wraps the component in `PrimeReactProvider value={{cssTransition: false, ripple: false}}` and
-`BlongUiProvider`. This disables all PrimeReact animations, so overlays and dropdowns open
-synchronously with no real-time delays.
+`BlongProvider` (via `makeHandlerProxy`). This disables all PrimeReact animations, so overlays and
+dropdowns open synchronously with no real-time delays.
 
-**`pr_id_*` normalisation** (`src/test/setup.ts`): A snapshot serialiser strips PrimeReact's
+**`pr_id_*` normalisation** (`src/test/setup.ts`): A snapshot serializer strips PrimeReact's
 internal incrementing component IDs (`pr_id_55=""`, `aria-controls="pr_id_55_panel"`, …) from every
 DOM snapshot. This makes snapshots counter-independent — they reflect structure, not identity.
 
@@ -660,24 +724,21 @@ genuinely depends on real elapsed time (e.g. debounce logic).
 **`act()` warnings from PrimeReact**: PrimeReact's Dropdown/Select components schedule
 focus-management callbacks via `setTimeout(0)`. These fire during `@testing-library/react`'s
 `waitFor()` polling window, where `IS_REACT_ACT_ENVIRONMENT` is temporarily set to `false` by the
-library's internal `asyncWrapper`. The combination produces harmless "not configured to support
-act" noise in console output when play() functions call `canvas.findByText()` or similar async
-queries. `src/test/setup.ts` suppresses this specific message globally (and only this message) since
-it is a known PrimeReact + testing-library incompatibility — not a defect in our code. All other
+library's internal `asyncWrapper`. The combination produces harmless "not configured to support act"
+noise in console output when play() functions call `canvas.findByText()` or similar async queries.
+`src/test/setup.ts` suppresses this specific message globally (and only this message) since it is a
+known PrimeReact + testing-library incompatibility — not a defect in our code. All other
 console.error output is preserved.
 
-**`flushEffects` helper** (`src/test/render.tsx`): Drains the macrotask queue inside `act()` so
-PrimeReact's post-interaction focus-management timers are flushed before the final
-`findByTestId` snapshot assertion. Use it after `await act(() => Story.play!({...}))` calls
-that trigger user interactions on PrimeReact components, and before play() is called (to drain
-initial-render timers):
+**`flushEffects` helper** (`src/test/render.tsx`): Drains the macro-task queue inside `act()` so
+PrimeReact's post-interaction focus-management timers are flushed before the final `findByTestId`
+snapshot assertion. Use it after `await act(() => Story.play!({...}))` calls that trigger user
+interactions on PrimeReact components, and before play() is called (to drain initial-render timers):
 
 ```tsx
 if (MyStory.play) {
     await flushEffects(); // drain initial-render PrimeReact timers
-    await act(() =>
-        MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}),
-    );
+    await act(() => MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}));
     await flushEffects(); // drain post-interaction timers
 }
 ```
@@ -685,7 +746,7 @@ if (MyStory.play) {
 **Zustand store mutations in tests**: If a test mutates global Zustand store state (e.g. calling
 `useAppStore.getState().setTranslations(...)`) and components that subscribe to that store are
 mounted, wrap the mutations in `await act(async () => { ... })` so React processes the resulting
-re-renders inside act. This applies to both setup and teardown (`finally`) blocks.
+re-renders inside act. This applies to both setup and tear-down (`finally`) blocks.
 
 **Snapshot tests**:
 
@@ -703,9 +764,7 @@ it('After interaction equals snapshot', async () => {
     const {findByTestId, container} = render(<MyStory />, {dispatch});
     if (MyStory.play) {
         await flushEffects(); // drain PrimeReact init timers before play() calls findByText
-        await act(() =>
-            MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}),
-        );
+        await act(() => MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}));
         await flushEffects(); // drain post-interaction PrimeReact timers
     }
     expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
@@ -734,12 +793,14 @@ Do not implement these yet without checking if they have been added to the codeb
 
 A realm that contributes UI pages registers:
 
-1. **Model handlers** (`.model` kind via the `model()` factory) — auto-generate Browse/New/Open/Report
-   pages. Discovered by the portal orchestrator via `/\.model$/` pattern. This is the recommended
-   approach for standard CRUD entities.
+1. **Model handlers** (`.model` kind via the `model()` factory) — auto-generate
+   Browse/New/Open/Report pages. Discovered by the portal orchestrator via `/\.model$/` pattern.
+   This is the recommended approach for standard CRUD entities.
 2. **Component handlers** (file ending in `.component`) — manual page handlers returning
-   `{title, permission, component: () => import('...')}`. Used for custom pages beyond standard CRUD.
-3. **Actions files** (file ending in `.actions`) — named `IAction` records for mutations and queries.
+   `{title, permission, component: () => import('...')}`. Used for custom pages beyond standard
+   CRUD.
+3. **Actions files** (file ending in `.actions`) — named `IAction` records for mutations and
+   queries.
 4. **Portal config files** (file ending in `.portal`) — define menu structure referencing those
    actions/components.
 
@@ -758,8 +819,8 @@ way.
 
 - **blong-model-dev** — Use when developing or improving `src/model/` internals
   (subjectObjectComponent, entry factories, dropdownRegistry, defaults, mock system).
-- **blong-model** — Use when a realm needs to define `IModelSpec` objects and use
-  the model system to generate CRUD pages.
+- **blong-model** — Use when a realm needs to define `IModelSpec` objects and use the model system
+  to generate CRUD pages.
 - **blong-i18n** — Use when adding multi-language support, translating labels or validation
   messages, wiring PrimeReact locale, or adding a `lang` story arg.
 

@@ -37,8 +37,9 @@ import {App} from '../src/components/App/App.js';
 import {Explorer} from '../src/components/Explorer/Explorer.js';
 import {useBlongForm} from '../src/components/Form/FormContext.js';
 import {Hint} from '../src/components/Hint/Hint.js';
-import type {DispatchFn} from '../src/context/BlongUiContext.js';
 import type {IModelSpec} from '../src/index.js';
+import {makeHandlerProxy, type IBlongPortalConfig} from '../src/context/BlongContext.js';
+import type {IHandlerProxy} from '@feasibleone/blong';
 import {blongEvents} from '../src/lib/eventBus.js';
 import {useAppStore} from '../src/state/appStore.js';
 import type {IBlongError} from '../src/types/action.js';
@@ -55,10 +56,10 @@ export type NotifyConfig = boolean | string[] | ((method: string) => boolean);
 /**
  * Default notify config used by `withDispatch`.
  * Shows toasts for every handler EXCEPT known read-only / background ones:
- * portal.dropdown.list, and methods ending with Get/Load/Find/List/Fetch.
+ * `portalDropdownList`, and methods ending with Get/Load/Find/List/Fetch.
  */
 const DEFAULT_NOTIFY: NotifyConfig = (method: string) => {
-    if (method === 'portal.dropdown.list') return false;
+    if (method === 'portalDropdownList') return false;
     if (/(?:Get|Load|Find|List|Fetch)$/i.test(method)) return false;
     return true;
 };
@@ -580,7 +581,7 @@ export const defaultHandlers: Record<string, Handler> = {
      * Names ending in `Error` reject — use `dropdown: 'marine.coralTypeError'` in the
      * widget schema to trigger the failure path (see DropdownError story).
      */
-    'portal.dropdown.list': params => {
+    portalDropdownList: params => {
         const names = (params?.names ?? []) as string[];
         if (names.some(n => n.endsWith('Error'))) {
             return Promise.reject({
@@ -648,15 +649,15 @@ export const defaultHandlers: Record<string, Handler> = {
  * `overrides`.  Used internally by `withDispatch`; also exported for unit tests
  * that need a standalone dispatch without a React tree.
  */
-export function makeDispatch(overrides: Record<string, Handler> = {}): DispatchFn {
+export function makeDispatch(overrides: Record<string, Handler> = {}): IHandlerProxy<{portal?: IBlongPortalConfig} & Record<string, unknown>> {
     const handlers = {...defaultHandlers, ...overrides};
-    const result = async (method: string, params?: Record<string, unknown>) => {
-        const handler = handlers[method];
-        if (handler) return handler(params);
+    const dispatch = async (method: string, params?: Record<string, unknown>) => {
+        const h = handlers[method];
+        if (h) return h(params);
         console.info('[storybook dispatch] unhandled:', method, params);
         return undefined;
     };
-    return result as DispatchFn;
+    return makeHandlerProxy(dispatch);
 }
 
 const log = {
@@ -693,12 +694,12 @@ export function withDispatch(
         translations?: Record<string, string>;
     } = {},
 ): (Story: React.ComponentType, context?: unknown) => React.ReactElement {
-    const dispatch = makeDispatch(overrides);
+    const handlerProxy = makeDispatch(overrides);
     // Register query (read) actions so TanStack Query can show loading state.
     // Register mutation (write) actions with mutates:true so they are NOT
     // auto-fetched by TanStack Query — only called when explicitly invoked.
     const isReadAction = (name: string) =>
-        name === 'portal.dropdown.list' || /(?:Get|Load|Find|List|Fetch)(?:Error)?$/i.test(name);
+        name === 'portalDropdownList' || /(?:Get|Load|Find|List|Fetch)(?:Error)?$/i.test(name);
     const actionEntries = Object.fromEntries(
         Object.keys({...defaultHandlers, ...overrides}).map(name => [
             name,
@@ -715,7 +716,7 @@ export function withDispatch(
         const effectiveLang = langArg ?? language;
         /** Optional login page component passed via `story.parameters.loginComponent`. */
         const loginComponentParam = ctx?.parameters?.loginComponent as
-            | React.ComponentType<{dispatch: DispatchFn}>
+            | React.ComponentType
             | undefined;
 
         // Pass locale data for the active language via theme.languages so Theme registers it.
@@ -727,6 +728,7 @@ export function withDispatch(
         }, [effectiveLang]);
 
         React.useEffect(() => {
+            useAppStore.getState().setToken('storybook-token');
             useAppStore.getState().registerActions(actionEntries);
 
             // Subscribe to action success events and show a toast based on notify config
@@ -773,12 +775,19 @@ export function withDispatch(
 
         return (
             <App
-                dispatch={dispatch}
-                schemaUrl="/schema.json"
+                handlerProxy={{
+                    ...handlerProxy,
+                    config: {
+                        ...handlerProxy.config,
+                        portal: {
+                            schemaUrl: '/schema.json',
+                            loginRoute,
+                            debug: true,
+                        },
+                    },
+                }}
                 theme={{type: 'compact', palette: 'dark', languages: themeLanguages}}
-                loginRoute={loginRoute}
                 loginComponent={loginComponentParam}
-                debug={true}
                 log={log}
             >
                 <Story />

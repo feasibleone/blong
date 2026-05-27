@@ -21,7 +21,7 @@ import {useQuery} from '@tanstack/react-query';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/Button.js';
 import {Text} from '../components/Text/Text.js';
-import {useBlongUi} from '../context/BlongUiContext.js';
+import {useBlong} from '../context/BlongContext.js';
 import {useBlongFormState} from '../components/Form/FormContext.js';
 import {dateIn, dateOut} from './DateWidget.js';
 
@@ -563,7 +563,7 @@ export function TableWidget({
     const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const {dispatch} = useBlongUi();
+    const {handler} = useBlong();
 
     // Subscribe to table selections from FormStateContext (slow-changing — only updates on
     // row selection events, never on keystrokes).  Falls back gracefully to undefined when
@@ -657,7 +657,7 @@ export function TableWidget({
         isFetching: listLoading,
     } = useQuery<ListResult>({
         queryKey: [listAction, mergedListParams],
-        queryFn: () => dispatch(listAction, mergedListParams) as Promise<ListResult>,
+        queryFn: () => handler[listAction](mergedListParams, {}) as Promise<ListResult>,
         // In report mode, wait until the user submits params (reportParams becomes defined)
         enabled: isListMode && (!reportMode || reportParams !== undefined),
         staleTime: 0,
@@ -929,7 +929,7 @@ export function TableWidget({
                     e.preventDefault();
                     if (!btn.method) return;
                     setBusyCount(c => c + 1);
-                    void (dispatch(btn.method, resolvedParams ?? {}) as Promise<unknown>).finally(
+                    void (handler[btn.method](resolvedParams ?? {}, {}) as Promise<unknown>).finally(
                         () => setBusyCount(c => c - 1),
                     );
                 }}

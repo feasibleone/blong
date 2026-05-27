@@ -70,7 +70,7 @@ export interface IWidgetConfig {
     type: WidgetType;
     /** For dropdown/multiSelect — action name to fetch options */
     fetch?: string;
-    /** Named dropdown key — loads options via portal.dropdown.list */
+    /** Named dropdown key — loads options via portalDropdownList */
     dropdown?: string;
     /** Options list for static select/multiSelect/select/tree widgets.
      * Flat options use `{value, label}`. TreeNode-style options use `{key, label, children}`. */
