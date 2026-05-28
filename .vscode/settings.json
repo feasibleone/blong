@@ -9,8 +9,12 @@
         "**/*.code-search": true,
         "**/storybook-static": true,
         "**/rush-logs": true,
-        "out": true,
-        "dist": true
+        "**/.tap": true,
+        "**/CHANGELOG.md": true,
+        "**/github": true,
+        "**/k8s": true,
+        "**/out": true,
+        "**/dist": true
     },
     "workbench.sideBar.location": "right",
     "editor.codeActionsOnSave": {

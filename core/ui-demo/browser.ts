@@ -15,12 +15,12 @@ export default browser(blong => ({
         version: pkg.version,
     },
     validation: blong.type.Object({
-        blongUi: blong.type.Object({}),
+        ui: blong.type.Object({}),
         marine: blong.type.Object({}),
     }),
     children: [
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
-        async function blongUi() {
+        async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
         /** Marine biology demonstration realm */
@@ -33,7 +33,7 @@ export default browser(blong => ({
             remote: {
                 canSkipSocket: true,
             },
-            blongUi: {
+            ui: {
                 portal: {
                     portal: {
                         title: 'UI Demo',
@@ -43,7 +43,7 @@ export default browser(blong => ({
             marine: {},
         },
         dev: {
-            blongUi: {
+            ui: {
                 adapter: {},
             },
         },

@@ -18,7 +18,7 @@ import './App.css';
 
 import type {IHandlerProxy, ILogger} from '@feasibleone/blong';
 import React from 'react';
-import {BlongProvider, type IBlongPortalConfig, useBlong} from '../../context/BlongContext.js';
+import {BlongProvider, useBlong, type IBlongPortalConfig} from '../../context/BlongContext.js';
 import {useAppStore} from '../../state/appStore.js';
 import {type IPortalConfig} from '../../storybook.js';
 import {ErrorDialog} from '../Error/Error.js';
@@ -71,15 +71,18 @@ function AppShell({
             });
         }
     }, [handler, isAuthenticated]);
+    const loginHandler = React.useCallback(
+        async ({username, password}: {username: string; password: string}) => {
+            await handler.authLogin({username, password}, {});
+        },
+        [handler],
+    );
     if (!isAuthenticated) {
         return LoginComponent ? (
             <LoginComponent />
         ) : (
             <Login
-                onLogin={async () => {
-                    await new Promise(r => setTimeout(r, 800));
-                    useAppStore.getState().setToken('demo-token');
-                }}
+                onLogin={loginHandler}
                 logoIcon="pi pi-globe"
                 title="Blong Portal"
                 // titleComponent={}
@@ -120,4 +123,3 @@ export function App({
         </BlongProvider>
     );
 }
-

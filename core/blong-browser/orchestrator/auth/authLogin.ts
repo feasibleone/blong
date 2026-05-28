@@ -1,7 +1,7 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
 type LoginParams = {
-    userName: string;
+    username: string;
     password: string;
     newPassword?: string;
     otpCode?: string;
@@ -14,7 +14,7 @@ type LoginResult = {
 };
 
 type BackendResult = {
-    token?: string;
+    access_token?: string;
     permissions?: string[];
     profile?: Record<string, unknown>;
 };
@@ -22,7 +22,7 @@ type BackendResult = {
 export default handler(
     ({
         handler: {
-            'backend.login.token.create': loginTokenCreate,
+            'backend/login.token.create': loginTokenCreate,
             storageTokenSet,
             storagePermissionsSet,
         },
@@ -30,24 +30,27 @@ export default handler(
         async function authLogin(params: LoginParams, $meta: IMeta): Promise<LoginResult> {
             try {
                 const result = (await loginTokenCreate(
-                    {username: params.userName, password: params.password},
+                    {username: params.username, password: params.password},
                     $meta,
                 )) as BackendResult | undefined;
 
-                if (!result?.token) return {step: 'credentials', error: 'No token returned'};
+                if (!result?.access_token) return {step: 'credentials', error: 'No token returned'};
 
-                await storageTokenSet({token: result.token}, $meta);
+                await storageTokenSet({token: result.access_token}, $meta);
                 if (result.permissions)
                     await storagePermissionsSet({permissions: result.permissions}, $meta);
 
                 const {useAppStore} = await import('../../src/state/appStore.js');
                 const store = useAppStore.getState();
-                store.setToken(result.token);
-                if (result.permissions) store.setPermissions(result.permissions);
+                store.setToken(result.access_token);
+                if (result.permissions)
+                    store.setPermissions(
+                        Object.fromEntries(result.permissions.map(p => [p, true])),
+                    );
                 if (result.profile)
                     store.setProfile(result.profile as Parameters<typeof store.setProfile>[0]);
 
-                return {step: 'success', token: result.token};
+                return {step: 'success', token: result.access_token};
             } catch (err: unknown) {
                 const typed = err as {type?: string; message?: string};
                 if (typed?.type === 'error.login.otp.required') return {step: 'otp'};

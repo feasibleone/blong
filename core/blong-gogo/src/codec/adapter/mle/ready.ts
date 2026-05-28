@@ -110,7 +110,7 @@ export default handler<{
 
     return {
         async ready() {
-            let mleKey = isBrowser && JSON.parse(window.localStorage.getItem('mle-jose') || 'null');
+            let mleKey = null; // isBrowser && JSON.parse(window.localStorage.getItem('mle-jose') || 'null');
             if (!mleKey) {
                 const {body: {sign, encrypt} = {}}: {body?: {sign?: unknown; encrypt?: unknown}} =
                     (await (this as {exec?(...params: unknown[]): Promise<unknown>}).exec!(

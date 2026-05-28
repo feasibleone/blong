@@ -656,7 +656,7 @@ export function PanelMenu(props: PanelMenuProps) {
 
 // Password — feedback:true, mediumRegex:'...', strongRegex:'...'
 export function Password({
-    feedback = true,
+    feedback = false,
     mediumRegex = '^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{6,})',
     strongRegex = '^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.{8,})',
     ...props

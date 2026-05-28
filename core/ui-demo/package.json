@@ -22,6 +22,7 @@
         "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
         "@storybook/addon-a11y": "^10.3.6",
         "@storybook/addon-docs": "^10.3.6",
         "@storybook/react-vite": "^10.3.6",

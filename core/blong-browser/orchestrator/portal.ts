@@ -19,7 +19,7 @@ export default orchestrator<{
     activation: {
         default: {
             namespace: ['portal', 'component', 'action'],
-            imports: [/\.model$/, /\.component$/, /\.portal$/, /\.action?$/, 'ui.portal'],
+            imports: [/\.model$/, /\.component$/, /\.portal$/, /\.action?$/],
         },
     },
     async createHandlers({
