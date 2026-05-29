@@ -7,7 +7,7 @@ import {
     rmSync,
     writeFileSync,
 } from 'node:fs';
-import {basename, join, relative} from 'node:path';
+import {basename, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 
@@ -63,8 +63,10 @@ export async function playwright(args: string[]): Promise<void> {
         console.log('Generating Allure report from allure-results/ ...');
         await run('allure', ['awesome', '--single-file', '-o', 'allure-report', 'allure-results']);
 
-        // Generate summary.md with test results and trace links
-        writeSummary(cwd, resultsDir, reportDir, traceFiles);
+        // Generate summary.md (for $GITHUB_STEP_SUMMARY) and index.html (for GitHub Pages)
+        const parsed = parseResults(resultsDir, traceFiles);
+        writeSummary(reportDir, parsed, basename(cwd));
+        writeIndexHtml(reportDir, parsed, basename(cwd));
     }
 
     process.exitCode = exitCode;
@@ -74,18 +76,27 @@ interface AllureResult {
     name?: string;
     fullName?: string;
     status?: string;
+    testCaseId?: string;
+    historyId?: string;
     labels?: Array<{name: string; value: string}>;
     steps?: Array<{attachments?: Array<{source?: string; type?: string}>}>;
 }
 
-function writeSummary(
-    cwd: string,
-    resultsDir: string,
-    reportDir: string,
-    traceFiles: string[],
-): void {
-    const results: Array<{name: string; suite: string; status: string; trace?: string}> = [];
+interface TestResult {
+    name: string;
+    suite: string;
+    status: string;
+    trace?: string;
+}
+
+function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
     const traceSet = new Set(traceFiles);
+
+    // Collect all attempts grouped by test identity
+    const attempts = new Map<
+        string,
+        Array<{status: string; name: string; suite: string; trace?: string}>
+    >();
 
     for (const file of readdirSync(resultsDir).filter(f => f.endsWith('-result.json'))) {
         const data = JSON.parse(readFileSync(join(resultsDir, file), 'utf8')) as AllureResult;
@@ -93,8 +104,8 @@ function writeSummary(
         const subSuite = data.labels?.find(l => l.name === 'subSuite')?.value ?? '';
         const name = data.name ?? data.fullName ?? file;
         const status = data.status ?? 'unknown';
+        const key = data.testCaseId ?? data.historyId ?? `${suite}/${subSuite}/${name}`;
 
-        // Find trace attachment in steps
         let trace: string | undefined;
         for (const step of data.steps ?? []) {
             for (const att of step.attachments ?? []) {
@@ -108,37 +119,58 @@ function writeSummary(
             }
         }
 
-        results.push({name, suite: subSuite ? `${suite} › ${subSuite}` : suite, status, trace});
+        const group = attempts.get(key) ?? [];
+        group.push({status, name, suite: subSuite ? `${suite} › ${subSuite}` : suite, trace});
+        attempts.set(key, group);
     }
 
-    // Sort: failures first, then by suite/name
+    // Deduplicate: a test with both failed and passed attempts is flaky
+    const results: TestResult[] = [];
+    for (const group of attempts.values()) {
+        const hasFailed = group.some(a => a.status === 'failed' || a.status === 'broken');
+        const hasPassed = group.some(a => a.status === 'passed');
+        const status = hasFailed && hasPassed ? 'flaky' : hasFailed ? 'failed' : group[0]!.status;
+        // Use the trace from the failed attempt (most useful for debugging)
+        const trace = group.find(a => a.trace)?.trace;
+        results.push({name: group[0]!.name, suite: group[0]!.suite, status, trace});
+    }
+
     results.sort((a, b) => {
-        if (a.status !== b.status) {
-            if (a.status === 'failed' || a.status === 'broken') return -1;
-            if (b.status === 'failed' || b.status === 'broken') return 1;
-        }
+        const order = (s: string) => (s === 'failed' || s === 'broken' ? 0 : s === 'flaky' ? 1 : 2);
+        if (order(a.status) !== order(b.status)) return order(a.status) - order(b.status);
         return (a.suite + a.name).localeCompare(b.suite + b.name);
     });
 
-    const pkg = basename(cwd);
+    return results;
+}
+
+function writeSummary(reportDir: string, results: TestResult[], pkg: string): void {
     const passed = results.filter(r => r.status === 'passed').length;
     const failed = results.filter(r => r.status === 'failed' || r.status === 'broken').length;
-    const statusIcon = failed > 0 ? '❌' : '✅';
-    const tracesPath = relative(process.env.GITHUB_WORKSPACE ?? cwd, join(reportDir, 'traces'));
+    const flaky = results.filter(r => r.status === 'flaky').length;
+    const statusIcon = failed > 0 ? '❌' : flaky > 0 ? '⚠️' : '✅';
+    const hasTraces = results.some(r => r.trace);
+
+    const counts = [`${passed} passed`, `${failed} failed`];
+    if (flaky > 0) counts.push(`${flaky} flaky`);
 
     const lines: string[] = [
-        `### ${statusIcon} ${pkg} — ${passed} passed, ${failed} failed (${results.length} total)`,
+        `### ${statusIcon} ${pkg} — ${counts.join(', ')} (${results.length} total)`,
         '',
     ];
 
-    if (failed > 0) {
+    const problems = results.filter(
+        r => r.status === 'failed' || r.status === 'broken' || r.status === 'flaky',
+    );
+    if (problems.length > 0) {
         lines.push('| Status | Suite | Test | Trace |', '| --- | --- | --- | --- |');
-        for (const r of results.filter(r => r.status === 'failed' || r.status === 'broken')) {
-            const traceLink = r.trace ? `\`${tracesPath}/${r.trace}\`` : '—';
-            lines.push(`| 🔴 | ${r.suite} | ${r.name} | ${traceLink} |`);
+        for (const r of problems) {
+            const icon = r.status === 'flaky' ? '🟡' : '🔴';
+            const traceLink = r.trace ? `\`traces/${r.trace}\`` : '—';
+            lines.push(`| ${icon} ${r.status} | ${r.suite} | ${r.name} | ${traceLink} |`);
         }
         lines.push('');
-        if (traceFiles.length > 0) {
+        if (hasTraces) {
             lines.push(
                 '> **Traces**: Download the `playwright-traces` artifact and open `.zip` files at ' +
                     '[trace.playwright.dev](https://trace.playwright.dev/)',
@@ -165,4 +197,90 @@ function writeSummary(
     lines.push('', '</details>', '');
 
     writeFileSync(join(reportDir, 'summary.md'), lines.join('\n'));
+}
+
+function writeIndexHtml(reportDir: string, results: TestResult[], pkg: string): void {
+    const passed = results.filter(r => r.status === 'passed').length;
+    const failed = results.filter(r => r.status === 'failed' || r.status === 'broken').length;
+    const flaky = results.filter(r => r.status === 'flaky').length;
+    const statusIcon = failed > 0 ? '❌' : flaky > 0 ? '⚠️' : '✅';
+
+    const counts = [`${passed} passed`, `${failed} failed`];
+    if (flaky > 0) counts.push(`${flaky} flaky`);
+
+    const testRows = results
+        .map(r => {
+            const icon =
+                r.status === 'passed'
+                    ? '🟢'
+                    : r.status === 'flaky'
+                      ? '🟡'
+                      : r.status === 'failed' || r.status === 'broken'
+                        ? '🔴'
+                        : '⚪';
+            const traceCell = r.trace
+                ? `<a class="trace-link" data-trace="traces/${r.trace}">Open Trace</a>`
+                : '';
+            return `<tr class="${r.status}"><td>${icon}</td><td>${esc(r.suite)}</td><td>${esc(r.name)}</td><td>${traceCell}</td></tr>`;
+        })
+        .join('\n          ');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${esc(pkg)} — Playwright Report</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.5rem; }
+    a { color: #0969da; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid #d0d7de; }
+    th { background: #f6f8fa; font-weight: 600; }
+    tr.failed, tr.broken { background: #fff0f0; }
+    tr.flaky { background: #fff8e1; }
+    .report-link { display: inline-block; margin: 1rem 0; padding: 0.5rem 1rem; background: #0969da; color: #fff; text-decoration: none; border-radius: 6px; }
+    .report-link:hover { background: #0550ae; }
+    .trace-link { cursor: pointer; text-decoration: underline; }
+    @media (prefers-color-scheme: dark) {
+      th { background: #161b22; }
+      tr.failed, tr.broken { background: #3d1f1f; }
+      tr.flaky { background: #3d3520; }
+      a { color: #58a6ff; }
+      .report-link { background: #1f6feb; }
+      .report-link:hover { background: #388bfd; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${statusIcon} ${esc(pkg)} — ${counts.join(', ')} (${results.length} total)</h1>
+  <a class="report-link" href="awesome/index.html">Open Allure Report</a>
+  <table>
+    <thead><tr><th></th><th>Suite</th><th>Test</th><th>Trace</th></tr></thead>
+    <tbody>
+      ${testRows}
+    </tbody>
+  </table>
+  <script>
+    document.querySelectorAll('.trace-link').forEach(el => {
+      el.addEventListener('click', () => {
+        const base = location.href.replace(/\\/index\\.html$/, '').replace(/\\/$/, '');
+        const traceUrl = base + '/' + el.dataset.trace;
+        window.open('https://trace.playwright.dev/?trace=' + encodeURIComponent(traceUrl));
+      });
+    });
+  </script>
+</body>
+</html>`;
+
+    writeFileSync(join(reportDir, 'index.html'), html);
+}
+
+function esc(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }

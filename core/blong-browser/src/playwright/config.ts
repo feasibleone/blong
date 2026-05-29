@@ -38,7 +38,7 @@ export function defineBlongConfig(
             baseURL: 'http://localhost:5173',
             colorScheme: 'dark',
             viewport: {width: 1600, height: 900},
-            trace: 'on-first-retry',
+            trace: 'retain-on-failure',
             screenshot: 'off',
             blongUsername: 'admin',
             blongPassword: 'admin',
