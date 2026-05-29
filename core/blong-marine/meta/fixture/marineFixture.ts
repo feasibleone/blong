@@ -1,5 +1,5 @@
 import {handler} from '@feasibleone/blong';
-import {marineYaml} from '../../data/index.js';
+import {marineYaml} from '../../data/index.ts';
 
 export default handler(
     ({lib: {yaml}}) =>

@@ -34,16 +34,11 @@ export default function createHandlerProxy(
         get(target: unknown, handlerName: string) {
             if (typeof handlerName !== 'string') return undefined;
 
-            function resolveHandler(
-                resolvedName: string,
-            ): (...params: unknown[]) => unknown {
+            function resolveHandler(resolvedName: string): (...params: unknown[]) => unknown {
                 let fn: (() => unknown) | undefined;
                 const sentence = camelToSentence(resolvedName);
                 function nameSteps(result: unknown): unknown {
-                    if (
-                        Array.isArray(result) &&
-                        !(result as {name?: string}).name
-                    ) {
+                    if (Array.isArray(result) && !(result as {name?: string}).name) {
                         Object.defineProperty(result, 'name', {
                             value: sentence,
                             configurable: true,
@@ -51,25 +46,16 @@ export default function createHandlerProxy(
                     }
                     return result;
                 }
-                if (port.handles?.(resolvedName)) {
-                    return rename(
-                        resolvedName,
-                        function (...params: unknown[]) {
-                            fn ||= port.findHandler?.(resolvedName) as (() => unknown) | undefined;
-                            if (!fn)
-                                throw new Error(
-                                    `Handler '${resolvedName}' not found`,
-                                );
-                            const $meta =
-                                params.length > 1
-                                    ? (params[1] as IMeta)
-                                    : undefined;
-                            if ($meta && typeof $meta === 'object') {
-                                attachCheckpoint?.($meta);
-                            }
-                            return nameSteps(fn.apply(port, params as []));
-                        },
-                    );
+                if (port?.handles?.(resolvedName)) {
+                    return rename(resolvedName, function (...params: unknown[]) {
+                        fn ||= port.findHandler?.(resolvedName) as (() => unknown) | undefined;
+                        if (!fn) throw new Error(`Handler '${resolvedName}' not found`);
+                        const $meta = params.length > 1 ? (params[1] as IMeta) : undefined;
+                        if ($meta && typeof $meta === 'object') {
+                            attachCheckpoint?.($meta);
+                        }
+                        return nameSteps(fn.apply(port, params as []));
+                    });
                 }
                 return remote(resolvedName);
             }
@@ -79,26 +65,20 @@ export default function createHandlerProxy(
                 metaOverrides: Record<string, unknown>,
                 aliasName?: string,
             ): (...params: unknown[]) => unknown {
-                return rename(
-                    aliasName || baseFn.name,
-                    function (...params: unknown[]) {
-                        const $meta =
-                            params.length > 1
-                                ? (params[1] as IMeta)
-                                : undefined;
-                        if ($meta && typeof $meta === 'object') {
-                            merge($meta, metaOverrides);
-                        }
-                        const result = baseFn(...params);
-                        if (Array.isArray(result) && metaOverrides.name) {
-                            Object.defineProperty(result, 'name', {
-                                value: metaOverrides.name,
-                                configurable: true,
-                            });
-                        }
-                        return result;
-                    },
-                );
+                return rename(aliasName || baseFn.name, function (...params: unknown[]) {
+                    const $meta = params.length > 1 ? (params[1] as IMeta) : undefined;
+                    if ($meta && typeof $meta === 'object') {
+                        merge($meta, metaOverrides);
+                    }
+                    const result = baseFn(...params);
+                    if (Array.isArray(result) && metaOverrides.name) {
+                        Object.defineProperty(result, 'name', {
+                            value: metaOverrides.name,
+                            configurable: true,
+                        });
+                    }
+                    return result;
+                });
             }
 
             // Approach 2: Annotation syntax
@@ -118,10 +98,7 @@ export default function createHandlerProxy(
                             | undefined;
                         const configObj = handlerConfig?.[ann.name];
                         if (configObj && typeof configObj === 'object') {
-                            merge(
-                                metaOverrides,
-                                configObj as Record<string, unknown>,
-                            );
+                            merge(metaOverrides, configObj as Record<string, unknown>);
                         }
                         for (const p of ann.params) {
                             const eqIdx = p.indexOf('=');

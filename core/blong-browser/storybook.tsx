@@ -60,7 +60,7 @@ export default (browser: Parameters<typeof load>[0]) =>
                         },
                     },
                     apiSchema: false,
-                    blongUi: {
+                    ui: {
                         portal: {
                             shouldRender: false,
                         },
@@ -73,7 +73,7 @@ export default (browser: Parameters<typeof load>[0]) =>
                 .then(registry => {
                     setApp(
                         () =>
-                            registry.getPort('blongUi.portal')!.config.context
+                            registry.getPort('ui.portal')!.config.context
                                 ?.container as React.ComponentType,
                     );
                 })

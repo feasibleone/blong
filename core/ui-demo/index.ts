@@ -1,29 +1,18 @@
-import load from '@feasibleone/blong-gogo';
-import browser from './browser.ts';
+import server from './server.ts';
 
-type Load = typeof load;
+type Load = (...params: unknown[]) => Promise<{
+    start: () => Promise<unknown>;
+    test: () => Promise<unknown>;
+    stop: () => Promise<unknown>;
+}>;
 
-const start = async (load: Load): Promise<void> => {
-    const platform = await load(
-        browser,
-        'ui-demo',
-        {
-            browser: {
-                load: {
-                    logLevel: 'debug',
-                },
-                realm: {
-                    logLevel: 'debug',
-                },
-            },
-            apiSchema: false,
-        },
-        ['microservice', 'integration', 'dev'],
-    );
-    await platform.start({});
-    // if (process.env.CI) await platform.stop();
+export default async (load: Load): Promise<void> => {
+    const platform = await load(server, 'ui-demo', 'ui-demo', [
+        'microservice',
+        'integration',
+        'dev',
+    ]);
+    await platform.start();
+    await platform.test();
+    if (process.env.CI) await platform.stop();
 };
-
-start(load).catch(error => {
-    console.error(error);
-});

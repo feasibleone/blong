@@ -1,7 +1,7 @@
 import {validation} from '@feasibleone/blong';
 
 export default validation(
-    ({lib: {type}}) =>
+    async ({lib: {type}}) =>
         function payshieldEcho() {
             return {
                 params: type.Unknown(),

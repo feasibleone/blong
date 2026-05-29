@@ -494,6 +494,18 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-server",
+            "projectFolder": "core/blong-server",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-mock",
+            "projectFolder": "core/blong-mock",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-kopi",
             "projectFolder": "core/blong-kopi",
             "reviewCategory": "core",

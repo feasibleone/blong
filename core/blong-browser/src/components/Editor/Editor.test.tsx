@@ -428,11 +428,7 @@ describe('<Editor />', () => {
 
         // Wait for the initial listAction fetch to complete.
         await waitFor(() => {
-            expect(listDispatch).toHaveBeenCalledWith(
-                'test.coral.find',
-                expect.any(Object),
-                {},
-            );
+            expect(listDispatch).toHaveBeenCalledWith('test.coral.find', expect.any(Object), {});
         });
         const callsBefore = listDispatch.mock.calls.filter(
             ([m]: unknown[]) => m === 'test.coral.find',
@@ -978,7 +974,7 @@ describe('createAction / saveAction separation', () => {
     it('Form Inspector State section exposes editorMode and editorLayout', async () => {
         const dispatch = vi.fn().mockResolvedValue({});
 
-        // Render with debug=true BlongUiProvider so FormInspector is shown
+        // Render with debug=true BlongProvider so FormInspector is shown
         const {container} = render(
             <Editor
                 schema={schema}
@@ -990,7 +986,7 @@ describe('createAction / saveAction separation', () => {
             />,
             {dispatch},
         );
-        // Patch the BlongUiProvider debug flag post-render via the provider's internal
+        // Patch the BlongProvider debug flag post-render via the provider's internal
         // context. Instead of relying on debug mode (which requires patching the provider),
         // verify through the data-testid attribute that the Editor renders in 'new' mode.
         await act(async () => {});

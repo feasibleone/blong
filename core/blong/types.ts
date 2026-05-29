@@ -776,23 +776,24 @@ export interface ILib {
 }
 
 export type ValidationFn = () => GatewaySchema;
-export interface IValidationProxy {
+export interface IValidationProxy<T> {
     type: typeof Type;
     handler: {
         [name: string]: ValidationFn;
-    };
+    } & IRemoteHandler;
     lib: ILib & {
         [name: string]: TSchema;
     };
     error: {
         [name: string]: (...params: unknown[]) => ITypedError;
     };
+    config: T;
 }
-export type ValidationDefinition = (
-    blong: IValidationProxy,
-) => Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[];
+export type ValidationDefinition<T> = (
+    blong: IValidationProxy<T>,
+) => Promise<Record<string, ValidationFn | TSchema> | ValidationFn | ValidationFn[]>;
 
-export type ApiDefinition = (blong: IValidationProxy) =>
+export type ApiDefinition<T> = (blong: IValidationProxy<T>) =>
     | {
           namespace:
               | string[]
@@ -859,8 +860,8 @@ export type ModuleApi = {
     config: Record<string, unknown>;
     parent: IAdapterFactory;
     error: (errors: object) => ModuleApi;
-    validation: (
-        method: ValidationDefinition | ValidationDefinition[],
+    validation: <T>(
+        method: ValidationDefinition<T> | ValidationDefinition<T>[],
         namespace?: string,
     ) => ModuleApi;
     sequence: (fn: () => Sequence) => ModuleApi;
@@ -921,9 +922,10 @@ export interface IComponent {
 
 export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T> =>
     Object.defineProperty(definition, Kind, {value: 'lib'});
-export const validation = (validation: ValidationDefinition): ValidationDefinition =>
-    Object.defineProperty(validation, Kind, {value: 'validation'});
-export const api = (api: ApiDefinition): ApiDefinition =>
+export const validation = <T = Record<string, unknown>>(
+    validation: ValidationDefinition<T>,
+): ValidationDefinition<T> => Object.defineProperty(validation, Kind, {value: 'validation'});
+export const api = <T = Record<string, unknown>>(api: ApiDefinition<T>): ApiDefinition<T> =>
     Object.defineProperty(api, Kind, {value: 'api'});
 export const model = <T extends IModelSpec>(
     definition: () => () => Promise<T>,
@@ -931,10 +933,10 @@ export const model = <T extends IModelSpec>(
 export const fixture = <T extends IMock>(definition: () => T): (() => T) =>
     Object.defineProperty(definition, Kind, {value: 'fixture'});
 
-export const validationHandlers: (
+export const validationHandlers: <T>(
     handlers: Record<string, TFunction<[ApiSchema]>>,
-) => ValidationDefinition = handlers =>
-    validation(() =>
+) => ValidationDefinition<T> = handlers =>
+    validation(async () =>
         Object.fromEntries(
             Object.entries(handlers).map(([name, handler]) => [
                 name,

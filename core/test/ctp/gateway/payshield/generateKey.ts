@@ -1,6 +1,6 @@
 import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {type, keyScheme}}) => ({
+export default validation(async ({lib: {type, keyScheme}}) => ({
     payshieldGenerateKey: () => ({
         auth: false,
         description: 'generateKey',

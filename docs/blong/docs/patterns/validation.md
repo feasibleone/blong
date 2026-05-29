@@ -59,7 +59,7 @@ Here is an example:
 // realmname/gateway/subject/subjectObjectPredicate.ts
 import {validation} from '@feasibleone/blong';
 
-export default validation(({lib: {type}}) =>
+export default validation(async ({lib: {type}}) =>
     function subjectObjectPredicate() {
         return {
             // at a minimum, define the types of params and result

@@ -2,14 +2,14 @@
  * Editor stories — blong-browser adaptation
  *
  * Mapping notes:
- * - Uses marine biology coral fixture from @feasibleone/blong-marine/meta/storybook.js
+ * - Uses marine biology coral fixture from @feasibleone/blong-marine/storybook.js
  * - Schema and cards defined in blong-marine (coralEditorFixture) — single source of truth
  * - Handlers in .storybook/dispatch.tsx use coralCoral* prefix
  */
 import coralEditorFixture, {
     coralStoryValue,
     marineDropdownData,
-} from '@feasibleone/blong-marine/meta/storybook.js';
+} from '@feasibleone/blong-marine/storybook.js';
 import type {Meta} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';

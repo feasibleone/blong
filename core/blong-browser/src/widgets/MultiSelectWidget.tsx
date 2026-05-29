@@ -33,8 +33,8 @@ export function MultiSelectWidget({
         type: widgetType,
     } = schema.widget ?? {};
     const {handler} = useBlong();
-    const [options, setOptions] = useState<SelectOption[]>(
-        () => staticOptions ? toOptions(staticOptions) : [],
+    const [options, setOptions] = useState<SelectOption[]>(() =>
+        staticOptions ? toOptions(staticOptions) : [],
     );
 
     useEffect(() => {
@@ -55,7 +55,7 @@ export function MultiSelectWidget({
                     if (!cancelled) setOptions(data);
                 })
                 .catch(() => {
-                    // Error surfaced by the central dispatch wrapper in BlongUiProvider.
+                    // Error surfaced by the central dispatch wrapper in BlongProvider.
                 });
             return () => {
                 cancelled = true;

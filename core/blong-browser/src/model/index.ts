@@ -13,5 +13,4 @@ export type {
     ISchemaOverlay,
     IWidgetOverride,
 } from '@feasibleone/blong';
-export {deepMerge, withDefaults} from './defaults.js';
 export {dropdownRegistry} from './dropdownRegistry.js';

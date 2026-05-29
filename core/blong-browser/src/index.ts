@@ -108,7 +108,7 @@ export type {ISchemaDocument, ISchemaRegistry} from './types/schema.js';
 export type {ILayoutResult, IResolvedCard, LayoutConfig} from './hooks/useLayout.js';
 
 // ── Model system ─────────────────────────────────────────────────────────────
-export {dropdownRegistry, withDefaults} from './model/index.js';
+export {dropdownRegistry} from './model/index.js';
 export type {
     IBrowserConfig,
     IBrowserPermissions,

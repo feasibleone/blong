@@ -1,0 +1,30 @@
+{
+    "name": "@feasibleone/blong-mock",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./types/index.d.ts",
+            "default": "./index.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "typebox": "^1.1.5"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

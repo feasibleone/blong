@@ -20,7 +20,7 @@ export default browser(blong => ({
     url: import.meta.url,
     pkg: {name: pkg.name, version: pkg.version},
     children: [
-        async function blongUi() {
+        async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
         async function marine() {
@@ -29,7 +29,7 @@ export default browser(blong => ({
     ],
     config: {
         default: {
-            blongUi: {},
+            ui: {},
             marine: {},
         },
     },
@@ -214,9 +214,9 @@ layouts={{
 Inside a React component rendered by blong-browser, use the context hooks:
 
 ```ts
-import {useBlongUi} from '@feasibleone/blong-browser';
+import {useBlong} from '@feasibleone/blong-browser';
 
-const {dispatch, schemaRegistry} = useBlongUi();
+const {dispatch, schemaRegistry} = useBlong();
 
 // Call any registered handler
 const result = await dispatch('marine.coral.find', {coralName: 'Brain'});

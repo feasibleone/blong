@@ -211,9 +211,9 @@ generates `find`, `get`, `add`, `edit`, `remove`, `report`, `schema`, and `{subj
 handlers automatically from the model spec and fixture data.
 
 **No `setupModelMock()` call is needed** — the mock adapter in blong-browser activates automatically
-in `storybook` and `integration` environments when the `blongUi.mock` config key is present (set in
-`.storybook/preview.tsx` via the `withBlong(browser)` decorator which passes `{blongUi: {mock: {}}}`
-as config).
+in `storybook` and `integration` environments when the `ui.mock` config key is present (set in
+`.storybook/preview.tsx` via the `withBlong(browser)` decorator which passes `{ui: {mock: {}}}` as
+config).
 
 ---
 
@@ -425,8 +425,8 @@ All six method names default to `{subject}.{object}.{find|get|add|edit|remove|re
 > **Tip — avoid duplicate records:** The model's `subjectObjectNew` page uses `createAction`
 > (`methods.add`) for the **first** save only, then automatically switches to `mode='edit'` and uses
 > `saveAction` (`methods.edit`) for subsequent saves. Never configure `subjectObjectNew` with a
-> single `saveAction` pointing to `.add` — that would call `.add` on every save and create
-> duplicate records.
+> single `saveAction` pointing to `.add` — that would call `.add` on every save and create duplicate
+> records.
 
 ---
 

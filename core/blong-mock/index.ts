@@ -1,7 +1,10 @@
-import type {IAdapter, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
-import {withDefaults} from '../defaults.js';
+import type {IAdapter, IHandlerProxy, IModelSpec, ValidationFn} from '@feasibleone/blong';
+import {Type} from 'typebox';
+import {withDefaults} from './defaults.ts';
 
-export default async function mock(
+export {withDefaults} from './defaults.ts';
+
+export async function mock(
     this: IAdapter<
         {
             context: {
@@ -254,6 +257,9 @@ export default async function mock(
                 items.push(data);
                 return get.apply(this, [{[keyField]: data[keyField]}]);
             },
+            async [`${subject}.${object}.schema`]() {
+                return {};
+            },
         });
         mocks[`${subject}.dropdown.list`] ||= async () => {
             const result: Record<string, {value: unknown; label: unknown}[]> = {};
@@ -289,4 +295,55 @@ export default async function mock(
     );
 
     return mocks;
+}
+
+export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
+    const validations: Record<string, ValidationFn> = {};
+    for (const rawModel of models) {
+        const model = withDefaults(rawModel);
+        const {subject, object} = model;
+        Object.assign(validations, {
+            [`${subject}.${object}.find`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Find ${object} with optional paging`,
+            }),
+            [`${subject}.${object}.get`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Get ${object} by key`,
+            }),
+            [`${subject}.${object}.schema`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Get schema for ${object}`,
+            }),
+            [`${subject}.${object}.report`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Get report data for ${object} with optional paging`,
+            }),
+            [`${subject}.${object}.edit`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Edit ${object} by key`,
+            }),
+            [`${subject}.${object}.add`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Add new ${object}`,
+            }),
+            [`${subject}.${object}.remove`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Remove ${object} by key`,
+            }),
+            [`${subject}.dropdown.list`]: () => ({
+                params: Type.Unknown(),
+                result: Type.Awaited(Type.Unknown()),
+                description: `Get dropdown options for all objects in ${subject}`,
+            }),
+        });
+    }
+    return validations;
 }

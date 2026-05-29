@@ -1,5 +1,5 @@
 import {model} from '@feasibleone/blong';
-import {coralTypeOptions} from '../../data/index.js';
+import {coralTypeOptions} from '../../data/index.ts';
 
 export default model(
     () =>

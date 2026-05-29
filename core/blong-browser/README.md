@@ -12,7 +12,7 @@ import {browser} from '@feasibleone/blong';
 export default browser(blong => ({
     url: import.meta.url,
     children: [
-        async function blongUi() {
+        async function ui() {
             return import('@feasibleone/blong-browser/browser.js');
         },
         './your-realm',

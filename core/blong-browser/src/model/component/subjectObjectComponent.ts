@@ -1,6 +1,6 @@
 import type {IAdapter, IComponent, IHandlerProxy, IModelSpec} from '@feasibleone/blong';
+import {withDefaults} from '@feasibleone/blong-mock';
 import type {IPortalConfig} from '../../index.js';
-import {withDefaults} from '../defaults.js';
 import {subjectObjectBrowse} from './subjectObjectBrowse.js';
 import {subjectObjectNew} from './subjectObjectNew.js';
 import {subjectObjectOpen} from './subjectObjectOpen.js';

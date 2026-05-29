@@ -43,8 +43,8 @@ function DropdownCore({
     } = schema.widget ?? {};
     const {handler} = useBlong();
 
-    const [options, setOptions] = useState<SelectOption[]>(
-        () => staticOptions ? toOptions(staticOptions) : [],
+    const [options, setOptions] = useState<SelectOption[]>(() =>
+        staticOptions ? toOptions(staticOptions) : [],
     );
 
     // Clear this widget's value when the parent selection changes
@@ -79,7 +79,7 @@ function DropdownCore({
                 })
                 .catch(() => {
                     // Error already surfaced by the central dispatch wrapper in
-                    // BlongUiProvider. Widget renders with empty options.
+                    // BlongProvider. Widget renders with empty options.
                 });
 
             return () => {

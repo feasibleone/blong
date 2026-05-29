@@ -175,7 +175,8 @@ export default handler<{
         async receive(
             result: Response<{
                 jsonrpc?: string;
-                error?: unknown;
+                error?: object;
+                result?: object;
                 validation?: unknown;
                 debug?: unknown;
             }>,
@@ -183,6 +184,10 @@ export default handler<{
         ) {
             await decrypt(result.body, 'error');
             await decrypt(result.body, 'result');
+            this.log?.debug?.(
+                {...(result.body?.error || result.body?.result), $meta},
+                result.body?.error ? 'Received error response' : 'Received successful response',
+            );
             return super.receive(result, $meta);
         },
         async errorReceive(result: Response, $meta: unknown) {

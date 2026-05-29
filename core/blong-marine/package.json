@@ -4,6 +4,7 @@
     "description": "Marine biology demo realm — shared schema, fixtures, and model specs for the Blong ecosystem",
     "type": "module",
     "exports": {
+        "./server.ts": "./server.ts",
         "./browser.ts": "./browser.ts",
         "./browser.js": {
             "development": "./browser.ts",
@@ -14,10 +15,10 @@
             "import": "./data/index.ts"
         },
         "./data/index.ts": "./data/index.ts",
-        "./meta/storybook.ts": "./meta/storybook.ts",
-        "./meta/storybook.js": {
-            "development": "./meta/storybook.ts",
-            "import": "./meta/storybook.ts"
+        "./storybook.ts": "./storybook.ts",
+        "./storybook.js": {
+            "development": "./storybook.ts",
+            "import": "./storybook.ts"
         }
     },
     "scripts": {
@@ -25,7 +26,8 @@
         "ci-lint": "blong-dev lint"
     },
     "dependencies": {
-        "@feasibleone/blong": "workspace:^1.0.0"
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "typebox": "^1.1.5"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

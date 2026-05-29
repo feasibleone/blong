@@ -1,7 +1,7 @@
 import {validation} from '@feasibleone/blong';
 
 export default validation(
-    ({lib: {type}}) =>
+    async ({lib: {type}}) =>
         function loginTokenCreate() {
             return {
                 auth: 'login',
@@ -11,5 +11,5 @@ export default validation(
                 }),
                 result: type.Object({}, {additionalProperties: true}),
             };
-        }
+        },
 );

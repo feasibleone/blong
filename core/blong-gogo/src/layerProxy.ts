@@ -92,7 +92,8 @@ function createHandlerClosure(
                     break;
                 case 'function:lib':
                     what = await what(layerApi);
-                    if (typeof what === 'function') (lib as unknown as Record<string, unknown>)[what.name] = what;
+                    if (typeof what === 'function')
+                        (lib as unknown as Record<string, unknown>)[what.name] = what;
                     else merge(lib, what);
             }
         }
@@ -116,7 +117,9 @@ function createHandlerClosure(
                     } finally {
                         configRuntime?.exitConfig();
                     }
-                    const created = await (port as unknown as {createHandlers?: (opts: unknown) => Promise<unknown>})?.createHandlers?.({
+                    const created = await (
+                        port as unknown as {createHandlers?: (opts: unknown) => Promise<unknown>}
+                    )?.createHandlers?.({
                         handlers: typeof what === 'function' ? [what] : what,
                         layerApi,
                         kind: kindOfWhat,
@@ -168,18 +171,34 @@ export default function layerProxy(
                         return target.result;
                     default:
                         return (fn: unknown, namespace: string, source: string) => {
-                            type Where = {methods: unknown[]; port?: unknown; source?: string; config?: unknown};
+                            type Where = {
+                                methods: unknown[];
+                                port?: unknown;
+                                source?: string;
+                                config?: unknown;
+                            };
                             const resultRecord = target.result as Record<string, Where>;
                             const where: Where = (resultRecord[name] ??= {methods: [], source});
-                            const targetRec = target as unknown as Record<string, ((fn: unknown) => void) | undefined>;
+                            const targetRec = target as unknown as Record<
+                                string,
+                                ((fn: unknown) => void) | undefined
+                            >;
                             if (targetRec[name]) merge(where, targetRec[name]!(fn));
                             else {
-                                const fnArr: unknown[] = Array.isArray(fn) ? fn : fn != null ? [fn] : [];
+                                const fnArr: unknown[] = Array.isArray(fn)
+                                    ? fn
+                                    : fn != null
+                                      ? [fn]
+                                      : [];
                                 const [ports, others] = fnArr.reduce(
                                     (prev: [unknown[], unknown[]], item: unknown) => {
                                         if (
-                                            (port && (item as {prototype?: unknown}).prototype instanceof port) ||
-                                            ['adapter', 'orchestrator'].includes(kind(item as unknown as Parameters<typeof kind>[0]))
+                                            (port &&
+                                                (item as {prototype?: unknown}).prototype instanceof
+                                                    port) ||
+                                            ['adapter', 'orchestrator'].includes(
+                                                kind(item as unknown as Parameters<typeof kind>[0]),
+                                            )
                                         )
                                             prev[0].push(item);
                                         else prev[1].push(item);
@@ -188,7 +207,11 @@ export default function layerProxy(
                                     [[], []] as [unknown[], unknown[]],
                                 ) as [unknown[], unknown[]];
                                 ports.forEach(what => {
-                                    if (what && port && (what as {prototype?: unknown}).prototype instanceof port) {
+                                    if (
+                                        what &&
+                                        port &&
+                                        (what as {prototype?: unknown}).prototype instanceof port
+                                    ) {
                                         where.port = async (
                                             {
                                                 id,
@@ -208,17 +231,28 @@ export default function layerProxy(
                                                     : config,
                                                 configBase: moduleConfig.base,
                                             });
-                                            await (port as unknown as {init: () => Promise<void>}).init();
+                                            await (
+                                                port as unknown as {init: () => Promise<void>}
+                                            ).init();
                                             return port;
                                         };
-                                        (where.port as unknown as {config: unknown}).config = moduleConfig?.[name];
-                                    } else if (what && ['adapter', 'orchestrator'].includes(kind(what as unknown as Parameters<typeof kind>[0]))) {
+                                        (where.port as unknown as {config: unknown}).config =
+                                            moduleConfig?.[name];
+                                    } else if (
+                                        what &&
+                                        ['adapter', 'orchestrator'].includes(
+                                            kind(what as unknown as Parameters<typeof kind>[0]),
+                                        )
+                                    ) {
                                         where.port = async (
                                             api: Parameters<IAdapterFactory>[0] & {id: string},
                                             configOverride: object,
                                         ) => {
                                             const {id} = api;
-                                            if (!id) return (what as IAdapterFactory)(api as Parameters<IAdapterFactory>[0]);
+                                            if (!id)
+                                                return (what as IAdapterFactory)(
+                                                    api as Parameters<IAdapterFactory>[0],
+                                                );
                                             // Assign `handlers` directly onto the api object rather
                                             // than creating a spread copy.  AdapterBase stores
                                             // `_api = api`, and Registry.ts sets
@@ -226,7 +260,8 @@ export default function layerProxy(
                                             // returns.  Keeping the same object reference ensures
                                             // that assignment is visible to `_api.attachHandlers`
                                             // when `start()` is called later.
-                                            (api as unknown as Record<string, unknown>).handlers = what;
+                                            (api as unknown as Record<string, unknown>).handlers =
+                                                what;
                                             const port = await createPort(
                                                 api as unknown as Parameters<typeof createPort>[0],
                                                 moduleConfig.base,
@@ -244,7 +279,8 @@ export default function layerProxy(
                                             );
                                             return port;
                                         };
-                                        (where.port as unknown as {config: unknown}).config = moduleConfig?.[name];
+                                        (where.port as unknown as {config: unknown}).config =
+                                            moduleConfig?.[name];
                                     }
                                 });
                                 if (others.length)

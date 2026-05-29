@@ -19,7 +19,7 @@
 /**
  * Coral type options — shared between model `select` widgets and storybook
  * `portalDropdownList` data.  Defined once here; imported by
- * `marineCoralModel.ts` (inline widget options) and `meta/storybook.ts`
+ * `marineCoralModel.ts` (inline widget options) and `/storybook.ts`
  * (dropdown lookup table).
  */
 export const coralTypeOptions = [
@@ -31,7 +31,7 @@ export const coralTypeOptions = [
 
 /**
  * Coral names extracted from `marine.coral[*].coralName` in `marineYaml`.
- * Used by `meta/storybook.ts` to generate synthetic explorer fixture rows
+ * Used by `/storybook.ts` to generate synthetic explorer fixture rows
  * without duplicating the names inline.
  */
 export const marineCoralNames = [

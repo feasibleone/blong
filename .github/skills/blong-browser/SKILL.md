@@ -84,7 +84,7 @@ export default realm(blong => ({
 Include in a suite's `browser.ts` as a child realm:
 
 ```ts
-async function blongUi() {
+async function ui() {
     return import('@feasibleone/blong-browser/browser.js');
 }
 ```
@@ -508,11 +508,12 @@ Navigation uses the **action system** — clicking a menu item calls `openTab({a
 ## Adapters and orchestrators
 
 - **`adapter/backend.ts`** (`backend` namespace) — HTTP JSON-RPC via `adapter.http` +
-  `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go through this adapter.
-- **`adapter/mock.ts`** (`backend` namespace, `storybook`/`integration` environments only) —
-  Discovers `.model` and `.fixture` handlers from realm layers; auto-generates `find`, `get`, `add`,
-  `edit`, `remove`, `report`, `schema`, and `{subject}.dropdown.list` handlers for each model. The
-  suite config must include `{blongUi: {mock: {}}}` to activate this adapter.
+  `codec.jsonrpc` + `codec.mle`. All back-end calls from the browser go through this adapter. When
+  mock config is active it discovers `.model` and `.fixture` handlers from realm layers;
+  auto-generates `find`, `get`, `add`, `edit`, `remove`, `report`, `schema`, and
+  `{subject}.dropdown.list` handlers for each model. The suite config must include
+  `{ui: {mock: {}}}` to activate this. Mock is usually activated in Storybook, to avoid the need of
+  a backend.
 - **`adapter/storage.ts`** (`storage` namespace) — browser storage via `adapter.dispatch`.
 - **`orchestrator/portal.ts`** (`portal.*`, `component.*`, `action.*`) — imports handlers matching
   `/\.model$/`, `/\.component$/`, `/\.portal$/`, `/\.action?$/`. Realms contribute pages and actions

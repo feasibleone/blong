@@ -12,7 +12,7 @@
  *   - Synthetic explorer rows   →  `coralFixtures`     (this file, uses marineCoralNames)
  */
 import type {ICardConfig, IEnrichedSchema} from '@feasibleone/blong';
-import {coralTypeOptions, marineCoralNames} from '../data/index.js';
+import {coralTypeOptions, marineCoralNames} from './data/index.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

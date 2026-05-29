@@ -1,7 +1,7 @@
 import {validation} from '@feasibleone/blong';
 
 export default validation(
-    ({lib: {type}}) =>
+    async ({lib: {type}}) =>
         function parkingTest() {
             return {
                 params: type.Unknown(),
@@ -10,5 +10,5 @@ export default validation(
                     price: type.Number(),
                 }),
             };
-        }
+        },
 );

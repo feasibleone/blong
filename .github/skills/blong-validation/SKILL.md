@@ -159,7 +159,7 @@ validations: ['realmname.entity1.validation', /^realmname\.entity2\./];
 import {validation} from '@feasibleone/blong';
 
 export default validation(
-    ({lib: {type}}) =>
+    async ({lib: {type}}) =>
         function realmEntityAction() {
             return {
                 // Parameter validation
@@ -267,7 +267,7 @@ export default handler(({handler: {sqlUserAdd}}) =>
 import {validation} from '@feasibleone/blong';
 
 export default validation(
-    ({lib: {type}}) =>
+    async ({lib: {type}}) =>
         function paymentTransferCreate() {
             return {
                 params: type.Object({
@@ -355,7 +355,7 @@ const handler = Type.Function(
 
 ```typescript
 export default validation(
-    ({lib: {type}}) =>
+    async ({lib: {type}}) =>
         function handlerName() {
             return {
                 params: type.Object({

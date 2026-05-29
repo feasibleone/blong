@@ -11,7 +11,7 @@
  * export default browser(blong => ({
  *   url: import.meta.url,
  *   children: [
- *     async function blongUi() {
+ *     async function ui() {
  *       return import('@feasibleone/blong-browser/browser.js');
  *     },
  *     './marine',
@@ -34,14 +34,7 @@ export default realm(blong => ({
     config: {
         default: {
             orchestrator: true,
-            backend: false,
-            mock: false,
-        },
-        microservice: {
             backend: true,
-        },
-        storybook: {
-            mock: true,
         },
     },
 }));

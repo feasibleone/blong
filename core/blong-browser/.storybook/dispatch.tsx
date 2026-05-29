@@ -26,20 +26,20 @@
  *
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
+import type {IHandlerProxy} from '@feasibleone/blong';
 import {
     coralCategoryFixtures,
     coralFixtures,
     coralStoryValue,
     marineDropdownData,
-} from '@feasibleone/blong-marine/meta/storybook.js';
+} from '@feasibleone/blong-marine/storybook.js';
 import React from 'react';
 import {App} from '../src/components/App/App.js';
 import {Explorer} from '../src/components/Explorer/Explorer.js';
 import {useBlongForm} from '../src/components/Form/FormContext.js';
 import {Hint} from '../src/components/Hint/Hint.js';
-import type {IModelSpec} from '../src/index.js';
 import {makeHandlerProxy, type IBlongPortalConfig} from '../src/context/BlongContext.js';
-import type {IHandlerProxy} from '@feasibleone/blong';
+import type {IModelSpec} from '../src/index.js';
 import {blongEvents} from '../src/lib/eventBus.js';
 import {useAppStore} from '../src/state/appStore.js';
 import type {IBlongError} from '../src/types/action.js';
@@ -306,7 +306,7 @@ export const bgTranslations = parseTranslations(`
 `);
 /* spell-checker: enable */
 
-// Marine fixture data imported from @feasibleone/blong-marine/meta/storybook.js:
+// Marine fixture data imported from @feasibleone/blong-marine/storybook.js:
 //   coralStoryValue, marineDropdownData, coralCategoryFixtures, coralFixtures
 // Re-export for any story files that import them directly from this module.
 export {coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData};
@@ -649,7 +649,9 @@ export const defaultHandlers: Record<string, Handler> = {
  * `overrides`.  Used internally by `withDispatch`; also exported for unit tests
  * that need a standalone dispatch without a React tree.
  */
-export function makeDispatch(overrides: Record<string, Handler> = {}): IHandlerProxy<{portal?: IBlongPortalConfig} & Record<string, unknown>> {
+export function makeDispatch(
+    overrides: Record<string, Handler> = {},
+): IHandlerProxy<{portal?: IBlongPortalConfig} & Record<string, unknown>> {
     const handlers = {...defaultHandlers, ...overrides};
     const dispatch = async (method: string, params?: Record<string, unknown>) => {
         const h = handlers[method];

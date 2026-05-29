@@ -94,9 +94,9 @@ This means:
 ## Component Architecture
 
 All UI state flows through a single root composition:
-**App → BlongUiProvider → Theme → Portal**.
+**App → BlongProvider → Theme → Portal**.
 
-`BlongUiProvider` holds three shared resources:
+`BlongProvider` holds three shared resources:
 
 1. **`dispatch`** — the blong handler proxy; all UI→backend calls go here
 2. **`schemaRegistry`** — enriched schema map (per subject.object)

@@ -74,6 +74,7 @@ function topoSort(items: InfraItem[]): InfraItem[] {
 const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
     api: {server: {default: true}, browser: {default: true}},
     init: {server: {default: true}, browser: {default: true}},
+    meta: {server: {default: true}, browser: {default: true}},
     error: {server: {integration: true}},
     sim: {server: {integration: true}},
     adapter: {server: {integration: true}},

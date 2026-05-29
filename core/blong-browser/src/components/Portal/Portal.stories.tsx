@@ -7,7 +7,7 @@
  * unmount so stories don't bleed state into each other.
  *
  * The global `withDispatch` decorator (from .storybook/preview.tsx) already
- * wraps every story in <App> providing BlongUiProvider + Theme context, so
+ * wraps every story in <App> providing BlongProvider + Theme context, so
  * Portal can read from the store and dispatch can be used inside tabs.
  */
 import type {Meta, StoryObj} from '@storybook/react-vite';
