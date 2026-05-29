@@ -64,6 +64,7 @@ export function ActionButton({
             ? mergedParams
             : ((extraParams as Record<string, unknown> | undefined) ?? mergedParams);
     const directMethod = method ?? actionMethod ?? '';
+    const testId = directMethod ? `action-${directMethod.replace(/[/.]/g, '-')}` : undefined;
     const {call} = useAction(directMethod, 'mutation', mergedParams);
     const clearError = useAppStore(s => s.clearError);
     const showHint = useAppStore(s => s.showHint);
@@ -139,6 +140,7 @@ export function ActionButton({
             <span
                 ref={hintTargetRef}
                 style={{display: 'inline-block'}}
+                data-testid={testId}
             >
                 <SplitButton
                     {...buttonProps}
@@ -152,6 +154,7 @@ export function ActionButton({
         <span
             ref={hintTargetRef}
             style={{display: 'inline-block'}}
+            data-testid={testId}
         >
             <Button {...buttonProps} />
         </span>

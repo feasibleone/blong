@@ -615,6 +615,7 @@ export function Editor({
                     actionName === '__cancel__' ||
                     actionName === '__refresh__'
                 ) {
+                    const testIdSuffix = actionName.replace(/__/g, '');
                     return (
                         <button
                             ref={actionName === '__cancel__' ? cancelButtonRef : undefined}
@@ -625,6 +626,7 @@ export function Editor({
                             aria-label={btn.label || btn.title}
                             title={btn.title}
                             disabled={isDisabled}
+                            data-testid={`editor-${testIdSuffix}`}
                             onClick={() => handleToolbarAction(actionName)}
                         >
                             {btn.icon && <span className={`p-button-icon p-c pi ${btn.icon}`} />}
@@ -643,6 +645,7 @@ export function Editor({
                             className={`p-button p-component p-button-icon-only mr-2${isDisabled ? ' p-disabled' : ''}`}
                             aria-label={btn.label}
                             disabled={isDisabled}
+                            data-testid="editor-save"
                         >
                             {btn.icon && (
                                 <span

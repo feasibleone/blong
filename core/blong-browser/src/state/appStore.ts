@@ -216,3 +216,8 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     showHint: (target, message, error) => set({hint: {target, message, error}}),
     clearHint: () => set({hint: null}),
 }));
+
+// Expose for Playwright / E2E tests
+if (typeof window !== 'undefined') {
+    (window as unknown as Record<string, unknown>).__blongStore = useAppStore;
+}

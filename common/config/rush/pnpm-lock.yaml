@@ -161,6 +161,9 @@ importers:
       '@feasibleone/blong-marine':
         specifier: workspace:^1.0.0
         version: link:../blong-marine
+      '@playwright/test':
+        specifier: ^1.50.5
+        version: 1.58.2
       '@storybook/addon-a11y':
         specifier: ^10.3.6
         version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
@@ -356,6 +359,9 @@ importers:
 
   ../../core/blong-dev:
     dependencies:
+      '@playwright/test':
+        specifier: ^1.50.5
+        version: 1.58.2
       cspell:
         specifier: ^10.0.0
         version: 10.0.0
@@ -1368,6 +1374,9 @@ importers:
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
         version: link:../blong-login
+      '@playwright/test':
+        specifier: ^1.50.5
+        version: 1.58.2
       '@storybook/addon-a11y':
         specifier: ^10.3.6
         version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))

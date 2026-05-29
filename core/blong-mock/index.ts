@@ -95,7 +95,13 @@ export async function mock(
                 return structuredClone(await fixture(`${subject}.${object}`))
                     .filter(item => {
                         for (const [key, value] of Object.entries(params)) {
-                            if (item[key] !== value) return false;
+                            if (typeof value === 'string' && typeof item[key] === 'string') {
+                                // Partial match for string params
+                                if (!String(item[key]).toLowerCase().includes(value.toLowerCase()))
+                                    return false;
+                            } else {
+                                if (item[key] !== value) return false;
+                            }
                         }
                         if (search) {
                             if (

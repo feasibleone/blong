@@ -297,6 +297,7 @@ export function Login({
                             label="Login"
                             loading={isLoading}
                             className="blong-login__submit"
+                            data-testid="login-submit"
                         />
                     </form>
                 )}

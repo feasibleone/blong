@@ -76,6 +76,7 @@ words:
   - dont
   - drpp
   - dukpt
+  - ECDH
   - EEST
   - elkhorn
   - Elkhorn
@@ -286,5 +287,6 @@ ignorePaths:
   - core/**/~.schema.ts
   - "**/*.test.ts"
   - "**/*.test.tsx"
+  - "**/*.play.ts"
   - "**/dist/**"
   - "**/storybook-static/**"

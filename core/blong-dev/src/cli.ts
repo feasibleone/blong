@@ -12,6 +12,9 @@ switch (command) {
     case 'test':
         await (await import('./commands/test.ts')).test(args);
         break;
+    case 'playwright':
+        await (await import('./commands/playwright.ts')).playwright(args);
+        break;
     default:
         process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
         process.stderr.write('Usage:\n');
@@ -22,5 +25,8 @@ switch (command) {
             '  blong-dev lint-staged        Lint git staged files across all affected packages\n',
         );
         process.stderr.write('  blong-dev test               Run tap tests in current package\n');
+        process.stderr.write(
+            '  blong-dev playwright [args]  Run Playwright tests in current package\n',
+        );
         process.exit(1);
 }

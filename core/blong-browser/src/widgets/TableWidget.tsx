@@ -20,9 +20,9 @@ import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '@fe
 import {useQuery} from '@tanstack/react-query';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/Button.js';
+import {useBlongFormState} from '../components/Form/FormContext.js';
 import {Text} from '../components/Text/Text.js';
 import {useBlong} from '../context/BlongContext.js';
-import {useBlongFormState} from '../components/Form/FormContext.js';
 import {dateIn, dateOut} from './DateWidget.js';
 
 type Row = Record<string, unknown>;
@@ -652,10 +652,7 @@ export function TableWidget({
     ]);
 
     type ListResult = Record<string, unknown>;
-    const {
-        data: listQueryData,
-        isFetching: listLoading,
-    } = useQuery<ListResult>({
+    const {data: listQueryData, isFetching: listLoading} = useQuery<ListResult>({
         queryKey: [listAction, mergedListParams],
         queryFn: () => handler[listAction](mergedListParams, {}) as Promise<ListResult>,
         // In report mode, wait until the user submits params (reportParams becomes defined)
@@ -676,7 +673,9 @@ export function TableWidget({
     const listTotal: number = useMemo(() => {
         if (!listQueryData) return 0;
         const pagination = (listQueryData as {pagination?: {recordsTotal?: number}}).pagination;
-        return typeof pagination?.recordsTotal === 'number' ? pagination.recordsTotal : listRows.length;
+        return typeof pagination?.recordsTotal === 'number'
+            ? pagination.recordsTotal
+            : listRows.length;
     }, [listQueryData, listRows.length]);
 
     const handleSearchChange = useCallback((v: string) => {
@@ -724,9 +723,9 @@ export function TableWidget({
         | undefined;
     const pivotBaseRows: Row[] | undefined = pivotCfg
         ? (pivotCfg.examples ??
-              (pivotCfg.dropdown
-                  ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? undefined)
-                  : undefined))
+          (pivotCfg.dropdown
+              ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? undefined)
+              : undefined))
         : undefined;
     const pivotJoinDataFields = new Set<string>(Object.values(pivotCfg?.join ?? {}));
 
@@ -857,9 +856,7 @@ export function TableWidget({
                 onChange(updated.map(({[KEY]: _k, ...r}) => r));
                 return;
             }
-            const updated = rows.map(r =>
-                r[KEY] === rowKey ? {...rowData, [KEY]: rowKey} : r,
-            );
+            const updated = rows.map(r => (r[KEY] === rowKey ? {...rowData, [KEY]: rowKey} : r));
             onChange(updated.map(({[KEY]: _k, ...r}) => r));
         },
         [rows, onChange, pivotCfg],
@@ -929,9 +926,9 @@ export function TableWidget({
                     e.preventDefault();
                     if (!btn.method) return;
                     setBusyCount(c => c + 1);
-                    void (handler[btn.method](resolvedParams ?? {}, {}) as Promise<unknown>).finally(
-                        () => setBusyCount(c => c - 1),
-                    );
+                    void (
+                        handler[btn.method](resolvedParams ?? {}, {}) as Promise<unknown>
+                    ).finally(() => setBusyCount(c => c - 1));
                 }}
             />
         );
@@ -955,6 +952,7 @@ export function TableWidget({
                 value={searchInput}
                 onChange={e => handleSearchChange(e.target.value)}
                 placeholder="Search…"
+                data-testid="browse-search"
                 style={{width: '9rem', paddingLeft: '1.75rem'}}
             />
             {searchInput && (

@@ -5,10 +5,14 @@
     "description": "Marine biology demo blong suite showcasing @feasibleone/blong-browser realm patterns",
     "type": "module",
     "scripts": {
+        "blong": "blong-watch",
         "build": "true",
         "build-storybook": "storybook build",
         "ci-lint": "blong-dev lint",
         "dev": "vite",
+        "ci-test": "blong-dev playwright",
+        "playwright": "blong-dev playwright",
+        "playwright:update": "blong-dev playwright --update-snapshots",
         "storybook": "storybook dev -p 6006",
         "typecheck": "tsc --noEmit"
     },
@@ -24,6 +28,7 @@
         "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
+        "@playwright/test": "^1.50.5",
         "@storybook/addon-a11y": "^10.3.6",
         "@storybook/addon-docs": "^10.3.6",
         "@storybook/react-vite": "^10.3.6",
