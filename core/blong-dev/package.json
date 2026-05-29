@@ -11,7 +11,7 @@
         "ci-lint": "tsc --noEmit"
     },
     "dependencies": {
-        "@playwright/test": "^1.50.5",
+        "@playwright/test": "^1.60.0",
         "allure": "^3.6.2",
         "cspell": "^10.0.0",
         "eslint": "^10.4.0",
