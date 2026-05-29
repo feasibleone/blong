@@ -246,7 +246,9 @@ export default class Watch extends Internal implements IWatch {
             const configFilePath = this.#platform.join(dir, configFile.name);
             const loaded = (
                 await import(
-                    this.#config.enabled ? configFilePath + '?' + Date.now() : configFilePath
+                    /* @vite-ignore */ this.#config.enabled
+                        ? configFilePath + '?' + Date.now()
+                        : configFilePath
                 )
             ).default;
             const folderName = this.#platform.basename(dir);
@@ -287,8 +289,13 @@ export default class Watch extends Internal implements IWatch {
             if (directory === true && (await this.#apiSchema.generateFile(filename))) continue;
             const item =
                 directory === true
-                    ? (await import(this.#config.enabled ? filename + '?' + Date.now() : filename))
-                          .default
+                    ? (
+                          await import(
+                              /* @vite-ignore */ this.#config.enabled
+                                  ? filename + '?' + Date.now()
+                                  : filename
+                          )
+                      ).default
                     : ((await directory![filename]()) as {default: unknown}).default;
             if (!item) {
                 this.log?.error?.('Error loading ' + filename);
@@ -378,6 +385,7 @@ export default class Watch extends Internal implements IWatch {
                         ? (await isFile()).default
                         : (
                               await import(
+                                  /* @vite-ignore */
                                   this.#config.enabled ? filename + '?' + Date.now() : filename
                               )
                           ).default;

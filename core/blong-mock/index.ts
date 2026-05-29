@@ -42,7 +42,7 @@ export async function mock(
             this: IAdapter<object, object>,
             {[keyField]: id, ...rest}: Record<string, unknown>,
         ) {
-            this.log?.info?.(
+            this.log?.debug?.(
                 {
                     [keyField]: id,
                     ...rest,
@@ -58,7 +58,7 @@ export async function mock(
         }
         Object.assign(mocks, {
             [`${subject}.${object}.schema`](this: IAdapter<object, object>) {
-                this.log?.info?.(
+                this.log?.debug?.(
                     {
                         $meta: {method: `${subject}.${object}.schema`},
                     },
@@ -82,7 +82,7 @@ export async function mock(
                 },
             ) {
                 // console.log(`Generating find mock for ${subject}.${object}...`);
-                this.log?.info?.(
+                this.log?.debug?.(
                     {
                         $meta: {method: `${subject}.${object}.find`},
                         paging,
@@ -137,7 +137,7 @@ export async function mock(
                 this: IAdapter<object, object>,
                 {[keyField]: id, ...rest}: Record<string, unknown>,
             ) {
-                this.log?.info?.(
+                this.log?.debug?.(
                     {
                         [keyField]: id,
                         ...rest,
@@ -169,7 +169,7 @@ export async function mock(
                     [key: string]: unknown;
                 },
             ) {
-                this.log?.info?.(
+                this.log?.debug?.(
                     {
                         paging,
                         orderBy,
@@ -229,7 +229,7 @@ export async function mock(
                     ...rest
                 }: Record<string, Record<string, unknown>>,
             ) {
-                this.log?.info?.(
+                this.log?.debug?.(
                     {
                         [object]: {[keyField]: id, ...data},
                         ...rest,
@@ -250,7 +250,7 @@ export async function mock(
                 this: IAdapter<object, object>,
                 {[object]: data, ...rest}: Record<string, Record<string, unknown>>,
             ) {
-                this.log?.info?.(
+                this.log?.debug?.(
                     {
                         [object]: data,
                         ...rest,
@@ -269,7 +269,7 @@ export async function mock(
         });
         mocks[`${subject}.dropdown.list`] ||= async () => {
             const result: Record<string, {value: unknown; label: unknown}[]> = {};
-            this.log?.info?.(
+            this.log?.debug?.(
                 {$meta: {method: `${subject}.dropdown.list`}},
                 `Generating dropdown list mock`,
             );
@@ -285,7 +285,7 @@ export async function mock(
                     label,
                 }));
             }
-            this.log?.info?.(
+            this.log?.debug?.(
                 {
                     ...result,
                     $meta: {method: `${subject}.dropdown.list`},
@@ -295,7 +295,7 @@ export async function mock(
             return result;
         };
     }
-    this.log?.info?.(
+    this.log?.debug?.(
         {$meta: {method: 'subject.object.mock'}, mocks: Object.keys(mocks).join(', ')},
         'Generated mocks',
     );

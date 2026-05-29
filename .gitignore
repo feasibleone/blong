@@ -120,3 +120,5 @@ storybook-static
 sandbox
 *storybook.log
 .playwright
+allure-results
+allure-report

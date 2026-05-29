@@ -1,7 +1,7 @@
 /**
  * Portal navigation — tests the login, menu structure, and tab management.
  */
-import {test, expect} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright';
 
 test.use({blongPermissions: true});
 

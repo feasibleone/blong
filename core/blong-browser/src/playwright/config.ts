@@ -20,6 +20,7 @@
  * ```
  */
 import {defineConfig, type PlaywrightTestConfig} from '@playwright/test';
+import * as os from 'node:os';
 import type {IBlongTestOptions} from '../playwright.js';
 
 type BlongConfig = PlaywrightTestConfig<IBlongTestOptions>;
@@ -27,7 +28,7 @@ type BlongConfig = PlaywrightTestConfig<IBlongTestOptions>;
 export function defineBlongConfig(
     overrides: BlongConfig = {},
 ): ReturnType<typeof defineConfig<IBlongTestOptions>> {
-    const {use, webServer, ...rest} = overrides;
+    const {use, webServer, reporter, ...rest} = overrides;
     return defineConfig<IBlongTestOptions>({
         testDir: './test',
         testMatch: '**/*.play.ts',
@@ -47,21 +48,34 @@ export function defineBlongConfig(
             toHaveScreenshot: {maxDiffPixelRatio: 0.01},
         },
         outputDir: '.playwright/results',
-        reporter: [
-            [process.env.CI ? 'dot' : 'list'],
+        reporter: reporter ?? [
+            [process.env.CI ? 'list' : 'list'],
             ['html', {open: 'never', outputFolder: '.playwright/report'}],
+            [
+                'allure-playwright',
+                {
+                    resultsDir: 'allure-results',
+                    environmentInfo: {
+                        framework: 'blong',
+                        node_version: process.version,
+                        os_platform: os.platform(),
+                    },
+                },
+            ],
         ],
         webServer: webServer ?? [
             {
-                command: 'node --run blong',
+                command: process.env.CI ? 'node --run blong' : 'node --run blong-watch',
                 port: 8080,
                 reuseExistingServer: !process.env.CI,
+                stdout: 'pipe',
                 timeout: 60_000,
             },
             {
                 command: 'node --run dev',
                 url: 'http://localhost:5173',
                 reuseExistingServer: !process.env.CI,
+                stdout: 'pipe',
                 timeout: 30_000,
             },
         ],

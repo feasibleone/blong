@@ -362,6 +362,9 @@ importers:
       '@playwright/test':
         specifier: ^1.50.5
         version: 1.58.2
+      allure:
+        specifier: ^3.6.2
+        version: 3.6.2(preact@10.29.0)(typescript@6.0.3)
       cspell:
         specifier: ^10.0.0
         version: 10.0.0
@@ -1398,6 +1401,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.6.2
+        version: 3.9.0(@playwright/test@1.58.2)
       primeicons:
         specifier: ^7.0.0
         version: 7.0.0
@@ -6309,6 +6315,19 @@ packages:
 
   alien-signals@0.4.14:
     resolution: {integrity: sha512-itUAVzhczTmP2U5yX67xVpsbbOiquusbWVyA9N+sy6+r6YVbFkahXvNCeEPWEOMhwDYwbVbGHFkVL03N9I5g+Q==}
+
+  allure-js-commons@3.9.0:
+    resolution: {integrity: sha512-uVQcGE6MWIvGR/zW1XEUwHXUQa1EJKY0Cah+0TZK1qKuw6ptyhftDr34XE3wExTyCZirRrI98dbRtPeYYuyI+g==}
+    peerDependencies:
+      allure-playwright: 3.9.0
+    peerDependenciesMeta:
+      allure-playwright:
+        optional: true
+
+  allure-playwright@3.9.0:
+    resolution: {integrity: sha512-bv8J4BaHhs7Cd7GaAz7xEuD6vthZuw235YtHpe/9y7FDPn3oB6n6KcxZOhU0lYvwVKO5cUVqnquHKqoLkSCrgA==}
+    peerDependencies:
+      '@playwright/test': '>=1.53.0'
 
   allure@3.6.2:
     resolution: {integrity: sha512-UVbdAw1ljdcvvp8zI41bM6Ujcho9yCaC8NkG7v6LBDiRD6Q6mtl076KIr+DOeVGQidRHzQTZxIVrFCG8qpogEA==}
@@ -20718,6 +20737,17 @@ snapshots:
       '@algolia/requester-node-http': 5.50.0
 
   alien-signals@0.4.14: {}
+
+  allure-js-commons@3.9.0(allure-playwright@3.9.0(@playwright/test@1.58.2)):
+    dependencies:
+      md5: 2.3.0
+    optionalDependencies:
+      allure-playwright: 3.9.0(@playwright/test@1.58.2)
+
+  allure-playwright@3.9.0(@playwright/test@1.58.2):
+    dependencies:
+      '@playwright/test': 1.58.2
+      allure-js-commons: 3.9.0(allure-playwright@3.9.0(@playwright/test@1.58.2))
 
   allure@3.6.2(preact@10.29.0)(typescript@6.0.3):
     dependencies:

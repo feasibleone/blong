@@ -112,7 +112,7 @@ async function discoverLayerFolders(
         const layerFile = join(base, name, `${LAYER_FILE}.${kind_}.ts`);
         if (existsSync(layerFile)) {
             // Read activation from layer.server.ts / layer.browser.ts
-            const mod = await import(layerFile).catch(() => null);
+            const mod = await import(/* @vite-ignore */ layerFile).catch(() => null);
             const activation = mod?.default ?? {default: true};
             result.push([name, activation]);
         } else if (name in WELL_KNOWN_LAYERS && WELL_KNOWN_LAYERS[name][kind_]) {
@@ -153,7 +153,7 @@ async function discoverRealmTestMethods(
     for (const file of files) {
         const filePath = join(testDir, file.name);
         try {
-            const mod = await import(filePath);
+            const mod = await import(/* @vite-ignore */ filePath);
             const fn = mod?.default;
             if (typeof fn === 'function') {
                 const result = fn({
@@ -611,7 +611,7 @@ export default async function loadRealm<T extends TSchema>(
                             : folderPath;
                         item = async () => {
                             try {
-                                const mod = await import(fileName);
+                                const mod = await import(/* @vite-ignore */ fileName);
                                 return mod.default ?? mod;
                             } catch (error) {
                                 if (
@@ -633,7 +633,7 @@ export default async function loadRealm<T extends TSchema>(
                                     ) {
                                         const {createRealm} = await import('./kopi.ts');
                                         await createRealm(destUrl, logger);
-                                        const mod = await import(fileName);
+                                        const mod = await import(/* @vite-ignore */ fileName);
                                         return mod.default ?? mod;
                                     }
                                 }
