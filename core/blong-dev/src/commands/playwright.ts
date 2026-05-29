@@ -33,8 +33,10 @@ export async function playwright(args: string[]): Promise<void> {
     const run = (cmd: string, runArgs: string[]) =>
         runTool(cmd, runArgs, {cwd, env} satisfies RunOptions);
 
-    // In CI, install browsers using the package's own Playwright version
-    if (process.env.CI) {
+    // In CI, ensure browsers and system deps are available.
+    // The rush.yaml workflow pre-installs and caches browsers, so this is typically a no-op.
+    // Skip when PLAYWRIGHT_SKIP_INSTALL is set to avoid parallel dpkg lock contention.
+    if (process.env.CI && !process.env.PLAYWRIGHT_SKIP_INSTALL) {
         await run('playwright', ['install', '--with-deps']);
     }
 
