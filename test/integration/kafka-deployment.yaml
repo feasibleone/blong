@@ -55,16 +55,27 @@ spec:
           requests:
             cpu: "0.25"
             memory: 256Mi
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - sh
+              - -c
+              - |
+                until kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1; do
+                  sleep 3
+                done
+                kafka-topics --bootstrap-server localhost:9092 \
+                  --create --if-not-exists \
+                  --topic blong-integration \
+                  --partitions 1 \
+                  --replication-factor 1
         livenessProbe:
-          exec:
-            command:
-            - kafka-topics
-            - --bootstrap-server
-            - localhost:9092
-            - --list
-          initialDelaySeconds: 60
+          tcpSocket:
+            port: 9092
+          initialDelaySeconds: 30
           periodSeconds: 15
-          timeoutSeconds: 10
+          timeoutSeconds: 5
           failureThreshold: 6
 ---
 apiVersion: v1
