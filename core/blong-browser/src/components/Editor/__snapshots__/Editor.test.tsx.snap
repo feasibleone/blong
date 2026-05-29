@@ -22,6 +22,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-save"
           disabled=""
           form="_r_0_"
           type="submit"
@@ -38,6 +39,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-cancel"
           disabled=""
           type="button"
         >
@@ -1748,6 +1750,7 @@ exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-save"
           form="_r_8_"
           type="submit"
         >
@@ -1763,6 +1766,7 @@ exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-cancel"
           type="button"
         >
           <span
@@ -2125,6 +2129,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-save"
           disabled=""
           form="_r_a_"
           type="submit"
@@ -2141,6 +2146,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-cancel"
           disabled=""
           type="button"
         >
@@ -3619,6 +3625,7 @@ exports[`<Editor /> > CustomEditors render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-save"
           disabled=""
           form="_r_c_"
           type="submit"
@@ -3635,6 +3642,7 @@ exports[`<Editor /> > CustomEditors render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-cancel"
           disabled=""
           type="button"
         >
@@ -3878,6 +3886,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -5073,6 +5082,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -6268,6 +6278,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -7463,6 +7474,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -8658,6 +8670,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -9853,6 +9866,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-save"
           disabled=""
           form="_r_e_"
           type="submit"
@@ -9869,6 +9883,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-cancel"
           disabled=""
           type="button"
         >
@@ -10344,6 +10359,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -11122,6 +11138,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-save"
           disabled=""
           form="_r_k_"
           type="submit"
@@ -11138,6 +11155,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-cancel"
           disabled=""
           type="button"
         >
@@ -12944,6 +12962,7 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-save"
           disabled=""
           form="_r_i_"
           type="submit"
@@ -12960,6 +12979,7 @@ exports[`<Editor /> > Pivot render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2 p-disabled"
+          data-testid="editor-cancel"
           disabled=""
           type="button"
         >
@@ -14772,6 +14792,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
             <button
               aria-label="Save"
               class="p-button p-component p-button-icon-only mr-2 p-disabled"
+              data-testid="editor-save"
               disabled=""
               form="_r_m_"
               type="submit"
@@ -14788,6 +14809,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
             <button
               aria-label="Reset"
               class="p-button p-component p-button-icon-only mr-2 p-disabled"
+              data-testid="editor-cancel"
               disabled=""
               type="button"
             >
@@ -14940,6 +14962,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
             <button
               aria-label="Save"
               class="p-button p-component p-button-icon-only mr-2 p-disabled"
+              data-testid="editor-save"
               disabled=""
               form="_r_o_"
               type="submit"
@@ -14956,6 +14979,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
             <button
               aria-label="Reset"
               class="p-button p-component p-button-icon-only mr-2 p-disabled"
+              data-testid="editor-cancel"
               disabled=""
               type="button"
             >
@@ -15108,6 +15132,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
             <button
               aria-label="Save"
               class="p-button p-component p-button-icon-only mr-2 p-disabled"
+              data-testid="editor-save"
               disabled=""
               form="_r_q_"
               type="submit"
@@ -15124,6 +15149,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
             <button
               aria-label="Reset"
               class="p-button p-component p-button-icon-only mr-2 p-disabled"
+              data-testid="editor-cancel"
               disabled=""
               type="button"
             >
@@ -15277,6 +15303,7 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -16363,6 +16390,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-save"
           form="_r_18_"
           type="submit"
         >
@@ -16378,6 +16406,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-cancel"
           type="button"
         >
           <span
@@ -17558,6 +17587,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -18753,6 +18783,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -19948,6 +19979,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -21143,6 +21175,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -22338,6 +22371,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -22865,6 +22899,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -24060,6 +24095,7 @@ exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -24624,6 +24660,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
         <button
           aria-label="Edit"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-edit"
           type="button"
         >
           <span
@@ -25819,6 +25856,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-save"
           form="_r_14_"
           type="submit"
         >
@@ -25834,6 +25872,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-cancel"
           type="button"
         >
           <span
@@ -27026,6 +27065,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
         <button
           aria-label="Save"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-save"
           form="_r_16_"
           type="submit"
         >
@@ -27041,6 +27081,7 @@ exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
         <button
           aria-label="Reset"
           class="p-button p-component p-button-icon-only mr-2"
+          data-testid="editor-cancel"
           type="button"
         >
           <span

@@ -108,6 +108,7 @@ exports[`Login > renders the login form 1`] = `
           class="blong-login__submit p-button p-component"
           data-pc-name="button"
           data-pc-section="root"
+          data-testid="login-submit"
           type="submit"
         >
           <span
@@ -241,6 +242,7 @@ exports[`Login > renders with custom title 1`] = `
           class="blong-login__submit p-button p-component"
           data-pc-name="button"
           data-pc-section="root"
+          data-testid="login-submit"
           type="submit"
         >
           <span
@@ -400,6 +402,7 @@ exports[`Login > renders with external error 1`] = `
           class="blong-login__submit p-button p-component"
           data-pc-name="button"
           data-pc-section="root"
+          data-testid="login-submit"
           type="submit"
         >
           <span
@@ -530,6 +533,7 @@ exports[`Login > renders with loading state 1`] = `
           class="blong-login__submit p-button p-component p-disabled p-button-loading p-button-loading-label-only p-button-loading-left"
           data-pc-name="button"
           data-pc-section="root"
+          data-testid="login-submit"
           disabled=""
           type="submit"
         >
@@ -692,6 +696,7 @@ exports[`Login > renders with register button 1`] = `
           class="blong-login__submit p-button p-component"
           data-pc-name="button"
           data-pc-section="root"
+          data-testid="login-submit"
           type="submit"
         >
           <span
