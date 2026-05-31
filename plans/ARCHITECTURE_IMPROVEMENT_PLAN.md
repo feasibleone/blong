@@ -120,7 +120,7 @@ No shared `tsconfig.base.json` exists — each package defines its own from scra
 ### Current State
 
 Only 5 of 17 packages have a local `.eslintrc.config.cjs`:
-`blong-gogo`, `blong-graph`, `blong-ui` (excluded), `ui-demo`, `core/test`
+`blong-gogo`, `blong-graph`, `blong-ui` (excluded), `blong-suite`, `core/test`
 
 The remaining 12 packages rely on `@rushstack/heft-lint-plugin` with no local config override.
 
@@ -164,10 +164,12 @@ Concepts, patterns, and rationale docs exist for: architecture, adapters, codecs
 ### Current State
 
 Two workflows delegate to shared `infitx-org/actions`:
+
 - `build.yaml` — triggers on PR to `main`; runs Rush build + Chromatic visual tests
 - `release.yaml` — triggers on push to `main`; publishes packages
 
 Observations:
+
 - No test coverage reporting or badges
 - Integration tests (`blong-int-sql`) require Kubernetes (k3d) — unclear whether they run in CI or are manual-only
 - No build status badge on root `README.md`
@@ -184,13 +186,13 @@ Observations:
 
 ### Current State
 
-`release-please-config.json` tracks 18 packages. The `.release-please-manifest.json` contains version entries for all of them including `core/ui-demo` (version `1.0.0` after the recent move from `dev/ui-demo`).
+`release-please-config.json` tracks 18 packages. The `.release-please-manifest.json` contains version entries for all of them including `core/blong-suite` (version `1.0.0` after the recent move from `dev/blong-suite`).
 
-The `ui-demo` entry in `rush.json` still carries `"tag": "dev"` which may be incorrect now that the package has moved to `core/`.
+The `blong-suite` entry in `rush.json` still carries `"tag": "dev"` which may be incorrect now that the package has moved to `core/`.
 
 ### Proposed Work
 
-1. Verify and update `rush.json` tag for `core/ui-demo` (`"tag": "dev"` → `"tag": "core"` if appropriate)
+1. Verify and update `rush.json` tag for `core/blong-suite` (`"tag": "dev"` → `"tag": "core"` if appropriate)
 2. Confirm `.release-please-manifest.json` entry is consistent after the move
 
 ---

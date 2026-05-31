@@ -3,18 +3,18 @@
 // Usage:
 //   node scripts/browser-compat-check.mjs
 //
-// Starts the ui-demo Vite dev server, opens Chromium via Playwright,
+// Starts the blong-suite Vite dev server, opens Chromium via Playwright,
 // captures ALL console output and network errors, prints a summary, and exits.
 // Run after every code change. Exit code 1 if errors were found.
 
-import {chromium} from 'playwright';
 import {spawn} from 'child_process';
+import {chromium} from 'playwright';
 
 const TIMEOUT_MS = 30_000;
 
 async function startVite() {
     const proc = spawn('node', ['../../common/scripts/install-run-rush-pnpm.js', 'run', 'dev'], {
-        cwd: new URL('../../ui-demo', import.meta.url).pathname,
+        cwd: new URL('../../blong-suite', import.meta.url).pathname,
         stdio: 'pipe',
     });
     // Wait until Vite prints its "ready" line; strip ANSI codes before matching
@@ -47,7 +47,7 @@ async function run() {
     page.on('console', msg => {
         const type = msg.type();
         const text = msg.text();
-        if (type === 'error')   errors.push(text);
+        if (type === 'error') errors.push(text);
         if (type === 'warning') warnings.push(text);
         // print everything so the agent log shows real-time output
         console.log(`[browser:${type}] ${text}`);
@@ -85,4 +85,7 @@ async function run() {
     }
 }
 
-run().catch(err => { console.error('Browser compatibility check failed:', err); process.exit(1); });
+run().catch(err => {
+    console.error('Browser compatibility check failed:', err);
+    process.exit(1);
+});

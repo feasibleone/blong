@@ -255,9 +255,10 @@ export const Default = {
 };
 ```
 
-### Model page stories (ui-demo)
+### Model page stories (realm package)
 
-For end-to-end model page stories, use the `Model` component with `withBlong(browser)` in the
+For end-to-end model page stories, use the `page()` / `portal()` helpers from
+`@feasibleone/blong-browser/storyHelper.tsx` with `withBlong(browser)` in the
 `.storybook/preview.tsx`. This loads the full blong platform including the mock adapter:
 
 ```tsx

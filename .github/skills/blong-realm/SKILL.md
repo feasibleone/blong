@@ -1,15 +1,23 @@
 ---
 name: blong-realm
-description: Create business domain boundaries in Blong framework. Realms separate business logic into independent, modular units that can be deployed as monolith or microservices. Make sure to use this skill whenever creating a new business domain or service in Blong — even if the user says 'add a new module', 'create a new service', or 'set up a new package'.
+description:
+    Create business domain boundaries in Blong framework. Realms separate business logic into
+    independent, modular units that can be deployed as monolith or microservices. Make sure to use
+    this skill whenever creating a new business domain or service in Blong — even if the user says
+    'add a new module', 'create a new service', or 'set up a new package'.
 ---
 
 # Implementing a Realm
 
 ## Overview
 
-A realm is a business domain boundary in the Blong framework. Realms separate business logic into independent, modular units that can be developed independently and deployed together (monolith) or separately (microservices).
+A realm is a business domain boundary in the Blong framework. Realms separate business logic into
+independent, modular units that can be developed independently and deployed together (monolith) or
+separately (microservices).
 
-**Key Pattern:** Well-known layer folders (`error`, `adapter`, `orchestrator`, `gateway`, `sim`, `test`) are auto-discovered — no `layer.server.ts` needed. Custom folder names can add a `layer.server.ts` / `layer.browser.ts` to declare activation.
+**Key Pattern:** Well-known layer folders (`error`, `adapter`, `orchestrator`, `gateway`, `sim`,
+`test`) are auto-discovered — no `layer.server.ts` needed. Custom folder names can add a
+`layer.server.ts` / `layer.browser.ts` to declare activation.
 
 ## Purpose
 
@@ -50,8 +58,8 @@ Only needed for non-well-known folder names. Declares activation per environment
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true,        // active in all environments (regardless of intents)
-    microservice: true,   // additionally active when the microservice intent is present
+    default: true, // active in all environments (regardless of intents)
+    microservice: true, // additionally active when the microservice intent is present
 });
 ```
 
@@ -60,30 +68,31 @@ export default layer({
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    integration: true,   // active only when the integration intent is present
+    integration: true, // active only when the integration intent is present
 });
 ```
 
 ### Well-known Folder Defaults
 
-Well-known folders are automatically activated without any `layer.*.ts` file.
-The key in each cell is the **intent** that must be active for the layer to load:
+Well-known folders are automatically activated without any `layer.*.ts` file. The key in each cell
+is the **intent** that must be active for the layer to load:
 
-| Folder | Server intent | Browser intent |
-|--------|--------------|----------------|
-| `error` | `default` (always) | — |
-| `adapter` | `default` (always) | `default` (always) |
-| `orchestrator` | `default` (always) | — |
-| `gateway` | `default` (always) | — |
-| `sim` | `integration` | — |
-| `test` | `integration` | `integration` |
+| Folder         | Server intent      | Browser intent     |
+| -------------- | ------------------ | ------------------ |
+| `error`        | `default` (always) | —                  |
+| `adapter`      | `default` (always) | `default` (always) |
+| `orchestrator` | `default` (always) | —                  |
+| `gateway`      | `default` (always) | —                  |
+| `sim`          | `integration`      | —                  |
+| `test`         | `integration`      | `integration`      |
 
-Override any default by adding a `layer.server.ts` / `layer.browser.ts` to the folder.
-See the **blong-intent** skill for the full intents reference and how to create custom intents.
+Override any default by adding a `layer.server.ts` / `layer.browser.ts` to the folder. See the
+**blong-intent** skill for the full intents reference and how to create custom intents.
 
 ## Minimal server.ts (Only When Needed)
 
 `server.ts` is **only needed** when the realm has:
+
 - Realm-level validation schema
 - Realm-level default config (e.g. keys, URLs shared across layers)
 
@@ -197,36 +206,51 @@ Children can be loaded as:
 
 ```typescript
 children: [
-    './adapter',      // Scans adapter/ folder for self-contained layer files
-    './orchestrator'  // No server.ts needed in these folders
-]
+    './adapter', // Scans adapter/ folder for self-contained layer files
+    './orchestrator', // No server.ts needed in these folders
+];
 ```
 
-The framework auto-discovers `.ts` files in each child folder. If a `server.ts` exists in the child folder, it is used as the realm entry point instead (for nested realms like sub-domains).
+The framework auto-discovers `.ts` files in each child folder. If a `server.ts` exists in the child
+folder, it is used as the realm entry point instead (for nested realms like sub-domains).
 
 ### Async Imports (for external packages)
 
-When including external realm packages, use async imports in the APPLICATION-level `server.ts` / `browser.ts`:
+When including external realm packages, use async imports in the APPLICATION-level `server.ts` /
+`browser.ts`:
 
 ```typescript
 children: [
     async () => import('@feasibleone/blong-login/server.js'),
-    async () => import('@feasibleone/blong-openapi/server.js')
-]
+    async () => import('@feasibleone/blong-openapi/server.js'),
+];
 ```
 
 ## Best Practices
 
-1. **Well-known folders are zero-config:** `error`, `adapter`, `orchestrator`, `gateway`, `sim`, `test` are auto-discovered with sensible defaults — no `layer.server.ts` needed
-2. **Use `layer.server.ts` only for custom folders:** Non-well-known layer names must declare activation
+1. **Well-known folders are zero-config:** `error`, `adapter`, `orchestrator`, `gateway`, `sim`,
+   `test` are auto-discovered with sensible defaults — no `layer.server.ts` needed
+2. **Use `layer.server.ts` only for custom folders:** Non-well-known layer names must declare
+   activation
 3. **Omit `server.ts`** for standard realms — the framework auto-discovers well-known layer folders
 4. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
-5. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file using the `adapter(blong => ...)` pattern
+5. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file using
+   the `adapter(blong => ...)` pattern
 6. **Keep server.ts** only when realm-level validation schema or shared default config is needed
 
 ## Examples from Codebase
 
 See `core/test/demo/` for a complete example without server.ts:
+
 - No `layer.server.ts` files — auto-discovered via well-known folder names
 - Each adapter/orchestrator file is self-contained with its own config
 
+See `core/blong-marine/` for an example of a realm that can run both **standalone** (own Vite /
+Storybook / Playwright) **and** as a child of a larger suite:
+
+- `browser.ts` and `server.ts` are `browser()` / `server()` suite entries (not `realm()`)
+- They include all their own infrastructure (blong-browser, blong-server, blong-login) as children
+- A parent suite (e.g. `core/blong-suite/`) simply imports `@feasibleone/blong-marine/browser.ts` as
+  a child;
+- Adding a second realm to the suite: append one line to the parent `browser.ts` children array and
+  add the package to `realmPackages` in `playwright.config.ts` and `.storybook/main.ts`

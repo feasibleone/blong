@@ -312,9 +312,11 @@ The following are areas where the model system has known gaps:
    customisations, but the merging priority (model.schema → schemaOverride) should be confirmed
    before adding new override keys.
 
-5. **Storybook stories for model pages in ui-demo** — The model pages are exercised via the
-   `core/ui-demo/.storybook/` setup (using `withBlong(browser)` + the full blong platform loaded),
-   not via `blong-browser/.storybook/` per-component stories.
+5. **Storybook stories for model pages in realm packages** — The model pages are exercised via the
+   realm's own `.storybook/` setup (e.g. `core/blong-marine/.storybook/`, using `withBlong(browser)`
+   + the full blong platform loaded), not via `blong-browser/.storybook/` per-component stories.
+   The `page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` generate
+   story objects with minimal boilerplate.
 
 ---
 

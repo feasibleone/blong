@@ -49,7 +49,7 @@ export default (browser: Parameters<typeof load>[0]) =>
             let result: IRegistry | undefined;
             load(
                 browser,
-                'ui-demo',
+                'blong-suite',
                 {
                     browser: {
                         load: {

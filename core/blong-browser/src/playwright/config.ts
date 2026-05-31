@@ -11,6 +11,13 @@
  * export default defineBlongConfig();
  * ```
  *
+ * Include tests from realm packages (in addition to local `./test/`):
+ * ```ts
+ * export default defineBlongConfig({
+ *     realmPackages: ['@feasibleone/blong-marine'],
+ * });
+ * ```
+ *
  * Override any setting via the options parameter:
  * ```ts
  * export default defineBlongConfig({
@@ -19,16 +26,59 @@
  * });
  * ```
  */
-import {defineConfig, type PlaywrightTestConfig} from '@playwright/test';
+import {defineConfig, type PlaywrightTestConfig, type Project} from '@playwright/test';
+import {createRequire} from 'node:module';
+import {dirname} from 'node:path';
 import * as os from 'node:os';
 import type {IBlongTestOptions} from '../playwright.js';
 
-type BlongConfig = PlaywrightTestConfig<IBlongTestOptions>;
+type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
+    /**
+     * npm package names whose `test/` directories should be included.
+     * Each realm runs as a separate Playwright project.
+     *
+     * Adding a realm to a suite:
+     * ```ts
+     * realmPackages: ['@feasibleone/blong-marine', '@feasibleone/my-realm'],
+     * ```
+     */
+    realmPackages?: string[];
+};
+
+function resolveRealmTestDir(packageName: string): string | null {
+    const require = createRequire(import.meta.url);
+    try {
+        const pkgPath = require.resolve(`${packageName}/package.json`);
+        return dirname(pkgPath) + '/test';
+    } catch {
+        console.warn(`[blong-browser/playwright] Could not resolve test dir for ${packageName}`);
+        return null;
+    }
+}
 
 export function defineBlongConfig(
     overrides: BlongConfig = {},
 ): ReturnType<typeof defineConfig<IBlongTestOptions>> {
-    const {use, webServer, reporter, ...rest} = overrides;
+    const {use, webServer, reporter, realmPackages, projects: projectsOverride, ...rest} = overrides;
+
+    // Build projects: local test dir + one project per realm package
+    const realmProjects: Project<IBlongTestOptions>[] = (realmPackages ?? []).flatMap(pkg => {
+        const testDir = resolveRealmTestDir(pkg);
+        if (!testDir) return [];
+        const name = pkg.replace(/^@[^/]+\//, ''); // strip scope
+        return [{name, testDir, testMatch: '**/*.play.ts'}];
+    });
+
+    // If realm projects exist, the default project also needs explicit testDir
+    const defaultProject: Project<IBlongTestOptions> | undefined =
+        realmProjects.length > 0
+            ? {name: 'suite', testDir: './test', testMatch: '**/*.play.ts'}
+            : undefined;
+
+    const projects =
+        projectsOverride ??
+        (realmProjects.length > 0 ? [defaultProject!, ...realmProjects] : undefined);
+
     return defineConfig<IBlongTestOptions>({
         testDir: './test',
         testMatch: '**/*.play.ts',
@@ -79,6 +129,7 @@ export function defineBlongConfig(
                 timeout: 30_000,
             },
         ],
+        ...(projects ? {projects} : {}),
         ...rest,
     });
 }

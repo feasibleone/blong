@@ -24,5 +24,9 @@
         "files": true,
         "experimentalResolver": true
     },
-    "exclude": ["node_modules", ".lint", ".docusaurus", "dist"]
+    "exclude": ["node_modules", ".lint", ".docusaurus", "dist"],
+    "include": [
+        "**/*.ts",
+        "**/*.tsx"
+    ]
 }

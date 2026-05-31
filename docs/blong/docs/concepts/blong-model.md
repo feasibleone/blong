@@ -150,7 +150,10 @@ The `Model` React component (exported from `@feasibleone/blong-browser`) is the 
 render model pages in Storybook stories. It uses the full blong platform (loaded via
 `withBlong(browser)` in `.storybook/preview.tsx`) so all handlers are available.
 
-See `core/ui-demo/` for a working Storybook example using the marine biology realm.
+See `core/blong-marine/` for a working Storybook example using the marine biology realm.
+Stories live in `core/blong-marine/src/stories/` and use `page()` / `portal()` helpers from
+`@feasibleone/blong-browser/storyHelper.tsx`. The suite wrapper `core/blong-suite/`
+also exposes all realm stories by listing `@feasibleone/blong-marine` in `realmPackages`.
 
 ---
 

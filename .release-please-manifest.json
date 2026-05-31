@@ -16,6 +16,7 @@
     "core/blong-sim-tcp": "1.1.1",
     "core/blong-ttk": "1.2.1",
     "core/blong-browser": "1.9.0",
-    "core/ui-demo": "1.5.0",
+    "core/blong-marine": "1.0.0",
+    "core/blong-suite": "1.5.0",
     "core/blong-dev": "1.0.2"
 }

@@ -88,7 +88,7 @@
                 "config-hot-reload",
                 "handler-test-poc",
                 "test",
-                "ui-demo"
+                "blong-suite"
             ],
             "default": "test"
         }

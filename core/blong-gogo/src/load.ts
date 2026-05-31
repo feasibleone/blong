@@ -284,11 +284,12 @@ export default async function loadRealm<T extends TSchema>(
                             [realmName]: {},
                         },
                         integration: hasBrowser
-                            ? {default: {}} // browser side handles watch.test and canSkipSocket
+                            ? {default: {}, remote: {canSkipSocket: true}, resolution: true} // browser side handles watch.test; canSkipSocket needed here too for validation mocks
                             : {
                                   default: {},
                                   remote: {canSkipSocket: true},
                                   watch: {test: testMethods},
+                                  resolution: true, // Enable local resolution for standalone server realms
                               },
                     },
                 }));
@@ -525,9 +526,12 @@ export default async function loadRealm<T extends TSchema>(
         mergedConfig.watch.configs = mergedConfig.configs;
 
     // Auto-discover layer folders not already listed in mod.children
-    const base = mergedConfig.url.startsWith('file://')
-        ? platformApi.dirname(mergedConfig.url.slice(7))
-        : platformApi.dirname(mergedConfig.url);
+    // Use empty base when url is empty (e.g. minimal wrapper) to prevent scanning CWD
+    const base = mergedConfig.url
+        ? mergedConfig.url.startsWith('file://')
+            ? platformApi.dirname(mergedConfig.url.slice(7))
+            : platformApi.dirname(mergedConfig.url)
+        : '';
     mergedConfig.base = base;
     const children = Array.isArray(mod.children) ? mod.children : [];
     const extraChildren: (
@@ -621,7 +625,7 @@ export default async function loadRealm<T extends TSchema>(
                                 )
                                     throw error;
 
-                                if (mergedConfig?.kopi?.realm) {
+                                if (mergedConfig?.kopi?.realm && !(itemName in WELL_KNOWN_LAYERS)) {
                                     let destUrl = import.meta.resolve(fileName);
                                     destUrl = destUrl.startsWith('file://')
                                         ? platformApi.dirname(destUrl.slice(7))

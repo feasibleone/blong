@@ -6,6 +6,7 @@ export default handler<{shouldRender?: boolean; portal?: IBlongPortalConfig}, {c
     (blong) => {
         const {config: {shouldRender}} = blong;
         return async function ready(params, _$meta) {
+            if (!globalThis.window) return;
             const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
                 import('react'),
                 import('react-dom/client'),

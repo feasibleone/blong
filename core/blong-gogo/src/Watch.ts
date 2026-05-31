@@ -43,6 +43,7 @@ const isCode = (filename: string): boolean => /(?<!\.d)\.m?(t|j)sx?$/i.test(file
 const isLayerActivation = (filename: string): boolean =>
     /^layer\.(server|browser)\.[mc]?[tj]sx?$/i.test(filename);
 const isConfig = (filename: string): boolean => /^config\.[mc]?[tj]sx?$/i.test(filename);
+const isPlay = (filename: string): boolean => /\.play\.[mc]?[tj]sx?$/i.test(filename);
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
@@ -274,7 +275,8 @@ export default class Watch extends Internal implements IWatch {
                     entry.isFile() &&
                     isCode(entry.name) &&
                     !isLayerActivation(entry.name) &&
-                    !isConfig(entry.name),
+                    !isConfig(entry.name) &&
+                    !isPlay(entry.name),
             );
         await this.#apiSchema?.generateDir(dir, handlerFiles as Dirent[]);
         for (const handlerEntry of handlerFiles) {
@@ -379,7 +381,11 @@ export default class Watch extends Internal implements IWatch {
         } else if (isFile) {
             // if (isFile !== true) debugger;
             const filename = this.#platform.join(...path);
-            if (isCode(filename) && !isLayerActivation(this.#platform.basename(filename))) {
+            if (
+                isCode(filename) &&
+                !isLayerActivation(this.#platform.basename(filename)) &&
+                !isPlay(this.#platform.basename(filename))
+            ) {
                 const item =
                     typeof isFile === 'function'
                         ? (await isFile()).default

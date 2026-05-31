@@ -35,6 +35,7 @@ export default realm(blong => ({
         default: {
             orchestrator: true,
             backend: true,
+            adapter: true,
         },
     },
 }));

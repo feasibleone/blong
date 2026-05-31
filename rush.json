@@ -621,8 +621,8 @@
             "tags": ["core"]
         },
         {
-            "packageName": "@feasibleone/ui-demo",
-            "projectFolder": "core/ui-demo",
+            "packageName": "@feasibleone/blong-suite",
+            "projectFolder": "core/blong-suite",
             "reviewCategory": "core",
             "tags": ["core"]
         }

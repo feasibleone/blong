@@ -19,7 +19,8 @@
         "core/blong-test": {},
         "core/blong-ttk": {},
         "core/test": {},
-        "core/ui-demo": {},
+        "core/blong-marine": {},
+        "core/blong-suite": {},
         "docs/blong": {},
         "ext/rest-fs": {}
     }

@@ -38,7 +38,10 @@ export interface IBlongTestOptions {
  * so tests read like user stories rather than CSS selector chains.
  */
 export class Portal {
-    constructor(public readonly page: Page) {}
+    readonly page: Page;
+    constructor(page: Page) {
+        this.page = page;
+    }
 
     // ── Login ────────────────────────────────────────────────────────────────
 

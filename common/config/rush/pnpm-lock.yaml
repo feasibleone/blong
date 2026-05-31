@@ -916,12 +916,60 @@ importers:
         specifier: ^1.1.5
         version: 1.1.8
     devDependencies:
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../blong-browser
       '@feasibleone/blong-dev':
         specifier: workspace:*
         version: link:../blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../blong-server
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@storybook/addon-a11y':
+        specifier: ^10.3.6
+        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@storybook/react-vite':
+        specifier: ^10.3.6
+        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
+      '@storybook/test-runner':
+        specifier: ^0.24.3
+        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       '@types/node':
         specifier: ^24
         version: 24.12.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.6.2
+        version: 3.9.0(@playwright/test@1.60.0)
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      storybook:
+        specifier: ^10.3.6
+        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1080,6 +1128,79 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+
+  ../../core/blong-suite:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      '@feasibleone/blong-marine':
+        specifier: workspace:^1.0.0
+        version: link:../blong-marine
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../blong-server
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../blong-browser
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@storybook/addon-a11y':
+        specifier: ^10.3.6
+        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@storybook/addon-docs':
+        specifier: ^10.3.6
+        version: 10.3.6(@types/react@19.2.14)(esbuild@0.27.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
+      '@storybook/react-vite':
+        specifier: ^10.3.6
+        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
+      '@storybook/test-runner':
+        specifier: ^0.24.3
+        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.6.2
+        version: 3.9.0(@playwright/test@1.60.0)
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      storybook:
+        specifier: ^10.3.6
+        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.8
+        version: 8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
+      vite-plugin-dts:
+        specifier: ^4.5.4
+        version: 4.5.4(@types/node@24.12.0)(typescript@6.0.3)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
 
   ../../core/blong-template:
     dependencies:
@@ -1346,79 +1467,6 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-
-  ../../core/ui-demo:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-marine':
-        specifier: workspace:^1.0.0
-        version: link:../blong-marine
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@storybook/addon-a11y':
-        specifier: ^10.3.6
-        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@storybook/addon-docs':
-        specifier: ^10.3.6
-        version: 10.3.6(@types/react@19.2.14)(esbuild@0.27.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
-      '@storybook/react-vite':
-        specifier: ^10.3.6
-        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
-      '@storybook/test-runner':
-        specifier: ^0.24.3
-        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      '@vitejs/plugin-react':
-        specifier: ^6.0.1
-        version: 6.0.1(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
-      allure-playwright:
-        specifier: ^3.6.2
-        version: 3.9.0(@playwright/test@1.60.0)
-      primeicons:
-        specifier: ^7.0.0
-        version: 7.0.0
-      storybook:
-        specifier: ^10.3.6
-        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.8
-        version: 8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
-      vite-plugin-dts:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/node@24.12.0)(typescript@6.0.3)(vite@8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
 
   ../../docs/blong:
     dependencies:

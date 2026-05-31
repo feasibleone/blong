@@ -19,19 +19,45 @@
         "./storybook.js": {
             "development": "./storybook.ts",
             "import": "./storybook.ts"
-        }
+        },
+        "./package.json": "./package.json"
     },
     "scripts": {
+        "blong": "blong",
+        "blong-watch": "blong-watch",
         "build": "true",
-        "ci-lint": "blong-dev lint"
+        "build-storybook": "storybook build",
+        "ci-lint": "blong-dev lint",
+        "ci-ui": "blong-dev playwright",
+        "dev": "vite",
+        "playwright": "blong-dev playwright",
+        "playwright:update": "blong-dev playwright --update-snapshots",
+        "storybook": "storybook dev -p 6007",
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
         "typebox": "^1.1.5"
     },
     "devDependencies": {
+        "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",
+        "@feasibleone/blong-gogo": "workspace:^1.0.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
+        "@feasibleone/blong-server": "workspace:^1.0.0",
+        "@playwright/test": "^1.60.0",
+        "@storybook/addon-a11y": "^10.3.6",
+        "@storybook/react-vite": "^10.3.6",
+        "@storybook/test-runner": "^0.24.3",
         "@types/node": "^24",
+        "@types/react": "^19.1.2",
+        "@types/react-dom": "^19.1.2",
+        "@vitejs/plugin-react": "^6.0.1",
+        "allure-playwright": "^3.6.2",
+        "primeicons": "^7.0.0",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "storybook": "^10.3.6",
         "typescript": "^6.0.3",
         "vite": "^8.0.8"
     }

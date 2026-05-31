@@ -160,8 +160,9 @@ library (`Editor`, `Explorer`, `Form`, widgets, etc.). Uses the `withDispatch` d
 `@feasibleone/blong-marine/meta/storybook.js`. Best for developing and testing individual
 components in isolation.
 
-**`core/ui-demo/.storybook/`** — End-to-end model page stories using the `Model` component. Uses
-`withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
-platform (including the mock adapter and marine realm). Stories use the `page()` helper from
-`src/storyHelper.tsx`. Best for verifying complete CRUD flows for a realm. The canonical domain is
-**marine biology** (corals, habitats, fish families, species).
+**`core/blong-marine/src/stories/`** — End-to-end model page stories using the `Model` component.
+Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
+platform (including the mock adapter). Stories use the `page()` and `portal()` helpers from
+`@feasibleone/blong-browser/storyHelper.tsx`. Best for verifying complete CRUD flows for a realm.
+The canonical domain is **marine biology** (corals, habitats, fish families, species). Realm
+packages include their own `.storybook/` folder configured with `defineBlongStorybookMain()`.

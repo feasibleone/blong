@@ -220,36 +220,14 @@ config).
 ## Step 4 — Storybook Stories
 
 Use the `Model` component from `@feasibleone/blong-browser` to render model pages in stories. The
-canonical pattern is from `core/ui-demo/src/storyHelper.tsx`:
-
-```typescript
-// src/storyHelper.tsx
-import React from 'react';
-import {Model} from '@feasibleone/blong-browser';
-import type {StoryObj} from '@storybook/react-vite';
-
-export function page(
-    componentName: string,
-    idOrParams?: number | Record<string, unknown>,
-    extraParams?: Record<string, unknown>,
-): StoryObj {
-    const object = componentName.split('.')[1];
-    let params: Record<string, unknown> | undefined;
-    if (typeof idOrParams === 'number') {
-        params = {[`${object}Id`]: idOrParams, ...extraParams};
-    } else if (idOrParams != null || extraParams != null) {
-        params = {...idOrParams, ...extraParams};
-    }
-    return {render: () => <Model componentName={componentName} params={params} />};
-}
-```
+`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` reduce boilerplate:
 
 Then in story files:
 
 ```typescript
-// marine/src/pages/coral/Coral.stories.tsx
+// marine/src/stories/Coral.stories.tsx
 import type {Meta} from '@storybook/react-vite';
-import {page} from '../../storyHelper.js';
+import {page} from '@feasibleone/blong-browser/storyHelper.tsx';
 
 const meta: Meta = {title: 'Marine/Coral', parameters: {layout: 'fullscreen'}};
 export default meta;

@@ -35,6 +35,12 @@ stories and mocks is **marine biology** (corals, fish, etc.) — not the `ut-pri
 core/blong-browser/
   browser.ts              ← realm entry point (import in suite's browser.ts)
   storybook.tsx           ← withBlong(browser) decorator for model page Storybooks
+  src/
+    storyHelper.tsx       ← page() / portal() story factory helpers for any realm
+    vite.ts               ← defineBlongViteConfig() — reusable Vite config factory
+    storybookMain.ts      ← defineBlongStorybookMain() — reusable Storybook main.ts factory
+    playwright/
+      config.ts           ← defineBlongConfig() — Playwright config factory (with realmPackages)
   adapter/
     backend.ts            ← HTTP JSON-RPC adapter (namespace: backend)
     mock.ts               ← Auto-generated CRUD mock adapter (namespace: backend; storybook/integration only)
@@ -656,18 +662,52 @@ Named handlers in `dispatch.tsx` follow the pattern `{entity}{Entity}{Verb}`:
 - `coralCoralLoad` — never resolves (skeleton state)
 - `coralCoralEditError` — rejects with server-side validation errors
 
-### `core/ui-demo/.storybook/` — model page stories
+### Realm model page stories (e.g. `core/blong-marine/src/stories/`)
 
 Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
 platform (including the mock adapter) so model pages work without a running server. Stories use the
-`Model` component:
+`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx`:
 
 ```tsx
-import {Model} from '@feasibleone/blong-browser';
-export const CoralBrowse = {render: () => <Model componentName="marine.coral.browse" />};
+import {page, portal} from '@feasibleone/blong-browser/storyHelper.tsx';
+export const CoralBrowse = page('marine.coral.browse');
+export const CoralOpen = page('marine.coral.open', 1);
+export const Portal = portal();
 ```
 
-The `page()` helper in `src/storyHelper.tsx` simplifies this further — see the blong-model skill.
+See the **blong-model** skill for full story setup instructions.
+
+### Reusable config helpers for realm packages
+
+Three helpers make it trivial for any realm to run standalone with Vite, Storybook, and Playwright:
+
+**`defineBlongViteConfig(options)`** — Vite config factory:
+```typescript
+// vite.config.ts
+import {defineBlongViteConfig} from '@feasibleone/blong-browser/vite.ts';
+export default defineBlongViteConfig({importMetaUrl: import.meta.url});
+```
+
+**`defineBlongStorybookMain(options)`** — Storybook main.ts factory:
+```typescript
+// .storybook/main.ts
+import {defineBlongStorybookMain} from '@feasibleone/blong-browser/storybookMain.ts';
+export default defineBlongStorybookMain({
+    importMetaDirname: __dirname,
+    // A suite can add realm stories:
+    // realmPackages: ['@feasibleone/blong-marine', '@feasibleone/my-realm'],
+});
+```
+
+**`defineBlongConfig(options)`** — Playwright config factory (already existed; extended with `realmPackages`):
+```typescript
+// playwright.config.ts
+import {defineBlongConfig} from '@feasibleone/blong-browser/playwright/config';
+export default defineBlongConfig({
+    // A suite can add realm tests:
+    // realmPackages: ['@feasibleone/blong-marine', '@feasibleone/my-realm'],
+});
+```
 
 ### Common Storybook conventions
 

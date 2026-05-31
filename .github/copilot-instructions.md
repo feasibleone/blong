@@ -50,8 +50,9 @@ local scratch area; `docs/` — documentation site.
 - `core/blong-sim-tcp/` - example of simulating TCP-based back ends
 - `core/config-hot-reload/` - examples of the unified handler-test concept
 - `core/test/` - main framework test suite
-- `core/ui-demo/` - example for browser-based UI development with Blong, using the model system and
-  a marine biology domain
+- `core/blong-marine/` - marine biology realm — example of model system usage with stories and E2E
+  tests
+- `core/blong-suite/` - full stack demonstration suite
 
 ---
 
@@ -651,10 +652,11 @@ The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in co
 
 ## Local Development Environment
 
-### Storybook (blong-browser / ui-demo)
+### Storybook (blong-browser / blong-marine / blong-suite)
 
-When working on `core/blong-browser/` or `core/ui-demo/`, Storybook may already be running on
-`http://localhost:6006`. A shared browser tab pointing to it may also be available in the session.
+When working on `core/blong-browser/`, `core/blong-marine/`, or `core/blong-suite/`, Storybook may
+already be running on `http://localhost:6006`. A shared browser tab pointing to it may also be
+available in the session.
 
 **Check if Storybook is running and which package it belongs to:**
 
@@ -662,10 +664,10 @@ When working on `core/blong-browser/` or `core/ui-demo/`, Storybook may already 
 PID=$(ss -tlnp | grep ':6006' | grep -oP 'pid=\K[0-9]+'); [ -n "$PID" ] && readlink /proc/$PID/cwd || echo "Storybook not running"
 ```
 
-This prints the working directory of the Storybook process (e.g. `.../core/ui-demo` or
-`.../core/blong-browser`), making it clear which package's Storybook is running. If the port is
-listening, open or reuse the shared browser tab at `http://localhost:6006` to validate UI changes
-interactively after each edit.
+This prints the working directory of the Storybook process (e.g. `.../core/blong-marine`,
+`.../core/blong-suite`, or `.../core/blong-browser`), making it clear which package's Storybook is
+running. If the port is listening, open or reuse the shared browser tab at `http://localhost:6006`
+to validate UI changes interactively after each edit.
 
 ### Integration test backends (blong-int-adapter)
 

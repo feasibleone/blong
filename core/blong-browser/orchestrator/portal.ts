@@ -7,7 +7,6 @@
  */
 import {orchestrator, type IHandlerProxy} from '@feasibleone/blong';
 import type {IPortalConfig} from '../src/index.ts';
-import component from '../src/model/component/subjectObjectComponent.ts';
 
 export default orchestrator<{
     portal?: IPortalConfig;
@@ -31,7 +30,12 @@ export default orchestrator<{
         layerApi: IHandlerProxy<unknown>;
         kind: string;
     }) {
-        if (kind === 'model') {
+        // Only build React components when running in a real browser environment.
+        // In Node.js (blong-watch), JSX files cannot be parsed, so we skip this.
+        if (kind === 'model' && globalThis.window) {
+            const {default: component} = await import(
+                '../src/model/component/subjectObjectComponent.ts'
+            );
             const models = await Promise.all(Object.values(handlers).map(model => model()));
             return await component.apply(this, [models, layerApi]);
         }
