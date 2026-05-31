@@ -27,12 +27,6 @@
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
 import type {IHandlerProxy} from '@feasibleone/blong';
-import {
-    coralCategoryFixtures,
-    coralFixtures,
-    coralStoryValue,
-    marineDropdownData,
-} from '@feasibleone/blong-marine/storybook.js';
 import React from 'react';
 import {App} from '../src/components/App/App.js';
 import {Explorer} from '../src/components/Explorer/Explorer.js';
@@ -43,6 +37,12 @@ import type {IModelSpec} from '../src/index.js';
 import {blongEvents} from '../src/lib/eventBus.js';
 import {useAppStore} from '../src/state/appStore.js';
 import type {IBlongError} from '../src/types/action.js';
+import {
+    coralCategoryFixtures,
+    coralFixtures,
+    coralStoryValue,
+    marineDropdownData,
+} from './marine.js';
 
 /**
  * Controls which dispatch calls show a Storybook toast on success:
@@ -306,7 +306,7 @@ export const bgTranslations = parseTranslations(`
 `);
 /* spell-checker: enable */
 
-// Marine fixture data imported from @feasibleone/blong-marine/storybook.js:
+// Marine fixture data imported from ./marine.js:
 //   coralStoryValue, marineDropdownData, coralCategoryFixtures, coralFixtures
 // Re-export for any story files that import them directly from this module.
 export {coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData};

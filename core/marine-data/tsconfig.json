@@ -14,8 +14,7 @@
         "allowImportingTsExtensions": true,
         "strict": true,
         "noEmit": true,
-        "skipLibCheck": true,
-        "types": ["node"]
+        "skipLibCheck": true
     },
     "ts-node": {
         "esm": true,

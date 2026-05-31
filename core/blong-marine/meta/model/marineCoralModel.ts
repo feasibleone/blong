@@ -1,5 +1,5 @@
 import {model} from '@feasibleone/blong';
-import {coralTypeOptions} from '../../data/index.ts';
+import {coralTypeOptions} from '@feasibleone/marine-data';
 
 export default model(
     () =>

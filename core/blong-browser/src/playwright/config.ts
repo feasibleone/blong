@@ -28,8 +28,8 @@
  */
 import {defineConfig, type PlaywrightTestConfig, type Project} from '@playwright/test';
 import {createRequire} from 'node:module';
-import {dirname} from 'node:path';
 import * as os from 'node:os';
+import {dirname} from 'node:path';
 import type {IBlongTestOptions} from '../playwright.js';
 
 type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
@@ -59,7 +59,14 @@ function resolveRealmTestDir(packageName: string): string | null {
 export function defineBlongConfig(
     overrides: BlongConfig = {},
 ): ReturnType<typeof defineConfig<IBlongTestOptions>> {
-    const {use, webServer, reporter, realmPackages, projects: projectsOverride, ...rest} = overrides;
+    const {
+        use,
+        webServer,
+        reporter,
+        realmPackages,
+        projects: projectsOverride,
+        ...rest
+    } = overrides;
 
     // Build projects: local test dir + one project per realm package
     const realmProjects: Project<IBlongTestOptions>[] = (realmPackages ?? []).flatMap(pkg => {

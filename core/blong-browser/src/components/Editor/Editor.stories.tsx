@@ -6,14 +6,14 @@
  * - Schema and cards defined in blong-marine (coralEditorFixture) — single source of truth
  * - Handlers in .storybook/dispatch.tsx use coralCoral* prefix
  */
-import coralEditorFixture, {
-    coralStoryValue,
-    marineDropdownData,
-} from '@feasibleone/blong-marine/storybook.js';
 import type {Meta} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
 import React from 'react';
+import coralEditorFixture, {
+    coralStoryValue,
+    marineDropdownData,
+} from '../../../.storybook/marine.js';
 import {Card} from '../Card/Card.js';
 import {Explorer} from '../Explorer/Explorer.js';
 import type {IEditorProps} from './Editor.js';

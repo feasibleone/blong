@@ -9,8 +9,11 @@ export default defineConfig([
     {
         // Ignore generated and tool-managed directories across all packages
         ignores: [
+            '.playwright/**',
             '.rush/**',
             '.heft/**',
+            'allure-results/**',
+            'allure-report/**',
             '.tap/**',
             'dist/**',
             'storybook-static/**',

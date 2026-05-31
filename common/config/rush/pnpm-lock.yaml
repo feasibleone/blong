@@ -158,9 +158,9 @@ importers:
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
-      '@feasibleone/blong-marine':
+      '@feasibleone/marine-data':
         specifier: workspace:^1.0.0
-        version: link:../blong-marine
+        version: link:../marine-data
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.60.0
@@ -931,6 +931,9 @@ importers:
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../blong-server
+      '@feasibleone/marine-data':
+        specifier: workspace:^1.0.0
+        version: link:../marine-data
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.60.0
@@ -1391,6 +1394,12 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+
+  ../../core/marine-data:
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
 
   ../../core/test:
     dependencies:

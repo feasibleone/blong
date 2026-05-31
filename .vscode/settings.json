@@ -3,6 +3,7 @@
         "rush.json": "jsonc"
     },
     "search.exclude": {
+        "**/.playwright": true,
         "**/.rush": true,
         "**/.tap": true,
         "**/*.code-search": true,
@@ -22,6 +23,7 @@
         "**/temp": true
     },
     "files.watcherExclude": {
+        "**/.playwright/**": true,
         "**/.rush/**": true,
         "**/.tap/**": true,
         "**/*.code-search": true,

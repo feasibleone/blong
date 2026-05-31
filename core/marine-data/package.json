@@ -1,0 +1,14 @@
+{
+    "name": "@feasibleone/marine-data",
+    "version": "1.0.0",
+    "description": "Marine biology data",
+    "type": "module",
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*"
+    }
+}

@@ -8,8 +8,8 @@
  * The 'TemplatedComponent' story extends this by showing that both `component` and `params`
  * support `${fieldName}` template expressions resolved against the loaded form values.
  */
-import coralEditorFixture from '@feasibleone/blong-marine/storybook.js';
 import type {Meta} from '@storybook/react-vite';
+import coralEditorFixture from '../../../../.storybook/marine.js';
 import {Editor} from '../Editor.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Template} from '../Editor.stories.js';
