@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "description": "Marine biology data",
     "type": "module",
+    "exports": {
+        ".": "./index.ts"
+    },
     "scripts": {
         "build": "true",
         "ci-lint": "blong-dev lint"
