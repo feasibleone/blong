@@ -28,11 +28,7 @@ export default browser(blong => ({
         './demo',
     ],
     config: {
-        default: {
-            remote: {
-                canSkipSocket: true,
-            },
-        },
+        default: {},
         dev: {
             parking: {},
             login: {},

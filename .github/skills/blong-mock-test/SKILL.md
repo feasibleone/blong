@@ -205,10 +205,10 @@ export default realm(blong => ({
 }));
 ```
 
-## Step 6 – Enable in-process calls in the root server
+## Step 6 – Enable tests in the root server
 
-In the root `server.ts` (loaded by the test runner), set `remote.canSkipSocket: true`, set the
-servers to listen on random ports and list the test entry-points in `watch.test`:
+In the root `server.ts` (loaded by the test runner), set the servers to listen on random ports and
+list the test entry-points in `watch.test`:
 
 ```ts
 // server.ts (root)
@@ -228,7 +228,6 @@ export default server(blong => ({
             },
         },
         integration: {
-            remote: {canSkipSocket: true},
             watch: {
                 test: ['test.eip.claim'], // called by realm.test()
             },
@@ -236,9 +235,6 @@ export default server(blong => ({
     },
 }));
 ```
-
-`canSkipSocket: true` tells the framework to resolve `mock.*`, `eip.*`, and `test.*` calls through
-the in-process local registry instead of going through the RPC transport layer.
 
 ## Step 7 – Write the test runner
 

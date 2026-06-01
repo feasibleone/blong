@@ -449,6 +449,15 @@ The framework performs the following without explicit configuration:
   config changes all reload without dropping connections, with automatic test reruns.
 - **Kubernetes services:** In microservice mode, each orchestrator namespace becomes a separate
   Kubernetes service automatically.
+- **`canSkipSocket` auto-detection:** Set to `true` on the browser platform (default) and also in
+  the `integration` intent — no need to add `remote: {canSkipSocket: true}` in realm/suite configs.
+- **`resolution: true` in dev:** Enabled by default for the `dev` intent — no need to set it per
+  suite.
+- **Gateway static keys:** Development-time sign/encrypt JWK keys are generated automatically if no
+  keys are configured (env vars `GATEWAY_SIGN_KEY` / `GATEWAY_ENCRYPT_KEY` or explicit config). This
+  keeps Playwright sessions stable across server hot-reloads without any per-suite configuration.
+- **Gateway defaults in integration:** `debug: true` and `expectedErrors: true` are set by default
+  for the `integration` intent — no need to add them in suite/realm configs.
 
 ### Well-Known Layer Intents (Auto-discovery Defaults)
 
@@ -477,7 +486,8 @@ The intent listed is the CLI intent that must be active for the layer to load au
 ### Testing
 
 - **Unit tests:** Use `tap` framework (see package.json devDependencies)
-- **API tests:** Defined in `index.ts` — loads both server and browser platforms, runs tests from
+- **API tests:** `index.ts` is either a simple re-export of `server.ts` (declarative, detected by
+  kind) or a callback function that loads both server and browser platforms and runs tests from the
   browser side (fastest, simulates most common interaction)
 - **Internal API tests:** Defined in `internal.test.ts` — loads only server, uses `tap` for coverage
 - **HTTP testing:** Use `.http` files for manual/scripted API testing

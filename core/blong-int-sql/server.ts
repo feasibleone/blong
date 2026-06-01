@@ -15,7 +15,6 @@ export default server(blong => ({
         },
         microservice: {},
         integration: {
-            remote: {canSkipSocket: true},
             watch: {
                 test: ['test.mysql.query'],
             },

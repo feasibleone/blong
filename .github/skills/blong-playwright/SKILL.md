@@ -347,31 +347,8 @@ This ensures the edit test works regardless of prior server state.
 
 ## Static Gateway Keys
 
-To prevent session invalidation when the blong server hot-reloads, the suite's `server.ts` should
-configure static JWK keys for the `integration` intent:
-
-```typescript
-config: {
-    integration: {
-        gateway: {
-            sign: {kty: 'EC', crv: 'P-384', alg: 'ES384', use: 'sig', x: '...', y: '...', d: '...'},
-            encrypt: {kty: 'EC', crv: 'P-384', alg: 'ECDH-ES+A256KW', use: 'enc', x: '...', y: '...', d: '...'},
-        },
-    },
-}
-```
-
-Generate keys once with:
-
-```bash
-node --input-type=module -e "
-import {generateKeyPair, exportJWK} from 'jose';
-const sign = await generateKeyPair('ES384', {crv: 'P-384', extractable: true});
-const signJwk = await exportJWK(sign.privateKey);
-signJwk.alg = 'ES384'; signJwk.use = 'sig';
-console.log(JSON.stringify(signJwk));
-"
-```
+To prevent session invalidation when the blong server hot-reloads, the gateway includes static keys
+for the `integration` intent.
 
 ## Testing Best Practices
 

@@ -79,7 +79,7 @@ which enables the `test` layer.  The test layer brings up both `mockDispatch` (s
 mock handlers that simulate external dependencies) and `testDispatch` (serving test
 handlers that exercise the EIP pattern handlers).
 
-Because `remote.canSkipSocket: true` is set for the `integration` environment,
+Because `remote.canSkipSocket: true` is set for the `integration` intent,
 all cross-namespace calls stay in-process – no HTTP or RPC transport is needed.
 
 ## Key design decisions
@@ -100,8 +100,8 @@ adapter, in tests you swap in a mock handler.
 
 ### `canSkipSocket` for fully in-process integration tests
 
-Setting `remote: { canSkipSocket: true }` in the `integration` environment config
-lets the framework bypass the RPC transport layer entirely.  All handler calls
+By default `remote: { canSkipSocket: true }` is set for the `integration` intent,
+which lets the framework bypass the RPC transport layer entirely.  All handler calls
 (`eip.*`, `mock.*`, `test.*`) resolve through the in-process local registry,
 making the test suite fast and dependency-free.
 

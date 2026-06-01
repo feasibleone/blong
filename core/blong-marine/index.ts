@@ -17,7 +17,7 @@ export default server(() => ({
         },
         /** Marine biology demonstration realm */
         async function marine() {
-            return import('@feasibleone/blong-marine/server.ts');
+            return import('./server.ts');
         },
     ],
     config: {

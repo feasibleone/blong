@@ -30,7 +30,9 @@ together and defines the entry points for different platforms (server, browser, 
 suite-root/
 ├── server.ts           # Server-side suite entry point
 ├── browser.ts          # Browser-side suite entry point
-├── index.ts            # API test runner (server + browser)
+├── index.ts            # Re-exports server.ts (enables `blong index.ts`)
+├── index.html          # Browser app HTML entry point
+├── index.html.ts       # Browser app bootstrap (Vite entry — loads browser platform)
 ├── internal.test.ts    # Internal API tests (server only, tap coverage)
 ├── package.json        # Package definition
 ├── tsconfig.json       # TypeScript configuration
@@ -110,42 +112,45 @@ export default browser(blong => ({
 
 ## API Test Runner (index.ts)
 
-The `index.ts` file is the primary test entry point. It loads both the server and browser platforms
-and runs tests from the browser side. This simulates the most common interaction — application front
-ends — at the lowest possible latency.
-
-The browser platform is preferred for API tests because:
-
-- Fastest to run in Node.js
-- Closest to the most common interaction (browser front end)
-- Uses the same components as the real browser front end
+The `index.ts` in a suite is a simple re-export of `server.ts`. This allows `blong index.ts` to
+run the server platform by auto-detecting the `server()` kind:
 
 ```typescript
 // index.ts
-import browser from './browser.js';
-import server from './server.js';
+export {default} from './server.ts';
+```
 
-type Load = (
-    definition: object,
-    suiteName: string,
-    parentConfig: string | object,
-    intents: string[], // CLI intents to apply (e.g. 'microservice', 'dev', 'integration')
-) => Promise<{
-    start: () => Promise<unknown>;
-    test: () => Promise<unknown>;
-    stop: () => Promise<unknown>;
-}>;
+When `blong` (or `blong index.ts`) is run, the framework detects that the default export is a
+`server()` definition and starts it via `runPlatform()` directly — no intermediate load callback
+needed.
 
-export default async (load: Load): Promise<void> => {
-    const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
-        load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
-        load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
-    ]);
-    for (const platform of platforms) await platform.start();
-    await platforms[1].test(); // run tests from the browser side
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    if (process.env.CI) for (const platform of platforms) await platform.stop();
-};
+For running tests against both server and browser platforms simultaneously, use
+`internal.test.ts` (server-side tap coverage) or the Playwright CI tests (`ci-ui`). For suites
+that need a custom multi-platform test runner, see the **blong-test-api** skill.
+
+## Browser Entry Points
+
+The `index.html` is the HTML shell for the browser app. `index.html.ts` is the Vite TypeScript
+entry point that loads the browser platform:
+
+```typescript
+// index.html.ts
+import load from '@feasibleone/blong-gogo';
+import browser from './browser.ts';
+import pkg from './package.json' with {type: 'json'};
+
+load(browser, pkg.name, {apiSchema: false}, ['microservice', 'integration', 'dev'])
+    .then(platform => platform.start({}))
+    .catch(console.error);
+```
+
+```html
+<!-- index.html -->
+<body>
+  <div id="root"></div>
+  <script type="module" src="./index.html.ts"></script>
+</body>
+```
 ```
 
 ## Internal API Tests (internal.test.ts)
@@ -358,8 +363,9 @@ CI=true blong
 ```
 
 This makes it easy to test individual realms during development without needing a full suite setup.
-When a realm has an `index.ts`, it is loaded directly — useful when the realm depends on other
-realms and needs custom initialization.
+When a realm or suite has an `index.ts`, it is loaded directly. If the default export is a
+`server()` definition (detected via the `kind()` symbol), the framework calls `runPlatform()` on
+it directly. Otherwise the export is called as a function with `load` (the legacy callback form).
 
 ## Debug Configuration
 

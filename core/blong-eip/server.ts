@@ -17,7 +17,6 @@ export default server(blong => ({
             eip: {},
         },
         integration: {
-            remote: {canSkipSocket: true},
             watch: {
                 test: [
                     'test.eip.return',

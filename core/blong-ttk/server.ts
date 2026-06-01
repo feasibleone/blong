@@ -39,18 +39,13 @@ export default server(blong => ({
             },
         },
         integration: {
-            remote: {canSkipSocket: true},
             engine: {},
             callback: {},
             mojaloop: {
                 openapi: true,
             },
             watch: {
-                test: [
-                    'test.engine',
-                    'test.callback',
-                    'test.migrate',
-                ],
+                test: ['test.engine', 'test.callback', 'test.migrate'],
             },
         },
         microservice: {

@@ -31,49 +31,45 @@ export default server(blong => ({
         microservice: {},
         'adapter.mysql': {
             mysql: {},
-            remote: {canSkipSocket: true},
             watch: {test: ['test.mysql.query', 'test.mysql.crud']},
         },
         'adapter.mongodb': {
             mongodb: {},
-            remote: {canSkipSocket: true},
             watch: {test: ['test.mongodb.documentInsert', 'test.mongodb.crud']},
         },
         'adapter.http': {
             http: {},
-            remote: {canSkipSocket: true},
             watch: {test: ['test.http.echoGet']},
         },
         'adapter.s3': {
             s3: {},
-            remote: {canSkipSocket: true},
             watch: {test: ['test.s3.objectPut', 'test.s3.objectCrud']},
         },
         'adapter.kafka': {
             kafka: {},
-            remote: {canSkipSocket: true},
             watch: {test: ['test.kafka.messageProduce', 'test.kafka.messageRoundtrip']},
         },
         'adapter.vault': {
             vault: {},
-            remote: {canSkipSocket: true},
-            watch: {test: ['test.vault.secretPut', 'test.vault.secretCrud', 'test.vault.secretHealth']},
+            watch: {
+                test: ['test.vault.secretPut', 'test.vault.secretCrud', 'test.vault.secretHealth'],
+            },
         },
         'adapter.keycloak': {
             keycloak: {},
-            remote: {canSkipSocket: true},
-            watch: {test: [
-                'test.keycloak.realmFind',
-                'test.keycloak.realmCrud',
-                'test.keycloak.userCrud',
-                'test.keycloak.groupCrud',
-                'test.keycloak.roleCrud',
-                'test.keycloak.clientCrud',
-            ]},
+            watch: {
+                test: [
+                    'test.keycloak.realmFind',
+                    'test.keycloak.realmCrud',
+                    'test.keycloak.userCrud',
+                    'test.keycloak.groupCrud',
+                    'test.keycloak.roleCrud',
+                    'test.keycloak.clientCrud',
+                ],
+            },
         },
         'adapter.k8s': {
             k8s: {},
-            remote: {canSkipSocket: true},
             watch: {test: ['test.k8s.namespaceFind']},
         },
     },

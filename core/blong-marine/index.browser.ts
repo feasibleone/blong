@@ -30,7 +30,7 @@ export default browser(blong => ({
         },
         /** Marine biology realm (brings blong-browser infrastructure with it) */
         async function marine() {
-            return import('@feasibleone/blong-marine/browser.ts');
+            return import('./browser.ts');
         },
     ],
     config: {

@@ -17,7 +17,6 @@ export default server(blong => ({
             cucumber: {},
         },
         integration: {
-            remote: {canSkipSocket: true},
             watch: {
                 test: ['test.cucumber.calculator'],
             },

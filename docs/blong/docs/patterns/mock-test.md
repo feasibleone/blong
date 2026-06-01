@@ -7,7 +7,7 @@ deterministic, and require no running infrastructure.
 
 ## How it works
 
-The `test` layer is activated only in the `integration` configuration environment.  It adds two
+The `test` layer is activated only in the `integration` intent.  It adds two
 orchestrators to the realm:
 
 - **`mockDispatch`** – exposes a `mock` namespace backed by simple handler implementations in
@@ -15,9 +15,9 @@ orchestrators to the realm:
 - **`testDispatch`** – exposes a `test` namespace backed by test scenario handlers in `test/test/`.
   Each test handler exercises one business handler and asserts on the results.
 
-Because `remote: { canSkipSocket: true }` is set for the `integration` environment, every call
-(`eip.*`, `mock.*`, `test.*`) stays in the same process and resolves through the in-process local
-registry – no network or RPC transport needed.
+When the `integration` intent is active, the framework automatically sets `remote.canSkipSocket: true`,
+so every call (`eip.*`, `mock.*`, `test.*`) stays in the same process and resolves through the
+in-process local registry – no network or RPC transport needed.
 
 ## Folder structure
 
@@ -186,10 +186,11 @@ export default realm(blong => ({
 }));
 ```
 
-## Step 6 – Configure the root server for in-process calls
+## Step 6 – Enable tests in the root server
 
-In the root `server.ts` (the one loaded by the test runner), set
-`remote.canSkipSocket: true` so all calls stay in-process:
+In the root `server.ts` (loaded by the test runner), set the servers to listen on random ports and
+list the test entry-points in `watch.test`. The framework automatically sets `remote.canSkipSocket:
+true` for the `integration` intent — no need to add it manually:
 
 ```ts
 // server.ts
@@ -200,9 +201,15 @@ export default server(blong => ({
     validation: blong.type.Object({}),
     children: ['./realmname'],
     config: {
-        default: {},
+        default: {
+            rpcServer: {
+                port: 0,
+            },
+            gateway: {
+                port: 0,
+            },
+        },
         integration: {
-            remote: {canSkipSocket: true},      // ← in-process calls
             watch: {
                 test: ['test.eip.claim', 'test.eip.pipes'],  // test entry-points
             },

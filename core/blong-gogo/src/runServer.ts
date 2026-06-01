@@ -1,6 +1,6 @@
-import {type SolutionFactory} from '@feasibleone/blong/types';
+import {type SolutionFactory, kind} from '@feasibleone/blong/types';
 import {existsSync} from 'node:fs';
-import {basename, resolve} from 'node:path';
+import {basename, dirname, resolve} from 'node:path';
 import {analyzeFolder, synthesizeServerFromHandlers} from './folderAnalysis.ts';
 import load from './loadServer.ts';
 
@@ -30,6 +30,23 @@ export async function runPlatform(
 }
 
 /**
+ * Runs the appropriate target module based on its kind.
+ *
+ * @param target - Path to a module that exports a default solution factory or platform.
+ * @param intents - Active intents that control which config blocks and layers are activated.
+ *
+ */
+async function runTarget(target: string, intents: string[]): Promise<void> {
+    const targetModule = await import(target);
+    if (!targetModule.default) {
+        throw new Error(`Target module ${target} has no default export`);
+    }
+    if (kind(targetModule.default) === 'server') {
+        return await runPlatform(targetModule.default, dirname(target), intents);
+    } else await targetModule.default(load);
+}
+
+/**
  * Auto-detects and runs the appropriate platform from the given working directory.
  *
  * Resolution order:
@@ -54,7 +71,7 @@ export async function autoRun(options: {
     const intents = cliIntents && cliIntents.length > 0 ? cliIntents : [...DEFAULT_INTENTS];
 
     if (target && existsSync(target)) {
-        (await import(target)).default(load);
+        await runTarget(target, intents);
         return;
     }
 
@@ -64,7 +81,7 @@ export async function autoRun(options: {
     const browserFile = resolve(cwd, 'browser.ts');
 
     if (existsSync(indexFile)) {
-        (await import(indexFile)).default(load);
+        await runTarget(indexFile, intents);
     } else if (existsSync(serverFile) && existsSync(browserFile)) {
         const {default: serverDef} = await import(serverFile);
         const {default: browserDef} = await import(browserFile);

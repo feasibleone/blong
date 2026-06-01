@@ -605,18 +605,27 @@ export type Errors<T> = {
 
 export interface IBaseConfig extends TObject<{
     watch: TObject<{
-        test: TArray<TString>;
+        test?: TArray<TString>;
     }>;
     remote: TObject<{
-        canSkipSocket: TBoolean;
+        canSkipSocket?: TBoolean;
     }>;
-    adapter: TBoolean;
-    orchestrator: TBoolean;
-    test: TBoolean;
-    error: TBoolean;
+    adapter: TBoolean | TObject;
+    orchestrator: TBoolean | TObject;
+    test: TBoolean | TObject;
+    error: TBoolean | TObject;
     gateway: TBoolean | TObject;
-    sim: TBoolean;
-    resolution: TBoolean;
+    sim: TBoolean | TObject;
+    resolution: TBoolean | TObject;
+    log: TBoolean | TObject;
+    apiSchema: TBoolean | TObject;
+    registry: TBoolean | TObject;
+    port: TBoolean | TObject;
+    codec: TBoolean | TObject;
+    local: TBoolean | TObject;
+    rpcServer: TBoolean | TObject;
+    restFs: TBoolean | TObject;
+    systemDebug: TBoolean | TObject;
 }> {
     additionalProperties: false;
 }

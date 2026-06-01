@@ -254,3 +254,100 @@ Storybook / Playwright) **and** as a child of a larger suite:
   a child;
 - Adding a second realm to the suite: append one line to the parent `browser.ts` children array and
   add the package to `realmPackages` in `playwright.config.ts` and `.storybook/main.ts`
+
+## Standalone Realm Entry Points
+
+When a realm is developed and tested as a standalone package (with its own Vite, Storybook, and
+Playwright setup), it needs additional entry point files that wire its infrastructure dependencies.
+
+### index.ts — server bootstrap for testing
+
+`index.ts` exports a `server()` definition that wraps the realm with the dependencies it needs
+(typically `blong-server`, `blong-login`, and the realm itself). The framework auto-detects the
+`server()` kind and runs it via `runPlatform()` — no import from `blong-gogo` needed:
+
+```typescript
+// realmname/index.ts
+import {server} from '@feasibleone/blong';
+import pkg from './package.json' with {type: 'json'};
+
+export default server(() => ({
+    url: import.meta.url,
+    pkg: {name: pkg.name, version: pkg.version},
+    children: [
+        async function srv() {
+            return import('@feasibleone/blong-server/server.ts');
+        },
+        async function login() {
+            return import('@feasibleone/blong-login/server.ts');
+        },
+        async function realm() {
+            return import('./server.ts');
+        },
+    ],
+    config: {
+        default: {},
+        dev: {srv: {}, realm: {}, login: {}},
+    },
+}));
+```
+
+This is a dev dependency pattern — `index.ts` wires the realm's runtime infrastructure for local
+development and integration tests. It is not imported by a parent suite; the parent suite imports
+`./server.ts` instead.
+
+### index.html.ts — browser entry point (Vite)
+
+`index.html.ts` is the TypeScript Vite entry point (loaded by `index.html`). It loads the browser
+platform using `blong-gogo`:
+
+```typescript
+// realmname/index.html.ts
+import load from '@feasibleone/blong-gogo';
+import browser from './index.browser.ts';
+import pkg from './package.json' with {type: 'json'};
+
+load(browser, pkg.name, {apiSchema: false}, ['microservice', 'integration', 'dev'])
+    .then(platform => platform.start({}))
+    .catch(console.error);
+```
+
+### index.browser.ts — browser suite definition
+
+`index.browser.ts` is the browser-platform equivalent of `index.ts`. It exports a `browser()`
+definition that wires the realm's browser infrastructure (blong-browser, login, and the realm):
+
+```typescript
+// realmname/index.browser.ts
+import {browser} from '@feasibleone/blong';
+import pkg from './package.json' with {type: 'json'};
+
+export default browser(blong => ({
+    url: import.meta.url,
+    pkg: {name: pkg.name, version: pkg.version},
+    validation: blong.type.Object({realm: blong.type.Object({})}),
+    children: [
+        async function ui() {
+            return import('@feasibleone/blong-browser/browser.ts');
+        },
+        async function realm() {
+            return import('./browser.ts');
+        },
+    ],
+    config: {
+        default: {
+            ui: {portal: {portal: {title: 'My Realm'}}},
+            realm: {},
+        },
+    },
+}));
+```
+
+`index.html` references `./index.html.ts` as its module entry:
+
+```html
+<script
+    type="module"
+    src="./index.html.ts"
+></script>
+```

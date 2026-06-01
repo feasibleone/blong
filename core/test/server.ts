@@ -22,20 +22,8 @@ export default server(blong => ({
             openapi: {},
         },
         dev: {
-            resolution: true,
             parking: {},
             login: {},
-            gateway: {
-                logLevel: 'warn',
-                debug: true,
-                expectedErrors: true,
-                sign: process.env.GATEWAY_SIGN_KEY
-                    ? {env: 'GATEWAY_SIGN_KEY'}
-                    : {generate: {alg: 'ES384', crv: 'P-384', use: 'sig'}},
-                encrypt: process.env.GATEWAY_ENCRYPT_KEY
-                    ? {env: 'GATEWAY_ENCRYPT_KEY'}
-                    : {generate: {alg: 'ECDH-ES+A256KW', crv: 'P-384', use: 'enc'}},
-            },
             demo: {},
             ctp: {},
         },

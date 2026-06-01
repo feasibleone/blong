@@ -15,7 +15,6 @@ export default server(blong => ({
         },
         integration: {
             nscfg: {},
-            remote: {canSkipSocket: true},
             watch: {
                 test: ['test.cfg.get'],
             },

@@ -1,4 +1,4 @@
-import { browser } from '@feasibleone/blong';
+import {browser} from '@feasibleone/blong';
 
 export default browser(blong => ({
     url: import.meta.url,
@@ -20,11 +20,7 @@ export default browser(blong => ({
         './order',
     ],
     config: {
-        default: {
-            remote: {
-                canSkipSocket: true,
-            },
-        },
+        default: {},
         dev: {
             login: {},
             order: {},

@@ -193,7 +193,6 @@ the watch configuration in `server.ts`:
 // server.ts
 config: {
     integration: {
-        remote: {canSkipSocket: true},
         watch: {
             test: ['test.realm.calculator'],
         },

@@ -43,21 +43,6 @@ export default defineBlongConfig({
 `defineBlongConfig()` includes `webServer` entries that auto-start the blong server (port 8080)
 and Vite dev server (port 5173) in CI (`reuseExistingServer: !process.env.CI`).
 
-### Static gateway keys
-
-Add to `server.ts` under the `integration` intent:
-
-```typescript
-config: {
-    integration: {
-        gateway: {
-            sign: {kty: 'EC', crv: 'P-384', alg: 'ES384', use: 'sig', x: '...', y: '...', d: '...'},
-            encrypt: {kty: 'EC', crv: 'P-384', alg: 'ECDH-ES+A256KW', use: 'enc', x: '...', y: '...', d: '...'},
-        },
-    },
-}
-```
-
 ## Test File Pattern
 
 Test files use the `.play.ts` extension and import from `@feasibleone/blong-browser/playwright`:

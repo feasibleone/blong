@@ -11,7 +11,21 @@ Before test handlers run, the suite needs an entry point (`index.ts`) that loads
 starts them, and triggers test execution. The two approaches differ in which platforms are loaded and
 from which side the tests are initiated.
 
-## Public API testing
+## Declarative index.ts (recommended for suites)
+
+The simplest form is a direct re-export of the suite's `server.ts`. The framework detects that the
+default export is a `server()` definition and runs it via `runPlatform()` directly — no `load`
+callback needed:
+
+```ts
+// index.ts
+export {default} from './server.ts';
+```
+
+Use this when the suite's server tests and browser platform are already wired via Playwright CI
+tests (`ci-ui`) and internal server tests (`internal.test.ts`).
+
+## Public API testing (multi-platform callback)
 
 The most frequently used approach. Tests are initiated from a simulated browser-side orchestrator
 (`testDispatch`) that calls the server's public API gateway over HTTP — the same path a real browser

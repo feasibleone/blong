@@ -31,7 +31,6 @@ export default server(blong => ({
         },
         integration: {
             gateway: {port: 8082},
-            remote: {canSkipSocket: true},
             watch: {
                 test: ['test.time.get', 'test.time.clock'],
             },

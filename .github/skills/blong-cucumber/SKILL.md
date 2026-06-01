@@ -94,7 +94,6 @@ export default handler(({lib: {group}, handler: {realmCalculatorAdd}}) => ({
 // server.ts
 config: {
     integration: {
-        remote: {canSkipSocket: true},
         watch: {
             test: ['test.realm.calculator'],
         },

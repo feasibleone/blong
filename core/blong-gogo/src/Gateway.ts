@@ -146,7 +146,7 @@ export default class Gateway extends Internal implements IGateway {
     #config: IConfig = {
         host: '0.0.0.0',
         port: 8080,
-        logLevel: 'trace',
+        logLevel: 'warn',
         cors: undefined,
         sign: undefined as IConfig['sign'] | undefined,
         encrypt: undefined as IConfig['encrypt'] | undefined,
@@ -194,6 +194,16 @@ export default class Gateway extends Internal implements IGateway {
         this.#platform = platform!;
 
         this.merge(this.#config, config);
+        this.#config.sign ||= (
+            process.env.GATEWAY_SIGN_KEY
+                ? {env: 'GATEWAY_SIGN_KEY'}
+                : {generate: {alg: 'ES384', crv: 'P-384', use: 'sig'}}
+        ) as IConfig['sign'];
+        this.#config.encrypt ||= (
+            process.env.GATEWAY_ENCRYPT_KEY
+                ? {env: 'GATEWAY_ENCRYPT_KEY'}
+                : {generate: {alg: 'ECDH-ES+A256KW', crv: 'P-384', use: 'enc'}}
+        ) as IConfig['encrypt'];
         this.#errorFields = Object.entries({
             type: true,
             message: true,

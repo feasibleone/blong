@@ -283,7 +283,6 @@ export async function synthesizeServerFromHandlers(
                         ...configDefault,
                     },
                     integration: {
-                        remote: {canSkipSocket: true},
                         watch: {test: []},
                     },
                 },

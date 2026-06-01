@@ -68,6 +68,15 @@ export function defineBlongViteConfig({
                 ],
             },
         },
+        resolve: {
+            alias: {
+                // In the monorepo, point @feasibleone/blong directly at source
+                // so Vite picks up TypeScript changes without a build step.
+                '@feasibleone/blong/types': new URL(import.meta.resolve('@feasibleone/blong/types'))
+                    .href,
+                '@feasibleone/blong': new URL(import.meta.resolve('@feasibleone/blong')).pathname,
+            },
+        },
     };
 
     return defineConfig(mergeConfig(base, overrides));

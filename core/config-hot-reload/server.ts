@@ -14,7 +14,6 @@ export default server(blong => ({
         },
         integration: {
             configReload: {},
-            remote: {canSkipSocket: true},
             watch: {
                 test: ['test.config.get', 'test.config.theme.get'],
             },
