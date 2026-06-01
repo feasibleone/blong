@@ -26,7 +26,7 @@ export async function runPlatform(
     );
     await platform.start!({});
     await platform.test!(undefined);
-    if (process.env.CI) await platform.stop!();
+    if (process.env.CI && !intents.includes('playwright')) await platform.stop!();
 }
 
 /**
@@ -91,7 +91,8 @@ export async function autoRun(options: {
         ]);
         for (const platform of platforms) await platform.start({});
         await platforms[1].test!(undefined);
-        if (process.env.CI) for (const platform of platforms) await platform.stop();
+        if (process.env.CI && !intents.includes('playwright'))
+            for (const platform of platforms) await platform.stop();
     } else if (existsSync(serverFile)) {
         const {default: serverDef} = await import(serverFile);
         await runPlatform(serverDef, name, intents);
