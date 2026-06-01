@@ -208,6 +208,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Using the model for realm CRUD pages     | **blong-model**                                       |
 | Developing the model system internals    | **blong-model-dev**                                   |
 | Full-stack Playwright testing            | **blong-playwright**                                  |
+| Writing or reviewing documentation       | **blong-docs**                                        |
 
 **For understanding concepts:**
 
@@ -657,6 +658,8 @@ The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in co
 - **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then
   set `$meta.expect` in test calls — see
   [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
+- **Writing or reviewing documentation:** See **blong-docs** for the rationale/concept/pattern
+  tier structure and how to maintain docs
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
 

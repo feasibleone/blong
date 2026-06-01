@@ -99,9 +99,11 @@ words:
   - Hejlsberg
   - hepatus
   - Hydrozoa
+  - idempotently
   - Indo
   - infitx
   - ingressclass
+  - INOUT
   - inputmask
   - inputnumber
   - inputtext
@@ -115,6 +117,7 @@ words:
   - kubeconfig
   - kustomization
   - lightgreen
+  - Liquibase
   - LONGTEXT
   - Mandarinfish
   - mdns
@@ -169,6 +172,7 @@ words:
   - primelocale
   - primereact
   - priorityclass
+  - Proc
   - progressspinner
   - Pterois
   - quasis
@@ -208,6 +212,8 @@ words:
   - softwaregroup
   - spanid
   - splendidus
+  - sqlschemaitemadd
+  - sqlschemalistactive
   - staghorn
   - Staghorn
   - statefulset
@@ -239,6 +245,7 @@ words:
   - unstate
   - Upserted
   - userpass
+  - VARCHAR
   - vars
   - vitest
   - volitans
