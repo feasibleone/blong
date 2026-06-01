@@ -123,8 +123,8 @@ export function defineBlongConfig(
         webServer: webServer ?? [
             {
                 command: process.env.CI
-                    ? 'node --run blong -- playwright'
-                    : 'node --run blong-watch -- playwright',
+                    ? 'node --run blong -- microservice integration dev playwright'
+                    : 'node --run blong-watch --  microservice integration dev playwright',
                 port: 8080,
                 reuseExistingServer: !process.env.CI,
                 stdout: 'pipe',
