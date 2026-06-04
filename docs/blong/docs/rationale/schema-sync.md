@@ -32,16 +32,17 @@ This approach has several advantages:
 
 ### 1. The schema stays co-located with the code that uses it
 
-The TypeBox definition lives in the adapter layer next to the handlers that read from and write to
+The TypeBox definition lives in the meta layer next to the realm handlers that read from and write to
 the table.  When a handler changes its expected return shape, the schema file changes too — in the
 same commit, in the same code review, for the same business reason.
 
 ```text
+mysql/meta/type/
+├── schema*.ts       ← single source of truth for the table shapes, for example defines schema.item
 mysql/adapter/sql/
-├── schemaItemSchema.ts    ← single source of truth for the table shape
-├── sqlSchemaItemAdd.ts    ← uses schemaItemSchema (optional override)
+├── sqlItemAdd.ts    ← uses schema.item (optional override)
 └── schema/
-    └── sql_schema_list_active.sql
+    └── sql_item_list_active.sql ← defines a stored procedure, exposed as handler sqlItemListActive
 ```
 
 ### 2. Multiple realms can contribute tables to the same database
@@ -61,18 +62,18 @@ wires it as a **synthetic handler** — callable through normal framework dispat
 name, the same way every other handler is called:
 
 ```typescript
-const activeItems = await handler.sqlSchemaListActive({}, $meta);
+const activeItems = await handler.sqlItemListActive({}, $meta);
 ```
 
 From the calling code's perspective there is nothing special about this call.  The same mechanism
-that routes `userUserAdd` to a TypeScript handler file routes `sqlSchemaListActive` to the stored
+that routes `userUserAdd` to a TypeScript handler file routes `sqlItemListActive` to the stored
 procedure in the database.  This means:
 
 - **Mocking is trivial** — in a test that should not hit the database, the test layer registers a
-  mock handler named `sqlSchemaListActive` and the framework routes to it instead.
+  mock handler named `sqlItemListActive` and the framework routes to it instead.
 - **Swapping the implementation** is a configuration change — replace the SQL procedure with a
   TypeScript handler file of the same name and the callers need not change.
-- **The vocabulary is consistent** — `sql.schema.listActive` is the method name in logs, API
+- **The vocabulary is consistent** — `sql.item.listActive` is the method name in logs, API
   docs, and test assertions whether the underlying implementation is a stored procedure or a
   TypeScript function.
 
@@ -83,9 +84,9 @@ handlers (`Get`, `Find`, `Add`, `Edit`, `Remove`, `Merge`) without any handler f
 satisfies the RAD principle: the default gives you everything for a straightforward table, and
 you override only the operations that need custom logic.
 
-The override mechanism is natural: a handler file with the matching name (`sqlSchemaItemAdd.ts`)
+The override mechanism is natural: a handler file with the matching name (`sqlItemAdd.ts`)
 takes precedence over the synthetic handler, and can delegate back to the generated version via
-`super.sqlSchemaItemAdd(params, $meta)` if it only needs to wrap or extend the default behaviour.
+`super.sqlItemAdd(params, $meta)` if it only needs to wrap or extend the default behaviour.
 
 ### 5. Diff-only procedure sync avoids unnecessary work
 

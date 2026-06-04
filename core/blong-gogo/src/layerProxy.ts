@@ -8,6 +8,7 @@ import {
     type ILib,
     type IMeta,
     type IModuleConfig,
+    type IObjectSchema,
 } from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
@@ -29,7 +30,7 @@ function createHandlerClosure(
     name: string,
     namespace: string,
     source: string,
-    target: {result: {error: unknown}},
+    target: {result: {error: unknown; schema: unknown}},
     apiSchema: IApiSchema | undefined,
     configRuntime: IConfigRuntime | undefined,
 ): (params: {
@@ -84,6 +85,7 @@ function createHandlerClosure(
             }),
             handler: createHandlerProxy(local, port, remote, attachCheckpoint, lib, mergedConfig),
             errors: target.result.error,
+            schema: target.result.schema,
         };
         for (let what of others) {
             switch (`${typeof what}:${kind(what)}`) {
@@ -107,6 +109,20 @@ function createHandlerClosure(
                 case 'function:api':
                     merge(local, await apiSchema!.schema(what(layerApi), source));
                     break;
+                case 'object:schema':
+                    if (target.result.schema) merge(target.result.schema as object, what as object);
+                    break;
+                case 'function:schema': {
+                    configRuntime?.enterConfig();
+                    try {
+                        what = await what(layerApi);
+                    } finally {
+                        configRuntime?.exitConfig();
+                    }
+                    if (typeof what === 'object' && what !== null && target.result.schema)
+                        merge(target.result.schema as object, what as object);
+                    break;
+                }
                 case 'function:handler':
                 case 'function:validation':
                 case 'function:model':
@@ -139,6 +155,7 @@ function createHandlerClosure(
 
 export default function layerProxy(
     errors: IErrorFactory | undefined,
+    objectSchema: IObjectSchema | undefined,
     apiSchema: IApiSchema | undefined,
     port: (() => void) | undefined,
     moduleConfig: {
@@ -149,16 +166,20 @@ export default function layerProxy(
         [name: string]: object;
     },
     configRuntime?: IConfigRuntime,
-): {result: {error: unknown}; feature: unknown} {
+): {result: {error: unknown; schema: unknown}; feature: unknown} {
     return new Proxy(
         {
             error: errors?.register.bind(errors),
-            result: {error: errors?.get()},
+            result: {error: errors?.get(), schema: objectSchema},
             feature() {},
         },
         {
             get(
-                target: {error: unknown; result: {error: unknown}; feature: unknown},
+                target: {
+                    error: unknown;
+                    result: {error: unknown; schema: unknown};
+                    feature: unknown;
+                },
                 name: string,
                 receiver: unknown,
             ) {

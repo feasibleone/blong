@@ -212,8 +212,8 @@ words:
   - softwaregroup
   - spanid
   - splendidus
-  - sqlschemaitemadd
-  - sqlschemalistactive
+  - sqlitemadd
+  - sqlitemlistactive
   - staghorn
   - Staghorn
   - statefulset

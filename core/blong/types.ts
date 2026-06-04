@@ -263,6 +263,10 @@ export interface IApiSchema {
     ): unknown;
 }
 
+export interface IObjectSchema {
+    [name: string]: ApiSchema;
+}
+
 export interface IGateway {
     route: (
         validations: Record<string, GatewaySchema>,
@@ -291,6 +295,7 @@ export interface IRegistry {
     ports: Map<string, IAdapterRegistry>;
     methods: Map<string, Handlers>;
     modules: Map<string | symbol, IRegistry[]>;
+    objectSchema: IObjectSchema;
     createPort: (id: string) => Promise<Adapter | undefined>;
     getPort: (id: string) => Adapter | undefined;
     replaceHandlers: (id: string, handlers: Handlers) => Promise<void>;
@@ -315,6 +320,7 @@ export interface IApi {
     rpc: IRpcServer;
     local: ILocal;
     registry: IRegistry;
+    schema: IObjectSchema;
     register: (
         methods:
             | Record<string, (...params: unknown[]) => Promise<unknown>>
@@ -351,7 +357,12 @@ export interface IApi {
     ) => unknown;
     createLog: ILog['logger'];
     attachCheckpoint?: (meta: IMeta) => void;
-    handlers?: (api: {utError: IError; remote: IRemote; type: typeof Type}) => {
+    handlers?: (api: {
+        utError: IError;
+        remote: IRemote;
+        type: typeof Type;
+        schema: IObjectSchema;
+    }) => {
         extends?:
             | string
             | ((api: {
@@ -796,6 +807,8 @@ export interface IValidationProxy<T> {
     error: {
         [name: string]: (...params: unknown[]) => ITypedError;
     };
+    /** Collected object schemas accumulated so far; later `schema()` exports can reference earlier ones. */
+    schema: IObjectSchema;
     config: T;
 }
 export type ValidationDefinition<T> = (
@@ -848,6 +861,8 @@ export interface IHandlerProxy<T> {
     errors: {
         [name: string]: (...params: unknown[]) => ITypedError;
     };
+    /** Collected object schemas from all registered `schema()` exports. */
+    schema: IObjectSchema;
     utBus: {
         info: () => {encrypt: object; sign: object};
     };
@@ -934,6 +949,9 @@ export const library = <T = Record<string, unknown>>(definition: Lib<T>): Lib<T>
 export const validation = <T = Record<string, unknown>>(
     validation: ValidationDefinition<T>,
 ): ValidationDefinition<T> => Object.defineProperty(validation, Kind, {value: 'validation'});
+export const schema = <T = Record<string, unknown>>(
+    schema: ValidationDefinition<T>,
+): ValidationDefinition<T> => Object.defineProperty(schema, Kind, {value: 'schema'});
 export const api = <T = Record<string, unknown>>(api: ApiDefinition<T>): ApiDefinition<T> =>
     Object.defineProperty(api, Kind, {value: 'api'});
 export const model = <T extends IModelSpec>(
@@ -1000,6 +1018,7 @@ export const orchestrator = <T, C = AdapterContext>(
 export type Kinds =
     | 'lib'
     | 'validation'
+    | 'schema'
     | 'api'
     | 'solution'
     | 'server'

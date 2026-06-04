@@ -376,7 +376,7 @@ export default async function adapter<T, C extends IContext>(
 
     const base = new AdapterBase<T, C>(api, configBase, activationNames);
 
-    const result = handlers!({utError, remote, type});
+    const result = handlers!({utError, remote, type, schema: registry.objectSchema});
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'

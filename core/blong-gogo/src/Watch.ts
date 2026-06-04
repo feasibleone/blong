@@ -10,6 +10,7 @@ import {
     type IErrorFactory,
     type ILog,
     type IModuleConfig,
+    type IObjectSchema,
     type IPlatformApi,
     type IRegistry,
     type IRemote,
@@ -32,6 +33,8 @@ export interface IWatch {
     ) => Promise<(api: T) => T>;
     /** Attach a ConfigRuntime so config-file changes trigger in-process reloads */
     setConfigRuntime?(configRuntime: IConfigRuntime): void;
+    /** Attach the registry objectSchema so hot-reload paths can pass it to layerProxy */
+    setObjectSchema?(schema: IObjectSchema): void;
 }
 
 interface ITestContext {
@@ -95,6 +98,7 @@ export default class Watch extends Internal implements IWatch {
     #watchers: IWatcher[] = [];
     #port: () => unknown;
     #error: IErrorFactory;
+    #objectSchema: IObjectSchema;
     #apiSchema: IApiSchema;
     #emit: EventTarget = new EventTarget();
     #configRuntime: IConfigRuntime | null = null;
@@ -107,12 +111,14 @@ export default class Watch extends Internal implements IWatch {
             log,
             port,
             apiSchema,
+            objectSchema,
             platform,
         }: {
             error: IErrorFactory;
             log: ILog;
             port: () => unknown;
             apiSchema: IApiSchema;
+            objectSchema: IObjectSchema;
             platform: IPlatformApi;
         },
     ) {
@@ -121,7 +127,13 @@ export default class Watch extends Internal implements IWatch {
         this.#port = port;
         this.#error = error;
         this.#apiSchema = apiSchema;
+        this.#objectSchema = objectSchema;
         this.#platform = platform;
+    }
+
+    /** Attach the registry objectSchema so hot-reload paths can pass it to layerProxy */
+    public setObjectSchema(schema: IObjectSchema): void {
+        this.#objectSchema = schema;
     }
 
     /** Attach a ConfigRuntime so config-file changes trigger in-process reloads */
@@ -506,13 +518,14 @@ export default class Watch extends Internal implements IWatch {
         type LayerResult = {
             result: Record<string, {methods: unknown[]; source?: string; port?: unknown}>;
         };
-        type ModuleConfig = Parameters<typeof layerProxy>[3];
+        type ModuleConfig = Parameters<typeof layerProxy>[4];
         // Path 1: Layer file changed — recreate and restart the port
         const layerConfig = this.#layerFiles.get(filename);
         if (layerConfig) {
             const id = this.#platform.basename(filename, this.#platform.extname(filename));
             const proxy = layerProxy(
                 this.#error,
+                this.#objectSchema,
                 this.#apiSchema,
                 this.#port,
                 layerConfig as unknown as ModuleConfig,
@@ -545,6 +558,7 @@ export default class Watch extends Internal implements IWatch {
             const cbResult = (importProxyCallback as unknown as (api: LayerResult) => LayerResult)(
                 layerProxy(
                     this.#error,
+                    this.#objectSchema,
                     this.#apiSchema,
                     this.#port,
                     config as unknown as ModuleConfig,
@@ -562,6 +576,7 @@ export default class Watch extends Internal implements IWatch {
                 const handlers = (await this._loadHandlers(true, config, dir))(
                     layerProxy(
                         this.#error,
+                        this.#objectSchema,
                         this.#apiSchema,
                         this.#port,
                         config as unknown as ModuleConfig,

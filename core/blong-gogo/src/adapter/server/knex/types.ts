@@ -22,7 +22,7 @@ export interface IConfig {
     /**
      * The adapter's namespace (e.g. `"sql"`). When set, CRUD handlers are
      * auto-bound for each declared table and named
-     * `${namespace}${TableName}${Predicate}` (e.g. `sqlSchemaItemAdd`).
+     * `${namespace}${TableName}${Predicate}` (e.g. `sqlItemAdd`).
      */
     namespace?: string;
     schema?: {

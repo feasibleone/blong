@@ -25,7 +25,7 @@ Regardless of `schema.sync`, on every adapter startup:
 
 1. **Binds synthetic handlers** for every stored procedure found in the database — no handler file
    needed.  Procedures are called through the standard framework dispatch mechanism by their
-   camelCase name (e.g. `sqlSchemaListActive`).
+   camelCase name (e.g. `sqlItemListActive`).
 2. **Auto-binds CRUD handlers** for every declared table when a `namespace` is configured.
    The generated handlers (`${namespace}${Table}Get`, `Find`, `Add`, `Edit`, `Remove`, `Merge`)
    are reachable via normal dispatch without any handler files.

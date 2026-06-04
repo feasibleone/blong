@@ -1,7 +1,6 @@
 import {adapter} from '@feasibleone/blong';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {schemaItemSchema} from './sql/schemaItemSchema.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -13,7 +12,7 @@ export default adapter<{
             password: string;
         };
     };
-}>(() => ({
+}>(({schema}) => ({
     extends: 'adapter.knex',
     activation: {
         default: {
@@ -29,8 +28,8 @@ export default adapter<{
             schema: {
                 sync: true,
                 tables: {
-                    schema_item: {
-                        definition: schemaItemSchema,
+                    item: {
+                        definition: schema.item,
                         order: 1,
                         dropColumns: true,
                     },

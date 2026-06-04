@@ -70,25 +70,46 @@ async function buildMenuModel(
                 // e.g. items=['marine.coral.browse', ...] → groupId='marine'
                 const firstChild = action.items?.find(
                     (i): i is string | {method: string} =>
-                        typeof i === 'string' || (typeof i === 'object' && i !== null && 'method' in i),
+                        typeof i === 'string' ||
+                        (typeof i === 'object' && i !== null && 'method' in i),
                 );
-                const firstMethod = typeof firstChild === 'string' ? firstChild : firstChild?.method ?? '';
+                const firstMethod =
+                    typeof firstChild === 'string' ? firstChild : (firstChild?.method ?? '');
                 const groupId = firstMethod.split('.')[0] || '';
                 return {
                     label: action.title,
                     icon: action.icon,
                     items: await buildMenuModel(action.items, command, handler),
-                    ...(groupId && {template: (item: MenuItem, options: {className: string; labelClassName: string; iconClassName: string; onClick: (e: React.MouseEvent) => void}) => (
-                        <a className={options.className} data-testid={`portal-menu-${groupId}`} onClick={options.onClick}>
-                            {item.icon && <span className={options.iconClassName} />}
-                            <span className={options.labelClassName}>{item.label}</span>
-                        </a>
-                    )}),
+                    ...(groupId && {
+                        template: (
+                            item: MenuItem,
+                            options: {
+                                className: string;
+                                labelClassName: string;
+                                iconClassName: string;
+                                onClick: (e: React.MouseEvent) => void;
+                            },
+                        ) => (
+                            <a
+                                className={options.className}
+                                data-testid={`portal-menu-${groupId}`}
+                                onClick={options.onClick}
+                            >
+                                {item.icon && <span className={options.iconClassName} />}
+                                <span className={options.labelClassName}>{item.label}</span>
+                            </a>
+                        ),
+                    }),
                 } as MenuItem;
             } else if ('method' in action) {
                 const {title, permission, icon, component} = (await handler[
                     `component/${action.method}`
-                ](typeof action.params === 'function' ? action.params({}) : (action.params as Record<string, unknown>) ?? {}, {})) as {
+                ](
+                    typeof action.params === 'function'
+                        ? action.params({})
+                        : ((action.params as Record<string, unknown>) ?? {}),
+                    {},
+                )) as {
                     title: string;
                     permission?: string;
                     icon?: string;
@@ -106,8 +127,20 @@ async function buildMenuModel(
                         component,
                     },
                     command,
-                    template: (item: MenuItem, options: {className: string; labelClassName: string; iconClassName: string; onClick: (e: React.MouseEvent) => void}) => (
-                        <a className={options.className} data-testid={`portal-menu-${menuId}`} onClick={options.onClick}>
+                    template: (
+                        item: MenuItem,
+                        options: {
+                            className: string;
+                            labelClassName: string;
+                            iconClassName: string;
+                            onClick: (e: React.MouseEvent) => void;
+                        },
+                    ) => (
+                        <a
+                            className={options.className}
+                            data-testid={`portal-menu-${menuId}`}
+                            onClick={options.onClick}
+                        >
                             {item.icon && <span className={options.iconClassName} />}
                             <span className={options.labelClassName}>{item.label}</span>
                         </a>

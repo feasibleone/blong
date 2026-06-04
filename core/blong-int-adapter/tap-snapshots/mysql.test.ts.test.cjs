@@ -7,25 +7,25 @@
 'use strict';
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > crud-reads 1`] = `
 Object {
-  "getItem": Object {
-    "itemDescription": "First blong integration test widget",
-    "itemId": "<masked>",
-    "itemName": "Widget Alpha",
+  "getUnit": Object {
+    "unitDescription": "First blong integration test widget",
+    "unitId": "<masked>",
+    "unitName": "Widget Alpha",
   },
   "verifyEdit": Object {
-    "itemDescription": "Updated description for integration test",
-    "itemId": "<masked>",
-    "itemName": "Widget Alpha Updated",
+    "unitDescription": "Updated description for integration test",
+    "unitId": "<masked>",
+    "unitName": "Widget Alpha Updated",
   },
 }
 `;
 
-exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > findItems > findItems 1`] = `
+exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > findUnits > findUnits 1`] = `
 Array [
   Object {
-    "itemDescription": "First blong integration test widget",
-    "itemId": "<masked>",
-    "itemName": "Widget Alpha",
+    "unitDescription": "First blong integration test widget",
+    "unitId": "<masked>",
+    "unitName": "Widget Alpha",
   },
 ]
 `;
@@ -35,30 +35,30 @@ exports[
 ] = `
 Array [
   Object {
-    "itemDescription": "First blong integration test widget",
-    "itemId": "<masked>",
-    "itemName": "Widget Alpha",
+    "unitDescription": "First blong integration test widget",
+    "unitId": "<masked>",
+    "unitName": "Widget Alpha",
   },
   Object {
-    "itemDescription": "Second blong integration test widget",
-    "itemId": "<masked>",
-    "itemName": "Widget Beta",
+    "unitDescription": "Second blong integration test widget",
+    "unitId": "<masked>",
+    "unitName": "Widget Beta",
   },
 ]
 `;
 
-exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > getItem > getItem 1`] = `
+exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > getUnit > getUnit 1`] = `
 Object {
-  "itemDescription": "First blong integration test widget",
-  "itemId": "<masked>",
-  "itemName": "Widget Alpha",
+  "unitDescription": "First blong integration test widget",
+  "unitId": "<masked>",
+  "unitName": "Widget Alpha",
 }
 `;
 
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > verifyEdit > verifyEdit 1`] = `
 Object {
-  "itemDescription": "Updated description for integration test",
-  "itemId": "<masked>",
-  "itemName": "Widget Alpha Updated",
+  "unitDescription": "Updated description for integration test",
+  "unitId": "<masked>",
+  "unitName": "Widget Alpha Updated",
 }
 `;

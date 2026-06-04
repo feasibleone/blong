@@ -31,7 +31,14 @@ export default server(blong => ({
         microservice: {},
         'adapter.mysql': {
             mysql: {},
-            watch: {test: ['test.mysql.query', 'test.mysql.crud', 'test.mysql.schema']},
+            watch: {
+                test: [
+                    'test.mysql.query',
+                    'test.mysql.crud',
+                    'test.mysql.schema',
+                    'test.mysql.objectSchema',
+                ],
+            },
         },
         'adapter.mongodb': {
             mongodb: {},

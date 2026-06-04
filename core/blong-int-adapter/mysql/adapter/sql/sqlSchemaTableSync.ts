@@ -1,5 +1,4 @@
 import {handler} from '@feasibleone/blong';
-import {schemaItemSchema} from './schemaItemSchema.ts';
 
 /**
  * sqlSchemaTableSync — creates or synchronises the `schema_item` integration-test
@@ -10,7 +9,7 @@ import {schemaItemSchema} from './schemaItemSchema.ts';
  * in the TypeBox schema (useful for cleanup between test runs).
  */
 export default handler(
-    () =>
+    ({schema}) =>
         async function sqlSchemaTableSync(
             params: {dropColumns?: boolean},
             _$meta: Record<string, unknown>,
@@ -19,7 +18,7 @@ export default handler(
                 this.schemaTableSync as (
                     ...args: unknown[]
                 ) => Promise<{created: boolean; added: string[]; dropped: string[]}>
-            )('schema_item', schemaItemSchema, {
+            )('item', schema.item, {
                 dropColumns: params.dropColumns ?? false,
             });
         },

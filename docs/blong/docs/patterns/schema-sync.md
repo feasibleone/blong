@@ -145,14 +145,14 @@ After `ready()`, every procedure whose name does **not** start with `_` is calla
 own-property handler on the adapter.  For a procedure named `sql_schema_list_active`:
 
 ```text
-sql_schema_list_active  →  sqlSchemaListActive  (camelCase, for super calls)
-                        →  sqlschemalistactive  (methodId, for framework dispatch)
+sql_schema_list_active  →  sqlItemListActive  (camelCase, for super calls)
+                        →  sqlitemlistactive  (methodId, for framework dispatch)
 ```
 
 Call it from any orchestrator or test step exactly like a registered handler:
 
 ```typescript
-const rows = await handler.sqlSchemaListActive({}, $meta);
+const rows = await handler.sqlItemListActive({}, $meta);
 ```
 
 Input parameters are mapped from camelCase object keys matching the procedure's `IN`/`INOUT`
@@ -168,18 +168,18 @@ as synthetic own-property handlers (same mechanism as procedures):
 
 | Handler name pattern            | Example (`namespace=sql`, `table=schema_item`) |
 | ------------------------------- | ---------------------------------------------- |
-| `${ns}${Table}Get`              | `sqlSchemaItemGet`                             |
-| `${ns}${Table}Find`             | `sqlSchemaItemFind`                            |
-| `${ns}${Table}Add`              | `sqlSchemaItemAdd`                             |
-| `${ns}${Table}Edit`             | `sqlSchemaItemEdit`                            |
-| `${ns}${Table}Remove`           | `sqlSchemaItemRemove`                          |
-| `${ns}${Table}Merge`            | `sqlSchemaItemMerge`                           |
+| `${ns}${Table}Get`              | `sqlItemGet`                             |
+| `${ns}${Table}Find`             | `sqlItemFind`                            |
+| `${ns}${Table}Add`              | `sqlItemAdd`                             |
+| `${ns}${Table}Edit`             | `sqlItemEdit`                            |
+| `${ns}${Table}Remove`           | `sqlItemRemove`                          |
+| `${ns}${Table}Merge`            | `sqlItemMerge`                           |
 
 These are bound **automatically** — no handler files are needed.  To use them from a test or
 orchestrator, import them by name in the `handler:{}` proxy:
 
 ```typescript
-handler: {sqlSchemaItemAdd, sqlSchemaItemFind, sqlSchemaItemRemove}
+handler: {sqlItemAdd, sqlItemFind, sqlItemRemove}
 ```
 
 ---
@@ -194,17 +194,17 @@ To delegate back to the synthetic version, use `super` with the **camelCase name
 adapter object:
 
 ```typescript
-// mysql/adapter/sql/sqlSchemaListActive.ts
+// mysql/adapter/sql/sqlItemListActive.ts
 import {handler} from '@feasibleone/blong';
 
 export default handler(
     () => ({
-        async sqlSchemaListActive(params, $meta) {
+        async sqlItemListActive(params, $meta) {
             // Delegate to the synthetic procedure handler, then post-filter
             const rows = await (super as unknown as Record<
                 string,
                 (p: object, m: object) => Promise<unknown[]>
-            >).sqlSchemaListActive(params, $meta);
+            >).sqlItemListActive(params, $meta);
             return (rows as Array<{schemaItemActive: boolean}>).filter(r => r.schemaItemActive);
         },
     }),
@@ -241,9 +241,9 @@ The `blong-int-adapter` mysql suite demonstrates the full declarative path in
 `sqlSchemaProcedureSync` for setup.
 
 ```text
-Step 1 — cleanData:           sqlSchemaItemFind → sqlSchemaItemRemove (auto-bound CRUD)
-Step 2 — addActiveItem:       sqlSchemaItemAdd   (auto-bound CRUD)
-Step 3 — callSyntheticProc:   sqlSchemaListActive (synthetic procedure handler)
+Step 1 — cleanData:           sqlItemFind → sqlItemRemove (auto-bound CRUD)
+Step 2 — addActiveItem:       sqlItemAdd   (auto-bound CRUD)
+Step 3 — callSyntheticProc:   sqlItemListActive (synthetic procedure handler)
 Step 4 — verifyIdempotency:   sqlSchemaTableSync → assert created:false, added:[]
 Step 5 — dropTable:           sqlSchemaTableDrop  (cleanup so next run exercises CREATE)
 ```

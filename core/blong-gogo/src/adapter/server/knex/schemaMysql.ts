@@ -149,10 +149,10 @@ export async function schemaProcedureBindImpl(
  * `AdapterBase.findHandler` resolves them before falling back to `exec`.
  *
  * Each handler is stored under **two keys**:
- * - `methodId(camelName)` (e.g. `"sqlschemalistactive"`) — the normalised key
+ * - `methodId(camelName)` (e.g. `"sqlitemlistactive"`) — the normalised key
  *   used by `findHandler`.
- * - `camelName` (e.g. `"sqlSchemaListActive"`) — allows realm handler overrides
- *   to call the synthetic version via `super.sqlSchemaListActive(params, $meta)`.
+ * - `camelName` (e.g. `"sqlItemListActive"`) — allows realm handler overrides
+ *   to call the synthetic version via `super.sqlItemListActive(params, $meta)`.
  *
  * Procedures whose name starts with `_` are **skipped** — they are private DB
  * helpers intentionally excluded from the API surface.

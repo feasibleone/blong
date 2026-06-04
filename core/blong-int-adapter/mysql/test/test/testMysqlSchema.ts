@@ -1,20 +1,20 @@
 import {handler, type IAssert} from '@feasibleone/blong';
 
-type SchemaAddResult = {schemaItemId: number};
+type SchemaAddResult = {itemId: unknown};
 type StepMeta = {$meta: Record<string, unknown>};
 
 /**
  * testMysqlSchema — integration test for declarative schema management in the
  * knex adapter.
  *
- * The `schema_item` table and `sql_schema_list_active` procedure are declared in
- * `mysql/adapter/sql.ts` under `activation.default.schema`.  The adapter syncs
+ * The `item` table and `sql_item_list_active` procedure are discovered by
+ * `mysql/adapter/sql.ts`.  The adapter syncs
  * them automatically in its `ready()` lifecycle hook, so by the time any test
  * step runs the table and procedure already exist.
  *
  * The test verifies:
  *   1. The table was auto-created (confirmed by successfully inserting a row).
- *   2. The `sqlSchemaListActive` synthetic procedure handler, discovered at
+ *   2. The `sqlItemListActive` synthetic procedure handler, discovered at
  *      start-up and wired onto the adapter object, is reachable via normal
  *      framework dispatch and returns the expected rows.
  *   3. The `schemaTableSync` helper is idempotent (no changes on a second call).
@@ -30,10 +30,10 @@ export default handler(
         handler: {
             sqlSchemaTableSync,
             sqlSchemaTableDrop,
-            sqlSchemaItemAdd,
-            sqlSchemaItemFind,
-            sqlSchemaItemRemove,
-            sqlSchemaListActive,
+            sqlItemAdd,
+            sqlItemFind,
+            sqlItemRemove,
+            sqlItemListActive,
         },
     }) => ({
         testMysqlSchema: ({name = 'mysql schema'}: {name?: string}) =>
@@ -44,12 +44,11 @@ export default handler(
                 //    when `config.namespace` is set — no explicit call to
                 //    `schemaCrudBind` needed.
                 async function cleanData(assert: IAssert, {$meta}: StepMeta) {
-                    const allRows = (await sqlSchemaItemFind({}, $meta)) as Array<{
-                        schemaItemId: number;
+                    const allRows = (await sqlItemFind({}, $meta)) as Array<{
+                        itemId: number;
                     }>;
-                    for (const row of allRows)
-                        await sqlSchemaItemRemove({schemaItemId: row.schemaItemId}, $meta);
-                    assert.ok(true, 'cleaned schema_item data');
+                    for (const row of allRows) await sqlItemRemove({itemId: row.itemId}, $meta);
+                    assert.ok(true, 'cleaned item data');
                     return {cleaned: true};
                 },
 
@@ -59,19 +58,19 @@ export default handler(
                     {$meta, cleanData}: StepMeta & {cleanData: Promise<unknown>},
                 ) {
                     await cleanData;
-                    const result = (await sqlSchemaItemAdd(
+                    const result = (await sqlItemAdd(
                         {
-                            schemaItemName: 'Active Schema Item',
-                            schemaItemActive: true,
+                            itemName: 'Active Schema Item',
+                            itemActive: true,
                         },
                         $meta,
                     )) as SchemaAddResult;
-                    assert.ok(result?.schemaItemId, 'add returned a schemaItemId');
+                    assert.ok(result?.itemId, 'add returned a itemId');
                     return result;
                 },
 
                 // ── 3. Call the *synthetic* procedure handler via normal dispatch ─
-                //    `sqlSchemaListActive` is NOT a registered handler file — it is
+                //    `sqlItemListActive` is NOT a registered handler file — it is
                 //    created at runtime by `_bindSyntheticHandlers` in ready() and
                 //    stored on the adapter object as an own property.  Calling it
                 //    through the handler proxy verifies the full synthetic-handler
@@ -82,7 +81,7 @@ export default handler(
                 ) {
                     await addActiveItem;
                     const result = await (
-                        sqlSchemaListActive as (
+                        sqlItemListActive as (
                             p: object,
                             m: Record<string, unknown>,
                         ) => Promise<unknown[]>
@@ -116,8 +115,8 @@ export default handler(
                 ) {
                     await verifyIdempotency;
                     await sqlSchemaTableDrop({}, $meta);
-                    assert.ok(true, 'schema_item table dropped');
-                    return checkpoint('schema table dropped');
+                    assert.ok(true, 'item table dropped');
+                    return checkpoint('item table dropped');
                 },
             ]),
     }),

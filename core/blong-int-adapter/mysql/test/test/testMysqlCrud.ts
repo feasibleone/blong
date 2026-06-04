@@ -1,9 +1,9 @@
 import {handler, type IAssert} from '@feasibleone/blong';
 
-import {items, mergedItem, updatedItem} from '../fixtures/item.ts';
+import {mergedUnit, units, updatedUnit} from '../fixtures/unit.ts';
 
-type ItemRow = {itemId?: number; itemName?: string; itemDescription?: string};
-type AddResult = {itemId: number};
+type UnitRow = {unitId?: number; unitName?: string; unitDescription?: string};
+type AddResult = {unitId: number};
 type StepMeta = {$meta: Record<string, unknown>};
 
 /**
@@ -11,30 +11,40 @@ type StepMeta = {$meta: Record<string, unknown>};
  * add, get, find, edit, remove, merge, insert, delete.
  *
  * Steps run in a sequential dependency chain to avoid conflicts on shared rows.
- * Fixture data from `fixtures/item.ts` is used for all inserts.
+ * Fixture data from `fixtures/unit.ts` is used for all inserts.
  */
 export default handler(
     ({
         lib: {group, checkpoint},
         handler: {
-            sqlTableCreate,
-            sqlTableDrop,
-            sqlItemAdd,
-            sqlItemGet,
-            sqlItemFind,
-            sqlItemEdit,
-            sqlItemRemove,
-            sqlItemMerge,
-            sqlItemInsert,
-            sqlItemDelete,
+            sqlUnitCreate,
+            sqlUnitDrop,
+            sqlUnitAdd,
+            sqlUnitGet,
+            sqlUnitFind,
+            sqlUnitEdit,
+            sqlUnitRemove,
+            sqlUnitMerge,
+            sqlUnitInsert,
+            sqlUnitDelete,
         },
     }) => ({
         testMysqlCrud: ({name = 'mysql CRUD'}: {name?: string}) =>
-            // chain-level mask: `itemId` for single rows, `*.itemId` for array results
-            group(name, {mask: ['itemId', '*.itemId']})([
+            // chain-level mask: `unitId` for single rows, `*.unitId` for array results
+            group(name, {mask: ['unitId', '*.unitId']})([
+                // ── 0. Drop the test table (cleanup) ─────────────────────
+                async function dropTable(assert: IAssert, {$meta}: StepMeta) {
+                    const result = await sqlUnitDrop({}, $meta);
+                    assert.ok(result, 'Table drop returned a result');
+                    return result as {table: string; dropped: boolean};
+                },
                 // ── 1. Ensure the test table exists ───────────────────────
-                async function createTable(assert: IAssert, {$meta}: StepMeta) {
-                    const result = await sqlTableCreate({}, $meta);
+                async function createTable(
+                    assert: IAssert,
+                    {$meta, dropTable}: StepMeta & {dropTable: Promise<unknown>},
+                ) {
+                    await dropTable;
+                    const result = await sqlUnitCreate({}, $meta);
                     assert.ok(result, 'Table create/verify returned a result');
                     return result as {table: string; existed: boolean};
                 },
@@ -45,110 +55,110 @@ export default handler(
                     {$meta, createTable}: StepMeta & {createTable: Promise<unknown>},
                 ) {
                     await createTable;
-                    await sqlItemDelete({}, $meta);
+                    await sqlUnitDelete({}, $meta);
                     return {cleaned: true};
                 },
 
                 // ── 3. add — insert a single row ──────────────────────────
-                async function addItem(
+                async function addUnit(
                     assert: IAssert,
                     {$meta, cleanData}: StepMeta & {cleanData: Promise<unknown>},
                 ) {
                     await cleanData;
-                    const result = await sqlItemAdd({...items[0]}, $meta);
+                    const result = await sqlUnitAdd({...units[0]}, $meta);
                     assert.ok(result, 'add returned a result');
-                    assert.ok((result as AddResult).itemId, 'add returned an itemId');
+                    assert.ok((result as AddResult).unitId, 'add returned an unitId');
                     return result as AddResult;
                 },
 
                 // ── 4. get — fetch the inserted row by primary key ────────
-                async function getItem(
+                async function getUnit(
                     assert: IAssert,
-                    {$meta, addItem}: StepMeta & {addItem: Promise<AddResult>},
+                    {$meta, addUnit}: StepMeta & {addUnit: Promise<AddResult>},
                 ) {
-                    // Snapshot captures itemName and itemDescription; chain-level mask handles itemId.
+                    // Snapshot captures unitName and unitDescription; chain-level mask handles unitId.
                     assert.snapshot();
-                    return (await sqlItemGet(
-                        {itemId: (await addItem).itemId},
+                    return (await sqlUnitGet(
+                        {unitId: (await addUnit).unitId},
                         $meta,
-                    )) as ItemRow & {itemId: number};
+                    )) as UnitRow & {unitId: number};
                 },
 
                 // ── 5. find — query rows with a filter ───────────────────
-                async function findItems(
+                async function findUnits(
                     assert: IAssert,
-                    {$meta, addItem}: StepMeta & {addItem: Promise<AddResult>},
+                    {$meta, addUnit}: StepMeta & {addUnit: Promise<AddResult>},
                 ) {
-                    await addItem;
-                    // Sort by itemName for snapshot stability; chain-level mask handles itemId.
+                    await addUnit;
+                    // Sort by unitName for snapshot stability; chain-level mask handles unitId.
                     assert.snapshot();
-                    return ((await sqlItemFind({itemName: items[0].itemName}, $meta)) as ItemRow[])
+                    return ((await sqlUnitFind({unitName: units[0].unitName}, $meta)) as UnitRow[])
                         .slice()
-                        .sort((a, b) => (a.itemName ?? '').localeCompare(b.itemName ?? ''));
+                        .sort((a, b) => (a.unitName ?? '').localeCompare(b.unitName ?? ''));
                 },
 
                 // ── 6. edit — update a row by primary key ─────────────────
-                async function editItem(
+                async function editUnit(
                     assert: IAssert,
-                    {$meta, getItem}: StepMeta & {getItem: Promise<ItemRow & {itemId: number}>},
+                    {$meta, getUnit}: StepMeta & {getUnit: Promise<UnitRow & {unitId: number}>},
                 ) {
-                    const {itemId} = await getItem;
-                    const result = await sqlItemEdit({itemId, ...updatedItem}, $meta);
+                    const {unitId} = await getUnit;
+                    const result = await sqlUnitEdit({unitId, ...updatedUnit}, $meta);
                     assert.ok(result !== undefined, 'edit returned a result');
-                    return {itemId};
+                    return {unitId};
                 },
 
                 // ── 7. verify edit — re-fetch to confirm the update ───────
                 async function verifyEdit(
                     assert: IAssert,
-                    {$meta, editItem}: StepMeta & {editItem: Promise<{itemId: number}>},
+                    {$meta, editUnit}: StepMeta & {editUnit: Promise<{unitId: number}>},
                 ) {
-                    // Snapshot captures updated itemName and itemDescription.
+                    // Snapshot captures updated unitName and unitDescription.
                     assert.snapshot();
-                    return (await sqlItemGet({itemId: (await editItem).itemId}, $meta)) as ItemRow;
+                    return (await sqlUnitGet({unitId: (await editUnit).unitId}, $meta)) as UnitRow;
                 },
 
                 // Phase checkpoint: snapshot both read-back results together
-                checkpoint('crud-reads', 'getItem', 'verifyEdit'),
+                checkpoint('crud-reads', 'getUnit', 'verifyEdit'),
 
                 // ── 8. remove — delete the row by primary key ─────────────
-                async function removeItem(
+                async function removeUnit(
                     assert: IAssert,
                     {
                         $meta,
                         verifyEdit,
-                        editItem,
+                        editUnit,
                     }: StepMeta & {
-                        verifyEdit: Promise<ItemRow>;
-                        editItem: Promise<{itemId: number}>;
+                        verifyEdit: Promise<UnitRow>;
+                        editUnit: Promise<{unitId: number}>;
                     },
                 ) {
                     await verifyEdit;
-                    const {itemId} = await editItem;
-                    const result = await sqlItemRemove({itemId}, $meta);
+                    const {unitId} = await editUnit;
+                    const result = await sqlUnitRemove({unitId}, $meta);
                     assert.ok(result !== undefined, 'remove returned a result');
-                    return {itemId, removed: true};
+                    return {unitId, removed: true};
                 },
 
                 // ── 9. merge — upsert a new row ───────────────────────────
-                async function mergeItem(
+                async function mergeUnit(
                     assert: IAssert,
-                    {$meta, removeItem}: StepMeta & {removeItem: Promise<unknown>},
+                    {$meta, removeUnit}: StepMeta & {removeUnit: Promise<unknown>},
                 ) {
-                    await removeItem;
-                    const result = await sqlItemMerge({...mergedItem}, $meta);
+                    await removeUnit;
+                    const result = await sqlUnitMerge({...mergedUnit}, $meta);
                     assert.ok(result !== undefined, 'merge returned a result');
                     return {merged: true};
                 },
 
                 // ── 10. insert — bulk insert multiple rows ────────────────
-                async function insertItems(
+                async function insertUnits(
                     assert: IAssert,
-                    {$meta, mergeItem}: StepMeta & {mergeItem: Promise<unknown>},
+                    {$meta, mergeUnit}: StepMeta & {mergeUnit: Promise<unknown>},
                 ) {
-                    await mergeItem;
-                    const result = await sqlItemInsert(
-                        items.map(i => ({...i})),
+                    await mergeUnit;
+                    const result = await sqlUnitInsert(
+                        units.map(i => ({...i})),
                         $meta,
                     );
                     assert.ok(result !== undefined, 'insert returned a result');
@@ -158,16 +168,16 @@ export default handler(
                 // ── 11. verify bulk insert ────────────────────────────────
                 async function verifyInsert(
                     assert: IAssert,
-                    {$meta, insertItems}: StepMeta & {insertItems: Promise<unknown>},
+                    {$meta, insertUnits}: StepMeta & {insertUnits: Promise<unknown>},
                 ) {
-                    await insertItems;
-                    const result = await sqlItemFind({}, $meta);
+                    await insertUnits;
+                    const result = await sqlUnitFind({}, $meta);
                     assert.ok(Array.isArray(result), 'find after bulk insert returned an array');
                     assert.ok(
-                        (result as ItemRow[]).length >= items.length,
+                        (result as UnitRow[]).length >= units.length,
                         'at least as many rows as inserted fixtures',
                     );
-                    return {rowCount: (result as ItemRow[]).length};
+                    return {rowCount: (result as UnitRow[]).length};
                 },
 
                 // ── 12. find with limit and order ─────────────────────────
@@ -176,43 +186,27 @@ export default handler(
                     {$meta, verifyInsert}: StepMeta & {verifyInsert: Promise<unknown>},
                 ) {
                     await verifyInsert;
-                    const result = await sqlItemFind({limit: 2, order: 'itemName'}, $meta);
-                    // Already ordered by itemName via query; snapshot is stable.
+                    const result = await sqlUnitFind({limit: 2, order: 'unitName'}, $meta);
+                    // Already ordered by unitName via query; snapshot is stable.
                     assert.snapshot();
                     // Keep limit business-invariant: snapshot verifies count implicitly,
                     // but the explicit check documents the intent.
                     assert.ok(
-                        (result as ItemRow[]).length <= 2,
+                        (result as UnitRow[]).length <= 2,
                         'find respects the limit parameter',
                     );
-                    return result as ItemRow[];
+                    return result as UnitRow[];
                 },
 
                 // ── 13. delete — bulk delete matching rows ────────────────
-                async function deleteItems(
+                async function deleteUnits(
                     assert: IAssert,
                     {$meta, findWithOptions}: StepMeta & {findWithOptions: Promise<unknown>},
                 ) {
                     await findWithOptions;
-                    const result = await sqlItemDelete({itemName: items[0].itemName}, $meta);
+                    const result = await sqlUnitDelete({unitName: units[0].unitName}, $meta);
                     assert.ok(result !== undefined, 'delete returned a result');
                     return {deleted: true};
-                },
-
-                // ── 14. Drop the test table (cleanup) ─────────────────────
-                async function dropTable(
-                    assert: IAssert,
-                    {
-                        $meta,
-                        deleteItems,
-                    }: StepMeta & {
-                        deleteItems: Promise<unknown>;
-                    },
-                ) {
-                    await deleteItems;
-                    const result = await sqlTableDrop({}, $meta);
-                    assert.ok(result, 'Table drop returned a result');
-                    return result as {table: string; dropped: boolean};
                 },
             ]),
     }),

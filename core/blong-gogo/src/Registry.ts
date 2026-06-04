@@ -10,6 +10,7 @@ import type {
     ILocal,
     ILog,
     IMeta,
+    IObjectSchema,
     IPlatformApi,
     IRegistry,
     IRemote,
@@ -35,6 +36,7 @@ type MatchMethodsCallback = (
     literals: object[],
 ) => void;
 const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
+const SCHEMA: RegExp = /\.type$/;
 const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
 interface IConfig {
     api?: Record<string, {source: string; def: {namespace: Record<string, string | string[]>}}>;
@@ -53,6 +55,7 @@ export default class Registry extends Internal implements IRegistry {
     public modules: Map<string | symbol, IRegistry[]> = new Map();
     public ports: Map<string, IAdapterRegistry> = new Map();
     public methods: Map<string, Handlers> = new Map();
+    public objectSchema: IObjectSchema = {};
     #reload: PQueue = new PQueue({concurrency: 1});
     #ports: Map<string, Adapter> = new Map();
     #error: IErrorFactory;
@@ -123,6 +126,7 @@ export default class Registry extends Internal implements IRegistry {
             this.#config.checkpointMode ?? 'production',
         );
         this.#rpcServer?.setAttachCheckpoint?.(this.#attachCheckpoint);
+        watch?.setObjectSchema?.(this.objectSchema);
     }
 
     public getPort(id: string): Adapter | undefined {
@@ -139,6 +143,7 @@ export default class Registry extends Internal implements IRegistry {
         const api: Parameters<IAdapterFactory>[0] = {
             id,
             type: Type,
+            schema: this.objectSchema,
             adapter: id => this.ports.get(id),
             utError: {
                 register: this.#error.register.bind(this.#error),
@@ -221,6 +226,12 @@ export default class Registry extends Internal implements IRegistry {
                     callback!(name, local, literals);
                 }
             }
+        }
+    }
+
+    private async _collectObjectSchema(): Promise<void> {
+        for (const [name, handlers] of this.methods) {
+            if (SCHEMA.test(name)) await this._createHandlers(handlers, undefined);
         }
     }
 
@@ -397,6 +408,7 @@ export default class Registry extends Internal implements IRegistry {
     }
 
     public async start(configOverride: object): Promise<IRegistry> {
+        await this._collectObjectSchema();
         for (const id of Array.from(this.ports.keys())) await this.createPort(id);
         for (const port of this.#ports.values()) await port.start(configOverride);
         for (const port of this.#ports.values()) await port.ready();

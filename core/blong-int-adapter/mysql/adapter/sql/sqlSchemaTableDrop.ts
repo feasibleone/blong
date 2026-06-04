@@ -1,7 +1,7 @@
 import {handler} from '@feasibleone/blong';
 
 /**
- * sqlSchemaTableDrop — unconditionally drops the `schema_item` integration-test
+ * sqlSchemaTableDrop — unconditionally drops the `item` integration-test
  * table. Used as a cleanup step in testMysqlSchema after schema tests complete.
  */
 export default handler(
@@ -12,6 +12,9 @@ export default handler(
         ): Promise<void> {
             const knex = this.config?.context?.queryBuilder;
             if (!knex) throw new Error('Knex queryBuilder not available');
-            await knex.schema.dropTableIfExists('schema_item');
+            await Promise.all([
+                knex.schema.dropTableIfExists('item'),
+                knex.schema.dropTableIfExists('itemPage'),
+            ]);
         },
 );

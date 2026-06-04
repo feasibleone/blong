@@ -195,8 +195,8 @@ export async function schemaCrudBindImpl(
  * Store each handler from `handlersMap` on `self` under two keys so it can be
  * reached via both framework dispatch and `super` calls:
  *
- * - `methodId(name)` (e.g. `"sqlschemaitemadd"`) — used by `findHandler`
- * - `name`           (e.g. `"sqlSchemaItemAdd"`) — used by `super.name` in
+ * - `methodId(name)` (e.g. `"sqlitemadd"`) — used by `findHandler`
+ * - `name`           (e.g. `"sqlItemAdd"`) — used by `super.name` in
  *                    object-form realm handler overrides
  */
 export function attachHandlers(

@@ -1,18 +1,24 @@
-import {adapter, type Adapter, type Errors, type IErrorMap, type IMeta} from '@feasibleone/blong/types';
-import {type Knex} from '@feasibleone/blong/types';
+import {
+    adapter,
+    type Adapter,
+    type Errors,
+    type IErrorMap,
+    type IMeta,
+    type Knex,
+} from '@feasibleone/blong/types';
 import KnexLib from 'knex';
 import {type TFunction, type TObject} from 'typebox';
-
-export type {ISchemaTable, IConfig} from './knex/types.ts';
-import {type IConfig, type ISchemaTable} from './knex/types.ts';
-import {methodId, readSqlFiles, snakeToCamel} from './knex/utils.ts';
-import {attachHandlers, schemaCrudBindImpl, schemaTableSyncImpl} from './knex/schemaTable.ts';
 import {
     bindSyntheticCrud,
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
     schemaProcedureSyncImpl,
 } from './knex/schemaMysql.ts';
+import {attachHandlers, schemaCrudBindImpl, schemaTableSyncImpl} from './knex/schemaTable.ts';
+import {type IConfig, type ISchemaTable} from './knex/types.ts';
+import {methodId, readSqlFiles, snakeToCamel} from './knex/utils.ts';
+
+export type {IConfig, ISchemaTable} from './knex/types.ts';
 
 const errorMap: IErrorMap = {
     'knex.generic': 'Knex Error',
@@ -82,8 +88,7 @@ export default adapter<IConfig>(({utError}) => {
                     return orderA - orderB;
                 });
                 for (const [tableName, tableConfig] of tables) {
-                    const isSpec =
-                        typeof tableConfig === 'object' && 'definition' in tableConfig;
+                    const isSpec = typeof tableConfig === 'object' && 'definition' in tableConfig;
                     const definition = isSpec
                         ? (tableConfig as ISchemaTable).definition
                         : (tableConfig as TObject);
@@ -98,8 +103,7 @@ export default adapter<IConfig>(({utError}) => {
                     procedureDefs.push(...readSqlFiles(folder));
                 for (const [name, sql] of Object.entries(schema.procedures ?? {}))
                     procedureDefs.push({name, sql});
-                if (procedureDefs.length > 0)
-                    await schemaProcedureSyncImpl(knex, procedureDefs);
+                if (procedureDefs.length > 0) await schemaProcedureSyncImpl(knex, procedureDefs);
             }
 
             if (schema && knex) {
@@ -130,16 +134,14 @@ export default adapter<IConfig>(({utError}) => {
         ) {
             const knexChanged = Array.from(diff.keys()).some(
                 (key: string) =>
-                    key === this.config.id + '.knex' ||
-                    key.startsWith(this.config.id + '.knex.'),
+                    key === this.config.id + '.knex' || key.startsWith(this.config.id + '.knex.'),
             );
             if (!knexChanged) return;
             await this.config.context?.queryBuilder?.destroy();
             const newKnexConfig =
-                ((next as Record<string, unknown>)?.[this.config.id] as Record<
-                    string,
-                    unknown
-                >)?.['knex'] ?? this.config.knex;
+                ((next as Record<string, unknown>)?.[this.config.id] as Record<string, unknown>)?.[
+                    'knex'
+                ] ?? this.config.knex;
             this.config.knex = newKnexConfig as object;
             this.config.context = {
                 queryBuilder: KnexLib(newKnexConfig as object) as unknown as Knex,
@@ -179,8 +181,7 @@ export default adapter<IConfig>(({utError}) => {
                 case 'edit': {
                     const {key: keyName = `${table}Id`, ...columns} = params;
                     const {[keyName]: key, ...update} = columns;
-                    return this.config.context
-                        .queryBuilder!(table)
+                    return this.config.context.queryBuilder!(table)
                         .where({[keyName]: key})
                         .update(update);
                 }
@@ -188,14 +189,12 @@ export default adapter<IConfig>(({utError}) => {
                     if (!(table + 'Id' in params)) {
                         throw this.error(_errors['knex.missingKey']({key: table + 'Id'}), $meta);
                     }
-                    return this.config.context
-                        .queryBuilder!(table)
+                    return this.config.context.queryBuilder!(table)
                         .where({[table + 'Id']: params[table + 'Id']})
                         .del();
                 case 'merge': {
                     const {key = `${table}Id`, ...columns} = params;
-                    return this.config.context
-                        .queryBuilder!(table)
+                    return this.config.context.queryBuilder!(table)
                         .insert(columns)
                         .onConflict(key)
                         .merge();

@@ -803,9 +803,10 @@ export default async function loadRealm<T extends TSchema>(
                         fn(
                             layerProxy(
                                 api?.error,
+                                api?.registry?.objectSchema,
                                 api?.apiSchema,
                                 api?.port,
-                                mergedConfig as unknown as Parameters<typeof layerProxy>[3],
+                                mergedConfig as unknown as Parameters<typeof layerProxy>[4],
                                 api?.configRuntime,
                             ),
                         ).result,
