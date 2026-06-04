@@ -3,9 +3,9 @@
  * Uses Template from Editor.stories to avoid repeating the coral fixture.
  */
 import type {Meta} from '@storybook/react-vite';
+import {Editor} from '../Editor.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Template} from '../Editor.stories.js';
-import {Editor} from '../Editor.js';
 
 const meta: Meta<typeof Editor> = {title: 'Editor/Validation', component: Editor};
 export default meta;
@@ -19,7 +19,7 @@ Validation.args = {
 Validation.play = async ({canvas, userEvent}) => {
     // Value is static — form renders synchronously. Use getByRole for accessible-name matching
     // (which correctly excludes aria-hidden content like the required '*' marker).
-    await userEvent.clear(canvas.getByRole('textbox', {name: 'Name'}));
+    await userEvent.clear(await canvas.findByRole('textbox', {name: 'Name'}));
     await userEvent.type(canvas.getByRole('textbox', {name: 'Description'}), 'test');
     await userEvent.click(canvas.getByRole('button', {name: 'Save'}));
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -35,7 +35,7 @@ ValidationBG.args = {
     lang: 'bg',
 };
 ValidationBG.play = async ({canvas, userEvent}) => {
-    await userEvent.clear(canvas.getByRole('textbox', {name: 'Име'}));
+    await userEvent.clear(await canvas.findByRole('textbox', {name: 'Име'}));
     await userEvent.type(canvas.getByRole('textbox', {name: 'Описание'}), 'тест');
     await userEvent.click(canvas.getByRole('button', {name: 'Save'}));
     await new Promise(resolve => setTimeout(resolve, 200));
