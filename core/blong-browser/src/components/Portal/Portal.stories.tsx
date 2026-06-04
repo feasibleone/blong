@@ -144,11 +144,6 @@ MultiplePages.play = async ({canvas, userEvent}) => {
 function WithMenuStory() {
     useEffect(() => {
         const store = useAppStore.getState();
-        // Register page actions so the Portal can load components when menu items are clicked
-        store.registerActions({
-            'view.pageOne': {title: 'Page 1', component: () => Promise.resolve(PageOne)},
-            'view.pageTwo': {title: 'Page 2', component: () => Promise.resolve(PageTwo)},
-        });
         // Configure menu
         store.setPortalConfig({
             name: 'demo',

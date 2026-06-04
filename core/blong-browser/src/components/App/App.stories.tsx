@@ -53,30 +53,6 @@ function DashboardPage() {
     );
 }
 
-function SpeciesListPage() {
-    return (
-        <div style={{padding: '2rem'}}>
-            <h2>Species List</h2>
-            <p>Browse the coral species database.</p>
-            <ul>
-                <li>Brain Coral</li>
-                <li>Staghorn Coral</li>
-                <li>Sea Fan</li>
-                <li>Elkhorn Coral</li>
-            </ul>
-        </div>
-    );
-}
-
-function ReportsPage() {
-    return (
-        <div style={{padding: '2rem'}}>
-            <h2>Reports</h2>
-            <p>Generate and view statistical reports on coral populations.</p>
-        </div>
-    );
-}
-
 // ── Shared portal config ───────────────────────────────────────────────────
 
 const portalConfig: IPortalConfig = {
@@ -113,11 +89,6 @@ function PortalApp({tabs, portalConfig}: {tabs: ITab[]; portalConfig?: IPortalCo
         store.setToken('demo-token');
         tabs.forEach(tab => store.openTab(tab));
         if (portalConfig) store.setPortalConfig(portalConfig);
-        // Register page actions for menu navigation
-        store.registerActions({
-            'app.species': {title: 'Species', component: () => Promise.resolve(SpeciesListPage)},
-            'app.reports': {title: 'Reports', component: () => Promise.resolve(ReportsPage)},
-        });
         return () => {
             useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
             store.logout();

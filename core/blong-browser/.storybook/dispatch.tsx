@@ -434,6 +434,30 @@ function CoralExplorer() {
     );
 }
 
+function SpeciesListPage() {
+    return (
+        <div style={{padding: '2rem'}}>
+            <h2>Species List</h2>
+            <p>Browse the coral species database.</p>
+            <ul>
+                <li>Brain Coral</li>
+                <li>Staghorn Coral</li>
+                <li>Sea Fan</li>
+                <li>Elkhorn Coral</li>
+            </ul>
+        </div>
+    );
+}
+
+function ReportsPage() {
+    return (
+        <div style={{padding: '2rem'}}>
+            <h2>Reports</h2>
+            <p>Generate and view statistical reports on coral populations.</p>
+        </div>
+    );
+}
+
 export const defaultHandlers: Record<string, Handler> = {
     // ── Coral editor entity (Editor stories: load/save/error) ─────────────────
 
@@ -639,6 +663,14 @@ export const defaultHandlers: Record<string, Handler> = {
                 <p>This page was loaded via dispatch with the name "component/view.pageTwo".</p>
             </div>
         ),
+    }),
+    'component/app.species': async () => ({
+        title: 'Species',
+        component: () => Promise.resolve(SpeciesListPage),
+    }),
+    'component/app.reports': async () => ({
+        title: 'Reports',
+        component: () => Promise.resolve(ReportsPage),
     }),
 };
 

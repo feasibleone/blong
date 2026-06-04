@@ -71,8 +71,8 @@ importers:
         specifier: ^9.5.1
         version: 9.5.1
       knex:
-        specifier: ^3.1.0
-        version: 3.2.7(mysql2@3.20.0(@types/node@24.12.0))
+        specifier: ^3.2.10
+        version: 3.2.10(mysql2@3.20.0(@types/node@24.12.0))
       mongodb:
         specifier: ^7.1.0
         version: 7.1.1(socks@2.8.7)
@@ -500,8 +500,8 @@ importers:
         specifier: ^6.2.1
         version: 6.2.2
       knex:
-        specifier: ^3.1.0
-        version: 3.2.7(mysql2@3.20.0(@types/node@24.12.0))
+        specifier: ^3.2.10
+        version: 3.2.10(mysql2@3.20.0(@types/node@24.12.0))
       ky:
         specifier: ^1.14.2
         version: 1.14.3
@@ -9709,8 +9709,8 @@ packages:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
 
-  knex@3.2.7:
-    resolution: {integrity: sha512-VxdDE72x7Tc08E5yCu8HqYoeOm0HOjAraOtYiGSAUJTYkydwfSGBOpQqYHrzM5vjLNzw2JDL2vDH8m7DjIjtgA==}
+  knex@3.2.10:
+    resolution: {integrity: sha512-oypTHfrc9i72iyxaUQBKHOxhcr0xM65MPf6FpN02nimsftXwzXprIkLjfXdubvhbu4PMWLp023q8o8CYvHSuZw==}
     engines: {node: '>=16'}
     hasBin: true
     peerDependencies:
@@ -24794,7 +24794,7 @@ snapshots:
 
   kleur@3.0.3: {}
 
-  knex@3.2.7(mysql2@3.20.0(@types/node@24.12.0)):
+  knex@3.2.10(mysql2@3.20.0(@types/node@24.12.0)):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
@@ -24804,7 +24804,7 @@ snapshots:
       get-package-type: 0.1.0
       getopts: 2.3.0
       interpret: 2.2.0
-      lodash: 4.17.23
+      lodash: 4.18.1
       pg-connection-string: 2.6.2
       rechoir: 0.8.0
       resolve-from: 5.0.0
