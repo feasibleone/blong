@@ -303,7 +303,8 @@ export interface IEnrichedFieldSchema {
     pattern?: string;
     enum?: unknown[];
     readOnly?: boolean;
-    required?: boolean;
+    fieldRequired?: boolean;
+    required?: string[];
     /** Normalized widget config */
     widget?: IWidgetConfig;
     /** Nested object properties — for composite/grouped fields accessed via dot-notation paths */

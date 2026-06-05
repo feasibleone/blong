@@ -30,11 +30,11 @@ export interface ICoralEditorFixture {
 
 const coralEditorFixture: ICoralEditorFixture = {
     schema: {
+        required: ['coralName'],
         properties: {
             coralId: {},
             coralName: {
                 title: 'Name',
-                required: true,
             },
             coralDescription: {
                 title: 'Description',
@@ -52,6 +52,9 @@ const coralEditorFixture: ICoralEditorFixture = {
             // ── Biology (replaces Reproduction) ───────────────────────────────
             polypDescription: {
                 title: 'Polyp',
+                widget: {
+                    type: 'input',
+                },
             },
             growthForm: {
                 title: 'Growth Form',

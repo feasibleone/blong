@@ -14,8 +14,8 @@ describe('enrichSchema', () => {
         });
         expect(schema.name).toBe('user');
         expect(schema.title).toBe('User');
-        expect(schema.properties!.userName.required).toBe(true);
-        expect(schema.properties!.age.required).toBe(false);
+        expect(schema.properties!.userName.fieldRequired).toBe(true);
+        expect(schema.properties!.age.fieldRequired).toBe(false);
         expect(schema.properties!.userName.widget?.type).toBe('input');
         expect(schema.properties!.age.widget?.type).toBe('integer');
         expect(schema.properties!.active.widget?.type).toBe('boolean');
@@ -93,7 +93,12 @@ describe('warnUnknownExtensions', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         enrichSchema('item', {
             properties: {
-                itemName: {type: 'string', 'x-filter': true, 'x-sort': true, 'x-widget': {type: 'input'}} as never,
+                itemName: {
+                    type: 'string',
+                    'x-filter': true,
+                    'x-sort': true,
+                    'x-widget': {type: 'input'},
+                } as never,
             },
         });
         expect(warnSpy).not.toHaveBeenCalled();

@@ -13,12 +13,13 @@ export default model(
                     properties: {
                         family: {
                             properties: {
-                                familyId: {},
-                                familyName: {title: 'Family Name', filter: true, sort: true},
-                                parentFamilyId: {title: 'Parent Group', type: 'number'},
-                                order: {title: 'Order'},
-                                class: {title: 'Class'},
-                                description: {title: 'Description', widget: {type: 'textArea'}},
+                                // server schema defined
+                                // familyId: {},
+                                // familyName: {},
+                                // parentFamilyId: {title: 'Parent Group'},
+                                // order: {},
+                                // class: {},
+                                // familyDescription: {},
                             },
                             widget: {
                                 columns: ['familyName', 'order', 'class'],
@@ -38,7 +39,7 @@ export default model(
                             'family.familyName',
                             'family.order',
                             'family.class',
-                            'family.description',
+                            'family.familyDescription',
                         ],
                     },
                     editFull: {
@@ -48,7 +49,7 @@ export default model(
                             'family.parentFamilyId',
                             'family.order',
                             'family.class',
-                            'family.description',
+                            'family.familyDescription',
                         ],
                     },
                 },

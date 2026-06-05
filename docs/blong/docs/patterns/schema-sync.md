@@ -13,11 +13,10 @@ description and the [rationale](../rationale/schema-sync.md) for design motivati
 import {adapter} from '@feasibleone/blong';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {schemaItemSchema} from './sql/schemaItemSchema.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export default adapter(() => ({
+export default adapter(({schema}) => ({
     extends: 'adapter.knex',
     activation: {
         default: {
@@ -33,7 +32,7 @@ export default adapter(() => ({
                 tables: {
                     // SQL table name → ISchemaTable spec (or plain TObject)
                     schema_item: {
-                        definition: schemaItemSchema,   // TypeBox TObject
+                        definition: schema.mysql.item,  // TypeBox TObject
                         order: 1,                       // creation order (FK dependencies)
                         dropColumns: true,              // allow dropping removed columns
                     },
@@ -68,22 +67,19 @@ auto-bound handler names.
 
 ## Table schema definition
 
-Place the TypeBox `TObject` in the adapter's `sql/` folder so it can be imported by both the
-adapter activation config and any handler overrides or tests:
+Place the TypeBox `TObject` in the `meta/type` folder so it can be reused:
 
 ```typescript
-// mysql/adapter/sql/schemaItemSchema.ts
-import {Type} from 'typebox';
+// mysql/meta/type/schema.ts
+import {schema} from '@feasibleone/blong';
 
-export const schemaItemSchema = Type.Object(
-    {
-        schemaItemId:          Type.Integer(),
-        schemaItemName:        Type.String({maxLength: 255}),
-        schemaItemDescription: Type.Optional(Type.String({maxLength: 1000})),
-        schemaItemActive:      Type.Optional(Type.Boolean()),
-    },
-    {required: ['schemaItemId', 'schemaItemName']},
-);
+export default schema(async ({lib: {type}}) => ({
+    item: type.Object({
+        itemId: type.Integer({format: 'int64'}),
+        itemName: type.String(),
+        itemActive: type.Optional(type.Boolean()),
+    }),
+}));
 ```
 
 **Column rules:**
@@ -118,13 +114,13 @@ export const schemaItemSchema = Type.Object(
 Place each procedure in its own `.sql` file inside a sub-folder named `schema` (by convention):
 
 ```text
-mysql/adapter/sql/schema/sql_schema_list_active.sql
+mysql/adapter/sql/schema/sql_item_list_active.sql
 ```
 
 ```sql
-CREATE PROCEDURE `sql_schema_list_active`()
+CREATE PROCEDURE `sql_item_list_active`()
 BEGIN
-    SELECT * FROM `schema_item` WHERE `schemaItemActive` = 1;
+    SELECT * FROM `item` WHERE `itemActive` = 1;
 END
 ```
 
@@ -142,11 +138,11 @@ database but **not** exposed as a synthetic handler on the API surface.
 ## Auto-bound synthetic handlers
 
 After `ready()`, every procedure whose name does **not** start with `_` is callable as a synthetic
-own-property handler on the adapter.  For a procedure named `sql_schema_list_active`:
+own-property handler on the adapter.  For a procedure named `sql_item_list_active`:
 
 ```text
-sql_schema_list_active  →  sqlItemListActive  (camelCase, for super calls)
-                        →  sqlitemlistactive  (methodId, for framework dispatch)
+sql_item_list_active  →  sqlItemListActive  (camelCase, for super calls)
+                      →  sqlitemlistactive  (methodId, for framework dispatch)
 ```
 
 Call it from any orchestrator or test step exactly like a registered handler:
@@ -166,14 +162,14 @@ caller passes `{itemStatus: value}`.
 When `namespace` is set, the adapter generates six CRUD handlers for every declared table, stored
 as synthetic own-property handlers (same mechanism as procedures):
 
-| Handler name pattern            | Example (`namespace=sql`, `table=schema_item`) |
-| ------------------------------- | ---------------------------------------------- |
-| `${ns}${Table}Get`              | `sqlItemGet`                             |
-| `${ns}${Table}Find`             | `sqlItemFind`                            |
-| `${ns}${Table}Add`              | `sqlItemAdd`                             |
-| `${ns}${Table}Edit`             | `sqlItemEdit`                            |
-| `${ns}${Table}Remove`           | `sqlItemRemove`                          |
-| `${ns}${Table}Merge`            | `sqlItemMerge`                           |
+| Handler name pattern            | Example (`namespace=sql`, `table=item`) |
+| ------------------------------- | --------------------------------------- |
+| `${ns}${Table}Get`              | `sqlItemGet`                            |
+| `${ns}${Table}Find`             | `sqlItemFind`                           |
+| `${ns}${Table}Add`              | `sqlItemAdd`                            |
+| `${ns}${Table}Edit`             | `sqlItemEdit`                           |
+| `${ns}${Table}Remove`           | `sqlItemRemove`                         |
+| `${ns}${Table}Merge`            | `sqlItemMerge`                          |
 
 These are bound **automatically** — no handler files are needed.  To use them from a test or
 orchestrator, import them by name in the `handler:{}` proxy:
@@ -205,7 +201,7 @@ export default handler(
                 string,
                 (p: object, m: object) => Promise<unknown[]>
             >).sqlItemListActive(params, $meta);
-            return (rows as Array<{schemaItemActive: boolean}>).filter(r => r.schemaItemActive);
+            return (rows as Array<{itemActive: boolean}>).filter(r => r.itemActive);
         },
     }),
 );

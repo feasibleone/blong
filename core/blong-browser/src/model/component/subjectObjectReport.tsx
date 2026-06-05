@@ -109,7 +109,7 @@ export async function subjectObjectReport(
         icon: 'pi pi-chart-bar',
         component: async () => {
             const [schemaOverride, {Editor}] = await Promise.all([
-                blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
+                blong.handler.subjectObjectSchema<IEnrichedSchema>({subject, object}, {}),
                 import('../../components/Editor/Editor.js'),
             ]);
 

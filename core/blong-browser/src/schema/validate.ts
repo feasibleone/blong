@@ -9,7 +9,7 @@ import type {RegisterOptions} from 'react-hook-form';
 export function buildValidationRules(schema: IEnrichedFieldSchema): RegisterOptions {
     const rules: RegisterOptions = {};
 
-    if (schema.required) {
+    if (schema.fieldRequired) {
         rules.required = '{field} is required';
     }
     if (schema.minLength != null) {

@@ -264,7 +264,9 @@ export interface IApiSchema {
 }
 
 export interface IObjectSchema {
-    [name: string]: ApiSchema;
+    [subject: string]: {
+        [object: string]: ApiSchema;
+    };
 }
 
 export interface IGateway {

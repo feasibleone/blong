@@ -23,19 +23,14 @@ export default model(
                                 master: {familyId: 'familyId'},
                             },
                             properties: {
-                                speciesId: {},
-                                speciesName: {title: 'Common Name', filter: true, sort: true},
-                                scientificName: {title: 'Scientific Name', filter: true},
-                                genus: {title: 'Genus'},
+                                speciesName: {title: 'Common Name'},
+                                scientificName: {filter: true},
                                 species: {title: 'Species Epithet'},
                                 familyId: {
-                                    title: 'Family',
-                                    widget: {type: 'dropdown', dropdown: 'marine.family'},
+                                    widget: {dropdown: 'marine.family'},
                                 },
                                 conservationStatus: {
-                                    title: 'Conservation Status',
                                     widget: {
-                                        type: 'select',
                                         options: [
                                             {value: 'LC', label: 'Least Concern'},
                                             {value: 'NT', label: 'Near Threatened'},
@@ -45,12 +40,10 @@ export default model(
                                         ],
                                     },
                                 },
-                                bodyLength: {type: 'number', title: 'Body Length (cm)'},
-                                lifespan: {type: 'number', title: 'Lifespan (years)'},
+                                bodyLength: {title: 'Body Length (cm)'},
+                                lifespan: {title: 'Lifespan (years)'},
                                 diet: {
-                                    title: 'Diet',
                                     widget: {
-                                        type: 'select',
                                         options: [
                                             {value: 'carnivore', label: 'Carnivore'},
                                             {value: 'herbivore', label: 'Herbivore'},
@@ -60,8 +53,11 @@ export default model(
                                         ],
                                     },
                                 },
-                                endangered: {title: 'Endangered', widget: {type: 'boolean'}},
-                                description: {title: 'Description', widget: {type: 'textArea'}},
+                                // server schema defined
+                                // speciesId: {},
+                                // genus: {},
+                                // isEndangered: {},
+                                // speciesDescription: {},
                             },
                         },
                         /** Tree navigator — family list with parent category nodes. */
@@ -92,7 +88,7 @@ export default model(
                             'species.species',
                             'species.familyId',
                             'species.conservationStatus',
-                            'species.description',
+                            'species.speciesDescription',
                         ],
                     },
                     editBio: {
@@ -102,7 +98,7 @@ export default model(
                             'species.diet',
                             'species.bodyLength',
                             'species.lifespan',
-                            'species.endangered',
+                            'species.isEndangered',
                         ],
                     },
                 },

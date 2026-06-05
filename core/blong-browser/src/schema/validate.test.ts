@@ -7,7 +7,7 @@ describe('buildValidationRules', () => {
     });
 
     it('adds required rule', () => {
-        const rules = buildValidationRules({required: true, title: 'Name'});
+        const rules = buildValidationRules({fieldRequired: true, title: 'Name'});
         expect(rules.required).toBe('{field} is required');
     });
 
@@ -46,13 +46,13 @@ describe('buildValidationRules', () => {
     });
 
     it('uses {field} placeholder regardless of title or name', () => {
-        const rules = buildValidationRules({required: true, name: 'userId'});
+        const rules = buildValidationRules({fieldRequired: true, name: 'userId'});
         expect(rules.required).toBe('{field} is required');
     });
 
     it('combines multiple rules', () => {
         const rules = buildValidationRules({
-            required: true,
+            fieldRequired: true,
             minLength: 2,
             maxLength: 20,
             title: 'Alias',

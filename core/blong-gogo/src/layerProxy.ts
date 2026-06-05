@@ -26,6 +26,7 @@ import type {IPort} from './Port.ts';
  */
 function createHandlerClosure(
     others: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
+    moduleName: string,
     moduleConfigSlice: unknown,
     name: string,
     namespace: string,
@@ -120,7 +121,7 @@ function createHandlerClosure(
                         configRuntime?.exitConfig();
                     }
                     if (typeof what === 'object' && what !== null && target.result.schema)
-                        merge(target.result.schema as object, what as object);
+                        merge(target.result.schema, {[moduleName]: what});
                     break;
                 }
                 case 'function:handler':
@@ -161,6 +162,7 @@ export default function layerProxy(
     moduleConfig: {
         pkg: IModuleConfig['pkg'];
         base: string;
+        name: string;
         configNames?: string[];
     } & {
         [name: string]: object;
@@ -308,6 +310,7 @@ export default function layerProxy(
                                     where.methods.push(
                                         createHandlerClosure(
                                             others as unknown[],
+                                            moduleConfig.name,
                                             moduleConfig[name],
                                             name,
                                             namespace,

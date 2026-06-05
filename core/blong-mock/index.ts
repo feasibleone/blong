@@ -57,10 +57,12 @@ export async function mock(
             });
         }
         Object.assign(mocks, {
-            [`${subject}.${object}.schema`](this: IAdapter<object, object>) {
+            subjectObjectSchema(this: IAdapter<object, object>) {
                 this.log?.debug?.(
                     {
-                        $meta: {method: `${subject}.${object}.schema`},
+                        $meta: {method: 'subjectObjectSchema'},
+                        subject,
+                        object,
                     },
                     'Mock schema',
                 );
@@ -263,9 +265,6 @@ export async function mock(
                 items.push(data);
                 return get.apply(this, [{[keyField]: data[keyField]}]);
             },
-            async [`${subject}.${object}.schema`]() {
-                return {};
-            },
         });
         mocks[`${subject}.dropdown.list`] ||= async () => {
             const result: Record<string, {value: unknown; label: unknown}[]> = {};
@@ -318,11 +317,6 @@ export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
                 params: Type.Unknown(),
                 result: Type.Awaited(Type.Unknown()),
                 description: `Get ${object} by key`,
-            }),
-            [`${subject}.${object}.schema`]: () => ({
-                params: Type.Unknown(),
-                result: Type.Awaited(Type.Unknown()),
-                description: `Get schema for ${object}`,
             }),
             [`${subject}.${object}.report`]: () => ({
                 params: Type.Unknown(),

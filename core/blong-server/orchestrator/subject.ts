@@ -7,6 +7,7 @@ export default orchestrator(() => ({
     extends: 'orchestrator.dispatch',
     activation: {
         default: {
+            namespace: 'subject',
             imports: [/\.subject$/],
             destination: 'db',
         },

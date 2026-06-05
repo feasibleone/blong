@@ -842,7 +842,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                         data-pc-section="headertitle"
                                       >
                                         <span>
-                                          title
+                                          Title
                                         </span>
                                       </span>
                                     </div>
@@ -869,7 +869,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
                                         data-pc-section="headertitle"
                                       >
                                         <span>
-                                          url
+                                          Url
                                         </span>
                                       </span>
                                       <span
@@ -4658,7 +4658,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -4685,7 +4685,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -5854,7 +5854,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -5881,7 +5881,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -7050,7 +7050,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -7077,7 +7077,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -8246,7 +8246,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -8273,7 +8273,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -9442,7 +9442,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -9469,7 +9469,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -17164,7 +17164,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -17191,7 +17191,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -18359,7 +18359,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -18386,7 +18386,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -19555,7 +19555,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -19582,7 +19582,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -20751,7 +20751,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -20778,7 +20778,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -21947,7 +21947,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -21974,7 +21974,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -23671,7 +23671,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -23698,7 +23698,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -25432,7 +25432,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -25459,7 +25459,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span
@@ -26642,7 +26642,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        title
+                                        Title
                                       </span>
                                     </span>
                                   </div>
@@ -26669,7 +26669,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
                                       data-pc-section="headertitle"
                                     >
                                       <span>
-                                        url
+                                        Url
                                       </span>
                                     </span>
                                     <span

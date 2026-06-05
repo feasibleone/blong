@@ -29,7 +29,7 @@ export default adapter<{
                 sync: true,
                 tables: {
                     item: {
-                        definition: schema.item,
+                        definition: schema.mysql.item,
                         order: 1,
                         dropColumns: true,
                     },

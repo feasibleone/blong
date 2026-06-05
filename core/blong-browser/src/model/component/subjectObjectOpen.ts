@@ -15,7 +15,7 @@ export async function subjectObjectOpen(model: IResolvedModelSpec, blong: IHandl
         icon: 'pi pi-pencil',
         component: async (params?: Record<string, unknown>) => {
             const [schemaOverride, {Editor}] = await Promise.all([
-                blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
+                blong.handler.subjectObjectSchema<IEnrichedSchema>({subject, object}, {}),
                 import('../../components/Editor/Editor.js'),
             ]);
 

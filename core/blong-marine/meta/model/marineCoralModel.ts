@@ -14,38 +14,22 @@ export default model(
                     properties: {
                         coral: {
                             properties: {
-                                coralId: {},
-                                coralName: {
-                                    title: 'Name',
-                                    filter: true,
-                                    sort: true,
-                                    required: true,
-                                },
                                 familyId: {
-                                    title: 'Family',
                                     widget: {
-                                        type: 'dropdown',
                                         dropdown: 'marine.family',
-                                        required: true,
                                     },
                                 },
                                 habitatId: {
-                                    title: 'Habitat',
-                                    widget: {type: 'dropdown', dropdown: 'marine.habitat'},
+                                    widget: {dropdown: 'marine.habitat'},
                                 },
                                 coralType: {
-                                    title: 'Coral Type',
                                     widget: {
-                                        type: 'select',
                                         options: coralTypeOptions,
                                     },
                                 },
-                                maxDepth: {type: 'number', title: 'Max Depth (m)'},
-                                colorPattern: {title: 'Color Pattern'},
+                                maxDepth: {title: 'Max Depth (m)'},
                                 conservationStatus: {
-                                    title: 'Conservation Status',
                                     widget: {
-                                        type: 'select',
                                         options: [
                                             {value: 'LC', label: 'Least Concern'},
                                             {value: 'NT', label: 'Near Threatened'},
@@ -55,9 +39,13 @@ export default model(
                                         ],
                                     },
                                 },
-                                endangered: {title: 'Endangered', widget: {type: 'boolean'}},
-                                discovered: {title: 'Discovered', widget: {type: 'date'}},
-                                description: {title: 'Description', widget: {type: 'textArea'}},
+                                // server schema defined
+                                // coralId: {},
+                                // coralName: {},
+                                // colorPattern: {},
+                                // isEndangered: {},
+                                // discoveryDate: {},
+                                // coralDescription: {},
                             },
                             /** Filter the table rows by the selected navigator item (family). */
                             widget: {
@@ -109,9 +97,9 @@ export default model(
                             'coral.maxDepth',
                             'coral.colorPattern',
                             'coral.conservationStatus',
-                            'coral.endangered',
-                            'coral.discovered',
-                            'coral.description',
+                            'coral.isEndangered',
+                            'coral.discoveryDate',
+                            'coral.coralDescription',
                         ],
                     },
                     editCompact: {
@@ -121,7 +109,7 @@ export default model(
                             'coral.coralType',
                             'coral.familyId',
                             'coral.conservationStatus',
-                            'coral.description',
+                            'coral.coralDescription',
                         ],
                     },
                     editDepth: {
@@ -131,7 +119,7 @@ export default model(
                     },
                     editTimeline: {
                         label: 'Discovery',
-                        widgets: ['coral.discovered'],
+                        widgets: ['coral.discoveryDate'],
                     },
                 },
 

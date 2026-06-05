@@ -137,7 +137,7 @@ function enrichField(
         pattern: raw.pattern,
         enum: raw.enum,
         readOnly: raw.readOnly,
-        required: required.has(name),
+        fieldRequired: required.has(name),
         'x-filter': raw['x-filter'] as boolean | undefined,
         'x-sort': raw['x-sort'] as boolean | undefined,
         'x-cards': raw['x-cards'] as string[] | undefined,

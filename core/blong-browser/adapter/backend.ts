@@ -11,7 +11,7 @@ export default adapter<{
             url: globalThis.window?.location?.origin ?? 'http://localhost:8080',
         },
         browser: {
-            logLevel: 'info',
+            logLevel: 'debug',
         },
         storybook: {
             mock: true,

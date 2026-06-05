@@ -3,7 +3,7 @@
  *
  * Tests text and textarea widget types.
  */
-import {test, expect} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright';
 import {browseModel, createAndEditModel} from '@feasibleone/blong-browser/playwright/model';
 
 test.use({blongPermissions: true});
@@ -22,7 +22,7 @@ test.describe('Marine Family', () => {
             'family.familyName': 'Test Playwright Family',
             'family.order': 'Testiformes',
             'family.class': 'Testotheca',
-            'family.description': 'A test family created by Playwright',
+            'family.familyDescription': 'A test family created by Playwright',
         },
         editFields: {
             'family.familyName': 'Test Playwright Family Edited',

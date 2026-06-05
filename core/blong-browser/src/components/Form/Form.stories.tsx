@@ -28,7 +28,7 @@ const coralSchema: IEnrichedSchema = {
         coralName: {
             title: 'Name',
             type: 'string',
-            required: true,
+            fieldRequired: true,
             widget: {type: 'input'},
         },
         scientificName: {title: 'Scientific Name', type: 'string', widget: {type: 'input'}},

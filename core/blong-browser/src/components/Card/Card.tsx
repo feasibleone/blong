@@ -12,6 +12,7 @@
  *    renders `children` as-is. Used for standalone layout and stories.
  */
 import {useDndContext, useDraggable, useDroppable} from '@dnd-kit/core';
+import label from '../../lib/label.js';
 import {Card as PrimeCard, Skeleton} from '../../primereact/index.js';
 import './Card.css';
 
@@ -77,7 +78,7 @@ function DraggableFieldRow({
     const stableCtx = useBlongForm();
     const fieldId = `field:${fieldName}:${cardName}`;
     const fieldSchema = stableCtx?.schema?.properties?.[fieldName];
-    const fieldLabel = fieldSchema?.title ?? fieldName;
+    const fieldLabel = label(fieldSchema?.title, fieldName);
     const isSelected = selected?.id === fieldId;
 
     // Read active drag type so we only show insert indicator when dragging another field
@@ -156,13 +157,16 @@ function DraggableFieldRow({
 // Field rendering — lives here because only Card renders fields
 // ---------------------------------------------------------------------------
 
-function resolveWidgetType(fieldSchema: IEnrichedFieldSchema): string {
+function resolveWidgetType(fieldSchema: IEnrichedFieldSchema, fieldName: string): string {
     if (fieldSchema.widget?.type) return fieldSchema.widget.type;
     const fmt = fieldSchema.format;
     if (fmt === 'date') return 'date';
     if (fmt === 'date-time' || fmt === 'dateTime') return 'dateTime';
     if (fmt === 'time') return 'time';
     if (fieldSchema.type === 'boolean') return 'boolean';
+    if (fieldSchema.widget?.dropdown) return 'dropdown';
+    if (fieldSchema.widget?.options) return 'select';
+    if (fieldName.endsWith('Description')) return 'textArea';
     if (fieldSchema.type === 'integer') return 'integer';
     if (fieldSchema.type === 'number') return 'number';
     return 'input';
@@ -182,10 +186,20 @@ function resolveFieldSchema(
     const hashIdx = fieldPath.indexOf('#');
     const basePath = hashIdx >= 0 ? fieldPath.slice(0, hashIdx) : fieldPath;
     const dot = basePath.indexOf('.');
-    if (dot === -1) return schema.properties[basePath];
+    if (dot === -1)
+        return {
+            fieldRequired: schema?.required?.includes(basePath),
+            ...schema.properties[basePath],
+        };
     const head = basePath.slice(0, dot);
     const tail = basePath.slice(dot + 1);
-    return resolveFieldSchema({properties: schema.properties[head]?.properties}, tail);
+    return resolveFieldSchema(
+        {
+            properties: schema.properties[head]?.properties,
+            required: schema.properties[head]?.required,
+        },
+        tail,
+    );
 }
 
 /**
@@ -274,6 +288,7 @@ function FieldRow({
                       ...rawSchema,
                       widget: {
                           ...rawSchema.widget!,
+                          required: rawSchema.fieldRequired,
                           options: dropdowns[dropdownKey],
                           dropdown: undefined,
                       },
@@ -294,7 +309,7 @@ function FieldRow({
     );
 
     const WidgetComponent = effectiveSchema
-        ? widgetRegistry.get(resolveWidgetType(effectiveSchema))
+        ? widgetRegistry.get(resolveWidgetType(effectiveSchema, fieldName))
         : undefined;
 
     const schemaReadOnly =
@@ -505,7 +520,7 @@ function FieldRow({
             <div className={`field grid${isLast ? ' mb-0' : ''}`}>
                 {hasLabel && (
                     <label className="col-12 md:col-4">
-                        <Text>{effectiveSchema.title ?? baseName}</Text>
+                        <Text>{label(effectiveSchema.title, baseName)}</Text>
                     </label>
                 )}
                 <div className={`flex align-items-center col-12${hasLabel ? ' md:col-8' : ''}`}>
@@ -521,10 +536,10 @@ function FieldRow({
                 <label
                     htmlFor={instanceId}
                     className={`col-12 md:col-4${
-                        effectiveSchema.required ? ' blong-required' : ''
+                        effectiveSchema.fieldRequired ? ' blong-required' : ''
                     }`}
                 >
-                    <Text>{effectiveSchema.title ?? baseName}</Text>
+                    <Text>{label(effectiveSchema.title, baseName)}</Text>
                 </label>
             )}
             <Controller
@@ -568,7 +583,7 @@ function CustomInput({
     const fieldSchema = resolveFieldSchema(schema, name);
     if (!fieldSchema) return null;
 
-    const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema));
+    const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema, name));
     if (!WidgetComponent) return null;
 
     const dropdownKey = fieldSchema.widget?.dropdown;
@@ -641,7 +656,7 @@ function CustomLabel({
 }) {
     const stableCtx = useBlongForm();
     const fieldSchema = name ? resolveFieldSchema(stableCtx?.schema, name) : undefined;
-    const title = labelOverride ?? fieldSchema?.title ?? name;
+    const title = label(labelOverride ?? fieldSchema?.title, name);
     if (!title) return null;
     return (
         <label
@@ -749,7 +764,7 @@ function WatchFieldRow({
         itemsProps?.[fieldName] ?? schema?.properties?.[fieldName];
     if (!fieldSchema) return null;
 
-    const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema));
+    const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema, fieldName));
     if (!WidgetComponent) return null;
 
     const hasLabel = fieldSchema.title !== '';
@@ -832,7 +847,7 @@ export function Card({
     const resolved = cardName && formCtx ? formCtx.cards[cardName] : undefined;
 
     // When cardName is active, prefer resolved values over explicit props
-    const resolvedTitle: string | ReactNode | undefined = resolved ? resolved.label : title;
+    const resolvedTitle: string | ReactNode | undefined = label(resolved?.label, title);
     const titleLabel = typeof resolvedTitle === 'string' ? resolvedTitle : (cardName ?? elementId);
 
     const {log} = useBlong();

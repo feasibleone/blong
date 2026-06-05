@@ -124,7 +124,7 @@ export function PropertyEditor() {
         const schemaOverride = (config.schema?.[fieldName] ?? {}) as {
             title?: string;
             type?: string;
-            required?: boolean;
+            fieldRequired?: boolean;
             readOnly?: boolean;
             widget?: {type?: string};
         };
@@ -142,7 +142,7 @@ export function PropertyEditor() {
         const currentType = schemaOverride.type ?? baseSchema?.type ?? '';
         const currentWidgetType =
             schemaOverride.widget?.type ?? baseSchema?.widget?.type ?? 'input';
-        const currentRequired = schemaOverride.required ?? baseSchema?.required ?? false;
+        const currentRequired = schemaOverride.fieldRequired ?? baseSchema?.fieldRequired ?? false;
         const currentReadOnly = schemaOverride.readOnly ?? baseSchema?.readOnly ?? false;
 
         return (

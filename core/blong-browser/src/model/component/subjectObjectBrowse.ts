@@ -12,7 +12,7 @@ export async function subjectObjectBrowse(
         icon: browser.icon,
         component: async () => {
             const [schemaOverride, {Editor}] = await Promise.all([
-                blong.handler[`${subject}.${object}.schema`]<IEnrichedSchema>({}, {}),
+                blong.handler.subjectObjectSchema<IEnrichedSchema>({subject, object}, {}),
                 import('../../components/Editor/Editor.js'),
             ]);
 

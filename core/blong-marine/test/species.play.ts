@@ -3,7 +3,7 @@
  *
  * Tests text, dropdown, select, and textarea widget types.
  */
-import {test, expect} from '@feasibleone/blong-browser/playwright';
+import {expect, test} from '@feasibleone/blong-browser/playwright';
 import {browseModel, createAndEditModel} from '@feasibleone/blong-browser/playwright/model';
 
 test.use({blongPermissions: true});
@@ -25,7 +25,7 @@ test.describe('Marine Species', () => {
             'species.species': 'playwrightus',
             'species.familyId': 'Gorgoniidae',
             'species.conservationStatus': 'Vulnerable',
-            'species.description': 'A test species created by Playwright',
+            'species.speciesDescription': 'A test species created by Playwright',
         },
         editFields: {
             'species.speciesName': 'Test Playwright Species Edited',

@@ -1,4 +1,5 @@
 import {ActionButton} from '../components/ActionButton/ActionButton.js';
+import label from '../lib/label.js';
 import {
     Calendar,
     Checkbox,
@@ -67,7 +68,7 @@ function resolveColumns(
     if (cols && Array.isArray(cols)) {
         return cols.map(c => ({
             field: c,
-            header: properties?.[c]?.title ?? c,
+            header: label(properties?.[c]?.title, c)!,
             filter: !!(properties?.[c] as Record<string, unknown>)?.filter,
             sortable: !!(properties?.[c] as Record<string, unknown>)?.sort,
             fieldSchema: properties?.[c] ?? {},
@@ -76,7 +77,7 @@ function resolveColumns(
     if (cols && typeof cols === 'object') {
         return Object.entries(cols).map(([field, cfg]) => ({
             field,
-            header: ((cfg as Record<string, unknown>)?.title as string) ?? field,
+            header: label((cfg as Record<string, unknown>)?.title as string, field)!,
             fieldSchema: properties?.[field] ?? {},
         }));
     }
@@ -87,7 +88,7 @@ function resolveColumns(
             .filter(([field]) => !hidden.has(field) && (!show || show.includes(field)))
             .map(([field, schema]) => ({
                 field,
-                header: schema.title ?? field,
+                header: label(schema.title, field)!,
                 filter: !!(schema as Record<string, unknown>).filter,
                 sortable: !!(schema as Record<string, unknown>).sort,
                 fieldSchema: schema,
@@ -307,7 +308,7 @@ function renderEditor(
                     options={options}
                     onChange={e => editorCallback(e.value)}
                     className="w-full blong-dropdown"
-                    showClear={!fieldSchema.required}
+                    showClear={!fieldSchema.fieldRequired}
                     placeholder="Select…"
                     filter={options.length > 8}
                 />

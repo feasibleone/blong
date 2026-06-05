@@ -7,14 +7,21 @@ import {schema} from '@feasibleone/blong';
  * processed (alphabetical load order) and `blong.schema.item` is
  * available as a TypeBox object reference.
  */
-export default schema(async ({lib: {type}, schema: {item}}) => ({
-    itemPage: type.Object(
-        {
-            item: type.Array(item ?? type.Unknown()),
-            total: type.Integer(),
-            page: type.Optional(type.Integer()),
-            pageSize: type.Optional(type.Integer()),
+export default schema(
+    async ({
+        lib: {type},
+        schema: {
+            mysql: {item},
         },
-        {required: ['item', 'total']},
-    ),
-}));
+    }) => ({
+        itemPage: type.Object(
+            {
+                item: type.Array(item ?? type.Unknown()),
+                total: type.Integer(),
+                page: type.Optional(type.Integer()),
+                pageSize: type.Optional(type.Integer()),
+            },
+            {required: ['item', 'total']},
+        ),
+    }),
+);

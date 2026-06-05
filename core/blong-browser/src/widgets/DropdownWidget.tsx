@@ -133,7 +133,7 @@ function DropdownCore({
             onHide={onBlur}
             disabled={disabled || isParentEmpty}
             className={`blong-dropdown w-full ${error ? 'p-invalid' : ''}`}
-            showClear={!schema.required}
+            showClear={!schema.fieldRequired}
             filter={visibleOptions.length > 8}
             placeholder={schema.placeholder ?? 'Select…'}
         />

@@ -22,12 +22,9 @@ export default model(
                                 ],
                             },
                             properties: {
-                                habitatId: {},
-                                habitatName: {title: 'Name', filter: true, sort: true},
                                 habitatType: {
                                     title: 'Type',
                                     widget: {
-                                        type: 'select',
                                         options: [
                                             {value: 'reef', label: 'Coral Reef'},
                                             {value: 'lagoon', label: 'Lagoon'},
@@ -38,48 +35,44 @@ export default model(
                                     },
                                 },
                                 zone: {
-                                    title: 'Zone',
                                     filter: true,
                                     widget: {
-                                        type: 'select',
                                         options: [
-                                            {value: 'shallow', label: 'Shallow Reef (0–30 m)'},
-                                            {value: 'mesophotic', label: 'Mesophotic (30–150 m)'},
+                                            {value: 'shallow', label: 'Shallow Reef (0-30 m)'},
+                                            {value: 'mesophotic', label: 'Mesophotic (30-150 m)'},
                                             {value: 'deep', label: 'Deep Water (150+ m)'},
                                             {value: 'lagoon', label: 'Lagoon'},
                                         ],
                                     },
                                 },
                                 oceanZone: {
-                                    title: 'Ocean Zone',
                                     widget: {
-                                        type: 'select',
                                         options: [
-                                            {value: 'sunlight', label: 'Sunlight Zone (0–200 m)'},
+                                            {value: 'sunlight', label: 'Sunlight Zone (0-200 m)'},
                                             {
                                                 value: 'twilight',
-                                                label: 'Twilight Zone (200–1000 m)',
+                                                label: 'Twilight Zone (200-1000 m)',
                                             },
                                             {
                                                 value: 'midnight',
-                                                label: 'Midnight Zone (1000–4000 m)',
+                                                label: 'Midnight Zone (1000-4000 m)',
                                             },
                                             {value: 'abyssal', label: 'Abyssal Zone (4000+ m)'},
                                         ],
                                     },
                                 },
-                                region: {title: 'Region', filter: true},
-                                minDepth: {type: 'number', title: 'Min Depth (m)'},
-                                maxDepth: {type: 'number', title: 'Max Depth (m)'},
-                                waterTempMin: {type: 'number', title: 'Min Temp (°C)'},
-                                waterTempMax: {type: 'number', title: 'Max Temp (°C)'},
-                                latitude: {type: 'number', title: 'Latitude'},
-                                longitude: {type: 'number', title: 'Longitude'},
-                                protectionStatus: {
-                                    title: 'Protected Area',
-                                    widget: {type: 'boolean'},
-                                },
-                                description: {title: 'Description', widget: {type: 'textArea'}},
+                                region: {filter: true},
+                                minDepth: {title: 'Min Depth (m)'},
+                                maxDepth: {title: 'Max Depth (m)'},
+                                waterTempMin: {title: 'Min Temp (°C)'},
+                                waterTempMax: {title: 'Max Temp (°C)'},
+                                // server schema defined
+                                // habitatId: {},
+                                // habitatName: {},
+                                // latitude: {},
+                                // longitude: {},
+                                // protectionStatus: {},
+                                // habitatDescription: {},
                             },
                         },
                         /** Navigator showing ocean zones for filtering habitats by zone. */
@@ -107,7 +100,7 @@ export default model(
                             'habitat.zone',
                             'habitat.oceanZone',
                             'habitat.region',
-                            'habitat.description',
+                            'habitat.habitatDescription',
                         ],
                     },
                     editCoords: {
