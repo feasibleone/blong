@@ -39,6 +39,7 @@ function walkValue(value: unknown, vars: Vars, renderFn: (t: string, v: Vars) =>
         return value.map(item => walkValue(item, vars, renderFn));
     }
     if (value !== null && typeof value === 'object') {
+        if (value.constructor !== Object) return value;
         const result: Record<string, unknown> = {};
         for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
             result[key] = walkValue(v, vars, renderFn);

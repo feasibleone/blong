@@ -5,6 +5,7 @@ metadata:
 data:
   init.sql: |
     CREATE DATABASE IF NOT EXISTS `blong-integration`;
+    CREATE DATABASE IF NOT EXISTS `blong-suite`;
     FLUSH PRIVILEGES;
     CREATE USER 'blong-admin'@'%' IDENTIFIED BY 'password';
     GRANT ALL ON *.* TO 'blong-admin'@'%';

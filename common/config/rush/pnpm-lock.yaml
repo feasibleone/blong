@@ -460,6 +460,12 @@ importers:
       '@feasibleone/blong-kopi':
         specifier: workspace:^1.0.0
         version: link:../blong-kopi
+      '@feasibleone/blong-mock':
+        specifier: workspace:^1.0.0
+        version: link:../blong-mock
+      '@feasibleone/blong-template':
+        specifier: workspace:*
+        version: link:../blong-template
       '@keycloak/keycloak-admin-client':
         specifier: ^26.6.2
         version: 26.6.2
@@ -562,6 +568,9 @@ importers:
       ut-dns-discovery:
         specifier: ^6.2.3
         version: 6.2.3
+      ut-function.cbc:
+        specifier: ^1.1.6
+        version: 1.1.6
       ut-function.interpolate:
         specifier: 1.1.3
         version: 1.1.3

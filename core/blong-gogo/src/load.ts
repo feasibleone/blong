@@ -21,7 +21,6 @@ import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
-import ConfigRuntime from './ConfigRuntime.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
@@ -301,53 +300,6 @@ export default async function loadRealm<T extends TSchema>(
     const mod = await def({type: Type});
     if (!('pkg' in mod) && platformApi.platform === 'server')
         mod.pkg = platformApi.createRequire?.(mod.url)('./package.json');
-    const mergedConfig: {
-        name: string;
-        pkg: {name: string; version: string};
-        children: unknown[];
-        url: string;
-        base: string;
-        server: {
-            load: {logLevel: Parameters<ILog['logger']>[0]};
-            realm: {logLevel: Parameters<ILog['logger']>[0]};
-        };
-        browser: {
-            load: {logLevel: Parameters<ILog['logger']>[0]};
-            realm: {logLevel: Parameters<ILog['logger']>[0]};
-        };
-        kopi?: {realm?: unknown};
-        watch?: {configs?: object};
-        configs?: object;
-        configNames: string[];
-    } & {
-        [key: string]: unknown;
-    } = {
-        name,
-        pkg: {name, version: '0.0.0'},
-        children: [],
-        url: '',
-        base: '',
-        server: {
-            load: {
-                logLevel: 'warn' as Parameters<ILog['logger']>[0],
-            },
-            realm: {
-                logLevel: 'warn' as Parameters<ILog['logger']>[0],
-            },
-        },
-        browser: {
-            load: {
-                logLevel: 'warn' as Parameters<ILog['logger']>[0],
-            },
-            realm: {
-                logLevel: 'warn' as Parameters<ILog['logger']>[0],
-            },
-        },
-        kopi: undefined,
-        watch: undefined as {configs?: object} | undefined,
-        configs: undefined,
-        configNames: [] as string[],
-    };
     const loadedConfigs = [];
     let items:
         | IModuleConfig['children']
@@ -556,11 +508,41 @@ export default async function loadRealm<T extends TSchema>(
         });
     }
     loadedConfigs.push(...activeConfigs(mod, configNames, platformApi.configs));
-    const {loadedConfig, configRuntime} = await platformApi.loadConfig(parentConfig);
-    if (loadedConfig) loadedConfigs.push(loadedConfig);
+    const {loadedConfig: mergedConfig, configRuntime} = await platformApi.loadConfig(
+        {
+            name,
+            pkg: {name, version: '0.0.0'},
+            children: [],
+            url: '',
+            base: '',
+            server: {
+                load: {
+                    logLevel: 'warn' as Parameters<ILog['logger']>[0],
+                },
+                realm: {
+                    logLevel: 'warn' as Parameters<ILog['logger']>[0],
+                },
+            },
+            browser: {
+                load: {
+                    logLevel: 'warn' as Parameters<ILog['logger']>[0],
+                },
+                realm: {
+                    logLevel: 'warn' as Parameters<ILog['logger']>[0],
+                },
+            },
+            configNames,
+        },
+        parentConfig,
+        loadedConfigs.filter(Boolean) as object[],
+    );
 
-    ConfigRuntime.mergeModuleConfig(mergedConfig, ...loadedConfigs);
-    mergedConfig.configNames = configNames;
+    // Wire ConfigRuntime into Watch so config-file changes trigger in-process
+    // reload via ConfigRuntime.reload() instead of restarting the process.
+    if (configRuntime) {
+        api!.configRuntime = configRuntime;
+        api!.watch?.setConfigRuntime?.(configRuntime);
+    }
     let logger: ILogger | undefined = api?.log?.logger(
         mergedConfig[rootKind === 'browser' ? 'browser' : 'server']?.load?.logLevel,
         {
@@ -814,12 +796,6 @@ export default async function loadRealm<T extends TSchema>(
                 }
             }
         }
-    }
-    // Wire ConfigRuntime into Watch so config-file changes trigger in-process
-    // reload via ConfigRuntime.reload() instead of restarting the process.
-    if (configRuntime) {
-        api!.configRuntime = configRuntime;
-        api!.watch?.setConfigRuntime?.(configRuntime);
     }
     realm ||= new RealmImpl(mergedConfig, api!, rootKind);
     if (!api?.registry) throw new Error('Registry not found in loaded modules');

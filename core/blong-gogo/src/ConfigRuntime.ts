@@ -133,7 +133,12 @@ export function createConfigProxy<T extends object>(
             get(_target, prop) {
                 const container = getNode(path);
                 const val = container == null ? undefined : Reflect.get(container as object, prop);
-                if (val === undefined || val === null || typeof val !== 'object') {
+                if (
+                    val === undefined ||
+                    val === null ||
+                    typeof val !== 'object' ||
+                    val.constructor !== Object
+                ) {
                     if (
                         _factoryPhase.active &&
                         val !== undefined &&
@@ -252,7 +257,9 @@ export function deepDiff(prev: unknown, next: unknown, path = ''): ConfigDiff {
 // ---------------------------------------------------------------------------
 
 export default class ConfigRuntime implements IConfigRuntime {
-    readonly #loadParams: object;
+    readonly #baseConfig: object;
+    readonly #configs: object[];
+    readonly #suite: string;
     readonly #subscribers: Set<ConfigSubscriber> = new Set();
 
     #rawSnapshot: object = {};
@@ -262,8 +269,10 @@ export default class ConfigRuntime implements IConfigRuntime {
     readonly enterConfig: (mode?: FactoryPhaseMode) => void;
     readonly exitConfig: () => Error[];
 
-    public constructor(loadParams: object = {}) {
-        this.#loadParams = loadParams;
+    public constructor(baseConfig: object, configs: (object | boolean)[], suite: string) {
+        this.#baseConfig = baseConfig;
+        this.#configs = configs.filter(Boolean) as object[];
+        this.#suite = suite;
         const {proxy, update, enterConfig, exitConfig} = createConfigProxy(this.#rawSnapshot);
         this.#proxy = proxy;
         this.#updateProxy = update;
@@ -283,13 +292,18 @@ export default class ConfigRuntime implements IConfigRuntime {
         return this.#rawSnapshot;
     }
 
+    private mergeConfigs(blongConfig: object): object {
+        const loaded = loadBlong(blongConfig);
+        return merge({}, this.#baseConfig, ...this.#configs, loaded);
+    }
+
     /**
      * Load configuration from all sources using blong-config.
      * Merges the result into the proxy backing store so existing references
      * automatically reflect the new values.
      */
     public async load(params: object = {}): Promise<object> {
-        const loaded = loadBlong({...this.#loadParams, ...params});
+        const loaded = this.mergeConfigs({config: {suite: this.#suite}, ...params});
         this.#rawSnapshot = loaded;
         this.#updateProxy(loaded);
         return this.#proxy;
@@ -304,7 +318,7 @@ export default class ConfigRuntime implements IConfigRuntime {
      */
     public async reload(): Promise<ConfigDiff> {
         const prev = this.#rawSnapshot;
-        const next = loadBlong(this.#loadParams);
+        const next = this.mergeConfigs({config: {suite: this.#suite}});
         const diff = this.diff(prev, next);
 
         // Only do work when something actually changed
@@ -389,18 +403,5 @@ export default class ConfigRuntime implements IConfigRuntime {
                 })
                 .flat(),
         ]);
-    }
-
-    /**
-     * Merge module configs from multiple sources in the standard order.
-     *
-     * Previously done in `loadRealm()`:
-     *   `merge(mergedConfig, ...loadedConfigs.filter(Boolean))`
-     *
-     * @param base - the base config object (mutated in place)
-     * @param sources - config objects to merge, in priority order
-     */
-    static mergeModuleConfig(base: object, ...sources: unknown[]): object {
-        return merge(base, ...sources.filter(Boolean));
     }
 }

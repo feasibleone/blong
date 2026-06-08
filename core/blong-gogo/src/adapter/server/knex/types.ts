@@ -46,4 +46,8 @@ export interface IConfig {
          */
         procedurePaths?: string[];
     };
+    /**
+     * When `true`, mocks some handlers
+     */
+    mock?: boolean;
 }

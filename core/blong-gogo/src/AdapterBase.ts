@@ -11,7 +11,6 @@ import type {
 } from '@feasibleone/blong/types';
 import type net from 'node:net';
 import PQueue from 'p-queue';
-import merge from 'ut-function.merge';
 
 import ConfigRuntime from './ConfigRuntime.ts';
 import {isExpectedError} from './lib.ts';
@@ -103,7 +102,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     // api.attachHandlers = ... only *after* the port factory returns.  Storing
     // the api object and reading api.attachHandlers lazily (at call time)
     // ensures we always see the real function rather than the initial undefined.
-    _api: Pick<IApi, 'attachHandlers'>;
+    _api: Pick<IApi, 'attachHandlers' | 'render'>;
     _createLog: IApi['createLog'];
     _attachCheckpoint: IApi['attachCheckpoint'];
     _activationNames: string[];
@@ -123,6 +122,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
             | 'attachHandlers'
             | 'createLog'
             | 'attachCheckpoint'
+            | 'render'
         >,
         configBase: string,
         activationNames: string[] = [],
@@ -150,7 +150,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     }
 
     async init(...configs: object[]): Promise<void> {
-        this.config = merge(this.activeConfig(), ...configs) as Config<T, C>;
+        this.config = this._api.render([this.activeConfig(), ...configs]) as Config<T, C>;
         this.log = this._createLog?.(this.config.logLevel || 'info', {
             ...this.config.log,
             name: this.config.id,

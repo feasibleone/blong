@@ -3,6 +3,7 @@ import {
     type Adapter,
     type Errors,
     type IErrorMap,
+    type IHandlerProxy,
     type IMeta,
     type Knex,
 } from '@feasibleone/blong/types';
@@ -209,6 +210,24 @@ export default adapter<IConfig>(({utError}) => {
                     return this.config.context.queryBuilder!(table).where(params).del();
             }
             throw this.error(_errors['knex.generic']({}), $meta);
+        },
+        /**
+         * Load model mocks when `config.mock` is `true`
+         */
+        async createHandlers({
+            handlers,
+            layerApi,
+            kind,
+        }: {
+            handlers: object;
+            layerApi: IHandlerProxy<unknown>;
+            kind: string;
+        }) {
+            if (this.config?.mock && kind === 'model') {
+                const {mock} = await import('@feasibleone/blong-mock');
+                const models = await Promise.all(Object.values(handlers).map(model => model()));
+                return await mock.apply(this, [models, layerApi]);
+            }
         },
         /**
          * Create or synchronise a database table from a TypeBox `TObject` schema.

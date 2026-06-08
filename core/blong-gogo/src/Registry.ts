@@ -25,6 +25,7 @@ import merge from 'ut-function.merge';
 import {v4 as uuid4, v7 as uuid7} from 'uuid';
 import yaml from 'yaml';
 
+import {renderAll} from '@feasibleone/blong-template';
 import {createAttachCheckpoint} from './checkpoint.ts';
 import {methodId, methodParts} from './lib.ts';
 import type {IResolution} from './Resolution.ts';
@@ -190,6 +191,8 @@ export default class Registry extends Internal implements IRegistry {
             attachHandlers: undefined!,
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
+            render: (what: object[] | object) =>
+                renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
         };
         const result = (await port!(api)) as unknown as Adapter;
         this.#ports.set(id, result);
@@ -365,6 +368,8 @@ export default class Registry extends Internal implements IRegistry {
                 const arr: string[] = markers.length > 0 ? [...markers] : ['*'];
                 return Object.assign(arr, {name});
             },
+            render: (what: object[] | object) =>
+                renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
             timing: this.#platform.timing,
             setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
                 if (!path) return;

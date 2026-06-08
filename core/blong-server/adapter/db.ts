@@ -1,11 +1,11 @@
-import {adapter, type IHandlerProxy} from '@feasibleone/blong';
+import {adapter} from '@feasibleone/blong';
 
 export default adapter<{
     knex: {
         connection: {
-            database: string;
-            user: string;
-            password: string;
+            database?: string;
+            user?: string;
+            password?: string;
         };
     };
     mock?: boolean;
@@ -15,7 +15,7 @@ export default adapter<{
         default: {
             knex: {
                 connection: {
-                    database: 'blong-integration',
+                    database: '${suite}',
                     user: 'blong-test',
                     password: 'password',
                 },
@@ -23,24 +23,24 @@ export default adapter<{
             namespace: 'db',
             imports: [/\.db$/],
         },
+        ci: {
+            knex: {
+                connection: {
+                    database: '${suite}',
+                },
+            },
+        },
+        dev: {
+            knex: {
+                connection: {
+                    database:
+                        '${[suite, user].map(s => s.toLowerCase().replace(/[^a-z0-9-]/g, "_")).join("-")}',
+                },
+            },
+        },
         microservice: {
             mock: true,
             imports: [/\.model$/, /\.fixture$/],
         },
-    },
-    async createHandlers({
-        handlers,
-        layerApi,
-        kind,
-    }: {
-        handlers: object;
-        layerApi: IHandlerProxy<unknown>;
-        kind: string;
-    }) {
-        if (this.config?.mock && kind === 'model') {
-            const {mock} = await import('@feasibleone/blong-mock');
-            const models = await Promise.all(Object.values(handlers).map(model => model()));
-            return await mock.apply(this, [models, layerApi]);
-        }
     },
 }));

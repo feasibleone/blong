@@ -5,7 +5,12 @@ import {analyzeFolder, synthesizeServerFromHandlers} from './folderAnalysis.ts';
 import load from './loadServer.ts';
 
 /** Default intents applied when none are provided on the CLI. */
-export const DEFAULT_INTENTS = ['microservice', 'integration', 'dev'] as const;
+export const DEFAULT_INTENTS = [
+    'microservice',
+    'integration',
+    'dev',
+    ...(process.env.CI ? ['ci'] : []),
+] as const;
 
 /**
  * Runs the standard platform lifecycle: start → test → (CI) stop.
@@ -42,7 +47,7 @@ async function runTarget(target: string, intents: string[]): Promise<void> {
         throw new Error(`Target module ${target} has no default export`);
     }
     if (kind(targetModule.default) === 'server') {
-        return await runPlatform(targetModule.default, dirname(target), intents);
+        return await runPlatform(targetModule.default, basename(dirname(target)), intents);
     } else await targetModule.default(load);
 }
 

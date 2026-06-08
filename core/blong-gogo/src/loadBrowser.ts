@@ -1,4 +1,5 @@
 import type {HRTime} from '@feasibleone/blong';
+import merge from 'ut-function.merge';
 import './globals.d.ts';
 import load from './load.ts';
 import timing from './timing.ts';
@@ -40,11 +41,26 @@ function hrtime(previousTimestamp?: HRTime): HRTime {
     return [seconds, nanoseconds];
 }
 
+const context = {
+    platform: 'browser',
+    suite: 'blong',
+    host: window.location.host,
+    user: 'anonymous',
+};
+
 export default load.bind(null, {
     platform: 'browser',
-    loadConfig: async (config: string | object) => ({
-        loadedConfig: typeof config === 'string' ? {suite: config} : config,
-    }),
+    loadConfig: async (baseConfig, config: string | object, loadedConfigs: object[]) => {
+        if (typeof config === 'string') context.suite = config;
+        return {
+            loadedConfig: merge(
+                {},
+                baseConfig,
+                ...loadedConfigs,
+                typeof config === 'string' ? {suite: config} : config,
+            ),
+        };
+    },
     readdir: async () => [],
     existsSync: () => false,
     scan: async () => [],
@@ -81,4 +97,5 @@ export default load.bind(null, {
     statSync: (() => undefined) as unknown as import('node:fs').StatSyncFn,
     timing: timing(hrtime),
     configs: ['browser'],
+    context,
 });

@@ -1,11 +1,15 @@
+import type {IPlatformApi} from '@feasibleone/blong';
 import {watch} from 'chokidar';
 import type {Dirent} from 'fs';
 import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
 import minimist from 'minimist';
 import {createRequire} from 'node:module';
+import os from 'node:os';
 import {hrtime} from 'node:process';
 import {basename, dirname, extname, join, relative, resolve} from 'path';
+import cbc from 'ut-function.cbc';
+import merge from 'ut-function.merge';
 import ConfigRuntime from './ConfigRuntime.ts';
 import './globals.d.ts';
 import load from './load.ts';
@@ -16,17 +20,30 @@ const scan = async (...path: string[]): Promise<Dirent[]> =>
         a < b ? -1 : a > b ? 1 : 0,
     );
 
-const loadConfig = async (parentConfig: string | object) => {
+const context = {
+    platform: 'server',
+    suite: 'blong',
+    user: process.env.USER || os.userInfo().username || 'unknown',
+    host: process.env.HOSTNAME || os.hostname() || 'unknown',
+    ...(process.env.BLONG_MASTER_KEY && cbc(process.env.BLONG_MASTER_KEY)),
+};
+
+const loadConfig: IPlatformApi['loadConfig'] = async (baseConfig, parentConfig, loadedConfigs) => {
     // ConfigRuntime is created only at the root call (when no api is provided)
     // and only when parentConfig is a string (suite name) so blong-config can
     // load external files that may change at runtime.
-    let configRuntime: ConfigRuntime | undefined;
-    let loadedConfig: object;
     if (typeof parentConfig === 'string') {
-        configRuntime = new ConfigRuntime({config: {suite: parentConfig}});
-        loadedConfig = await configRuntime.load();
-    } else loadedConfig = parentConfig;
-    return {loadedConfig, configRuntime};
+        context.suite = parentConfig;
+        const configRuntime = new ConfigRuntime(baseConfig, loadedConfigs, parentConfig);
+        return {
+            loadedConfig: await configRuntime.load(),
+            configRuntime,
+        } as Awaited<ReturnType<IPlatformApi['loadConfig']>>;
+    } else {
+        return {
+            loadedConfig: merge({}, baseConfig, ...loadedConfigs, parentConfig),
+        } as Awaited<ReturnType<IPlatformApi['loadConfig']>>;
+    }
 };
 
 // Parse CLI intents: first positional arg may be a file/folder target — exclude it from intents.
@@ -54,4 +71,5 @@ export default load.bind(null, {
     watch,
     timing: timing(hrtime),
     configs: ['server', ...cliIntents],
+    context,
 });

@@ -19,9 +19,9 @@ import {safeRenderTemplate} from './safeEval.ts';
 
 // Re-export everything that is browser-safe so consumers get the same surface
 // regardless of whether they are in a server or browser environment.
-export type {BlongHelpers} from './helpers.ts';
 export {escapeHtml, escapeJson, escapeXml, htmlTag, jsonTag, xmlTag} from './escape.ts';
 export {helpers} from './helpers.ts';
+export type {BlongHelpers} from './helpers.ts';
 
 type RenderFn = (blong: typeof helpers, vars: Record<string, unknown>) => string;
 
@@ -104,11 +104,7 @@ export function safeRenderAll<T>(value: T, vars: Vars = {}): RenderedValue<T> {
     return walkValue(value, vars, safeRender) as RenderedValue<T>;
 }
 
-function walkValue(
-    value: unknown,
-    vars: Vars,
-    renderFn: (t: string, v: Vars) => string,
-): unknown {
+function walkValue(value: unknown, vars: Vars, renderFn: (t: string, v: Vars) => string): unknown {
     if (typeof value === 'string') {
         return renderFn(value, vars);
     }
@@ -116,6 +112,7 @@ function walkValue(
         return value.map(item => walkValue(item, vars, renderFn));
     }
     if (value !== null && typeof value === 'object') {
+        if (value.constructor !== Object) return value;
         const result: Record<string, unknown> = {};
         for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
             result[key] = walkValue(v, vars, renderFn);

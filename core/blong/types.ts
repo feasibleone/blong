@@ -132,11 +132,38 @@ export interface IWatcher extends EventEmitter<FSWatcherEventMap> {
 
 export type HRTime = [number, number];
 
+type BaseConfig = {
+    name: string;
+    pkg: {name: string; version: string};
+    children: unknown[];
+    url: string;
+    base: string;
+    server: {
+        load: {logLevel: Parameters<ILog['logger']>[0]};
+        realm: {logLevel: Parameters<ILog['logger']>[0]};
+    };
+    browser: {
+        load: {logLevel: Parameters<ILog['logger']>[0]};
+        realm: {logLevel: Parameters<ILog['logger']>[0]};
+    };
+    kopi?: {realm?: unknown};
+    watch?: {configs?: object};
+    configs?: object;
+    configNames: string[];
+};
+
 export interface IPlatformApi {
     platform: 'server' | 'browser';
     loadConfig: (
-        config: string | object,
-    ) => Promise<{loadedConfig?: object; configRuntime?: IConfigRuntime}>;
+        baseConfig: BaseConfig,
+        parentConfig: string | object,
+        loadedConfigs: object[],
+    ) => Promise<{
+        loadedConfig: BaseConfig & {
+            [key: string]: unknown;
+        };
+        configRuntime?: IConfigRuntime;
+    }>;
     readdir: (path: string) => Promise<Dirent[]>;
     scan: (...path: string[]) => Promise<Dirent[]>;
     existsSync: (path: string) => boolean;
@@ -163,6 +190,7 @@ export interface IPlatformApi {
         spare: (time: HRTime, latency?: number) => number;
     };
     configs: string[];
+    context: Record<string, unknown>;
 }
 
 export interface IErrorFactory {
@@ -375,6 +403,7 @@ export interface IApi {
                   registry: IRegistry;
               }) => object);
     };
+    render: (what: object[] | object) => object;
 }
 
 export interface IErrorMap {
@@ -795,6 +824,7 @@ export interface ILib {
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
     merge<T, S1, S2, S3>(target: T, source1: S1, source2: S2, source3: S3): T & S1 & S2 & S3;
     merge<T>(...args: unknown[]): T;
+    render: (what: object[] | object) => object;
 }
 
 export type ValidationFn = () => GatewaySchema;

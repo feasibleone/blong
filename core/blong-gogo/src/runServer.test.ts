@@ -16,7 +16,10 @@ import {DEFAULT_INTENTS} from './runServer.ts';
 // ---------------------------------------------------------------------------
 
 test('DEFAULT_INTENTS contains the three baseline intents', async t => {
-    t.same([...DEFAULT_INTENTS], ['microservice', 'integration', 'dev']);
+    t.same(
+        [...DEFAULT_INTENTS],
+        ['microservice', 'integration', 'dev', ...(process.env.CI ? ['ci'] : [])],
+    );
 });
 
 // ---------------------------------------------------------------------------
@@ -67,19 +70,13 @@ test('extractIntents — single file target, no intents', async t => {
 });
 
 test('extractIntents — multiple intents with no target', async t => {
-    const {target, intents} = extractIntents(
-        ['integration', 'microservice', 'debug'],
-        () => false,
-    );
+    const {target, intents} = extractIntents(['integration', 'microservice', 'debug'], () => false);
     t.equal(target, undefined);
     t.same(intents, ['integration', 'microservice', 'debug']);
 });
 
 test('extractIntents — multiple intents after a valid target', async t => {
-    const {target, intents} = extractIntents(
-        ['./index.ts', 'integration', 'debug'],
-        () => true,
-    );
+    const {target, intents} = extractIntents(['./index.ts', 'integration', 'debug'], () => true);
     t.equal(target, './index.ts');
     t.same(intents, ['integration', 'debug']);
 });
