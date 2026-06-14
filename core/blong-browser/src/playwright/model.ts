@@ -80,6 +80,7 @@ async function detectWidgetType(page: Page, fieldId: string): Promise<string> {
                 if (cls === 'blong-dropdown') return 'dropdown';
                 if (cls === 'blong-boolean') return 'checkbox';
                 if (cls === 'blong-date') return 'date';
+                if (cls === 'blong-datetime') return 'datetime';
                 if (cls === 'blong-textarea') return 'textarea';
                 if (cls === 'blong-number') return 'number';
                 if (cls === 'blong-select-wrapper') return 'select';
@@ -133,6 +134,7 @@ export async function fillFields(page: Page, fields: FieldMap): Promise<void> {
                 }
                 break;
             }
+            case 'datetime':
             case 'date': {
                 // DateWidget sets inputId={id ?? name} on the Calendar input
                 const input = page.locator(`input[id="${fieldId}"]`);
@@ -176,11 +178,7 @@ function addSuffix(fields: FieldMap, suffix: string): FieldMap {
  * Generate a browse-page test for a model.
  * Opens the browse page via the menu and takes a screenshot.
  */
-export function browseModel(
-    test: ITestFn,
-    expect: Expect,
-    options: IBrowseModelOptions,
-): void {
+export function browseModel(test: ITestFn, expect: Expect, options: IBrowseModelOptions): void {
     const {subject, object} = options;
     const method = `${subject}.${object}.browse`;
 

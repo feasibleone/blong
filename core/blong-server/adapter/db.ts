@@ -8,17 +8,20 @@ export default adapter<{
             password?: string;
         };
     };
-    mock?: boolean;
 }>(() => ({
     extends: 'adapter.knex',
     activation: {
         default: {
+            mock: {},
             knex: {
                 connection: {
                     database: '${suite}',
-                    user: 'blong-test',
+                    user: 'blong-admin',
                     password: 'password',
                 },
+            },
+            schema: {
+                sync: true,
             },
             namespace: 'db',
             imports: [/\.db$/],
@@ -37,10 +40,12 @@ export default adapter<{
                         '${[suite, user].map(s => s.toLowerCase().replace(/[^a-z0-9-]/g, "_")).join("-")}',
                 },
             },
+            schema: {
+                dropColumns: true,
+            },
         },
         microservice: {
-            mock: true,
-            imports: [/\.model$/, /\.fixture$/],
+            imports: [/\.db$/, /\.model$/, /\.fixture$/],
         },
     },
 }));

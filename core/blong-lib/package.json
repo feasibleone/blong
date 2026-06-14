@@ -1,0 +1,25 @@
+{
+    "name": "@feasibleone/blong-lib",
+    "version": "1.0.0",
+    "description": "Blong utility functions",
+    "type": "module",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test"
+    },
+    "dependencies": {
+        "typebox": "^1.1.5",
+        "ulidx": "^2.4.1",
+        "ut-function.merge": "^1.5.6",
+        "uuid": "^13.0.0",
+        "yaml": "^2.8.3"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "tap": "^21.6.3"
+    }
+}

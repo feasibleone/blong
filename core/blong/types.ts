@@ -293,7 +293,7 @@ export interface IApiSchema {
 
 export interface IObjectSchema {
     [subject: string]: {
-        [object: string]: ApiSchema;
+        [object: string]: TObject;
     };
 }
 
@@ -339,9 +339,14 @@ export interface IRegistry {
     connected: () => Promise<boolean>;
 }
 
+type BlongType = typeof Type & {
+    DateTime: () => TSchema;
+    Date: () => TSchema;
+};
+
 export interface IApi {
     id?: string;
-    type: typeof Type;
+    type: BlongType;
     adapter: (id: string) => IAdapterRegistry | undefined;
     utError: IError;
     errors: IErrorFactory;
@@ -390,7 +395,7 @@ export interface IApi {
     handlers?: (api: {
         utError: IError;
         remote: IRemote;
-        type: typeof Type;
+        type: BlongType;
         schema: IObjectSchema;
     }) => {
         extends?:
@@ -401,6 +406,7 @@ export interface IApi {
                   rpc: IRpcServer;
                   local: ILocal;
                   registry: IRegistry;
+                  schema: IObjectSchema;
               }) => object);
     };
     render: (what: object[] | object) => object;
@@ -529,6 +535,7 @@ export interface IAdapterRegistry {
         rpc: IRpcServer;
         local: ILocal;
         registry: IRegistry;
+        schema: IObjectSchema;
     }): Promise<Adapter>;
 }
 
@@ -777,7 +784,7 @@ export type ChainStep =
 export type CheckpointFn = (this: IMeta, name: string, data?: unknown) => void;
 
 export interface ILib {
-    type: typeof Type;
+    type: BlongType;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
     rename: <T extends object>(object: T, name: string) => T & {name: string};
     /**
@@ -824,6 +831,7 @@ export interface ILib {
     merge<T, S1, S2>(target: T, source1: S1, source2: S2): T & S1 & S2;
     merge<T, S1, S2, S3>(target: T, source1: S1, source2: S2, source3: S3): T & S1 & S2 & S3;
     merge<T>(...args: unknown[]): T;
+    mergeWithSymbols<T, S1>(target: T, source: S1): T & S1;
     render: (what: object[] | object) => object;
 }
 

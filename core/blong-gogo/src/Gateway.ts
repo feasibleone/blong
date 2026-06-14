@@ -15,8 +15,10 @@ import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from
 import os from 'os';
 import type {LevelWithSilent} from 'pino';
 import {Type, type TSchema} from 'typebox';
+import Value from 'typebox/value';
 import {v4} from 'uuid';
 
+import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
 import jwt from './jwt.ts';
@@ -549,7 +551,30 @@ export default class Gateway extends Internal implements IGateway {
                         strict: false,
                     },
                 },
+            }).withTypeProvider<TypeBoxTypeProvider>();
+
+            this.#server.setValidatorCompiler(({schema}: {schema: TSchema}) => {
+                return (data: unknown) => {
+                    // 1. Runtime validation check
+                    if (!Value.Check(schema, data)) {
+                        const errors = [...Value.Errors(schema, data)];
+                        return {
+                            error: new Error(
+                                `Validation failed: ${errors.map(e => e.message).join(', ')}`,
+                            ),
+                        };
+                    }
+
+                    // 2. Transform/Decode the validated string into a Date object
+                    try {
+                        const decoded = Value.Decode(schema, data);
+                        return {value: decoded};
+                    } catch (error) {
+                        return {error};
+                    }
+                };
             });
+
             this.#server.setErrorHandler(
                 (error: Record<string, unknown>, request: FastifyRequest, reply: FastifyReply) => {
                     request.log.error({err: error}, 'gateway unhandled error');

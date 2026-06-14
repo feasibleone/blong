@@ -371,7 +371,17 @@ export default async function adapter<T, C extends IContext>(
     configBase: string,
     activationNames: string[] = [],
 ): Promise<Adapter<T, C>> {
-    const {adapter: adapterFactory, utError, handlers, remote, rpc, local, registry, type} = api;
+    const {
+        adapter: adapterFactory,
+        utError,
+        handlers,
+        remote,
+        rpc,
+        local,
+        registry,
+        type,
+        schema,
+    } = api;
     _errors ||= utError.register(errorMap);
 
     const base = new AdapterBase<T, C>(api, configBase, activationNames);
@@ -380,8 +390,8 @@ export default async function adapter<T, C extends IContext>(
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry})
-            : current.extends({utError, remote, rpc, local, registry}));
+            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry, schema})
+            : current.extends({utError, remote, rpc, local, registry, schema}));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }

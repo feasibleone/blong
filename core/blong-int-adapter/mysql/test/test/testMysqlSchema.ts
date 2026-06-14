@@ -1,6 +1,6 @@
 import {handler, type IAssert} from '@feasibleone/blong';
 
-type SchemaAddResult = {itemId: unknown};
+type SchemaAddResult = {item: {itemId: unknown}};
 type StepMeta = {$meta: Record<string, unknown>};
 
 /**
@@ -60,12 +60,14 @@ export default handler(
                     await cleanData;
                     const result = (await sqlItemAdd(
                         {
-                            itemName: 'Active Schema Item',
-                            itemActive: true,
+                            item: {
+                                itemName: 'Active Schema Item',
+                                itemActive: true,
+                            },
                         },
                         $meta,
                     )) as SchemaAddResult;
-                    assert.ok(result?.itemId, 'add returned a itemId');
+                    assert.ok(result?.item?.itemId, 'add returned a itemId');
                     return result;
                 },
 

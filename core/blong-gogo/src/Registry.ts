@@ -19,12 +19,9 @@ import type {
 import {Internal} from '@feasibleone/blong/types';
 import nodeAssert from 'node:assert';
 import PQueue from 'p-queue';
-import {Type} from 'typebox';
-import {monotonicFactory} from 'ulidx';
 import merge from 'ut-function.merge';
-import {v4 as uuid4, v7 as uuid7} from 'uuid';
-import yaml from 'yaml';
 
+import * as blongLib from '@feasibleone/blong-lib';
 import {renderAll} from '@feasibleone/blong-template';
 import {createAttachCheckpoint} from './checkpoint.ts';
 import {methodId, methodParts} from './lib.ts';
@@ -38,7 +35,7 @@ type MatchMethodsCallback = (
 ) => void;
 const API: RegExp = /\.validation$|\.api$|^validation$|^api$/;
 const SCHEMA: RegExp = /\.type$/;
-const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
+
 interface IConfig {
     api?: Record<string, {source: string; def: {namespace: Record<string, string | string[]>}}>;
     checkpointMode?: 'test' | 'debug' | 'production';
@@ -143,7 +140,7 @@ export default class Registry extends Internal implements IRegistry {
         }
         const api: Parameters<IAdapterFactory>[0] = {
             id,
-            type: Type,
+            type: blongLib.type,
             schema: this.objectSchema,
             adapter: id => this.ports.get(id),
             utError: {
@@ -328,66 +325,13 @@ export default class Registry extends Internal implements IRegistry {
         port: object | undefined,
     ): Promise<{local: object; literals: object[]}> {
         const attachCheckpoint = this.#attachCheckpoint;
-        function isSafeKey(key: string): boolean {
-            return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
-        }
         const lib = {
-            type: Type,
             error: this.#error.register.bind(this.#error),
-            merge,
-            ulid,
-            uuid4,
-            uuid7,
-            yaml,
             assert: attachCheckpoint ? nodeAssert : undefined,
-            rename: (object: object, value: string) =>
-                Object.defineProperty<unknown>(object, 'name', {value}),
-            group:
-                (name: string, config?: {autoSnapshot?: boolean; mask?: string[]}) =>
-                (steps: unknown[]) => {
-                    Object.defineProperty(steps, 'name', {
-                        value: name,
-                        enumerable: false,
-                        writable: true,
-                    });
-                    if (config?.autoSnapshot !== undefined)
-                        Object.defineProperty(steps, 'autoSnapshot', {
-                            value: config.autoSnapshot,
-                            enumerable: false,
-                            writable: true,
-                        });
-                    if (config?.mask !== undefined)
-                        Object.defineProperty(steps, 'mask', {
-                            value: config.mask,
-                            enumerable: false,
-                            writable: true,
-                        });
-                    return steps;
-                },
-            checkpoint: (name: string, ...markers: string[]) => {
-                const arr: string[] = markers.length > 0 ? [...markers] : ['*'];
-                return Object.assign(arr, {name});
-            },
             render: (what: object[] | object) =>
                 renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
             timing: this.#platform.timing,
-            setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
-                if (!path) return;
-                const parts = path.split('.');
-                let current = obj;
-                for (let i = 0; i < parts.length - 1; i++) {
-                    const part = parts[i];
-                    if (!isSafeKey(part)) return;
-                    if (current[part] == null || typeof current[part] !== 'object') {
-                        current[part] = {};
-                    }
-                    current = current[part] as Record<string, unknown>;
-                }
-                const lastPart = parts[parts.length - 1];
-                if (isSafeKey(lastPart)) {
-                    current[lastPart] = value;
-                }
-            },
+            ...blongLib,
         };
         const local = {};
         const literals: object[] = [];

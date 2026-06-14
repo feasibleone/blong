@@ -324,12 +324,16 @@ export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
                 description: `Get report data for ${object} with optional paging`,
             }),
             [`${subject}.${object}.edit`]: () => ({
-                params: Type.Unknown(),
+                params: Type.Object({
+                    [object]: model.schema?.properties?.[object] ?? Type.Unknown(),
+                }),
                 result: Type.Awaited(Type.Unknown()),
                 description: `Edit ${object} by key`,
             }),
             [`${subject}.${object}.add`]: () => ({
-                params: Type.Unknown(),
+                params: Type.Object({
+                    [object]: model.schema?.properties?.[object] ?? Type.Unknown(),
+                }),
                 result: Type.Awaited(Type.Unknown()),
                 description: `Add new ${object}`,
             }),

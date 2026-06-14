@@ -79,6 +79,7 @@ export default library<{
                         ...rest,
                     }),
                     refresh_token_expires_in: refresh,
+                    permissions: true,
                 };
             },
         };

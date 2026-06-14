@@ -5,6 +5,25 @@ import {type IColumnSchema} from './types.ts';
 
 export {type IColumnSchema};
 
+export function propType(prop: IColumnSchema): string {
+    if ('type' in prop && prop.type) {
+        switch (prop.type) {
+            case 'string':
+                if (prop.format === 'date-time' || prop.format === 'datetime') return 'datetime';
+                if (prop.format === 'date') return 'date';
+                if (prop.format === 'time') return 'time';
+                if (prop.format === 'uuid') return 'uuid';
+                return 'string';
+            default:
+                return prop.type;
+        }
+    } else if ('anyOf' in prop && Array.isArray(prop.anyOf)) {
+        const found = prop.anyOf.find(p => p.type && p.type !== 'null');
+        if (found) return propType(found);
+    }
+    return 'unknown';
+}
+
 export function addColumn(
     table: Record<string, (columnName: string, size?: number) => unknown>,
     columnName: string,
@@ -13,19 +32,25 @@ export function addColumn(
 ): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let column: any;
-    if (columnName.endsWith('Id') && prop.type === 'integer') {
+    if (prop.default === 'auto-increment') {
         column = table.increments(columnName);
         return;
     }
-    switch (prop.type) {
+    switch (propType(prop)) {
+        case 'datetime':
+            column = table.dateTime(columnName);
+            break;
+        case 'date':
+            column = table.date(columnName);
+            break;
+        case 'time':
+            column = table.time(columnName);
+            break;
+        case 'uuid':
+            column = table.uuid(columnName);
+            break;
         case 'string':
-            if (prop.format === 'date-time' || prop.format === 'datetime')
-                column = table.dateTime(columnName);
-            else if (prop.format === 'date') column = table.date(columnName);
-            else if (prop.format === 'time') column = table.time(columnName);
-            else if (prop.format === 'uuid') column = table.uuid(columnName);
-            else if (prop.maxLength != null && prop.maxLength > 255)
-                column = table.text(columnName);
+            if (prop.maxLength != null && prop.maxLength > 255) column = table.text(columnName);
             else column = table.string(columnName, prop.maxLength ?? 255);
             break;
         case 'number':

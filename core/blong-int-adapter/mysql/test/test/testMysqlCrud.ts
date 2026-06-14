@@ -3,7 +3,7 @@ import {handler, type IAssert} from '@feasibleone/blong';
 import {mergedUnit, units, updatedUnit} from '../fixtures/unit.ts';
 
 type UnitRow = {unitId?: number; unitName?: string; unitDescription?: string};
-type AddResult = {unitId: number};
+type AddResult = {unit: {unitId: number}};
 type StepMeta = {$meta: Record<string, unknown>};
 
 /**
@@ -65,9 +65,9 @@ export default handler(
                     {$meta, cleanData}: StepMeta & {cleanData: Promise<unknown>},
                 ) {
                     await cleanData;
-                    const result = await sqlUnitAdd({...units[0]}, $meta);
+                    const result = await sqlUnitAdd({unit: {...units[0]}}, $meta);
                     assert.ok(result, 'add returned a result');
-                    assert.ok((result as AddResult).unitId, 'add returned an unitId');
+                    assert.ok((result as AddResult).unit.unitId, 'add returned an unitId');
                     return result as AddResult;
                 },
 
@@ -79,7 +79,7 @@ export default handler(
                     // Snapshot captures unitName and unitDescription; chain-level mask handles unitId.
                     assert.snapshot();
                     return (await sqlUnitGet(
-                        {unitId: (await addUnit).unitId},
+                        {unitId: (await addUnit).unit.unitId},
                         $meta,
                     )) as UnitRow & {unitId: number};
                 },
@@ -100,10 +100,15 @@ export default handler(
                 // ── 6. edit — update a row by primary key ─────────────────
                 async function editUnit(
                     assert: IAssert,
-                    {$meta, getUnit}: StepMeta & {getUnit: Promise<UnitRow & {unitId: number}>},
+                    {
+                        $meta,
+                        getUnit,
+                    }: StepMeta & {getUnit: Promise<{unit: UnitRow & {unitId: number}}>},
                 ) {
-                    const {unitId} = await getUnit;
-                    const result = await sqlUnitEdit({unitId, ...updatedUnit}, $meta);
+                    const {
+                        unit: {unitId},
+                    } = await getUnit;
+                    const result = await sqlUnitEdit({unit: {unitId, ...updatedUnit}}, $meta);
                     assert.ok(result !== undefined, 'edit returned a result');
                     return {unitId};
                 },
@@ -146,7 +151,7 @@ export default handler(
                     {$meta, removeUnit}: StepMeta & {removeUnit: Promise<unknown>},
                 ) {
                     await removeUnit;
-                    const result = await sqlUnitMerge({...mergedUnit}, $meta);
+                    const result = await sqlUnitMerge({unit: {...mergedUnit}}, $meta);
                     assert.ok(result !== undefined, 'merge returned a result');
                     return {merged: true};
                 },

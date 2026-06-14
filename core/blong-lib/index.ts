@@ -1,0 +1,134 @@
+import {Type} from 'typebox';
+import {monotonicFactory} from 'ulidx';
+import _merge from 'ut-function.merge';
+import {v4, v7} from 'uuid';
+import _yaml from 'yaml';
+
+// Core logic to merge two types (T is target, U is source/override)
+type DeepMerge<T, U> = T extends object
+    ? U extends object
+        ? {
+              [K in keyof T | keyof U]: K extends keyof T
+                  ? K extends keyof U
+                      ? DeepMerge<T[K], U[K]> // Recursively merge shared keys
+                      : T[K]
+                  : K extends keyof U
+                    ? U[K]
+                    : never;
+          }
+        : U
+    : U;
+
+// Variadic type to process N arguments
+type DeepMergeAll<Ts extends readonly unknown[]> = Ts extends readonly [infer Head, ...infer Tail]
+    ? Tail extends readonly []
+        ? Head
+        : DeepMerge<Head, DeepMergeAll<Tail>>
+    : unknown;
+
+/**
+ * Checks if a value is a plain object (not null, not an array).
+ */
+function isObject(item: unknown): item is Record<string | symbol, unknown> {
+    return item !== null && typeof item === 'object' && !Array.isArray(item);
+}
+
+/**
+ * Deeply merges source into target in-place, supporting Symbol keys.
+ * Note: This mutates the target object.
+ */
+export function mergeWithSymbols<T extends object, U extends object>(
+    target: T,
+    source: U,
+): DeepMergeAll<[T, U]> {
+    if (source == null) return target as DeepMergeAll<[T, U]>;
+
+    // Guard against null/undefined targets
+    const dest = (target || {}) as Record<string | symbol, unknown>;
+
+    for (const key of Reflect.ownKeys(source)) {
+        const sourceValue = (source as Record<string | symbol, unknown>)[key];
+        const targetValue = dest[key];
+
+        if (isObject(targetValue) && isObject(sourceValue)) {
+            // Recursively merge nested plain objects
+            mergeWithSymbols(targetValue, sourceValue);
+        } else if (sourceValue !== undefined) {
+            // Assign primitives, arrays, or new objects directly
+            dest[key] = sourceValue;
+        }
+    }
+
+    return dest as DeepMergeAll<[T, U]>;
+}
+
+export const ulid: ReturnType<typeof monotonicFactory> = monotonicFactory();
+
+function isSafeKey(key: string): boolean {
+    return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
+}
+
+export function setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
+    if (!path) return;
+    const parts = path.split('.');
+    let current = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!isSafeKey(part)) return;
+        if (current[part] == null || typeof current[part] !== 'object') {
+            current[part] = {};
+        }
+        current = current[part] as Record<string, unknown>;
+    }
+    const lastPart = parts[parts.length - 1];
+    if (isSafeKey(lastPart)) {
+        current[lastPart] = value;
+    }
+}
+
+// export default {merge, mergeWithSymbols, ulid, uuid4, uuid7, yaml, setProperty};
+
+export const uuid4 = v4;
+export const uuid7 = v7;
+export const yaml = _yaml;
+export const merge = _merge;
+
+export const type = {
+    ...Type,
+    DateTime: () =>
+        Type.Codec(Type.String({format: 'date-time'}))
+            .Decode(value => new Date(value))
+            .Encode(value => value.toISOString()),
+    Date: () =>
+        Type.Codec(Type.String({format: 'date-time'}))
+            .Decode(value => new Date(value))
+            .Encode(value => value.toISOString().split('T')[0]),
+};
+
+export const rename = (object: object, value: string) =>
+    Object.defineProperty<unknown>(object, 'name', {value});
+export const group =
+    (name: string, config?: {autoSnapshot?: boolean; mask?: string[]}) => (steps: unknown[]) => {
+        Object.defineProperty(steps, 'name', {
+            value: name,
+            enumerable: false,
+            writable: true,
+        });
+        if (config?.autoSnapshot !== undefined)
+            Object.defineProperty(steps, 'autoSnapshot', {
+                value: config.autoSnapshot,
+                enumerable: false,
+                writable: true,
+            });
+        if (config?.mask !== undefined)
+            Object.defineProperty(steps, 'mask', {
+                value: config.mask,
+                enumerable: false,
+                writable: true,
+            });
+        return steps;
+    };
+export const checkpoint = (name: string, ...markers: string[]) => {
+    const arr: string[] = markers.length > 0 ? [...markers] : ['*'];
+    return Object.assign(arr, {name});
+};

@@ -10,16 +10,19 @@ import {
 import KnexLib from 'knex';
 import {type TFunction, type TObject} from 'typebox';
 import {
-    bindSyntheticCrud,
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
     schemaProcedureSyncImpl,
-} from './knex/schemaMysql.ts';
-import {attachHandlers, schemaCrudBindImpl, schemaTableSyncImpl} from './knex/schemaTable.ts';
-import {type IConfig, type ISchemaTable} from './knex/types.ts';
-import {methodId, readSqlFiles, snakeToCamel} from './knex/utils.ts';
+} from '../schema/knex/schemaMysql.ts';
+import {
+    attachHandlers,
+    schemaCrudBindImpl,
+    schemaTableSyncImpl,
+} from '../schema/knex/schemaTable.ts';
+import {type IConfig, type ISchemaTable} from '../schema/knex/types.ts';
+import {methodId, propType, readSqlFiles, snakeToCamel} from '../schema/knex/utils.ts';
 
-export type {IConfig, ISchemaTable} from './knex/types.ts';
+export type {IConfig, ISchemaTable} from '../schema/knex/types.ts';
 
 const errorMap: IErrorMap = {
     'knex.generic': 'Knex Error',
@@ -32,7 +35,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError}) => {
+export default adapter<IConfig>(({utError, schema: objectSchema}) => {
     _errors ||= utError.register(errorMap);
 
     return {
@@ -79,24 +82,32 @@ export default adapter<IConfig>(({utError}) => {
                 // Sort tables by ascending `order` so FK dependencies are respected.
                 const tables = Object.entries(schema.tables ?? {}).sort(([, a], [, b]) => {
                     const orderA =
-                        typeof a === 'object' && 'definition' in a
-                            ? ((a as ISchemaTable).order ?? 0)
-                            : 0;
+                        typeof a === 'number'
+                            ? a
+                            : typeof a === 'object' && 'definition' in a
+                              ? ((a as ISchemaTable).order ?? 0)
+                              : 0;
                     const orderB =
-                        typeof b === 'object' && 'definition' in b
-                            ? ((b as ISchemaTable).order ?? 0)
-                            : 0;
+                        typeof b === 'number'
+                            ? b
+                            : typeof b === 'object' && 'definition' in b
+                              ? ((b as ISchemaTable).order ?? 0)
+                              : 0;
                     return orderA - orderB;
                 });
+                const dropColumns = schema.dropColumns ?? false;
                 for (const [tableName, tableConfig] of tables) {
+                    const isOrder = typeof tableConfig === 'number';
                     const isSpec = typeof tableConfig === 'object' && 'definition' in tableConfig;
-                    const definition = isSpec
-                        ? (tableConfig as ISchemaTable).definition
-                        : (tableConfig as TObject);
-                    const dropColumns = isSpec
-                        ? ((tableConfig as ISchemaTable).dropColumns ?? false)
-                        : false;
-                    await schemaTableSyncImpl(knex, tableName, definition, {dropColumns});
+                    const [subject, object] = tableName.split('.');
+                    const definition = isOrder
+                        ? objectSchema[subject]?.[object]
+                        : isSpec
+                          ? (tableConfig as ISchemaTable).definition
+                          : (tableConfig as TObject);
+                    await schemaTableSyncImpl(knex, tableName.replaceAll('.', '_'), definition, {
+                        dropColumns,
+                    });
                 }
                 // Collect procedure definitions: scanned folders first, then inline.
                 const procedureDefs: Array<{name: string; sql: string}> = [];
@@ -111,20 +122,24 @@ export default adapter<IConfig>(({utError}) => {
                 // Bind all DB procedures as synthetic handlers (skips `_`-prefixed).
                 await bindSyntheticHandlers(self, knex);
                 // Auto-bind CRUD handlers for each declared table when namespace is set.
-                const namespace = this.config.namespace;
-                if (namespace) {
-                    const tableDefs = Object.entries(schema.tables ?? {}).map(
-                        ([tableName, tableConfig]) => {
-                            const isSpec =
-                                typeof tableConfig === 'object' && 'definition' in tableConfig;
-                            const definition = isSpec
-                                ? (tableConfig as ISchemaTable).definition
-                                : (tableConfig as TObject);
-                            return {tableName, definition};
-                        },
-                    );
-                    await bindSyntheticCrud(self, knex, namespace, tableDefs);
-                }
+                // const namespace = this.config.namespace;
+                // if (namespace) {
+                //     const tableDefs = Object.entries(schema.tables ?? {}).map(
+                //         ([tableName, tableConfig]) => {
+                //             const isOrder = typeof tableConfig === 'number';
+                //             const isSpec =
+                //                 typeof tableConfig === 'object' && 'definition' in tableConfig;
+                //             const [subject, object] = tableName.split('.');
+                //             const definition = isOrder
+                //                 ? objectSchema[subject]?.[object]
+                //                 : isSpec
+                //                   ? (tableConfig as ISchemaTable).definition
+                //                   : (tableConfig as TObject);
+                //             return {tableName, definition};
+                //         },
+                //     );
+                //     await bindSyntheticCrud(self, knex, namespace, tableDefs);
+                // }
             }
             return super.ready();
         },
@@ -150,51 +165,95 @@ export default adapter<IConfig>(({utError}) => {
         },
         async exec(
             params: {
-                key: string;
-                select: string;
-                order: string;
-                limit: number;
-                offset: number;
+                key?: string;
+                select?: string;
+                order?: Parameters<Knex.QueryInterface['orderBy']>[0];
+                orderBy?: Parameters<Knex.QueryInterface['orderBy']>[0];
+                limit?: number;
+                offset?: number;
+                paging?: {pageNumber: number; pageSize: number};
+                filterBy?: Record<string, unknown>;
             } & Record<string, unknown>,
             $meta: IMeta,
         ) {
             const {method} = $meta;
-            const [, table, operation] = method!.split('.');
+            const [subject, object, operation] = method!.split('.');
+            const table = `${subject}_${object}`;
             switch (operation) {
                 case 'get': {
                     const {select = '*', ...where} = params;
-                    return this.config.context.queryBuilder!(table).where(where).first(select);
+                    return {
+                        [object]: await this.config.context.queryBuilder!(table)
+                            .where(where)
+                            .first(select),
+                    };
                 }
                 case 'find': {
-                    const {select = '*', order, limit, offset, ...where} = params;
-                    let result = this.config.context.queryBuilder!(table).where(where);
+                    const {
+                        select = '*',
+                        paging,
+                        orderBy,
+                        order = orderBy,
+                        limit = paging?.pageSize,
+                        offset = paging && (paging?.pageNumber - 1) * paging?.pageSize,
+                        filterBy,
+                        search,
+                        ...where
+                    } = params;
+                    let result = this.config.context.queryBuilder!(table).where({
+                        ...filterBy,
+                        ...where,
+                    });
+                    if (search) {
+                        const stringFields = Object.entries(
+                            objectSchema[subject]?.[object]?.properties ?? {},
+                        )
+                            .filter(([, prop]) => propType(prop) === 'string')
+                            .map(([key]) => key);
+                        if (stringFields.length > 0)
+                            result = result.andWhere(function () {
+                                for (const field of stringFields) {
+                                    this.orWhereILike(field, `%${search}%`);
+                                }
+                            });
+                    }
                     if (order) result = result.orderBy(order);
                     if (limit) result = result.limit(limit);
                     if (offset) result = result.offset(offset);
                     return result.select(select);
                 }
-                case 'add':
+                case 'add': {
+                    const {key: keyName = `${object}Id`, [object]: columns} = params;
+                    const inserted = await this.config.context.queryBuilder!(table).insert(columns);
                     return {
-                        [`${table}Id`]: (
-                            await this.config.context.queryBuilder!(table).insert(params)
-                        )?.[0],
+                        [object]: await this.config.context.queryBuilder!(table)
+                            .where({[keyName]: inserted[0]})
+                            .first('*'),
                     };
+                }
                 case 'edit': {
-                    const {key: keyName = `${table}Id`, ...columns} = params;
-                    const {[keyName]: key, ...update} = columns;
-                    return this.config.context.queryBuilder!(table)
+                    const {key: keyName = `${object}Id`, [object]: columns} = params;
+                    const {[keyName]: key, ...update} = columns as Record<string, unknown>;
+                    await this.config.context.queryBuilder!(table)
                         .where({[keyName]: key})
                         .update(update);
+                    return {
+                        [object]: await this.config.context.queryBuilder!(table)
+                            .where({[keyName]: key})
+                            .first('*'),
+                    };
                 }
-                case 'remove':
-                    if (!(table + 'Id' in params)) {
-                        throw this.error(_errors['knex.missingKey']({key: table + 'Id'}), $meta);
+                case 'remove': {
+                    const {key: keyName = `${object}Id`, [keyName]: key} = params;
+                    if (!(keyName in params)) {
+                        throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
                     }
                     return this.config.context.queryBuilder!(table)
-                        .where({[table + 'Id']: params[table + 'Id']})
+                        .where({[keyName]: key})
                         .del();
+                }
                 case 'merge': {
-                    const {key = `${table}Id`, ...columns} = params;
+                    const {key = `${object}Id`, [object]: columns} = params;
                     return this.config.context.queryBuilder!(table)
                         .insert(columns)
                         .onConflict(key)
@@ -225,7 +284,21 @@ export default adapter<IConfig>(({utError}) => {
         }) {
             if (this.config?.mock && kind === 'model') {
                 const {mock} = await import('@feasibleone/blong-mock');
-                const models = await Promise.all(Object.values(handlers).map(model => model()));
+                const models = await Promise.all(
+                    Object.values(handlers)
+                        .filter(handler => {
+                            if (typeof this.config?.mock === 'boolean') return this.config.mock;
+                            const handlerName = handler.name;
+                            if (typeof this.config?.mock?.[handlerName] === 'boolean')
+                                return this.config.mock[handlerName];
+                            return Object.values(
+                                this.config?.mock as Record<string, boolean | RegExp>,
+                            ).some(
+                                pattern => pattern instanceof RegExp && pattern.test(handlerName),
+                            );
+                        })
+                        .map(model => model()),
+                );
                 return await mock.apply(this, [models, layerApi]);
             }
         },

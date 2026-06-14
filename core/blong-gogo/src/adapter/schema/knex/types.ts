@@ -4,7 +4,6 @@ import {type TObject} from 'typebox';
 export interface ISchemaTable {
     definition: TObject;
     order?: number;
-    dropColumns?: boolean;
 }
 
 export interface IColumnSchema {
@@ -12,6 +11,7 @@ export interface IColumnSchema {
     format?: string;
     maxLength?: number;
     default?: unknown;
+    readonly?: boolean;
 }
 
 export interface IConfig {
@@ -28,6 +28,7 @@ export interface IConfig {
     schema?: {
         /** When `true`, tables and procedures are synced on every startup. */
         sync?: boolean;
+        dropColumns?: boolean;
         /**
          * Tables to create / alter. Keys are SQL table names, values are either
          * a plain TypeBox `TObject` or an `ISchemaTable` spec.
@@ -49,5 +50,5 @@ export interface IConfig {
     /**
      * When `true`, mocks some handlers
      */
-    mock?: boolean;
+    mock?: boolean | Record<string, boolean | RegExp>;
 }

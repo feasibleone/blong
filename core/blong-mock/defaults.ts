@@ -3,62 +3,11 @@
  *
  */
 import type {IModelSpec, IResolvedModelSpec} from '@feasibleone/blong';
+import {mergeWithSymbols} from '@feasibleone/blong-lib';
 
 /** Capitalize the first character of a string */
 function capital(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// Core logic to merge two types (T is target, U is source/override)
-type DeepMerge<T, U> = T extends object
-    ? U extends object
-        ? {
-              [K in keyof T | keyof U]: K extends keyof T
-                  ? K extends keyof U
-                      ? DeepMerge<T[K], U[K]> // Recursively merge shared keys
-                      : T[K]
-                  : K extends keyof U
-                    ? U[K]
-                    : never;
-          }
-        : U
-    : U;
-
-// Variadic type to process N arguments
-type DeepMergeAll<Ts extends readonly unknown[]> = Ts extends readonly [infer Head, ...infer Tail]
-    ? Tail extends readonly []
-        ? Head
-        : DeepMerge<Head, DeepMergeAll<Tail>>
-    : unknown;
-
-/**
- * Merge source into target deeply, returning a new object.
- * Only plain objects are merged; arrays and primitives are overwritten.
- */
-export function deepMerge<T extends object[]>(...args: T): DeepMergeAll<T> {
-    const [target, ...sources] = args;
-    for (const source of sources) {
-        if (!source) continue;
-        for (const [key, value] of Object.entries(source)) {
-            const dest = (target as Record<string, unknown>)[key];
-            if (
-                value !== null &&
-                typeof value === 'object' &&
-                !Array.isArray(value) &&
-                dest !== null &&
-                typeof dest === 'object' &&
-                !Array.isArray(dest)
-            ) {
-                (target as Record<string, unknown>)[key] = deepMerge(
-                    {...dest} as object,
-                    value as object,
-                );
-            } else {
-                (target as Record<string, unknown>)[key] = value;
-            }
-        }
-    }
-    return target as DeepMergeAll<T>;
 }
 
 /**
@@ -73,7 +22,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     const keyField = spec.keyField ?? `${object}Id`;
     const nameField = spec.nameField ?? `${object}.${object}Name`;
 
-    return deepMerge<[IResolvedModelSpec, IModelSpec]>(
+    return mergeWithSymbols<IResolvedModelSpec, IModelSpec>(
         {
             subject,
             subjectTitle: capital(subject),

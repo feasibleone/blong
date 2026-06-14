@@ -27,11 +27,11 @@ export default adapter<{
             imports: ['mysql.sql'],
             schema: {
                 sync: true,
+                dropColumns: true,
                 tables: {
-                    item: {
+                    sql_item: {
                         definition: schema.mysql.item,
                         order: 1,
-                        dropColumns: true,
                     },
                 },
                 procedurePaths: [join(__dirname, 'sql/schema')],

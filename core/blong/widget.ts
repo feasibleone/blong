@@ -302,6 +302,7 @@ export interface IEnrichedFieldSchema {
     maximum?: number;
     pattern?: string;
     enum?: unknown[];
+    anyOf?: IEnrichedFieldSchema[];
     readOnly?: boolean;
     fieldRequired?: boolean;
     required?: string[];

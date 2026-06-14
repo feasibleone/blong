@@ -169,6 +169,11 @@ function resolveWidgetType(fieldSchema: IEnrichedFieldSchema, fieldName: string)
     if (fieldName.endsWith('Description')) return 'textArea';
     if (fieldSchema.type === 'integer') return 'integer';
     if (fieldSchema.type === 'number') return 'number';
+    if (fieldSchema.anyOf instanceof Array)
+        return resolveWidgetType(
+            fieldSchema.anyOf.find(schema => schema.type !== 'null') || fieldSchema.anyOf[0],
+            fieldName,
+        );
     return 'input';
 }
 

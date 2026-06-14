@@ -11,10 +11,10 @@ export default handler(
             _params: Record<string, never>,
             _$meta: Record<string, unknown>,
         ): Promise<{table: string; existed: boolean}> {
-            const existed = await this.config?.context?.queryBuilder?.schema.hasTable('unit');
+            const existed = await this.config?.context?.queryBuilder?.schema.hasTable('sql_unit');
             if (!existed) {
                 await this.config?.context?.queryBuilder?.schema.createTable(
-                    'unit',
+                    'sql_unit',
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     (table: any) => {
                         table.increments('unitId');
@@ -23,6 +23,6 @@ export default handler(
                     },
                 );
             }
-            return {table: 'unit', existed: existed ?? false};
+            return {table: 'sql_unit', existed: existed ?? false};
         },
 );

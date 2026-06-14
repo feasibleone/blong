@@ -45,7 +45,9 @@ export default handler(
                 store.setToken(result.access_token);
                 if (result.permissions)
                     store.setPermissions(
-                        Object.fromEntries(result.permissions.map(p => [p, true])),
+                        typeof result.permissions === 'boolean'
+                            ? result.permissions
+                            : Object.fromEntries(result.permissions.map(p => [p, true])),
                     );
                 if (result.profile)
                     store.setProfile(result.profile as Parameters<typeof store.setProfile>[0]);

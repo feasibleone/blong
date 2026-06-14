@@ -9,6 +9,7 @@
         "core/blong-gogo": {},
         "core/blong-int-sql": {},
         "core/blong-kopi": {},
+        "core/blong-lib": {},
         "core/blong-log": {},
         "core/blong-login": {},
         "core/blong-mock": {},

@@ -8,14 +8,18 @@
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > crud-reads 1`] = `
 Object {
   "getUnit": Object {
-    "unitDescription": "First blong integration test widget",
-    "unitId": "<masked>",
-    "unitName": "Widget Alpha",
+    "unit": Object {
+      "unitDescription": "First blong integration test widget",
+      "unitId": "<masked>",
+      "unitName": "Widget Alpha",
+    },
   },
   "verifyEdit": Object {
-    "unitDescription": "Updated description for integration test",
-    "unitId": "<masked>",
-    "unitName": "Widget Alpha Updated",
+    "unit": Object {
+      "unitDescription": "Updated description for integration test",
+      "unitId": "<masked>",
+      "unitName": "Widget Alpha Updated",
+    },
   },
 }
 `;
@@ -49,16 +53,20 @@ Array [
 
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > getUnit > getUnit 1`] = `
 Object {
-  "unitDescription": "First blong integration test widget",
-  "unitId": "<masked>",
-  "unitName": "Widget Alpha",
+  "unit": Object {
+    "unitDescription": "First blong integration test widget",
+    "unitId": "<masked>",
+    "unitName": "Widget Alpha",
+  },
 }
 `;
 
 exports[`mysql.test.ts > TAP > blong int-adapter > mysql CRUD > verifyEdit > verifyEdit 1`] = `
 Object {
-  "unitDescription": "Updated description for integration test",
-  "unitId": "<masked>",
-  "unitName": "Widget Alpha Updated",
+  "unit": Object {
+    "unitDescription": "Updated description for integration test",
+    "unitId": "<masked>",
+    "unitName": "Widget Alpha Updated",
+  },
 }
 `;

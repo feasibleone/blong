@@ -13,8 +13,8 @@ export default handler(
             const knex = this.config?.context?.queryBuilder;
             if (!knex) throw new Error('Knex queryBuilder not available');
             await Promise.all([
-                knex.schema.dropTableIfExists('item'),
-                knex.schema.dropTableIfExists('itemPage'),
+                knex.schema.dropTableIfExists('sql_item'),
+                knex.schema.dropTableIfExists('sql_itemPage'),
             ]);
         },
 );

@@ -276,7 +276,9 @@ export function Form({
         });
     };
 
-    const {config: {portal}} = useBlong();
+    const {
+        config: {portal},
+    } = useBlong();
     const debug = portal?.debug ?? false;
 
     // ── Memoised context values ────────────────────────────────────────────────
@@ -331,7 +333,15 @@ export function Form({
     // Slow-changing state: changes on user actions (row selection, save, edit toggle)
     // but NOT on every keystroke.
     const stateContextValue = useMemo(
-        () => ({tableSelections, readOnly, loading, editorMode, editorLayout, reportMode, reportParams}),
+        () => ({
+            tableSelections,
+            readOnly,
+            loading,
+            editorMode,
+            editorLayout,
+            reportMode,
+            reportParams,
+        }),
         [tableSelections, readOnly, loading, editorMode, editorLayout, reportMode, reportParams],
     );
 

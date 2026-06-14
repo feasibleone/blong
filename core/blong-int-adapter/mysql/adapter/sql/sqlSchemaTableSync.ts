@@ -18,7 +18,7 @@ export default handler(
                 this.schemaTableSync as (
                     ...args: unknown[]
                 ) => Promise<{created: boolean; added: string[]; dropped: string[]}>
-            )('item', schema.mysql.item, {
+            )('sql_item', schema.mysql.item, {
                 dropColumns: params.dropColumns ?? false,
             });
         },

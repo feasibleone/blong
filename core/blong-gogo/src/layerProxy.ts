@@ -111,7 +111,10 @@ function createHandlerClosure(
                     merge(local, await apiSchema!.schema(what(layerApi), source));
                     break;
                 case 'object:schema':
-                    if (target.result.schema) merge(target.result.schema as object, what as object);
+                    if (target.result.schema)
+                        lib.mergeWithSymbols(target.result.schema as object, {
+                            [moduleName]: what as object,
+                        });
                     break;
                 case 'function:schema': {
                     configRuntime?.enterConfig();
@@ -121,7 +124,7 @@ function createHandlerClosure(
                         configRuntime?.exitConfig();
                     }
                     if (typeof what === 'object' && what !== null && target.result.schema)
-                        merge(target.result.schema, {[moduleName]: what});
+                        lib.mergeWithSymbols(target.result.schema, {[moduleName]: what});
                     break;
                 }
                 case 'function:handler':
