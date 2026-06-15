@@ -10,7 +10,7 @@
         "build": "true",
         "build-storybook": "storybook build",
         "ci-lint": "blong-dev lint",
-        "ci-test": "blong-dev playwright",
+        "ci-test": "../../test/integration/wait.sh mysql && blong-dev playwright",
         "dev": "vite",
         "playwright": "blong-dev playwright",
         "playwright:update": "blong-dev playwright --update-snapshots",
