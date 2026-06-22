@@ -27,6 +27,7 @@ export default adapter<{
             imports: ['mysql.sql'],
             schema: {
                 sync: true,
+                seed: true,
                 dropColumns: true,
                 tables: {
                     sql_item: {

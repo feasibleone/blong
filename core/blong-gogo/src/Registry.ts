@@ -190,6 +190,7 @@ export default class Registry extends Internal implements IRegistry {
             attachCheckpoint: this.#attachCheckpoint,
             render: (what: object[] | object) =>
                 renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
+            platform: this.#platform,
         };
         const result = (await port!(api)) as unknown as Adapter;
         this.#ports.set(id, result);

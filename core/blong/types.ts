@@ -410,6 +410,7 @@ export interface IApi {
               }) => object);
     };
     render: (what: object[] | object) => object;
+    platform: IPlatformApi;
 }
 
 export interface IErrorMap {
@@ -436,6 +437,7 @@ export type Adapter<T = Record<string, unknown>, C = Record<string, unknown>> = 
         | 'findValidation'
         | 'getConversion'
         | 'dispatch'
+        | 'platform'
     >;
 export interface IAdapter<T, C> {
     validation?: TSchema;
@@ -447,6 +449,7 @@ export interface IAdapter<T, C> {
     imported?: Record<string, PortHandlerBound>;
     importedMap?: Map<string, IRemoteHandler>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
+    platform?: IPlatformApi;
     activeConfig?(this: Adapter<T, C>): Partial<Config<T, C>>;
     init?(this: Adapter<T, C>, ...config: unknown[]): Promise<unknown>;
     start?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;

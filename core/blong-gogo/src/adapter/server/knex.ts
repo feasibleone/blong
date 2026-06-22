@@ -9,6 +9,8 @@ import {
 } from '@feasibleone/blong/types';
 import KnexLib from 'knex';
 import {type TFunction, type TObject} from 'typebox';
+import yaml from 'yaml';
+import {methodParts} from '../../lib.ts';
 import {
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
@@ -140,6 +142,43 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 //     );
                 //     await bindSyntheticCrud(self, knex, namespace, tableDefs);
                 // }
+            }
+            if (schema?.seed) {
+                for (const [name, path] of Object.entries<string>(
+                    (
+                        await (
+                            this.link as (
+                                ...args: unknown[]
+                            ) => Promise<{assets: Record<string, string>}>
+                        )(/\.db\.asset$/, {})
+                    ).assets ?? {},
+                )) {
+                    const extname = this.platform.extname(path);
+                    const method = methodParts(this.platform.basename(path, extname));
+                    this.log?.debug?.({
+                        $meta: {mtid: 'event', method},
+                        message: `Processing asset: ${name} at path: ${path}`,
+                    });
+                    if (extname === '.yaml' || extname === '.yml') {
+                        const params = yaml.parse(
+                            this.platform
+                                .readFileSync(path.startsWith('file://') ? path.slice(7) : path, {
+                                    encoding: 'utf-8',
+                                })
+                                .toString('utf-8'),
+                        );
+                        await this.handle!(params, {method});
+                    } else if (extname === '.json') {
+                        const params = JSON.parse(
+                            this.platform
+                                .readFileSync(path.startsWith('file://') ? path.slice(7) : path, {
+                                    encoding: 'utf-8',
+                                })
+                                .toString('utf-8'),
+                        );
+                        await this.handle!(params, {method});
+                    }
+                }
             }
             return super.ready();
         },

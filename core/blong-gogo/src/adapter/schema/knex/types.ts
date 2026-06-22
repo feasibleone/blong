@@ -28,6 +28,8 @@ export interface IConfig {
     schema?: {
         /** When `true`, tables and procedures are synced on every startup. */
         sync?: boolean;
+        /** When `true`, seed data is merged on every startup. */
+        seed?: boolean;
         dropColumns?: boolean;
         /**
          * Tables to create / alter. Keys are SQL table names, values are either

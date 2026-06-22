@@ -24,6 +24,15 @@ export function propType(prop: IColumnSchema): string {
     return 'unknown';
 }
 
+export function propDefault(prop: IColumnSchema): unknown {
+    if (prop.default !== undefined) return prop.default;
+    else if ('anyOf' in prop && Array.isArray(prop.anyOf)) {
+        const found = prop.anyOf.find(p => p.default !== undefined);
+        if (found) return propDefault(found);
+    }
+    return undefined;
+}
+
 export function addColumn(
     table: Record<string, (columnName: string, size?: number) => unknown>,
     columnName: string,
@@ -32,7 +41,8 @@ export function addColumn(
 ): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let column: any;
-    if (prop.default === 'auto-increment') {
+    const defaultValue = propDefault(prop);
+    if (defaultValue === 'auto-increment') {
         column = table.increments(columnName);
         return;
     }
@@ -72,7 +82,7 @@ export function addColumn(
     }
     if (isNullable) column.nullable();
     else column.notNullable();
-    if (prop.default !== undefined) column.defaultTo(prop.default);
+    if (defaultValue !== undefined) column.defaultTo(defaultValue);
 }
 
 export function sqlTypeToTypebox(sqlType: string): TSchema {

@@ -1,0 +1,12 @@
+coral:
+  - coralId: 1
+    coralName: Staghorn Coral
+    familyId: 1
+    habitatId: 1
+    coralType: hard
+    maxDepth: 30
+    colorPattern: Brown with white tips
+    conservationStatus: CR
+    isEndangered: true
+    discoveryDate: '1758-01-01'
+    coralDescription: Fast-growing branching coral that forms important reef habitat.
