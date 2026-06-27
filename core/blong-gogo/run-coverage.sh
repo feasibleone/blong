@@ -10,6 +10,7 @@ cd "$(dirname "$CORE_DIR")"
 # Merge coverage from all test packages into blong-gogo's .tap/coverage/
 # This includes both tap-produced coverage and Playwright coverage (pw-* files
 # written by blong-dev playwright --coverage).
+
 for pkg in blong-int-adapter test blong-suite blong-marine; do
     src="core/$pkg/.tap/coverage"
     if [ -d "$src" ]; then
@@ -23,6 +24,13 @@ if [ "$pw_count" -gt 0 ]; then
     echo "run-coverage.sh: Including $pw_count Playwright coverage file(s)"
 fi
 
+# Copy blong-browser vitest coverage (NYC-format) if available.
+# Produced by ci-test which runs vitest with --coverage.
+if [ -f core/blong-browser/coverage/coverage-final.json ]; then
+    cp core/blong-browser/coverage/coverage-final.json core/blong-gogo/.tap/coverage/vitest-coverage-final.json
+    echo "run-coverage.sh: Including vitest coverage for blong-browser"
+fi
+
 "$C8" report \
     --all \
     --temp-directory core/blong-gogo/.tap/coverage \
@@ -33,6 +41,8 @@ fi
     --include "core/blong-marine/**/*.ts" \
     --include "core/blong-browser/src/**/*.ts" \
     --include "core/blong-browser/src/**/*.tsx" \
+    --exclude "core/blong-browser/**/*.stories.*" \
+    --exclude "core/blong-browser/**/*.test.*" \
     --reporter text \
     --reporter lcov \
     -o coverage

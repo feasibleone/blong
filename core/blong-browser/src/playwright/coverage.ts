@@ -19,14 +19,17 @@
  * V8 coverage from the blong server process, and both are aggregated
  * by `c8 report`.
  *
- * Browser coverage URLs (from Vite dev server, e.g.
- * `http://localhost:5173/src/components/Portal.tsx`) are mapped to
- * file-system paths relative to the project root so c8 can correlate
- * them with source files.
+ * Browser coverage URLs (from Vite dev server) are mapped to
+ * file-system paths so c8 can correlate them with source files:
+ * - Project-relative paths like `http://localhost:5173/src/components/Portal.tsx`
+ *   are resolved relative to the project root (cwd).
+ * - `@fs/` paths like `http://localhost:5173/@fs/home/.../blong-browser/src/index.ts`
+ *   are used as-is (Vite's prefix for symlinked workspace packages).
+ * - `node_modules/`, `@vite/`, and `@react-refresh` URLs are excluded.
  */
 import {test as base, type Page, type TestType} from '@playwright/test';
 import crypto from 'node:crypto';
-import {mkdirSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
 interface IV8CoverageEntry {
@@ -50,32 +53,75 @@ interface IV8CoverageFile {
  * Vite dev server URLs look like:
  *   http://localhost:5173/src/components/Portal.tsx
  *   http://localhost:5173/node_modules/.vite/deps/react.js
+ *   http://localhost:5173/@fs/home/.../blong-browser/src/index.ts
  *
  * We strip the protocol/host/port and resolve relative to cwd.
+ * `@fs/` prefixed URLs are treated as absolute filesystem paths.
  * Source files that are outside the project are excluded.
  */
 function browserUrlToFilePath(browserUrl: string, cwd: string): string | null {
     try {
         const url = new URL(browserUrl);
-        // Only handle HTTP URLs from the dev server
-        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-            // file:// URLs can be used as-is
-            if (url.protocol === 'file:') {
-                return url.pathname;
+        let pathname = url.pathname;
+        const protocol = url.protocol;
+
+        if (protocol === 'file:') {
+            // A file:// URL may be:
+            //   file:///absolute/path       — 3 slashes, hostname is empty, pathname is correct
+            //   file://home/.../file         — 2 slashes, hostname="home", pathname="/.../file" (missing /home)
+            // Reconstruct the full path when hostname is set.
+            if (url.hostname) {
+                pathname = `/${url.hostname}${pathname}`;
             }
+            // Some URLs embed /@fs/ (from Vite's resolved symlink prefix).
+            // Strip everything before the last /@fs/ to reach the real path.
+            const fsIdx = pathname.lastIndexOf('/@fs/');
+            if (fsIdx >= 0) {
+                return pathname.slice(fsIdx + 5);
+            }
+            // Vite may also strip /@fs/ and prepend cwd instead, e.g.
+            //   .../blong-suite/home/user/.../blong-browser/src/...
+            // Strip the cwd prefix when present.
+            if (pathname.startsWith(cwd)) {
+                const suffix = pathname.slice(cwd.length);
+                if (suffix.startsWith('/')) return suffix;
+            }
+            return pathname;
+        }
+
+        // Only handle HTTP(S) URLs from the dev server
+        if (protocol !== 'http:' && protocol !== 'https:') {
             return null;
         }
-        const pathname = url.pathname;
-        // Exclude Vite client, HMR, node_modules
+
+        // Exclude Vite virtual modules (/@id/…, /@react-refresh),
+        // bundled dependencies (/@vite/), node_modules, and non-source assets
         if (
-            pathname.includes('/node_modules/') ||
-            pathname.includes('/@vite/') ||
+            pathname.includes('/@id/') ||
             pathname.includes('/@react-refresh') ||
+            pathname.includes('/@vite/') ||
+            pathname.includes('/node_modules/') ||
             pathname.startsWith('/favicon')
         ) {
             return null;
         }
-        // Strip leading / and resolve against cwd
+
+        // Handle /@fs/ prefix — the rest is an absolute filesystem path.
+        // Strip /@fs (4 chars) not /@fs/ (5 chars) to keep the leading /,
+        // so /@fs/home/user/... becomes /home/user/... (correct absolute path).
+        if (pathname.startsWith('/@fs/')) {
+            return pathname.slice(4);
+        }
+
+        // Some URLs are absolute filesystem paths without the /@fs/ prefix,
+        // e.g. http://localhost:5173/home/user/.../blong-browser/src/...
+        // Detect by checking if the path exists on disk.
+        if (pathname.startsWith('/') && existsSync(pathname)) {
+            return pathname;
+        }
+
+        // Regular project-relative path: resolve against cwd
+        // (e.g. /src/components/Portal.tsx → cwd + /src/components/Portal.tsx)
         const relPath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
         return join(cwd, relPath);
     } catch {

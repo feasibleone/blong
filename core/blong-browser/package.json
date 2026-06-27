@@ -52,7 +52,7 @@
         "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
         "ci-chromatic": "../common/chromatic.sh",
         "ci-lint": "blong-dev lint",
-        "ci-test": "node --run test",
+        "ci-test": "vitest run --coverage --coverage.thresholds.lines=0 --coverage.thresholds.branches=0 --coverage.thresholds.functions=0 --coverage.thresholds.statements=0",
         "storybook": "storybook dev --port 6006",
         "storybook:test": "test-storybook",
         "storybook:test:ci": "storybook build -o storybook-static && npx --yes http-server storybook-static --port 6006 --silent & sleep 3 && npx test-storybook --url http://127.0.0.1:6006; EXIT=$?; kill %1 2>/dev/null; exit $EXIT",
