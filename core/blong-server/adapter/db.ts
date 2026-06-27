@@ -20,9 +20,6 @@ export default adapter<{
                     password: 'password',
                 },
             },
-            schema: {
-                sync: true,
-            },
             namespace: 'db',
             imports: [/\.db$/],
         },
@@ -41,7 +38,15 @@ export default adapter<{
                 },
             },
             schema: {
+                sync: true,
+                seed: true,
                 dropColumns: true,
+            },
+        },
+        upgrade: {
+            schema: {
+                sync: true,
+                seed: true,
             },
         },
         microservice: {
