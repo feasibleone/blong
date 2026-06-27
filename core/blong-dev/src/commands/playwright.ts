@@ -1,4 +1,5 @@
 import {
+    copyFileSync,
     existsSync,
     mkdirSync,
     readdirSync,
@@ -22,14 +23,36 @@ const PATH_SEP = process.platform === 'win32' ? ';' : ':';
  *
  * After tests complete, if `allure-results/` exists, automatically
  * generates a single-file Allure HTML report at `allure-report/`.
+ *
+ * When `--coverage` is passed (stripped from Playwright args):
+ * - Sets NODE_V8_COVERAGE to collect server-side V8 coverage from web server processes
+ * - After tests complete, runs c8 report on the collected coverage data
+ * - Coverage output lands in `coverage/` at the repository root
  */
 export async function playwright(args: string[]): Promise<void> {
     const cwd = process.cwd();
     const localBin = join(cwd, 'node_modules', '.bin');
+
+    // Check for --coverage flag and strip it from Playwright args
+    const collectCoverage = args.includes('--coverage');
+    const pwArgs = args.filter(a => a !== '--coverage');
+
+    const coverageDir = join(cwd, '.playwright', 'coverage');
+    const v8Dir = join(coverageDir, 'v8');
+
     const env: NodeJS.ProcessEnv = {
         ...process.env,
         PATH: [localBin, blongDevBin, process.env['PATH'] ?? ''].join(PATH_SEP),
     };
+
+    // When collecting coverage, set NODE_V8_COVERAGE so the blong server process
+    // (spawned by Playwright's webServer config) writes V8 coverage on exit.
+    if (collectCoverage) {
+        mkdirSync(v8Dir, {recursive: true});
+        env['NODE_V8_COVERAGE'] = v8Dir;
+        console.log(`[playwright --coverage] NODE_V8_COVERAGE=${v8Dir}`);
+    }
+
     const run = (cmd: string, runArgs: string[]) =>
         runTool(cmd, runArgs, {cwd, env} satisfies RunOptions);
 
@@ -44,7 +67,7 @@ export async function playwright(args: string[]): Promise<void> {
     const resultsDir = join(cwd, 'allure-results');
     rmSync(resultsDir, {recursive: true, force: true});
 
-    const exitCode = await run('playwright', ['test', ...args]);
+    const exitCode = await run('playwright', ['test', ...pwArgs]);
 
     // Generate single-file Allure report from results if present
     if (existsSync(resultsDir)) {
@@ -67,6 +90,35 @@ export async function playwright(args: string[]): Promise<void> {
         const parsed = parseResults(resultsDir, traceFiles);
         writeSummary(reportDir, parsed, basename(cwd));
         writeIndexHtml(reportDir, parsed, basename(cwd));
+    }
+
+    // ── Coverage collection ──────────────────────────────────────────────────
+    // When --coverage was requested, copy V8 coverage files produced by
+    // both the server process (via NODE_V8_COVERAGE) and the browser-side
+    // coverage fixture into the invoking package's .tap/coverage/ directory.
+    // The run-coverage.sh script later copies them into blong-gogo's
+    // .tap/coverage/ for the unified c8 aggregation.
+    if (collectCoverage && existsSync(v8Dir)) {
+        const v8Files = readdirSync(v8Dir).filter(f => f.endsWith('.json'));
+        if (v8Files.length > 0) {
+            console.log(
+                `\n[playwright --coverage] ${v8Files.length} V8 coverage file(s) found in ${v8Dir}`,
+            );
+
+            const tapDir = join(cwd, '.tap', 'coverage');
+            mkdirSync(tapDir, {recursive: true});
+
+            let copied = 0;
+            for (const file of v8Files) {
+                const src = join(v8Dir, file);
+                const dst = join(tapDir, `pw-${file}`);
+                copyFileSync(src, dst);
+                copied++;
+            }
+            console.log(`[playwright --coverage] Copied ${copied} coverage file(s) to ${tapDir}`);
+        } else {
+            console.log('[playwright --coverage] No V8 coverage files found');
+        }
     }
 
     process.exitCode = exitCode;

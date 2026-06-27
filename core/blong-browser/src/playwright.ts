@@ -20,6 +20,7 @@
  * ```
  */
 import {test as base, expect, type Page} from '@playwright/test';
+import {coverageFixture} from './playwright/coverage.js';
 
 export {expect};
 
@@ -185,36 +186,43 @@ export class Portal {
 }
 
 /**
- * Playwright test fixture extended with blong portal support.
+ * Playwright test fixture extended with blong portal and coverage support.
  *
  * The `portal` fixture automatically:
  * - Navigates to the app
  * - Logs in with configured credentials
  * - Provides a Portal helper for menu clicks, form fills, saves, etc.
+ *
+ * Browser-side JavaScript coverage is collected automatically when
+ * `NODE_V8_COVERAGE` environment variable is set (by `blong-dev playwright --coverage`).
+ * The coverage fixture runs silently and produces V8-format JSON files
+ * compatible with `c8 report` aggregation.
  */
-export const test = base.extend<IBlongTestOptions & {portal: Portal}>({
-    blongUsername: ['admin', {option: true}],
-    blongPassword: ['admin', {option: true}],
-    blongPermissions: [false, {option: true}],
+export const test = coverageFixture(
+    base.extend<IBlongTestOptions & {portal: Portal}>({
+        blongUsername: ['admin', {option: true}],
+        blongPassword: ['admin', {option: true}],
+        blongPermissions: [false, {option: true}],
 
-    portal: async ({page, blongUsername, blongPassword, blongPermissions}, use) => {
-        // Navigate to the app root — baseURL is set in playwright.config.ts
-        await page.goto('/');
+        portal: async ({page, blongUsername, blongPassword, blongPermissions}, use) => {
+            // Navigate to the app root — baseURL is set in playwright.config.ts
+            await page.goto('/');
 
-        const portal = new Portal(page);
-        await portal.login(blongUsername, blongPassword);
+            const portal = new Portal(page);
+            await portal.login(blongUsername, blongPassword);
 
-        if (blongPermissions) {
-            // Grant all permissions so permission-gated toolbar buttons are visible
-            await page.evaluate(() => {
-                const store = (window as unknown as Record<string, unknown>).__blongStore as
-                    | {getState: () => {setPermissions: (p: boolean) => void}}
-                    | undefined;
-                store?.getState().setPermissions(true);
-            });
-        }
+            if (blongPermissions) {
+                // Grant all permissions so permission-gated toolbar buttons are visible
+                await page.evaluate(() => {
+                    const store = (window as unknown as Record<string, unknown>).__blongStore as
+                        | {getState: () => {setPermissions: (p: boolean) => void}}
+                        | undefined;
+                    store?.getState().setPermissions(true);
+                });
+            }
 
-        // eslint-disable-next-line @eslint-react/rules-of-hooks -- Playwright fixture `use()`, not a React Hook
-        await use(portal);
-    },
-});
+            // eslint-disable-next-line @eslint-react/rules-of-hooks -- Playwright fixture `use()`, not a React Hook
+            await use(portal);
+        },
+    }),
+);

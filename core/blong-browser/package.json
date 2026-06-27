@@ -36,6 +36,7 @@
         "./playwright": "./src/playwright.ts",
         "./playwright/model": "./src/playwright/model.ts",
         "./playwright/config": "./src/playwright/config.ts",
+        "./playwright/coverage": "./src/playwright/coverage.ts",
         "./storyHelper": "./src/storyHelper.tsx",
         "./vite": "./src/vite.ts",
         "./storybookMain": "./src/storybookMain.ts",

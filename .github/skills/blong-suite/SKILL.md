@@ -112,8 +112,8 @@ export default browser(blong => ({
 
 ## API Test Runner (index.ts)
 
-The `index.ts` in a suite is a simple re-export of `server.ts`. This allows `blong index.ts` to
-run the server platform by auto-detecting the `server()` kind:
+The `index.ts` in a suite is a simple re-export of `server.ts`. This allows `blong index.ts` to run
+the server platform by auto-detecting the `server()` kind:
 
 ```typescript
 // index.ts
@@ -124,14 +124,14 @@ When `blong` (or `blong index.ts`) is run, the framework detects that the defaul
 `server()` definition and starts it via `runPlatform()` directly — no intermediate load callback
 needed.
 
-For running tests against both server and browser platforms simultaneously, use
-`internal.test.ts` (server-side tap coverage) or the Playwright CI tests (`ci-ui`). For suites
-that need a custom multi-platform test runner, see the **blong-test-api** skill.
+For running tests against both server and browser platforms simultaneously, use `internal.test.ts`
+(server-side tap coverage) or the Playwright CI tests (`ci-ui`). For suites that need a custom
+multi-platform test runner, see the **blong-test-api** skill.
 
 ## Browser Entry Points
 
-The `index.html` is the HTML shell for the browser app. `index.html.ts` is the Vite TypeScript
-entry point that loads the browser platform:
+The `index.html` is the HTML shell for the browser app. `index.html.ts` is the Vite TypeScript entry
+point that loads the browser platform:
 
 ```typescript
 // index.html.ts
@@ -147,11 +147,15 @@ load(browser, pkg.name, {apiSchema: false}, ['microservice', 'integration', 'dev
 ```html
 <!-- index.html -->
 <body>
-  <div id="root"></div>
-  <script type="module" src="./index.html.ts"></script>
+    <div id="root"></div>
+    <script
+        type="module"
+        src="./index.html.ts"
+    ></script>
 </body>
 ```
-```
+
+````
 
 ## Internal API Tests (internal.test.ts)
 
@@ -176,7 +180,7 @@ await tap.test('internal api', async test => {
     await platform.test(test);
 });
 await platform.stop();
-```
+````
 
 ## The `load` Function
 
@@ -281,14 +285,39 @@ Cover direct calls to orchestrators (without gateway). Only the server is loaded
 
 ## Coverage for tests (ci-test / ci-coverage)
 
-- each package runs `blong-dev test`, which wraps `tap` with the correct parameters
-- `tap` collects V8 coverage by default into `.tap/coverage/` — no `--coverage-map` needed.
-- `--allow-incomplete-coverage --coverage-report=none` prevent tap from printing a table or failing
-  on thresholds; the report is generated separately by `c8`.
-- the `ci-coverage` script in `blong-gogo` runs `c8 report` from the root repository folder and
-  includes the source code from several packages, so that the final `lcov.info` contains coverage
-  for all of them in one file. The output is generated in the `coverage/` folder at the repository
-  root.
+Coverage is **aggregated from several packages** into a single unified `lcov.info` report. Two
+collection paths feed into the aggregation:
+
+### Tap collection (server-side handlers)
+
+Each package's `ci-test` runs `blong-dev test`, which wraps `tap` with:
+
+- `--allow-incomplete-coverage --coverage-report=none`
+- V8 coverage is saved into the package's `.tap/coverage/` directory automatically.
+
+### Playwright collection (full-stack browser tests)
+
+When a suite's `ci-test` uses `blong-dev playwright --coverage`:
+
+- **Server-side coverage** — `blong-dev` sets `NODE_V8_COVERAGE` before spawning the blong server
+  subprocess, capturing all server-handler execution as V8 JSON files.
+- **Browser-side coverage** — the `coverageFixture` from
+  `@feasibleone/blong-browser/playwright/coverage` runs `page.coverage.startJSCoverage()` on every
+  test and writes V8-format JSON files to the same directory.
+- Both server and browser coverage files are staged into the invoking package's own `.tap/coverage/`
+  with a `pw-` prefix for identification.
+
+### Aggregation (`run-coverage.sh` in `blong-gogo`)
+
+The `ci-coverage` Rush bulk command runs `run-coverage.sh`, which:
+
+1. Collects all `.json` coverage files from each packages's `.tap/coverage/` directory into a single
+   folder, copying from (currently) `blong-int-adapter`, `test`, `blong-suite`, and `blong-marine`.
+2. Runs `c8 report --temp-directory ...` from the repository root, producing `coverage/lcov.info`
+   that covers source code from all included packages.
+
+This means the final report contains coverage for tap handler tests and Playwright full-stack tests
+(both server and browser code) side by side.
 
 **Why not `--coverage-map`:** passing it with TypeScript paths causes tap to exit 1 with "No
 coverage generated" because tsx compiles files in-memory and V8 coverage data doesn't match the
@@ -302,7 +331,7 @@ original `.ts` file paths.
 
 ### UI Tests
 
-Not yet implemented. Planned to run full browser app with Playwright.
+These are implemented with Playwright and explained in the blong-playwright skill.
 
 ### Edge Device Tests
 
@@ -364,8 +393,8 @@ CI=true blong
 
 This makes it easy to test individual realms during development without needing a full suite setup.
 When a realm or suite has an `index.ts`, it is loaded directly. If the default export is a
-`server()` definition (detected via the `kind()` symbol), the framework calls `runPlatform()` on
-it directly. Otherwise the export is called as a function with `load` (the legacy callback form).
+`server()` definition (detected via the `kind()` symbol), the framework calls `runPlatform()` on it
+directly. Otherwise the export is called as a function with `load` (the legacy callback form).
 
 ## Debug Configuration
 
