@@ -87,7 +87,7 @@ export async function schemaTableConstraintSyncImpl(
         await knex('information_schema.TABLE_CONSTRAINTS').select('CONSTRAINT_NAME').where({
             TABLE_SCHEMA: knex.client.database(),
         })
-    ).map(c => c.CONSTRAINT_NAME);
+    ).map(c => (c.CONSTRAINT_NAME === 'PRIMARY' ? `${tableName}_pk` : c.CONSTRAINT_NAME));
     const existingIndexes = (
         await knex('information_schema.STATISTICS').select('INDEX_NAME').where({
             TABLE_SCHEMA: knex.client.database(),
@@ -97,7 +97,7 @@ export async function schemaTableConstraintSyncImpl(
     await knex.schema.table(tableName, table => {
         // Composite primary key
         if (constraints.primaryKey) {
-            const name = constraints.primaryKey.constraintName ?? `${tableName}_key`;
+            const name = constraints.primaryKey.constraintName ?? `${tableName}_pk`;
             if (!existingConstraints.includes(name))
                 table.primary([...constraints.primaryKey.columns], name);
         }
