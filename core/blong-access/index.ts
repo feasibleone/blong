@@ -8,43 +8,31 @@ export default server(() => ({
         version: pkg.version,
     },
     children: [
-        /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
+        /** Built-in blong-server realm: RPC, auth, portal, auth orchestrators */
         async function srv() {
             return import('@feasibleone/blong-server/server.ts');
         },
         async function login() {
             return import('@feasibleone/blong-login/server.ts');
         },
+        /** Core utility realm: shared resource/type/triple/path schema objects */
         async function core() {
             return import('@feasibleone/blong-core/server.ts');
         },
+        /** RBAC access control realm */
         async function access() {
-            return import('@feasibleone/blong-access/server.ts');
-        },
-        /** Marine biology demonstration realm */
-        async function marine() {
-            return import('@feasibleone/blong-marine/server.ts');
+            return import('./server.ts');
         },
     ],
     config: {
         default: {
-            srv: {
-                'subject.validation': {
-                    mock: {
-                        marineCoralModel: true,
-                        marineFamilyModel: true,
-                        marineHabitatModel: true,
-                        marineSpeciesModel: true,
-                    },
-                },
-            },
+            srv: {},
         },
         dev: {
             srv: {},
             core: {},
-            access: {},
-            marine: {},
             login: {},
+            access: {},
         },
     },
 }));

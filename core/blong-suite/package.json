@@ -19,6 +19,7 @@
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-access": "workspace:^1.0.0",
         "@feasibleone/blong-core": "workspace:^1.0.0",
         "@feasibleone/blong-marine": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
