@@ -108,14 +108,19 @@ export const type = {
     // Convenience functions for common SQL column types
     increment: () =>
         Type.Optional(
-            Type.Union([Type.Null(), Type.BigInt({readonly: true, default: 'auto-increment'})]),
+            Type.Union([
+                Type.Null(),
+                Type.BigInt({readonly: true, default: 'auto-increment'}),
+                Type.Integer({readonly: true, default: 'auto-increment'}),
+            ]),
         ),
     integerNull: (options?: TNumberOptions) =>
         Type.Optional(Type.Union([Type.Null(), Type.Integer(options)])),
     integerNotNull: (options?: TNumberOptions) => Type.Integer(options),
     bigIntNull: (options?: TNumberOptions) =>
-        Type.Optional(Type.Union([Type.Null(), Type.BigInt(options)])),
-    bigIntNotNull: (options?: TNumberOptions) => Type.BigInt(options),
+        Type.Optional(Type.Union([Type.Null(), Type.BigInt(options), Type.Integer(options)])),
+    bigIntNotNull: (options?: TNumberOptions) =>
+        Type.Union([Type.BigInt(options), Type.Integer(options)]),
     stringNull: (options?: TStringOptions) =>
         Type.Optional(Type.Union([Type.Null(), Type.String(options)])),
     stringNotNull: (options?: TStringOptions) => Type.String(options),
