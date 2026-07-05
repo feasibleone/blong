@@ -1,4 +1,4 @@
-import {Type} from 'typebox';
+import {Type, type TNumberOptions, type TSchemaOptions, type TStringOptions} from 'typebox';
 import {monotonicFactory} from 'ulidx';
 import _merge from 'ut-function.merge';
 import {v4, v7} from 'uuid';
@@ -93,16 +93,49 @@ export const uuid7 = v7;
 export const yaml = _yaml;
 export const merge = _merge;
 
+const _dateTime = () =>
+    Type.Codec(Type.String({format: 'date-time'}))
+        .Decode(value => new Date(value))
+        .Encode(value => value.toISOString());
+
+const _date = () =>
+    Type.Codec(Type.String({format: 'date-time'}))
+        .Decode(value => new Date(value))
+        .Encode(value => value.toISOString().split('T')[0]);
+
 export const type = {
     ...Type,
-    DateTime: () =>
-        Type.Codec(Type.String({format: 'date-time'}))
-            .Decode(value => new Date(value))
-            .Encode(value => value.toISOString()),
-    Date: () =>
-        Type.Codec(Type.String({format: 'date-time'}))
-            .Decode(value => new Date(value))
-            .Encode(value => value.toISOString().split('T')[0]),
+    // Convenience functions for common SQL column types
+    increment: () =>
+        Type.Optional(
+            Type.Union([Type.Null(), Type.BigInt({readonly: true, default: 'auto-increment'})]),
+        ),
+    integerNull: (options?: TNumberOptions) =>
+        Type.Optional(Type.Union([Type.Null(), Type.Integer(options)])),
+    integerNotNull: (options?: TNumberOptions) => Type.Integer(options),
+    bigIntNull: (options?: TNumberOptions) =>
+        Type.Optional(Type.Union([Type.Null(), Type.BigInt(options)])),
+    bigIntNotNull: (options?: TNumberOptions) => Type.BigInt(options),
+    stringNull: (options?: TStringOptions) =>
+        Type.Optional(Type.Union([Type.Null(), Type.String(options)])),
+    stringNotNull: (options?: TStringOptions) => Type.String(options),
+    numberNull: (options?: TNumberOptions) =>
+        Type.Optional(Type.Union([Type.Null(), Type.Number(options)])),
+    numberNotNull: (options?: TNumberOptions) => Type.Number(options),
+    booleanNull: (options?: TSchemaOptions) =>
+        Type.Optional(
+            Type.Union([Type.Null(), Type.Boolean(options), type.Literal(0), type.Literal(1)]),
+        ),
+    booleanNotNull: (options?: TSchemaOptions) =>
+        Type.Union([Type.Null(), Type.Boolean(options), type.Literal(0), type.Literal(1)]),
+    dateNull: () => Type.Optional(Type.Union([Type.Null(), _date()])),
+    dateNotNull: () => _date(),
+    dateTimeNull: () => Type.Optional(Type.Union([Type.Null(), _dateTime()])),
+    dateTimeNotNull: () => _dateTime(),
+    ulid: () => Type.Optional(Type.Union([Type.Null(), Type.String({default: 'ulid'})])),
+    uuid: () => Type.Optional(Type.Union([Type.Null(), Type.String({default: 'uuid'})])),
+    uidNull: () => Type.Optional(Type.Union([Type.Null(), Type.String({format: 'uid'})])),
+    uidNotNull: () => Type.String({format: 'uid'}),
 };
 
 export const rename = (object: object, value: string) =>

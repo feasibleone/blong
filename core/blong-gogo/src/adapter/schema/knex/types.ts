@@ -1,6 +1,45 @@
 import {type Knex} from '@feasibleone/blong/types';
 import {type TObject} from 'typebox';
 
+export interface ITableConstraints {
+    /** Composite primary key (single-column PKs are handled by the column definition itself). */
+    primaryKey?: {
+        columns: string[];
+        constraintName?: string;
+    };
+    /** Unique constraints keyed by constraint name. */
+    unique?: Record<
+        string,
+        {
+            /** Column name(s). When omitted for single-column constraints, defaults to `[key]`. */
+            columns?: string[];
+        }
+    >;
+    /** Indexes keyed by index name. */
+    index?: Record<
+        string,
+        {
+            /** Column name(s). When omitted for single-column indexes, defaults to `[key]`. */
+            columns?: string[];
+            /** Optional index type (e.g. `'btree'`, `'hash'`). */
+            indexType?: string;
+        }
+    >;
+    /** Foreign key constraints keyed by constraint name. */
+    foreign?: Record<
+        string,
+        | string
+        | {
+              /** Column name(s). When omitted for single-column constraints, defaults to `[key]`. */
+              columns?: string[];
+              /** Table and column this FK references, e.g. `"core.type.typeId"` */
+              references: string;
+              onDelete?: string;
+              onUpdate?: string;
+          }
+    >;
+}
+
 export interface ISchemaTable {
     definition: TObject;
     order?: number;

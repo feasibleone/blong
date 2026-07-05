@@ -19,9 +19,10 @@ import {
 import {
     attachHandlers,
     schemaCrudBindImpl,
+    schemaTableConstraintSyncImpl,
     schemaTableSyncImpl,
 } from '../schema/knex/schemaTable.ts';
-import {type IConfig, type ISchemaTable} from '../schema/knex/types.ts';
+import {type IConfig, type ISchemaTable, type ITableConstraints} from '../schema/knex/types.ts';
 import {methodId, propType, readSqlFiles, snakeToCamel} from '../schema/knex/utils.ts';
 
 export type {IConfig, ISchemaTable} from '../schema/knex/types.ts';
@@ -98,6 +99,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     return orderA - orderB;
                 });
                 const dropColumns = schema.dropColumns ?? false;
+                const tableDefs: Array<{tableName: string; definition: TObject}> = [];
                 for (const [tableName, tableConfig] of tables) {
                     const isOrder = typeof tableConfig === 'number';
                     const isSpec = typeof tableConfig === 'object' && 'definition' in tableConfig;
@@ -107,9 +109,21 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         : isSpec
                           ? (tableConfig as ISchemaTable).definition
                           : (tableConfig as TObject);
-                    await schemaTableSyncImpl(knex, tableName.replaceAll('.', '_'), definition, {
+                    const sqlName = tableName.replaceAll('.', '_');
+                    await schemaTableSyncImpl(knex, sqlName, definition, {
                         dropColumns,
                     });
+                    tableDefs.push({tableName: sqlName, definition});
+                }
+                // Second pass: apply constraints (PKs, unique, indexes, FKs) now
+                // that all tables exist.
+                for (const {tableName: sqlName, definition} of tableDefs) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const constraints = (definition as any).constraints as
+                        | ITableConstraints
+                        | undefined;
+                    if (constraints)
+                        await schemaTableConstraintSyncImpl(knex, sqlName, constraints);
                 }
                 // Collect procedure definitions: scanned folders first, then inline.
                 const procedureDefs: Array<{name: string; sql: string}> = [];

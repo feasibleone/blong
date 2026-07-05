@@ -1,3 +1,4 @@
+import {type Knex} from '@feasibleone/blong';
 import {readFileSync, readdirSync} from 'node:fs';
 import {basename, join} from 'node:path';
 import {Type, type TSchema} from 'typebox';
@@ -13,6 +14,7 @@ export function propType(prop: IColumnSchema): string {
                 if (prop.format === 'date') return 'date';
                 if (prop.format === 'time') return 'time';
                 if (prop.format === 'uuid') return 'uuid';
+                if (prop.format === 'uid') return 'uid';
                 return 'string';
             default:
                 return prop.type;
@@ -34,7 +36,7 @@ export function propDefault(prop: IColumnSchema): unknown {
 }
 
 export function addColumn(
-    table: Record<string, (columnName: string, size?: number) => unknown>,
+    table: Knex.CreateTableBuilder,
     columnName: string,
     prop: IColumnSchema,
     isNullable: boolean,
@@ -42,9 +44,16 @@ export function addColumn(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let column: any;
     const defaultValue = propDefault(prop);
-    if (defaultValue === 'auto-increment') {
-        column = table.increments(columnName);
-        return;
+    switch (defaultValue) {
+        case 'auto-increment':
+            column = table.bigIncrements(columnName);
+            return;
+        case 'ulid':
+            column = table.binary(columnName, 16).primary();
+            return;
+        case 'uuid':
+            column = table.uuid(columnName, {useBinaryUuid: true, primaryKey: true}).primary();
+            return;
     }
     switch (propType(prop)) {
         case 'datetime':
@@ -57,11 +66,17 @@ export function addColumn(
             column = table.time(columnName);
             break;
         case 'uuid':
-            column = table.uuid(columnName);
+            column = table.uuid(columnName, {useBinaryUuid: true});
+            break;
+        case 'uid':
+            column = table.binary(columnName, 16);
             break;
         case 'string':
             if (prop.maxLength != null && prop.maxLength > 255) column = table.text(columnName);
             else column = table.string(columnName, prop.maxLength ?? 255);
+            break;
+        case 'bigint':
+            column = table.bigInteger(columnName).unsigned();
             break;
         case 'number':
             column = table.double(columnName);

@@ -19,9 +19,12 @@ import {
     type TIntersect,
     type TNever,
     type TNumber,
+    type TNumberOptions,
     type TObject,
     type TSchema,
+    type TSchemaOptions,
     type TString,
+    type TStringOptions,
     type TUnknown,
 } from 'typebox';
 // import type {client} from 'node-vault';
@@ -340,8 +343,25 @@ export interface IRegistry {
 }
 
 type BlongType = typeof Type & {
-    DateTime: () => TSchema;
-    Date: () => TSchema;
+    increment: () => TSchema;
+    integerNull: (options?: TNumberOptions) => TSchema;
+    integerNotNull: (options?: TNumberOptions) => TSchema;
+    bigIntNull: (options?: TNumberOptions) => TSchema;
+    bigIntNotNull: (options?: TNumberOptions) => TSchema;
+    stringNull: (options?: TStringOptions) => TSchema;
+    stringNotNull: (options?: TStringOptions) => TSchema;
+    numberNull: (options?: TNumberOptions) => TSchema;
+    numberNotNull: (options?: TNumberOptions) => TSchema;
+    booleanNull: (options?: TSchemaOptions) => TSchema;
+    booleanNotNull: (options?: TSchemaOptions) => TSchema;
+    dateNull: () => TSchema;
+    dateNotNull: () => TSchema;
+    dateTimeNull: () => TSchema;
+    dateTimeNotNull: () => TSchema;
+    ulid: () => TSchema;
+    uuid: () => TSchema;
+    uidNull: () => TSchema;
+    uidNotNull: () => TSchema;
 };
 
 export interface IApi {

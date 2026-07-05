@@ -1,6 +1,6 @@
 import {type Knex} from '@feasibleone/blong/types';
 import {Type, type TFunction, type TObject, type TSchema} from 'typebox';
-import {type IColumnSchema} from './types.ts';
+import {type IColumnSchema, type ITableConstraints} from './types.ts';
 import {addColumn, capitalize, methodId} from './utils.ts';
 
 /**
@@ -13,6 +13,23 @@ import {addColumn, capitalize, methodId} from './utils.ts';
  *
  * The operation is idempotent: a second call without schema changes produces
  * no SQL.
+ *
+ * Table-level constraints (composite PKs, unique, foreign key, indexes) should
+ * be applied in a **second pass** via {@link schemaTableConstraintSyncImpl}
+ * after all tables exist, so foreign-key target tables are guaranteed present.
+ *
+ * Constraints are declared via the TypeBox `TObject` options parameter:
+ *
+ * ```ts
+ * type.Object({...columns}, {
+ *     constraints: {
+ *         primaryKey: {columns: ['colA', 'colB']},
+ *         unique: {typeAlias: {}},
+ *         foreign: {typeId: 'core.type.typeId'},
+ *         index: {resourceName: {}},
+ *     },
+ * })
+ * ```
  */
 export async function schemaTableSyncImpl(
     knex: Knex,
@@ -24,8 +41,7 @@ export async function schemaTableSyncImpl(
     const schemaProps = Object.keys(schema.properties);
     const exists = await knex.schema.hasTable(tableName);
     if (!exists) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await knex.schema.createTable(tableName, (table: any) => {
+        await knex.schema.createTable(tableName, table => {
             for (const [name, prop] of Object.entries(schema.properties))
                 addColumn(table, name, prop as IColumnSchema, !required.has(name));
         });
@@ -35,8 +51,7 @@ export async function schemaTableSyncImpl(
     const existingColumns = new Set(Object.keys(columnInfo));
     const added: string[] = [];
     const dropped: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await knex.schema.alterTable(tableName, (table: any) => {
+    await knex.schema.alterTable(tableName, table => {
         for (const [name, prop] of Object.entries(schema.properties)) {
             if (!existingColumns.has(name)) {
                 addColumn(table, name, prop as IColumnSchema, true);
@@ -53,6 +68,78 @@ export async function schemaTableSyncImpl(
         }
     });
     return {created: false, added, dropped};
+}
+
+/**
+ * Apply table-level constraints (composite PKs, unique, indexes, foreign keys)
+ * for an **existing** table via `alterTable`.  This is a separate step so it
+ * can be called **after** all tables have been created, guaranteeing that
+ * foreign-key target tables exist.
+ *
+ * Already-present constraints/indexes are skipped (idempotent).
+ */
+export async function schemaTableConstraintSyncImpl(
+    knex: Knex,
+    tableName: string,
+    constraints: ITableConstraints,
+): Promise<void> {
+    const existingConstraints = (
+        await knex('information_schema.TABLE_CONSTRAINTS').select('CONSTRAINT_NAME').where({
+            TABLE_SCHEMA: knex.client.database(),
+        })
+    ).map(c => c.CONSTRAINT_NAME);
+    const existingIndexes = (
+        await knex('information_schema.STATISTICS').select('INDEX_NAME').where({
+            TABLE_SCHEMA: knex.client.database(),
+        })
+    ).map(i => i.INDEX_NAME);
+
+    await knex.schema.table(tableName, table => {
+        // Composite primary key
+        if (constraints.primaryKey) {
+            const name = constraints.primaryKey.constraintName ?? `${tableName}_key`;
+            if (!existingConstraints.includes(name))
+                table.primary([...constraints.primaryKey.columns], name);
+        }
+
+        // Unique constraints
+        if (constraints.unique) {
+            for (const [key, def] of Object.entries(constraints.unique)) {
+                const name = `${tableName}_ux_${key}`;
+                if (existingConstraints.includes(name)) continue;
+                const cols = def.columns ?? [key];
+                table.unique(cols, {indexName: name});
+            }
+        }
+
+        // Indexes
+        if (constraints.index) {
+            for (const [key, def] of Object.entries(constraints.index)) {
+                const name = `${tableName}_idx_${key}`;
+                if (existingIndexes.includes(name)) continue;
+                const cols = def.columns ?? [key];
+                table.index(cols, name, def.indexType);
+            }
+        }
+
+        // Foreign key constraints
+        if (constraints.foreign) {
+            for (const [key, def] of Object.entries(constraints.foreign)) {
+                const name = `${tableName}_fk_${key}`;
+                if (existingConstraints.includes(name)) continue;
+                const ref = typeof def === 'string' ? {references: def} : def;
+                const lastDot = ref.references.lastIndexOf('.');
+                const refTable = ref.references.slice(0, lastDot).replaceAll('.', '_');
+                const refCol = ref.references.slice(lastDot + 1);
+                const cols = typeof def === 'string' ? [key] : (def.columns ?? [key]);
+                const fk = table.foreign(cols, name);
+                const fkr = fk.references(cols.map(() => refCol));
+                fkr.inTable(refTable);
+                if (ref.onDelete) fkr.onDelete(ref.onDelete);
+                if (ref.onUpdate) fkr.onUpdate(ref.onUpdate);
+            }
+        }
+    });
 }
 
 /**

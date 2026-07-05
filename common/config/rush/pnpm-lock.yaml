@@ -314,6 +314,34 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  ../../core/blong-core:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../blong-server
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.8
+        version: 8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
+
   ../../core/blong-cucumber:
     dependencies:
       '@cucumber/gherkin':
@@ -1183,6 +1211,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
       '@feasibleone/blong-marine':
         specifier: workspace:^1.0.0
         version: link:../blong-marine

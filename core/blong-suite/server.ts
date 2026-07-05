@@ -15,6 +15,10 @@ export default server(() => ({
         async function login() {
             return import('@feasibleone/blong-login/server.ts');
         },
+        /** core realm */
+        async function core() {
+            return import('@feasibleone/blong-core/server.ts');
+        },
         /** Marine biology demonstration realm */
         async function marine() {
             return import('@feasibleone/blong-marine/server.ts');
@@ -35,6 +39,7 @@ export default server(() => ({
         },
         dev: {
             srv: {},
+            core: {},
             marine: {},
             login: {},
         },

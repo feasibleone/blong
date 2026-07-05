@@ -1,6 +1,6 @@
-export type { BlongHelpers } from './helpers.ts';
 export { escapeHtml, escapeJson, escapeXml, htmlTag, jsonTag, xmlTag } from './escape.ts';
 export { helpers } from './helpers.ts';
+export type { BlongHelpers } from './helpers.ts';
 /** Render a template string with the given variables. */
 export declare function render(templateStr: string, vars?: Record<string, unknown>): string;
 /**
