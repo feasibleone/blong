@@ -5,6 +5,7 @@
         "core/blong-browser": {},
         "core/blong-chain": {},
         "core/blong-config": {},
+        "core/blong-core": {},
         "core/blong-dev": {},
         "core/blong-gogo": {},
         "core/blong-int-sql": {},
