@@ -14,7 +14,11 @@ import {Editor} from '../Editor.js';
 import type {StoryFn} from '../Editor.stories.js';
 import {Template} from '../Editor.stories.js';
 
-const meta: Meta<typeof Editor> = {title: 'Editor/PortalComponent', component: Editor};
+const meta: Meta<typeof Editor> = {
+    title: 'Editor/PortalComponent',
+    component: Editor,
+    parameters: {chromatic: {delay: 2000}},
+};
 export default meta;
 
 /** Shared layout used by both stories below. */

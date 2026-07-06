@@ -2,7 +2,7 @@
 
 exports[`<Editor /> > Basic render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -1730,7 +1730,7 @@ exports[`<Editor /> > Basic render equals snapshot 1`] = `
 
 exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -2109,7 +2109,7 @@ exports[`<Editor /> > CascadedDropdowns render equals snapshot 1`] = `
 
 exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -3605,7 +3605,7 @@ exports[`<Editor /> > CascadedTables render equals snapshot 1`] = `
 
 exports[`<Editor /> > CustomEditors render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -3866,7 +3866,7 @@ exports[`<Editor /> > CustomEditors render equals snapshot 1`] = `
 
 exports[`<Editor /> > Design render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -5062,7 +5062,7 @@ exports[`<Editor /> > Design render equals snapshot 1`] = `
 
 exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -6258,7 +6258,7 @@ exports[`<Editor /> > EditorTabsExplorer render equals snapshot 1`] = `
 
 exports[`<Editor /> > Files render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -7454,7 +7454,7 @@ exports[`<Editor /> > Files render equals snapshot 1`] = `
 
 exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -8650,7 +8650,7 @@ exports[`<Editor /> > FilesInTab render equals snapshot 1`] = `
 
 exports[`<Editor /> > Loading render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -9846,7 +9846,7 @@ exports[`<Editor /> > Loading render equals snapshot 1`] = `
 
 exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -10339,7 +10339,7 @@ exports[`<Editor /> > MasterDetail render equals snapshot 1`] = `
 
 exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -11118,7 +11118,7 @@ exports[`<Editor /> > MasterDetailPolymorphic render equals snapshot 1`] = `
 
 exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -12942,7 +12942,7 @@ exports[`<Editor /> > Pivot BG render equals snapshot 1`] = `
 
 exports[`<Editor /> > Pivot render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -14772,7 +14772,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
     style="flex: 1 1 0%;"
   >
     <div
-      class="blong-editor "
+      class="blong-editor"
       data-testid="blong-browser-test"
     >
       <div
@@ -14942,7 +14942,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
     style="flex: 1 1 0%;"
   >
     <div
-      class="blong-editor "
+      class="blong-editor"
       data-testid="blong-browser-test"
     >
       <div
@@ -15112,7 +15112,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
     style="flex: 1 1 0%;"
   >
     <div
-      class="blong-editor "
+      class="blong-editor"
       data-testid="blong-browser-test"
     >
       <div
@@ -15283,7 +15283,7 @@ exports[`<Editor /> > PolymorphicLayout render equals snapshot 1`] = `
 
 exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -16370,7 +16370,7 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
 
 exports[`<Editor /> > Server validation render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -17567,7 +17567,7 @@ exports[`<Editor /> > Server validation render equals snapshot 1`] = `
 
 exports[`<Editor /> > Steps render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -18763,7 +18763,7 @@ exports[`<Editor /> > Steps render equals snapshot 1`] = `
 
 exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -19959,7 +19959,7 @@ exports[`<Editor /> > StepsDisabledBack render equals snapshot 1`] = `
 
 exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -21155,7 +21155,7 @@ exports[`<Editor /> > StepsHiddenBack render equals snapshot 1`] = `
 
 exports[`<Editor /> > Submit render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -22351,7 +22351,7 @@ exports[`<Editor /> > Submit render equals snapshot 1`] = `
 
 exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -22879,7 +22879,7 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
 
 exports[`<Editor /> > Tabs render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -24075,7 +24075,7 @@ exports[`<Editor /> > Tabs render equals snapshot 1`] = `
 
 exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -24640,7 +24640,7 @@ exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
 
 exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -25836,7 +25836,7 @@ exports[`<Editor /> > Toolbar render equals snapshot 1`] = `
 
 exports[`<Editor /> > Validation render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div
@@ -27045,7 +27045,7 @@ exports[`<Editor /> > Validation render equals snapshot 1`] = `
 
 exports[`<Editor /> > ValidationBG render equals snapshot 1`] = `
 <div
-  class="blong-editor "
+  class="blong-editor"
   data-testid="blong-browser-test"
 >
   <div

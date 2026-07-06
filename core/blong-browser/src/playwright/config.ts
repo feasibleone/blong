@@ -131,7 +131,7 @@ export function defineBlongConfig(
                 timeout: 60_000,
             },
             {
-                command: 'node --run dev',
+                command: process.env.CI ? 'node --run dev -- --force' : 'node --run dev',
                 url: 'http://localhost:5173',
                 reuseExistingServer: !process.env.CI,
                 stdout: 'pipe',
