@@ -281,7 +281,7 @@ export function Editor({
     methods,
     onFieldChange,
     editors,
-    className = '',
+    className = 'blong-editor',
     title: titleProp,
     tabId,
     refreshNamespace,
@@ -705,7 +705,7 @@ export function Editor({
 
     const editorContent = (
         <div
-            className={`blong-editor ${className}`}
+            className={className}
             data-testid="blong-browser-test"
         >
             <OverlayPanel

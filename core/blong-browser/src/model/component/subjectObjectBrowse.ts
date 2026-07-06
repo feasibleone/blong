@@ -31,6 +31,7 @@ export async function subjectObjectBrowse(
                     editMode: false,
                     refreshNamespace: `${subject}.${object}`,
                     title: browser.title,
+                    className: 'blong-subject-object-browse',
                     ...props,
                 });
             }
