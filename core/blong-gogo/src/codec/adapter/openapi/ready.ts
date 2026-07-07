@@ -23,9 +23,7 @@ export default handler<{
                     }
                 });
             for (const [key, value] of Object.entries(config.namespace))
-                assets[key] = await (this.link as (...args: unknown[]) => Promise<unknown>)(
-                    `${value}.asset`,
-                );
+                assets[key] = await this.attach?.(`${value}.asset`);
             handlers = await load(assets, /./, this.configBase as string);
         },
         requestSend(params: unknown, $meta: IMeta) {

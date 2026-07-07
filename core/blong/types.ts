@@ -410,7 +410,7 @@ export interface IApi {
         patterns: (string | RegExp)[] | string | RegExp,
         adapter?: boolean,
     ) => unknown;
-    attach: (target: object, patterns: (string | RegExp)[] | string | RegExp) => Promise<void>;
+    attach: (target: object, patterns: (string | RegExp)[] | string | RegExp) => Promise<object>;
     createLog: ILog['logger'];
     attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {

@@ -151,7 +151,7 @@ export default handler(
                     {$meta, removeUnit}: StepMeta & {removeUnit: Promise<unknown>},
                 ) {
                     await removeUnit;
-                    const result = await sqlUnitMerge({unit: {...mergedUnit}}, $meta);
+                    const result = await sqlUnitMerge({unit: [{...mergedUnit}]}, $meta);
                     assert.ok(result !== undefined, 'merge returned a result');
                     return {merged: true};
                 },

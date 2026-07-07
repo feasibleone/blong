@@ -327,7 +327,10 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         return this.event('start', {configBase: this.configBase, config});
     }
 
-    async attach(patterns: (string | RegExp)[] | string | RegExp, target: object): Promise<object> {
+    async attach(
+        patterns: (string | RegExp)[] | string | RegExp,
+        target: object = {},
+    ): Promise<object> {
         await this._api.attach(target, patterns);
         return target;
     }

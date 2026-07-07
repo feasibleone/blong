@@ -260,6 +260,7 @@ export default class Registry extends Internal implements IRegistry {
         await this._matchMethods('merge', patterns, (name, local) =>
             Array.isArray(target) ? target.push(local) : merge(target, local),
         );
+        return target;
     }
 
     private _attachHandlers(port: object): (
