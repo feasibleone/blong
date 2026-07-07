@@ -1,0 +1,9 @@
+key: typeAlias
+type:
+  - typeAlias: access.role
+  - typeAlias: access.user
+  - typeAlias: access.action
+  - typeAlias: access.capability
+  - typeAlias: access.access
+  - typeAlias: access.policy
+  - typeAlias: access.flow

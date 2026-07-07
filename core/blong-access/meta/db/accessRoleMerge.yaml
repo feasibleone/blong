@@ -1,0 +1,14 @@
+resourceType: access.role
+role:
+  - roleBit: 0
+    description: Admin role with full access
+    name: Admin
+  - roleBit: 1
+    description: Office Manager role with limited access
+    name: Manager
+  - roleBit: 2
+    description: Customer Service role with limited access
+    name: Customer Service
+  - roleBit: 3
+    description: Customer role with limited access
+    name: Customer

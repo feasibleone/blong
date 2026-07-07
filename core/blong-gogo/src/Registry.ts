@@ -186,6 +186,7 @@ export default class Registry extends Internal implements IRegistry {
             importMethod: (methodName, options) => this.#remote.remote(methodName, options),
             dispatch: (...params) => this.#remote.dispatch(...params),
             attachHandlers: undefined!,
+            attach: undefined!,
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
             render: (what: object[] | object) =>
@@ -194,6 +195,7 @@ export default class Registry extends Internal implements IRegistry {
         };
         const result = (await port!(api)) as unknown as Adapter;
         this.#ports.set(id, result);
+        api.attach = this._attach.bind(this);
         api.attachHandlers = this._attachHandlers(result);
         return result as Adapter;
     }
@@ -252,6 +254,12 @@ export default class Registry extends Internal implements IRegistry {
             });
         });
         return this.#validations;
+    }
+
+    private async _attach(target: object, patterns: (string | RegExp)[] | string | RegExp) {
+        await this._matchMethods('merge', patterns, (name, local) =>
+            Array.isArray(target) ? target.push(local) : merge(target, local),
+        );
     }
 
     private _attachHandlers(port: object): (

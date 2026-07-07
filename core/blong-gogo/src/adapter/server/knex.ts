@@ -9,6 +9,7 @@ import {
 } from '@feasibleone/blong/types';
 import KnexLib from 'knex';
 import {type TFunction, type TObject} from 'typebox';
+import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
 import {
@@ -158,39 +159,49 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 // }
             }
             if (schema?.seed) {
-                for (const [name, path] of Object.entries<string>(
-                    (
-                        await (
-                            this.link as (
-                                ...args: unknown[]
-                            ) => Promise<{assets: Record<string, string>}>
-                        )(/\.db\.asset$/, {})
-                    ).assets ?? {},
-                )) {
-                    const extname = this.platform.extname(path);
-                    const method = methodParts(this.platform.basename(path, extname));
-                    this.log?.debug?.({
-                        $meta: {mtid: 'event', method},
-                        message: `Processing asset: ${name} at path: ${path}`,
-                    });
-                    if (extname === '.yaml' || extname === '.yml') {
-                        const params = yaml.parse(
-                            this.platform
-                                .readFileSync(path.startsWith('file://') ? path.slice(7) : path, {
-                                    encoding: 'utf-8',
-                                })
-                                .toString('utf-8'),
+                for (const realm of (await this.attach?.(
+                    /\.db\.asset$/,
+                    [] as Array<{
+                        assets: Record<string, string>;
+                    }>,
+                )) ?? []) {
+                    for (const [name, path] of Object.entries<string>(realm.assets).sort(
+                        ([, a], [, b]) =>
+                            this.platform.basename(a).localeCompare(this.platform.basename(b)),
+                    )) {
+                        const extname = this.platform.extname(path);
+                        const method = methodParts(
+                            this.platform.basename(path, extname).split('-').pop()!,
                         );
-                        await this.handle!(params, {method});
-                    } else if (extname === '.json') {
-                        const params = JSON.parse(
-                            this.platform
-                                .readFileSync(path.startsWith('file://') ? path.slice(7) : path, {
-                                    encoding: 'utf-8',
-                                })
-                                .toString('utf-8'),
-                        );
-                        await this.handle!(params, {method});
+                        this.log?.debug?.({
+                            $meta: {mtid: 'event', method},
+                            message: `Processing asset: ${name} at path: ${path}`,
+                        });
+                        if (extname === '.yaml' || extname === '.yml') {
+                            const params = yaml.parse(
+                                this.platform
+                                    .readFileSync(
+                                        path.startsWith('file://') ? path.slice(7) : path,
+                                        {
+                                            encoding: 'utf-8',
+                                        },
+                                    )
+                                    .toString('utf-8'),
+                            );
+                            await this.handle!(params, {method});
+                        } else if (extname === '.json') {
+                            const params = JSON.parse(
+                                this.platform
+                                    .readFileSync(
+                                        path.startsWith('file://') ? path.slice(7) : path,
+                                        {
+                                            encoding: 'utf-8',
+                                        },
+                                    )
+                                    .toString('utf-8'),
+                            );
+                            await this.handle!(params, {method});
+                        }
                     }
                 }
             }
@@ -306,9 +317,60 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         .del();
                 }
                 case 'merge': {
-                    const {key = `${object}Id`, [object]: columns} = params;
+                    const {key = `${object}Id`, [object]: objectRows, resourceType} = params;
+                    const rows = objectRows as Array<{name: string; [key]: string}>;
+                    if (resourceType) {
+                        // create or lookup resourceId for each row based on its `name` property
+                        const typeId = (
+                            await this.config.context.queryBuilder!('core_type')
+                                .where({typeAlias: resourceType})
+                                .first('typeId')
+                        )?.typeId;
+                        if (!typeId) {
+                            throw this.error(
+                                _errors['knex.notFound']({
+                                    message: `Resource type not found: ${resourceType}`,
+                                }),
+                                $meta,
+                            );
+                        }
+                        const resources = (
+                            await this.config.context.queryBuilder!('core_resource')
+                                .join('core_type', 'core_resource.typeId', 'core_type.typeId')
+                                .where('core_type.typeAlias', resourceType)
+                                .whereIn(
+                                    'core_resource.resourceName',
+                                    rows.map(r => r.name),
+                                )
+                                .select('resourceId', 'resourceName')
+                        ).reduce(
+                            (acc, row) => {
+                                acc[row.resourceName] = row.resourceId;
+                                return acc;
+                            },
+                            {} as Record<string, string>,
+                        );
+                        const newResources = [];
+                        for (const row of rows) {
+                            if (row.name) {
+                                let resourceId = resources[row.name];
+                                if (!resourceId) {
+                                    resourceId = Buffer.alloc(16);
+                                    v4(undefined, resourceId);
+                                    newResources.push({resourceId, resourceName: row.name, typeId});
+                                    row[key] = resourceId;
+                                } else {
+                                    row[key] = resourceId;
+                                }
+                            }
+                        }
+                        if (newResources.length > 0)
+                            await this.config.context.queryBuilder!('core_resource').insert(
+                                newResources,
+                            );
+                    }
                     return this.config.context.queryBuilder!(table)
-                        .insert(columns)
+                        .insert(rows.map(({name: _, ...row}) => row))
                         .onConflict(key)
                         .merge();
                 }

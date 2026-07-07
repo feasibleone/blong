@@ -103,7 +103,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     // api.attachHandlers = ... only *after* the port factory returns.  Storing
     // the api object and reading api.attachHandlers lazily (at call time)
     // ensures we always see the real function rather than the initial undefined.
-    _api: Pick<IApi, 'attachHandlers' | 'render'>;
+    _api: Pick<IApi, 'attachHandlers' | 'render' | 'attach'>;
     _createLog: IApi['createLog'];
     _attachCheckpoint: IApi['attachCheckpoint'];
     _activationNames: string[];
@@ -125,6 +125,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
             | 'attachCheckpoint'
             | 'render'
             | 'platform'
+            | 'attach'
         >,
         configBase: string,
         activationNames: string[] = [],
@@ -326,12 +327,9 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         return this.event('start', {configBase: this.configBase, config});
     }
 
-    async link(
-        patterns: (string | RegExp)[] | string | RegExp,
-        target: AdapterHandlerContext = {} as unknown as AdapterHandlerContext,
-    ): Promise<object> {
-        await this._api.attachHandlers(target, patterns);
-        return target.imported;
+    async attach(patterns: (string | RegExp)[] | string | RegExp, target: object): Promise<object> {
+        await this._api.attach(target, patterns);
+        return target;
     }
 
     async handle(...params: unknown[]): Promise<unknown> {

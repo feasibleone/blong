@@ -100,6 +100,7 @@ export default schema(async ({lib: {type}}) => ({
     role: type.Object(
         {
             roleId: type.uidNotNull(),
+            roleBit: type.integerNotNull({min: 0, max: 1023}),
             description: type.stringNull(),
         },
         {

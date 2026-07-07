@@ -40,7 +40,11 @@ export default server(() => ({
             },
         },
         dev: {
-            srv: {},
+            srv: {
+                db: {
+                    logLevel: 'debug',
+                },
+            },
             core: {},
             access: {},
             marine: {},

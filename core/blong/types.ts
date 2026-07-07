@@ -410,6 +410,7 @@ export interface IApi {
         patterns: (string | RegExp)[] | string | RegExp,
         adapter?: boolean,
     ) => unknown;
+    attach: (target: object, patterns: (string | RegExp)[] | string | RegExp) => Promise<void>;
     createLog: ILog['logger'];
     attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {
@@ -475,15 +476,11 @@ export interface IAdapter<T, C> {
     start?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
     ready?(this: Adapter<T, C>): Promise<unknown>;
     stop?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
-    link?(
+    attach?<R extends object>(
         this: Adapter<T, C>,
         patterns: (string | RegExp)[] | string | RegExp,
-        target: object,
-    ): Promise<{
-        importedMap?: Map<string, object>;
-        imported?: object;
-        config?: {namespace?: string | string[]};
-    }>;
+        target?: R,
+    ): Promise<R>;
     connected?(this: Adapter<T, C>): Promise<boolean>;
     error?(error: unknown, $meta: unknown): void;
     pack?(this: Adapter<T, C>, ...params: unknown[]): unknown;

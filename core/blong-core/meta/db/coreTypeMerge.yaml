@@ -1,0 +1,6 @@
+key: typeAlias
+type:
+  - typeAlias: core.currency
+  - typeAlias: core.language
+  - typeAlias: core.country
+  - typeAlias: core.city
