@@ -20,6 +20,7 @@ const platform = await load(server, 'blong-access', 'blong-access', [
     'microservice',
     'integration',
     'dev',
+    ...(process.env.CI ? ['ci'] : []),
 ]);
 await platform.start({});
 await tap.test('blong-access login flow', async (test: Test) => {

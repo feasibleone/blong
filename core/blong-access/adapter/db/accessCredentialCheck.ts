@@ -20,7 +20,6 @@ export default handler(
             _$meta: Record<string, unknown>,
         ): Promise<{
             userId: string;
-            roleBits: number[];
             permissionMap: string;
             actions: string[];
         }> {
@@ -51,8 +50,7 @@ export default handler(
                 .from('access_credential')
                 .where('userId', user.userId)
                 .where('isActive', 1)
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .where(function (this: any) {
+                .where(function () {
                     this.whereNull('expiresAt').orWhere('expiresAt', '>', new Date());
                 })
                 .first();
@@ -110,8 +108,7 @@ export default handler(
             );
 
             return {
-                userId: user.userId,
-                roleBits,
+                userId: crockfordEncode(user.userId),
                 permissionMap,
                 actions: actionNames,
             };

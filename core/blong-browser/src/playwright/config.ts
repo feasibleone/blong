@@ -97,8 +97,8 @@ export function defineBlongConfig(
             viewport: {width: 1600, height: 900},
             trace: 'retain-on-failure',
             screenshot: 'off',
-            blongUsername: 'admin',
-            blongPassword: 'admin',
+            blongUsername: 'testAdmin',
+            blongPassword: 'testPassword',
             ...use,
         },
         expect: {

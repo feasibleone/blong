@@ -6,6 +6,7 @@ data:
   init.sql: |
     CREATE DATABASE IF NOT EXISTS `blong-integration`;
     CREATE DATABASE IF NOT EXISTS `blong-suite`;
+    CREATE DATABASE IF NOT EXISTS `blong-access`;
     FLUSH PRIVILEGES;
     CREATE USER 'blong-admin'@'%' IDENTIFIED BY 'password';
     GRANT ALL ON *.* TO 'blong-admin'@'%';

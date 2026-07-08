@@ -10,6 +10,7 @@ export default server(blong => ({
         async function openapi() {
             return import('@feasibleone/blong-openapi/server.ts');
         },
+        './access',
         './ctp',
         './parking',
         './demo',
@@ -22,6 +23,7 @@ export default server(blong => ({
             openapi: {},
         },
         dev: {
+            access: {},
             parking: {},
             login: {},
             demo: {},
