@@ -352,8 +352,8 @@ BulgarianLogin.storyName = 'Bulgarian Login';
 export const LoginError: Story = {
     parameters: {loginComponent: LoginErrorPage},
     play: async ({canvas, userEvent}) => {
-        await userEvent.type(await canvas.findByLabelText('Username' as never), 'testuser');
-        await userEvent.type(await canvas.findByLabelText('Password' as never), 'wrongpass');
+        await userEvent.type(await canvas.findByLabelText('Username' as never), 'testUser');
+        await userEvent.type(await canvas.findByLabelText('Password' as never), 'wrongPassword');
         await userEvent.click(await canvas.findByRole('button' as never, {name: /^login$/i}));
     },
     render: () => <LogoutOnMount />,

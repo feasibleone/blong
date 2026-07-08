@@ -1,12 +1,7 @@
 import {server} from '@feasibleone/blong';
-import pkg from './package.json' with {type: 'json'};
 
 export default server(() => ({
     url: import.meta.url,
-    pkg: {
-        name: pkg.name,
-        version: pkg.version,
-    },
     children: [
         /** Built-in blong-server realm: RPC, auth, portal, auth orchestrators */
         async function srv() {
@@ -33,6 +28,11 @@ export default server(() => ({
             core: {},
             login: {},
             access: {},
+        },
+        integration: {
+            watch: {
+                test: ['test.login.flow'],
+            },
         },
     },
 }));

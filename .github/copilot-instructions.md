@@ -163,7 +163,9 @@ rules as the authoritative guide and prioritize the API definition as the primar
 1. **`dev/` is gitignored — never commit code there.**.
 
 1. Always lint the files changed during the session. Use either vscode's built-in error reporting or
-   run `node --run ci-lint -- [files...]` for each of the packages affected by the changes.
+   run `node --run ci-lint -- [files...]` for each of the packages affected by the changes. If the linting
+   reports spell check errors, prefer the use of proper English words or snake-case/camelCase instead
+   of adding them to the dictionary.
 
 ---
 

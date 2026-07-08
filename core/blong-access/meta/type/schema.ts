@@ -16,6 +16,7 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'userId',
                 foreign: {
                     userId: 'core.resource.resourceId',
                 },
@@ -62,6 +63,7 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'actionId',
                 foreign: {
                     actionId: 'core.resource.resourceId',
                 },
@@ -83,6 +85,7 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'capabilityId',
                 foreign: {
                     capabilityId: 'core.resource.resourceId',
                 },
@@ -105,6 +108,10 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'roleId',
+                unique: {
+                    roleBit: {},
+                },
                 foreign: {
                     roleId: 'core.resource.resourceId',
                 },
@@ -130,6 +137,7 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'accessId',
                 foreign: {
                     accessId: 'core.resource.resourceId',
                 },
@@ -159,6 +167,7 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'policyId',
                 foreign: {
                     policyId: 'core.resource.resourceId',
                 },
@@ -181,6 +190,7 @@ export default schema(async ({lib: {type}}) => ({
         },
         {
             constraints: {
+                primaryKey: 'flowId',
                 foreign: {
                     flowId: 'core.resource.resourceId',
                 },

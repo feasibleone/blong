@@ -170,3 +170,50 @@ export const checkpoint = (name: string, ...markers: string[]) => {
     const arr: string[] = markers.length > 0 ? [...markers] : ['*'];
     return Object.assign(arr, {name});
 };
+
+// Code from https://github.com/perry-mitchell/ulidx/blob/main/source/crockford.ts
+// cSpell:disable-next-line
+const B32_CHARACTERS = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+export function crockfordEncode(input: Uint8Array): string {
+    const output = [];
+    let bitsRead = 0;
+    let buffer = 0;
+    const reversedInput = new Uint8Array(input.slice().reverse());
+    for (const byte of reversedInput) {
+        buffer |= byte << bitsRead;
+        bitsRead += 8;
+        while (bitsRead >= 5) {
+            output.unshift(buffer & 0x1f);
+            buffer >>>= 5;
+            bitsRead -= 5;
+        }
+    }
+    if (bitsRead > 0) {
+        output.unshift(buffer & 0x1f);
+    }
+    return output.map(byte => B32_CHARACTERS.charAt(byte)).join('');
+}
+
+export function crockfordDecode(input: string): Uint8Array {
+    const sanitizedInput = input.toUpperCase().split('').reverse().join('');
+    const output = [];
+    let bitsRead = 0;
+    let buffer = 0;
+    for (const character of sanitizedInput) {
+        const byte = B32_CHARACTERS.indexOf(character);
+        if (byte === -1) {
+            throw new Error(`Invalid base 32 character found in string: ${character}`);
+        }
+        buffer |= byte << bitsRead;
+        bitsRead += 5;
+        while (bitsRead >= 8) {
+            output.unshift(buffer & 0xff);
+            buffer >>>= 8;
+            bitsRead -= 8;
+        }
+    }
+    if (bitsRead >= 5 || buffer > 0) {
+        output.unshift(buffer & 0xff);
+    }
+    return new Uint8Array(output);
+}

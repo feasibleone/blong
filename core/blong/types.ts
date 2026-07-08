@@ -853,6 +853,8 @@ export interface ILib {
     merge<T>(...args: unknown[]): T;
     mergeWithSymbols<T, S1>(target: T, source: S1): T & S1;
     render: (what: object[] | object) => object;
+    crockfordEncode: (data: Uint8Array) => string;
+    crockfordDecode: (data: string) => Uint8Array;
 }
 
 export type ValidationFn = () => GatewaySchema;

@@ -40,6 +40,7 @@ export default adapter<{
             schema: {
                 sync: true,
                 seed: true,
+                dbTest: true,
                 dropColumns: true,
             },
         },

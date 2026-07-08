@@ -17,6 +17,7 @@
         "blong-watch": "blong-watch",
         "build": "true",
         "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test",
         "dev": "vite",
         "typecheck": "tsc --noEmit"
     },
@@ -30,6 +31,7 @@
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
+        "tap": "^21.6.3",
         "typescript": "^6.0.3",
         "vite": "^8.0.8"
     }

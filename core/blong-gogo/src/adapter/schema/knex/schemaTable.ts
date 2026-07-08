@@ -97,9 +97,14 @@ export async function schemaTableConstraintSyncImpl(
     await knex.schema.table(tableName, table => {
         // Composite primary key
         if (constraints.primaryKey) {
-            const name = constraints.primaryKey.constraintName ?? `${tableName}_pk`;
-            if (!existingConstraints.includes(name))
-                table.primary([...constraints.primaryKey.columns], name);
+            if (typeof constraints.primaryKey === 'string') {
+                if (!existingConstraints.includes(`${tableName}_pk`))
+                    table.primary([constraints.primaryKey], `${tableName}_pk`);
+            } else {
+                const name = constraints.primaryKey.constraintName ?? `${tableName}_pk`;
+                if (!existingConstraints.includes(name))
+                    table.primary([...constraints.primaryKey.columns], name);
+            }
         }
 
         // Unique constraints

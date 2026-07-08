@@ -40,11 +40,14 @@ export default library<{
                 mlek,
                 mlsk,
                 refresh,
+                actions,
                 ...rest
-            }: {refresh?: number; mlek?: object | 'header'; mlsk: object | 'header'} & Record<
-                string,
-                unknown
-            >) {
+            }: {
+                refresh?: number;
+                mlek?: object | 'header';
+                mlsk: object | 'header';
+                actions?: string[];
+            } & Record<string, unknown>) {
                 if (!refresh || refresh > expire.refresh) refresh = expire.refresh;
                 refresh = expire.never || refresh;
                 const access = expire.never || (expire.access > refresh ? refresh : expire.access);
@@ -76,10 +79,11 @@ export default library<{
                         mlsk,
                         mlek,
                         refresh,
+                        actions,
                         ...rest,
                     }),
                     refresh_token_expires_in: refresh,
-                    permissions: true,
+                    permissions: actions ?? true,
                 };
             },
         };

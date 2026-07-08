@@ -159,50 +159,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 // }
             }
             if (schema?.seed) {
-                for (const realm of (await this.attach?.(
-                    /\.db\.asset$/,
-                    [] as Array<{
-                        assets: Record<string, string>;
-                    }>,
-                )) ?? []) {
-                    for (const [name, path] of Object.entries<string>(realm.assets).sort(
-                        ([, a], [, b]) =>
-                            this.platform.basename(a).localeCompare(this.platform.basename(b)),
-                    )) {
-                        const extname = this.platform.extname(path);
-                        const method = methodParts(
-                            this.platform.basename(path, extname).split('-').pop()!,
-                        );
-                        this.log?.debug?.({
-                            $meta: {mtid: 'event', method},
-                            message: `Processing asset: ${name} at path: ${path}`,
-                        });
-                        if (extname === '.yaml' || extname === '.yml') {
-                            const params = yaml.parse(
-                                this.platform
-                                    .readFileSync(
-                                        path.startsWith('file://') ? path.slice(7) : path,
-                                        {
-                                            encoding: 'utf-8',
-                                        },
-                                    )
-                                    .toString('utf-8'),
-                            );
-                            await this.handle!(params, {method});
-                        } else if (extname === '.json') {
-                            const params = JSON.parse(
-                                this.platform
-                                    .readFileSync(
-                                        path.startsWith('file://') ? path.slice(7) : path,
-                                        {
-                                            encoding: 'utf-8',
-                                        },
-                                    )
-                                    .toString('utf-8'),
-                            );
-                            await this.handle!(params, {method});
-                        }
-                    }
+                // 1. Process production seeds (db.asset modules)
+                await processSeedAssets(this, /\.db\.asset$/);
+                // 2. Process test seeds (dbTest.asset modules) only when dbTest is enabled
+                if (schema?.dbTest) {
+                    await processSeedAssets(this, /\.dbTest\.asset$/);
                 }
             }
             return super.ready();
@@ -318,7 +279,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 }
                 case 'merge': {
                     const {key = `${object}Id`, [object]: objectRows, resourceType} = params;
-                    const rows = objectRows as Array<{name: string; [key]: string}>;
+                    let rows = objectRows as Array<{[key]: string}>;
                     if (resourceType) {
                         // create or lookup resourceId for each row based on its `name` property
                         const typeId = (
@@ -340,7 +301,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 .where('core_type.typeAlias', resourceType)
                                 .whereIn(
                                     'core_resource.resourceName',
-                                    rows.map(r => r.name),
+                                    rows.map(r => r.name).filter(Boolean),
                                 )
                                 .select('resourceId', 'resourceName')
                         ).reduce(
@@ -368,9 +329,10 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             await this.config.context.queryBuilder!('core_resource').insert(
                                 newResources,
                             );
+                        rows = rows.map(({name: _, ...row}) => row);
                     }
                     return this.config.context.queryBuilder!(table)
-                        .insert(rows.map(({name: _, ...row}) => row))
+                        .insert(rows)
                         .onConflict(key)
                         .merge();
                 }
@@ -506,5 +468,50 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
         },
     };
 });
+
+/**
+ * Process asset modules matching the given regex pattern.
+ * Iterates over all realm asset modules, reads YAML/JSON files and dispatches
+ * their contents as handler method calls.
+ */
+async function processSeedAssets(ctx: Adapter<IConfig>, pattern: RegExp): Promise<void> {
+    for (const realm of (await ctx.attach?.(
+        pattern,
+        [] as Array<{
+            assets: Record<string, string>;
+        }>,
+    )) ?? []) {
+        if (!realm?.assets) continue;
+        for (const [name, path] of Object.entries<string>(realm.assets).sort(([, a], [, b]) =>
+            ctx.platform.basename(a).localeCompare(ctx.platform.basename(b)),
+        )) {
+            const extname = ctx.platform.extname(path);
+            const method = methodParts(ctx.platform.basename(path, extname).split('-').pop()!);
+            ctx.log?.debug?.({
+                $meta: {mtid: 'event', method},
+                message: `Processing asset: ${name} at path: ${path}`,
+            });
+            if (extname === '.yaml' || extname === '.yml') {
+                const params = yaml.parse(
+                    ctx.platform
+                        .readFileSync(path.startsWith('file://') ? path.slice(7) : path, {
+                            encoding: 'utf-8',
+                        })
+                        .toString('utf-8'),
+                );
+                await ctx.handle!(params, {method});
+            } else if (extname === '.json') {
+                const params = JSON.parse(
+                    ctx.platform
+                        .readFileSync(path.startsWith('file://') ? path.slice(7) : path, {
+                            encoding: 'utf-8',
+                        })
+                        .toString('utf-8'),
+                );
+                await ctx.handle!(params, {method});
+            }
+        }
+    }
+}
 
 export {attachHandlers, methodId, snakeToCamel};

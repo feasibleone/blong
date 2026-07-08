@@ -69,6 +69,8 @@ export interface IConfig {
         sync?: boolean;
         /** When `true`, seed data is merged on every startup. */
         seed?: boolean;
+        /** When `true`, dbTest seed data (dbTest.asset modules) is merged. */
+        dbTest?: boolean;
         dropColumns?: boolean;
         /**
          * Tables to create / alter. Keys are SQL table names, values are either

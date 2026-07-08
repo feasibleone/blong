@@ -1,0 +1,8 @@
+user:
+  testUser:
+    password: testPassword
+    roles: Admin
+role:
+  Admin: testManagement
+capability:
+  testManagement: userView
