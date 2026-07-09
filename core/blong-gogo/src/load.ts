@@ -641,6 +641,12 @@ export default async function loadRealm<T extends TSchema>(
                         const fileName = folderPath.startsWith('.')
                             ? platformApi.join(base, folderPath, `${defKind}.ts`)
                             : folderPath;
+                        // Skip import when file doesn't exist — prevents ts-node
+                        // ESM resolve-hook errors that can bypass try/catch.
+                        if (!platformApi.existsSync(fileName)) {
+                            item = async () => [];
+                            break;
+                        }
                         item = async () => {
                             try {
                                 const mod = await import(/* @vite-ignore */ fileName);
@@ -669,6 +675,7 @@ export default async function loadRealm<T extends TSchema>(
                                         return mod.default ?? mod;
                                     }
                                 }
+                                return [];
                             }
                         };
                         break;

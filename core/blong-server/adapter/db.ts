@@ -31,6 +31,7 @@ export default adapter<{
             },
         },
         dev: {
+            imports: [/\.db$/, /\.dbTest$/, /\.model$/, /\.fixture$/],
             knex: {
                 connection: {
                     database:

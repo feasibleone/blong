@@ -22,7 +22,7 @@ import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
 import jwt from './jwt.ts';
-import {isExpectedError, methodParts, snakeToCamel} from './lib.ts';
+import {isExpectedError, methodId, methodParts, snakeToCamel} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
 import swagger from './swagger.ts';
 
@@ -70,6 +70,13 @@ interface IConfig extends IConfigMLE {
      * production to prevent callers from suppressing audit-level error logs.
      */
     expectedErrors?: boolean;
+    /**
+     * Optional handler name (semantic triple) that returns the list of allowed
+     * actions for the authenticated user.  When set, the gateway calls this
+     * handler during authentication and stores the result in credentials,
+     * then enforces that every request's methodId is in the allowed list.
+     */
+    authorize?: string;
     errorFields: unknown[];
     jwt: {
         cache: object;
@@ -158,6 +165,7 @@ export default class Gateway extends Internal implements IGateway {
         },
         debug: false,
         expectedErrors: false,
+        authorize: undefined,
         errorFields: [],
         jwt: {
             cache: {},
@@ -348,6 +356,7 @@ export default class Gateway extends Internal implements IGateway {
                         : `/${value.basePath ?? 'rpc'}/${method.split('.').join('/')}`,
                 config: {
                     auth: value.auth ?? 'jwt',
+                    methodName: method,
                 },
                 schema: Type && {
                     ...('body' in value
@@ -578,7 +587,7 @@ export default class Gateway extends Internal implements IGateway {
             this.#server.setErrorHandler(
                 (error: Record<string, unknown>, request: FastifyRequest, reply: FastifyReply) => {
                     request.log.error({err: error}, 'gateway unhandled error');
-                    return reply.status(500).send({
+                    return reply.status((error as {statusCode?: number}).statusCode || 500).send({
                         jsonrpc: '2.0',
                         id: (request.body as {id?: unknown})?.id,
                         error: this._formatError(error),
@@ -591,6 +600,10 @@ export default class Gateway extends Internal implements IGateway {
                     this.#rpcClient.verify(token, options),
                 errors: this.#errors,
                 audience: this.#config.jwt.audience,
+                authorize: this.#config.authorize,
+                local: this.#local,
+                methodId: methodId,
+                methodParts: methodParts,
             });
             if (this.#config.cors)
                 await this.#server.register((await import('./cors.ts')).default, this.#config.cors);

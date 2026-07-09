@@ -1,10 +1,10 @@
 /**
  * index.test.ts — Tap test runner for blong-access integration tests.
  *
- * Loads the full suite (blong-server + blong-login + blong-core + blong-access)
- * against the `blong-integration` MySQL database, then runs the
- * testLoginTokenCreate test via the existing `access` orchestrator
- * and `db` adapter from blong-server.
+ * Loads both the server and browser platforms, then runs tests on the
+ * browser side.  The browser platform proxies business calls (login,
+ * authorization list) to the server gateway via the backend HTTP adapter,
+ * closely resembling a real browser integration.
  *
  * Usage:
  *   node --run ci-test    (via blong-dev test, which uses this file)
@@ -14,16 +14,20 @@ import load from '@feasibleone/blong-gogo';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import tap, {Test} from 'tap';
 
-import server from './index.ts';
+import browserSuite from './browser-test.ts';
+import serverSuite from './index.ts';
 
-const platform = await load(server, 'blong-access', 'blong-access', [
-    'microservice',
-    'integration',
-    'dev',
-    ...(process.env.CI ? ['ci'] : []),
+const intents = ['microservice', 'integration', 'dev', ...(process.env.CI ? ['ci'] : [])];
+
+const [serverPlatform, browserPlatform] = await Promise.all([
+    load(serverSuite, 'blong-access', 'blong-access', intents),
+    load(browserSuite, 'blong-access', 'blong-access', intents),
 ]);
-await platform.start({});
-await tap.test('blong-access login flow', async (test: Test) => {
-    await platform.test(test);
+await Promise.all([serverPlatform.start({}), browserPlatform.start({})]);
+await tap.test('blong-access login flow (server)', async (test: Test) => {
+    await serverPlatform.test(test);
 });
-await platform.stop();
+await tap.test('blong-access login flow (browser)', async (test: Test) => {
+    await browserPlatform.test(test);
+});
+await Promise.all([serverPlatform.stop(), browserPlatform.stop()]);

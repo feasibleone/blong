@@ -22,6 +22,7 @@ export default server(() => ({
     config: {
         default: {
             srv: {},
+            gateway: {authorize: 'access.authorization.list'},
         },
         dev: {
             srv: {},
@@ -31,7 +32,7 @@ export default server(() => ({
         },
         integration: {
             watch: {
-                test: ['test.login.flow'],
+                test: ['test.login.flow', 'test.authorization.flow'],
             },
         },
     },

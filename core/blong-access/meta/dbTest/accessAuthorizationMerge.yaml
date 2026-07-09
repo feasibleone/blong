@@ -5,7 +5,10 @@ user:
   testAdmin:
     password: testPassword
     roles: Admin
+  testViewer:
+    password: testPassword
+    roles: Customer
 role:
   Admin: testManagement
 capability:
-  testManagement: userView
+  testManagement: accessTestPrivate

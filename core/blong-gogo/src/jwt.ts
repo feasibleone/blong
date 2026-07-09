@@ -1,7 +1,7 @@
 import basic from '@fastify/basic-auth';
 import bearer from '@fastify/bearer-auth';
 import cookie from '@fastify/cookie';
-import {type Errors} from '@feasibleone/blong/types';
+import {type Errors, type ILocal} from '@feasibleone/blong/types';
 import type {FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest} from 'fastify';
 import fp from 'fastify-plugin';
 import {LRUCache} from 'lru-cache';
@@ -18,12 +18,17 @@ declare module 'fastify' {
                 permissionMap?: Buffer;
                 actorId?: string | number;
                 sessionId?: string;
+                /** Allowed action methodIds — populated by the authorize handler. */
+                actions?: string[];
             };
         };
     }
     interface FastifyReply {
         unstate: (name: string) => this;
         state: (name: string, value: string, options: unknown) => this;
+    }
+    interface FastifyContextConfig {
+        methodName?: string;
     }
 }
 
@@ -32,10 +37,23 @@ export default fp<{
     audience: string;
     verify: IGatewayCodec['verify'];
     errors: Errors<object>;
+    authorize?: string;
+    local?: ILocal;
+    methodId?: (name: string) => string;
+    methodParts?: (name: string) => string;
 }>(
     async function jwtPlugin(
         fastify: FastifyInstance,
-        {cache: cacheConfig, audience, verify, errors}: FastifyPluginOptions,
+        {
+            cache: cacheConfig,
+            audience,
+            verify,
+            errors,
+            authorize,
+            local,
+            methodId,
+            methodParts,
+        }: FastifyPluginOptions,
     ) {
         const cache =
             ![0, false, 'false'].includes(cacheConfig as string | number | boolean) &&
@@ -89,19 +107,84 @@ export default fp<{
                     // arbitrary
                     ...rest
                 } = decoded;
-                const credentials = {
+                const permissionMap = Buffer.from(per, 'base64');
+                const credentials: Record<string, unknown> = {
                     mlek,
                     mlsk,
-                    permissionMap: Buffer.from(per, 'base64'),
+                    permissionMap,
                     actorId,
                     sessionId,
                     ...rest,
                 };
+
+                // Call the authorize handler to resolve the list of allowed actions
+                if (authorize && local && methodId && methodParts) {
+                    const handlerName = methodParts(authorize);
+                    const reqName = `ports.${handlerName.split('.', 1)[0]}.request`;
+                    const handler = local.get(reqName);
+                    if (handler) {
+                        const result = await handler.method(
+                            {permissionMap},
+                            {
+                                method: handlerName,
+                                mtid: 'request',
+                            },
+                        );
+                        credentials.actions = Array.isArray(result) ? result[0] : result;
+                    }
+                }
+
                 if (cache) cache.set(token, credentials, {ttl: exp * 1000 - Date.now()});
-                req.auth = {credentials};
+                req.auth = {credentials: credentials as FastifyRequest['auth']['credentials']};
                 return true;
             },
         });
+
+        // Authorization hook: check the called method against allowed actions
+        if (authorize && local && methodId) {
+            fastify.addHook('preHandler', function (request, _reply, done) {
+                // Routes with auth: false or auth: 'login' don't go through bearer auth,
+                // so credentials have no actions. Skip the authorization check.
+                if (
+                    !request.routeOptions.config.auth ||
+                    request.routeOptions.config.auth === 'login'
+                ) {
+                    done();
+                    return;
+                }
+                // The authorize handler itself must be accessible without authorization,
+                // otherwise we have a chicken-and-egg problem — you'd need authorization
+                // to call the handler that resolves authorization.
+                const methodName = request.routeOptions.config.methodName;
+                if (authorize && methodName && methodParts) {
+                    const normalizedMethod = methodParts(authorize);
+                    if (methodName === normalizedMethod) {
+                        done();
+                        return;
+                    }
+                }
+                const credentials = request.auth?.credentials;
+                if (!credentials?.actions) {
+                    done(new Error('Authorization denied: no actions resolved'));
+                    return;
+                }
+                if (!methodName) {
+                    done(); // no method configured — allow (backward compat)
+                    return;
+                }
+                const requestedId = methodId(methodName);
+                if (credentials.actions.includes(requestedId)) {
+                    done();
+                } else {
+                    const error = new Error(
+                        `Authorization denied: method "${methodName}" not allowed`,
+                    ) as Error & {statusCode: number};
+                    error.statusCode = 403;
+                    done(error);
+                }
+            });
+        }
+
         await fastify.register(cookie, {});
         fastify.decorateRequest('auth');
         fastify.decorateReply('unstate', function (name: string) {

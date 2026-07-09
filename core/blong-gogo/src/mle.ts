@@ -22,13 +22,17 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                     request.body?.jsonrpc ? [request.body, 'params'] : [request, 'body']
                 ) as [Record<string, unknown>, string];
                 if (where[what] && request.routeOptions.config.mle !== false) {
+                    // Check if the body looks MLE-encrypted (GeneralJWE with recipients, or CompactJWE string)
+                    const isEncrypted =
+                        typeof where[what] === 'string' ||
+                        (typeof where[what] === 'object' &&
+                            where[what] !== null &&
+                            'recipients' in (where[what] as object));
+                    if (!isEncrypted) return; // Plain JSON body — skip MLE
+
                     const credentials = request.auth?.credentials;
-                    if (!credentials) {
-                        reply.code(401);
-                        throw new Error('Missing authorization');
-                    }
                     try {
-                        if (credentials.mlsk === 'header' && credentials.mlek === 'header') {
+                        if (credentials?.mlsk === 'header' && credentials?.mlek === 'header') {
                             const {
                                 protectedHeader: {mlsk, mlek},
                                 plaintext,
@@ -42,10 +46,28 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                                 plaintext,
                                 mlsk as unknown as Parameters<typeof mle.verify>[1],
                             );
-                        } else {
+                        } else if (credentials?.mlsk) {
                             where[what] = await mle.decryptVerify(
                                 where[what] as string,
                                 credentials.mlsk as Parameters<typeof mle.decryptVerify>[1],
+                            );
+                        } else {
+                            // No credentials (e.g. auth: 'login') — extract keys from JWE header
+                            const {
+                                protectedHeader: {mlsk, mlek},
+                                plaintext,
+                            } = (await mle.decrypt(where[what] as string, {complete: true})) as {
+                                plaintext: string | Uint8Array;
+                                protectedHeader: {mlek?: {type: string}; mlsk?: {type: string}};
+                            };
+                            // Store mlek on request so preSerialization can encrypt the response
+                            (request as {mleKeys?: {mlsk: unknown; mlek: unknown}}).mleKeys = {
+                                mlsk,
+                                mlek,
+                            };
+                            where[what] = await mle.verify(
+                                plaintext,
+                                mlsk as unknown as Parameters<typeof mle.verify>[1],
                             );
                         }
                     } catch (error) {
@@ -74,17 +96,21 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                   },
         ) => {
             if (payload instanceof Error) return payload;
+            const mlek =
+                request.auth?.credentials?.mlek ||
+                (request as {mleKeys?: {mlek: unknown}}).mleKeys?.mlek;
             if (
                 request.routeOptions.config.auth &&
                 request.headers['content-type'] === 'application/json' &&
-                payload
+                payload &&
+                mlek
             ) {
                 const encrypt: (message: object) => unknown = message =>
                     request.routeOptions.config.mle === false
                         ? message
                         : mle.signEncrypt(
                               message,
-                              request.auth?.credentials?.mlek as {type: string},
+                              mlek as {type: string},
                           );
                 const where = payload.jsonrpc
                     ? payload

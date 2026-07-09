@@ -95,7 +95,7 @@ export default handler(
             if (maxRoleBit > 1023)
                 throw new Error('Role bit exceeds maximum allowed value of 1023');
 
-            const permissionMap: string = crockfordEncode(
+            const permissionMap: string = Buffer.from(
                 roleBits.reduce(
                     (acc, bit) => {
                         const byteIndex = Math.floor(bit / 8);
@@ -105,7 +105,7 @@ export default handler(
                     },
                     new Uint8Array(Math.ceil(maxRoleBit / 8 + 1)),
                 ),
-            );
+            ).toString('base64');
 
             return {
                 userId: crockfordEncode(user.userId),

@@ -41,8 +41,8 @@ export default handler(({lib: {group}, handler: {accessAuthorizationMerge, login
                 const t = await login;
                 assert.ok(Array.isArray(t.permissions), 'Permissions is an array');
                 assert.ok(
-                    t.permissions.includes('userView'),
-                    'Permissions include userView action',
+                    t.permissions.includes('accessTestPrivate'),
+                    'Permissions include accessTestPrivate action',
                 );
             },
         ]),
