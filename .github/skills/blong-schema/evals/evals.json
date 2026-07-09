@@ -1,0 +1,56 @@
+{
+    "skill_name": "blong-schema",
+    "evals": [
+        {
+            "id": 1,
+            "prompt": "I need to add a 'product' table to my 'inventory' realm. The product should have: productId (auto-increment), productName (required, max 200 chars), sku (required, max 50 chars, unique), categoryId (FK to inventory.category), unitPrice (decimal), isActive (boolean, optional, default true), createdAt (datetime, optional). I also need seed data with two products: 'Widget A' (SKU: WDG-001) and 'Gadget B' (SKU: GDT-002), both in category 1.",
+            "expected_output": "The skill guides creating TypeBox schema in meta/type/schema.ts using convenience types, adding table to meta/db/db.ts config, and creating production seed YAML file",
+            "files": [],
+            "expectations": [
+                "Creates or updates meta/type/schema.ts with a 'product' TypeBox definition that includes all specified columns",
+                "Uses convenience types (type.increment(), type.stringNotNull(), type.numberNotNull(), etc.) instead of raw TypeBox types",
+                "type.increment() is used for productId (integer auto-increment PK)",
+                "Creates or updates meta/db/db.ts to include 'inventory.product' in the tables config with appropriate order number",
+                "Creates a YAML seed file in meta/db/ for the two products with correct field names",
+                "The sku field has a unique constraint declared in the type.Object options",
+                "The categoryId has a foreign key constraint pointing to inventory.category.categoryId",
+                "The seed file follows the correct naming convention (with -Merge.yaml suffix)",
+                "Seed data is in YAML — no TypeScript file contains seed values",
+                "Seed file uses Case 1 pattern (independent table with built-in merge, optionally specifying key)"
+            ]
+        },
+        {
+            "id": 2,
+            "prompt": "I have a 'sales' realm with an existing 'order' table. I need to add foreign key constraint from order.customerId to sales.customer.customerId, and a unique constraint on order.orderNumber. Also create a stored procedure that finds all orders for a given customer, named sales_order_by_customer.",
+            "expected_output": "The skill updates the existing TypeBox schema with constraints and creates a .sql procedure file",
+            "files": [],
+            "expectations": [
+                "Updates the order type.Object in meta/type/schema.ts to include a 'constraints' block",
+                "The constraints include a foreign key for customerId pointing to sales.customer.customerId",
+                "The constraints include a unique constraint on orderNumber",
+                "The order table schema uses convenience types (type.increment(), type.stringNotNull(), etc.)",
+                "Creates a .sql file in meta/db/schema/ with the stored procedure",
+                "The .sql file name matches the procedure name (sales_order_by_customer.sql)",
+                "References the existing meta/db/db.ts and its procedurePaths if it exists"
+            ]
+        },
+        {
+            "id": 3,
+            "prompt": "I'm creating a new 'hr' realm for employee management. Set up the full schema layer with: a 'department' table (departmentId auto-increment, departmentName required unique, description optional) and an 'employee' table (employeeId auto-increment, firstName required, lastName required, email required unique, departmentId FK to department, hireDate date, salary decimal optional). Also add test seeds with two departments and two employees for testing purposes.",
+            "expected_output": "The skill creates the complete meta/ layer: type/schema.ts, db/db.ts, and dbTest/ seed file, all using convenience types",
+            "files": [],
+            "expectations": [
+                "Creates meta/type/schema.ts with department and employee TypeBox definitions",
+                "Uses convenience types throughout — type.increment() for PKs, type.stringNotNull() for required strings, type.numberNull() for optional salary, type.dateNull() for hireDate",
+                "Both TypeBox definitions include proper constraints (PKs, FKs, unique)",
+                "Creates meta/db/db.ts with both tables in the tables config in correct order (department before employee)",
+                "Creates a test seed YAML in meta/dbTest/ with department and employee test data",
+                "The employee.email field has a unique constraint",
+                "The employee.departmentId has a foreign key constraint to hr.department.departmentId",
+                "Tables are ordered by dependency (department=1, employee=2)",
+                "Seed data is in YAML only — no TypeScript file contains seed values",
+                "The test seed uses the Case 2 pattern (core.resource-based with resourceType) or Case 3 pattern (custom merge handler)"
+            ]
+        }
+    ]
+}

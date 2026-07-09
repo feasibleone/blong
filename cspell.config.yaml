@@ -91,6 +91,7 @@ words:
   - franca
   - fspiop
   - FSPIOP
+  - FULLTEXT
   - Fungiidae
   - GBIF
   - Ginglymostoma
@@ -180,6 +181,7 @@ words:
   - quot
   - rdkafka
   - realmname
+  - realmnameitemlistactive
   - Redux
   - refetches
   - reflow
