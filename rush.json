@@ -639,6 +639,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-party",
+            "projectFolder": "core/blong-party",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/marine-data",
             "projectFolder": "core/marine-data",
             "reviewCategory": "core",

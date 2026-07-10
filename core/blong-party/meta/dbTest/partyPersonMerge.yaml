@@ -1,0 +1,45 @@
+resourceType: party.person
+key: personId
+person:
+  - name: John Doe
+    firstName: John
+    middleName: Robert
+    lastName: Doe
+    birthDate: '1985-03-15'
+    gender: male
+    maritalStatus: married
+    nationality: US
+    occupation: Software Engineer
+    notes: Primary contact for technical integrations
+  - name: Jane Smith
+    firstName: Jane
+    lastName: Smith
+    birthDate: '1990-07-22'
+    gender: female
+    maritalStatus: single
+    nationality: GB
+    occupation: Financial Analyst
+  - name: Carlos Garcia
+    firstName: Carlos
+    lastName: Garcia
+    birthDate: '1978-11-02'
+    gender: male
+    maritalStatus: divorced
+    nationality: ES
+    occupation: Branch Manager
+  - name: Mei Chen
+    firstName: Mei
+    lastName: Chen
+    birthDate: '1995-05-18'
+    gender: female
+    maritalStatus: married
+    nationality: CN
+    occupation: Compliance Officer
+  - name: Ahmed Hassan
+    firstName: Ahmed
+    lastName: Hassan
+    birthDate: '1982-09-30'
+    gender: male
+    maritalStatus: married
+    nationality: AE
+    occupation: Relationship Manager

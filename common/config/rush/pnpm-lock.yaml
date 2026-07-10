@@ -1144,6 +1144,58 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  ../../core/blong-party:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-access':
+        specifier: workspace:^1.0.0
+        version: link:../blong-access
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../blong-browser
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../blong-server
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../blong-test
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      allure-playwright:
+        specifier: ^3.6.2
+        version: 3.9.0(@playwright/test@1.60.0)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.8
+        version: 8.0.8(@types/node@24.12.0)(esbuild@0.27.4)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
+
   ../../core/blong-server:
     dependencies:
       '@feasibleone/blong':

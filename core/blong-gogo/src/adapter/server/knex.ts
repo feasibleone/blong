@@ -8,10 +8,19 @@ import {
     type Knex,
 } from '@feasibleone/blong/types';
 import KnexLib from 'knex';
+import crypto from 'node:crypto';
 import {type TFunction, type TObject} from 'typebox';
 import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
+import {
+    discoverBinaryColumns,
+    isBinaryColumn,
+    prepareInputParams,
+    prepareResultRow,
+    prepareResultRows,
+    strToBinary,
+} from '../schema/knex/binary.ts';
 import {
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
@@ -24,7 +33,24 @@ import {
     schemaTableSyncImpl,
 } from '../schema/knex/schemaTable.ts';
 import {type IConfig, type ISchemaTable, type ITableConstraints} from '../schema/knex/types.ts';
-import {methodId, propType, readSqlFiles, snakeToCamel} from '../schema/knex/utils.ts';
+import {
+    type IColumnSchema,
+    methodId,
+    propDefault,
+    propType,
+    readSqlFiles,
+    snakeToCamel,
+} from '../schema/knex/utils.ts';
+
+// Helpers to access the binary-column map stored on the adapter context.
+// Cast through `any` because the base `ServerContext & BrowserContext` type
+// doesn't include this runtime property.
+function getBinaryCols(ctx: object): Map<string, Set<string>> | undefined {
+    return (ctx as Record<string, unknown>).binaryColumns as Map<string, Set<string>> | undefined;
+}
+function setBinaryCols(ctx: object, map: Map<string, Set<string>>): void {
+    (ctx as Record<string, unknown>).binaryColumns = map;
+}
 
 export type {IConfig, ISchemaTable} from '../schema/knex/types.ts';
 
@@ -166,6 +192,12 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     await processSeedAssets(this, /\.dbTest\.asset$/);
                 }
             }
+
+            // Discover binary(16) columns for Buffer <-> string conversion.
+            if (knex) {
+                setBinaryCols(this.config.context, await discoverBinaryColumns(knex));
+            }
+
             return super.ready();
         },
         async configChanged(
@@ -206,12 +238,19 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             const table = `${subject}_${object}`;
             switch (operation) {
                 case 'get': {
-                    const {select = '*', ...where} = params;
-                    return {
-                        [object]: await this.config.context.queryBuilder!(table)
-                            .where(where)
-                            .first(select),
-                    };
+                    const {select: _select, ...where} = params;
+                    const qb = this.config.context.queryBuilder!;
+                    const binaryCols = getBinaryCols(this.config.context);
+                    let query = qb(table);
+                    for (const [key, val] of Object.entries(where)) {
+                        if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
+                            query = query.where(key, strToBinary(val));
+                        } else {
+                            query = query.where(key, val as string | number);
+                        }
+                    }
+                    const row = (await query.first()) as Record<string, unknown> | undefined;
+                    return {[object]: prepareResultRow(row, binaryCols, table)};
                 }
                 case 'find': {
                     const {
@@ -225,10 +264,16 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         search,
                         ...where
                     } = params;
-                    let result = this.config.context.queryBuilder!(table).where({
-                        ...filterBy,
-                        ...where,
-                    });
+                    const qb = this.config.context.queryBuilder!;
+                    const binaryCols = getBinaryCols(this.config.context);
+                    let query = qb(table);
+                    for (const [key, val] of Object.entries({...filterBy, ...where})) {
+                        if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
+                            query = query.where(key, strToBinary(val));
+                        } else {
+                            query = query.where(key, val as string | number);
+                        }
+                    }
                     if (search) {
                         const stringFields = Object.entries(
                             objectSchema[subject]?.[object]?.properties ?? {},
@@ -236,42 +281,110 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             .filter(([, prop]) => propType(prop) === 'string')
                             .map(([key]) => key);
                         if (stringFields.length > 0)
-                            result = result.andWhere(function () {
+                            query = query.andWhere(function () {
                                 for (const field of stringFields) {
                                     this.orWhereILike(field, `%${search}%`);
                                 }
                             });
                     }
-                    if (order) result = result.orderBy(order);
-                    if (limit) result = result.limit(limit);
-                    if (offset) result = result.offset(offset);
-                    return result.select(select);
+                    if (order) query = query.orderBy(order);
+                    if (limit) query = query.limit(limit);
+                    if (offset) query = query.offset(offset);
+                    const rows = (await query.select(select)) as Record<string, unknown>[];
+                    return prepareResultRows(rows, binaryCols, table);
                 }
                 case 'add': {
                     const {key: keyName = `${object}Id`, [object]: columns} = params;
-                    const inserted = await this.config.context.queryBuilder!(table).insert(columns);
-                    return {
-                        [object]: await this.config.context.queryBuilder!(table)
-                            .where({[keyName]: inserted[0]})
-                            .first('*'),
-                    };
+                    const definition = objectSchema[subject]?.[object] as unknown as
+                        | Record<string, unknown>
+                        | undefined;
+                    const properties = definition?.properties as
+                        | Record<string, IColumnSchema>
+                        | undefined;
+                    const foreignKeys = (
+                        definition?.constraints as
+                            | Record<string, Record<string, string>>
+                            | undefined
+                    )?.foreign;
+                    const qb = this.config.context.queryBuilder!;
+                    const binaryCols = getBinaryCols(this.config.context);
+                    const cols = columns as Record<string, unknown>;
+                    // Generate real UUIDs for type.uuid() columns that have the
+                    // literal default value 'uuid'.  Track generated UUIDs so we
+                    // can select back the inserted row by UUID.
+                    let generatedKey: string | undefined;
+                    for (const colName of Object.keys(cols)) {
+                        if (cols[colName] !== 'uuid') continue;
+                        const prop = properties?.[colName];
+                        if (!prop || propDefault(prop) !== 'uuid') continue;
+                        const uuidStr = crypto.randomUUID();
+                        cols[colName] = strToBinary(uuidStr);
+                        generatedKey = uuidStr;
+                        // If this PK is also a FK to core.resource, create the
+                        // corresponding core_resource row.
+                        if (foreignKeys?.[colName] === 'core.resource.resourceId') {
+                            const typeAlias = `${subject}.${object}`;
+                            const typeRow = await qb('core_type')
+                                .where({typeAlias})
+                                .first('typeId');
+                            if (typeRow) {
+                                await qb('core_resource')
+                                    .insert({
+                                        resourceId: strToBinary(uuidStr),
+                                        resourceName: `${subject}.${object}.${colName}`,
+                                        typeId: typeRow.typeId,
+                                    })
+                                    .onConflict()
+                                    .ignore();
+                            }
+                        }
+                    }
+                    // Convert any string values for binary columns to Buffer
+                    const insertCols = prepareInputParams(cols, binaryCols, table);
+                    const inserted = await qb(table).insert(insertCols);
+                    const row = (await qb(table)
+                        .where({[keyName]: generatedKey ? strToBinary(generatedKey) : inserted[0]})
+                        .first()) as Record<string, unknown>;
+                    return {[object]: prepareResultRow(row, binaryCols, table)};
                 }
                 case 'edit': {
                     const {key: keyName = `${object}Id`, [object]: columns} = params;
-                    const {[keyName]: key, ...update} = columns as Record<string, unknown>;
-                    await this.config.context.queryBuilder!(table)
-                        .where({[keyName]: key})
-                        .update(update);
-                    return {
-                        [object]: await this.config.context.queryBuilder!(table)
+                    const qb = this.config.context.queryBuilder!;
+                    const binaryCols = getBinaryCols(this.config.context);
+                    const cols = columns as Record<string, unknown>;
+                    const {[keyName]: key, ...update} = cols as Record<string, unknown>;
+                    const isBinaryKey =
+                        isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
+                    // Update using Buffer for binary keys
+                    if (isBinaryKey) {
+                        await qb(table).where(keyName, strToBinary(key)).update(update);
+                    } else {
+                        await qb(table)
                             .where({[keyName]: key})
-                            .first('*'),
-                    };
+                            .update(update);
+                    }
+                    // Select back with Buffer → base64 conversion
+                    let editQuery = qb(table);
+                    if (isBinaryKey) {
+                        editQuery = editQuery.where(keyName, strToBinary(key));
+                    } else {
+                        editQuery = editQuery.where({[keyName]: key});
+                    }
+                    const editRow = (await editQuery.first()) as Record<string, unknown>;
+                    return {[object]: prepareResultRow(editRow, binaryCols, table)};
                 }
                 case 'remove': {
                     const {key: keyName = `${object}Id`, [keyName]: key} = params;
                     if (!(keyName in params)) {
                         throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
+                    }
+                    const binaryCols = getBinaryCols(this.config.context);
+                    const isBinaryKey =
+                        isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
+                    if (isBinaryKey) {
+                        return this.config.context.queryBuilder!(table)
+                            .where(keyName, strToBinary(key))
+                            .del();
                     }
                     return this.config.context.queryBuilder!(table)
                         .where({[keyName]: key})
@@ -280,6 +393,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 case 'merge': {
                     const {key = `${object}Id`, [object]: objectRows, resourceType} = params;
                     let rows = objectRows as Array<{[key]: string}>;
+                    const binaryCols = getBinaryCols(this.config.context);
                     if (resourceType) {
                         // create or lookup resourceId for each row based on its `name` property
                         const typeId = (
@@ -331,19 +445,36 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             );
                         rows = rows.map(({name: _, ...row}) => row);
                     }
+                    // Convert string values for binary columns to Buffer before insert
+                    const preparedRows = rows.map(row =>
+                        prepareInputParams(row, binaryCols, table),
+                    );
                     return this.config.context.queryBuilder!(table)
-                        .insert(rows)
+                        .insert(preparedRows)
                         .onConflict(key)
                         .merge();
                 }
-                case 'insert':
-                    return this.config.context.queryBuilder!(table).insert(params);
-                case 'update': {
-                    const {select = '*', ...where} = params;
-                    return this.config.context.queryBuilder!(table).where(where).update(select);
+                case 'insert': {
+                    const binaryCols = getBinaryCols(this.config.context);
+                    return this.config.context.queryBuilder!(table).insert(
+                        prepareInputParams(params, binaryCols, table),
+                    );
                 }
-                case 'delete':
-                    return this.config.context.queryBuilder!(table).where(params).del();
+                case 'update': {
+                    const {select: _select, ...where} = params;
+                    const binaryCols = getBinaryCols(this.config.context);
+                    return this.config.context.queryBuilder!(table)
+                        .where(
+                            prepareInputParams(where as Record<string, unknown>, binaryCols, table),
+                        )
+                        .update(_select);
+                }
+                case 'delete': {
+                    const binaryCols = getBinaryCols(this.config.context);
+                    return this.config.context.queryBuilder!(table)
+                        .where(prepareInputParams(params, binaryCols, table))
+                        .del();
+                }
             }
             throw this.error(_errors['knex.generic']({}), $meta);
         },

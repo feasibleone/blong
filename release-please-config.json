@@ -16,6 +16,7 @@
         "core/blong-login": {},
         "core/blong-mock": {},
         "core/blong-openapi": {},
+        "core/blong-party": {},
         "core/blong-server": {},
         "core/blong-sim-api": {},
         "core/blong-sim-tcp": {},

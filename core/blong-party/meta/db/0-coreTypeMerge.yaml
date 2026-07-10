@@ -1,0 +1,5 @@
+key: typeAlias
+type:
+  - typeAlias: party.person
+  - typeAlias: party.organization
+  - typeAlias: party.orgUnit

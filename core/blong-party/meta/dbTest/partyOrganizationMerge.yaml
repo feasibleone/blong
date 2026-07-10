@@ -1,0 +1,30 @@
+resourceType: party.organization
+key: organizationId
+organization:
+  - name: Global Bank Corp
+    legalName: Global Bank Corp
+    tradingName: Global Bank
+    registrationNumber: REG-98765-BANK
+    taxId: TX-45-7890123
+    establishedDate: '1980-01-15'
+    industry: Banking
+    website: https://globalbank.example.com
+    notes: International bank with operations in 15 countries
+  - name: FinServe Solutions Ltd
+    legalName: FinServe Solutions Ltd
+    tradingName: FinServe
+    registrationNumber: REG-12345-FIN
+    taxId: TX-67-8901234
+    establishedDate: '2005-06-01'
+    industry: Financial Services
+    website: https://finserve.example.com
+    notes: Payment processing and financial technology services
+  - name: DataTrust Insurance PLC
+    legalName: DataTrust Insurance PLC
+    tradingName: DataTrust Insurance
+    registrationNumber: REG-45678-INS
+    taxId: TX-89-0123456
+    establishedDate: '1995-03-20'
+    industry: Insurance
+    website: https://datatrust.example.com
+    notes: Life and general insurance provider

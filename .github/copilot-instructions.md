@@ -163,9 +163,26 @@ rules as the authoritative guide and prioritize the API definition as the primar
 1. **`dev/` is gitignored — never commit code there.**.
 
 1. Always lint the files changed during the session. Use either vscode's built-in error reporting or
-   run `node --run ci-lint -- [files...]` for each of the packages affected by the changes. If the linting
-   reports spell check errors, prefer the use of proper English words or snake-case/camelCase instead
-   of adding them to the dictionary.
+   run `node --run ci-lint -- [files...]` for each of the packages affected by the changes. If the
+   linting reports spell check errors, prefer the use of proper English words or
+   snake-case/camelCase instead of adding them to the dictionary.
+
+1. **Always invoke the `skill` tool when starting a matching task.** Before implementing any
+   feature, check the "Choosing the Right Skill" table below. If the task matches a skill, call the
+   `skill` tool with that skill name — e.g., `skill tool with "blong-handler"`. The skill provides
+   detailed patterns that prevent common mistakes and reduce correction cycles. Do not rely on
+   general knowledge when a domain-specific skill exists.
+
+1. **Proactively verify after every change.** After implementing or fixing anything, automatically:
+    - Run `get_errors` to check for TypeScript/ESLint errors in the modified files
+    - Run the relevant tests (playwright, tap, etc.) to confirm correctness
+    - Check lint with `npm run ci-lint` or `node --run ci-lint -- [files...]`
+    - Fix any failures immediately without waiting for the user to ask
+    - Do not claim work is "complete" or "verified" unless these steps have actually been executed
+
+1. **Use search tools before read_file for targeted exploration.** Instead of reading files linearly
+   with `read_file`, first use `grep_search` or `file_search` to locate specific code patterns,
+   imports, or definitions. This reduces token waste and speeds up context gathering.
 
 ---
 
@@ -181,9 +198,14 @@ Suite             — top-level entry point, glues realms, defines deployment co
 
 ## Choosing the Right Skill
 
-**For implementation tasks, use these skills:**
+> **Critical: You MUST call the `skill` tool for matching tasks.** Before implementing any feature,
+> check the table below. If your task matches a skill, immediately invoke the `skill` tool with that
+> skill name. The skill provides detailed, domain-specific patterns that prevent common mistakes and
+> save multiple correction turns. Do not rely on general knowledge.
 
-| Your Task                                | Use This Skill                                        |
+**For implementation tasks:**
+
+| Your Task                                | Call `skill` with                                     |
 | ---------------------------------------- | ----------------------------------------------------- |
 | Creating a new top-level solution        | **blong-suite**                                       |
 | Creating a new business domain           | **blong-realm**                                       |
@@ -212,13 +234,13 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Full-stack Playwright testing            | **blong-playwright**                                  |
 | Writing or reviewing documentation       | **blong-docs**                                        |
 
-**For understanding concepts:**
+**For understanding concepts — also call `skill`:**
 
-- Suite structure and test entry points: **blong-suite**
-- Layer architecture and organization: **blong-layer**
-- Protocol implementation details: **blong-codec**
-- Realm deployment patterns: **blong-realm**
-- CLI intents and activation system: **blong-intent**
+- Suite structure and test entry points: Call `skill` with **blong-suite**
+- Layer architecture and organization: Call `skill` with **blong-layer**
+- Protocol implementation details: Call `skill` with **blong-codec**
+- Realm deployment patterns: Call `skill` with **blong-realm**
+- CLI intents and activation system: Call `skill` with **blong-intent**
 
 ## Framework Concepts
 
@@ -660,8 +682,8 @@ The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in co
 - **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then
   set `$meta.expect` in test calls — see
   [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
-- **Writing or reviewing documentation:** See **blong-docs** for the rationale/concept/pattern
-  tier structure and how to maintain docs
+- **Writing or reviewing documentation:** See **blong-docs** for the rationale/concept/pattern tier
+  structure and how to maintain docs
 
 **Manual Testing:** Use `.http` files for manual/scripted API testing
 

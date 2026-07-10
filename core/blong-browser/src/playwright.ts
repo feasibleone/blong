@@ -179,8 +179,16 @@ export class Portal {
         });
     }
 
-    /** Wait for the table data to load (rows appear). */
+    /** Wait for the table data to load (rows appear after loading completes). */
     async waitForTableData(): Promise<void> {
+        // PrimeReact DataTable renders an empty state row synchronously
+        // before the API response arrives.  Waiting for ANY <tr> would resolve
+        // on that empty row before data has loaded.  Instead, wait for the
+        // loading overlay to disappear first.
+        await this.page
+            .locator('.p-datatable-loading-overlay')
+            .waitFor({state: 'hidden'})
+            .catch(() => {});
         await this.page.locator('.p-datatable-tbody tr').first().waitFor({state: 'visible'});
     }
 }

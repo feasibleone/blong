@@ -1,0 +1,43 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "jsx": "react",
+        "outDir": "dist",
+        "resolveJsonModule": true,
+        "target": "ES2022",
+        "module": "preserve",
+        "moduleResolution": "bundler",
+        "lib": ["ES2022", "DOM"],
+        "allowImportingTsExtensions": true,
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "types": ["node"]
+    },
+    "ts-node": {
+        "esm": true,
+        "swc": true,
+        "transpileOnly": true,
+        "files": true,
+        "experimentalResolver": true
+    },
+    "exclude": ["node_modules", ".lint", "dist"],
+    "include": [
+        "index.ts",
+        "index.browser.ts",
+        "server.ts",
+        "browser.ts",
+        "vite.config.ts",
+        "playwright.config.ts",
+        "index.html.ts",
+        "eslint.config.mjs",
+        "adapter/**/*.ts",
+        "meta/**/*.ts",
+        "orchestrator/**/*.ts",
+        "browser/orchestrator/**/*.ts",
+        "test/**/*.ts"
+    ]
+}
