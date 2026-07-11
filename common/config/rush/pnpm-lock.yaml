@@ -1183,9 +1183,21 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.12.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
       allure-playwright:
         specifier: ^3.6.2
         version: 3.9.0(@playwright/test@1.60.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
       tap:
         specifier: ^21.6.3
         version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
