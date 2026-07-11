@@ -18,7 +18,22 @@
  * });
  * ```
  *
- * Override any setting via the options parameter:
+ * Override ports to avoid interference when running Playwright
+ * shards or multiple suites in parallel:
+ * ```ts
+ * export default defineBlongConfig({
+ *     backendPort: 9090,
+ *     frontendPort: 5180,
+ * });
+ * ```
+ *
+ * Ports also default from environment variables `PLAYWRIGHT_BACKEND_PORT`
+ * and `PLAYWRIGHT_FRONTEND_PORT`, which is the recommended approach in CI:
+ * ```bash
+ * PLAYWRIGHT_BACKEND_PORT=9090 PLAYWRIGHT_FRONTEND_PORT=5180 npx playwright test
+ * ```
+ *
+ * Override any other setting via the options parameter:
  * ```ts
  * export default defineBlongConfig({
  *     timeout: 60_000,
@@ -43,6 +58,16 @@ type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
      * ```
      */
     realmPackages?: string[];
+    /**
+     * Port for the backend (blong/blong-watch) server.
+     * Defaults to env `PLAYWRIGHT_BACKEND_PORT` or `8080`.
+     */
+    backendPort?: number;
+    /**
+     * Port for the frontend (Vite) dev server.
+     * Defaults to env `PLAYWRIGHT_FRONTEND_PORT` or `5173`.
+     */
+    frontendPort?: number;
 };
 
 function resolveRealmTestDir(packageName: string): string | null {
@@ -65,6 +90,8 @@ export function defineBlongConfig(
         reporter,
         realmPackages,
         projects: projectsOverride,
+        backendPort = Number(process.env['PLAYWRIGHT_BACKEND_PORT']) || 8080,
+        frontendPort = Number(process.env['PLAYWRIGHT_FRONTEND_PORT']) || 5173,
         ...rest
     } = overrides;
 
@@ -92,7 +119,7 @@ export function defineBlongConfig(
         timeout: 30_000,
         retries: 1,
         use: {
-            baseURL: 'http://localhost:5173',
+            baseURL: `http://localhost:${frontendPort}`,
             colorScheme: 'dark',
             viewport: {width: 1600, height: 900},
             trace: 'retain-on-failure',
@@ -123,19 +150,25 @@ export function defineBlongConfig(
         webServer: webServer ?? [
             {
                 command: process.env.CI
-                    ? 'node --run blong -- microservice integration dev playwright ci'
-                    : 'node --run blong-watch --  microservice integration dev playwright',
-                port: 8080,
+                    ? `node --run blong -- microservice integration dev playwright ci --gateway.port=${backendPort} --resolution.portGateway=${backendPort}`
+                    : `node --run blong-watch --  microservice integration dev playwright --gateway.port=${backendPort} --resolution.portGateway=${backendPort}`,
+                port: backendPort,
                 reuseExistingServer: !process.env.CI,
                 stdout: 'pipe',
                 timeout: 60_000,
             },
             {
-                command: process.env.CI ? 'node --run dev -- --force' : 'node --run dev',
-                url: 'http://localhost:5173',
+                command: process.env.CI
+                    ? `node --run dev -- --port ${frontendPort} --force`
+                    : `node --run dev -- --port ${frontendPort}`,
+                url: `http://localhost:${frontendPort}`,
                 reuseExistingServer: !process.env.CI,
                 stdout: 'pipe',
                 timeout: 30_000,
+                env: {
+                    ...process.env,
+                    PLAYWRIGHT_BACKEND_PORT: String(backendPort),
+                },
             },
         ],
         ...(projects ? {projects} : {}),

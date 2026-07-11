@@ -42,7 +42,7 @@ export interface IBlongViteOptions {
 export function defineBlongViteConfig({
     importMetaUrl,
     overrides = {},
-    rpcTarget = 'http://localhost:8080',
+    rpcTarget = `http://localhost:${process.env['PLAYWRIGHT_BACKEND_PORT'] || 8080}`,
 }: IBlongViteOptions): ReturnType<typeof defineConfig> {
     const base: UserConfig = {
         plugins: [react()],
