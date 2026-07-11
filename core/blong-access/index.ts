@@ -25,7 +25,11 @@ export default server(() => ({
             gateway: {authorize: 'access.authorization.list'},
         },
         dev: {
-            srv: {},
+            srv: {
+                db: {
+                    logLevel: 'debug',
+                },
+            },
             core: {},
             login: {},
             access: {},
