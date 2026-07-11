@@ -7,6 +7,7 @@ data:
     CREATE DATABASE IF NOT EXISTS `blong-integration`;
     CREATE DATABASE IF NOT EXISTS `blong-suite`;
     CREATE DATABASE IF NOT EXISTS `blong-access`;
+    CREATE DATABASE IF NOT EXISTS `blong-party`;
     FLUSH PRIVILEGES;
     CREATE USER 'blong-admin'@'%' IDENTIFIED BY 'password';
     GRANT ALL ON *.* TO 'blong-admin'@'%';
