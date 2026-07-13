@@ -341,6 +341,9 @@ export default async function loadRealm<T extends TSchema>(
                         },
                         dev: {
                             resolution: true,
+                            rpcServer: {
+                                port: 0,
+                            },
                             gateway: {
                                 // Static development keys, so sessions survive server hot-reloads
                                 /* cSpell:disable */

@@ -27,7 +27,7 @@ export default server(() => ({
         dev: {
             srv: {
                 db: {
-                    logLevel: 'debug',
+                    // logLevel: 'debug',
                 },
             },
             core: {},

@@ -92,8 +92,8 @@ export default handler(
                     );
                     assert.ok(result.expires_in > 0, 'Expires in is a positive number');
                     assert.ok(
-                        result.permissions.includes('userView'),
-                        'Permissions include userView action',
+                        result.permissions.includes('accessTestPrivate'),
+                        'Permissions include accessTestPrivate action',
                     );
                     return result;
                 },
@@ -120,8 +120,8 @@ export default handler(
 
                     assert.ok(Array.isArray(actions), 'Result is an array');
                     assert.ok(
-                        actions.includes('userView'.toLowerCase()),
-                        'Actions include "userView" (methodId format)',
+                        actions.includes('accessTestPrivate'.toLowerCase()),
+                        'Actions include "accessTestPrivate" (methodId format)',
                     );
                     assert.ok(actions.length >= 1, 'At least one action is returned');
                 },
