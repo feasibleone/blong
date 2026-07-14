@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.16.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.15.2...blong-docs-v1.16.0) (2026-07-14)
+
+
+### Features
+
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+* implement subjectObjectSchema ([8ca3282](https://github.com/feasibleone/blong/commit/8ca32829277b9816eb5e43ce708d2f1d0cc3ef28))
+* manifest concept ([ed3c038](https://github.com/feasibleone/blong/commit/ed3c038352644d2d8f828b3cb69cbea718e7084b))
+* object schema ([688d5d2](https://github.com/feasibleone/blong/commit/688d5d2a4a895c8feba7b898da03c46b3a3f3292))
+* playwright ([03071c2](https://github.com/feasibleone/blong/commit/03071c21758443a7ebecb6f1c79e7f25f3a8e1c0))
+* playwright coverage ([616cf61](https://github.com/feasibleone/blong/commit/616cf61f8616dc7fa6fac8f75fcd5a8577e70448))
+* schema sync ([ae63684](https://github.com/feasibleone/blong/commit/ae63684ea85d2b0f7adc8e8a380e51e0564d54c4))
+
+
+### Bug Fixes
+
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+* Playwright, Storybook and realm DRY ([7bbfad8](https://github.com/feasibleone/blong/commit/7bbfad8160da0ead5600ad56b543e935bfd01954))
+
 ## [1.15.2](https://github.com/feasibleone/blong/compare/blong-docs-v1.15.1...blong-docs-v1.15.2) (2026-05-25)
 
 

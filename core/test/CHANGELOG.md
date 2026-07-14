@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/test-v1.12.1...test-v1.13.0) (2026-07-14)
+
+
+### Features
+
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+* manifest concept ([ed3c038](https://github.com/feasibleone/blong/commit/ed3c038352644d2d8f828b3cb69cbea718e7084b))
+
+
+### Bug Fixes
+
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+
 ## [1.12.1](https://github.com/feasibleone/blong/compare/test-v1.12.0...test-v1.12.1) (2026-05-25)
 
 

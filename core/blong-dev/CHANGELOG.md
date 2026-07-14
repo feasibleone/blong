@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.0.2...blong-dev-v1.1.0) (2026-07-14)
+
+
+### Features
+
+* improve playwright ([c88dca8](https://github.com/feasibleone/blong/commit/c88dca832548a878ce81aab7320395c3c6a81551))
+* playwright ([03071c2](https://github.com/feasibleone/blong/commit/03071c21758443a7ebecb6f1c79e7f25f3a8e1c0))
+* playwright coverage ([616cf61](https://github.com/feasibleone/blong/commit/616cf61f8616dc7fa6fac8f75fcd5a8577e70448))
+
+
+### Bug Fixes
+
+* playwright download bug ([e7214d2](https://github.com/feasibleone/blong/commit/e7214d2b3f29aeea566ae6402db6d97762f20164))
+* portal loading in the browser ([5c2bc76](https://github.com/feasibleone/blong/commit/5c2bc762dea53d7d2caa0022ea3d7e3f106fdddb))
+* update CI logic for Playwright browser installation ([276db2c](https://github.com/feasibleone/blong/commit/276db2c7a862f31655503f7eb33f9407d11ac5ec))
+* update Playwright trace option and improve report generation ([cd8eaa4](https://github.com/feasibleone/blong/commit/cd8eaa4b4f64d068fd569673ace497012fbabf52))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-dev-v1.0.1...blong-dev-v1.0.2) (2026-05-25)
 
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.6.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.5.0...blong-suite-v1.6.0) (2026-07-14)
+
+
+### Features
+
+* authorization ([cf1a7ff](https://github.com/feasibleone/blong/commit/cf1a7ff605de0a6078fc859a31532443386808b2))
+* blong-access ([bf43d8b](https://github.com/feasibleone/blong/commit/bf43d8bf4f12774f0ffb93e98bebd9fe684c4c1d))
+* core.resource merging ([371d3e2](https://github.com/feasibleone/blong/commit/371d3e2b3f519dfd59ca4fd480bc33317992afcd))
+* playwright coverage ([616cf61](https://github.com/feasibleone/blong/commit/616cf61f8616dc7fa6fac8f75fcd5a8577e70448))
+* schema helpers and constraints ([8409257](https://github.com/feasibleone/blong/commit/84092571f6b327c1166ef142f70cb7d91b013eaf))
+
+
+### Bug Fixes
+
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+* Playwright, Storybook and realm DRY ([7bbfad8](https://github.com/feasibleone/blong/commit/7bbfad8160da0ead5600ad56b543e935bfd01954))
+* ui tests with cluster ([ddb11ed](https://github.com/feasibleone/blong/commit/ddb11eda89423f5f64066f02cd9baa2f95d8f266))
+* wait mysql ([72d61f2](https://github.com/feasibleone/blong/commit/72d61f2783d02a029c8a815c40afe1995334d2bb))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/ui-demo-v1.4.0...ui-demo-v1.5.0) (2026-05-25)
 
 

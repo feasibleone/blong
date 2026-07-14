@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.9.0...blong-browser-v1.10.0) (2026-07-14)
+
+
+### Features
+
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+* blong-party ([602a3b4](https://github.com/feasibleone/blong/commit/602a3b422e1f76c27a96b1cd5d5a8cf0edbc268f))
+* check access credentials ([e6af405](https://github.com/feasibleone/blong/commit/e6af405c43921cb9c553db9c4986b7fe56154724))
+* implement subjectObjectSchema ([8ca3282](https://github.com/feasibleone/blong/commit/8ca32829277b9816eb5e43ce708d2f1d0cc3ef28))
+* improve playwright ([c88dca8](https://github.com/feasibleone/blong/commit/c88dca832548a878ce81aab7320395c3c6a81551))
+* object schema ([688d5d2](https://github.com/feasibleone/blong/commit/688d5d2a4a895c8feba7b898da03c46b3a3f3292))
+* playwright ([03071c2](https://github.com/feasibleone/blong/commit/03071c21758443a7ebecb6f1c79e7f25f3a8e1c0))
+* playwright coverage ([616cf61](https://github.com/feasibleone/blong/commit/616cf61f8616dc7fa6fac8f75fcd5a8577e70448))
+* support expressions in the configuration ([843bb58](https://github.com/feasibleone/blong/commit/843bb58c97456d85eac573874c90755bdb68bc95))
+* useBlong ([affdd67](https://github.com/feasibleone/blong/commit/affdd676db3338266d60155604e3bc9024078b5e))
+* vitest coverage ([4c6d9cb](https://github.com/feasibleone/blong/commit/4c6d9cb941957b0291cbe091e06884589b1e8f06))
+
+
+### Bug Fixes
+
+* browse classname ([58d6ed8](https://github.com/feasibleone/blong/commit/58d6ed89ee9c26370aae8a0c0d57ef8d8ee6df82))
+* build ([83e4451](https://github.com/feasibleone/blong/commit/83e4451c1d17deea02cc8b4022d570777f527bff))
+* build ([de22713](https://github.com/feasibleone/blong/commit/de2271393350945b8d793ca0ec89670465bba085))
+* full stack alignment for CRUD ([8795e08](https://github.com/feasibleone/blong/commit/8795e087182402ac28c3ea03c6bee27319069625))
+* intents ([f2dd808](https://github.com/feasibleone/blong/commit/f2dd808cc2ed6f1e84d125a526335d8fa1707fa9))
+* keep running the server in CI for the playwright intent ([5d01f3b](https://github.com/feasibleone/blong/commit/5d01f3b044f4506c2f6fab3c2c048b116b59accb))
+* login ([4def73d](https://github.com/feasibleone/blong/commit/4def73d33473d2b9183e91fa1ab030b2ccb85ad5))
+* mutual dependency ([599bf3a](https://github.com/feasibleone/blong/commit/599bf3affe22b8dfff03726351907d25c179901a))
+* playwright download bug ([e7214d2](https://github.com/feasibleone/blong/commit/e7214d2b3f29aeea566ae6402db6d97762f20164))
+* playwright ports config ([35dda43](https://github.com/feasibleone/blong/commit/35dda43e388a647f02e2db484c98d15168c133d4))
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+* Playwright, Storybook and realm DRY ([7bbfad8](https://github.com/feasibleone/blong/commit/7bbfad8160da0ead5600ad56b543e935bfd01954))
+* portal loading in the browser ([5c2bc76](https://github.com/feasibleone/blong/commit/5c2bc762dea53d7d2caa0022ea3d7e3f106fdddb))
+* snapshots ([0228928](https://github.com/feasibleone/blong/commit/022892897a26031d216569aa7c664b59bfd10e0f))
+* update Playwright trace option and improve report generation ([cd8eaa4](https://github.com/feasibleone/blong/commit/cd8eaa4b4f64d068fd569673ace497012fbabf52))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.8.0...blong-browser-v1.9.0) (2026-05-25)
 
 
