@@ -9,6 +9,7 @@ import type {
     IGateway,
     ILocal,
     ILog,
+    IManifest,
     IMeta,
     IObjectSchema,
     IPlatformApi,
@@ -82,6 +83,8 @@ export default class Registry extends Internal implements IRegistry {
     #config: IConfig = {};
     #attachCheckpoint?: (meta: IMeta) => void;
 
+    #manifest: IManifest | undefined;
+
     public constructor(
         config: object,
         {
@@ -95,6 +98,7 @@ export default class Registry extends Internal implements IRegistry {
             watch,
             apiSchema,
             platform,
+            manifest,
         }: {
             log?: ILog;
             error?: IErrorFactory;
@@ -106,6 +110,7 @@ export default class Registry extends Internal implements IRegistry {
             watch?: IWatch;
             apiSchema?: IApiSchema;
             platform?: IPlatformApi;
+            manifest?: IManifest;
         },
     ) {
         super({log});
@@ -120,6 +125,7 @@ export default class Registry extends Internal implements IRegistry {
         this.#watch = watch!;
         this.#apiSchema = apiSchema!;
         this.#platform = platform!;
+        this.#manifest = manifest;
         this.#attachCheckpoint = createAttachCheckpoint(
             this.#config.checkpointMode ?? 'production',
         );
@@ -189,6 +195,7 @@ export default class Registry extends Internal implements IRegistry {
             attach: undefined!,
             createLog: (level, bindings) => this.#log?.logger(level, bindings) || {},
             attachCheckpoint: this.#attachCheckpoint,
+            manifest: this.#manifest,
             render: (what: object[] | object) =>
                 renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
             platform: this.#platform,

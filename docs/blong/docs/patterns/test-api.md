@@ -60,9 +60,14 @@ type Load = (
 }>;
 
 export default async (load: Load): Promise<void> => {
+    // The manifest is a shared object for exchanging runtime values between
+    // platforms (e.g. effective ports, connection strings, or other
+    // lifecycle state). Pass the same reference to both load() calls —
+    // values written by one side are visible to the other.
+    const manifest: Record<string, unknown> = {};
     const platforms = await Promise.all([
-        load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
-        load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev']),
+        load(server, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev'], manifest),
+        load(browser, 'suite-name', 'suite-name', ['microservice', 'integration', 'dev'], manifest),
     ]);
     for (const platform of platforms) await platform.start();
     await platforms[1].test(); // run tests from browser side

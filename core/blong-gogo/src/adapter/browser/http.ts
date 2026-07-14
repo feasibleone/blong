@@ -1,4 +1,4 @@
-import type {Errors, IErrorMap, IMeta, Adapter} from '@feasibleone/blong/types';
+import type {Adapter, Errors, IErrorMap, IMeta} from '@feasibleone/blong/types';
 import {adapter} from '@feasibleone/blong/types';
 import ky, {type Options as KyOptions} from 'ky';
 
@@ -10,6 +10,12 @@ export interface IConfig {
         crl?: string;
     };
     url?: string;
+    /** Alternative to `url`: construct the base URL from these parts.
+     *  The `port` value may be a Promise (e.g. from a manifest property)
+     *  that resolves to the effective port number. */
+    port?: number | Promise<number>;
+    host?: string;
+    protocol?: string;
 }
 
 const errorMap: IErrorMap = {
@@ -18,7 +24,7 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
-export default adapter<IConfig>(({utError}) => {
+export default adapter<IConfig>(({utError, manifest}) => {
     _errors ||= utError.register(errorMap);
 
     let kyInstance: typeof ky = ky;
@@ -30,6 +36,17 @@ export default adapter<IConfig>(({utError}) => {
         },
         async init(...configs: object[]) {
             await super.init(...configs);
+            // If port/host/protocol are provided instead of url, and the port
+            // value is already a plain number (e.g. from CLI --manifest.gatewayPort=8080),
+            // construct the URL straight away.  Promise values (dynamic manifest
+            // ports) are resolved lazily on first exec() call.
+            if (!this.config.url && this.config.host && this.config.port != null) {
+                const portCandidate = this.config.port;
+                if (typeof portCandidate === 'number' || typeof portCandidate === 'string') {
+                    const protocol = this.config.protocol || 'http';
+                    this.config.url = `${protocol}://${this.config.host}:${portCandidate}`;
+                }
+            }
             if (this.config.tls) {
                 // Dynamic imports — only run on the server; @vite-ignore prevents
                 // Vite from trying to bundle these Node.js-only modules for the browser.
@@ -70,7 +87,7 @@ export default adapter<IConfig>(({utError}) => {
             {
                 path,
                 query: searchParams,
-                url = new URL(path, this.config.url),
+                url,
                 responseType,
                 method,
                 headers,
@@ -80,7 +97,7 @@ export default adapter<IConfig>(({utError}) => {
             }: {
                 path: string;
                 query: string | Record<string, string>;
-                url: URL;
+                url?: URL;
                 responseType: 'json' | 'text' | 'buffer';
                 method: string;
                 headers: Record<string, string>;
@@ -91,6 +108,27 @@ export default adapter<IConfig>(({utError}) => {
             $meta: IMeta,
         ) {
             try {
+                // Lazily resolve the base URL when not yet available.
+                // Resolution priority:
+                //   1. Manifest gatewayPort (set by server-side Gateway after start)
+                //   2. Config port/host/protocol (from realm factory)
+                //   3. Config url (hardcoded fallback like 'http://localhost:8080')
+                if (!url) {
+                    let baseUrl: string | undefined;
+                    if (this.config.host) {
+                        // `await` handles plain values, promises and undefined alike
+                        const manifestPort = manifest ? await manifest.gatewayPort : undefined;
+                        const configPort =
+                            this.config.port != null ? await this.config.port : undefined;
+                        const resolvedPort = manifestPort ?? configPort;
+                        if (resolvedPort != null) {
+                            const protocol = this.config.protocol || 'http';
+                            baseUrl = `${protocol}://${this.config.host}:${resolvedPort}`;
+                            this.config.url = baseUrl;
+                        }
+                    }
+                    url = new URL(path, baseUrl || (this.config.url as string) || '');
+                }
                 this.log?.debug?.({
                     req: {
                         method: (method || 'POST').toUpperCase(),
@@ -108,7 +146,9 @@ export default adapter<IConfig>(({utError}) => {
                     ...(json != null ? {json} : {}),
                     ...(form != null ? {body: new URLSearchParams(form)} : {}),
                     ...(body != null && json == null && form == null ? {body} : {}),
-                    ...(searchParams != null ? {searchParams: searchParams as Record<string, string>} : {}),
+                    ...(searchParams != null
+                        ? {searchParams: searchParams as Record<string, string>}
+                        : {}),
                 };
                 const res = await kyInstance(url.toString(), kyOptions);
                 const resolvedBody =

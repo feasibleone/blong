@@ -9,6 +9,7 @@ import {
     type IErrorFactory,
     type ILog,
     type ILogger,
+    type IManifest,
     type IModuleConfig,
     type IPlatformApi,
     type IRegistry,
@@ -202,12 +203,87 @@ function activeConfigs<T extends TSchema>(
     ).concat({pkg: mod.pkg, children: mod.children, url: mod.url});
 }
 
+/** A thenable value that can be externally resolved/rejected. */
+interface IDeferred<T> {
+    then: Promise<T>['then'];
+    resolve: (value: T | PromiseLike<T>) => void;
+    reject: (reason?: unknown) => void;
+}
+
+/** Create a thenable with externally callable `resolve` / `reject`. */
+function createDeferred<T>(): IDeferred<T> {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return {
+        then: promise.then.bind(promise),
+        resolve,
+        reject,
+    };
+}
+
+/**
+ * Wrap a plain manifest object in a Proxy that automatically creates
+ * unresolved {@link IDeferred} values on first read of a missing property,
+ * and resolves them on the first write.
+ *
+ * This lets users pass a plain `{}` to `load()` — properties like
+ * `gatewayPort` are auto-provisioned as pending promises when read, and resolved
+ * when the server-side component (e.g. Gateway) writes the actual value.
+ * Consumers that await the property will transparently wait for the deferred
+ * to be settled.
+ */
+function createManifestProxy(manifest: IManifest): IManifest {
+    const pending = new Map<string, IDeferred<unknown>>();
+    const OWN_KEYS = new Set<string>();
+
+    return new Proxy(manifest, {
+        get(target, prop: string | symbol) {
+            if (typeof prop !== 'string') return Reflect.get(target, prop, target);
+            if (prop in target) return target[prop];
+            if (prop === '__proto__' || prop === 'constructor')
+                return Reflect.get(target, prop, target);
+            if (!pending.has(prop)) {
+                const deferred = createDeferred();
+                pending.set(prop, deferred);
+                target[prop] = deferred;
+                OWN_KEYS.add(prop);
+            }
+            return target[prop];
+        },
+        set(target, prop: string | symbol, value) {
+            if (typeof prop !== 'string') return Reflect.set(target, prop, value, target);
+            // Resolve any pending deferred — either from our own proxy instance
+            // or one placed on the target by another proxy instance (when the
+            // same manifest object is passed to separate load() calls).
+            const existing = pending.get(prop) ?? target[prop];
+            if (existing && typeof existing === 'object' && 'resolve' in (existing as object)) {
+                (existing as IDeferred<unknown>).resolve(value);
+                pending.delete(prop);
+            }
+            target[prop] = value;
+            return true;
+        },
+        ownKeys(target) {
+            return [...Reflect.ownKeys(target), ...OWN_KEYS];
+        },
+        has(target, prop: string | symbol) {
+            if (OWN_KEYS.has(prop as string)) return true;
+            return Reflect.has(target, prop);
+        },
+    });
+}
+
 export default async function loadRealm<T extends TSchema>(
     platformApi: IPlatformApi,
     def: SolutionFactory<T> & {[symbol: Kind]: Kinds},
     name: string,
     parentConfig: object | string,
     configNames: string[],
+    manifest?: IManifest,
     api?: {
         platform: IPlatformApi;
         watch?: IWatch;
@@ -222,12 +298,19 @@ export default async function loadRealm<T extends TSchema>(
     },
     rootKind?: 'server' | 'browser',
 ): Promise<IRegistry> {
+    // Wrap the manifest in a proxy that auto-creates Deferred values on first
+    // read and resolves them on first write. This lets callers pass a plain
+    // object and have properties like `gatewayPort` transparently work as
+    // cross-platform synchronization points.
+    // Only wrap when a manifest is explicitly provided, so callers that omit
+    // it (defaulting to undefined) preserve the existing no-sharing behavior.
+    if (manifest) manifest = createManifestProxy(manifest);
     const defKind = kind(def);
     if (!rootKind) {
         if (defKind === 'server' || defKind === 'browser') rootKind = defKind;
         else if (defKind === 'solution') {
             // Realm passed directly as root — wrap in a minimal suite for isolated testing
-            const realmMod = await def({type: Type});
+            const realmMod = await def({type: Type, manifest});
             const realmUrl = realmMod.url as string;
             const realmFilePath = realmUrl.startsWith('file://') ? realmUrl.slice(7) : realmUrl;
             const realmBase = platformApi.dirname(realmFilePath);
@@ -265,8 +348,15 @@ export default async function loadRealm<T extends TSchema>(
                     },
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 })) as () => any);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return loadRealm(platformApi, wrapper as any, name, parentConfig, configNames);
+                return loadRealm(
+                    platformApi,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    wrapper as any,
+                    name,
+                    parentConfig,
+                    configNames,
+                    manifest,
+                );
             } else {
                 // Server realm — single platform if no browser.ts alongside, else two-platform server half
                 const hasBrowser = platformApi.existsSync(
@@ -290,14 +380,21 @@ export default async function loadRealm<T extends TSchema>(
                               },
                     },
                 }));
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return loadRealm(platformApi, wrapper as any, name, parentConfig, configNames);
+                return loadRealm(
+                    platformApi,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    wrapper as any,
+                    name,
+                    parentConfig,
+                    configNames,
+                    manifest,
+                );
             }
         } else {
             throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
         }
     }
-    const mod = await def({type: Type});
+    const mod = await def({type: Type, manifest});
     if (!('pkg' in mod) && platformApi.platform === 'server')
         mod.pkg = platformApi.createRequire?.(mod.url)('./package.json');
     const loadedConfigs = [];
@@ -312,6 +409,7 @@ export default async function loadRealm<T extends TSchema>(
     if (!api) {
         api = {
             platform: platformApi,
+            manifest,
         } as unknown as typeof api;
         loadedConfigs.push(
             ...activeConfigs(
@@ -345,6 +443,7 @@ export default async function loadRealm<T extends TSchema>(
                                 port: 0,
                             },
                             gateway: {
+                                port: 0,
                                 // Static development keys, so sessions survive server hot-reloads
                                 /* cSpell:disable */
                                 sign: {
@@ -539,6 +638,12 @@ export default async function loadRealm<T extends TSchema>(
         parentConfig,
         loadedConfigs.filter(Boolean) as object[],
     );
+
+    // Populate the manifest from config values (e.g. `--manifest.gatewayPort=8080`
+    // parsed by blong-config into `mergedConfig.manifest.gatewayPort`).
+    if (manifest && mergedConfig.manifest && typeof mergedConfig.manifest === 'object') {
+        Object.assign(manifest, mergedConfig.manifest);
+    }
 
     // Wire ConfigRuntime into Watch so config-file changes trigger in-process
     // reload via ConfigRuntime.reload() instead of restarting the process.
@@ -784,6 +889,7 @@ export default async function loadRealm<T extends TSchema>(
                             itemName,
                             {[platformApi.platform]: mergedConfig[platformApi.platform], ...config},
                             configNames,
+                            manifest,
                             api,
                             rootKind,
                         ),

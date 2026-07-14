@@ -8,7 +8,11 @@ export default realm(blong => ({
         backend: blong.type.Object({
             logLevel: blong.type.String(),
             imports: blong.type.Array(blong.type.Unknown()),
-            url: blong.type.String(),
+            url: blong.type.Optional(blong.type.String()),
+            port: blong.type.Optional(blong.type.Unknown()),
+            host: blong.type.Optional(blong.type.String()),
+            protocol: blong.type.Optional(blong.type.String()),
+            manifestPort: blong.type.Optional(blong.type.String()),
         }),
         test: blong.type.Object({}),
     }),
@@ -20,6 +24,8 @@ export default realm(blong => ({
             backend: {
                 logLevel: 'fatal',
                 imports: [/\.backend$/, 'codec.jsonrpc', 'codec.mle'],
+                host: 'localhost',
+                protocol: 'http',
                 url: 'http://localhost:8080',
             },
             testDispatch: {

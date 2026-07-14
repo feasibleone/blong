@@ -90,9 +90,10 @@ export async function autoRun(options: {
     } else if (existsSync(serverFile) && existsSync(browserFile)) {
         const {default: serverDef} = await import(serverFile);
         const {default: browserDef} = await import(browserFile);
+        const manifest: Record<string, unknown> = {};
         const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
-            load(serverDef, name, name, intents),
-            load(browserDef, name, name, intents),
+            load(serverDef, name, name, intents, manifest),
+            load(browserDef, name, name, intents, manifest),
         ]);
         for (const platform of platforms) await platform.start({});
         await platforms[1].test!(undefined);

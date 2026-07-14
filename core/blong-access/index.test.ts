@@ -18,10 +18,11 @@ import browserSuite from './browser-test.ts';
 import serverSuite from './index.ts';
 
 const intents = ['microservice', 'integration', 'dev', ...(process.env.CI ? ['ci'] : [])];
+const manifest: Record<string, unknown> = {};
 
 const [serverPlatform, browserPlatform] = await Promise.all([
-    load(serverSuite, 'blong-access', 'blong-access', intents),
-    load(browserSuite, 'blong-access', 'blong-access', intents),
+    load(serverSuite, 'blong-access', 'blong-access', intents, manifest),
+    load(browserSuite, 'blong-access', 'blong-access', intents, manifest),
 ]);
 await Promise.all([serverPlatform.start({}), browserPlatform.start({})]);
 await tap.test('blong-access login flow (server)', async (test: Test) => {

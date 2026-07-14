@@ -8,9 +8,22 @@ type Load = (...params: unknown[]) => Promise<{
 }>;
 
 export default async (load: Load): Promise<void> => {
+    const manifest: Record<string, unknown> = {};
     const platforms: Awaited<ReturnType<typeof load>>[] = await Promise.all([
-        load(server, 'handler-test-poc', 'handler-test-poc', ['microservice', 'integration', 'dev']),
-        load(browser, 'handler-test-poc', 'handler-test-poc', ['microservice', 'integration', 'dev']),
+        load(
+            server,
+            'handler-test-poc',
+            'handler-test-poc',
+            ['microservice', 'integration', 'dev'],
+            manifest,
+        ),
+        load(
+            browser,
+            'handler-test-poc',
+            'handler-test-poc',
+            ['microservice', 'integration', 'dev'],
+            manifest,
+        ),
     ]);
     for (const platform of platforms) await platform.start();
     await platforms[1].test();

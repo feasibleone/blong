@@ -3,11 +3,23 @@ import tap from 'tap';
 
 import browser from './browser.ts';
 import server from './server.ts';
-
+const manifest: Record<string, unknown> = {};
 export default async function test(intents: string[] = [], config: string | object = 'impl') {
     const platforms = await Promise.all([
-        load(server, 'impl', config, ['microservice', 'integration', 'dev'].concat(intents)),
-        load(browser, 'impl', config, ['microservice', 'integration', 'dev'].concat(intents)),
+        load(
+            server,
+            'impl',
+            config,
+            ['microservice', 'integration', 'dev'].concat(intents),
+            manifest,
+        ),
+        load(
+            browser,
+            'impl',
+            config,
+            ['microservice', 'integration', 'dev'].concat(intents),
+            manifest,
+        ),
     ]);
     for (const platform of platforms) await platform.start({});
     await tap.test('blong test', async () => {

@@ -1,5 +1,5 @@
 // import { DaprServer, CommunicationProtocolEnum } from '@dapr/dapr';
-import {Internal, type ILog, type IMeta, type IRpcServer} from '@feasibleone/blong/types';
+import {Internal, type ILog, type IManifest, type IMeta, type IRpcServer} from '@feasibleone/blong/types';
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
 import type {IResolution} from './Resolution.ts';
@@ -22,8 +22,12 @@ export default class RpcServer extends Internal implements IRpcServer {
     #resolution: IResolution;
     #handlers: Map<string, {handle: RouteOptions['handler']}> = new Map();
     #attachCheckpoint?: (meta: IMeta) => void;
+    #manifest: IManifest | undefined;
 
-    public constructor(config: IConfig, {log, resolution}: {log: ILog; resolution: IResolution}) {
+    public constructor(
+        config: IConfig,
+        {log, resolution, manifest}: {log: ILog; resolution: IResolution; manifest?: IManifest},
+    ) {
         // https://docs.dapr.io/developing-applications/sdks/js/js-server/
         // this.#dapr = new DaprServer({
         //     serverHost: '127.0.0.1',
@@ -37,6 +41,7 @@ export default class RpcServer extends Internal implements IRpcServer {
         super({log});
         this.merge(this.#config, config);
         this.#resolution = resolution;
+        this.#manifest = manifest;
         this.#server = fastify({
             loggerInstance: log?.child({name: 'rpc'}, {level: this.#config.logLevel}),
         });
@@ -146,6 +151,12 @@ export default class RpcServer extends Internal implements IRpcServer {
             port: this.#config.port,
             host: this.#config.host,
         });
+        // Publish the effective RPC port to the manifest.
+        // The manifest proxy automatically resolves any pending deferred.
+        const address = this.#server.server.address();
+        if (this.#manifest && address && typeof address === 'object') {
+            this.#manifest.rpcPort = address.port;
+        }
         return this;
     }
 

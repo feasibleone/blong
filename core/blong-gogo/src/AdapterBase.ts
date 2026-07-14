@@ -390,12 +390,12 @@ export default async function adapter<T, C extends IContext>(
 
     const base = new AdapterBase<T, C>(api, configBase, activationNames);
 
-    const result = handlers!({utError, remote, type, schema: registry.objectSchema});
+    const result = handlers!({utError, remote, type, schema: registry.objectSchema, manifest: api.manifest});
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry, schema})
-            : current.extends({utError, remote, rpc, local, registry, schema}));
+            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry, schema, manifest: api.manifest})
+            : current.extends({utError, remote, rpc, local, registry, schema, manifest: api.manifest}));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }

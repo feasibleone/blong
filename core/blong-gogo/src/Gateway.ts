@@ -7,6 +7,7 @@ import type {
     IGateway,
     ILocal,
     ILog,
+    IManifest,
     IMeta,
     IPlatformApi,
 } from '@feasibleone/blong/types';
@@ -180,6 +181,7 @@ export default class Gateway extends Internal implements IGateway {
     #errorFields: [string, unknown][] = [];
     #plugins: {plugin: unknown; options: unknown}[] = [];
     #platform: IPlatformApi;
+    #manifest: IManifest | undefined;
 
     public constructor(
         config: IConfig,
@@ -190,6 +192,7 @@ export default class Gateway extends Internal implements IGateway {
             resolution,
             local,
             platform,
+            manifest,
         }: {
             log?: ILog;
             error?: IErrorFactory;
@@ -197,6 +200,7 @@ export default class Gateway extends Internal implements IGateway {
             local?: ILocal;
             resolution?: IResolution;
             platform?: IPlatformApi;
+            manifest?: IManifest;
         },
     ) {
         super({log});
@@ -230,6 +234,7 @@ export default class Gateway extends Internal implements IGateway {
         this.#resolution = resolution!;
         this.#rpcClient = remote!;
         this.#local = local!;
+        this.#manifest = manifest;
     }
 
     protected config(): object {
@@ -632,6 +637,13 @@ export default class Gateway extends Internal implements IGateway {
             port: this.#config.port,
             host: this.#config.host,
         });
+        // Publish the effective port to the manifest so other platforms
+        // (e.g. browser backend adapter) can discover it.
+        // The manifest proxy automatically resolves any pending deferred.
+        const address = this.#server.server.address();
+        if (this.#manifest && address && typeof address === 'object') {
+            this.#manifest.gatewayPort = address.port;
+        }
         return this;
     }
 

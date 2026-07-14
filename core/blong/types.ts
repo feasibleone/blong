@@ -418,6 +418,7 @@ export interface IApi {
         remote: IRemote;
         type: BlongType;
         schema: IObjectSchema;
+        manifest?: IManifest;
     }) => {
         extends?:
             | string
@@ -428,10 +429,12 @@ export interface IApi {
                   local: ILocal;
                   registry: IRegistry;
                   schema: IObjectSchema;
+                  manifest?: IManifest;
               }) => object);
     };
     render: (what: object[] | object) => object;
     platform: IPlatformApi;
+    manifest?: IManifest;
 }
 
 export interface IErrorMap {
@@ -556,6 +559,7 @@ export interface IAdapterRegistry {
         local: ILocal;
         registry: IRegistry;
         schema: IObjectSchema;
+        manifest?: IManifest;
     }): Promise<Adapter>;
 }
 
@@ -803,6 +807,23 @@ export type ChainStep =
 
 export type CheckpointFn = (this: IMeta, name: string, data?: unknown) => void;
 
+/**
+ * Manifest — a shared mutable object passed to the `load` function that allows
+ * platforms to share information such as effective ports, URLs, or other
+ * runtime-resolved values across components.
+ *
+ * Properties are typically Promises (created via `Promise.withResolvers()`) that
+ * are resolved when one platform finishes a startup step (e.g. listening on a
+ * random port), and awaited by another platform or adapter during its own
+ * initialisation (e.g. constructing a backend URL from the effective port).
+ *
+ * Manifest properties can also be provided via CLI args using the
+ * `--manifest.<key>=<value>` syntax.
+ */
+export interface IManifest {
+    [key: string]: unknown;
+}
+
 export interface ILib {
     type: BlongType;
     error: <T>(errors: T) => Record<keyof T, (params?: unknown, $meta?: IMeta) => ITypedError>;
@@ -960,7 +981,10 @@ export type ModuleApi = {
 };
 
 export interface SolutionFactory<T extends TSchema = TNever> {
-    (definition: {type: typeof Type}): IModuleConfig<T> | Promise<IModuleConfig<T>>;
+    (definition: {
+        type: typeof Type;
+        manifest?: IManifest;
+    }): IModuleConfig<T> | Promise<IModuleConfig<T>>;
 }
 
 const Kind: symbol = Symbol.for('blong:kind');
