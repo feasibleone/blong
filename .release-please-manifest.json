@@ -18,12 +18,12 @@
     "core/blong-browser": "1.10.0",
     "core/blong-marine": "1.1.0",
     "core/blong-suite": "1.6.0",
-    "core/blong-dev": "1.1.0",
-    "core/blong-access": "1.0.0",
+    "core/blong-dev": "1.1.1",
+    "core/blong-access": "1.0.1",
     "core/blong-core": "1.0.0",
     "core/blong-lib": "1.0.0",
     "core/blong-mock": "1.0.0",
-    "core/blong-party": "1.0.0",
+    "core/blong-party": "1.0.1",
     "core/blong-server": "1.0.0",
     "core/marine-data": "1.0.0"
 }

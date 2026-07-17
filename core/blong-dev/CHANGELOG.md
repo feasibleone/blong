@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.1.0...blong-dev-v1.1.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* ignore Debian vulnerabilities ([0c4e1e8](https://github.com/feasibleone/blong/commit/0c4e1e80b2a90f2652732dfaf9d4e03679548e70))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.0.2...blong-dev-v1.1.0) (2026-07-14)
 
 
