@@ -1,7 +1,7 @@
 {
     "name": "@feasibleone/blong-party",
     "version": "1.0.0",
-    "description": "Party management realm — persons, organizations, org units, contacts, addresses, and identifiers",
+    "description": "Party management realm — persons, organizations, units, contacts, addresses, and identifiers",
     "type": "module",
     "exports": {
         "./server.ts": "./server.ts",

@@ -2,16 +2,16 @@ import {model} from '@feasibleone/blong';
 
 export default model(
     () =>
-        async function partyOrgUnitModel() {
+        async function partyUnitModel() {
             return {
                 subject: 'party',
-                object: 'orgUnit',
-                objectTitle: 'Org Unit',
-                nameField: 'orgUnit.unitName',
+                object: 'unit',
+                objectTitle: 'Unit',
+                nameField: 'unit.unitName',
 
                 schema: {
                     properties: {
-                        orgUnit: {
+                        unit: {
                             properties: {
                                 unitName: {title: 'Unit Name'},
                                 unitType: {
@@ -27,16 +27,16 @@ export default model(
                                 },
                                 notes: {title: 'Notes'},
                                 // server schema defined
-                                // orgUnitId: {},
+                                // unitId: {},
                             },
                             widget: {
                                 columns: ['unitName', 'unitType'],
                             },
                         },
                         /**
-                         * Members of this org unit.
+                         * Members of this unit.
                          *
-                         * Hierarchy relationships (person → orgUnit) are stored in core.triple
+                         * Hierarchy relationships (person → unit) are stored in core.triple
                          * with predicate \"belongsTo\". This card will be populated by a custom
                          * adapter handler that traverses core.triple — placeholder for future
                          * implementation or realm contribution.
@@ -46,18 +46,18 @@ export default model(
 
                 cards: {
                     browse: {
-                        label: 'Org Units',
-                        widgets: ['orgUnit'],
+                        label: 'Units',
+                        widgets: ['unit'],
                     },
                     details: {
                         label: 'Unit Details',
                         className: 'col-12',
-                        widgets: ['orgUnit.unitName', 'orgUnit.unitType', 'orgUnit.notes'],
+                        widgets: ['unit.unitName', 'unit.unitType', 'unit.notes'],
                     },
                     /**
                      * Members tab — placeholder for core.triple-based hierarchy
                      * queries. Add a card and widget here once a custom adapter
-                     * handler for person→orgUnit membership is implemented.
+                     * handler for person→unit membership is implemented.
                      */
                 },
 
@@ -75,7 +75,7 @@ export default model(
                             /**
                              * Members tab — placeholder. Add widgets here once a
                              * custom adapter handler queries core.triple for person →
-                             * orgUnit membership.
+                             * unit membership.
                              */
                         ],
                     },
@@ -87,28 +87,28 @@ export default model(
                         {
                             label: 'Create',
                             icon: 'pi pi-plus',
-                            action: 'component/party.orgUnit.new',
-                            permission: 'party.orgUnit.add',
+                            action: 'component/party.unit.new',
+                            permission: 'party.unit.add',
                         },
                         {
                             label: 'Edit',
                             icon: 'pi pi-pencil',
                             enabled: 'current' as const,
-                            method: 'component/party.orgUnit.open',
+                            method: 'component/party.unit.open',
                             params: '${current}',
                         },
                         {
                             label: 'Report',
                             icon: 'pi pi-chart-bar',
-                            action: 'component/party.orgUnit.report',
+                            action: 'component/party.unit.report',
                         },
                         {
                             label: 'Delete',
                             icon: 'pi pi-trash',
                             enabled: 'selected' as const,
-                            confirm: 'Delete selected org unit record?',
-                            method: 'party.orgUnit.remove',
-                            params: {orgUnitId: '${orgUnitId}'},
+                            confirm: 'Delete selected unit record?',
+                            method: 'party.unit.remove',
+                            params: {unitId: '${unitId}'},
                         },
                     ],
                 },

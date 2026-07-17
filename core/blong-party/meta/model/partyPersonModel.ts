@@ -130,9 +130,9 @@ export default model(
                             },
                         },
                         /**
-                         * Organization membership card — linked org units.
+                         * Organization membership card — linked units.
                          *
-                         * Hierarchy relationships (person → org unit) are stored in core.triple
+                         * Hierarchy relationships (person → unit) are stored in core.triple
                          * with predicate \"belongsTo\". This card will be populated by a custom
                          * adapter handler that traverses core.triple — placeholder for future
                          * implementation or realm contribution.
@@ -175,7 +175,7 @@ export default model(
                     /**
                      * Organization membership tab — placeholder for core.triple-based
                      * hierarchy queries. Add a card and widget here once a custom
-                     * adapter handler for person→orgUnit membership is implemented.
+                     * adapter handler for person→unit membership is implemented.
                      */
                 },
 
@@ -211,7 +211,7 @@ export default model(
                             /**
                              * Organization tab — placeholder. Add widgets here once a
                              * custom adapter handler queries core.triple for person →
-                             * orgUnit → organization membership.
+                             * unit → organization membership.
                              */
                         ],
                     },

@@ -35,7 +35,7 @@ export default server(() => ({
                     mock: {
                         partyPersonModel: true,
                         partyOrganizationModel: true,
-                        partyOrgUnitModel: true,
+                        partyUnitModel: true,
                     },
                 },
             },

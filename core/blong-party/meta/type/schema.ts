@@ -63,22 +63,22 @@ export default schema(async ({lib: {type}}) => ({
     /**
      * Organizational units — departments, branches, divisions, and teams.
      *
-     * The PK `orgUnitId` is a UUID FK to core.resource.resourceId. Hierarchy
-     * relationships (org unit → organization, child → parent org unit) are
+     * The PK `unitId` is a UUID FK to core.resource.resourceId. Hierarchy
+     * relationships (unit → organization, child → parent unit) are
      * stored in core.triple with predicates "belongsTo" and "isPartOf".
      */
-    orgUnit: type.Object(
+    unit: type.Object(
         {
-            orgUnitId: type.uuid(),
+            unitId: type.uuid(),
             unitName: type.stringNotNull(),
             unitType: type.stringNull({maxLength: 20}),
             notes: type.stringNull(),
         },
         {
             constraints: {
-                primaryKey: 'orgUnitId',
+                primaryKey: 'unitId',
                 foreign: {
-                    orgUnitId: 'core.resource.resourceId',
+                    unitId: 'core.resource.resourceId',
                 },
             },
         },
@@ -87,7 +87,7 @@ export default schema(async ({lib: {type}}) => ({
     /**
      * Contact details — email addresses, phone numbers, etc.
      *
-     * Linked to any party resource (person, organization, org unit) via
+     * Linked to any party resource (person, organization, unit) via
      * `partyResourceId` → core.resource.resourceId.
      */
     contact: type.Object(

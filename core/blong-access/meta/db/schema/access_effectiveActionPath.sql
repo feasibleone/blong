@@ -13,9 +13,9 @@ FROM core_triple t1
     AND t3.predicateName = 'hasAction'
 WHERE t1.predicateName = 'hasRole'
 UNION
--- Org-unit-inherited role: user → orgUnit → role → capability → action
---   core.triple: user belongsTo orgUnit
---   core.triple: orgUnit hasRole role
+-- Org-unit-inherited role: user → unit → role → capability → action
+--   core.triple: user belongsTo unit
+--   core.triple: unit hasRole role
 --   core.triple: role hasCapability capability
 --   core.triple: capability hasAction action
 SELECT t1.subjectId AS originId,

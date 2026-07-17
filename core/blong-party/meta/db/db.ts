@@ -7,7 +7,7 @@ export default handler(() => ({
             tables: {
                 'party.person': 300,
                 'party.organization': 301,
-                'party.orgUnit': 302,
+                'party.unit': 302,
                 'party.contact': 303,
                 'party.address': 304,
                 'party.identifier': 305,

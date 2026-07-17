@@ -1,5 +1,5 @@
 /**
- * Org Unit CRUD — Browse, Create, Edit full-stack tests.
+ * Unit CRUD — Browse, Create, Edit full-stack tests.
  *
  * Tests text, select, and textarea widget types.
  */
@@ -8,23 +8,23 @@ import {browseModel, createAndEditModel} from '@feasibleone/blong-browser/playwr
 
 test.use({blongPermissions: true});
 
-test.describe('Party Org Unit', () => {
+test.describe('Party Unit', () => {
     browseModel(test, expect, {
         subject: 'party',
-        object: 'orgUnit',
+        object: 'unit',
         searchText: 'Retail Banking',
     });
 
     createAndEditModel(test, expect, {
         subject: 'party',
-        object: 'orgUnit',
+        object: 'unit',
         fields: {
-            'orgUnit.unitName': 'Test Playwright Unit',
-            'orgUnit.unitType': 'Team',
-            'orgUnit.notes': 'A test org unit created by Playwright',
+            'unit.unitName': 'Test Playwright Unit',
+            'unit.unitType': 'Team',
+            'unit.notes': 'A test unit created by Playwright',
         },
         editFields: {
-            'orgUnit.unitName': 'Test Playwright Unit Edited',
+            'unit.unitName': 'Test Playwright Unit Edited',
         },
     });
 });
