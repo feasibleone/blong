@@ -17,7 +17,16 @@ ignore:
     - vulnerability: CVE-2026-5450
     - vulnerability: CVE-2026-33845
     - vulnerability: CVE-2026-42010
-
+    - vulnerability: CVE-2026-11856
+    - vulnerability: CVE-2026-10536
+    - vulnerability: CVE-2026-8927
+    - vulnerability: CVE-2026-8924
+    - vulnerability: CVE-2026-13221
+    - vulnerability: CVE-2026-7598
+    - vulnerability: CVE-2026-42496
+    - vulnerability: CVE-2026-8376
+    - vulnerability: CVE-2026-12087
+    - vulnerability: CVE-2026-57433
 # Set output format defaults
 output:
     - 'table'

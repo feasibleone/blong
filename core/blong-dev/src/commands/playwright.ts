@@ -246,7 +246,7 @@ function writeSummary(reportDir: string, results: TestResult[], pkg: string): vo
                   : '🟡';
         lines.push(`| ${icon} | ${r.suite} | ${r.name} |`);
     }
-    lines.push('', '</details>', '');
+    lines.push('', '</details>', '', '');
 
     writeFileSync(join(reportDir, 'summary.md'), lines.join('\n'));
 }
