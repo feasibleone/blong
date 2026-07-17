@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.23.0](https://github.com/feasibleone/blong/compare/blong-v1.22.0...blong-v1.23.0) (2026-07-14)
+
+
+### Features
+
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+* check access credentials ([e6af405](https://github.com/feasibleone/blong/commit/e6af405c43921cb9c553db9c4986b7fe56154724))
+* core.resource merging ([371d3e2](https://github.com/feasibleone/blong/commit/371d3e2b3f519dfd59ca4fd480bc33317992afcd))
+* implement subjectObjectSchema ([8ca3282](https://github.com/feasibleone/blong/commit/8ca32829277b9816eb5e43ce708d2f1d0cc3ef28))
+* manifest concept ([ed3c038](https://github.com/feasibleone/blong/commit/ed3c038352644d2d8f828b3cb69cbea718e7084b))
+* object schema ([688d5d2](https://github.com/feasibleone/blong/commit/688d5d2a4a895c8feba7b898da03c46b3a3f3292))
+* schema helpers and constraints ([8409257](https://github.com/feasibleone/blong/commit/84092571f6b327c1166ef142f70cb7d91b013eaf))
+* seed ([5c76603](https://github.com/feasibleone/blong/commit/5c7660392bc1197638810e864bfd47ce1218b2e5))
+* support expressions in the configuration ([843bb58](https://github.com/feasibleone/blong/commit/843bb58c97456d85eac573874c90755bdb68bc95))
+* useBlong ([affdd67](https://github.com/feasibleone/blong/commit/affdd676db3338266d60155604e3bc9024078b5e))
+
+
+### Bug Fixes
+
+* build ([de22713](https://github.com/feasibleone/blong/commit/de2271393350945b8d793ca0ec89670465bba085))
+* core.resource merging ([f191055](https://github.com/feasibleone/blong/commit/f1910558ce0f369f556911c4c0f6397b8003fd33))
+* full stack alignment for CRUD ([8795e08](https://github.com/feasibleone/blong/commit/8795e087182402ac28c3ea03c6bee27319069625))
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+
 ## [1.22.0](https://github.com/feasibleone/blong/compare/blong-v1.21.0...blong-v1.22.0) (2026-05-25)
 
 

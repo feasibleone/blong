@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/feasibleone/blong/compare/blong-log-v1.4.0...blong-log-v1.4.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* hanging playwright install ([13bf7a4](https://github.com/feasibleone/blong/commit/13bf7a4031f1f94160e0cb9d8b4f83a1732e70af))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-log-v1.3.1...blong-log-v1.4.0) (2026-05-19)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/feasibleone/blong/compare/blong-ttk-v1.2.1...blong-ttk-v1.2.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+
 ## [1.2.1](https://github.com/feasibleone/blong/compare/blong-ttk-v1.2.0...blong-ttk-v1.2.1) (2026-05-25)
 
 

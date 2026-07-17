@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/feasibleone/blong/compare/blong-sim-tcp-v1.1.1...blong-sim-tcp-v1.1.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-sim-tcp-v1.1.0...blong-sim-tcp-v1.1.1) (2026-05-25)
 
 

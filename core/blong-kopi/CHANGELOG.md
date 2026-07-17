@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.8.0...blong-kopi-v1.9.0) (2026-07-14)
+
+
+### Features
+
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.7.0...blong-kopi-v1.8.0) (2026-05-19)
 
 

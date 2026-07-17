@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-login-v1.7.0...blong-login-v1.8.0) (2026-07-14)
+
+
+### Features
+
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+* check access credentials ([e6af405](https://github.com/feasibleone/blong/commit/e6af405c43921cb9c553db9c4986b7fe56154724))
+
+
+### Bug Fixes
+
+* full stack alignment for CRUD ([8795e08](https://github.com/feasibleone/blong/commit/8795e087182402ac28c3ea03c6bee27319069625))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-login-v1.6.8...blong-login-v1.7.0) (2026-05-19)
 
 

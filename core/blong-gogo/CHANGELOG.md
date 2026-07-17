@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.26.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.25.1...blong-gogo-v1.26.0) (2026-07-14)
+
+
+### Features
+
+* authorization ([cf1a7ff](https://github.com/feasibleone/blong/commit/cf1a7ff605de0a6078fc859a31532443386808b2))
+* blong-mock, blong-server ([756caca](https://github.com/feasibleone/blong/commit/756cacab712db6792bf1b93830fc1d833b396f8d))
+* blong-party ([602a3b4](https://github.com/feasibleone/blong/commit/602a3b422e1f76c27a96b1cd5d5a8cf0edbc268f))
+* check access credentials ([e6af405](https://github.com/feasibleone/blong/commit/e6af405c43921cb9c553db9c4986b7fe56154724))
+* core.resource merging ([371d3e2](https://github.com/feasibleone/blong/commit/371d3e2b3f519dfd59ca4fd480bc33317992afcd))
+* implement subjectObjectSchema ([8ca3282](https://github.com/feasibleone/blong/commit/8ca32829277b9816eb5e43ce708d2f1d0cc3ef28))
+* improve playwright ([c88dca8](https://github.com/feasibleone/blong/commit/c88dca832548a878ce81aab7320395c3c6a81551))
+* manifest concept ([ed3c038](https://github.com/feasibleone/blong/commit/ed3c038352644d2d8f828b3cb69cbea718e7084b))
+* object schema ([688d5d2](https://github.com/feasibleone/blong/commit/688d5d2a4a895c8feba7b898da03c46b3a3f3292))
+* playwright coverage ([616cf61](https://github.com/feasibleone/blong/commit/616cf61f8616dc7fa6fac8f75fcd5a8577e70448))
+* schema helpers and constraints ([8409257](https://github.com/feasibleone/blong/commit/84092571f6b327c1166ef142f70cb7d91b013eaf))
+* schema sync ([ae63684](https://github.com/feasibleone/blong/commit/ae63684ea85d2b0f7adc8e8a380e51e0564d54c4))
+* seed ([5c76603](https://github.com/feasibleone/blong/commit/5c7660392bc1197638810e864bfd47ce1218b2e5))
+* support expressions in the configuration ([843bb58](https://github.com/feasibleone/blong/commit/843bb58c97456d85eac573874c90755bdb68bc95))
+* vitest coverage ([4c6d9cb](https://github.com/feasibleone/blong/commit/4c6d9cb941957b0291cbe091e06884589b1e8f06))
+
+
+### Bug Fixes
+
+* authorization flow test ([f816dc2](https://github.com/feasibleone/blong/commit/f816dc2fb0d1556dff04d42901cfe5c36cca0717))
+* build ([de22713](https://github.com/feasibleone/blong/commit/de2271393350945b8d793ca0ec89670465bba085))
+* core.resource merging ([f191055](https://github.com/feasibleone/blong/commit/f1910558ce0f369f556911c4c0f6397b8003fd33))
+* full stack alignment for CRUD ([8795e08](https://github.com/feasibleone/blong/commit/8795e087182402ac28c3ea03c6bee27319069625))
+* handle existing PK ([fb0041b](https://github.com/feasibleone/blong/commit/fb0041b8f6ac7ba2f0dc0a752ab19dd49c09d79f))
+* hanging playwright install ([13bf7a4](https://github.com/feasibleone/blong/commit/13bf7a4031f1f94160e0cb9d8b4f83a1732e70af))
+* keep running the server in CI for the playwright intent ([5d01f3b](https://github.com/feasibleone/blong/commit/5d01f3b044f4506c2f6fab3c2c048b116b59accb))
+* login ([4def73d](https://github.com/feasibleone/blong/commit/4def73d33473d2b9183e91fa1ab030b2ccb85ad5))
+* Playwright, Storybook and realm DRY ([4302512](https://github.com/feasibleone/blong/commit/43025123e613ef43e0ac5b83ab00fbc0cabfccf2))
+* Playwright, Storybook and realm DRY ([7bbfad8](https://github.com/feasibleone/blong/commit/7bbfad8160da0ead5600ad56b543e935bfd01954))
+* portal loading in the browser ([5c2bc76](https://github.com/feasibleone/blong/commit/5c2bc762dea53d7d2caa0022ea3d7e3f106fdddb))
+
 ## [1.25.1](https://github.com/feasibleone/blong/compare/blong-gogo-v1.25.0...blong-gogo-v1.25.1) (2026-05-25)
 
 

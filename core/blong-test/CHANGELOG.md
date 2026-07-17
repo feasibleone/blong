@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-test-v1.8.1...blong-test-v1.9.0) (2026-07-14)
+
+
+### Features
+
+* manifest concept ([ed3c038](https://github.com/feasibleone/blong/commit/ed3c038352644d2d8f828b3cb69cbea718e7084b))
+
 ## [1.8.1](https://github.com/feasibleone/blong/compare/blong-test-v1.8.0...blong-test-v1.8.1) (2026-05-25)
 
 
