@@ -413,14 +413,14 @@ handler execution. This trace can be:
 - **Replayed:** Re-execute the handler with the same inputs and verify
   checkpoints match, detecting non-determinism.
 - **Compared:** Diff checkpoint traces between two runs to identify where
-  behavior diverged.
+  behaviour diverged.
 - **Visualized:** Render checkpoint sequences as timeline diagrams for
   complex multi-handler flows.
 
 ### Contract Testing via Checkpoints
 
 When handler A calls handler B, the checkpoints emitted by B become part of
-A's observable behavior. This creates an implicit **contract** between
+A's observable behaviour. This creates an implicit **contract** between
 handlers:
 
 ```typescript

@@ -45,9 +45,12 @@ export function defineBlongViteConfig({
     rpcTarget = `http://localhost:${process.env['PLAYWRIGHT_BACKEND_PORT'] || 8080}`,
 }: IBlongViteOptions): ReturnType<typeof defineConfig> {
     const base: UserConfig = {
+        base: '/s/',
         plugins: [react()],
         build: {
             minify: false,
+            assetsInlineLimit: 0,
+            cssCodeSplit: true,
             rollupOptions: {
                 output: {
                     // Keep function names for better debugging in Storybook

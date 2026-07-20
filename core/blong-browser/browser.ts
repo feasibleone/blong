@@ -20,6 +20,7 @@
  * ```
  */
 import {realm} from '@feasibleone/blong';
+import './browser.css';
 
 export default realm(blong => ({
     url: import.meta.url,

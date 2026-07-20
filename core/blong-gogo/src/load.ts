@@ -25,6 +25,7 @@ import {methodParts} from './lib.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
+const extension = '.ts';
 
 const LAYER_FILE = 'layer' as const;
 
@@ -444,6 +445,7 @@ export default async function loadRealm<T extends TSchema>(
                             },
                             gateway: {
                                 port: 0,
+                                static: {},
                                 // Static development keys, so sessions survive server hot-reloads
                                 /* cSpell:disable */
                                 sign: {
@@ -487,7 +489,7 @@ export default async function loadRealm<T extends TSchema>(
                 load: () =>
                     rootKind === 'browser' && globalThis.window
                         ? import('./BrowserLog.ts')
-                        : import('./Log.ts'),
+                        : import(/* vite-ignore */ './Log' + extension),
             },
             {
                 name: 'apiSchema',
@@ -551,27 +553,27 @@ export default async function loadRealm<T extends TSchema>(
                       {
                           name: 'remote',
                           deps: ['log', 'local'],
-                          load: () => import('./RpcClient.ts'),
+                          load: () => import(/* @vite-ignore */ './RpcClient' + extension),
                       },
                       {
                           name: 'rpcServer',
                           deps: ['log'],
-                          load: () => import('./RpcServer.ts'),
+                          load: () => import(/* @vite-ignore */ './RpcServer' + extension),
                       },
                       {
                           name: 'gateway',
                           deps: ['log'],
-                          load: () => import('./Gateway.ts'),
+                          load: () => import(/* @vite-ignore */ './Gateway' + extension),
                       },
                       {
                           name: 'restFs',
                           deps: ['log', 'gateway'],
-                          load: () => import('./RestFs.ts'),
+                          load: () => import(/* @vite-ignore */ './RestFs' + extension),
                       },
                       {
                           name: 'systemDebug',
                           deps: ['log', 'gateway', 'registry', 'rpcServer'],
-                          load: () => import('./SystemDebug.ts'),
+                          load: () => import(/* @vite-ignore */ './SystemDebug' + extension),
                       },
                       {
                           name: 'registry',
@@ -585,22 +587,22 @@ export default async function loadRealm<T extends TSchema>(
                               'watch',
                               'apiSchema',
                           ],
-                          load: () => import('./Registry.ts'),
+                          load: () => import(/* @vite-ignore */ './Registry' + extension),
                       },
                       {
                           name: 'codec',
                           deps: ['log'],
-                          load: () => import('./codec/server.ts'),
+                          load: () => import(/* @vite-ignore */ './codec/server' + extension),
                       },
                       {
                           name: 'orchestrator',
                           deps: ['log'],
-                          load: () => import('./orchestrator/index.ts'),
+                          load: () => import(/* @vite-ignore */ './orchestrator/index' + extension),
                       },
                       {
                           name: 'adapter',
                           deps: ['log'],
-                          load: () => import('./adapter/server.ts'),
+                          load: () => import(/* @vite-ignore */ './adapter/server' + extension),
                       },
                   ]),
         ]).map(({name, load}) => {
@@ -777,7 +779,9 @@ export default async function loadRealm<T extends TSchema>(
                                             platformApi.join(destUrl, 'package.json'),
                                         )
                                     ) {
-                                        const {createRealm} = await import('./kopi.ts');
+                                        const {createRealm} = await import(
+                                            /* @vite-ignore */ './kopi' + extension
+                                        );
                                         await createRealm(destUrl, logger);
                                         const mod = await import(/* @vite-ignore */ fileName);
                                         return mod.default ?? mod;

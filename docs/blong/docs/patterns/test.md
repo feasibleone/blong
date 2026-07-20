@@ -238,7 +238,7 @@ Parameters flow through the `group(name)(steps)` pattern:
 2. It returns a **named step array** containing closures that capture those parameters.
 3. The step array name (set by `group()`) is how it appears in test output.
 
-This means all parameterisation happens before execution — the test framework
+This means all parameterization happens before execution — the test framework
 simply receives a tree of named step arrays and functions.
 
 ### Convention

@@ -1,0 +1,22 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Roboto';
+    color: var(--text-color);
+    background-color: var(--surface-0);
+}
+
+#root {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#root>* {
+    flex: 1;
+    min-height: 0;
+}

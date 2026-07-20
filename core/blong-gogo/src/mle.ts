@@ -2,6 +2,7 @@ import type {FastifyInstance, FastifyRequest} from 'fastify';
 import fp from 'fastify-plugin';
 
 import jose from './jose.ts';
+import isPublic from './public.ts';
 
 export type IConfig = Parameters<typeof jose>[0] & {public: {sign: unknown; encrypt: unknown}};
 
@@ -14,6 +15,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
     fastify.addHook(
         'preValidation',
         async (request: FastifyRequest<{Body: {jsonrpc?: string}}>, reply) => {
+            if (isPublic(request.originalUrl)) return;
             if (
                 request.routeOptions.config.auth &&
                 request.headers['content-type'] === 'application/json'
@@ -95,6 +97,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                       checkpoints?: unknown;
                   },
         ) => {
+            if (isPublic(request.originalUrl)) return payload;
             if (payload instanceof Error) return payload;
             const mlek =
                 request.auth?.credentials?.mlek ||
@@ -108,10 +111,7 @@ export default fp<IConfig>(async function mlePlugin(fastify: FastifyInstance, co
                 const encrypt: (message: object) => unknown = message =>
                     request.routeOptions.config.mle === false
                         ? message
-                        : mle.signEncrypt(
-                              message,
-                              mlek as {type: string},
-                          );
+                        : mle.signEncrypt(message, mlek as {type: string});
                 const where = payload.jsonrpc
                     ? payload
                     : {

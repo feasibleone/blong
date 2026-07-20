@@ -211,10 +211,10 @@ All stories use Playwright-based snapshot testing for visual regression detectio
 
 ### Agent usage
 
-AI agents can utilize the real time log to monitor the behavior of the
+AI agents can utilize the real time log to monitor the behaviour of the
 application in real time, while they implement new features or debug issues.
 This allows them to see the log entries as they are created, which can provide
-valuable insights into the behavior of the application and help them if the
+valuable insights into the behaviour of the application and help them if the
 functionality they are implementing is working as expected.
 A skill for the same is implemented.
 

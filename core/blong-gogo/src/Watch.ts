@@ -195,7 +195,8 @@ export default class Watch extends Internal implements IWatch {
             },
             [[] as string[], [] as string[]],
         );
-        const {Formatter, TypeScriptToTypeBox} = await import('@sinclair/typebox-codegen');
+        const codeGen = '@sinclair/typebox-codegen';
+        const {Formatter, TypeScriptToTypeBox} = await import(/* @vite-ignore */ codeGen);
         if (schema.length)
             this.#platform.writeFileSync(
                 this.#platform.join(dir, '~.schema.ts'),

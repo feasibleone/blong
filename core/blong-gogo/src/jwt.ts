@@ -5,6 +5,7 @@ import {type Errors, type ILocal} from '@feasibleone/blong/types';
 import type {FastifyInstance, FastifyPluginOptions, FastifyReply, FastifyRequest} from 'fastify';
 import fp from 'fastify-plugin';
 import {LRUCache} from 'lru-cache';
+import isPublic from './public.ts';
 
 import {type IGatewayCodec} from './GatewayCodec.ts';
 
@@ -65,7 +66,7 @@ export default fp<{
             'preValidation',
             function (request: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void) {
                 const auth = request.routeOptions.config.auth;
-                if (auth !== false && !request.originalUrl.startsWith('/documentation')) {
+                if (auth !== false && !isPublic(request.originalUrl)) {
                     if (auth === 'login') {
                         request.auth = {credentials: {mlek: 'header', mlsk: 'header'}};
                         done();

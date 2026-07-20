@@ -83,6 +83,9 @@ interface IConfig extends IConfigMLE {
         cache: object;
         audience: string;
     };
+    static?: {
+        root: string;
+    };
 }
 
 function operationParams(
@@ -610,6 +613,11 @@ export default class Gateway extends Internal implements IGateway {
                 methodId: methodId,
                 methodParts: methodParts,
             });
+            if (this.#config.static)
+                await this.#server.register(
+                    (await import('./static.ts')).default,
+                    this.#config.static,
+                );
             if (this.#config.cors)
                 await this.#server.register((await import('./cors.ts')).default, this.#config.cors);
             if (this.#config.sign || this.#config.encrypt) {
