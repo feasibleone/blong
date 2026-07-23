@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.1.0...blong-marine-v1.2.0) (2026-07-23)
+
+
+### Features
+
+* static routes ([b544ca3](https://github.com/feasibleone/blong/commit/b544ca3b4c3ed858457c93f21b8523147c30bf59))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.0.0...blong-marine-v1.1.0) (2026-07-14)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.10.0...blong-browser-v1.11.0) (2026-07-23)
+
+
+### Features
+
+* compress static assets ([a0a376d](https://github.com/feasibleone/blong/commit/a0a376dc141a8b3041ad0c83895bd3de5675c2e2))
+* static routes ([b544ca3](https://github.com/feasibleone/blong/commit/b544ca3b4c3ed858457c93f21b8523147c30bf59))
+
 ## [1.10.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.9.0...blong-browser-v1.10.0) (2026-07-14)
 
 

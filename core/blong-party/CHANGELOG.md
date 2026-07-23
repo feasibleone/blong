@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-party-v1.0.1...blong-party-v1.1.0) (2026-07-23)
+
+
+### Features
+
+* static routes ([b544ca3](https://github.com/feasibleone/blong/commit/b544ca3b4c3ed858457c93f21b8523147c30bf59))
+
 ## [1.0.1](https://github.com/feasibleone/blong/compare/blong-party-v1.0.0...blong-party-v1.0.1) (2026-07-17)
 
 

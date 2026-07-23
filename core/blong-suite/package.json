@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-suite",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "private": true,
     "description": "Full-stack Blong suite template — wires blong-browser + realm packages into a runnable application with Storybook and Playwright",
     "type": "module",
