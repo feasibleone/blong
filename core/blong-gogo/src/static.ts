@@ -19,6 +19,10 @@ export default fp<IConfig>(async function staticPlugin(fastify: FastifyInstance,
         root: config.root ?? path.join(process.cwd(), 'dist'),
         prefix: '/s',
         redirect: true,
+        preCompressed: true,
+        cacheControl: true,
+        maxAge: '1y',
+        immutable: true,
         setHeaders: (res, filePath) => {
             if (filePath.endsWith('.html')) {
                 res.header(

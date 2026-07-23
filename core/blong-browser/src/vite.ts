@@ -23,7 +23,9 @@
  */
 import react from '@vitejs/plugin-react';
 import {dirname} from 'node:path';
+import gzipPlugin from 'rollup-plugin-gzip';
 import {type UserConfig, defineConfig, mergeConfig} from 'vite';
+import {brotliCompressSync} from 'zlib';
 
 const dir = (url: string) => dirname(url.replace(/file:\//g, ''));
 
@@ -56,6 +58,13 @@ export function defineBlongViteConfig({
                     // Keep function names for better debugging in Storybook
                     keepNames: true,
                 },
+                plugins: [
+                    gzipPlugin(), // Generates .gz files
+                    gzipPlugin({
+                        customCompression: content => brotliCompressSync(Buffer.from(content)),
+                        fileName: '.br', // Generates .br files
+                    }),
+                ],
             },
         },
         server: {
