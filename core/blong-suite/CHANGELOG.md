@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.6.0...blong-suite-v1.7.0) (2026-07-23)
+
+
+### Features
+
+* static routes ([b544ca3](https://github.com/feasibleone/blong/commit/b544ca3b4c3ed858457c93f21b8523147c30bf59))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.5.0...blong-suite-v1.6.0) (2026-07-14)
 
 
