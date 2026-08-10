@@ -18,10 +18,6 @@ export default server(() => ({
         async function access() {
             return import('./server.ts');
         },
-        /** Party realm — person records created by self-registration */
-        async function party() {
-            return import('@feasibleone/blong-party/server.ts');
-        },
     ],
     config: {
         default: {
@@ -37,15 +33,10 @@ export default server(() => ({
             core: {},
             login: {},
             access: {},
-            party: {},
         },
         integration: {
             watch: {
-                test: [
-                    'test.login.flow',
-                    'test.authorization.flow',
-                    'test.registration.flow',
-                ],
+                test: ['test.login.flow', 'test.authorization.flow'],
             },
         },
     },

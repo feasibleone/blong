@@ -1,12 +1,7 @@
 import {server} from '@feasibleone/blong';
-import pkg from './package.json' with {type: 'json'};
 
 export default server(() => ({
     url: import.meta.url,
-    pkg: {
-        name: pkg.name,
-        version: pkg.version,
-    },
     children: [
         /** Built-in blong-server realm: RPC, validation orchestrator, DB adapter */
         async function srv() {
@@ -39,6 +34,9 @@ export default server(() => ({
                     },
                 },
             },
+            // Enforce RBAC on the gateway — resolves allowed actions for the
+            // authenticated user (access realm), 403 when not authorized.
+            gateway: {authorize: 'access.authorization.list'},
         },
         dev: {
             gateway: {
@@ -50,6 +48,11 @@ export default server(() => ({
             access: {},
             party: {},
             login: {},
+        },
+        integration: {
+            watch: {
+                test: ['test.registration.flow'],
+            },
         },
     },
 }));

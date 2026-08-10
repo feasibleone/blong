@@ -18,10 +18,11 @@
         "blong-watch": "blong-watch",
         "build": "true",
         "ci-lint": "blong-dev lint",
-        "ci-test": "../../test/integration/wait.sh mysql && blong-dev playwright --coverage",
+        "ci-test": "../../test/integration/wait.sh mysql && blong-dev test && blong-dev playwright --coverage",
         "dev": "vite",
         "playwright": "blong-dev playwright",
         "playwright:update": "blong-dev playwright --update-snapshots",
+        "test": "blong-dev test",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
