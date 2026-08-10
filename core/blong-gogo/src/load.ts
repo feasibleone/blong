@@ -489,7 +489,7 @@ export default async function loadRealm<T extends TSchema>(
                 load: () =>
                     rootKind === 'browser' && globalThis.window
                         ? import('./BrowserLog.ts')
-                        : import(/* vite-ignore */ './Log' + extension),
+                        : import(/* @vite-ignore */ './Log' + extension),
             },
             {
                 name: 'apiSchema',

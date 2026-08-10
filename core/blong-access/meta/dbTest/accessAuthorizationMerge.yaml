@@ -14,4 +14,4 @@ user:
 role:
   Admin: testManagement
 capability:
-  testManagement: accessTestPrivate
+  testManagement: access.test.private,subject.object.schema

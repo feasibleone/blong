@@ -156,14 +156,12 @@ function startMockGoogleServer(port: number): void {
     });
 
     server.on('error', error => {
-        // eslint-disable-next-line no-console
         console.error('[mock-google] server error:', error);
     });
     server.listen(port, '0.0.0.0');
     // Do not keep the process/event loop alive just for the mock — tests must
     // be able to exit (tap waits for all open handles).
     server.unref();
-    // eslint-disable-next-line no-console
     console.log(`[mock-google] listening on http://localhost:${port}`);
 }
 
