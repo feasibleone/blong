@@ -230,6 +230,14 @@ group(name)([
 - `$meta` is always available directly (not a thenable proxy)
 - Configurable concurrency limit (default: 10 parallel steps)
 
+> **Gotcha — dependents destructure the previous step's RETURN value.** A step that a later step
+> consumes (via `context.step` / `{step}` destructuring) MUST `return` that data. If a producer step
+> returns nothing (`undefined`), a consumer step that destructures it throws
+> `Cannot destructure property 'x' of (intermediate value) as it is undefined.` Always end producer
+> steps with `return {x, y}` when a later step reads their fields — even when the step's main job
+> was an assertion (e.g. a "duplicate registration" step must still return the credentials so the
+> login step can use them).
+
 ## Assertions
 
 ### node:assert Methods

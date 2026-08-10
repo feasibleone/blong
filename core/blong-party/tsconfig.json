@@ -38,6 +38,7 @@
         "meta/**/*.ts",
         "orchestrator/**/*.ts",
         "browser/orchestrator/**/*.ts",
+        "browser/orchestrator/**/*.tsx",
         "test/**/*.ts"
     ]
 }

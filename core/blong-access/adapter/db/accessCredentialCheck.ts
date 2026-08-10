@@ -1,23 +1,16 @@
 import {handler} from '@feasibleone/blong';
-import crypto from 'crypto';
 
-const _iterations = 100000;
-const _keyLength = 64;
-const _digest = 'sha512';
-
-/**
- * Verify a password against a PBKDF2-derived hash and salt.
- */
-function verifyPassword(password: string, hash: string, salt: string): boolean {
-    const derivedKey = crypto.pbkdf2Sync(password, salt, _iterations, _keyLength, _digest);
-    return derivedKey.toString('hex') === hash;
-}
+import * as account from './account.ts';
 
 export default handler(
-    ({errors, lib: {crockfordEncode}}) =>
+    ({
+        errors,
+        lib: {crockfordEncode, verifyPassword},
+        handler: {accessPermissionList},
+    }) =>
         async function accessCredentialCheck(
             params: {username: string; password: string},
-            _$meta: Record<string, unknown>,
+            $meta: Record<string, unknown>,
         ): Promise<{
             userId: string;
             permissionMap: string;
@@ -44,11 +37,17 @@ export default handler(
                 throw errors.userInactive();
             }
 
-            // 2. Find the active credential for this user
+            // 2. Find the active password credential for this user
             const credential = await queryBuilder
-                .select('credentialId', 'credentialHash', 'credentialSalt')
+                .select(
+                    'credentialId',
+                    'credentialHash',
+                    'credentialSalt',
+                    'credentialParamsJSON',
+                )
                 .from('access_credential')
                 .where('userId', user.userId)
+                .where('credentialType', 'password')
                 .where('isActive', 1)
                 .where(function () {
                     this.whereNull('expiresAt').orWhere('expiresAt', '>', new Date());
@@ -59,53 +58,29 @@ export default handler(
                 throw errors.credentialNotFound();
             }
 
-            // 3. Verify password against stored PBKDF2 hash
+            // 3. Verify password using the credential parameters stored on the row
+            // (`credentialParamsJSON` is parsed to an object by the knex adapter;
+            // fall back to config.password when it was not persisted).
             if (
                 !verifyPassword(
                     params.password,
                     credential.credentialHash,
                     credential.credentialSalt,
+                    credential.credentialParamsJSON,
                 )
             ) {
                 throw errors.credentialsMismatch();
             }
 
-            // 4. Find effective role bits via core_path (materialized from access_effectiveRolePath)
-            const roles = await queryBuilder
-                .select('r.roleBit')
-                .from('access_role as r')
-                .join('core_path as p', 'p.destinationId', 'r.roleId')
-                .where('p.originId', user.userId)
-                .where('p.pathType', 'access.effectiveRole');
-
-            const roleBits = roles.map((r: {roleBit: number}) => r.roleBit);
-
-            // 5. Find effective actions via core_path (materialized from access_effectiveActionPath)
-            const actions = await queryBuilder
-                .select('res.resourceName')
-                .from('core_resource as res')
-                .join('core_path as p', 'p.destinationId', 'res.resourceId')
-                .where('p.originId', user.userId)
-                .where('p.pathType', 'access.effectiveAction');
-
-            const actionNames = actions.map((a: {resourceName: string}) => a.resourceName);
-
-            // 6. Encode role bits into Crockford Base32 bitmask
-            const maxRoleBit = Math.max(...roleBits);
-            if (maxRoleBit > 1023)
-                throw new Error('Role bit exceeds maximum allowed value of 1023');
-
-            const permissionMap: string = Buffer.from(
-                roleBits.reduce(
-                    (acc, bit) => {
-                        const byteIndex = Math.floor(bit / 8);
-                        const bitIndex = bit % 8;
-                        acc[byteIndex] |= 1 << bitIndex;
-                        return acc;
-                    },
-                    new Uint8Array(Math.ceil(maxRoleBit / 8 + 1)),
-                ),
-            ).toString('base64');
+            // 4. Resolve effective role bits + action names from the materialized core_path
+            const {permissionMap, actions: actionNames} = await accessPermissionList<{
+                roleBits: number[];
+                actions: string[];
+                permissionMap: string;
+            }>(
+                {userId: account.bufToUuid(user.userId)},
+                $meta,
+            );
 
             return {
                 userId: crockfordEncode(user.userId),

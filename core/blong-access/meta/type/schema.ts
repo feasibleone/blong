@@ -37,6 +37,15 @@ export default schema(async ({lib: {type}}) => ({
             credentialType: type.stringNotNull(),
             credentialHash: type.stringNotNull(),
             credentialSalt: type.stringNotNull(),
+            /**
+             * Credential function parameters as a JSON document (string column,
+             * auto-(de)serialized by the knex adapter for `*JSON` columns).
+             * Contains the function name and its parameters, e.g.
+             * `{"function":"hash","algorithm":"pbkdf2","iterations":100000,
+             * "keyLength":64,"digest":"sha512"}` — stored so verification
+             * re-uses the exact parameters that produced `credentialHash`.
+             */
+            credentialParamsJSON: type.stringNull(),
             isActive: type.booleanNotNull(),
             expiresAt: type.dateTimeNull(),
         },
@@ -163,6 +172,12 @@ export default schema(async ({lib: {type}}) => ({
             requireUppercase: type.booleanNull(),
             maxAgeDays: type.integerNull(),
             maxAttempts: type.integerNull(),
+            /**
+             * Credential function parameters the policy dictates for new
+             * credentials of this type (JSON document, `*JSON` column — see
+             * `credential.credentialParamsJSON`).
+             */
+            credentialParamsJSON: type.stringNull(),
             isActive: type.booleanNotNull(),
         },
         {

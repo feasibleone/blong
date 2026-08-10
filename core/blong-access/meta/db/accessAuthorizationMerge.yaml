@@ -1,0 +1,20 @@
+role:
+  Guest: guestBasic
+capability:
+  guestBasic: accessTestGuest,access.profile.get
+policy:
+  password:
+    credentialType: password
+    minLength: 8
+    requireSpecialChar: false
+    requireNumber: false
+    requireUppercase: false
+    maxAgeDays: 90
+    maxAttempts: 5
+    credentialParams:
+      function: hash
+      algorithm: pbkdf2
+      iterations: 100000
+      keyLength: 64
+      digest: sha512
+    isActive: 1

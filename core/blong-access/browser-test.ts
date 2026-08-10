@@ -53,7 +53,7 @@ export default browser(blong => ({
             login: {},
             access: {},
             watch: {
-                test: ['test.authorization.flow'],
+                test: ['test.authorization.flow', 'test.registration.flow'],
             },
         },
     },

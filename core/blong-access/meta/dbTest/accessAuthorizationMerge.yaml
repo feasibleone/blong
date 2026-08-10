@@ -8,6 +8,9 @@ user:
   testViewer:
     password: testPassword
     roles: Customer
+  testGuest:
+    password: testPassword
+    roles: Guest
 role:
   Admin: testManagement
 capability:

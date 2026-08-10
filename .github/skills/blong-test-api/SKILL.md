@@ -137,6 +137,89 @@ export default async (load: Load): Promise<void> => {
 
 An example of this test approach is available in the [blong-eip](../../../core/blong-eip) package.
 
+## Wiring test groups: `integration.watch.test`
+
+Both platforms declare which test groups to run under the `integration` intent via `watch.test` —
+a list of group names. A test handler keyed `testRegistrationFlow` registers a group named
+`test.registration.flow` (the key is normalised by `methodParts`), so the list entry must be that
+derived name, not the raw key.
+
+Server-side groups are declared in the suite's `index.ts` / `server.ts`:
+
+```ts
+config: {
+    integration: {
+        watch: {test: ['test.login.flow', 'test.authorization.flow', 'test.registration.flow']},
+    },
+},
+```
+
+**Browser-side groups must be declared in the BROWSER suite too.** The browser platform does not
+automatically run every `browser/test/test` group — if a group is missing from the browser suite's
+`integration.watch.test` it silently never executes (coverage then reports "incomplete" functions
+and the test is never asserted). When a realm runs a browser half of the tap runner (see below),
+add the group there as well.
+
+## Browser-side test suite (`browser-test.ts`)
+
+When the public API is tested from a simulated browser via the `index.test.ts` tap runner, the
+runner loads BOTH the server definition (`index.ts` / `server.ts`) and a browser definition —
+conventionally `browser-test.ts` — and runs each platform's `test()` in its own tap block:
+
+```ts
+// index.test.ts
+import load from '@feasibleone/blong-gogo';
+import tap, {Test} from 'tap';
+import browserSuite from './browser-test.ts';
+import serverSuite from './index.ts';
+
+const intents = ['microservice', 'integration', 'dev'];
+const manifest: Record<string, unknown> = {};
+const [serverPlatform, browserPlatform] = await Promise.all([
+    load(serverSuite, 'realm', 'realm', intents, manifest),
+    load(browserSuite, 'realm', 'realm', intents, manifest),
+]);
+await Promise.all([serverPlatform.start({}), browserPlatform.start({})]);
+await tap.test('realm login flow (server)', async (test: Test) => serverPlatform.test(test));
+await tap.test('realm login flow (browser)', async (test: Test) => browserPlatform.test(test));
+await Promise.all([serverPlatform.stop(), browserPlatform.stop()]);
+```
+
+`browser-test.ts` is a `browser()` definition that loads `@feasibleone/blong-test/browser.ts` (test
+dispatch + backend HTTP adapter), `@feasibleone/blong-login/browser.ts` and the realm's own
+`browser.ts`. Its `testClient.backend.namespace` config lists the namespaces the browser proxies to
+the server gateway over HTTP, and its `integration.watch.test` lists the browser-side groups:
+
+```ts
+// browser-test.ts
+export default browser(blong => ({
+    url: import.meta.url,
+    children: [
+        async function testClient() {
+            return import('@feasibleone/blong-test/browser.ts');
+        },
+        async function login() {
+            return import('@feasibleone/blong-login/browser.ts');
+        },
+        async function access() {
+            return import('./browser.ts');
+        },
+    ],
+    config: {
+        integration: {
+            testClient: {backend: {namespace: ['access', 'login']}},
+            access: {},
+            watch: {test: ['test.authorization.flow', 'test.registration.flow']},
+        },
+    },
+}));
+```
+
+> **Gotcha:** the framework hands each step its dependency step's **return value**. A step that a
+> later step destructures MUST `return` that data — otherwise the next step throws
+> `Cannot destructure property 'x' of (intermediate value) as it is undefined.` Every step that
+> produces data consumed downstream (credentials, ids, tokens) must explicitly `return` it.
+
 ## Choosing between the two
 
 | Situation                                                       | Approach                       |

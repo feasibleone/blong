@@ -516,6 +516,12 @@ The intent listed is the CLI intent that must be active for the layer to load au
   browser side (fastest, simulates most common interaction)
 - **Internal API tests:** Defined in `internal.test.ts` — loads only server, uses `tap` for coverage
 - **HTTP testing:** Use `.http` files for manual/scripted API testing
+- **Wiring test groups (`integration.watch.test`):** every test group a realm runs must be listed in
+  the `integration.watch.test` config of the platform that owns it. Server-side groups go in
+  `index.ts` / `server.ts`; browser-side groups (`browser/test/test/*.ts`) go in the **browser**
+  suite's config too (the tap runner loads a dedicated `browser-test.ts` alongside `index.ts` and
+  calls each platform's `test()`). A group missing from the browser suite silently never executes
+  and coverage reports "incomplete". See the **blong-test-api** skill for the full pattern.
 
 ### Configuration Environments
 

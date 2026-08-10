@@ -18,7 +18,7 @@
     "exports": {
         ".": {
             "development": "./src/index.ts",
-            "types": "./dist/index.d.ts",
+            "types": "./dist/src/index.d.ts",
             "import": "./dist/blong-browser.es.js"
         },
         "./browser.js": {
@@ -29,7 +29,7 @@
         "./browser.ts": "./browser.ts",
         "./storybook": {
             "development": "./src/storybook.ts",
-            "types": "./dist/storybook.d.ts",
+            "types": "./dist/src/storybook.d.ts",
             "import": "./dist/storybook.es.js"
         },
         "./storybook.tsx": "./storybook.tsx",
@@ -43,7 +43,7 @@
         "./package.json": "./package.json"
     },
     "main": "./dist/blong-browser.es.js",
-    "types": "./dist/index.d.ts",
+    "types": "./dist/src/index.d.ts",
     "scripts": {
         ".ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
         "build": "true",

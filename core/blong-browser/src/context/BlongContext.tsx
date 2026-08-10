@@ -25,6 +25,22 @@ export interface IBlongPortalConfig {
      * an expired session (401 / unauthenticated).
      */
     loginRoute?: string;
+    /** Login screen configuration (self-registration / social login). */
+    login?: {
+        /**
+         * Action dispatched as `component/${registerPage}` when the Register
+         * button is clicked on the Login screen.
+         */
+        registerPage?: string;
+    };
+    /** Google OAuth configuration for the "Continue with Google" flow. */
+    google?: {
+        /** Authorization server base URL (real Google, or the local mock). */
+        baseUrl?: string;
+        clientId?: string;
+        redirectUri?: string;
+        scope?: string;
+    };
 }
 
 type AnyHandlerProxy = IHandlerProxy<Record<string, unknown>>;

@@ -96,6 +96,7 @@ words:
   - GBIF
   - Ginglymostoma
   - gogo
+  - googleusercontent
   - Gorgoniidae
   - Hejlsberg
   - hepatus
@@ -111,6 +112,7 @@ words:
   - inputtextarea
   - ivac
   - jobtriger
+  - jwks
   - kalinkrustev
   - keyblock
   - knex
@@ -147,6 +149,7 @@ words:
   - ntlm
   - Ntlm
   - ocellaris
+  - oidc
   - onprem
   - OpenAPIV2
   - OpenAPIV3_1
@@ -248,6 +251,7 @@ words:
   - unrole
   - unstate
   - Upserted
+  - userinfo
   - userpass
   - VARCHAR
   - vars

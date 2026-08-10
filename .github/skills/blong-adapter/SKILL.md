@@ -198,6 +198,30 @@ export default adapter(blong => ({
 }));
 ```
 
+**JSON columns (`*JSON` suffix).** The knex adapter automatically (de)serializes any column whose
+name ends in `JSON`: object/array values are `JSON.stringify`'d on `insert`/`update` and parsed
+back on read. Declare such columns with `type.stringNull()` in the realm schema — see the
+`blong-schema` skill. No adapter code needed; it applies to every queryBuilder produced by the
+shared `srv.db` adapter (implementation: `blong-gogo/src/adapter/schema/knex/json.ts`).
+
+**Config flow: handlers vs library factories (shared `srv.db` adapter).** Handler groups imported
+by the shared `srv.db` knex adapter (e.g. an access realm's `adapter/db` group, `core.db`,
+`party.db`) get their configuration from **two distinct slices** — verify which one your code
+reads before deciding where to declare defaults:
+
+- **Handler `this.config`** = the *adapter's config slice* (`port.config[namespace]`). This is fed
+  by `srv.db.<key>` in the **suite's** server entry (`index.ts`). A realm's `server.ts` config does
+  **not** reach handlers' `this.config`, and neither does suite `access.db.*`-style nesting.
+- **`library()` factory `config`** = the *realm's group config slice*
+  (`moduleConfig['<group>']`). This is fed by the realm's **own `server.ts`** under the group key,
+  e.g. `config.default.db.password` reaches the `adapter/db` library as `config.password`. This is
+  the **reusable, realm-owned** way to provide defaults that every suite gets automatically
+  (blong-access declares its credential-hashing fallback this way).
+
+Additionally, an imported `.db` handler group's own `config` export (e.g. `meta/db/db.ts` returning
+`config: {schema, ...}`) is merged into the adapter config, which is how the schema declaration
+reaches the `srv.db` adapter.
+
 ### 4. Webhook Adapter
 
 **Use Cases:**

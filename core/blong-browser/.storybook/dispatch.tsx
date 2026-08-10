@@ -30,6 +30,7 @@ import type {IHandlerProxy} from '@feasibleone/blong';
 import React from 'react';
 import {App} from '../src/components/App/App.js';
 import {Explorer} from '../src/components/Explorer/Explorer.js';
+import {SelfRegistration} from '../src/components/SelfRegistration/SelfRegistration.js';
 import {useBlongForm} from '../src/components/Form/FormContext.js';
 import {Hint} from '../src/components/Hint/Hint.js';
 import {makeHandlerProxy, type IBlongPortalConfig} from '../src/context/BlongContext.js';
@@ -325,35 +326,23 @@ export type Handler = (params?: Record<string, unknown>) => Promise<unknown>;
  *   <entity><Entity>EditError — save, server validation failure
  *   <entity><Entity>Find     — list/search, returns empty result set
  */
-function SelfRegistrationPlaceholder({page}: {page: string | undefined}) {
+
+/**
+ * Real self-registration page wired to the mock dispatch — rendered by Login's
+ * `registerPage` mechanism (`component/user.selfRegistration`).
+ */
+function SelfRegistrationPage() {
     return (
-        <div
-            className="blong-login__card"
-            style={{maxWidth: 400, marginTop: '2rem'}}
-        >
-            <h3 style={{textAlign: 'center', marginBottom: '1rem'}}>Create Account</h3>
-            <p
-                style={{
-                    color: 'var(--text-color-secondary)',
-                    fontSize: '0.9rem',
-                    marginBottom: '1.5rem',
-                }}
-            >
-                Registration form placeholder. Configure a <code>component/{page}</code> dispatch
-                handler for page <em>{page}</em> to provide the real registration form.
-            </p>
-            <pre
-                style={{
-                    fontSize: '0.75rem',
-                    background: 'var(--surface-hover)',
-                    padding: '0.75rem',
-                    borderRadius: '4px',
-                    overflow: 'auto',
-                }}
-            >
-                {`// In your dispatch overrides:\n'component/${page}': ({page}) => {\n  if (page === '${page}') return Promise.resolve(MyRegistrationForm);\n}`}
-            </pre>
-        </div>
+        <SelfRegistration
+            title="Marine Science Portal"
+            logoIcon="pi pi-globe"
+            onRegister={async credentials => {
+                console.log('register params:', credentials);
+                useAppStore.getState().setToken('demo-token');
+            }}
+            onGoogle={() => console.log('google login clicked')}
+            onBack={() => undefined}
+        />
     );
 }
 
@@ -644,8 +633,7 @@ export const defaultHandlers: Record<string, Handler> = {
         new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
     'component/portal.black.explorer': () =>
         new Promise(resolve => setTimeout(() => resolve(CoralExplorer), 1500)),
-    'component/user.selfRegistration': () =>
-        Promise.resolve(SelfRegistrationPlaceholder.bind(null, {page: 'user.selfRegistration'})),
+    'component/user.selfRegistration': () => Promise.resolve(SelfRegistrationPage),
     'component/view.pageOne': async () => ({
         title: 'Page 1',
         component: () => () => (

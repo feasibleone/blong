@@ -21,6 +21,7 @@ import {
     prepareResultRows,
     strToBinary,
 } from '../schema/knex/binary.ts';
+import {wrapKnex} from '../schema/knex/json.ts';
 import {
     bindSyntheticHandlers,
     schemaProcedureBindImpl,
@@ -81,7 +82,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             },
         },
         start() {
-            this.config.context = {queryBuilder: KnexLib(this.config.knex) as unknown as Knex};
+            this.config.context = {
+                queryBuilder: wrapKnex(KnexLib(this.config.knex)) as unknown as Knex,
+            };
             super.connect();
             return super.start();
         },
@@ -217,7 +220,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 ] ?? this.config.knex;
             this.config.knex = newKnexConfig as object;
             this.config.context = {
-                queryBuilder: KnexLib(newKnexConfig as object) as unknown as Knex,
+                queryBuilder: wrapKnex(KnexLib(newKnexConfig as object)) as unknown as Knex,
             };
         },
         async exec(

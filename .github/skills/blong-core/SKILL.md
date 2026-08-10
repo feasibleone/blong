@@ -274,11 +274,11 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 | Table | PK | Notes |
 | ----- | -- | ----- |
 | `access.user` | `userId` → core.resource | emailAddress, isActive |
-| `access.credential` | `credentialId` (increment) | FK userId; credentialType (`password`/`clientSecret`), PBKDF2 hash + salt, isActive, expiresAt |
+| `access.credential` | `credentialId` (increment) | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
 | `access.role` | `roleId` → core.resource | roleBit (0–1023, unique), description |
 | `access.capability` | `capabilityId` → core.resource | groups actions into a "what" |
 | `access.action` | `actionId` → core.resource | description; name (in resourceName) is the semantic triple |
-| `access.policy` | `policyId` → core.resource | credential complexity/lifecycle rules (**schema-only — not yet wired**) |
+| `access.policy` | `policyId` → core.resource | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; `password` policy is seeded) |
 | `access.flow` | `flowId` → core.resource | MFA step definitions, e.g. `["password","totp"]` (**schema-only**) |
 | `access.access` | `accessId` → core.resource | time/IP/geo rule config (**schema-only**) |
 | `access.session` | `sessionId` (uid, standalone) | active sessions (**schema-only — not persisted as resources**) |
@@ -313,8 +313,11 @@ Authorization queries read the **materialized** `core_path` (a single indexed lo
 
 1. `login.token.create` (from `blong-login`) → `access.credential.check`.
 2. `accessCredentialCheck` (`adapter/db`) looks up the user by `core_resource.resourceName` +
-   `typeAlias = 'access.user'`, checks `isActive`, verifies PBKDF2 (sha512, 100k iterations,
-   64-byte key, random salt), reads effective role bits + action names from `core_path`.
+   `typeAlias = 'access.user'`, checks `isActive`, verifies the secret using the credential's
+   **stored parameters** — `credentialParamsJSON` (a `*JSON` column) holds the function and its
+   params, e.g. `{"function":"hash","algorithm":"pbkdf2","iterations":100000,"keyLength":64,"digest":"sha512"}`
+   (falling back to the `config.password` defaults declared in the realm's `server.ts` when not
+   stored) — then reads effective role bits + action names from `core_path`.
 3. Role bits are packed into a base64 `permissionMap` bitmask (roleBit 0–1023 → bit position).
 4. `loginTokenCreate` signs a JWT carrying `per: permissionMap` (and `sub` = actorId).
 5. The gateway's `authorize` hook (`access.authorization.list`) decodes `per` from the token,
@@ -354,7 +357,9 @@ The login response also returns `permissions` (the resolved action names) for cl
   capabilities via `hasCapability`. After any graph change, run `CALL access_pathRefresh()` (the
   `accessAuthorizationMerge` handler does this for you).
 - **New user**: seed or call `access.authorization.merge` with `{user: {name: ..., password: ...,
-  roles: ...}}` — it creates the credential (PBKDF2) and the `hasRole` edges.
+  roles: ...}}` — it creates the credential and the `hasRole` edges. The credential's hashing
+  params resolve as **policy → `config.password` → built-in literals** and are stored on the row
+  as `credentialParamsJSON` so verification always re-uses them.
 - **Roles/capabilities/actions in bulk**: use `accessAuthorizationMerge` with the YAML seed pattern —
   reference entities by **name**, never by raw ID:
 
@@ -370,8 +375,19 @@ The login response also returns `permissions` (the resolved action names) for cl
 
 - **Seed roles for production**: `meta/db/accessRoleMerge.yaml` seeds Admin(bit0)/Manager(bit1)/
   CustomerService(bit2)/Customer(bit3) as `core.resource` + `access_role` rows.
-- **New policy/flow** (password rules, MFA steps): the tables exist; wire handlers to consume them —
-  this is open extension territory.
+- **Credential-function parameters (hashing etc.)**: use the `adapter/db/password.ts` library
+  (`hashPassword`, `verifyPassword`, `resolveCredentialParams`, `credentialPolicyParams`). The
+  active policy for a credential type (lookup by `credentialType` + `isActive` on `access.policy`)
+  dictates the params via its own `credentialParamsJSON`; the `password` policy is seeded in
+  `meta/db/accessAuthorizationMerge.yaml` (`credentialParams:` block). Config defaults live in the
+  realm's `server.ts` (`config.default.db.password`), reused in every suite that includes the realm.
+- **Google identity exchange (OIDC & OAuth)**: `access.identity.check` (via `login.token.exchange`)
+  supports both flows **simultaneously**, selected per call with the `flow` parameter (`oidc` default,
+  `oauth`) — `oidc` uses OIDC Discovery to resolve the token/JWKS/userinfo endpoints and enriches the
+  profile from UserInfo; `oauth` uses `${baseUrl}/token` + `${baseUrl}/certs` directly. See
+  `adapter/db/oidc.ts` and the mock in `sim/google/mockServer.ts`.
+- **New policy/flow** (password rules, MFA steps): policies can now dictate credential params;
+  flow/access/session/audit tables still exist schema-only — wire handlers to consume them.
 - **Test endpoints**: `adapter/dbTest/accessTestPrivate` (protected) and `accessTestPublic`
   (`auth: false`) are reference endpoints proving the 401/403/200 gate — replace with real
   business actions.
@@ -425,8 +441,8 @@ These patterns work for any resource-based entity (core, party, access):
 - **After mutating RBAC graph edges, refresh `core.path`** (`CALL access_pathRefresh()`), or
   effective role/action queries return stale data.
 - **Reference entities by name in seeds/custom merges**, never by raw DB IDs.
-- **`policy`, `flow`, `access`, `session`, `audit` are schema-only** — don't assume handlers exist
-  for them.
+- **`flow`, `access`, `session`, `audit` are schema-only** — don't assume handlers exist for them.
+  `policy` is partly wired: its `credentialParamsJSON` is consumed for new credentials.
 
 ---
 

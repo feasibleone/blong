@@ -46,7 +46,7 @@ children: [
 
 ## Runtime behaviors
 
-Two framework behaviors in the knex adapter make the resource graph work automatically — do not
+Framework behaviors in the knex adapter make the resource graph work automatically — do not
 reimplement them:
 
 1. **`add` on a resource-backed table auto-creates the `core_resource` row.** When a primary key
@@ -55,6 +55,11 @@ reimplement them:
    `core_resource` row and the entity row.
 2. **`merge` with a `resourceType` param resolves/creates `core_resource` rows by `name`.** Each
    row's `name` maps to `core_resource.resourceName` and becomes the idempotent merge key.
+3. **`*JSON` columns are auto-(de)serialized.** Any column whose name ends in `JSON` (declared as
+   `type.stringNull()`) is stored/retrieved as JSON automatically: object/array values are
+   `JSON.stringify`'d on write and parsed back on read — no manual `JSON.parse`/`stringify` in
+   handlers (see `blong-gogo/src/adapter/schema/knex/json.ts`). Example:
+   `access_credential.credentialParamsJSON`.
 
 This means there is **no** `resourceResourceAdd`-style handler — CRUD for core-backed tables is
 auto-bound. Extend the graph by defining schema and seeds, not handlers.

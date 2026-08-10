@@ -12,3 +12,6 @@ role:
   - roleBit: 3
     description: Customer role with limited access
     name: Customer
+  - roleBit: 4
+    description: Self-registered guest role with basic access rights
+    name: Guest

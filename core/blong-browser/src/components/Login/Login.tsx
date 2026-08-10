@@ -33,6 +33,7 @@ import {InputText, Message, Password} from '../../primereact/index.js';
 import React, {useState} from 'react';
 import {useBlong} from '../../context/BlongContext.js';
 import {Button} from '../Button/Button.js';
+import {SocialLoginButton} from '../SocialLoginButton/SocialLoginButton.js';
 
 type LoginStep = 'credentials' | 'otp' | 'newPassword';
 
@@ -87,6 +88,11 @@ export interface ILoginProps {
     loading?: boolean;
     /** Initial step — useful for Storybook previews and unit tests. */
     initialStep?: LoginStep;
+    /**
+     * Google social-login button.  When `onGoogle` is provided, a
+     * "Continue with Google" button is rendered below the login form.
+     */
+    googleLogin?: {onGoogle?: () => void; label?: string};
 }
 
 export function Login({
@@ -106,6 +112,7 @@ export function Login({
     error: externalError,
     loading: externalLoading,
     initialStep = 'credentials',
+    googleLogin,
 }: ILoginProps) {
     const {handler} = useBlong();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -178,8 +185,22 @@ export function Login({
     const handleRegister = async () => {
         if (!registerPage) return;
         try {
-            const comp = await handler[`component/${registerPage}`]({}, {});
-            if (comp) setRegisterComp(() => comp as React.ComponentType);
+            const resolved = await handler[`component/${registerPage}`]({}, {});
+            // Accept both a direct React component and the standard
+            // `{title, component}` IComponent object shape.
+            const unwrap = async (comp: unknown): Promise<React.ComponentType | null> => {
+                if (typeof comp === 'function') return comp as React.ComponentType;
+                if (comp && typeof comp === 'object') {
+                    const nested = (comp as {component?: unknown}).component;
+                    if (typeof nested === 'function') {
+                        const component = await nested();
+                        return (component as React.ComponentType) ?? null;
+                    }
+                }
+                return null;
+            };
+            const component = await unwrap(resolved);
+            if (component) setRegisterComp(() => component);
         } catch {
             /* ignore — dispatch may show its own error */
         }
@@ -379,6 +400,18 @@ export function Login({
                             className="blong-login__submit"
                         />
                     </form>
+                )}
+
+                {googleLogin?.onGoogle && (
+                    <>
+                        <div className="blong-login__divider">
+                            <span>or</span>
+                        </div>
+                        <SocialLoginButton
+                            onClick={() => void googleLogin.onGoogle?.()}
+                            label={googleLogin.label}
+                        />
+                    </>
                 )}
             </div>
 

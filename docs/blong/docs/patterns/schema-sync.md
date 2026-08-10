@@ -102,6 +102,14 @@ export default schema(async ({lib: {type}}) => ({
 - Use `dropColumns: true` in the `ISchemaTable` spec to let the adapter remove columns that are
   no longer present in the TypeBox schema.
 
+**Structured JSON columns (`*JSON` suffix):** any column whose name ends in `JSON` is
+auto-(de)serialized by the knex adapter — object/array values are `JSON.stringify`'d on
+`insert`/`update` and `JSON.parse`'d on read (lenient, non-JSON strings untouched). Declare such
+columns as plain strings (`Type.String()` / `type.stringNull()` → `VARCHAR`); no manual
+(de)serialization is needed in handlers. This is a name-based convention applied to every
+queryBuilder produced by the shared `srv.db` adapter — see
+`core/blong-gogo/src/adapter/schema/knex/json.ts`. Example: `access_credential.credentialParamsJSON`.
+
 ### TypeBox → SQL type mapping
 
 | TypeBox type                         | SQL column type                                         |

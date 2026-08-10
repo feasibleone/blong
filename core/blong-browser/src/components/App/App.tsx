@@ -24,6 +24,7 @@ import {type IPortalConfig} from '../../storybook.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {ActionHint} from '../Hint/Hint.js';
 import {Login} from '../Login/Login.js';
+import {OAuthCallback} from '../OAuthCallback/OAuthCallback.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
 
@@ -62,8 +63,12 @@ function AppShell({
     children?: React.ReactNode;
     portalProps: IPortalProps;
 }) {
-    const {handler} = useBlong();
+    const {handler, config} = useBlong();
     const isAuthenticated = useAppStore(s => s.auth.isAuthenticated);
+    // OAuth callback handling runs once — after a successful exchange the
+    // callback URL is stripped and the App must drop this screen (the session
+    // token is already in the store by then).
+    const [oauthHandled, setOauthHandled] = React.useState(false);
     React.useEffect(() => {
         if (isAuthenticated) {
             (handler.portalConfigGet({}, {}) as Promise<IPortalConfig>)?.then(config => {
@@ -77,6 +82,34 @@ function AppShell({
         },
         [handler],
     );
+
+    const appConfig = config as {
+        portal?: IBlongPortalConfig;
+        login?: {registerPage?: string};
+        google?: {baseUrl?: string; clientId?: string; redirectUri?: string; scope?: string};
+    };
+    const registerPage = appConfig.login?.registerPage;
+    const googleEnabled = Boolean(appConfig.google?.baseUrl && appConfig.google?.clientId);
+    const onGoogle = React.useCallback(() => {
+        void handler.authGoogleRedirect({}, {});
+    }, [handler]);
+    const onExchange = React.useCallback(
+        async ({code, state, redirectUri}: {code: string; state?: string; redirectUri?: string}) => {
+            await handler.authGoogleLogin({code, state, redirectUri}, {});
+        },
+        [handler],
+    );
+
+    // OAuth callback route — the Google (or mock) redirect target. The app may
+    // be served under a base path (e.g. `/s/`), so match the suffix.
+    if (
+        typeof window !== 'undefined' &&
+        !oauthHandled &&
+        window.location.pathname.endsWith('/oauth/callback')
+    ) {
+        return <OAuthCallback onExchange={onExchange} onSuccess={() => setOauthHandled(true)} />;
+    }
+
     if (!isAuthenticated) {
         return LoginComponent ? (
             <LoginComponent />
@@ -85,6 +118,8 @@ function AppShell({
                 onLogin={loginHandler}
                 logoIcon="pi pi-globe"
                 title="Blong Portal"
+                registerPage={registerPage}
+                googleLogin={googleEnabled ? {onGoogle} : undefined}
                 // titleComponent={}
                 // orgComponent={}
             />

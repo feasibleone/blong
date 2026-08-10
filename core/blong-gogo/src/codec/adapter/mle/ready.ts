@@ -59,6 +59,20 @@ export default handler<{
             }
         }
     };
+
+    // Public (auth: 'login') endpoints — pre-auth callers hold no blong token, so the MLE
+    // request is encrypted with the handshake keys carried in the JWE protected header.
+    // Shared by the loginTokenCreate / accessRegistrationAdd / loginTokenExchange request senders.
+    const encryptPublic = async (params: {$http?: unknown}): Promise<{$http?: unknown}> => {
+        if (!jose) return params;
+        const {$http, ...rest} = params;
+        const encrypted = (await encrypt(rest, {
+            mlsk: jose.keys.sign,
+            mlek: jose.keys.encrypt,
+        })) as typeof params;
+        if ($http && encrypted) encrypted.$http = $http;
+        return encrypted;
+    };
     function readToken(where: IToken): void {
         tokenExpire = Date.now() + where.expires_in * 1000 - 5000; // let it refresh 5 seconds earlier
         token = where.access_token;
@@ -196,23 +210,19 @@ export default handler<{
             return super.receive(result, $meta);
         },
         async loginTokenCreateRequestSend(params: {$http?: unknown}, $meta: unknown) {
-            if (jose) {
-                const {$http, ...rest} = params;
-                params = (await encrypt(
-                    rest,
-                    jose && {
-                        mlsk: jose.keys.sign,
-                        mlek: jose.keys.encrypt,
-                    },
-                )) as typeof params;
-                if ($http && params) params.$http = $http;
-            }
-            return super.send(params, $meta);
+            return super.send(await encryptPublic(params), $meta);
         },
         async loginTokenCreateResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
             await decrypt(result.body, 'result');
             readToken(result.body.result as IToken);
             return super.receive(result, $meta);
+        },
+        // Public (auth: 'login') endpoints — see encryptPublic.
+        async accessRegistrationAddRequestSend(params: {$http?: unknown}, $meta: unknown) {
+            return super.send(await encryptPublic(params), $meta);
+        },
+        async loginTokenExchangeRequestSend(params: {$http?: unknown}, $meta: unknown) {
+            return super.send(await encryptPublic(params), $meta);
         },
     };
 });

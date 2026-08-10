@@ -173,6 +173,30 @@ directly — this table is for reference:
 | `Type.Number()`                      | `DOUBLE`                                                           |
 | `Type.Unknown()` / `Type.Object()`   | `JSON`                                                             |
 
+### Structured JSON columns (`*JSON` suffix)
+
+Any string column whose name ends in `JSON` is treated as a **JSON document** by the knex
+adapter and is (de)serialized automatically — no manual `JSON.parse`/`JSON.stringify` in
+handlers:
+
+- Declare it as a normal string column: `type.stringNull()` → `VARCHAR(255)` or specify size > 255 for `TEXT`.
+- On `insert`/`update`, object/array values for `*JSON` columns are `JSON.stringify`'d before
+  hitting the database.
+- On `select`/`first`, `*JSON` string values are `JSON.parse`'d back into objects (lenient —
+  values that are not valid JSON are left untouched).
+
+```typescript
+credentialParamsJSON: type.stringNull(), // auto-(de)serialized by the adapter
+```
+
+The convention is **name-based** (`/JSON$/`) and applies to every QueryBuilder produced by the
+shared `srv.db` knex adapter (see `blong-gogo/src/adapter/schema/knex/json.ts`), including
+direct handler queries — you can `insert`/`select` an object into such a column as if it were a
+plain value. This lets a realm store structured parameters in a single column; e.g.
+`access_credential.credentialParamsJSON` holds `{"function":"hash","algorithm":"pbkdf2",...}`
+so verification re-uses the exact parameters that produced the hash, and future non-hash
+credential functions (TOTP, etc.) store their own params alongside the `function` name.
+
 ### Defining constraints
 
 Constraints are declared via the **second argument** to `type.Object()`:

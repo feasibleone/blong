@@ -147,6 +147,20 @@ export default library(
 );
 ```
 
+> **Library return types are `unknown` — annotate at the call site.** Library functions
+> destructured from `lib: {myFn}` are typed as `LibFn` (`<T>(...params: unknown[]) => T`), so
+> their return type is inferred only from context. Two cases bite:
+>
+> - **Destructuring the result:** `const {hash, params} = hashPassword(...)` fails with
+>   `Property 'hash' does not exist on type 'unknown'`. Fix by passing the expected type as a
+>   call-site generic: `const {hash, params} = hashPassword<{hash: string; params: P}>(...)`.
+> - **`return libFn(...)`:** works only when the enclosing function has a declared return type
+>   (contextual typing), e.g. `function storageTokenGet(): string | null { return storeGet(k); }`.
+>
+> Import the shared param type (`import {type P} from './password.ts'`) to keep the annotation
+> DRY — type-only imports of the library module are fine (they are erased at runtime and do not
+> break the IoC `lib` injection).
+
 ## API Parameter: Destructuring
 
 The `api` parameter provides access to framework and realm functionality:

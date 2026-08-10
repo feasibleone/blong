@@ -136,6 +136,24 @@
     justify-content: center;
 }
 
+/* Divider between the form and the social-login button */
+.blong-login__divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.25rem 0 1rem;
+    color: var(--text-color-secondary);
+    font-size: 0.875rem;
+}
+
+.blong-login__divider::before,
+.blong-login__divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--surface-border);
+}
+
 /* Hint text inside multi-step forms */
 .blong-login__hint {
     margin: 0 0 1rem;

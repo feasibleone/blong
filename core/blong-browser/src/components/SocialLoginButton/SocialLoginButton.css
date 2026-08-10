@@ -1,0 +1,10 @@
+.blong-social-login__button {
+    width: 100%;
+    justify-content: center;
+}
+
+.blong-social-login__mark {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-right: 0.5rem;
+}

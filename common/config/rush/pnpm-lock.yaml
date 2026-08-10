@@ -110,6 +110,9 @@ importers:
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
         version: link:../blong-login
+      '@feasibleone/blong-party':
+        specifier: workspace:^1.0.0
+        version: link:../blong-party
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../blong-server
