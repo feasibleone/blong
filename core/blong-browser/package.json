@@ -46,7 +46,7 @@
     "types": "./dist/src/index.d.ts",
     "scripts": {
         ".ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "build": "true",
+        "build": "tsc --emitDeclarationOnly",
         "build:watch": "vite build --watch",
         "build-storybook": "storybook build -o storybook-static",
         "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
@@ -101,7 +101,7 @@
         "rollup-plugin-gzip": "4.2.0",
         "storybook": "^10.3.6",
         "typescript": "^6.0.3",
-        "vite": "^8.0.8",
+        "vite": "^8.2.1",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^4.1.5"
     },
