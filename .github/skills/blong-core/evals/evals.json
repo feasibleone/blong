@@ -1,0 +1,26 @@
+{
+  "skill_name": "blong-core",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building an invoicing feature in my Blong suite. I need to add a new action invoice.invoice.approve that only the Finance role can call, plus a test user to verify the 403/200 gate. How do I wire this up? Give me the concrete files: the seed YAML for the action, capability, role, and test user; any gateway validation wrapper; the suite config; and how the gateway authorization gate enforces it.",
+      "expected_output": "An implementation plan showing the seed YAML files (action/capability/role/user via the resourceType + name pattern), the gateway validation wrapper for the new action, the suite config with gateway.authorize, and an explanation of the 403/200 gate via permissionMap + methodId.",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 2,
+      "prompt": "Our system now needs vendors as first-class parties, alongside persons and organizations. Add a vendor party type with a tax registration number, register it in the schema, and seed a couple of test vendors. Show me the schema changes, table registration, type alias seed, and instance seed.",
+      "expected_output": "A party extension plan: the schema entity for vendor with PK = type.uuid() FK to core.resource.resourceId, the table registration with an order > core's, the type alias seed, and the instance seed using resourceType + name.",
+      "files": [],
+      "expectations": []
+    },
+    {
+      "id": 3,
+      "prompt": "I need to find all actions a user can perform, including actions inherited through their org unit's role. Also, how should I store that a user belongs to a department? Show me the right way to query this in Blong.",
+      "expected_output": "An explanation of storing the membership in core.triple (belongsTo predicate) and querying effective actions via core.path (access.effectiveAction / access.effectiveRole), including the materialized-path mechanism and path refresh requirement.",
+      "files": [],
+      "expectations": []
+    }
+  ]
+}
