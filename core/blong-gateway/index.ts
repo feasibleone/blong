@@ -25,15 +25,6 @@ export default server(() => ({
     ],
     config: {
         default: {
-            srv: {
-                'subject.validation': {
-                    mock: {
-                        gatewayApplicationModel: true,
-                        gatewayBundleModel: true,
-                        gatewaySubscriptionModel: true,
-                    },
-                },
-            },
             gateway: {authorize: 'access.authorization.list'},
             apiGateway: {
                 enabled: true,

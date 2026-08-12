@@ -95,7 +95,8 @@ async function detectWidgetType(page: Page, fieldId: string): Promise<string> {
                 if (cls === 'blong-date') return 'date';
                 if (cls === 'blong-datetime') return 'datetime';
                 if (cls === 'blong-textarea') return 'textarea';
-                if (cls === 'blong-number' || cls === 'blong-integer') return 'number';
+                if (cls === 'blong-number' || cls === 'blong-integer' || cls === 'blong-bigint')
+                    return 'number';
                 if (cls === 'blong-select-wrapper') return 'select';
                 if (cls === 'blong-input') return 'text';
             }
@@ -280,7 +281,7 @@ export function createAndEditModel(
             // empty-state row), then open it via the Edit toolbar button.
             const dataRows = portal.page
                 .locator('.p-datatable-tbody tr')
-                .filter({hasNotText: 'No available options'});
+                .filter({hasNotText: 'No available options'}); // TODO this is brittle and can break if translated
             await dataRows.first().click();
             const editTestId = `action-component-${subject}-${object}-open`;
             await portal.page.getByTestId(editTestId).first().click();

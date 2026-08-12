@@ -73,7 +73,7 @@ children: [
 
 `blong-party` also doubles as a standalone suite — `index.ts` (server) wires `blong-server` +
 `blong-login` + `blong-core` + `blong-access` + party and registers the model validation schemas via
-`srv.subject.validation.mock`; `index.browser.ts` is the matching browser entry.
+`srv.subject.validation.validations`; `index.browser.ts` is the matching browser entry.
 
 ## Models
 

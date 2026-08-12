@@ -7,6 +7,7 @@ export default model(
                 subject: 'marine',
                 object: 'family',
                 objectTitle: 'Family',
+                public: true,
                 nameField: 'family.familyName',
 
                 schema: {

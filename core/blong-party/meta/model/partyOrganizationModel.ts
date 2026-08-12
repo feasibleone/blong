@@ -7,6 +7,7 @@ export default model(
                 subject: 'party',
                 object: 'organization',
                 objectTitle: 'Organization',
+                public: true,
                 nameField: 'organization.legalName',
 
                 schema: {

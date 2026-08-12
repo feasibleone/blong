@@ -7,6 +7,7 @@ export default model(
                 subject: 'marine',
                 object: 'habitat',
                 objectTitle: 'Habitat',
+                public: true,
                 nameField: 'habitat.habitatName',
 
                 schema: {

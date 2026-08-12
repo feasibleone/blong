@@ -7,6 +7,7 @@ export default model(
                 subject: 'marine',
                 object: 'species',
                 objectTitle: 'Species',
+                public: true,
                 nameField: 'species.speciesName',
 
                 schema: {

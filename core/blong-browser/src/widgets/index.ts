@@ -5,6 +5,7 @@
 import type {IWidgetProps, IWidgetRegistry, WidgetType} from '@feasibleone/blong';
 import type React from 'react';
 import {AutoCompleteWidget} from './AutoCompleteWidget.js';
+import {BigIntWidget} from './BigIntWidget.js';
 import {BooleanWidget} from './BooleanWidget.js';
 import {ChipsWidget} from './ChipsWidget.js';
 import {ComponentWidget} from './ComponentWidget.js';
@@ -60,6 +61,7 @@ const builtins: Array<[WidgetType, React.ComponentType<IWidgetProps>]> = [
     ['currency', CurrencyWidget as React.ComponentType<IWidgetProps>],
     ['percent', NumberWidget as React.ComponentType<IWidgetProps>],
     ['integer', IntegerWidget as React.ComponentType<IWidgetProps>],
+    ['bigint', BigIntWidget as React.ComponentType<IWidgetProps>],
     ['boolean', BooleanWidget as React.ComponentType<IWidgetProps>],
     ['checkbox', BooleanWidget as React.ComponentType<IWidgetProps>],
     ['date', DateWidget as React.ComponentType<IWidgetProps>],

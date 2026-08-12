@@ -99,6 +99,7 @@ vi.mock('primereact/inputnumber', () => ({
 }));
 
 import type {IWidgetProps} from '@feasibleone/blong';
+import {BigIntWidget} from './BigIntWidget.js';
 import {DateTimeWidget} from './DateTimeWidget.js';
 import {DateWidget} from './DateWidget.js';
 import {IntegerWidget} from './IntegerWidget.js';
@@ -207,5 +208,31 @@ describe('IntegerWidget — onValueChange callback', () => {
         const input = getByTestId('number-input') as HTMLInputElement;
         fireEvent.change(input, {target: {value: '7'}});
         expect(onChange).toHaveBeenCalledWith(7);
+    });
+});
+
+describe('BigIntWidget — onChange callback', () => {
+    it('emits a number for safe-range integers', () => {
+        const onChange = vi.fn();
+        const {container} = render(<BigIntWidget {...mkProps({onChange})} />);
+        const input = container.querySelector('input') as HTMLInputElement;
+        fireEvent.change(input, {target: {value: '1000'}});
+        expect(onChange).toHaveBeenCalledWith(1000);
+    });
+
+    it('emits the raw string for integers beyond the safe range', () => {
+        const onChange = vi.fn();
+        const {container} = render(<BigIntWidget {...mkProps({onChange})} />);
+        const input = container.querySelector('input') as HTMLInputElement;
+        fireEvent.change(input, {target: {value: '18446744073709551615'}});
+        expect(onChange).toHaveBeenCalledWith('18446744073709551615');
+    });
+
+    it('does not emit invalid input', () => {
+        const onChange = vi.fn();
+        const {container} = render(<BigIntWidget {...mkProps({onChange})} />);
+        const input = container.querySelector('input') as HTMLInputElement;
+        fireEvent.change(input, {target: {value: '12a'}});
+        expect(onChange).not.toHaveBeenCalled();
     });
 });

@@ -21,18 +21,7 @@ export default server(() => ({
         },
     ],
     config: {
-        default: {
-            srv: {
-                'subject.validation': {
-                    mock: {
-                        marineCoralModel: true,
-                        marineFamilyModel: true,
-                        marineHabitatModel: true,
-                        marineSpeciesModel: true,
-                    },
-                },
-            },
-        },
+        default: {},
         dev: {
             srv: {},
             marine: {},

@@ -118,9 +118,20 @@ export const type = {
         Type.Optional(Type.Union([Type.Null(), Type.Integer(options)])),
     integerNotNull: (options?: TNumberOptions) => Type.Integer(options),
     bigIntNull: (options?: TNumberOptions) =>
-        Type.Optional(Type.Union([Type.Null(), Type.BigInt(options), Type.Integer(options)])),
+        Type.Optional(
+            Type.Union([
+                Type.Null(),
+                Type.BigInt(options),
+                Type.Integer(options),
+                Type.String({pattern: '^-?\\d+$'}),
+            ]),
+        ),
     bigIntNotNull: (options?: TNumberOptions) =>
-        Type.Union([Type.BigInt(options), Type.Integer(options)]),
+        Type.Union([
+            Type.BigInt(options),
+            Type.Integer(options),
+            Type.String({pattern: '^-?\\d+$'}),
+        ]),
     stringNull: (options?: TStringOptions) =>
         Type.Optional(Type.Union([Type.Null(), Type.String(options)])),
     stringNotNull: (options?: TStringOptions) => Type.String(options),

@@ -15,6 +15,12 @@ switch (command) {
     case 'playwright':
         await (await import('./commands/playwright.ts')).playwright(args);
         break;
+    case 'proxy':
+        await (await import('./commands/proxy.ts')).proxy(args);
+        break;
+    case 'trace':
+        await (await import('./commands/trace.ts')).trace(args);
+        break;
     default:
         process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
         process.stderr.write('Usage:\n');
@@ -27,6 +33,12 @@ switch (command) {
         process.stderr.write('  blong-dev test               Run tap tests in current package\n');
         process.stderr.write(
             '  blong-dev playwright [args]  Run Playwright tests in current package\n',
+        );
+        process.stderr.write(
+            '  blong-dev proxy [opts]       MLE proxy for curl (--port/--target/--username/--password)\n',
+        );
+        process.stderr.write(
+            '  blong-dev trace <trace.zip>  Print a human-readable Playwright trace timeline\n',
         );
         process.exit(1);
 }

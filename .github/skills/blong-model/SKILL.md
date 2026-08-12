@@ -220,7 +220,8 @@ config).
 ## Step 4 — Storybook Stories
 
 Use the `Model` component from `@feasibleone/blong-browser` to render model pages in stories. The
-`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` reduce boilerplate:
+`page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` reduce
+boilerplate:
 
 Then in story files:
 
@@ -318,6 +319,42 @@ A dropdown is referenced by a `'subject.name'` key:
 The realm providing the dropdown data must implement `{subject}.dropdown.list` in its orchestrator.
 
 ---
+
+### Widget type resolution
+
+Fields render according to their JSON Schema type (unless `widget.type` is set explicitly):
+
+| Schema type | Widget                                                                    |
+| ----------- | ------------------------------------------------------------------------- |
+| `string`    | input / textArea / select / date / dateTime / time (by format/name)       |
+| `integer`   | integer (InputNumber)                                                     |
+| `number`    | number                                                                    |
+| `bigint`    | bigint (BigIntWidget — preserves values beyond 2^53 as strings)           |
+| `boolean`   | boolean (checkbox)                                                        |
+| `anyOf`     | resolved from the first non-null member (e.g. `bigIntNotNull()` → bigint) |
+
+A `bigint` column (`type.bigIntNotNull()` = `Union[BigInt, Integer]`) has `anyOf` in its JSON
+schema; without the bigint mapping it fell through to a plain text input, the form submitted a
+STRING and strict TypeBox validation failed ("must be bigint, must be integer..."). The framework
+maps `bigint`/number-`anyOf` to the BigIntWidget, which emits a JS number within the safe range and
+a string above it (the `bigInt*` types accept both forms).
+
+### Model & schema authoring tricks
+
+- **`public: true` + `subject.validation`** — mark a model as public API with `public: true` in its
+  spec and it gets default CRUD validations automatically (no config needed). A suite only opts out in
+  rare cases: `srv: {'subject.validation': {validations: false}}` (all) or
+  `{validations: {coralModel: false}}` (one model). Without the validation schemas the generic RPC
+  routes aren't exposed and browse 404s.
+- **`type.uuid()` vs `type.uidNotNull()`** — `type.uuid()` (default literal `'uuid'`) lets the
+  generic knex `add` auto-generate the PK and a backing `core_resource` row; `uidNotNull()` does
+  not. Use `uuid()` for entity PKs so generic CRUD create works.
+- **Binary PK round-trip** — `type.uuid()` PKs are `binary(16)`; `get`/`find` return them base64.
+  Dropdown values for binary PKs must also be base64, or the edit form won't match the current
+  value.
+- **Generic CRUD binary columns** — the framework's `discoverBinaryColumns` matches both `binary`
+  and `varbinary(16)`; the `edit` exec converts binary columns back. Without this, generic CRUD
+  fails with "Data too long".
 
 ## Cards Reference
 

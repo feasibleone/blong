@@ -13,6 +13,7 @@ export default model(
                 subject: 'gateway',
                 object: 'application',
                 objectTitle: 'Application',
+                public: true,
 
                 schema: {
                     properties: {

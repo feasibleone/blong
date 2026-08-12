@@ -162,15 +162,6 @@ children: [
 ],
 config: {
     default: {
-        srv: {
-            'subject.validation': {
-                mock: {
-                    gatewayApplicationModel: true,
-                    gatewayBundleModel: true,
-                    gatewaySubscriptionModel: true,
-                },
-            },
-        },
         gateway: {authorize: 'access.authorization.list'}, // RBAC gate for management routes
         apiGateway: {enabled: true, meterHandler: 'gateway.meter.check'},
     },
@@ -185,13 +176,7 @@ routes.
 ## Management UI (browser)
 
 The realm contributes Browse/New/Open pages for applications, bundles, and subscriptions via the
-blong-browser model system (`meta/model/gateway*Model.ts`). Two wiring requirements:
-
-- **Browser namespace** — `browser/orchestrator/subject/init.ts` must export the `gateway`
-  namespace so the browser can bind `gateway.*` calls (otherwise you get "Method binding failed").
-- **Automatic validation schemas** — the `srv['subject.validation'].mock` config above generates
-  the `ValidationFn` schemas that expose the generic CRUD RPC routes; without it the browse pages
-  404.
+blong-browser model system (`meta/model/gateway*Model.ts`).
 
 The browser entry is `index.browser.ts` / `browser.ts` (Vite dev server, also the Playwright
 target).

@@ -54,6 +54,30 @@ exports[`ComponentPalette > renders widget list when design mode is active 1`] =
         </li>
         <li
           class="blong-component-palette__item"
+          data-widget-type="integer"
+          draggable="true"
+        >
+          <i
+            class="pi pi-hashtag"
+          />
+          <span>
+            Integer
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
+          data-widget-type="bigint"
+          draggable="true"
+        >
+          <i
+            class="pi pi-hashtag"
+          />
+          <span>
+            Big Integer
+          </span>
+        </li>
+        <li
+          class="blong-component-palette__item"
           data-widget-type="boolean"
           draggable="true"
         >

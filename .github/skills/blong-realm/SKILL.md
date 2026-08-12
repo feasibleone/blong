@@ -370,3 +370,21 @@ export default browser(blong => ({
     src="./index.html.ts"
 ></script>
 ```
+
+### Browser namespace file — REQUIRED for portal pages
+
+A realm that contributes portal/browse pages MUST also create `browser/orchestrator/subject/init.ts`
+exporting the realm's subject namespace:
+
+```typescript
+// realmname/browser/orchestrator/subject/init.ts
+import {handler} from '@feasibleone/blong';
+
+export default handler(() => ({
+    namespace: 'realmname', // <-- the realm's subject
+}));
+```
+
+Without it the browser cannot bind `realmname.*` calls and browse fails with "Method binding
+failed". The `blong-kopi` realm template scaffolds this file automatically (and the realm skill
+should always generate it).

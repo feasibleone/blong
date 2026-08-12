@@ -198,6 +198,13 @@ export interface IModelSpec {
     layouts?: Record<string, LayoutConfig>;
     /** Method name overrides */
     methods?: IMethodsConfig;
+    /**
+     * Mark this model as part of the "public API" — its standard CRUD operations
+     * get gateway validations by default (via the `subject.validation`
+     * orchestrator).  Declarative marker: no suite config is needed; a suite can
+     * opt out only in rare cases (`validations: false`, or per model).
+     */
+    public?: boolean;
 }
 
 /** Model spec as accepted by modelFactory — objectTitle/keyField/nameField are optional */

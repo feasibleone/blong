@@ -43,6 +43,7 @@
         "@feasibleone/blong-config": "workspace:^1.0.0",
         "@feasibleone/blong-kopi": "workspace:^1.0.0",
         "@feasibleone/blong-lib": "workspace:^1.0.0",
+        "@feasibleone/blong-mle": "workspace:^1.0.0",
         "@feasibleone/blong-mock": "workspace:^1.0.0",
         "@feasibleone/blong-template": "workspace:*",
         "@keycloak/keycloak-admin-client": "^26.6.2",

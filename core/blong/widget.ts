@@ -33,6 +33,7 @@ export type WidgetType =
     | 'password'
     | 'number'
     | 'integer'
+    | 'bigint'
     | 'currency'
     | 'percent'
     | 'boolean'

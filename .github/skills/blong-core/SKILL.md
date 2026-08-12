@@ -7,14 +7,14 @@ description: Covers the three foundational Blong realms — blong-core (generic 
 
 ## Overview
 
-Three realms in the Blong framework work together as the **foundation layer** that most
-business features are built on:
+Three realms in the Blong framework work together as the **foundation layer** that most business
+features are built on:
 
-| Realm | What it is | What it gives you |
-| ----- | ---------- | ----------------- |
-| **`blong-core`** (`@feasibleone/blong-core`) | The generic **resource graph** — a universal entity registry plus a relationship graph | `core.resource`, `core.type`, `core.property`, `core.triple`, `core.translation`, `core.path` tables. Any entity that needs to be referenced, related, tagged, translated, or reached through a relationship chain lives here. |
-| **`blong-party`** (`@feasibleone/blong-party`) | **Party management** — people and organizations | `person`, `organization`, `unit` (as resources) + `contact`, `address`, `identifier` (as FK sub-tables). Org hierarchies and memberships are stored in the graph (`belongsTo`, `isPartOf`). |
-| **`blong-access`** (`@feasibleone/blong-access`) | **RBAC** — authentication and authorization | `user`, `credential`, `role`, `capability`, `action`, plus `policy`, `flow`, `access`, `session`, `audit`. Roles → capabilities → actions resolved through the graph; authorization enforced at the gateway via JWT `permissionMap`. |
+| Realm                                            | What it is                                                                             | What it gives you                                                                                                                                                                                                                    |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`blong-core`** (`@feasibleone/blong-core`)     | The generic **resource graph** — a universal entity registry plus a relationship graph | `core.resource`, `core.type`, `core.property`, `core.triple`, `core.translation`, `core.path` tables. Any entity that needs to be referenced, related, tagged, translated, or reached through a relationship chain lives here.       |
+| **`blong-party`** (`@feasibleone/blong-party`)   | **Party management** — people and organizations                                        | `person`, `organization`, `unit` (as resources) + `contact`, `address`, `identifier` (as FK sub-tables). Org hierarchies and memberships are stored in the graph (`belongsTo`, `isPartOf`).                                          |
+| **`blong-access`** (`@feasibleone/blong-access`) | **RBAC** — authentication and authorization                                            | `user`, `credential`, `role`, `capability`, `action`, plus `policy`, `flow`, `access`, `session`, `audit`. Roles → capabilities → actions resolved through the graph; authorization enforced at the gateway via JWT `permissionMap`. |
 
 The relationship between them:
 
@@ -35,7 +35,7 @@ graph LR
     end
 ```
 
-**The core idea:** every *named* entity in party and access is not just a row — its primary key is
+**The core idea:** every _named_ entity in party and access is not just a row — its primary key is
 also a foreign key to `core.resource.resourceId`, and its human-readable name lives in
 `core.resource.resourceName`. Relationships between entities are stored as edges in `core.triple`,
 not as join tables or FK columns. This is what lets RBAC, org hierarchies, and arbitrary
@@ -52,16 +52,16 @@ Reach for this skill when a task touches any of these:
   relatable, translatable) should follow the shared-PK pattern.
 - **Working with parties** — persons, organizations, org units, their contacts, addresses,
   identifiers; adding a new party type; querying who belongs to what.
-- **Working with RBAC / access** — users, credentials, roles, capabilities, actions, policies,
-  login flows; assigning a role to a user; adding a new action; protecting an endpoint.
-- **Querying the graph** — "who can do X?", "what is Y related to?", "is A part of B?",
-  reachability questions that go multiple hops deep.
+- **Working with RBAC / access** — users, credentials, roles, capabilities, actions, policies, login
+  flows; assigning a role to a user; adding a new action; protecting an endpoint.
+- **Querying the graph** — "who can do X?", "what is Y related to?", "is A part of B?", reachability
+  questions that go multiple hops deep.
 - **Wiring auth into a suite** — `login.token.create` + `gateway.authorize` + `permissionMap`.
 
 Do **not** use this skill for generic schema/table work that doesn't involve resources, parties, or
 RBAC — that's `blong-schema`. Do not use it to build new handler logic in general — that's
-`blong-handler` / `blong-orchestrator`. This skill is about the *domain model* these three realms
-provide and the *extension points* they expose.
+`blong-handler` / `blong-orchestrator`. This skill is about the _domain model_ these three realms
+provide and the _extension points_ they expose.
 
 ---
 
@@ -70,14 +70,14 @@ provide and the *extension points* they expose.
 `blong-core` is intentionally **just schema** — it defines tables and seeds type aliases, and ships
 **no handlers** of its own. CRUD is auto-provided by the runtime (see next section).
 
-| Table | Purpose |
-| ----- | ------- |
-| `core.resource` | Universal entity registry. `resourceId` (UUID), `resourceName` (stable logical name, indexed — the lookup key), `typeId` (→ `core.type`). |
-| `core.type` | Discriminator catalog. `typeId` (auto-increment), unique `typeAlias` (e.g. `party.person`, `access.role`). |
-| `core.property` | Generic key/value attributes per resource: `(resourceId, propertyName, propertyValue)`. Arbitrary extension without schema changes. |
-| `core.triple` | The relationship graph. `(subjectId, predicateName, objectId)` — both endpoints FK to `core.resource`. |
-| `core.translation` | i18n display names per resource: `(resourceId, languageCode, translatedName)`. |
-| `core.path` | **Materialized reachability**: `(originId, destinationId, pathType, pathDepth)`. Precomputed "can X reach Y through predicate-chain P" — makes deep RBAC lookups fast (no recursive traversal at query time). |
+| Table              | Purpose                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.resource`    | Universal entity registry. `resourceId` (UUID), `resourceName` (stable logical name, indexed — the lookup key), `typeId` (→ `core.type`).                                                                     |
+| `core.type`        | Discriminator catalog. `typeId` (auto-increment), unique `typeAlias` (e.g. `party.person`, `access.role`).                                                                                                    |
+| `core.property`    | Generic key/value attributes per resource: `(resourceId, propertyName, propertyValue)`. Arbitrary extension without schema changes.                                                                           |
+| `core.triple`      | The relationship graph. `(subjectId, predicateName, objectId)` — both endpoints FK to `core.resource`.                                                                                                        |
+| `core.translation` | i18n display names per resource: `(resourceId, languageCode, translatedName)`.                                                                                                                                |
+| `core.path`        | **Materialized reachability**: `(originId, destinationId, pathType, pathDepth)`. Precomputed "can X reach Y through predicate-chain P" — makes deep RBAC lookups fast (no recursive traversal at query time). |
 
 Type aliases are seeded via `meta/db/0-coreTypeMerge.yaml`:
 
@@ -85,10 +85,10 @@ Type aliases are seeded via `meta/db/0-coreTypeMerge.yaml`:
 # core/blong-core/meta/db/0-coreTypeMerge.yaml
 key: typeAlias
 type:
-  - typeAlias: core.currency
-  - typeAlias: core.language
-  - typeAlias: core.country
-  - typeAlias: core.city
+    - typeAlias: core.currency
+    - typeAlias: core.language
+    - typeAlias: core.country
+    - typeAlias: core.city
 ```
 
 ---
@@ -99,30 +99,33 @@ Two framework behaviors in the knex adapter (`blong-gogo`) do most of the heavy 
 **automatic** — do not write handlers to replicate them.
 
 1. **`add` on a resource-backed table auto-creates the `core_resource` row.** When a PK column uses
-   `type.uuid()` *and* its FK is `core.resource.resourceId`, the runtime generates a UUID, looks up
+   `type.uuid()` _and_ its FK is `core.resource.resourceId`, the runtime generates a UUID, looks up
    the `core.type` row whose alias is `` `${subject}.${object}` ``, inserts the `core_resource` row
    (`resourceName` = `` `${subject}.${object}.${columnName}` ``), then inserts the entity row.
 
-   ```typescript
-   // The runtime does this for you — you do NOT write it.
-   const typeAlias = `${subject}.${object}`;      // e.g. 'party.person'
-   const typeRow = await qb('core_type').where({typeAlias}).first('typeId');
-   if (typeRow) {
-       await qb('core_resource').insert({
-           resourceId: strToBinary(uuidStr),
-           resourceName: `${subject}.${object}.${colName}`,
-           typeId: typeRow.typeId,
-       }).onConflict().ignore();
-   }
-   ```
+    ```typescript
+    // The runtime does this for you — you do NOT write it.
+    const typeAlias = `${subject}.${object}`; // e.g. 'party.person'
+    const typeRow = await qb('core_type').where({typeAlias}).first('typeId');
+    if (typeRow) {
+        await qb('core_resource')
+            .insert({
+                resourceId: strToBinary(uuidStr),
+                resourceName: `${subject}.${object}.${colName}`,
+                typeId: typeRow.typeId,
+            })
+            .onConflict()
+            .ignore();
+    }
+    ```
 
-2. **`merge` with a `resourceType` param resolves/creates `core_resource` rows by `name`.**
-   When you seed or merge rows and pass `resourceType`, the runtime looks up (or creates) the
-   `core_resource` row for each entity's `name` property and uses its `resourceId` as the entity PK.
+2. **`merge` with a `resourceType` param resolves/creates `core_resource` rows by `name`.** When you
+   seed or merge rows and pass `resourceType`, the runtime looks up (or creates) the `core_resource`
+   row for each entity's `name` property and uses its `resourceId` as the entity PK.
 
 **Implication:** your realm never calls a `resourceResourceAdd`-style handler — that doesn't exist.
-You define the schema correctly (PK = `type.uuid()` + FK to `core.resource.resourceId`), register the
-table and the type alias, and the framework keeps `core_resource` in sync for you.
+You define the schema correctly (PK = `type.uuid()` + FK to `core.resource.resourceId`), register
+the table and the type alias, and the framework keeps `core_resource` in sync for you.
 
 ---
 
@@ -139,7 +142,7 @@ import {schema} from '@feasibleone/blong';
 export default schema(async ({lib: {type}}) => ({
     item: type.Object(
         {
-            itemId: type.uuid(),                    // ← PK, auto-generates a UUID
+            itemId: type.uuid(), // ← PK, auto-generates a UUID
             itemName: type.stringNotNull(),
             description: type.stringNull(),
         },
@@ -147,7 +150,7 @@ export default schema(async ({lib: {type}}) => ({
             constraints: {
                 primaryKey: 'itemId',
                 foreign: {
-                    itemId: 'core.resource.resourceId',  // ← makes it a resource
+                    itemId: 'core.resource.resourceId', // ← makes it a resource
                 },
             },
         },
@@ -187,7 +190,7 @@ alphabetical order):
 # myrealm/meta/db/0-myrealmTypeMerge.yaml
 key: typeAlias
 type:
-  - typeAlias: myrealm.item
+    - typeAlias: myrealm.item
 ```
 
 ### 4. Seed instances with `resourceType` + `name`
@@ -200,10 +203,10 @@ makes the merge idempotent:
 resourceType: myrealm.item
 key: itemId
 item:
-  - name: Widget
-    description: A basic widget
-  - name: Gadget
-    description: An advanced gadget
+    - name: Widget
+      description: A basic widget
+    - name: Gadget
+      description: An advanced gadget
 ```
 
 Test seeds go in `meta/dbTest/` (loaded only in `dev`/`integration` when `schema.dbTest: true`).
@@ -218,24 +221,24 @@ basic CRUD — only for custom logic (e.g. access's authorization merge).
 
 ### What it provides
 
-| Table | PK | Notes |
-| ----- | -- | ----- |
-| `party.person` | `personId` → core.resource | firstName / middleName / lastName / birthDate / gender / maritalStatus / nationality / occupation |
-| `party.organization` | `organizationId` → core.resource | legalName / tradingName / registrationNumber / taxId / industry / website |
-| `party.unit` | `unitId` → core.resource | unitName / unitType (department, branch, division, team) |
-| `party.contact` | `partyContactId` (increment) | FK `partyResourceId` → core.resource; contactType + contactValue + isPrimary |
-| `party.address` | `partyAddressId` (increment) | FK `partyResourceId`; addressType / streetAddress / city / stateProvince / postalCode / countryId |
-| `party.identifier` | `partyIdentifierId` (increment) | FK `partyResourceId`; identifierType / value / issuingAuthority / issue & expiry dates |
+| Table                | PK                               | Notes                                                                                             |
+| -------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `party.person`       | `personId` → core.resource       | firstName / middleName / lastName / birthDate / gender / maritalStatus / nationality / occupation |
+| `party.organization` | `organizationId` → core.resource | legalName / tradingName / registrationNumber / taxId / industry / website                         |
+| `party.unit`         | `unitId` → core.resource         | unitName / unitType (department, branch, division, team)                                          |
+| `party.contact`      | `partyContactId` (increment)     | FK `partyResourceId` → core.resource; contactType + contactValue + isPrimary                      |
+| `party.address`      | `partyAddressId` (increment)     | FK `partyResourceId`; addressType / streetAddress / city / stateProvince / postalCode / countryId |
+| `party.identifier`   | `partyIdentifierId` (increment)  | FK `partyResourceId`; identifierType / value / issuingAuthority / issue & expiry dates            |
 
 ### Hierarchy lives in the graph, not in columns
 
 Party has **no** `organizationId`/`parentUnitId` FK columns and no member join tables. All hierarchy
 and membership relationships are `core.triple` edges:
 
-| Predicate | Meaning |
-| --------- | ------- |
+| Predicate   | Meaning                                                                              |
+| ----------- | ------------------------------------------------------------------------------------ |
 | `belongsTo` | `unit → organization` (unit belongs to an org); `person → unit` (person is a member) |
-| `isPartOf`  | `unit → parent unit` (tree hierarchy — child under parent) |
+| `isPartOf`  | `unit → parent unit` (tree hierarchy — child under parent)                           |
 
 This is deliberate: because access's RBAC traversal already understands `belongsTo` on
 `core_triple`, a person's unit membership feeds straight into role/action resolution
@@ -247,13 +250,14 @@ This is deliberate: because access's RBAC traversal already understands `belongs
   PK = `type.uuid()` + FK to `core.resource.resourceId`, register the table (order > 300), seed the
   alias in `0-coreTypeMerge.yaml`, and (optionally) seed instances with `resourceType`.
 - **New sub-entity** (like contact/address/identifier — details attached to a party): plain table
-  with an auto-increment PK and an FK column (`partyResourceId`) to `core.resource.resourceId`. These
-  are **not** resources themselves — they hang off a party resource.
+  with an auto-increment PK and an FK column (`partyResourceId`) to `core.resource.resourceId`.
+  These are **not** resources themselves — they hang off a party resource.
 - **Browser models**: party ships models (`partyPersonModel`, `partyOrganizationModel`,
   `partyUnitModel` in `meta/model/`) that drive the model system's Browse/New/Open pages. If you add
   a party entity, add a matching `{subject}{Object}Model` for the UI. See the `blong-model` skill.
-- **Validation mock wiring** (party-specific): the party suite registers model validation schemas via
-  `srv.subject.validation.mock` in `index.ts` — `partyPersonModel: true`, etc. These register
+- **Validation wiring**: models declaring `public: true` get validation schemas by default via
+  `subject.validation` — no per-model config needed. A suite can opt out with `validations: false`
+  (all) or `{model: false}` (one), e.g. mocks until the DB schema is defined. These register
   validation schemas only; they do **not** generate handler implementations (party uses real DB
   tables, not mocks).
 
@@ -262,8 +266,8 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 - CRUD: `party.person.add/find/get/edit/remove/merge` (same for organization/unit).
 - Query membership/hierarchy: query `core.triple` with `predicateName = 'belongsTo' | 'isPartOf'`
   (see Querying the graph below).
-- Contact/address/identifier: currently **schema-only** in the realm — no handler wiring/CRUD.
-  If a feature needs them, extend the realm to expose them.
+- Contact/address/identifier: currently **schema-only** in the realm — no handler wiring/CRUD. If a
+  feature needs them, extend the realm to expose them.
 
 ---
 
@@ -271,18 +275,18 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 
 ### What it provides
 
-| Table | PK | Notes |
-| ----- | -- | ----- |
-| `access.user` | `userId` → core.resource | emailAddress, isActive |
-| `access.credential` | `credentialId` (increment) | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
-| `access.role` | `roleId` → core.resource | roleBit (0–1023, unique), description |
-| `access.capability` | `capabilityId` → core.resource | groups actions into a "what" |
-| `access.action` | `actionId` → core.resource | description; name (in resourceName) is the semantic triple |
-| `access.policy` | `policyId` → core.resource | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; `password` policy is seeded) |
-| `access.flow` | `flowId` → core.resource | MFA step definitions, e.g. `["password","totp"]` (**schema-only**) |
-| `access.access` | `accessId` → core.resource | time/IP/geo rule config (**schema-only**) |
-| `access.session` | `sessionId` (uid, standalone) | active sessions (**schema-only — not persisted as resources**) |
-| `access.audit` | `auditId` (ulid) | append-only auth event log (**schema-only**) |
+| Table               | PK                             | Notes                                                                                                                                      |
+| ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `access.user`       | `userId` → core.resource       | emailAddress, isActive                                                                                                                     |
+| `access.credential` | `credentialId` (increment)     | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
+| `access.role`       | `roleId` → core.resource       | roleBit (0–1023, unique), description                                                                                                      |
+| `access.capability` | `capabilityId` → core.resource | groups actions into a "what"                                                                                                               |
+| `access.action`     | `actionId` → core.resource     | description; name (in resourceName) is the semantic triple                                                                                 |
+| `access.policy`     | `policyId` → core.resource     | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; `password` policy is seeded)          |
+| `access.flow`       | `flowId` → core.resource       | MFA step definitions, e.g. `["password","totp"]` (**schema-only**)                                                                         |
+| `access.access`     | `accessId` → core.resource     | time/IP/geo rule config (**schema-only**)                                                                                                  |
+| `access.session`    | `sessionId` (uid, standalone)  | active sessions (**schema-only — not persisted as resources**)                                                                             |
+| `access.audit`      | `auditId` (ulid)               | append-only auth event log (**schema-only**)                                                                                               |
 
 ### The RBAC model
 
@@ -303,11 +307,11 @@ Two SQL views + one stored procedure materialize reachability into `core.path`:
   `belongsTo`).
 - `access_effectiveActionPath` — `user → role → capability → action` (depth 3) and
   `user → unit → role → capability → action` (depth 4).
-- `access_pathRefresh` — deletes and rebuilds `core_path` for `pathType` in
-  (`access.effectiveRole`, `access.effectiveAction`).
+- `access_pathRefresh` — deletes and rebuilds `core_path` for `pathType` in (`access.effectiveRole`,
+  `access.effectiveAction`).
 
-Authorization queries read the **materialized** `core_path` (a single indexed lookup on
-`originId` + `pathType`), never recursive traversal.
+Authorization queries read the **materialized** `core_path` (a single indexed lookup on `originId` +
+`pathType`), never recursive traversal.
 
 ### The auth flow (how login + authorization work)
 
@@ -315,15 +319,16 @@ Authorization queries read the **materialized** `core_path` (a single indexed lo
 2. `accessCredentialCheck` (`adapter/db`) looks up the user by `core_resource.resourceName` +
    `typeAlias = 'access.user'`, checks `isActive`, verifies the secret using the credential's
    **stored parameters** — `credentialParamsJSON` (a `*JSON` column) holds the function and its
-   params, e.g. `{"function":"hash","algorithm":"pbkdf2","iterations":100000,"keyLength":64,"digest":"sha512"}`
+   params, e.g.
+   `{"function":"hash","algorithm":"pbkdf2","iterations":100000,"keyLength":64,"digest":"sha512"}`
    (falling back to the `config.password` defaults declared in the realm's `server.ts` when not
    stored) — then reads effective role bits + action names from `core_path`.
 3. Role bits are packed into a base64 `permissionMap` bitmask (roleBit 0–1023 → bit position).
 4. `loginTokenCreate` signs a JWT carrying `per: permissionMap` (and `sub` = actorId).
-5. The gateway's `authorize` hook (`access.authorization.list`) decodes `per` from the token,
-   maps role bits → capabilities → actions, and returns allowed methodIds (lowercase, dots
-   stripped — e.g. `accesstestprivate`). A `preHandler` hook compares the requested method's
-   methodId against that list: missing → **403**, no/invalid token → **401**.
+5. The gateway's `authorize` hook (`access.authorization.list`) decodes `per` from the token, maps
+   role bits → capabilities → actions, and returns allowed methodIds (lowercase, dots stripped —
+   e.g. `accesstestprivate`). A `preHandler` hook compares the requested method's methodId against
+   that list: missing → **403**, no/invalid token → **401**.
 
 Wire it in your suite's `index.ts`:
 
@@ -341,37 +346,39 @@ The login response also returns `permissions` (the resolved action names) for cl
 
 ### Key handlers (in `adapter/db`)
 
-| Handler | Wire method | Purpose |
-| ------- | ----------- | ------- |
-| `accessCredentialCheck` | `access.credential.check` | verify credentials, return userId + permissionMap + actions |
-| `accessAuthorizationList` | `access.authorization.list` | permissionMap → allowed action methodIds (TTL-cached) — used by the gateway `authorize` hook |
+| Handler                    | Wire method                  | Purpose                                                                                                                     |
+| -------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `accessCredentialCheck`    | `access.credential.check`    | verify credentials, return userId + permissionMap + actions                                                                 |
+| `accessAuthorizationList`  | `access.authorization.list`  | permissionMap → allowed action methodIds (TTL-cached) — used by the gateway `authorize` hook                                |
 | `accessAuthorizationMerge` | `access.authorization.merge` | idempotent upsert of users/roles/capabilities/actions + `CALL access_pathRefresh()` — also the target of the test seed YAML |
 
 ### Extending access
 
 - **New action**: seed a row with `resourceType: access.action` + `name` (the semantic triple, e.g.
-  `invoice.invoice.approve`) in `meta/db/` (prod) or `meta/dbTest/` (test). Add a gateway `validation`
-  wrapper if it should be a public RPC method. Protect it by granting a capability via `hasAction`.
+  `invoice.invoice.approve`) in `meta/db/` (prod) or `meta/dbTest/` (test). Add a gateway
+  `validation` wrapper if it should be a public RPC method. Protect it by granting a capability via
+  `hasAction`.
 - **New capability**: seed with `resourceType: access.capability` + `name`; link it to its actions.
 - **New role**: seed with `resourceType: access.role` + `name` + a free `roleBit` (0–1023); link
   capabilities via `hasCapability`. After any graph change, run `CALL access_pathRefresh()` (the
   `accessAuthorizationMerge` handler does this for you).
-- **New user**: seed or call `access.authorization.merge` with `{user: {name: ..., password: ...,
-  roles: ...}}` — it creates the credential and the `hasRole` edges. The credential's hashing
-  params resolve as **policy → `config.password` → built-in literals** and are stored on the row
-  as `credentialParamsJSON` so verification always re-uses them.
-- **Roles/capabilities/actions in bulk**: use `accessAuthorizationMerge` with the YAML seed pattern —
-  reference entities by **name**, never by raw ID:
+- **New user**: seed or call `access.authorization.merge` with
+  `{user: {name: ..., password: ..., roles: ...}}` — it creates the credential and the `hasRole`
+  edges. The credential's hashing params resolve as **policy → `config.password` → built-in
+  literals** and are stored on the row as `credentialParamsJSON` so verification always re-uses
+  them.
+- **Roles/capabilities/actions in bulk**: use `accessAuthorizationMerge` with the YAML seed pattern
+  — reference entities by **name**, never by raw ID:
 
-  ```yaml
-  # meta/dbTest/accessAuthorizationMerge.yaml
-  user:
-    testUser:  {password: testPassword, roles: Admin}
-  role:
-    Admin: testManagement          # role → capability
-  capability:
-    testManagement: accessTestPrivate   # capability → action
-  ```
+    ```yaml
+    # meta/dbTest/accessAuthorizationMerge.yaml
+    user:
+        testUser: {password: testPassword, roles: Admin}
+    role:
+        Admin: testManagement # role → capability
+    capability:
+        testManagement: accessTestPrivate # capability → action
+    ```
 
 - **Seed roles for production**: `meta/db/accessRoleMerge.yaml` seeds Admin(bit0)/Manager(bit1)/
   CustomerService(bit2)/Customer(bit3) as `core.resource` + `access_role` rows.
@@ -382,15 +389,15 @@ The login response also returns `permissions` (the resolved action names) for cl
   `meta/db/accessAuthorizationMerge.yaml` (`credentialParams:` block). Config defaults live in the
   realm's `server.ts` (`config.default.db.password`), reused in every suite that includes the realm.
 - **Google identity exchange (OIDC & OAuth)**: `access.identity.check` (via `login.token.exchange`)
-  supports both flows **simultaneously**, selected per call with the `flow` parameter (`oidc` default,
-  `oauth`) — `oidc` uses OIDC Discovery to resolve the token/JWKS/userinfo endpoints and enriches the
-  profile from UserInfo; `oauth` uses `${baseUrl}/token` + `${baseUrl}/certs` directly. See
-  `adapter/db/oidc.ts` and the mock in `sim/google/mockServer.ts`.
+  supports both flows **simultaneously**, selected per call with the `flow` parameter (`oidc`
+  default, `oauth`) — `oidc` uses OIDC Discovery to resolve the token/JWKS/userinfo endpoints and
+  enriches the profile from UserInfo; `oauth` uses `${baseUrl}/token` + `${baseUrl}/certs` directly.
+  See `adapter/db/oidc.ts` and the mock in `sim/google/mockServer.ts`.
 - **New policy/flow** (password rules, MFA steps): policies can now dictate credential params;
   flow/access/session/audit tables still exist schema-only — wire handlers to consume them.
 - **Test endpoints**: `adapter/dbTest/accessTestPrivate` (protected) and `accessTestPublic`
-  (`auth: false`) are reference endpoints proving the 401/403/200 gate — replace with real
-  business actions.
+  (`auth: false`) are reference endpoints proving the 401/403/200 gate — replace with real business
+  actions.
 
 ---
 
@@ -399,8 +406,8 @@ The login response also returns `permissions` (the resolved action names) for cl
 These patterns work for any resource-based entity (core, party, access):
 
 - **Direct edges**: query `core.triple` by `subjectId` / `predicateName` / `objectId`.
-- **Effective/reachability**: query `core.path` by `(originId, pathType)` — fast, precomputed.
-  Used by access for effective roles/actions.
+- **Effective/reachability**: query `core.path` by `(originId, pathType)` — fast, precomputed. Used
+  by access for effective roles/actions.
 - **Type discrimination**: join `core_resource → core_type` on `typeAlias` to filter by entity kind
   (e.g. `access.user`).
 - **Display names**: `core_resource.resourceName`, or `core.translation` for localized labels.
@@ -410,16 +417,16 @@ These patterns work for any resource-based entity (core, party, access):
 
 ## Checklist — common tasks
 
-| Task | What to do |
-| ---- | ---------- |
-| New resource-based entity | schema (`type.uuid()` + FK to `core.resource.resourceId`) → `db.ts` table order > core's → `0-*TypeMerge.yaml` alias → instance seeds with `name` |
-| New party type | same pattern; order > 300; add a browser model |
-| New party sub-entity | plain table, increment PK, FK `partyResourceId` → `core.resource.resourceId` |
-| New action / capability / role / user | seed via `resourceType` YAML or `accessAuthorizationMerge`; refresh paths |
-| Protect an endpoint | gateway `validation` wrapper + grant the action via a capability → role → user |
-| Turn on RBAC in a suite | `gateway: {authorize: 'access.authorization.list'}` + include core/access realms as children |
-| Store a hierarchy | `core.triple` edges with `belongsTo` / `isPartOf` (never FK columns) |
-| Check "who can do X" | `core.path` on `access.effectiveAction` |
+| Task                                  | What to do                                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New resource-based entity             | schema (`type.uuid()` + FK to `core.resource.resourceId`) → `db.ts` table order > core's → `0-*TypeMerge.yaml` alias → instance seeds with `name` |
+| New party type                        | same pattern; order > 300; add a browser model                                                                                                    |
+| New party sub-entity                  | plain table, increment PK, FK `partyResourceId` → `core.resource.resourceId`                                                                      |
+| New action / capability / role / user | seed via `resourceType` YAML or `accessAuthorizationMerge`; refresh paths                                                                         |
+| Protect an endpoint                   | gateway `validation` wrapper + grant the action via a capability → role → user                                                                    |
+| Turn on RBAC in a suite               | `gateway: {authorize: 'access.authorization.list'}` + include core/access realms as children                                                      |
+| Store a hierarchy                     | `core.triple` edges with `belongsTo` / `isPartOf` (never FK columns)                                                                              |
+| Check "who can do X"                  | `core.path` on `access.effectiveAction`                                                                                                           |
 
 ---
 
@@ -427,10 +434,10 @@ These patterns work for any resource-based entity (core, party, access):
 
 - **Don't invent handlers like `resourceResourceAdd`.** CRUD for core-backed tables is
   auto-provided; you define schema + seeds only.
-- **Use `type.uuid()` for resource PKs.** `increment`/`ulid` PKs don't get automatic
-  `core_resource` creation on `add`.
-- **Seed the type alias before instances.** `0-`-prefixed alias file sorts first; instances need
-  the alias to resolve `typeId` for the auto `core_resource` row.
+- **Use `type.uuid()` for resource PKs.** `increment`/`ulid` PKs don't get automatic `core_resource`
+  creation on `add`.
+- **Seed the type alias before instances.** `0-`-prefixed alias file sorts first; instances need the
+  alias to resolve `typeId` for the auto `core_resource` row.
 - **Every `resourceType` seed row needs a `name`.** It's the merge/dedup key → `resourceName`.
 - **`remove` doesn't delete the `core_resource` row** (orphaned resource — known gap). Handle
   cleanup explicitly if it matters.
@@ -453,5 +460,5 @@ These patterns work for any resource-based entity (core, party, access):
 - `blong-handler` / `blong-orchestrator` / `blong-error` — writing the handlers that consume or
   extend these realms.
 - `blong-rest` / `blong-validation` — exposing access-protected endpoints as RPC/REST.
-- Reference implementations: `core/blong-access` (RBAC + path materialization),
-  `core/blong-party` (resource-based entities + models), `core/blong-marine` (model system usage).
+- Reference implementations: `core/blong-access` (RBAC + path materialization), `core/blong-party`
+  (resource-based entities + models), `core/blong-marine` (model system usage).

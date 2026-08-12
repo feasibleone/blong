@@ -13,6 +13,7 @@ export default model(
                 subject: 'gateway',
                 object: 'subscription',
                 objectTitle: 'Subscription',
+                public: true,
 
                 schema: {
                     properties: {

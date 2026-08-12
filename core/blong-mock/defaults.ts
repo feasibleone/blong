@@ -30,6 +30,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             objectTitle,
             keyField,
             nameField,
+            public: false,
             schema: {
                 properties: {
                     [object]: {

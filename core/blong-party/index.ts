@@ -25,15 +25,6 @@ export default server(() => ({
     ],
     config: {
         default: {
-            srv: {
-                'subject.validation': {
-                    mock: {
-                        partyPersonModel: true,
-                        partyOrganizationModel: true,
-                        partyUnitModel: true,
-                    },
-                },
-            },
             // Enforce RBAC on the gateway — resolves allowed actions for the
             // authenticated user (access realm), 403 when not authorized.
             gateway: {authorize: 'access.authorization.list'},

@@ -8,6 +8,7 @@ export default model(
                 subject: 'marine',
                 object: 'coral',
                 objectTitle: 'Coral',
+                public: true,
                 nameField: 'coral.coralName',
 
                 schema: {

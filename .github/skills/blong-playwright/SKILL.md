@@ -300,8 +300,8 @@ Options:
 - `search` — optional browse-search text to filter by before opening a row in the edit test, so it
   targets a specific (e.g. test-created) row instead of the first row of the unfiltered table
 - `editInCreate` — whether the create test also applies `editFields` right after save in the same
-  tab (default `true`; set `false` when the created record must keep its create default so the
-  edit test can change a non-text field like a date to a distinct value)
+  tab (default `true`; set `false` when the created record must keep its create default so the edit
+  test can change a non-text field like a date to a distinct value)
 
 Field values can be plain strings, numbers, or booleans — the widget type is **auto-detected** from
 `blong-*` CSS classes in the DOM:
@@ -330,10 +330,34 @@ classes. The mapping is:
 | `blong-input`          | text        |
 | `blong-textarea`       | textarea    |
 | `blong-number`         | number      |
+| `blong-integer`        | number      |
+| `blong-bigint`         | number      |
 | `blong-dropdown`       | dropdown    |
 | `blong-select-wrapper` | select      |
 | `blong-boolean`        | checkbox    |
 | `blong-date`           | date        |
+
+### Browse Page Filtering & Idempotent Cleanup
+
+Scripting the browse table has a few gotcha-s that bite every realm:
+
+- **Empty-state row** — `.p-datatable-tbody tr` ALSO matches the "No available options" empty-state
+  row. Always exclude it when selecting or counting data rows:
+  `.locator('.p-datatable-tbody tr').filter({hasNotText: 'No available options'})`.
+- **Stable screenshots** — browse screenshots must filter to a stable seeded marker (`browseModel`
+  `searchText`), so test-created rows never leak into baselines.
+- **Search input** — the browse search is `getByTestId('browse-search')`; after filling wait ~600ms
+  (debounce), then `waitForTableData()`.
+- **Delete refreshes the table** — the default browse Delete button refreshes after deleting, so a
+  deleted row disappears from the table (do not rely on it lingering).
+
+**Idempotent cleanup (no DB recreation):** to delete a previous run's test-created rows, use the
+shared `cleanupModel(test, expect, {subject, object, search, removeMethod})` helper. It registers a
+`cleanup {subject} {object}` test that runs FIRST (tests run in declaration order; `beforeAll`
+cannot use the `portal` fixture), filters the browse table to `search`, and deletes each row via the
+`action-<method dotted→dashed>` toolbar button + confirm dialog. Test-created rows must carry a
+searchable marker (e.g. a description containing "Playwright" or a status like "suspended") that
+does not appear in the browse screenshots.
 
 ### Handling Stateful Mock Servers (Dirty Cycle)
 

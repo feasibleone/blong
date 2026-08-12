@@ -7,6 +7,7 @@ export default model(
                 subject: 'party',
                 object: 'person',
                 objectTitle: 'Person',
+                public: true,
                 nameField: 'person.lastName',
 
                 schema: {

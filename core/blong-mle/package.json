@@ -1,0 +1,25 @@
+{
+    "name": "@feasibleone/blong-mle",
+    "version": "1.0.0",
+    "description": "Reusable MLE (Message Layer Encryption) client crypto + HTTP client for Blong gateways",
+    "repository": {
+        "url": "git+https://github.com/feasibleone/blong.git"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test"
+    },
+    "dependencies": {
+        "jose": "^6.2.1"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@types/node": "^24",
+        "typescript": "^6.0.3"
+    }
+}

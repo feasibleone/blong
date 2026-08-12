@@ -744,6 +744,34 @@ ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200'
 
 Any port not listed in the output means that service is not yet started.
 
+### MLE dev tooling (blong-dev proxy / trace)
+
+The `blong-dev` CLI ships two helpers for talking to a running gateway without re-implementing the
+MLE codec:
+
+- **`blong-dev proxy`** — curl-friendly HTTP proxy in front of a gateway's MLE-encrypted RPC
+  endpoint. Start it in the realm/suite that owns the gateway, then curl plain JSON:
+
+  ```bash
+  # Pre-authenticated (logs in on startup):
+  blong-dev proxy --port 8099 --target http://localhost:8080 \
+      --username testAdmin --password testPassword
+
+  # Manual login (login happens through the proxy):
+  blong-dev proxy --port 8099 --target http://localhost:8080 --no-login
+  curl -s -X POST http://localhost:8099/login/token/create \
+       -H 'content-type: application/json' -d '{}'   # captures the session
+  curl -s -X POST http://localhost:8099/gateway/bundle/find \
+       -H 'content-type: application/json' -d '{"params":{"paging":{}}}'
+  ```
+
+  Credentials fall back to `MLE_USERNAME` / `MLE_PASSWORD` env vars. Implemented in
+  `core/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
+  (`core/blong-mle/src/client.ts`).
+
+- **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
+  output). Implemented in `core/blong-dev/src/commands/trace.ts`.
+
 ## Architecture & Design Documents
 
 For detailed design rationale and architecture decisions, see the

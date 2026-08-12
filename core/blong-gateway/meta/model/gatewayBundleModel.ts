@@ -14,6 +14,7 @@ export default model(
                 subject: 'gateway',
                 object: 'bundle',
                 objectTitle: 'Bundle',
+                public: true,
 
                 schema: {
                     properties: {

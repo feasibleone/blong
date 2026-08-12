@@ -8,6 +8,8 @@ const WIDGET_TYPES: Array<{type: WidgetType; icon: string; label: string}> = [
     {type: 'input', icon: 'pi-pencil', label: 'Text Input'},
     {type: 'textArea', icon: 'pi-align-left', label: 'Textarea'},
     {type: 'number', icon: 'pi-hashtag', label: 'Number'},
+    {type: 'integer', icon: 'pi-hashtag', label: 'Integer'},
+    {type: 'bigint', icon: 'pi-hashtag', label: 'Big Integer'},
     {type: 'boolean', icon: 'pi-check-square', label: 'Boolean'},
     {type: 'date', icon: 'pi-calendar', label: 'Date'},
     {type: 'dropdown', icon: 'pi-chevron-down', label: 'Dropdown'},

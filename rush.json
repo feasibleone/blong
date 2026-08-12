@@ -506,6 +506,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-mle",
+            "projectFolder": "core/blong-mle",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-mock",
             "projectFolder": "core/blong-mock",
             "reviewCategory": "core",
