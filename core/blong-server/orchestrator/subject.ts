@@ -3,7 +3,7 @@
  *
  * Also imports the realm's `*.model` files (like the browser portal does) so
  * `subject.validation` can enumerate the actual model handlers through
- * `subjectObjectModelList` instead of probing every schema-derived name.
+ * `subjectModelList` instead of probing every schema-derived name.
  */
 import {orchestrator, type IModelSpec} from '@feasibleone/blong';
 
@@ -36,8 +36,5 @@ export default orchestrator<{
             const handlerName = `${model.subject}${model.object.charAt(0).toUpperCase()}${model.object.slice(1)}Model`;
             context.subjectModels[handlerName] = model;
         }
-        return {
-            subjectObjectModelList: async () => context.subjectModels ?? {},
-        };
     },
 }));

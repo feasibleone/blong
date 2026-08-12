@@ -179,7 +179,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         await processSeedAssets(this, /\.dbTest\.asset$/);
                     }
                     // 3. Single rebuild after all seed edges are in place.
-                    await knex?.raw('CALL access_pathRefresh()');
+                    if (schema?.accessPathRefresh) await knex?.raw('CALL access_pathRefresh()');
                 } finally {
                     (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = false;
                 }

@@ -20,6 +20,7 @@ export default handler(() => ({
                 'access.audit': 209,
             },
             procedurePaths: [_schemaDir],
+            accessPathRefresh: true,
         },
     },
 }));

@@ -108,6 +108,7 @@ export interface IConfig {
          * By convention use a sub-folder named `schema`.
          */
         procedurePaths?: string[];
+        accessPathRefresh?: boolean; // When `true`, calls `access_pathRefresh()` after schema sync/seed (default: `false`).
     };
     /**
      * When `true`, mocks some handlers

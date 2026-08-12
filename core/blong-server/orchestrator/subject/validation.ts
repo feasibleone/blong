@@ -41,7 +41,7 @@ export default validation<{
     // cases (e.g. `validations: false` until the DB schema is defined).
     const enabled = (validations ?? true) as boolean | Record<string, boolean | RegExp>;
     const modelNames = await resolveModelHandlerNames(enabled, () =>
-        handler['subjectObjectModelList']({}, {}),
+        handler['subjectModelList']({}, {}),
     );
     if (modelNames.length === 0) return result;
     return {
