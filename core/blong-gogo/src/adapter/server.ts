@@ -5,6 +5,7 @@ export default realm(blong => ({
     validation: blong.type.Object({
         tcp: blong.type.Boolean(),
         http: blong.type.Boolean(),
+        redis: blong.type.Boolean(),
         kafka: blong.type.Boolean(),
         knex: blong.type.Boolean(),
         mongodb: blong.type.Boolean(),
@@ -22,6 +23,7 @@ export default realm(blong => ({
         default: {
             tcp: false,
             http: false,
+            redis: false,
             kafka: false,
             knex: false,
             mongodb: false,

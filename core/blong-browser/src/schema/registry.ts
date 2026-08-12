@@ -156,6 +156,13 @@ function resolveWidget(name: string, raw: IJsonSchemaExtended): IWidgetConfig {
     if (type === 'boolean') return {type: 'boolean'};
     if (type === 'integer') return {type: 'integer'};
     if (type === 'number') return {type: 'number'};
+    if (type === 'bigint') return {type: 'integer'};
+    if (raw.anyOf) {
+        const anyType = (raw.anyOf as Array<{type?: string}>).find(s => s.type !== 'null')?.type;
+        if (anyType === 'bigint' || anyType === 'integer') return {type: 'integer'};
+        if (anyType === 'number') return {type: 'number'};
+        if (anyType === 'boolean') return {type: 'boolean'};
+    }
     if (raw.enum)
         return {type: 'select', options: raw.enum.map(v => ({value: v, label: String(v)}))};
     if (name.toLowerCase().includes('date') && !name.toLowerCase().includes('time'))

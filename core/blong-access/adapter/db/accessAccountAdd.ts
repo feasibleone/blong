@@ -16,7 +16,10 @@ type KnexQb = any;
 export default handler(
     ({
         errors,
-        handler: {'db/coreResourceEnsure': coreResourceEnsure},
+        handler: {
+            'db/coreResourceEnsure': coreResourceEnsure,
+            'db/coreTripleMerge': coreTripleMerge,
+        },
         lib: {hashPassword, credentialPolicyParams},
     }) =>
         async function accessAccountAdd(
@@ -68,11 +71,10 @@ export default handler(
                 const salt = account.newUuid();
                 // Credential params come from the active policy; config.password is the fallback.
                 const policyParams = await credentialPolicyParams(qb, 'password');
-                const {hash, params: credentialParams} = hashPassword<{hash: string; params: PasswordParams}>(
-                    params.password,
-                    salt,
-                    policyParams,
-                );
+                const {hash, params: credentialParams} = hashPassword<{
+                    hash: string;
+                    params: PasswordParams;
+                }>(params.password, salt, policyParams);
                 await qb('access_credential')
                     .insert({
                         userId: account.uuidBuf(userId),
@@ -98,7 +100,9 @@ export default handler(
                     .ignore();
             }
 
-            // Role edges (e.g. Guest)
+            // Role edges (e.g. Guest) — batched via the shared `core.triple.merge`
+            // helper (P3), which also refreshes `access_path` once.
+            const triples: Array<{subjectId: string; predicateName: string; objectId: string}> = [];
             if (params.roles) {
                 const roleNames = account.splitNames(params.roles);
                 for (const roleName of roleNames) {
@@ -112,18 +116,14 @@ export default handler(
                         },
                         $meta,
                     );
-                    await qb('core_triple')
-                        .insert({
-                            subjectId: account.uuidBuf(userId),
-                            predicateName: 'hasRole',
-                            objectId: account.uuidBuf(roleId),
-                        })
-                        .onConflict()
-                        .ignore();
+                    triples.push({
+                        subjectId: userId,
+                        predicateName: 'hasRole',
+                        objectId: roleId,
+                    });
                 }
             }
-
-            await qb.raw('CALL access_pathRefresh()');
+            await coreTripleMerge({triples, refreshPath: true}, $meta);
 
             return {userId};
         },

@@ -6,8 +6,13 @@ export default validation(
             return {
                 auth: 'login',
                 params: type.Object({
-                    username: type.String(),
-                    password: type.String(),
+                    grantType: type.Optional(
+                        type.Union([type.Literal('password'), type.Literal('client_credentials')]),
+                    ),
+                    username: type.Optional(type.String()),
+                    password: type.Optional(type.String()),
+                    clientId: type.Optional(type.String()),
+                    clientSecret: type.Optional(type.String()),
                 }),
                 result: type.Object({}, {additionalProperties: true}),
             };

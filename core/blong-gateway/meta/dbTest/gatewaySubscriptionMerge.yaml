@@ -1,0 +1,12 @@
+# Test seed — demo application + subscriptions for the management UI browse pages.
+subscription:
+  demo-app-vision:
+    application: demo-app
+    bundle: Vision AI
+    status: active
+    startsAt: '2000-01-01'
+  demo-app-customer:
+    application: demo-app
+    bundle: Customer API
+    status: active
+    startsAt: '2000-01-01'

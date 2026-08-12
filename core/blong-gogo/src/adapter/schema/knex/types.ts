@@ -41,8 +41,27 @@ export interface ITableConstraints {
 }
 
 export interface ISchemaTable {
-    definition: TObject;
+    /**
+     * The TypeBox `TObject` for the table.  Optional when the definition is
+     * available from the realm's `schema` (resolved via `objectSchema[subject][object]`),
+     * in which case the spec only overrides `order` / `dropdown`.
+     */
+    definition?: TObject;
     order?: number;
+    /**
+     * Optional per-table dropdown binding override used by the auto-bound
+     * `{subject}.dropdown.list` handler (see the knex adapter `exec()`).
+     */
+    dropdown?: {
+        /** `core_type.typeAlias` to resolve entries from (defaults to `${subject}.${object}`). */
+        typeAlias?: string;
+        /** Entity table to join on `${joinColumn} = core_resource.resourceId` to restrict to real rows. */
+        joinTable?: string;
+        /** Join column on `joinTable` (defaults to `${object}Id`). */
+        joinColumn?: string;
+        /** Column to use as the label (defaults to `resourceName`). */
+        labelColumn?: string;
+    };
 }
 
 export interface IColumnSchema {

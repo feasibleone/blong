@@ -297,6 +297,11 @@ Options:
 - `subject`, `object` — entity identification
 - `fields` — map of field names to values for creation
 - `editFields` — map of field names to new values for editing
+- `search` — optional browse-search text to filter by before opening a row in the edit test, so it
+  targets a specific (e.g. test-created) row instead of the first row of the unfiltered table
+- `editInCreate` — whether the create test also applies `editFields` right after save in the same
+  tab (default `true`; set `false` when the created record must keep its create default so the
+  edit test can change a non-text field like a date to a distinct value)
 
 Field values can be plain strings, numbers, or booleans — the widget type is **auto-detected** from
 `blong-*` CSS classes in the DOM:
@@ -339,11 +344,14 @@ react-hook-form doesn't mark the form as dirty when values match, the Save butto
 The `createAndEditModel()` helper solves this with a **dirty cycle**:
 
 1. Opens the record and waits for API data to load (`waitForFormData()`)
-2. Appends a random suffix to text/textarea fields → form becomes dirty → saves
+2. Text/textarea fields get a random suffix → form becomes dirty → saves; other widgets
+   (date/select/dropdown/number) keep their value because the `editFields` values already differ
+   from the loaded record — a single save then suffices
 3. Fills the actual `editFields` values → form is dirty again (differs from suffixed) → saves
 4. Takes screenshots at both steps
 
-This ensures the edit test works regardless of prior server state.
+This ensures the edit test works regardless of prior server state. When `search` is set, the edit
+test filters the browse table to that text before opening a row, so it never opens seeded data.
 
 ## Static Gateway Keys
 

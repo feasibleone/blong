@@ -39,6 +39,7 @@ words:
   - capath
   - centered
   - cervicornis
+  - cfg
   - Chelonia
   - cirratum
   - cleanup
@@ -54,6 +55,7 @@ words:
   - configmap
   - confirmdialog
   - confirmpopup
+  - crockford
   - cutoff
   - daemonset
   - dapr
@@ -100,6 +102,11 @@ words:
   - Gorgoniidae
   - Hejlsberg
   - hepatus
+  - hget
+  - hgetall
+  - hincrby
+  - hdel
+  - hset
   - Hydrozoa
   - idempotently
   - Indo
@@ -110,6 +117,7 @@ words:
   - inputnumber
   - inputtext
   - inputtextarea
+  - ioredis
   - ivac
   - jobtriger
   - jwks
@@ -185,6 +193,7 @@ words:
   - rdkafka
   - realmname
   - realmnameitemlistactive
+  - Redis
   - Redux
   - refetches
   - reflow
@@ -253,6 +262,7 @@ words:
   - Upserted
   - userinfo
   - userpass
+  - varbinary
   - VARCHAR
   - vars
   - vitest
@@ -304,3 +314,5 @@ ignorePaths:
   - "**/*.play.ts"
   - "**/dist/**"
   - "**/storybook-static/**"
+  - "**/allure-results/**"
+  - "**/.playwright/**"

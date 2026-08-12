@@ -184,6 +184,16 @@ rules as the authoritative guide and prioritize the API definition as the primar
    with `read_file`, first use `grep_search` or `file_search` to locate specific code patterns,
    imports, or definitions. This reduces token waste and speeds up context gathering.
 
+1. If a certain task required **unexpected** effort to implement or fix or failed, update the
+   frictions list in `.github/memory/friction.md` with a short description of the friction. This
+   will help plan subsequent work to address them. Addressing them means updating the skills, tools
+   or the framework. Keep updating the frictions at the right moments, to avoid losing issues due to
+   context compaction. Updating the frictions list includes also the cases where:
+    - a question needed an answer and it took too much investigation to find it.
+    - a decision was needed, but it took a lot of analysis or hesitation what is the best approach
+      to take.
+    - a lot of source code needed to be read.
+
 ---
 
 ## Architecture Hierarchy

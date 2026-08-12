@@ -365,6 +365,9 @@ export default class Gateway extends Internal implements IGateway {
                 config: {
                     auth: value.auth ?? 'jwt',
                     methodName: method,
+                    ...(value.bundle !== undefined && {bundle: value.bundle}),
+                    ...(value.creditCost !== undefined && {creditCost: value.creditCost}),
+                    ...(value.meter !== undefined && {meter: value.meter}),
                 },
                 schema: Type && {
                     ...('body' in value

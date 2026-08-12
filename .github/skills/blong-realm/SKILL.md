@@ -89,6 +89,25 @@ is the **intent** that must be active for the layer to load:
 Override any default by adding a `layer.server.ts` / `layer.browser.ts` to the folder. See the
 **blong-intent** skill for the full intents reference and how to create custom intents.
 
+### Test-Only Handler Groups (`dbTest`)
+
+Adapter handler groups follow the `db` adapter's `imports` patterns. The shared `db` adapter
+(`blong-server/adapter/db.ts`) imports handler groups matching `/\.db$/` in **all** intents, and
+only adds `/\.dbTest$/`, `/\.model$/`, `/\.fixture$/` under the **`dev`** intent. Consequence:
+
+- Handlers in `adapter/db/` are loaded **always** (including production).
+- Handlers in `adapter/dbTest/` are loaded **only in the `dev` intent** — never in production.
+
+Put test-only/demo handlers (reference endpoints, demo metered APIs, fixtures) in `adapter/dbTest/`
+so they never ship to production:
+
+```text
+realmname/
+└── adapter/
+    ├── db/          # Production handlers (loaded in all intents)
+    └── dbTest/      # Test-only handlers (loaded only in the dev intent)
+```
+
 ## Minimal server.ts (Only When Needed)
 
 `server.ts` is **only needed** when the realm has:

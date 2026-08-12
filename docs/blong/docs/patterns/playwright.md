@@ -387,7 +387,10 @@ in a clean state (Save button disabled).
 The `createAndEditModel()` helper uses a dirty cycle to work around this:
 
 ```typescript
-// 1. Fill with suffixed values → form is dirty → save
+// 1. Text/textarea fields get a random suffix → form becomes dirty → save.
+//    Non-text widgets (date/select/dropdown/number) keep their value — the
+//    editFields values already differ from the loaded record, so this first
+//    save is skipped and a single save is used.
 await fillFields(page, addSuffix(editFields, randomSuffix));
 await portal.save();
 
@@ -397,4 +400,5 @@ await portal.save();
 ```
 
 The `addSuffix()` helper only modifies text and textarea values, leaving selects, dropdowns,
-checkboxes, and dates unchanged.
+checkboxes, and dates unchanged. A `search` option filters the browse table to a specific (e.g.
+test-created) row before opening it in the edit test, so the edit never targets seeded data.

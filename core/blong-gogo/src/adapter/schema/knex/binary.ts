@@ -26,7 +26,12 @@ for (let i = 0; i < CROCKFORD.length; i++) CROCKFORD_REV[CROCKFORD[i]] = i;
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Discover binary(16) columns from INFORMATION_SCHEMA.
+ * Discover binary(16) / varbinary(16) columns from INFORMATION_SCHEMA.
+ *
+ * `type.uuid()` columns are created as fixed `binary(16)` while `type.uid*()`
+ * columns (and most FK columns) are created as `varbinary(16)` by knex's
+ * `table.binary()`.  Both are 16-byte UUID columns and need the same
+ * string ↔ Buffer conversion, so BOTH `binary` and `varbinary` are matched.
  *
  * Call this once during adapter `ready()`, after the schema has been synced,
  * and store the result on `this.config.context.binaryColumns`.
@@ -34,10 +39,8 @@ for (let i = 0; i < CROCKFORD.length; i++) CROCKFORD_REV[CROCKFORD[i]] = i;
 export async function discoverBinaryColumns(knex: Knex): Promise<Map<string, Set<string>>> {
     const rows: Array<{TABLE_NAME: string; COLUMN_NAME: string}> = await knex
         .from('INFORMATION_SCHEMA.COLUMNS')
-        .where({
-            DATA_TYPE: 'binary',
-            CHARACTER_MAXIMUM_LENGTH: 16,
-        })
+        .whereIn('DATA_TYPE', ['binary', 'varbinary'])
+        .andWhere('CHARACTER_MAXIMUM_LENGTH', 16)
         .select('TABLE_NAME', 'COLUMN_NAME');
     const map = new Map<string, Set<string>>();
     for (const row of rows) {

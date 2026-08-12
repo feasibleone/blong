@@ -7,7 +7,10 @@ type KnexQb = any;
 
 export default handler(
     ({
-        handler: {'db/coreResourceEnsure': coreResourceEnsure},
+        handler: {
+            'db/coreResourceEnsure': coreResourceEnsure,
+            'db/coreTripleMerge': coreTripleMerge,
+        },
         lib: {hashPassword, credentialPolicyParams},
     }) =>
         async function accessAuthorizationMerge(
@@ -44,12 +47,22 @@ export default handler(
             const qb: KnexQb = this.config?.context?.queryBuilder;
             if (!qb) throw new Error('Database not available');
 
+            // Graph edges are batched and written via the shared `core.triple.merge`
+            // helper (P3), which also refreshes `access_path` once at the end.
+            const triples: Array<{
+                subjectId: string;
+                predicateName: string;
+                objectId: string;
+            }> = [];
+
             // 1. Process capabilities and their actions first
             if (params.capability) {
                 for (const [capabilityName, actionList] of Object.entries(params.capability)) {
                     const actionNames = account.splitNames(actionList);
                     for (const actionName of actionNames) {
-                        const {resourceId: actionId} = await coreResourceEnsure<{resourceId: string}>(
+                        const {resourceId: actionId} = await coreResourceEnsure<{
+                            resourceId: string;
+                        }>(
                             {
                                 name: actionName,
                                 typeAlias: 'access.action',
@@ -59,7 +72,9 @@ export default handler(
                             },
                             $meta,
                         );
-                        const {resourceId: capabilityId} = await coreResourceEnsure<{resourceId: string}>(
+                        const {resourceId: capabilityId} = await coreResourceEnsure<{
+                            resourceId: string;
+                        }>(
                             {
                                 name: capabilityName,
                                 typeAlias: 'access.capability',
@@ -69,14 +84,11 @@ export default handler(
                             },
                             $meta,
                         );
-                        await qb('core_triple')
-                            .insert({
-                                subjectId: account.uuidBuf(capabilityId),
-                                predicateName: 'hasAction',
-                                objectId: account.uuidBuf(actionId),
-                            })
-                            .onConflict()
-                            .ignore();
+                        triples.push({
+                            subjectId: capabilityId,
+                            predicateName: 'hasAction',
+                            objectId: actionId,
+                        });
                     }
                 }
             }
@@ -96,7 +108,9 @@ export default handler(
                         $meta,
                     );
                     for (const capabilityName of capabilityNames) {
-                        const {resourceId: capabilityId} = await coreResourceEnsure<{resourceId: string}>(
+                        const {resourceId: capabilityId} = await coreResourceEnsure<{
+                            resourceId: string;
+                        }>(
                             {
                                 name: capabilityName,
                                 typeAlias: 'access.capability',
@@ -106,14 +120,11 @@ export default handler(
                             },
                             $meta,
                         );
-                        await qb('core_triple')
-                            .insert({
-                                subjectId: account.uuidBuf(roleId),
-                                predicateName: 'hasCapability',
-                                objectId: account.uuidBuf(capabilityId),
-                            })
-                            .onConflict()
-                            .ignore();
+                        triples.push({
+                            subjectId: roleId,
+                            predicateName: 'hasCapability',
+                            objectId: capabilityId,
+                        });
                     }
                 }
             }
@@ -137,11 +148,10 @@ export default handler(
                         const salt = userDef.credentialSalt ?? account.newUuid();
                         // Credential params come from the active policy; config.password is the fallback.
                         const policyParams = await credentialPolicyParams(qb, 'password');
-                        const {hash, params: credentialParams} = hashPassword<{hash: string; params: PasswordParams}>(
-                            userDef.password,
-                            salt,
-                            policyParams,
-                        );
+                        const {hash, params: credentialParams} = hashPassword<{
+                            hash: string;
+                            params: PasswordParams;
+                        }>(userDef.password, salt, policyParams);
                         await qb('access_credential')
                             .insert({
                                 userId: account.uuidBuf(userId),
@@ -160,7 +170,9 @@ export default handler(
                     if (userDef.roles) {
                         const roleNames = account.splitNames(userDef.roles);
                         for (const roleName of roleNames) {
-                            const {resourceId: roleId} = await coreResourceEnsure<{resourceId: string}>(
+                            const {resourceId: roleId} = await coreResourceEnsure<{
+                                resourceId: string;
+                            }>(
                                 {
                                     name: roleName,
                                     typeAlias: 'access.role',
@@ -170,14 +182,11 @@ export default handler(
                                 },
                                 $meta,
                             );
-                            await qb('core_triple')
-                                .insert({
-                                    subjectId: account.uuidBuf(userId),
-                                    predicateName: 'hasRole',
-                                    objectId: account.uuidBuf(roleId),
-                                })
-                                .onConflict()
-                                .ignore();
+                            triples.push({
+                                subjectId: userId,
+                                predicateName: 'hasRole',
+                                objectId: roleId,
+                            });
                         }
                     }
                 }
@@ -210,8 +219,9 @@ export default handler(
                 }
             }
 
-            // 5. Refresh materialized paths
-            await qb.raw('CALL access_pathRefresh()');
+            // 5. Write graph edges + refresh materialized paths via the shared
+            //    `core.triple.merge` helper (P3).
+            await coreTripleMerge({triples, refreshPath: true}, $meta);
 
             return {success: true};
         },

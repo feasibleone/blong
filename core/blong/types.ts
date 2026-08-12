@@ -68,6 +68,12 @@ export type ServerContext = {
     // s3?: S3Client;
     slack?: IncomingWebhook;
     // vault?: client;
+    /** Live redis client shared with derived adapters. */
+    redis?: {
+        status: string;
+        connect(): Promise<unknown>;
+        quit(): Promise<unknown>;
+    };
 };
 
 export type BrowserContext = {
@@ -699,6 +705,7 @@ export interface IBaseConfig extends TObject<{
     rpcServer: TBoolean | TObject;
     restFs: TBoolean | TObject;
     systemDebug: TBoolean | TObject;
+    apiGateway: TBoolean | TObject;
 }> {
     additionalProperties: false;
 }
@@ -774,6 +781,10 @@ export type GatewaySchema = (
     subject?: string;
     destination?: string;
     operation?: OpenAPIV3_1.OperationObject | OpenAPIV2.OperationObject;
+    /** Metering metadata threaded into the Fastify route config by Gateway.ts. */
+    bundle?: string;
+    creditCost?: number;
+    meter?: boolean;
 };
 
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;

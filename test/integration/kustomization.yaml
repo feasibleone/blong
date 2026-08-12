@@ -10,3 +10,4 @@ resources:
   - minio-deployment.yaml
   - kafka-deployment.yaml
   - vault-deployment.yaml
+  - redis-deployment.yaml

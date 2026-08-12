@@ -123,10 +123,13 @@ test runs (as long as the server stays running). This creates a challenge for ed
 record already contains the same values from a previous run, react-hook-form doesn't mark the
 form as dirty and the Save button stays disabled.
 
-The `createAndEditModel()` helper solves this with a **dirty cycle**: it first saves with a random
-suffix appended to text fields (forcing a dirty state), then fills the actual edit values (which
-differ from the suffixed values, so the form is dirty again). This ensures the edit test works
-regardless of prior server state.
+The `createAndEditModel()` helper solves this with a **dirty cycle**: text/textarea fields first
+get a random suffix and are saved (forcing a dirty state); other widgets (date/select/dropdown/
+number) keep their value because the `editFields` values already differ from the loaded record, so
+a single save suffices. It then fills the actual edit values (which differ from the suffixed
+values, so the form is dirty again). This ensures the edit test works regardless of prior server
+state. A `search` option lets the edit test filter the browse table to a specific (e.g.
+test-created) row before opening it, so it never edits seeded data.
 
 Similarly, the `waitForFormData()` method on the Portal helper waits for API data to populate form
 inputs before filling fields, preventing race conditions.

@@ -116,6 +116,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                         enabled: 'selected' as const,
                         confirm: 'Delete selected record?',
                         method: `${subject}.${object}.remove`,
+                        refresh: true,
                         params: {[keyField]: '${' + keyField + '}'},
                     },
                 ],

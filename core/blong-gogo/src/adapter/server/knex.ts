@@ -5,6 +5,7 @@ import {
     type IErrorMap,
     type IHandlerProxy,
     type IMeta,
+    type IObjectSchema,
     type Knex,
 } from '@feasibleone/blong/types';
 import KnexLib from 'knex';
@@ -114,31 +115,25 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             if (schema?.sync && knex) {
                 // Sort tables by ascending `order` so FK dependencies are respected.
                 const tables = Object.entries(schema.tables ?? {}).sort(([, a], [, b]) => {
-                    const orderA =
-                        typeof a === 'number'
-                            ? a
-                            : typeof a === 'object' && 'definition' in a
-                              ? ((a as ISchemaTable).order ?? 0)
+                    const orderOf = (spec: number | ISchemaTable | TObject): number =>
+                        typeof spec === 'number'
+                            ? spec
+                            : typeof spec === 'object' && spec !== null
+                              ? ((spec as ISchemaTable).order ?? 0)
                               : 0;
-                    const orderB =
-                        typeof b === 'number'
-                            ? b
-                            : typeof b === 'object' && 'definition' in b
-                              ? ((b as ISchemaTable).order ?? 0)
-                              : 0;
-                    return orderA - orderB;
+                    return orderOf(a) - orderOf(b);
                 });
                 const dropColumns = schema.dropColumns ?? false;
                 const tableDefs: Array<{tableName: string; definition: TObject}> = [];
                 for (const [tableName, tableConfig] of tables) {
-                    const isOrder = typeof tableConfig === 'number';
-                    const isSpec = typeof tableConfig === 'object' && 'definition' in tableConfig;
                     const [subject, object] = tableName.split('.');
-                    const definition = isOrder
-                        ? objectSchema[subject]?.[object]
-                        : isSpec
-                          ? (tableConfig as ISchemaTable).definition
-                          : (tableConfig as TObject);
+                    const {definition} = resolveTableSpec(
+                        objectSchema,
+                        tableConfig,
+                        subject,
+                        object,
+                    );
+                    if (!definition) continue;
                     const sqlName = tableName.replaceAll('.', '_');
                     await schemaTableSyncImpl(knex, sqlName, definition, {
                         dropColumns,
@@ -167,32 +162,26 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             if (schema && knex) {
                 // Bind all DB procedures as synthetic handlers (skips `_`-prefixed).
                 await bindSyntheticHandlers(self, knex);
-                // Auto-bind CRUD handlers for each declared table when namespace is set.
-                // const namespace = this.config.namespace;
-                // if (namespace) {
-                //     const tableDefs = Object.entries(schema.tables ?? {}).map(
-                //         ([tableName, tableConfig]) => {
-                //             const isOrder = typeof tableConfig === 'number';
-                //             const isSpec =
-                //                 typeof tableConfig === 'object' && 'definition' in tableConfig;
-                //             const [subject, object] = tableName.split('.');
-                //             const definition = isOrder
-                //                 ? objectSchema[subject]?.[object]
-                //                 : isSpec
-                //                   ? (tableConfig as ISchemaTable).definition
-                //                   : (tableConfig as TObject);
-                //             return {tableName, definition};
-                //         },
-                //     );
-                //     await bindSyntheticCrud(self, knex, namespace, tableDefs);
-                // }
             }
             if (schema?.seed) {
-                // 1. Process production seeds (db.asset modules)
-                await processSeedAssets(this, /\.db\.asset$/);
-                // 2. Process test seeds (dbTest.asset modules) only when dbTest is enabled
-                if (schema?.dbTest) {
-                    await processSeedAssets(this, /\.dbTest\.asset$/);
+                // Seed merges each trigger an `access_pathRefresh()` full rebuild
+                // by default.  During the batch we defer it — merges only write
+                // `core_triple` edges and skip the rebuild (see `core.triple.merge`
+                // deferPathRefresh handling) — then run ONE refresh at the end.
+                // This avoids both redundant full rebuilds and the write-vs-refresh
+                // deadlock between concurrent merges.
+                (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = true;
+                try {
+                    // 1. Process production seeds (db.asset modules)
+                    await processSeedAssets(this, /\.db\.asset$/);
+                    // 2. Process test seeds (dbTest.asset modules) only when dbTest is enabled
+                    if (schema?.dbTest) {
+                        await processSeedAssets(this, /\.dbTest\.asset$/);
+                    }
+                    // 3. Single rebuild after all seed edges are in place.
+                    await knex?.raw('CALL access_pathRefresh()');
+                } finally {
+                    (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = false;
                 }
             }
 
@@ -238,6 +227,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
         ) {
             const {method} = $meta;
             const [subject, object, operation] = method!.split('.');
+            // `{subject}.dropdown.list` — auto-bound dropdown lists for every
+            // resource-backed table of the subject (see `_dropdownList`).
+            if (object === 'dropdown' && operation === 'list') {
+                return (
+                    this as unknown as {_dropdownList(s: string): Promise<unknown>}
+                )._dropdownList(subject);
+            }
             const table = `${subject}_${object}`;
             switch (operation) {
                 case 'get': {
@@ -297,7 +293,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     return prepareResultRows(rows, binaryCols, table);
                 }
                 case 'add': {
-                    const {key: keyName = `${object}Id`, [object]: columns} = params;
+                    const {key: keyName = `${object}Id`, [object]: columns, resourceName} = params;
                     const definition = objectSchema[subject]?.[object] as unknown as
                         | Record<string, unknown>
                         | undefined;
@@ -331,10 +327,21 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 .where({typeAlias})
                                 .first('typeId');
                             if (typeRow) {
+                                // Use a meaningful resourceName when available:
+                                // an explicit `resourceName` param, else the
+                                // `${object}Name` column value, else the synthetic
+                                // name.  The name is the entity's display label in
+                                // `{subject}.dropdown.list`.
+                                const name =
+                                    (typeof resourceName === 'string' && resourceName) ||
+                                    (typeof cols[`${object}Name`] === 'string'
+                                        ? (cols[`${object}Name`] as string)
+                                        : undefined) ||
+                                    `${subject}.${object}.${colName}`;
                                 await qb('core_resource')
                                     .insert({
                                         resourceId: strToBinary(uuidStr),
-                                        resourceName: `${subject}.${object}.${colName}`,
+                                        resourceName: name,
                                         typeId: typeRow.typeId,
                                     })
                                     .onConflict()
@@ -358,13 +365,16 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const {[keyName]: key, ...update} = cols as Record<string, unknown>;
                     const isBinaryKey =
                         isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
+                    // Convert any string values for binary columns to Buffer (the
+                    // form round-trips them as base64 strings returned by `get`).
+                    const preparedUpdate = prepareInputParams(update, binaryCols, table);
                     // Update using Buffer for binary keys
                     if (isBinaryKey) {
-                        await qb(table).where(keyName, strToBinary(key)).update(update);
+                        await qb(table).where(keyName, strToBinary(key)).update(preparedUpdate);
                     } else {
                         await qb(table)
                             .where({[keyName]: key})
-                            .update(update);
+                            .update(preparedUpdate);
                     }
                     // Select back with Buffer → base64 conversion
                     let editQuery = qb(table);
@@ -480,6 +490,72 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 }
             }
             throw this.error(_errors['knex.generic']({}), $meta);
+        },
+        /**
+         * `{subject}.dropdown.list` — produce `{value, label}` pairs for every
+         * resource-backed table of the subject.  A table is resource-backed when
+         * its PK (or any column) is a FK to `core.resource.resourceId`.
+         *
+         * Entries are resolved directly from `core_resource` (joined with
+         * `core_type` by `typeAlias = ${subject}.${object}`), so every realm gets
+         * dropdowns for free, matching the `blong-mock` `{subject}.dropdown.list`
+         * shape (`{value: base64, label: resourceName}`).
+         *
+         * Per-table overrides are declared via the `dropdown` option on the table
+         * spec (see `ISchemaTable`): `typeAlias`, `joinTable`, `joinColumn`,
+         * `labelColumn`.
+         */
+        async _dropdownList(
+            this: Adapter<IConfig>,
+            subject: string,
+        ): Promise<Record<string, Array<{value: string; label: string}>>> {
+            const qb = this.config.context?.queryBuilder;
+            if (!qb) return {};
+            const result: Record<string, Array<{value: string; label: string}>> = {};
+            const tables = this.config.schema?.tables ?? {};
+            for (const [tableName, tableConfig] of Object.entries(tables)) {
+                const [s, object] = tableName.split('.');
+                if (s !== subject) continue;
+                const {definition, dropdown} = resolveTableSpec(
+                    objectSchema,
+                    tableConfig,
+                    s,
+                    object,
+                );
+                if (!definition) continue;
+                // Resource-backed?  Any FK pointing at core.resource.resourceId.
+                const foreign = (
+                    definition as unknown as {
+                        constraints?: {foreign?: Record<string, string | {references?: string}>};
+                    }
+                )?.constraints?.foreign;
+                const isResourceBacked = Object.entries(foreign ?? {}).some(([, fk]) =>
+                    typeof fk === 'string'
+                        ? fk === 'core.resource.resourceId'
+                        : fk?.references === 'core.resource.resourceId',
+                );
+                if (!isResourceBacked) continue;
+                const typeAlias = dropdown?.typeAlias ?? `${s}.${object}`;
+                const labelColumn = dropdown?.labelColumn ?? 'resourceName';
+                let query = qb('core_resource as r')
+                    .join('core_type as t', 't.typeId', 'r.typeId')
+                    .where('t.typeAlias', typeAlias)
+                    .select('r.resourceId', `r.${labelColumn} as label`);
+                if (dropdown?.joinTable) {
+                    const joinColumn = dropdown.joinColumn ?? `${object}Id`;
+                    query = query.join(
+                        dropdown.joinTable,
+                        `${dropdown.joinTable}.${joinColumn}`,
+                        'r.resourceId',
+                    );
+                }
+                const rows = (await query) as Array<{resourceId: Buffer; label: string}>;
+                result[`${s}.${object}`] = rows.map(r => ({
+                    value: r.resourceId.toString('base64'),
+                    label: r.label,
+                }));
+            }
+            return result;
         },
         /**
          * Load model mocks when `config.mock` is `true`
@@ -649,3 +725,37 @@ async function processSeedAssets(ctx: Adapter<IConfig>, pattern: RegExp): Promis
 }
 
 export {attachHandlers, methodId, snakeToCamel};
+
+/**
+ * Resolve a `schema.tables` entry into its definition + dropdown override.
+ *
+ * A table entry is one of:
+ * - a plain order number → definition from `objectSchema[subject][object]`
+ * - an `ISchemaTable` spec `{definition?, order?, dropdown?}` — definition
+ *   falls back to `objectSchema[subject][object]`
+ * - a bare TypeBox `TObject`
+ */
+function resolveTableSpec(
+    objectSchema: IObjectSchema,
+    tableConfig: number | ISchemaTable | TObject,
+    subject: string,
+    object: string,
+): {definition?: TObject; dropdown?: ISchemaTable['dropdown']} {
+    if (typeof tableConfig === 'number') {
+        return {definition: objectSchema[subject]?.[object]};
+    }
+    if (typeof tableConfig === 'object' && tableConfig !== null) {
+        // An ISchemaTable spec — either with an explicit `definition`, or a
+        // partial spec (e.g. only `{order, dropdown}`) that falls back to the
+        // realm schema for its definition.
+        if ('definition' in tableConfig || 'order' in tableConfig || 'dropdown' in tableConfig) {
+            const spec = tableConfig as ISchemaTable;
+            return {
+                definition: spec.definition ?? objectSchema[subject]?.[object],
+                dropdown: spec.dropdown,
+            };
+        }
+        return {definition: tableConfig as TObject};
+    }
+    return {};
+}

@@ -64,6 +64,19 @@ export interface ICreateAndEditModelOptions {
     fields: FieldMap;
     /** Fields to change when editing (subset of fields). */
     editFields?: FieldMap;
+    /**
+     * Optional browse-search text to filter by before opening a row in the
+     * generated edit test, so it targets a specific (e.g. test-created) row
+     * instead of the first row of the unfiltered table.
+     */
+    search?: string;
+    /**
+     * Whether the create test should also apply `editFields` right after save
+     * (in the same tab).  Defaults to `true`.  Set to `false` when the created
+     * record must keep its create default so the edit test can change a
+     * non-text field (e.g. a date) to a distinct value.
+     */
+    editInCreate?: boolean;
 }
 
 /**
@@ -82,7 +95,7 @@ async function detectWidgetType(page: Page, fieldId: string): Promise<string> {
                 if (cls === 'blong-date') return 'date';
                 if (cls === 'blong-datetime') return 'datetime';
                 if (cls === 'blong-textarea') return 'textarea';
-                if (cls === 'blong-number') return 'number';
+                if (cls === 'blong-number' || cls === 'blong-integer') return 'number';
                 if (cls === 'blong-select-wrapper') return 'select';
                 if (cls === 'blong-input') return 'text';
             }
@@ -174,6 +187,11 @@ function addSuffix(fields: FieldMap, suffix: string): FieldMap {
     return result;
 }
 
+/** Unwrap a FieldMap value to its plain value (for dirty-change detection). */
+function unwrapValue(raw: FieldMap[string]): string | number | boolean {
+    return typeof raw === 'object' && raw !== null ? (raw as IFieldValue).value : raw;
+}
+
 /**
  * Generate a browse-page test for a model.
  * Opens the browse page via the menu and takes a screenshot.
@@ -205,7 +223,7 @@ export function createAndEditModel(
     expect: Expect,
     options: ICreateAndEditModelOptions,
 ): void {
-    const {subject, object, fields, editFields} = options;
+    const {subject, object, fields, editFields, search, editInCreate = true} = options;
     const browseMethod = `${subject}.${object}.browse`;
 
     test(`create ${subject} ${object}`, async ({portal}) => {
@@ -235,7 +253,7 @@ export function createAndEditModel(
         await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-saved.png`);
 
         // Edit the same record in the same tab — verifies edit does not create a duplicate
-        if (editFields && Object.keys(editFields).length > 0) {
+        if (editInCreate && editFields && Object.keys(editFields).length > 0) {
             await fillFields(portal.page, editFields);
             await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-edit-dirty.png`);
 
@@ -249,8 +267,21 @@ export function createAndEditModel(
             await portal.menuClick(browseMethod);
             await portal.waitForTableData();
 
-            // Select the first row, then click the Edit button in the browse toolbar
-            await portal.page.locator('.p-datatable-tbody tr').first().click();
+            // Optionally filter the browse table to the row we want to edit so
+            // the edit test targets the right record (e.g. a test-created row)
+            // instead of the first row of the unfiltered table.
+            if (search) {
+                await portal.page.getByTestId('browse-search').fill(search);
+                await portal.page.waitForTimeout(600); // debounce + refetch
+                await portal.waitForTableData();
+            }
+
+            // Select the first data row (exclude the "No available options"
+            // empty-state row), then open it via the Edit toolbar button.
+            const dataRows = portal.page
+                .locator('.p-datatable-tbody tr')
+                .filter({hasNotText: 'No available options'});
+            await dataRows.first().click();
             const editTestId = `action-component-${subject}-${object}-open`;
             await portal.page.getByTestId(editTestId).first().click();
             await portal.waitForFormLoad();
@@ -258,12 +289,21 @@ export function createAndEditModel(
             await portal.waitForFormData();
             await expect(portal.page).toHaveScreenshot(`${subject}-${object}-open.png`);
 
-            // Dirty cycle: append a random suffix, save, then set the actual
-            // values and save again.  This handles stateful mock servers where
-            // a previous test run may have already set the same editFields values.
+            // Dirty cycle: text/textarea fields get a random suffix so the
+            // first save writes a distinct value even when a stateful mock
+            // server already holds the editFields values; other widgets
+            // (date/select/dropdown/number) keep their value because the
+            // editFields themselves differ from the loaded record — a single
+            // save then suffices.
             const suffix = ` ${Math.random().toString(36).slice(2, 8)}`;
-            await fillFields(portal.page, addSuffix(editFields, suffix));
-            await portal.save();
+            const suffixed = addSuffix(editFields, suffix);
+            const suffixedChanges = Object.keys(suffixed).some(
+                name => unwrapValue(suffixed[name]) !== unwrapValue(editFields[name]),
+            );
+            if (suffixedChanges) {
+                await fillFields(portal.page, suffixed);
+                await portal.save();
+            }
 
             // Fill the actual editFields (different from suffixed → form dirty)
             await fillFields(portal.page, editFields);
@@ -274,4 +314,84 @@ export function createAndEditModel(
             await expect(portal.page).toHaveScreenshot(`${subject}-${object}-edit-saved.png`);
         });
     }
+}
+
+export interface ICleanupModelOptions {
+    subject: string;
+    object: string;
+    /**
+     * Search text that isolates this suite's test-created rows in the browse
+     * table (e.g. a description marker like "Playwright" or a status like
+     * "suspended").  Must NOT match the seeded rows used by the browse
+     * screenshots.
+     */
+    search: string;
+    /** Remove method (semantic triple) whose browse-toolbar button deletes the selected row. */
+    removeMethod: string;
+}
+
+/**
+ * Generate a cleanup test that deletes test-created rows left over from
+ * previous runs, via the browse page filter, so the DB does not need to be
+ * dropped/recreated between runs.
+ *
+ * Registers a `cleanup {subject} {object}` test that runs first (tests execute
+ * in declaration order), so a suite's leftover data is removed before the
+ * browse/create/edit tests.  For each matching row it selects it, clicks the
+ * Delete toolbar button, captures a screenshot of the confirmation dialog
+ * (first delete only — the filtered table is deterministic), and confirms the
+ * deletion.
+ */
+export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupModelOptions): void {
+    const {subject, object, search, removeMethod} = options;
+    const removeTestId = `action-${removeMethod.replace(/[/.]/g, '-')}`;
+
+    test(`cleanup ${subject} ${object}`, async ({portal}) => {
+        await portal.menuClick(`${subject}.${object}.browse`);
+        await portal.waitForTableData();
+
+        // Filter to the rows we want to remove.
+        await portal.page.getByTestId('browse-search').fill(search);
+        await portal.page.waitForTimeout(600); // debounce + refetch
+        await portal.waitForTableData();
+
+        // Delete every matching row, one at a time (the browse uses single
+        // selection, and each Delete refreshes the filtered table).  The
+        // `.p-datatable-tbody tr` locator also matches the "No available
+        // options" empty-state row, so exclude it.
+        const dataRows = portal.page
+            .locator('.p-datatable-tbody tr')
+            .filter({hasNotText: 'No available options'});
+        let deleted = 0;
+        for (;;) {
+            const count = await dataRows.count();
+            if (count === 0) break;
+            await dataRows.first().click();
+            const del = portal.page.getByTestId(removeTestId);
+            if ((await del.count()) === 0) break;
+            await del.first().click();
+            // PrimeReact ConfirmDialog — screenshot the confirmation step, then
+            // accept ("Yes") the deletion.
+            await portal.page.locator('.p-confirm-dialog-accept').waitFor({state: 'visible'});
+            if (deleted === 0) {
+                await expect(portal.page).toHaveScreenshot(
+                    `${subject}-${object}-cleanup-confirm.png`,
+                );
+            }
+            await portal.page.locator('.p-confirm-dialog-accept').click();
+            deleted++;
+            // Wait for the delete to take effect and the table to refresh: the
+            // visible data-row count must drop below the count before the delete.
+            await portal.page.waitForFunction(
+                expected => {
+                    const rows = Array.from(
+                        document.querySelectorAll('.p-datatable-tbody tr'),
+                    ).filter(tr => !tr.textContent?.includes('No available options'));
+                    return rows.length < expected;
+                },
+                count,
+                {timeout: 10_000},
+            );
+        }
+    });
 }

@@ -14,6 +14,7 @@ export default server(blong => ({
     children: [
         './mysql',
         './mongodb',
+        './redis',
         './http',
         './s3',
         './kafka',
@@ -43,6 +44,10 @@ export default server(blong => ({
         'adapter.mongodb': {
             mongodb: {},
             watch: {test: ['test.mongodb.documentInsert', 'test.mongodb.crud']},
+        },
+        'adapter.redis': {
+            redis: {},
+            watch: {test: ['test.redis.key', 'test.redis.hash', 'test.redis.script']},
         },
         'adapter.http': {
             http: {},

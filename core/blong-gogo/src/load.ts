@@ -437,6 +437,7 @@ export default async function loadRealm<T extends TSchema>(
                             gateway: {},
                             restFs: {},
                             systemDebug: {},
+                            apiGateway: {},
                         },
                         dev: {
                             resolution: true,

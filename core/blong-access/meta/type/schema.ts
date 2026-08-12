@@ -25,10 +25,12 @@ export default schema(async ({lib: {type}}) => ({
     ),
 
     /**
-     * Authenticator records bound to a user.
+     * Authenticator records bound to a user or an application.
      *
-     * `credentialType` is 'password' or 'clientSecret'.  The secret is
-     * hashed with PBKDF2 (or a stronger algorithm) before storage.
+     * `credentialType` is 'password', 'clientSecret' or 'google'.  The secret is
+     * hashed with PBKDF2 (or a stronger algorithm) before storage.  The FK is
+     * to `core.resource.resourceId` so a credential can be bound to either an
+     * `access.user` or a `gateway.application` (both are core.resource-backed).
      */
     credential: type.Object(
         {
@@ -52,7 +54,7 @@ export default schema(async ({lib: {type}}) => ({
         {
             constraints: {
                 foreign: {
-                    userId: 'access.user.userId',
+                    userId: 'core.resource.resourceId',
                 },
             },
         },

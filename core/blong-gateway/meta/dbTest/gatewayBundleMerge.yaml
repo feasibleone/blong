@@ -1,0 +1,23 @@
+capability:
+  gatewayManagement: gateway.application.register,gateway.bundle.merge,gateway.subscription.merge,gateway.credit.adjust,gateway.application.find,gateway.application.add,gateway.application.edit,gateway.application.remove,gateway.application.get,gateway.bundle.find,gateway.bundle.add,gateway.bundle.edit,gateway.bundle.remove,gateway.bundle.get,gateway.subscription.find,gateway.subscription.add,gateway.subscription.edit,gateway.subscription.remove,gateway.subscription.get,gateway.dropdown.list
+role:
+  Admin: gatewayManagement
+bundle:
+  Vision AI:
+    roleBit: 100
+    capability: vision
+    actions: vision.compute
+    baseMonthlyCredits: 1000
+    rateLimit: 100
+    rateWindowSec: 60
+    isActive: true
+    description: Vision processing API (test)
+  Customer API:
+    roleBit: 101
+    capability: customer
+    actions: customer.get
+    baseMonthlyCredits: 500
+    rateLimit: 60
+    rateWindowSec: 60
+    isActive: true
+    description: Customer data API (test)

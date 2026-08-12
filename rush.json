@@ -639,6 +639,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-gateway",
+            "projectFolder": "core/blong-gateway",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-party",
             "projectFolder": "core/blong-party",
             "reviewCategory": "core",

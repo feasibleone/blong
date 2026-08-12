@@ -86,11 +86,13 @@ export async function schemaTableConstraintSyncImpl(
     const existingConstraints = (
         await knex('information_schema.TABLE_CONSTRAINTS').select('CONSTRAINT_NAME').where({
             TABLE_SCHEMA: knex.client.database(),
+            TABLE_NAME: tableName,
         })
     ).map(c => (c.CONSTRAINT_NAME === 'PRIMARY' ? `${tableName}_pk` : c.CONSTRAINT_NAME));
     const existingIndexes = (
         await knex('information_schema.STATISTICS').select('INDEX_NAME').where({
             TABLE_SCHEMA: knex.client.database(),
+            TABLE_NAME: tableName,
         })
     ).map(i => i.INDEX_NAME);
 
@@ -149,6 +151,8 @@ export async function schemaTableConstraintSyncImpl(
 
 /**
  * Generate CRUD handler functions and their TypeBox schemas for a given table.
+ *
+ * WARNING: this is not yet utilized, for now all cases were covered by the generic exec() in knex.ts
  *
  * The returned `handlers` map can be called directly or stored as synthetic
  * handlers on the adapter object.  Operations already listed in

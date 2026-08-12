@@ -10,6 +10,7 @@ Each adapter realm is **opt-in**: it only activates when its dedicated config na
 |-------|-------------|-----------|---------|
 | `mysql/` | `adapter.knex` (MySQL) | MySQL | 30006 |
 | `mongodb/` | `adapter.mongodb` | MongoDB | 30017 |
+| `redis/` | `adapter.redis` | Redis | 30063 |
 | `http/` | `adapter.http` | In-process Node.js echo server | 30088 |
 | `s3/` | `adapter.s3` | MinIO | 30009 |
 | `kafka/` | `adapter.kafka` | Kafka KRaft | 30092 |
@@ -25,6 +26,7 @@ Each adapter realm is **opt-in**: it only activates when its dedicated config na
 # Run a specific adapter (backend must be running)
 node mysql.test.ts
 node mongodb.test.ts
+node redis.test.ts
 node http.test.ts      # no backend needed, uses in-process echo server
 node s3.test.ts
 node kafka.test.ts
@@ -55,6 +57,7 @@ Backends are provisioned in `test/integration/`:
 |---------|------|---------|
 | MySQL | `mysql-deployment.yaml` | 30006 |
 | MongoDB | `mongodb-deployment.yaml` | 30017 |
+| Redis | `redis-deployment.yaml` | 30063 |
 | Keycloak | `keycloak-deployment.yaml` | 30080 |
 | MinIO | `minio-deployment.yaml` | 30009 |
 | Kafka (KRaft) | `kafka-deployment.yaml` | 30092 |

@@ -313,7 +313,7 @@ export default class Watch extends Internal implements IWatch {
                       ).default
                     : ((await directory![filename]()) as {default: unknown}).default;
             if (!item) {
-                this.log?.error?.('Error loading ' + filename);
+                this.log?.error?.('Error loading ' + filename + ' ; probably a generic source code was put in a handler group folder');
                 continue;
             }
             const expectedName = this.#platform.basename(
