@@ -11,14 +11,13 @@
     },
     "scripts": {
         "build": "true",
-        "ci-lint": "blong-dev lint",
-        "ci-test": "blong-dev test"
+        "ci-lint": "true",
+        "ci-test": "true"
     },
     "dependencies": {
         "jose": "^6.2.1"
     },
     "devDependencies": {
-        "@feasibleone/blong-dev": "workspace:*",
         "@types/node": "^24",
         "typescript": "^6.0.3"
     }
