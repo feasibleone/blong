@@ -35,6 +35,7 @@ export default server(() => ({
                 expectedErrors: true,
             },
             systemDebug: {enabled: true},
+            srv: {},
             core: {},
             access: {},
             party: {},
