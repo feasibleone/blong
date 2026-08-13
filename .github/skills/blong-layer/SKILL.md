@@ -112,6 +112,25 @@ active. Provide a `layer.server.ts` to override any entry.
 
 See the **blong-intent** skill for the full intents reference and how to create custom intents.
 
+### Dev-Only Handler Groups (`.dev` suffix)
+
+A handler-group folder whose name ends in `.dev` (e.g. `gateway/vision.dev/`) loads **only under
+the `dev` intent** — under any other intent the whole folder is skipped. This is the general
+mechanism for making a specific handler group (gateway validations, orchestrator namespaces,
+handlers) dev-only without touching config. It complements the `adapter/dbTest` pattern (which
+is scoped to the db adapter's import regex).
+
+```text
+gateway/
+├── subject/            # loaded in every environment
+└── vision.dev/         # loaded only under `dev` (e.g. demo metered API)
+```
+
+The `.dev` suffix is a **loading gate only** — it does not change names. Gateway validations are
+keyed by function name (`visionCompute` → `vision.compute`) and orchestrator namespaces are
+declared explicitly in `init.ts` (`{namespace: 'vision'}`), so a `.dev` folder keeps the same
+routes/namespaces as its non-`.dev` equivalent.
+
 ## Self-Contained Layer Pattern
 
 ### Adapter Layer Definition

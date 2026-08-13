@@ -1,4 +1,5 @@
 import {TestExecutor, type ITestLogger} from '@feasibleone/blong-chain';
+import {withProgress} from '@feasibleone/blong-lib';
 import assert from 'node:assert';
 
 type Step = (a: typeof assert, results: object) => object | Promise<object>;
@@ -34,7 +35,17 @@ const runSteps =
 
         // Execute with parallel executor, passing test context for nested output
         try {
-            await executor.execute(resolvedSteps, results.$meta || {}, t);
+            await withProgress(
+                log,
+                `run ${steps.name}`,
+                executor.execute(resolvedSteps, results.$meta || {}, t),
+                {
+                    getProgress: () => {
+                        const progress = executor.getProgress();
+                        return {done: progress.completedSteps, total: progress.totalSteps};
+                    },
+                },
+            );
 
             // Copy results from executor context to results object
             const progress = executor.getProgress();

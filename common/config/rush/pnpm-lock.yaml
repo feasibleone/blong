@@ -445,6 +445,9 @@ importers:
       eslint:
         specifier: ^10.4.0
         version: 10.4.0(jiti@1.21.7)
+      mysql2:
+        specifier: ^3.16.3
+        version: 3.20.0(@types/node@24.12.0)
       strip-json-comments:
         specifier: ^5.0.3
         version: 5.0.3
@@ -454,6 +457,9 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@types/cacache':
         specifier: ^20.0.1
@@ -884,6 +890,9 @@ importers:
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
+      mysql2:
+        specifier: ^3.16.3
+        version: 3.20.0(@types/node@24.12.0)
       typebox:
         specifier: ^1.1.5
         version: 1.1.8

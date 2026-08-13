@@ -1,3 +1,4 @@
+import {withProgress} from '@feasibleone/blong-lib';
 import {
     adapter,
     type Adapter,
@@ -67,6 +68,37 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
+/**
+ * Log MySQL deadlock details (including the offending query) in dev mode.
+ * Called from the `wrapKnex` `onDeadlock` hook for every query path through the
+ * wrapped knex: CRUD builders, `raw()`/stored-procedure calls, schema sync and
+ * seed merges, and queries inside `transaction()` blocks.
+ */
+export function logKnexDeadlock(
+    config: {debug?: boolean; logLevel?: string},
+    log: unknown,
+    error: unknown,
+): void {
+    if (!config.debug && config.logLevel !== 'debug') return;
+    const err = error as {
+        message?: string;
+        code?: string;
+        errno?: number;
+        sql?: string;
+        sqlMessage?: string;
+    };
+    (log as {error?: (...args: unknown[]) => void})?.error?.(
+        {
+            err: err.message ?? err,
+            code: err.code,
+            errno: err.errno,
+            sql: err.sql,
+            sqlMessage: err.sqlMessage,
+        },
+        'knex deadlock',
+    );
+}
+
 export default adapter<IConfig>(({utError, schema: objectSchema}) => {
     _errors ||= utError.register(errorMap);
 
@@ -84,7 +116,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
         },
         start() {
             this.config.context = {
-                queryBuilder: wrapKnex(KnexLib(this.config.knex)) as unknown as Knex,
+                queryBuilder: wrapKnex(KnexLib(this.config.knex), {
+                    onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
+                }) as unknown as Knex,
             };
             super.connect();
             return super.start();
@@ -125,38 +159,68 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 });
                 const dropColumns = schema.dropColumns ?? false;
                 const tableDefs: Array<{tableName: string; definition: TObject}> = [];
-                for (const [tableName, tableConfig] of tables) {
-                    const [subject, object] = tableName.split('.');
-                    const {definition} = resolveTableSpec(
-                        objectSchema,
-                        tableConfig,
-                        subject,
-                        object,
-                    );
-                    if (!definition) continue;
-                    const sqlName = tableName.replaceAll('.', '_');
-                    await schemaTableSyncImpl(knex, sqlName, definition, {
-                        dropColumns,
-                    });
-                    tableDefs.push({tableName: sqlName, definition});
-                }
+                let syncedTables = 0;
+                await withProgress(
+                    this.log,
+                    'schema table sync',
+                    (async () => {
+                        for (const [tableName, tableConfig] of tables) {
+                            const [subject, object] = tableName.split('.');
+                            const {definition} = resolveTableSpec(
+                                objectSchema,
+                                tableConfig,
+                                subject,
+                                object,
+                            );
+                            if (!definition) continue;
+                            const sqlName = tableName.replaceAll('.', '_');
+                            await schemaTableSyncImpl(knex, sqlName, definition, {
+                                dropColumns,
+                            });
+                            tableDefs.push({tableName: sqlName, definition});
+                            syncedTables += 1;
+                        }
+                    })(),
+                    {
+                        getProgress: () => ({done: syncedTables, total: tables.length}),
+                    },
+                );
+
                 // Second pass: apply constraints (PKs, unique, indexes, FKs) now
                 // that all tables exist.
-                for (const {tableName: sqlName, definition} of tableDefs) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const constraints = (definition as any).constraints as
-                        | ITableConstraints
-                        | undefined;
-                    if (constraints)
-                        await schemaTableConstraintSyncImpl(knex, sqlName, constraints);
-                }
+                let syncedConstraints = 0;
+                await withProgress(
+                    this.log,
+                    'schema constraint sync',
+                    (async () => {
+                        for (const {tableName: sqlName, definition} of tableDefs) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const constraints = (definition as any).constraints as
+                                | ITableConstraints
+                                | undefined;
+                            if (constraints) {
+                                await schemaTableConstraintSyncImpl(knex, sqlName, constraints);
+                                syncedConstraints += 1;
+                            }
+                        }
+                    })(),
+                    {
+                        getProgress: () => ({done: syncedConstraints, total: tableDefs.length}),
+                    },
+                );
+
                 // Collect procedure definitions: scanned folders first, then inline.
                 const procedureDefs: Array<{name: string; sql: string}> = [];
                 for (const folder of schema.procedurePaths ?? [])
                     procedureDefs.push(...readSqlFiles(folder));
                 for (const [name, sql] of Object.entries(schema.procedures ?? {}))
                     procedureDefs.push({name, sql});
-                if (procedureDefs.length > 0) await schemaProcedureSyncImpl(knex, procedureDefs);
+                if (procedureDefs.length > 0)
+                    await withProgress(
+                        this.log,
+                        'schema procedure sync',
+                        schemaProcedureSyncImpl(knex, procedureDefs),
+                    );
             }
 
             if (schema && knex) {
@@ -172,14 +236,33 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 // deadlock between concurrent merges.
                 (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = true;
                 try {
-                    // 1. Process production seeds (db.asset modules)
-                    await processSeedAssets(this, /\.db\.asset$/);
-                    // 2. Process test seeds (dbTest.asset modules) only when dbTest is enabled
-                    if (schema?.dbTest) {
-                        await processSeedAssets(this, /\.dbTest\.asset$/);
-                    }
-                    // 3. Single rebuild after all seed edges are in place.
-                    if (schema?.accessPathRefresh) await knex?.raw('CALL access_pathRefresh()');
+                    let currentSeed = '';
+                    await withProgress(
+                        this.log,
+                        'seed data',
+                        (async () => {
+                            // 1. Process production seeds (db.asset modules)
+                            await processSeedAssets(
+                                this,
+                                /\.db\.asset$/,
+                                name => (currentSeed = name),
+                            );
+                            // 2. Process test seeds (dbTest.asset modules) only when dbTest is enabled
+                            if (schema?.dbTest) {
+                                await processSeedAssets(
+                                    this,
+                                    /\.dbTest\.asset$/,
+                                    name => (currentSeed = name),
+                                );
+                            }
+                            // 3. Single rebuild after all seed edges are in place.
+                            if (schema?.accessPathRefresh)
+                                await knex?.raw('CALL access_pathRefresh()');
+                        })(),
+                        {
+                            getProgress: () => ({current: currentSeed || 'starting'}),
+                        },
+                    );
                 } finally {
                     (this.config.context as {deferPathRefresh?: boolean}).deferPathRefresh = false;
                 }
@@ -209,7 +292,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 ] ?? this.config.knex;
             this.config.knex = newKnexConfig as object;
             this.config.context = {
-                queryBuilder: wrapKnex(KnexLib(newKnexConfig as object)) as unknown as Knex,
+                queryBuilder: wrapKnex(KnexLib(newKnexConfig as object), {
+                    onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
+                }) as unknown as Knex,
             };
         },
         async exec(
@@ -684,7 +769,11 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
  * Iterates over all realm asset modules, reads YAML/JSON files and dispatches
  * their contents as handler method calls.
  */
-async function processSeedAssets(ctx: Adapter<IConfig>, pattern: RegExp): Promise<void> {
+async function processSeedAssets(
+    ctx: Adapter<IConfig>,
+    pattern: RegExp,
+    onProgress?: (name: string) => void,
+): Promise<void> {
     for (const realm of (await ctx.attach?.(
         pattern,
         [] as Array<{
@@ -697,6 +786,7 @@ async function processSeedAssets(ctx: Adapter<IConfig>, pattern: RegExp): Promis
         )) {
             const extname = ctx.platform.extname(path);
             const method = methodParts(ctx.platform.basename(path, extname).split('-').pop()!);
+            onProgress?.(name);
             ctx.log?.debug?.({
                 $meta: {mtid: 'event', method},
                 message: `Processing asset: ${name} at path: ${path}`,

@@ -1,3 +1,4 @@
+import {withProgress} from '@feasibleone/blong-lib';
 import {
     handler,
     Internal,
@@ -47,6 +48,7 @@ const isLayerActivation = (filename: string): boolean =>
     /^layer\.(server|browser)\.[mc]?[tj]sx?$/i.test(filename);
 const isConfig = (filename: string): boolean => /^config\.[mc]?[tj]sx?$/i.test(filename);
 const isPlay = (filename: string): boolean => /\.play\.[mc]?[tj]sx?$/i.test(filename);
+const isTest = (filename: string): boolean => /\.test\.[mc]?[tj]sx?$/i.test(filename);
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
 
@@ -289,7 +291,8 @@ export default class Watch extends Internal implements IWatch {
                     isCode(entry.name) &&
                     !isLayerActivation(entry.name) &&
                     !isConfig(entry.name) &&
-                    !isPlay(entry.name),
+                    !isPlay(entry.name) &&
+                    !isTest(entry.name),
             );
         await this.#apiSchema?.generateDir(dir, handlerFiles as Dirent[]);
         for (const handlerEntry of handlerFiles) {
@@ -313,7 +316,11 @@ export default class Watch extends Internal implements IWatch {
                       ).default
                     : ((await directory![filename]()) as {default: unknown}).default;
             if (!item) {
-                this.log?.error?.('Error loading ' + filename + ' ; probably a generic source code was put in a handler group folder');
+                this.log?.error?.(
+                    'Error loading ' +
+                        filename +
+                        ' ; probably a generic source code was put in a handler group folder',
+                );
                 continue;
             }
             const expectedName = this.#platform.basename(
@@ -397,7 +404,8 @@ export default class Watch extends Internal implements IWatch {
             if (
                 isCode(filename) &&
                 !isLayerActivation(this.#platform.basename(filename)) &&
-                !isPlay(this.#platform.basename(filename))
+                !isPlay(this.#platform.basename(filename)) &&
+                !isTest(this.#platform.basename(filename))
             ) {
                 const item =
                     typeof isFile === 'function'
@@ -479,27 +487,36 @@ export default class Watch extends Internal implements IWatch {
         const affected = affectedNamespaces(diff, registry.ports.keys());
         const next = this.#configRuntime.snapshot;
 
-        for (const portId of affected) {
-            const portInstance = await registry.getPort(portId);
-            if (!portInstance) continue;
-
-            if (typeof portInstance['configChanged'] === 'function') {
-                // Adapter supports the configChanged hook — zero-downtime update
-                try {
-                    await portInstance['configChanged'](diff, next, prev);
-                } catch (error) {
-                    this.log?.error?.(error);
+        let reloaded = 0;
+        await withProgress(
+            this.log,
+            'reload config',
+            (async () => {
+                for (const portId of affected) {
+                    const portInstance = await registry.getPort(portId);
+                    if (portInstance) {
+                        if (typeof portInstance['configChanged'] === 'function') {
+                            // Adapter supports the configChanged hook — zero-downtime update
+                            try {
+                                await portInstance['configChanged'](diff, next, prev);
+                            } catch (error) {
+                                this.log?.error?.(error);
+                            }
+                        } else {
+                            // Fallback: stop and restart the port with the current configOverride
+                            await portInstance.stop();
+                            const fresh = await registry.createPort(portId);
+                            if (fresh) {
+                                await fresh.start(configOverride);
+                                await fresh.ready();
+                            }
+                        }
+                    }
+                    reloaded += 1;
                 }
-            } else {
-                // Fallback: stop and restart the port with the current configOverride
-                await portInstance.stop();
-                const fresh = await registry.createPort(portId);
-                if (fresh) {
-                    await fresh.start(configOverride);
-                    await fresh.ready();
-                }
-            }
-        }
+            })(),
+            {getProgress: () => ({done: reloaded, total: affected.size})},
+        );
 
         this.#emit.dispatchEvent(new Event('test'));
     }
@@ -672,8 +689,19 @@ export default class Watch extends Internal implements IWatch {
                             return result;
                         }),
                     );
-                    await Promise.all(
-                        steps.map(step => chain(step as Parameters<typeof chain>[0])),
+                    let executed = 0;
+                    await withProgress(
+                        this.log,
+                        'run test groups',
+                        (async () => {
+                            await Promise.all(
+                                steps.map(async step => {
+                                    await chain(step as Parameters<typeof chain>[0]);
+                                    executed += 1;
+                                }),
+                            );
+                        })(),
+                        {getProgress: () => ({done: executed, total: steps.length})},
                     );
                 } catch (error) {
                     this.log?.error?.(error);

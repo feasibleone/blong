@@ -18,6 +18,7 @@ import {
     type SolutionFactory,
 } from '@feasibleone/blong/types';
 
+import {withProgress} from '@feasibleone/blong-lib';
 import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
@@ -803,7 +804,18 @@ export default async function loadRealm<T extends TSchema>(
                     }
                     default:
                         const loaded: unknown[] = [];
-                        for (const dirEntry of await platformApi.scan(base, item))
+                        // `.dev`-suffixed handler groups (e.g. `gateway/vision.dev/`)
+                        // load only under the `dev` intent — a general dev-only gating
+                        // convention for layers such as gateway/orchestrator.
+                        const devActive =
+                            configNames.includes('dev') || platformApi.configs.includes('dev');
+                        for (const dirEntry of await platformApi.scan(base, item)) {
+                            if (
+                                dirEntry.isDirectory() &&
+                                dirEntry.name.endsWith('.dev') &&
+                                !devActive
+                            )
+                                continue;
                             loaded.push(
                                 await api!.watch?.load(
                                     mergedConfig,
@@ -814,6 +826,7 @@ export default async function loadRealm<T extends TSchema>(
                                     dirEntry.name.toString(),
                                 ),
                             );
+                        }
                         // Auto-provision a testDispatch orchestrator when the test/ folder
                         // has no testDispatch.ts and no layer.server.ts.
                         if (itemName === 'test' && platformApi.platform === 'server' && base) {
@@ -871,59 +884,76 @@ export default async function loadRealm<T extends TSchema>(
                 item = async () => loaded.filter(Boolean);
             }
             const loadedModules = await (item as () => Promise<unknown[]>)();
-            for (const module of Array.isArray(loadedModules) ? loadedModules : [loadedModules]) {
-                const item = await module;
-                const fn = (item as {default?: unknown})?.default ?? item;
-                if (
-                    typeof fn === 'function' &&
-                    (fn.prototype instanceof Internal ||
-                        (fn as unknown as Record<symbol, unknown>)[System])
-                ) {
-                    api![itemName] = new (fn as IConstructor)(config, api);
-                    await api![itemName].init?.();
-                    if (itemName === 'log')
-                        logger = api!.log?.logger(
-                            mergedConfig[rootKind === 'browser' ? 'browser' : 'server']?.load
-                                ?.logLevel,
-                            {
-                                name,
-                                context: `${defKind}`,
-                            },
-                        );
-                } else if (
-                    ['solution', 'server', 'browser'].includes(kind(fn as Record<symbol, Kinds>))
-                ) {
-                    realm ||= new RealmImpl(mergedConfig, api!, rootKind);
-                    realm.addModule(
-                        itemName,
-                        await loadRealm(
-                            platformApi,
-                            fn as Parameters<typeof loadRealm>[1],
-                            itemName,
-                            {[platformApi.platform]: mergedConfig[platformApi.platform], ...config},
-                            configNames,
-                            manifest,
-                            api,
-                            rootKind,
-                        ),
-                    );
-                } else if (typeof fn === 'function') {
-                    realm ||= new RealmImpl(mergedConfig, api!, rootKind);
-                    realm.addLayer(
-                        itemName,
-                        fn(
-                            layerProxy(
-                                api?.error,
-                                api?.registry?.objectSchema,
-                                api?.apiSchema,
-                                api?.port,
-                                mergedConfig as unknown as Parameters<typeof layerProxy>[4],
-                                api?.configRuntime,
-                            ),
-                        ).result,
-                    );
-                }
-            }
+            const modules = Array.isArray(loadedModules) ? loadedModules : [loadedModules];
+            let loadedCount = 0;
+            await withProgress(
+                logger,
+                `load ${itemName}`,
+                (async () => {
+                    for (const module of modules) {
+                        const item = await module;
+                        const fn = (item as {default?: unknown})?.default ?? item;
+                        if (
+                            typeof fn === 'function' &&
+                            (fn.prototype instanceof Internal ||
+                                (fn as unknown as Record<symbol, unknown>)[System])
+                        ) {
+                            api![itemName] = new (fn as IConstructor)(config, api);
+                            await api![itemName].init?.();
+                            if (itemName === 'log')
+                                logger = api!.log?.logger(
+                                    mergedConfig[rootKind === 'browser' ? 'browser' : 'server']
+                                        ?.load?.logLevel,
+                                    {
+                                        name,
+                                        context: `${defKind}`,
+                                    },
+                                );
+                        } else if (
+                            ['solution', 'server', 'browser'].includes(
+                                kind(fn as Record<symbol, Kinds>),
+                            )
+                        ) {
+                            realm ||= new RealmImpl(mergedConfig, api!, rootKind);
+                            realm.addModule(
+                                itemName,
+                                await loadRealm(
+                                    platformApi,
+                                    fn as Parameters<typeof loadRealm>[1],
+                                    itemName,
+                                    {
+                                        [platformApi.platform]: mergedConfig[platformApi.platform],
+                                        ...config,
+                                    },
+                                    configNames,
+                                    manifest,
+                                    api,
+                                    rootKind,
+                                ),
+                            );
+                        } else if (typeof fn === 'function') {
+                            realm ||= new RealmImpl(mergedConfig, api!, rootKind);
+                            realm.addLayer(
+                                itemName,
+                                fn(
+                                    layerProxy(
+                                        api?.error,
+                                        api?.registry?.objectSchema,
+                                        api?.apiSchema,
+                                        api?.port,
+                                        mergedConfig as unknown as Parameters<typeof layerProxy>[4],
+                                        api?.configRuntime,
+                                    ),
+                                ).result,
+                            );
+                        }
+                        loadedCount += 1;
+                    }
+                })(),
+                {
+                    getProgress: () => ({done: loadedCount, total: modules.length}),
+                },
+            );
         }
     }
     realm ||= new RealmImpl(mergedConfig, api!, rootKind);

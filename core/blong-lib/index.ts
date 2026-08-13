@@ -228,3 +228,70 @@ export function crockfordDecode(input: string): Uint8Array {
     }
     return new Uint8Array(output);
 }
+
+/**
+ * Progress reporting for long-running async operations.
+ *
+ * Some operations (schema sync, seed data, procedure sync, external calls) can
+ * take a long time, and it is hard to tell whether the process is stuck or
+ * just slow. `withProgress` wraps a promise and, once the operation has run
+ * past a threshold, logs a progress snapshot every `intervalMs` via a
+ * `getProgress` callback. A final "completed" line is logged with the total
+ * elapsed time.
+ *
+ * The logger is intentionally duck-typed (`{info, warn}`) so any framework
+ * logger (server `Log`, browser `BrowserLog`, or a plain test logger) can be
+ * used. Browser-safe: `timer.unref` is optional-chained.
+ */
+export interface WithProgressOptions {
+    /** Called periodically after the threshold to produce a progress snapshot. */
+    getProgress?: () => string | object;
+    /** Only start reporting after this many ms. Defaults to 10 000. */
+    thresholdMs?: number;
+    /** How often to report after the threshold. Defaults to 5 000. */
+    intervalMs?: number;
+    /** Log level used for progress lines. Defaults to 'warn'. */
+    level?: 'info' | 'warn';
+}
+
+type ProgressLogger = {info?: (...args: unknown[]) => void; warn?: (...args: unknown[]) => void};
+
+/**
+ * Run `promise`, reporting progress once it exceeds `thresholdMs`.
+ *
+ * Returns the promise's resolved value unchanged; a rejected promise is
+ * propagated as-is.
+ */
+export async function withProgress<T>(
+    log: ProgressLogger | undefined,
+    label: string,
+    promise: Promise<T>,
+    {
+        getProgress,
+        thresholdMs = 10_000,
+        intervalMs = 5_000,
+        level = 'warn',
+    }: WithProgressOptions = {},
+): Promise<T> {
+    if (!log) return promise;
+    const started = Date.now();
+    let reported = false;
+    const timer = setInterval(() => {
+        const elapsedMs = Date.now() - started;
+        if (elapsedMs < thresholdMs) return;
+        reported = true;
+        const progress = getProgress ? getProgress() : undefined;
+        const emit = level === 'warn' ? log.warn : log.info;
+        emit?.({label, elapsedMs, progress}, `operation "${label}" still running (${elapsedMs}ms)`);
+    }, intervalMs);
+    timer.unref?.();
+    try {
+        return await promise;
+    } finally {
+        clearInterval(timer);
+        if (reported) {
+            const elapsedMs = Date.now() - started;
+            log.info?.({label, elapsedMs}, `operation "${label}" completed in ${elapsedMs}ms`);
+        }
+    }
+}

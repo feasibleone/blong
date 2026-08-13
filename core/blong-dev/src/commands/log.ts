@@ -104,7 +104,7 @@ interface IParsedArgs {
 }
 
 /** Minimal `--name value` / `--name=value` / `--flag` parser. */
-function parseArgs(args: string[]): IParsedArgs {
+export function parseArgs(args: string[]): IParsedArgs {
     const positionals: string[] = [];
     const options = new Map<string, string>();
     const flags = new Set<string>();

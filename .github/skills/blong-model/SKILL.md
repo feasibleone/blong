@@ -316,7 +316,40 @@ A dropdown is referenced by a `'subject.name'` key:
 - The backend handler returns `IDropdownOption[]` shaped as `[{value: id, label: '...'}]`
 - Results are cached for the browser session
 
-The realm providing the dropdown data must implement `{subject}.dropdown.list` in its orchestrator.
+For **resource-backed** tables the knex adapter auto-binds `{subject}.dropdown.list` — the realm
+does NOT need to implement it (see
+[How the model system relates to `core.resource`](#how-the-model-system-relates-to-core-resource)
+below). A realm only implements `{subject}.dropdown.list` itself for **non-resource** tables.
+
+---
+
+## How the model system relates to `core.resource`
+
+`core.resource` is the framework's universal entity registry: every resource-backed table row has a
+`resourceId` (the primary key) and a `resourceName` (the human-readable label), typed by `typeId` →
+`core.type` alias `${subject}.${object}` (see `core/blong-core/meta/type/schema.ts` and the
+**blong-core** skill).
+
+**Resource-backed table** = a table whose primary key is declared with `type.uuid()` and whose PK
+value doubles as `core.resource.resourceId`. This single fact determines several model-system
+behaviours:
+
+- **Dropdowns are auto-bound.** The knex adapter serves `{subject}.dropdown.list` for every
+  resource-backed table directly from `core_resource JOIN core_type` (see `_dropdownList` in
+  `core/blong-gogo/src/adapter/server/knex.ts`). No realm handler needed.
+- **`add` auto-creates the resource row.** Generic knex `add` on a resource-backed table inserts the
+  matching `core_resource` row; `merge` with `resourceType` + `name` idempotently resolves/creates
+  it.
+- **Seeds use `resourceType` + `name`** (e.g. `core/blong-party/meta/dbTest/partyPersonMerge.yaml`).
+
+Practical guidance for model authors:
+
+- Use `type.uuid()` for entity primary keys (not `uidNotNull()` / `increment()`) to get dropdowns
+  and graph identity for free.
+- `keyField` (`${object}Id`) corresponds to `resourceId`; `nameField` (`${object}.${object}Name`)
+  mirrors `core_resource.resourceName`.
+- `uuid()` primary keys are `binary(16)` — base64 on the wire, so dropdown values for binary PKs
+  must be base64 too (see authoring tricks below).
 
 ---
 
@@ -342,8 +375,8 @@ a string above it (the `bigInt*` types accept both forms).
 ### Model & schema authoring tricks
 
 - **`public: true` + `subject.validation`** — mark a model as public API with `public: true` in its
-  spec and it gets default CRUD validations automatically (no config needed). A suite only opts out in
-  rare cases: `srv: {'subject.validation': {validations: false}}` (all) or
+  spec and it gets default CRUD validations automatically (no config needed). A suite only opts out
+  in rare cases: `srv: {'subject.validation': {validations: false}}` (all) or
   `{validations: {coralModel: false}}` (one model). Without the validation schemas the generic RPC
   routes aren't exposed and browse 404s.
 - **`type.uuid()` vs `type.uidNotNull()`** — `type.uuid()` (default literal `'uuid'`) lets the

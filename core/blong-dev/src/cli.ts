@@ -24,6 +24,9 @@ switch (command) {
     case 'log':
         await (await import('./commands/log.ts')).log(args);
         break;
+    case 'sql':
+        await (await import('./commands/sql.ts')).sql(args);
+        break;
     default:
         process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
         process.stderr.write('Usage:\n');
@@ -45,6 +48,9 @@ switch (command) {
         );
         process.stderr.write(
             '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)\n',
+        );
+        process.stderr.write(
+            '  blong-dev sql [opts]         Run a SQL query via .blong_devrc (--output json|pretty)\n',
         );
         process.exit(1);
 }

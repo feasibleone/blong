@@ -739,6 +739,27 @@ export interface ILogger {
     warn?: LogFn;
     error?: LogFn;
     fatal?: LogFn;
+    /**
+     * Wrap a long-running promise and report progress on this logger.
+     *
+     * Once the operation runs past `thresholdMs`, a snapshot (from `getProgress`)
+     * is logged every `intervalMs` at the given `level` (default 'warn'), followed
+     * by a completion line. Delegates to the shared `withProgress` helper from
+     * `@feasibleone/blong-lib`.
+     *
+     * @example
+     * await runtime.log.progress('schema sync', syncPromise, {getProgress: () => ({done: 1, total: 2})});
+     */
+    progress?: <T>(
+        label: string,
+        promise: Promise<T>,
+        options?: {
+            getProgress?: () => string | object;
+            thresholdMs?: number;
+            intervalMs?: number;
+            level?: 'info' | 'warn';
+        },
+    ) => Promise<T>;
 }
 
 export interface IStep {
@@ -887,6 +908,17 @@ export interface ILib {
     render: (what: object[] | object) => object;
     crockfordEncode: (data: Uint8Array) => string;
     crockfordDecode: (data: string) => Uint8Array;
+    withProgress: <T>(
+        log: {info?: LogFn; warn?: LogFn} | undefined,
+        label: string,
+        promise: Promise<T>,
+        options?: {
+            getProgress?: () => string | object;
+            thresholdMs?: number;
+            intervalMs?: number;
+            level?: 'info' | 'warn';
+        },
+    ) => Promise<T>;
 }
 
 export type ValidationFn = () => GatewaySchema;

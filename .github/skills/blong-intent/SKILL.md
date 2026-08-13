@@ -41,7 +41,7 @@ Intents flow through the entire framework:
 
 | Intent | Layer / config activated | Process lifetime |
 |--------|--------------------------|-----------------|
-| `dev` | Verbose logs, hot-reload, debug-friendly config | Long-running; restarts on file changes |
+| `dev` | Verbose logs, hot-reload, debug-friendly config, **loads `.dev`-suffixed handler groups** (e.g. `gateway/vision.dev/`) | Long-running; restarts on file changes |
 | `prod` | Production endpoints, strict config | Long-running; no restart |
 | `integration` | Test layer, watch mode, test-runner | Long-running; reruns tests on change; exits on CI |
 | `microservice` | Activates layers needed to run a realm as a standalone microservice | Long-running; no restart |

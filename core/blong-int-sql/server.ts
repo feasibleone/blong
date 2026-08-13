@@ -16,7 +16,7 @@ export default server(blong => ({
         microservice: {},
         integration: {
             watch: {
-                test: ['test.mysql.query'],
+                test: ['test.mysql.query', 'test.mysql.deadlock'],
             },
         },
     },

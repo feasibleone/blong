@@ -1,5 +1,6 @@
+import {withProgress} from '@feasibleone/blong-lib';
 import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
-import {pino, type LogFn, type Logger, type LoggerOptions} from 'pino';
+import {pino, type Logger, type LoggerOptions} from 'pino';
 import {monotonicFactory} from 'ulidx';
 import type {CacacheTransportOptions} from './pino-cacache.js';
 
@@ -28,14 +29,31 @@ const ignoreArgPatterns = [
 // execArgv to [], stripping the TypeScript loader.  We work around this by
 // explicitly forwarding process.execArgv so the TypeScript loader is available
 // inside the transport worker thread.
+//
+// However, when the process is started under `tap` (e.g. `blong-dev test`),
+// process.execArgv contains tap's own `--import` hooks (@tapjs/typescript →
+// pirates/ts-node). Those hooks intercept `.ts` loads in the worker and bypass
+// Node's native type stripping, which fails on `import type` constructs
+// (SyntaxError: Unexpected identifier 'PinoPretty' in pino-pretty.ts). So we
+// drop tap's hooks from the worker execArgv.
+//
+// Dropping the hooks alone is not enough: pino's multi-target transport loads
+// `.ts`/`.cts` targets with `realRequire()` (CJS require, relying on ts-node),
+// which fails regardless of execArgv. We therefore point both transports at
+// tiny `.mjs` shims (pino-pretty.mjs / pino-cacache.mjs) that re-export the
+// `.ts` modules. Pino then treats them as non-TypeScript targets and loads
+// them with `realImport()` (dynamic ESM import), where Node's native type
+// stripping handles the re-exported `.ts` — in both tap and normal dev runs.
 const WORKER_OPTS = {
     execArgv: process.execArgv.filter(
-        arg => !ignoreArgPatterns.some(pattern => arg.startsWith(pattern)),
+        arg =>
+            !ignoreArgPatterns.some(pattern => arg.startsWith(pattern)) &&
+            !(arg.startsWith('--import=') && arg.includes('@tapjs')),
     ),
 };
 
 const PRETTY_TRANSPORT = {
-    target: './pino-pretty.ts',
+    target: './pino-pretty.mjs',
     worker: WORKER_OPTS,
     options: {
         singleLine: true,
@@ -77,7 +95,7 @@ export default class Log extends Internal implements ILog {
                 targets: [
                     PRETTY_TRANSPORT,
                     {
-                        target: './pino-cacache.ts',
+                        target: './pino-cacache.mjs',
                         worker: WORKER_OPTS,
                         options: cacacheOptions,
                     },
@@ -99,13 +117,13 @@ export default class Log extends Internal implements ILog {
         bindings: object,
     ): ReturnType<ILog['logger']> {
         const child = this.#logger.child(bindings, {level});
-        const result: Record<keyof ILogger, LogFn | null> = {
-            trace: null,
-            debug: null,
-            info: null,
-            warn: null,
-            error: null,
-            fatal: null,
+        const result: ILogger = {
+            trace: undefined,
+            debug: undefined,
+            info: undefined,
+            warn: undefined,
+            error: undefined,
+            fatal: undefined,
         };
         switch (level) {
             case 'trace':
@@ -121,6 +139,9 @@ export default class Log extends Internal implements ILog {
             case 'fatal':
                 result.fatal = child.fatal.bind(child);
         }
-        return result as unknown as ILogger;
+        return {
+            ...result,
+            progress: (label, promise, options) => withProgress(result, label, promise, options),
+        };
     }
 }

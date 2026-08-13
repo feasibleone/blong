@@ -63,6 +63,31 @@ Custom folder names require a `layer.server.ts` or `layer.browser.ts` file.
 | `component`    | —                         | always               |
 | `browser`      | always (serves assets)    | —                    |
 
+## Dev-Only Handler Groups (`.dev` suffix)
+
+A handler-group folder whose name ends in `.dev` (e.g. `gateway/vision.dev/`,
+`orchestrator/vision.dev/`) is loaded **only under the `dev` intent**. Under any other
+intent (e.g. `prod`), the folder is skipped entirely, so its validations, handlers and
+orchestrator namespaces are not registered.
+
+This is the general convention for making specific handler groups dev-only, mirroring the
+`adapter/dbTest` pattern (which is scoped to the db adapter's import regex). It works for any
+layer folder:
+
+```text
+gateway/
+├── subject/            # loaded in every environment
+└── vision.dev/         # loaded only under `dev` (demo metered API)
+orchestrator/
+├── subject/            # loaded in every environment
+└── vision.dev/         # loaded only under `dev` (namespace: 'vision')
+```
+
+The `.dev` suffix is purely a loading gate — it does **not** change names. Gateway validations
+are keyed by their function name (`visionCompute` → `vision.compute`) and orchestrator
+namespaces are declared explicitly in their `init.ts` (`{namespace: 'vision'}`), so a `.dev`
+folder keeps the same routes and namespaces as its non-`.dev` equivalent.
+
 ## Co-Located Configuration
 
 Layers are **self-contained** — each layer file defines its own configuration and validation,

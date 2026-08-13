@@ -25,6 +25,24 @@ export function isJsonColumn(column: string): boolean {
     return JSON_COLUMN.test(column);
 }
 
+/**
+ * Detect a MySQL deadlock error (errno 1213 / `ER_LOCK_DEADLOCK`). Used to log
+ * deadlock details — including the offending query — in dev mode.
+ */
+export function isDeadlock(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const {code, errno} = error as {code?: unknown; errno?: unknown};
+    return code === 'ER_LOCK_DEADLOCK' || errno === 1213;
+}
+
+/**
+ * Optional hooks applied while wrapping the shared knex instance.
+ */
+export interface WrapKnexOptions {
+    /** Invoked when a query rejects with a deadlock error, before the caller's rejection handler. */
+    onDeadlock?: (error: unknown) => void;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -77,10 +95,11 @@ export function parseJsonResult(result: unknown): unknown {
  *
  * Only `insert`, `update`, and `then` are intercepted — all other builder
  * behaviour is untouched.  Chained calls keep working because knex builder
- * methods return the same instance.
+ * methods return the same instance.  The `then` rejection path is also
+ * intercepted to detect MySQL deadlocks and report them via `options.onDeadlock`.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function wrapJsonBuilder(builder: any): any {
+export function wrapJsonBuilder(builder: any, options: WrapKnexOptions = {}): any {
     const originalInsert = builder.insert.bind(builder);
     builder.insert = (...args: unknown[]) => {
         const [first, ...rest] = args;
@@ -110,27 +129,85 @@ export function wrapJsonBuilder(builder: any): any {
                 const processed = parseJsonResult(result);
                 return typeof onFulfilled === 'function' ? onFulfilled(processed) : processed;
             },
-            onRejected as ((reason: unknown) => unknown) | undefined,
+            (reason: unknown) => {
+                if (isDeadlock(reason)) options.onDeadlock?.(reason);
+                if (typeof onRejected === 'function') return onRejected(reason);
+                throw reason;
+            },
         );
 
     return builder;
 }
 
 /**
- * Wrap the shared knex instance so every QueryBuilder produced by calling it
- * (e.g. `knex('access_credential')`) is JSON-column aware.  All other knex
- * surface (`.schema`, `.raw`, `.fn`, `.client`, ...) is left untouched via the
- * default Proxy get behaviour.
+ * Intercept the `then` rejection path of a thenable (e.g. a knex `Raw` result)
+ * so MySQL deadlocks are reported via `options.onDeadlock`. Mirrors the
+ * rejection interception in {@link wrapJsonBuilder} without the JSON column
+ * handling, which does not apply to `raw` queries / stored-procedure calls.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function attachDeadlockHook(thenable: any, options: WrapKnexOptions): any {
+    const originalThen = thenable.then.bind(thenable);
+    thenable.then = (
+        onFulfilled?: ((value: unknown) => unknown) | null,
+        onRejected?: ((reason: unknown) => unknown) | null,
+    ) =>
+        originalThen(onFulfilled, (reason: unknown) => {
+            if (isDeadlock(reason)) options.onDeadlock?.(reason);
+            if (typeof onRejected === 'function') return onRejected(reason);
+            throw reason;
+        });
+    return thenable;
+}
+
+/**
+ * Wrap the shared knex instance so every query path is deadlock-aware (and
+ * `knex('table')` builders are JSON-column aware):
+ *   - `knex('table')`     → {@link wrapJsonBuilder} (JSON columns + deadlock hook)
+ *   - `knex.raw(...)`      → deadlock hook (covers stored-procedure `CALL` + SQL)
+ *   - `knex.transaction()` → the returned `trx` is wrapped like the top-level
+ *     knex, so queries inside transactions are JSON-aware and deadlock-aware.
+ * All other knex surface (`.fn`, `.client`, `.schema`, ...) is left untouched
+ * via the default Proxy get behaviour.
  *
  * The parameter is intentionally unconstrained: the installed `knex` types and
  * the `Knex` re-exported by `@feasibleone/blong` are structurally different, so
  * callers cast the result with `as unknown as Knex`.
  */
-export function wrapKnex<T>(knex: T): T {
+export function wrapKnex<T>(knex: T, options: WrapKnexOptions = {}): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new Proxy(knex as any, {
         apply(target, thisArg, args) {
-            return wrapJsonBuilder(Reflect.apply(target, thisArg, args));
+            return wrapJsonBuilder(Reflect.apply(target, thisArg, args), options);
+        },
+        get(target, prop, receiver) {
+            if (typeof prop !== 'string') return Reflect.get(target, prop, receiver);
+            if (prop === 'raw') {
+                const original = Reflect.get(target, prop, target);
+                if (typeof original !== 'function') return original;
+                const bound = original.bind(target);
+                return (...args: unknown[]) => attachDeadlockHook(bound(...args), options);
+            }
+            if (prop === 'transaction') {
+                const original = Reflect.get(target, prop, target);
+                if (typeof original !== 'function') return original;
+                const bound = original.bind(target);
+                return (...args: unknown[]) => {
+                    const cbIndex = args.findIndex(arg => typeof arg === 'function');
+                    if (cbIndex !== -1) {
+                        const cb = args[cbIndex] as (trx: unknown) => unknown;
+                        const nextArgs = [...args];
+                        nextArgs[cbIndex] = (trx: unknown) => cb(wrapKnex(trx, options));
+                        return bound(...nextArgs);
+                    }
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const result = bound(...args) as any;
+                    return typeof result?.then === 'function'
+                        ? result.then((trx: unknown) => wrapKnex(trx, options))
+                        : result;
+                };
+            }
+            return Reflect.get(target, prop, receiver);
         },
     });
 }

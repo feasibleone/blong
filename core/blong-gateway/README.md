@@ -50,7 +50,7 @@ The flow:
    per-call credit cost:
 
    ```ts
-   // gateway/vision/visionCompute.ts
+   // gateway/vision.dev/visionCompute.ts
    export default validation(
        async ({lib: {type}}) =>
            function visionCompute() {
@@ -134,7 +134,7 @@ Mid-month credit adjustments go through `gateway.credit.adjust` (a thin wrapper 
 | `gatewayCreditAdjust` | `gateway.credit.adjust` | mid-month credit balance adjustment |
 | — (auto-bound) | `gateway.dropdown.list` | application/bundle dropdowns for the management UI — served by the knex adapter's `{subject}.dropdown.list` (P2), configured via the `dropdown` table spec |
 | `gatewayApplication/Bundle/SubscriptionModel` | `gateway.{application,bundle,subscription}.find/get/add/edit/remove/report` | auto-generated generic CRUD via `subject.validation` |
-| `visionCompute` / `customerGet` | `vision.compute` / `customer.get` | demo metered APIs (bundles `Vision AI` / `Customer API`) — test-only handlers in `adapter/dbTest/`, loaded only in the `dev` intent |
+| `visionCompute` / `customerGet` | `vision.compute` / `customer.get` | demo metered APIs (bundles `Vision AI` / `Customer API`) — the handlers live in `adapter/dbTest/` (loaded only under `dev` via the db adapter's import regex) and the gateway validations + orchestrator namespaces live in `gateway/*.dev/` / `orchestrator/*.dev/` handler groups, which the framework loads only under the `dev` intent |
 
 ## Usage
 
@@ -184,7 +184,7 @@ target).
 ## Extending
 
 - **New metered API**: add a handler + a gateway validation wrapper declaring `bundle` and
-  `creditCost` (see `gateway/vision/visionCompute.ts`); the ApiGateway plugin meters it
+  `creditCost` (see `gateway/vision.dev/visionCompute.ts`); the ApiGateway plugin meters it
   automatically. Use `meter: false` to opt a route out.
 - **New bundle**: seed via `gatewayBundleMerge.yaml` (name + roleBit + capabilities/actions +
   rate/credit limits) or call `gateway.bundle.add`; roleBits must not collide with the access

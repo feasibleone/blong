@@ -1,4 +1,5 @@
 import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
+import {withProgress} from '@feasibleone/blong-lib';
 import type {Level, Logger as PinoLogger} from 'pino';
 
 // ── level constants (bunyan numeric levels) ──────────────────────────────────
@@ -207,6 +208,9 @@ export default class BrowserLog extends Internal implements ILog {
             case 'fatal':
                 result.fatal = child.fatal.bind(child) as ILogger['fatal'];
         }
-        return result;
+        return {
+            ...result,
+            progress: (label, promise, options) => withProgress(result, label, promise, options),
+        };
     }
 }

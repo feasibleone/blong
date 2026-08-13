@@ -375,9 +375,46 @@ export default class Registry extends Internal implements IRegistry {
 
     public async start(configOverride: object): Promise<IRegistry> {
         await this._collectObjectSchema();
-        for (const id of Array.from(this.ports.keys())) await this.createPort(id);
-        for (const port of this.#ports.values()) await port.start(configOverride);
-        for (const port of this.#ports.values()) await port.ready();
+        const log = this.#log.logger('info', {name: 'registry'});
+        let created = 0;
+        const portIds = Array.from(this.ports.keys());
+        await blongLib.withProgress(
+            log,
+            'create ports',
+            (async () => {
+                for (const id of portIds) {
+                    await this.createPort(id);
+                    created += 1;
+                }
+            })(),
+            {getProgress: () => ({done: created, total: portIds.length})},
+        );
+        let started = 0;
+        const startPorts = Array.from(this.#ports.values());
+        await blongLib.withProgress(
+            log,
+            'start ports',
+            (async () => {
+                for (const port of startPorts) {
+                    await port.start(configOverride);
+                    started += 1;
+                }
+            })(),
+            {getProgress: () => ({done: started, total: startPorts.length})},
+        );
+        let ready = 0;
+        const readyPorts = Array.from(this.#ports.values());
+        await blongLib.withProgress(
+            log,
+            'ready ports',
+            (async () => {
+                for (const port of readyPorts) {
+                    await port.ready();
+                    ready += 1;
+                }
+            })(),
+            {getProgress: () => ({done: ready, total: readyPorts.length})},
+        );
         this.#gateway?.route(await this._validations(), {name: '', version: ''});
         await this.#resolution?.start();
         await this.#rpcServer?.start();
@@ -410,7 +447,19 @@ export default class Registry extends Internal implements IRegistry {
         await this.#remote?.stop();
         await this.#rpcServer?.stop();
         await this.#resolution?.stop();
-        for (const port of this.#ports.values()) await port.stop();
+        let stopped = 0;
+        const ports = Array.from(this.#ports.values());
+        await blongLib.withProgress(
+            this.#log.logger('info', {name: 'registry'}),
+            'stop ports',
+            (async () => {
+                for (const port of ports) {
+                    await port.stop();
+                    stopped += 1;
+                }
+            })(),
+            {getProgress: () => ({done: stopped, total: ports.length})},
+        );
         return this;
     }
 
