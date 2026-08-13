@@ -444,9 +444,16 @@ export default async function loadRealm<T extends TSchema>(
                             rpcServer: {
                                 port: 0,
                             },
+                            log: {
+                                cacache: {
+                                    cachePath: '~/.blong/log-cache',
+                                },
+                            },
                             gateway: {
                                 port: 0,
                                 static: {},
+                                debug: true,
+                                expectedErrors: true,
                                 // Static development keys, so sessions survive server hot-reloads
                                 /* cSpell:disable */
                                 sign: {
@@ -469,6 +476,7 @@ export default async function loadRealm<T extends TSchema>(
                                 },
                                 /* cSpell:enable */
                             },
+                            systemDebug: {enabled: true},
                         },
                         integration: {
                             remote: {canSkipSocket: true},

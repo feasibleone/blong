@@ -14,6 +14,7 @@
         "@feasibleone/blong-mle": "workspace:^1.0.0",
         "@playwright/test": "^1.60.0",
         "allure": "^3.6.2",
+        "cacache": "^20.0.4",
         "cspell": "^10.0.0",
         "eslint": "^10.4.0",
         "strip-json-comments": "^5.0.3",
@@ -21,6 +22,7 @@
         "typescript": "^6.0.3"
     },
     "devDependencies": {
+        "@types/cacache": "^20.0.1",
         "@types/node": "^24"
     }
 }

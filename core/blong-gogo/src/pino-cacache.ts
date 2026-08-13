@@ -23,8 +23,14 @@
  * ```
  */
 
-import build from 'pino-abstract-transport';
 import * as cacache from 'cacache';
+import os from 'node:os';
+import path from 'node:path';
+import build from 'pino-abstract-transport';
+
+function resolveHome(filepath: string): string {
+    return filepath.startsWith('~/') ? path.join(os.homedir(), filepath.slice(2)) : filepath;
+}
 
 export interface CacacheTransportOptions {
     /** Directory where cacache stores log entries. */
@@ -86,7 +92,12 @@ async function retentionCheckRun(cachePath: string, retentionCount: number): Pro
 }
 
 export default async function transport(options: CacacheTransportOptions) {
-    const {cachePath, stripKeys = ['id', 'time'], retentionCount = 10000} = options;
+    const {
+        cachePath: rawCachePath,
+        stripKeys = ['id', 'time', 'pid'],
+        retentionCount = 10000,
+    } = options;
+    const cachePath = resolveHome(rawCachePath);
 
     // Run retention check once on transport startup (at most once per day)
     retentionCheckRun(cachePath, retentionCount).catch(() => {

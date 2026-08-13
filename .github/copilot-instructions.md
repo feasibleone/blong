@@ -236,7 +236,8 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Configuring / creating CLI intents       | **blong-intent**                                      |
 | Setting up Storybook                     | **storybook-v10-setup**                               |
 | Developing with Storybook                | **storybook-testing-workflow**                        |
-| Viewing real-time logs                   | **blong-log**                                         |
+| Viewing logs                             | **blong-log**                                         |
+| Developing the logging tooling           | **blong-log-dev**                                     |
 | Implementing blong-browser components    | **blong-browser**                                     |
 | Adding multi-language / i18n support     | **blong-i18n**                                        |
 | Using the model for realm CRUD pages     | **blong-model**                                       |
@@ -448,6 +449,8 @@ All blong APIs use JSON-RPC 2.0 and semantic triple method names.
 - Auth: `Authorization: Bearer <token>`
 - Errors: JSON-RPC error objects with `type`, `message`, `print`, `validation`, `params` fields
   (`stack` and `cause` only in debug mode)
+- By default it listens on port 8080 or a random port. When you need to run with a fixed port, pass
+  these parameters to the CLI: `blong --gateway.port=8080 --resolution.portGateway=8080`
 
 **Internal API** (microservice → microservice):
 
@@ -467,7 +470,6 @@ Codecs enable protocol implementation on top of HTTP adapters.
 **For detailed implementation patterns, see:**
 
 - **blong-codec** - Protocol implementation (OpenAPI, JSON-RPC, MLE, TCP codecs)
-- **blong-log** - Real-time log viewer setup and monitoring
 
 ## What Happens Automatically
 
@@ -752,25 +754,33 @@ MLE codec:
 - **`blong-dev proxy`** — curl-friendly HTTP proxy in front of a gateway's MLE-encrypted RPC
   endpoint. Start it in the realm/suite that owns the gateway, then curl plain JSON:
 
-  ```bash
-  # Pre-authenticated (logs in on startup):
-  blong-dev proxy --port 8099 --target http://localhost:8080 \
-      --username testAdmin --password testPassword
+    ```bash
+    # Pre-authenticated (logs in on startup):
+    blong-dev proxy --port 8099 --target http://localhost:8080 \
+        --username testAdmin --password testPassword
 
-  # Manual login (login happens through the proxy):
-  blong-dev proxy --port 8099 --target http://localhost:8080 --no-login
-  curl -s -X POST http://localhost:8099/login/token/create \
-       -H 'content-type: application/json' -d '{}'   # captures the session
-  curl -s -X POST http://localhost:8099/gateway/bundle/find \
-       -H 'content-type: application/json' -d '{"params":{"paging":{}}}'
-  ```
+    # Manual login (login happens through the proxy):
+    blong-dev proxy --port 8099 --target http://localhost:8080 --no-login
+    curl -s -X POST http://localhost:8099/login/token/create \
+         -H 'content-type: application/json' -d '{}'   # captures the session
+    curl -s -X POST http://localhost:8099/gateway/bundle/find \
+         -H 'content-type: application/json' -d '{"params":{"paging":{}}}'
+    ```
 
-  Credentials fall back to `MLE_USERNAME` / `MLE_PASSWORD` env vars. Implemented in
-  `core/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
-  (`core/blong-mle/src/client.ts`).
+    Credentials fall back to `MLE_USERNAME` / `MLE_PASSWORD` env vars. Implemented in
+    `core/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
+    (`core/blong-mle/src/client.ts`).
 
 - **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
   output). Implemented in `core/blong-dev/src/commands/trace.ts`.
+
+- **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk (default
+  `~/.blong/log-cache`) with full detail, for on-demand inspection even after the process has
+  exited. Use it to debug when the backend is down or you need full request/error detail. Modes:
+  `condensed` (default, plain one-liners for agents), `pretty` (colorized), `json`. Filters:
+  `--level`, `--name`, `--search`, `--trace-id`, `--method`, `--after`, `--limit`; pass a ULID to
+  fetch one entry. Implemented in `core/blong-dev/src/commands/log.ts` on top of `cacache`. See the
+  **blong-log** skill for full usage.
 
 ## Architecture & Design Documents
 

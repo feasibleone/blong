@@ -21,6 +21,9 @@ switch (command) {
     case 'trace':
         await (await import('./commands/trace.ts')).trace(args);
         break;
+    case 'log':
+        await (await import('./commands/log.ts')).log(args);
+        break;
     default:
         process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
         process.stderr.write('Usage:\n');
@@ -39,6 +42,9 @@ switch (command) {
         );
         process.stderr.write(
             '  blong-dev trace <trace.zip>  Print a human-readable Playwright trace timeline\n',
+        );
+        process.stderr.write(
+            '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)\n',
         );
         process.exit(1);
 }

@@ -1,11 +1,28 @@
 ---
 name: blong-log
-description: Access real-time application logs via REST API. The log server runs at `http://127.0.0.1:9998` by default. Provides filtering by level, service name, trace ID, and free text search. Use this skill whenever monitoring application behavior, debugging issues, verifying feature behavior, searching for errors, or tracing requests across services — proactively check logs after making code changes, even if logs aren't explicitly mentioned.
+description:
+    Use the Blong logging tools to monitor and debug applications via the real-time log server REST
+    API (`http://127.0.0.1:9998`) and the `blong-dev log` CLI for on-disk entries. Provides
+    filtering by level, service name, trace ID, and free text search. Use this skill whenever
+    monitoring application behaviour, debugging issues, verifying feature behaviour, searching for
+    errors, tracing requests across services, or checking logs after making code changes — even if
+    logs aren't explicitly mentioned. For developing or extending the logging tooling itself, use
+    the blong-log-dev skill instead.
 ---
 
-# Monitoring Real-Time Logs
+# blong-log Skill
 
-The log server runs at `http://127.0.0.1:9998`. All queries use `curl` against the REST API.
+## What this skill covers
+
+This skill is about **using** the Blong logging tools to monitor and debug applications:
+
+- the **real-time log server** at `http://127.0.0.1:9998` — REST API + WebSocket fed by a UDP pino
+  transport, and
+- the **`blong-dev log` CLI** — reads the same entries persisted on disk by the `pino-cacache`
+  transport, for inspection after the process has exited.
+
+For **developing or extending** these tools (the log server, the pino transports, the
+`blong-dev log` command, the LogViewer UI), use the **blong-log-dev** skill instead.
 
 ## Quick Reference
 
@@ -24,6 +41,9 @@ curl -s 'http://127.0.0.1:9998/api/entries?name=gateway&limit=20' | jq '.entries
 
 # Trace a request across services
 curl -s 'http://127.0.0.1:9998/api/entries?traceId=abc-123' | jq '.entries[]'
+
+# Persisted entries from disk (pino-cacache) — condensed one-liners for agents
+blong-dev log --level error
 ```
 
 ## REST API Endpoints
@@ -69,7 +89,8 @@ Same parameters as `/api/entries`, but searches the entire buffer instead of jus
 
 ### GET /api/config — Server Configuration
 
-Returns the current server configuration including recognized property names and theme. Useful to discover what properties are available for filtering.
+Returns the current server configuration including recognized property names and theme. Useful to
+discover what properties are available for filtering.
 
 ## Common Workflows
 
@@ -121,7 +142,8 @@ curl -s 'http://127.0.0.1:9998/api/entries?traceId=THE_TRACE_ID' | jq '.entries[
 
 ### 5. Poll for New Entries
 
-Use the `after` parameter with the last seen ULID to get only new entries (useful for continuous monitoring):
+Use the `after` parameter with the last seen ULID to get only new entries (useful for continuous
+monitoring):
 
 ```bash
 # Get initial entries
@@ -144,6 +166,64 @@ Find log entries that contain HTTP information:
 ```bash
 curl -s 'http://127.0.0.1:9998/api/search?search=statusCode' | jq '.entries[] | {msg, req: .req.method + " " + .req.url, status: .res.statusCode, time: .res.responseTime}'
 ```
+
+## Fetching Persisted Log Entries
+
+Beyond the live log server, Blong's `pino-cacache` transport stores every log entry **on disk**
+(default `~/.blong/log-cache`) with full detail, so they can be inspected later in greater detail
+even after the process has exited. The VS Code extension reads this cache when you click a
+`blong://log/<ULID>` link in the terminal. Coding agents can read it directly with the
+`blong-dev log` CLI:
+
+```bash
+# Recent entries, condensed one-liners (default — ideal for agents to grep)
+blong-dev log
+
+# Only errors from a specific service
+blong-dev log --level error --name gateway
+
+# Human-readable, colorized
+blong-dev log --output pretty
+
+# Full JSON (id/time restored) for scripting
+blong-dev log --output json
+
+# Fetch one entry by its ULID
+blong-dev log 01ARZ3NDEKTSV4RRFFQ69G5FAV
+
+# Custom cache location (default ~/.blong/log-cache, or $BLONG_LOG_CACHE)
+blong-dev log --cache-path /path/to/log-cache
+```
+
+### Options
+
+| Option         | Description                                                                 |
+| -------------- | --------------------------------------------------------------------------- |
+| `--cache-path` | cacache directory (default `~/.blong/log-cache`, or `$BLONG_LOG_CACHE`)     |
+| `--output`     | `condensed` (default for lists), `pretty`, `json` (default for single ULID) |
+| `--level`      | Minimum level: `trace`, `debug`, `info`, `warn`, `error`, `fatal`           |
+| `--name`       | Filter by service name (case-insensitive substring)                         |
+| `--search`     | Free-text search across all entry properties                                |
+| `--trace-id`   | Filter by exact trace ID                                                    |
+| `--method`     | Filter by `$meta.method` (case-insensitive substring)                       |
+| `--after`      | Only entries newer than this ULID (pagination)                              |
+| `--limit`      | Max entries (default 50; `0` = all)                                         |
+| `--no-color`   | Disable ANSI colors in `pretty` output                                      |
+
+### Condensed output (for coding agents)
+
+One plain-text line per entry, never colorized, so it is trivial to grep and parse:
+
+```
+2024-02-13T16:02:00.000Z error orchestrator "Connection refused"  id=... traceId=...
+```
+
+Notes:
+
+- A short summary (`N of M cached entries`) is written to **stderr**, keeping **stdout** clean for
+  piping into other tools.
+- `id` is the entry's ULID — pass it to `blong-dev log <ulid>` for the full record.
+- Entries are listed **newest first** (ULIDs are monotonic with time).
 
 ## Log Entry Properties
 
@@ -169,80 +249,39 @@ Each log entry may contain these properties:
 - **Start with `level=error`** when debugging — narrow down before broadening.
 - **Use `search` for fuzzy matching.** It searches across all properties including nested objects.
 - **The `name` filter is a substring match**, so `name=gate` matches `gateway`, `gateway-auth`, etc.
-- **The buffer holds ~10,000 entries** by default. Older entries are evicted. Query promptly after reproducing issues.
-- **The `after` parameter enables incremental polling** — store the last ULID and only fetch new entries.
-- **Combine filters** for precision: `?level=error&name=gateway&search=timeout` returns only gateway errors mentioning "timeout".
+- **The buffer holds ~10,000 entries** by default. Older entries are evicted. Query promptly after
+  reproducing issues.
+- **The `after` parameter enables incremental polling** — store the last ULID and only fetch new
+  entries.
+- **Combine filters** for precision: `?level=error&name=gateway&search=timeout` returns only gateway
+  errors mentioning "timeout".
 
-## Storybook & Visual Testing
+## Extending the log tooling
 
-The LogViewer has a Storybook setup for interactive development and CI visual regression testing.
+`blong-dev log` is the intended way for coding agents to read persisted log entries. It is
+deliberately small: a handful of filters and three output modes. When a debugging task needs
+something it does not yet cover — a new filter (e.g. by `context`, `req.url`, or a time range), a
+new output mode, or a different cache location — **extend the tool** instead of working around it
+with shell one-liners:
 
-### Run Storybook Locally
-
-```bash
-cd core/blong-log
-npm run storybook      # Dev server at http://localhost:6006
-```
-
-### Stories Available
-
-| Story             | Description                                     |
-| ----------------- | ----------------------------------------------- |
-| DarkTheme         | Full sample data, dark mode (default)            |
-| LightTheme        | Full sample data, light mode                     |
-| Empty             | No entries, disconnected state                   |
-| ErrorsOnly        | Only error-level entries                         |
-| TraceFiltered     | Entries filtered to one distributed trace        |
-| ServiceFiltered   | Entries filtered by service name                 |
-| LevelFiltered     | Entries filtered to warn+ levels                 |
-| WithSearch        | Pre-applied search text                          |
-| LargeDataset      | 500 entries for performance testing (dark)       |
-| LargeDatasetLight | 500 entries for performance testing (light)      |
-
-### Visual Regression Tests
-
-The test-runner uses Playwright to capture full-page screenshots and compare against baselines.
-
-```bash
-# Run visual tests (Storybook must be serving or use CI script)
-npm run storybook:test
-
-# CI pipeline: builds static Storybook, serves, tests, then exits
-npm run storybook:test:ci
-
-# Update snapshot baselines after intentional visual changes
-npm run visual:update
-```
-
-PNG baseline images are stored in `src/client/__image_snapshots__/`.
-
-### Key Files
-
-| File                                  | Purpose                                  |
-| ------------------------------------- | ---------------------------------------- |
-| `.storybook/main.ts`                  | Storybook config (react-vite, addons)    |
-| `.storybook/preview.ts`              | Global decorators, SVAR CSS import       |
-| `.storybook/test-runner.cjs`         | Visual snapshot config (postVisit hook)  |
-| `src/client/LogViewer.stories.tsx`   | All story definitions                    |
-| `src/client/__fixtures__/data.ts`    | Deterministic test data                  |
+- The command lives in `core/blong-dev/src/commands/log.ts`, is registered as `log` in
+  `core/blong-dev/src/cli.ts`, and is exported from `core/blong-dev/src/index.ts`.
+- Add a filter by following the existing `--level` / `--name` / `--trace-id` pattern and document it
+  in the `blong-dev log` options table above.
+- Keep `condensed` plain and parseable (no ANSI), keep summaries on **stderr**, and list newest
+  first — agents and scripts rely on that.
+- Full internals, the on-disk storage format, and step-by-step extension guidance are in the
+  **blong-log-dev** skill.
 
 ## Runtime Introspection Endpoints
 
 In addition to log-based monitoring, the framework provides built-in HTTP endpoints that expose
 internal runtime state. These are complementary to log tailing — use them to inspect
-**configuration, registered ports, handlers, and modules** at a point in time rather than
-tracing events through time.
+**configuration, registered ports, handlers, and modules** at a point in time rather than tracing
+events through time.
 
-Enable them in the suite's `server.ts` config (`dev` activation only — never in production):
-
-```typescript
-config: {
-    dev: {
-        gateway: {debug: true},       // include stack traces in error responses
-        systemDebug: {enabled: true}, // expose /api/sys/* endpoints
-    },
-}
-```
+They are enabled by default in the `dev` intent. When debugging requires something not available in
+the introspection endpoints, consider extending the framework to expose it, see `SystemDebug.ts`.
 
 ### Available Endpoints
 
@@ -285,3 +324,8 @@ curl -s http://localhost:8080/api/sys/config | jq '.myRealm.myAdapter'
 # 4. Correlate with logs if something looks wrong
 curl -s 'http://127.0.0.1:9998/api/entries?level=error&limit=10' | jq '.entries[] | {msg, name}'
 ```
+
+### Skill maintenance
+
+When adding new features to the logging or introspection tooling, update this skill to include the
+new capabilities and usage patterns.

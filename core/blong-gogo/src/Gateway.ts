@@ -156,6 +156,7 @@ export default class Gateway extends Internal implements IGateway {
     #server: ReturnType<typeof fastify> | null = null;
     #resolution: IResolution;
     #log: ILog;
+    #logger: ReturnType<ILog['child']> | undefined;
     #config: IConfig = {
         host: '0.0.0.0',
         port: 8080,
@@ -561,9 +562,10 @@ export default class Gateway extends Internal implements IGateway {
 
     public async start(): Promise<IGateway> {
         const old = this.#server;
+        this.#logger = this.#log.child({name: 'gateway'}, {level: this.#config.logLevel});
         try {
             this.#server = fastify({
-                loggerInstance: this.#log?.child({name: 'gateway'}, {level: this.#config.logLevel}),
+                loggerInstance: this.#logger,
                 forceCloseConnections: true,
                 ajv: {
                     customOptions: {
@@ -655,6 +657,9 @@ export default class Gateway extends Internal implements IGateway {
         if (this.#manifest && address && typeof address === 'object') {
             this.#manifest.gatewayPort = address.port;
         }
+
+        if (!this.#config.port && !['info', 'debug', 'trace'].includes(this.#config.logLevel ?? ''))
+            this.#logger?.warn?.(`gateway listening at random port ${address.port}`);
         return this;
     }
 

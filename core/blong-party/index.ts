@@ -30,11 +30,6 @@ export default server(() => ({
             gateway: {authorize: 'access.authorization.list'},
         },
         dev: {
-            gateway: {
-                debug: true,
-                expectedErrors: true,
-            },
-            systemDebug: {enabled: true},
             srv: {},
             core: {},
             access: {},
