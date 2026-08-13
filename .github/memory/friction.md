@@ -5,11 +5,19 @@ Update it when something requires unexpected effort to implement or fix.
 
 ## List of unresolved frictions
 
-- blong-access is not highlighted in the instructions and agents need to discover through patterns. Make sure
-  the blong-realm skill knows about RBAC and how to reuse it, i.e. accessAuthorizationMerge, the model
-  on top of core.triple, etc.
+- Eval baseline runs need a fresh interactive agent session: a spawned subagent could not produce the
+  realm files for the realm-eval harness (returned no output / wrote nothing). Baseline + measure runs
+  of `plans/agent/evals/realm-eval/` must be executed in a fresh VS Code agent session against
+  `prompt.md` (see `README.md`) — do not rely on subagent execution.
 
 ## List of resolved frictions
+
+- blong-access was not highlighted in the instructions and agents needed to discover through patterns. Make
+  sure the blong-realm skill knows about RBAC and how to reuse it, i.e. accessAuthorizationMerge, the model
+  on top of core.triple, etc. **Resolved:** the router (`copilot-instructions.md`) now surfaces it — a
+  `blong-core` row in `[SKILLS_DELEGATOR]` (Parties, RBAC, users, auth, resource graph), a "reusable realms"
+  bullet in `[CORE_PARADIGMS]`, and a "Party/access graph, RBAC, authorization" entry in the concept-delegation
+  list.
 
 - Deterministic single-statement `knex('table')` deadlock for the integration test
 

@@ -1,200 +1,94 @@
-# Blong AI Coding Instructions
+# Blong Coding Instructions
 
-Blong is a TypeScript-based API-focused RAD (Rapid Application Development) framework built as a
-Rush.js monorepo using pnpm workspaces. The framework provides a "bring your own architecture"
-approach — the same codebase runs as a modular monolith (development) or full microservices
-(production) without code changes.
+Blong: TypeScript API framework — Rush.js monorepo (pnpm). Same codebase runs as modular monolith
+(dev) or microservices (prod) unchanged. This instruction is the **router** — providing rules and pointers to skills and details. Full detail lives in skills: invoke them via the `skill` tool.
 
-**Monorepo structure:** `core/` — framework packages, examples, and POC suites; `dev/` — gitignored
-local scratch area; `docs/` — documentation site.
+## [CRITICAL_GUARDRAILS]
 
-> **Important:** The `dev/` folder is gitignored. All committed code — framework packages, examples,
-> POC suites, reference implementations — must be placed in `core/`.
+Hard rules — apply first, never contradict.
 
-## Important folders
+- **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`); direct imports break IoC.
+- **Semantic triple naming** `subjectObjectPredicate`; file = export = wire name; singular subject/object, present-tense predicate. Flag violations before proceeding.
+- **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge` (single); `insert`/`update`/`delete` (bulk). Never invent if one is already standard.
+- **Always forward `$meta`** as the 2nd arg through every handler call.
+- **One handler per file.** File = exported fn = triple. Library fns get their own files too.
+- **Hierarchy never skipped:** suite → realm → layer → handler group → handler.
+- **Two-word properties.** `userName` not `name`; `customerId` not `id`; `emailAddress` not `email`.
+- **Adapters never call adapters directly.** Coordinate via orchestrators.
+- **Never enable `systemDebug` in production.**
+- **Never commit to `dev/`** (gitignored) — committed code lives in `core/`.
+- **Always invoke the matching `skill`** before implementing (see `[SKILLS_DELEGATOR]`).
+- **Verify after every change** — `get_errors`, tests, lint; never claim "complete" unverified.
 
-### Main framework
+## [CORE_PARADIGMS]
 
-- `core/blong/` contains the TypeScript types and very small utility functions, used to annotate the
-  various entities in the realms, suites, etc. and is the primary blong dependency used by them.
-- `core/blong-gogo/` contains the runtime code and is never imported directly. Instead it uses the
-  annotations from `core/blong/` to load and execute handlers, adapters, orchestrators, etc.
+- **Handler-runtime pattern.** Handlers = isolated functions; framework adds config, validation, API
+  docs, hot reload, mocking, telemetry, caching, dependency analysis without handler awareness.
+- **API definition is the source of truth.** Derive from TypeBox schemas co-located with handlers
+  (preferred) or an existing OpenAPI spec (`x-blong-method` per op). Determine before implementing.
+- **Layers.** Adapters = integration points (translate triple API ↔ external API); orchestrators =
+  business-logic coordinators (namespace → K8s service in microservice mode); gateway = public
+  JSON-RPC/REST surface.
+- **Self-contained components.** Adapter/orchestrator `activation` config co-located in the layer
+  file — not the realm `server.ts`.
+- **Conflict priority.** handler/runtime pattern → API definition → adapters/orchestrators → DRY →
+  RAD → DMMT → KISS.
+- **Reusable realms.** `core/blong-core` (resource/party/access graph), `blong-party`,
+  `blong-access` (RBAC: users, roles, capabilities, actions, authz).
 
-### Utilities
+## [CRITICAL_DEPENDENCY_PATHS]
 
-- `core/blong-log/` - Real-time log viewer
-- `core/blong-openapi/` - Higher order utility for easy implementation of OpenAPI clients (WIP)
+- `core/blong/` — TS types + small utils; primary `@feasibleone/blong` dependency.
+- `core/blong-gogo/` — runtime; never imported directly; run via global `blong` CLI.
+- `core/blong-browser/` — browser realm (UI components, model system).
+- `core/blong-login/` — JWT auth (`/rpc/login/token/create`).
+- `core/blong-test/` — public API testing realm.
+- `core/blong-suite/` — full-stack demonstration suite (reference).
+- `docs/blong/docs/rationale/` — design rationale docs.
+- Canonical shared framework rules: `.github/skills/_shared/conventions.md`.
 
-### Internal libraries
+## [ANCHOR_TOKENS]
 
-- `core/blong-allure/` - Allure test reporting integration
-- `core/blong-chain/` - Test execution chaining utilities
-- `core/blong-config/` - Configuration initialization
-- `core/blong-kopi/` - Template for realm scaffolding and code generation
+Voluntary search markers — add at model discretion where they aid locating implementations; never
+enforced.
 
-### Reusable realms
-
-- `core/blong-browser/` - realm for the browser platform
-- `core/blong-test/` - realm for public API testing, simulating browser-side requests
-- `core/blong-login/` - realm for authentication
-
-### Demonstration patterns
-
-- `core/blong-hello/` - simple "hello world" example with a single handler, used for testing and
-  reference
-- `core/blong-eip/` - example of EIP (Enterprise Integration Pattern) and server side testing with
-  mocks
-- `core/blong-cucumber/` - example of BDD testing with Blong and Cucumber.js
-- `core/blong-int-sql/` - example of integration testing with a SQL database backend
-- `core/blong-sim-api/` - example of simulating OpenAPI-based back ends
-- `core/blong-sim-tcp/` - example of simulating TCP-based back ends
-- `core/config-hot-reload/` - examples of the unified handler-test concept
-- `core/test/` - main framework test suite
-- `core/blong-marine/` - marine biology realm — example of model system usage with stories and E2E
-  tests
-- `core/blong-suite/` - full stack demonstration suite
-
----
-
-## ⚠️ Essential Rules — Always Apply These
-
-These rules apply to all Blong code. When features appear incomplete or contradictory, use these
-rules as the authoritative guide and prioritize the API definition as the primary source of truth:
-
-1. Blong is work in progress. When working on it, there may be incomplete or even contradicting
-   features. When in doubt, follow the leading principles to take decisions about how to implement
-   or refactor code:
-    - Follow the handler and runtime patterns described below — they are the foundational patterns
-      that all framework components must follow. The handler pattern is a primary approach, where
-      handlers keep maximum isolation. The framework makes sure to process them and provide many
-      features without the handlers needing to be aware of them: configuration, validation, API
-      docs, hot reload, test mocking, exception handling, telemetry, concurrency, cache, dependency
-      analysis, etc.
-    - The API definition is the primary and authoritative source of truth for all implementations.
-      Currently it is derived from Typebox schemas or can be supplied via existing OpenAPI specs.
-      These two ways must be well determined before implementing any functionality. Prefer
-      generating the API definition from Typebox schemas co-located with the handlers, unless there
-      is a reason to align with an existing OpenAPI spec, which as a minimum will require specifying
-      the semantic triple (in x-blong-method) for each operation. Once the API definition is
-      determined, many other things will be derived from it.
-    - DRY (do not repeat yourself) - avoid duplication of ideas, logic, or code
-    - RAD (rapid application development) - prioritize fast iteration and delivery, implement
-      convention over configuration, be able to generate boilerplate code, which can be customized
-      when needed
-    - DMMT (Don't make me think) - avoid surprises, keep it intuitive
-    - KISS (keep it simple, stupid) - avoid unnecessary complexity, prefer simple solutions
-
-    When these principles conflict, apply them in the order listed: handler and runtime pattern
-    first, then the API definition, then the adapters and orchestrators, then DRY, RAD, DMMT, and
-    finally KISS.
-
-1. **Hierarchy is suite → realm → layer → handler group → handler.** Never skip levels or mix
-   concerns across them.
-
-1. **Blong is a runtime, not a library.** .The runtime can run in both server and browser platforms
-   without code changes. Future platforms (desktop, mobile) could be added later. As consequence:
-    - The main `blong-gogo` package is not a production dependency of any realm or suite code. For
-      the server platform, it is built as a docker image, which is then used to run the code in the
-      realms and suites. In the development environment use the global `blong` command, which runs
-      the runtime. When using the blong command, passing arguments on the command line is a way to
-      activate configurations (including realms and layers) (e.g. `blong integration xxx.adapter`)
-      or pass configuration settings (e.g. `blong --db.connection.password=secret`). Currently there
-      are some exceptions for the realm's `index.test.ts` files, as they are launched via tap and
-      refer to the `load` function in `blong-gogo`.
-    - Handlers never `import` other handlers. All cross-handler dependencies are injected at runtime
-      by the framework via the `handler()` factory's `handler: {}` proxy. Direct imports between
-      handlers break the IoC model.
-
-1. **Adapters and orchestrators are the functionality wrappers** - all business logic and external
-   system integration goes via them. Sometimes docs or prompts could use the word "port" which is an
-   older terminology for "adapters and orchestrators". They operate with the semantic triple naming
-   convention when called via the internal or gateway API. Orchestrators can talk to other
-   orchestrators and adapters, adapters must avoid directly calling other adapters. The adapters
-   translate to and from the semantic triple internal API to the external system's API, i.e. they
-   are the integration points, while the orchestrators are the business logic coordinators.
-
-1. **Adapters and orchestrators are self-contained.** Their configuration goes in the `activation`
-   property co-located in the layer file — not in the realm's `server.ts`. The realm's `server.ts`
-   is only needed when realm-level config is shared across layers.
-
-1. **Sometimes adapters and orchestrators can be a singleton**. In these cases they can import and
-   attach handlers or refer to other functionality from multiple realms via RegEx patterns. This is
-   often related to some underlying paradigm, like a DB connection pool, an authenticated state that
-   needs to be shared or reusing repetitive logic like the test orchestrator. Nothing in the design
-   of adapters or orchestrators should enforce a singleton usage.
-
-1. **Semantic triple naming — `subjectObjectPredicate`.** Every API handler is named as a three-part
-   compound: `subject` (realm/namespace), `object` (entity), `predicate` (action). The file name,
-   exported function name, and wire-format method name are all identical (e.g. `userUserAdd.ts`
-   exports `userUserAdd`). Always verify handler names follow this convention; flag any violations
-   and suggest the correct triple-format name before proceeding. Use singular nouns for `subject`
-   and `object` and present tense verbs for `predicate`. This is the main vocabulary of the
-   framework and is critical. In some cases, when calling handlers a `namespace/` prefix can be
-   added, which represent the intent to route the call to a specific adapter or orchestrator, which
-   handles this namespace. This allows the same handler name to be used in different places, as the
-   flow propagates across different orchestrators and adapters.
-
-1. **Standard predicates only.** Use `get` (single by ID), `find` (list with filter/pagination),
-   `add` (create), `edit` (modify), `remove` (delete), `merge` (upsert) for single-entity
-   operations; `insert`, `update`, `delete` for bulk operations. Never invent non-standard
-   predicates.
-
-1. **Two-word property names.** Use `userName` not `name`; `customerId` not `id`; `emailAddress` not
-   `email`. Two-word names prevent context ambiguity when entities from multiple realms appear
-   together.
-
-1. File naming: use semantic triple or two-word convention and avoid "index.x" files when
-   appropriate. For example files which represent a single entity should be named after the entity
-   or files representing a handler should be named after the handler's semantic triple. This is to
-   make it easy to find the file in IDE (e.g. ctrl+p in VSCode). Use `CamelCase` names for Classes
-   and React components and `camelCase` for everything else.
-
-1. **One handler per file.** File name = exported function name = semantic triple. Library functions
-   also get their own files.
-
-1. **Well-known layer folders are auto-discovered — no registration needed.** The folders `error`,
-   `adapter`, `orchestrator`, `gateway`, `sim`, `test` (server) and `backend`, `component` (browser)
-   are automatically detected and activated at their default environment. Custom folder names
-   require a `layer.server.ts` / `layer.browser.ts` file.
-
-1. **`$meta` flows through every handler call.** Always accept and forward `$meta` as the second
-   parameter to preserve auth, tracing, and transport metadata across the call chain.
-
-1. **`dev/` is gitignored — never commit code there.**.
-
-1. Always lint the files changed during the session. Use either vscode's built-in error reporting or
-   run `node --run ci-lint -- [files...]` for each of the packages affected by the changes. If the
-   linting reports spell check errors, prefer the use of proper English words or
-   snake-case/camelCase instead of adding them to the dictionary.
-
-1. **Always invoke the `skill` tool when starting a matching task.** Before implementing any
-   feature, check the "Choosing the Right Skill" table below. If the task matches a skill, call the
-   `skill` tool with that skill name — e.g., `skill tool with "blong-handler"`. The skill provides
-   detailed patterns that prevent common mistakes and reduce correction cycles. Do not rely on
-   general knowledge when a domain-specific skill exists.
-
-1. **Proactively verify after every change.** After implementing or fixing anything, automatically:
-    - Run `get_errors` to check for TypeScript/ESLint errors in the modified files
-    - Run the relevant tests (playwright, tap, etc.) to confirm correctness
-    - Check lint with `npm run ci-lint` or `node --run ci-lint -- [files...]`
-    - Fix any failures immediately without waiting for the user to ask
-    - Do not claim work is "complete" or "verified" unless these steps have actually been executed
-
-1. **Use search tools before read_file for targeted exploration.** Instead of reading files linearly
-   with `read_file`, first use `grep_search` or `file_search` to locate specific code patterns,
-   imports, or definitions. This reduces token waste and speeds up context gathering.
-
-1. If a certain task required **unexpected** effort to implement or fix or failed, update the
-   frictions list in `.github/memory/friction.md` with a short description of the friction. This
-   will help plan subsequent work to address them. Addressing them means updating the skills, tools
-   or the framework. Keep updating the frictions at the right moments, to avoid losing issues due to
-   context compaction. Updating the frictions list includes also the cases where:
-    - a question needed an answer and it took too much investigation to find it.
-    - a decision was needed, but it took a lot of analysis or hesitation what is the best approach
-      to take.
-    - a lot of source code needed to be read.
+```typescript
+// @framework-archetype: HANDLER
+// @framework-skills: blong-handler, blong-validation
+```
 
 ---
+
+## [RULES] — Authoritative Details
+
+Blong is work in progress — features may be incomplete or contradictory. When in doubt, treat the
+API definition as the primary source of truth and apply the conflict priority in `[CORE_PARADIGMS]`.
+
+- **Runtime, not library.** `blong-gogo` is never a production dependency of realm/suite code; it
+  ships as a Docker image (prod) or the global `blong` CLI (dev). CLI positional args activate
+  configurations (e.g. `blong integration xxx.adapter`); `--key=value` sets config (e.g.
+  `--db.connection.password=secret`). Exception: `index.test.ts` files launched via tap reference
+  the `load` function in `blong-gogo`.
+- **Adapters/orchestrators = functionality wrappers** (older term: "port"). Orchestrators may call
+  other orchestrators and adapters; adapters must not call other adapters directly.
+- **Singletons allowed.** Adapters/orchestrators may be singletons (DB pool, shared auth state, test
+  orchestrator) — they can import/attach handlers or reference other realms via RegEx patterns.
+  Nothing in the design enforces singleton usage.
+- **File naming.** Use semantic triple or two-word convention; avoid `index.x` where a descriptive
+  name fits (ctrl+p discoverability). Classes/React components `CamelCase`; everything else
+  `camelCase`.
+- **Well-known layers auto-discovered** — `error`, `adapter`, `orchestrator`, `gateway`, `sim`,
+  `test` (server); `backend`, `component` (browser). Custom folder names need a `layer.server.ts` /
+  `layer.browser.ts`.
+- **Lint changed files.** Use vscode error reporting or `node --run ci-lint -- [files...]` per
+  affected package. For spell errors prefer proper words / snake-case / camelCase over dictionary
+  additions.
+- **Search before read.** Prefer `grep_search` / `file_search` over linear `read_file` for targeted
+  exploration.
+- **Record frictions.** If a task needed unexpected effort or failed, append a short note to
+  `.github/memory/friction.md` (also: long investigations, hard decisions, lots of source read).
+- **TypeScript is not compiled**, unless strictly necessary. We run on latest Node.js which can strip
+  types.
 
 ## Architecture Hierarchy
 
@@ -206,12 +100,11 @@ Suite             — top-level entry point, glues realms, defines deployment co
                     └── Handler  — single function in a single file
 ```
 
-## Choosing the Right Skill
+## [SKILLS_DELEGATOR]
 
-> **Critical: You MUST call the `skill` tool for matching tasks.** Before implementing any feature,
-> check the table below. If your task matches a skill, immediately invoke the `skill` tool with that
-> skill name. The skill provides detailed, domain-specific patterns that prevent common mistakes and
-> save multiple correction turns. Do not rely on general knowledge.
+> **Must call the `skill` tool for matching tasks** — check the table before implementing. The skill
+> provides domain-specific patterns that prevent mistakes and cut correction cycles. Do not rely on
+> general knowledge when a domain-specific skill exists.
 
 **For implementation tasks:**
 
@@ -244,6 +137,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Developing the model system internals    | **blong-model-dev**                                   |
 | Full-stack Playwright testing            | **blong-playwright**                                  |
 | Writing or reviewing documentation       | **blong-docs**                                        |
+| Parties, RBAC, users, auth, resource graph | **blong-core**                                      |
 
 **For understanding concepts — also call `skill`:**
 
@@ -252,224 +146,45 @@ Suite             — top-level entry point, glues realms, defines deployment co
 - Protocol implementation details: Call `skill` with **blong-codec**
 - Realm deployment patterns: Call `skill` with **blong-realm**
 - CLI intents and activation system: Call `skill` with **blong-intent**
-
-## Framework Concepts
-
-### Core Definitions
-
-**Suite:** The top-level organizational unit in the framework. A suite groups related realms and
-defines multi-platform entry points (`server.ts`, `browser.ts`, `index.ts`). Suites take deployment
-architecture decisions and glue reusable realms together. They are launched using the `blong` CLI.
-
-**Modular Architecture:** Solutions combine functionality from multiple realms within a suite while
-maintaining maximum isolation between them.
-
-**Business Logic Separation:**
-
-- **Business process/workflow:** Coordinates data integrity logic (typically in orchestrators)
-- **Data integrity logic:** Ensures atomic, correct data persistence (often in database stored
-  procedures)
-- **Integration logic:** Handles external system communication (in adapters)
-
-**Platform Support:** Suites define entry points per platform:
-
-- `server` - Server-side solution running in Kubernetes pods
-- `browser` - Browser-based applications
-- `desktop` - Desktop applications (future)
-- `mobile` - Mobile applications (future)
-
-**Interaction Origins:** The framework distinguishes interactions by origin:
-
-- **Application front ends** - Administration, management, and user-facing browser/desktop/mobile
-  apps
-- **Edge devices** - ATM, POS, IoT devices
-- **Third-party systems** - Core banking, payment systems, external APIs
-- **Automated processes** - Scheduled tasks, event-driven processes
-
-### Deployment Flexibility
-
-**"Bring Your Own Architecture":** Same codebase can run as:
-
-- **Modular monolith:** All realms in single process (development)
-- **Microservices:** Each realm/layer as separate Kubernetes pod (production)
-- **Hybrid:** Mix of monolith and microservices based on needs
-
-### Framework Philosophy
-
-**Primary Goal:** Decrease development and operational costs through:
-
-- **Test-driven development:** Fast reload, minimal restarts
-- **Minimal learning curve:** Small API surface, well-defined conventions
-- **Fast build/deploy cycles:** Runtime-like framework approach
-- **100% test coverage:** Built-in testing patterns
-
-**Approach:** Cloud-native friendly, type-safe, modular architecture supporting multiple deployment
-patterns.
-
-## Key Patterns
-
-### Suite Pattern
-
-Suites are the top-level entry points for the solution. A suite includes reusable realms from
-packages and local custom realms.
-
-**For full suite patterns, see: blong-suite**
-
-### Service Definition Pattern
-
-Realms and layers use functional configuration with the framework's builder pattern. Adapters and
-orchestrators are self-contained — their `activation` config is co-located in the layer file with no
-need to update the realm's `server.ts`. The realm's `server.ts` is only needed for realm-level
-config shared across layers.
-
-**For full service definition patterns, see: blong-realm, blong-adapter, blong-orchestrator**
-
-### The handler and runtime pattern
-
-Handlers are functions called by adapters and orchestrators. They follow a semantic triple naming
-convention: `subjectObjectPredicate` where:
-
-- `subject` = realm namespace or realm name
-- `object` = entity within realm
-- `predicate` = action on entity
-
-```typescript
-import {handler} from '@feasibleone/blong';
-
-export default handler(
-    runtime =>
-        async function subjectObjectPredicate(params, $meta) {
-            // Handler code here
-        },
-);
-```
-
-The `runtime.handler` property is a **proxy** populated at runtime with all handlers from the
-component's `imports`. Calling a handler method through this proxy routes through the framework's
-handler registry — enabling modular deployment, hot reload, and test mocking without code changes.
-
-- `runtime.lib` — library functions from the same handler group
-- `runtime.errors` — typed errors from the realm's error layer (simplified: `{errorEntityNotFound}`
-  maps to `entity.notFound`)
-- `runtime.config` — configuration slice for this component
-- `runtime.log` — logger instance
-- `runtime.handler` — proxy to other handlers (adapters, orchestrators, etc.)
-
-The same factory shape applies to `library()` functions.
-
-**Handler Types:**
-
-- **Internal handlers:** Framework-defined for protocol tasks (`send`, `receive`, `encode`,
-  `decode`, `exec`, `ready`, `idleSend`, `idleReceive`, `drainSend`)
-- **Internal API handlers:** Business functionality using semantic triples (e.g., `userUserAdd`,
-  `mathNumberSum`)
-- **Library functions:** Reusable logic shared between handlers
-
-**Internal API Naming Conventions:**
-
-- `get` - gets a single entity by unique identifier
-- `find` - returns a list with filtering and pagination
-- `add` - creates a single entity
-- `edit` - modifies a single entity
-- `remove` - deletes a single entity
-- `merge` - creates or modifies depending on existence
-- `insert` / `update` / `delete` - bulk operations
-
-**Property naming:** prefer two-word names to avoid ambiguity (e.g. `userName` not `name`,
-`customerId` not `id`, `emailAddress` not `email`).
-
-**File Organization:** One handler per file using semantic triple as filename (e.g.,
-`userUserAdd.ts`, `mathNumberSum.ts`)
-
-**For detailed implementation patterns, see:**
-
-- **blong-handler** - Complete handler implementation patterns, API destructuring, library functions
-- **blong-validation** - Automatic validation with `~.schema.ts` files and Handler types
-
-### Adapter Pattern
-
-Adapters integrate with external systems using the adapter design pattern. They expose high-level
-APIs compatible with framework conventions, independent of underlying protocols.
-
-**Adapter Types:**
-
-- **Stream-based:** TCP protocols with `encode`/`decode` handlers for serialization
-- **API-based:** HTTP/SDK protocols using JavaScript objects directly
-
-**Built-in adapter base types:** `adapter.http`, `adapter.knex` (SQL), `adapter.tcp`,
-`adapter.dispatch` (browser-side)
-
-**For detailed implementation patterns, see:**
-
-- **blong-adapter** - Complete adapter patterns (HTTP, TCP, SQL, MongoDB, S3, K8s, webhooks)
-
-### Orchestrator Pattern
-
-Orchestrators implement business logic decoupled from integration protocols. They coordinate between
-adapters and define API namespaces. Each orchestrator namespace becomes a Kubernetes service in
-microservice mode.
-
-**Business Logic Types:**
-
-- **Business process/workflow:** Coordinates data integrity logic
-- **Data integrity logic:** Ensures atomic, correct data persistence
-- **Distributed transactions:** Orchestration pattern for microservices
-
-**Built-in orchestrator base types:** `orchestrator.dispatch` (standard), `orchestrator.schedule`
-(cron)
-
-**For detailed implementation patterns, see:**
-
-- **blong-orchestrator** - Orchestrator patterns, dispatch configuration, saga patterns
-
-### Gateway Pattern
-
-Gateway (API Gateway) is the public-facing interface exposing functionality as JSON-RPC endpoints by
-default, with REST endpoint support.
-
-**Gateway Responsibilities:**
-
-- API serving with validation
-- API documentation generation
-- Kubernetes ingress exposure
-- Request/response transformation
-
-**For detailed implementation patterns, see:**
-
-- **blong-rest** - REST API implementation using OpenAPI/Swagger (server & client)
-- **blong-validation** - API validation and documentation generation
-
-### Default protocol JSON-RPC 2.0
-
-All blong APIs use JSON-RPC 2.0 and semantic triple method names.
-
-**External API** (client → server):
-
-- Endpoint: `POST /rpc/{subject}/{object}/{predicate}`
-- Auth: `Authorization: Bearer <token>`
-- Errors: JSON-RPC error objects with `type`, `message`, `print`, `validation`, `params` fields
-  (`stack` and `cause` only in debug mode)
-- By default it listens on port 8080 or a random port. When you need to run with a fixed port, pass
-  these parameters to the CLI: `blong --gateway.port=8080 --resolution.portGateway=8080`
-
-**Internal API** (microservice → microservice):
-
-- Endpoint: `POST http://{namespace}/ports/{subject}/request`
-- Params: `[...arguments, $meta]` array
-- Errors: returned in result with `mtid: 'error'` — never as JSON-RPC error objects
-- Notifications: `POST http://{namespace}/ports/{subject}/publish`
-
-Both APIs use the same `subjectObjectPredicate` method naming. Handler code is transport-agnostic.
-
-**For detailed patterns, see: blong-rest** (external) and **blong-codec** (internal transport).
-
-### Codec Pattern
-
-Codecs enable protocol implementation on top of HTTP adapters.
-
-**For detailed implementation patterns, see:**
-
-- **blong-codec** - Protocol implementation (OpenAPI, JSON-RPC, MLE, TCP codecs)
+- Party/access graph, RBAC, authorization: Call `skill` with **blong-core**
+
+## [KEY_PATTERNS]
+
+**One-line pointers only — invoke the skill for full patterns.**
+
+**Core definitions.**
+
+- **Suite** — top-level unit; groups realms, defines multi-platform entry points (`server.ts`,
+  `browser.ts`, `index.ts`), takes deployment decisions. See `blong-suite`.
+- **Modular architecture** — realms combined in one suite with maximum isolation.
+- **Business logic separation** — business process/workflow (orchestrators) / data integrity (DB
+  stored procedures) / integration (adapters).
+- **Platforms** — `server` (K8s pods), `browser` (web apps), `desktop`/`mobile` (future).
+- **Interaction origins** — application front ends, edge devices (ATM/POS/IoT), third-party systems
+  (core banking/payment/APIs), automated processes (scheduled/event-driven).
+- **Deployment ("bring your own architecture")** — modular monolith | microservices | hybrid: same
+  code, no changes.
+- **Philosophy** — RAD, minimal learning curve, fast build/deploy, test-driven, 100% coverage goal.
+
+**Key patterns.**
+
+- **Suite** — entry point gluing realms + deployment config. See `blong-suite`.
+- **Service definition** — realms/layers via builder pattern; adapters/orchestrators self-contained
+  (`activation` co-located in the layer file, not `server.ts`). See `blong-realm`, `blong-adapter`,
+  `blong-orchestrator`.
+- **Handler & runtime** — `handler()` factory; semantic triples; `runtime.{lib,errors,config,log,handler}`
+  proxy (IoC, hot reload, mocking). See `blong-handler`.
+- **Adapter** — integration points; stream (TCP encode/decode) vs API (HTTP/SDK) based. See
+  `blong-adapter`.
+- **Orchestrator** — business-logic coordinators; dispatch + schedule; saga; namespace → K8s
+  service. See `blong-orchestrator`.
+- **Gateway** — public JSON-RPC surface (default) + REST; validation + API docs. See `blong-rest`,
+  `blong-validation`.
+- **Default protocol JSON-RPC 2.0** — external `POST /rpc/{subject}/{object}/{predicate}`;
+  internal `POST http://{namespace}/ports/{subject}/request` (errors via `mtid:'error'`, never
+  JSON-RPC errors); notifications `/publish`. Handler code is transport-agnostic. See `blong-rest`,
+  `blong-codec`.
+- **Codec** — protocol impl on transports (OpenAPI, JSON-RPC, MLE, TCP). See `blong-codec`.
 
 ## What Happens Automatically
 
@@ -499,18 +214,8 @@ The framework performs the following without explicit configuration:
 ### Well-Known Layer Intents (Auto-discovery Defaults)
 
 The intent listed is the CLI intent that must be active for the layer to load automatically.
-`default` means the layer loads regardless of intents.
-
-| Folder         | Server intent      | Browser intent     |
-| -------------- | ------------------ | ------------------ |
-| `error`        | `default` (always) | —                  |
-| `adapter`      | `default` (always) | `default` (always) |
-| `orchestrator` | `default` (always) | —                  |
-| `gateway`      | `default` (always) | —                  |
-| `sim`          | `integration`      | —                  |
-| `test`         | `integration`      | `integration`      |
-| `backend`      | —                  | `default` (always) |
-| `component`    | —                  | `default` (always) |
+`default` means the layer loads regardless of intents. Canonical table:
+`.github/skills/_shared/conventions.md` → `[LAYER_DEFAULTS_TABLE]`.
 
 ## Development Workflows
 
@@ -593,7 +298,7 @@ alongside the component.
 ### Module System
 
 - **ESM modules only** (`"type": "module"` in package.json)
-- Use `.js` extensions in imports even for TypeScript files
+- Use `.ts` extensions in local imports
 - Workspace dependencies use `workspace:^` protocol
 - Framework built entirely on TypeScript and ECMAScript modules
 - CommonJS supported when possible but ESM preferred
@@ -633,83 +338,35 @@ Services can import OpenAPI specs for external API integration.
 Uses `@feasibleone/blong-login` for JWT-based authentication with token creation endpoints at
 `/rpc/login/token/create`.
 
+### Authorization
+- **blong-access** - RBAC
+- **blong-gateway** - API gateway (optional)
+
 ### Error Handling
 
-Framework provides structured error handling with `IErrorFactory` pattern for defining typed domain
-errors. Error objects contain: `type`, `message`, `print`, `validation` (for validation errors),
-`params`, `req`, `res`, `stack`, `cause` (nested error). `stack` and `cause` are only included in
-debug mode.
-
-**For detailed patterns, see:**
-
-- **blong-error** - Defining and throwing typed errors with parameterized messages
+Typed domain errors via `IErrorFactory` (error object shape, definition, throwing, expected errors
+in tests) — see **blong-error**.
 
 ### Runtime Introspection (Debug Mode)
 
-The framework includes built-in debug endpoints that expose internal state useful for
-troubleshooting during development. Enable them in the suite's `server.ts` config:
-
-```typescript
-config: {
-    dev: {
-        gateway: {
-            debug: true,            // include stack/cause in HTTP error responses
-            expectedErrors: true,   // allow callers to suppress error logs for expected errors
-        },
-        systemDebug: {enabled: true}, // expose /api/sys/* introspection endpoints
-    },
-}
-```
-
-**System debug endpoints** (served by the gateway when `systemDebug.enabled` is `true`):
-
-| Endpoint               | Returns                                                       |
-| ---------------------- | ------------------------------------------------------------- |
-| `GET /api/sys/config`  | Effective runtime configuration snapshot (full merged object) |
-| `GET /api/sys/ports`   | Names of all registered adapter/orchestrator ports            |
-| `GET /api/sys/methods` | All handler method groups with their handler counts           |
-| `GET /api/sys/modules` | Names of all registered realm modules                         |
-| `GET /api/sys/rpc`     | Internal RPC server address info                              |
-
-These endpoints have no auth by default (`auth: false`). Never enable `systemDebug` in production.
-The `routePrefix` (default `/api/sys`) and `auth` fields can be overridden in config.
+`systemDebug: {enabled: true}` (default in `dev`) exposes `/api/sys/*` introspection endpoints:
+`/api/sys/config` (merged config snapshot), `/api/sys/ports`, `/api/sys/methods`,
+`/api/sys/modules`, `/api/sys/rpc`. **Never enable in production** (see `[CRITICAL_GUARDRAILS]`).
+They are enabled in `dev` and are unlikely to need config changes. For deeper understanding or
+extending, see the source: `core/blong-gogo/src/SystemDebug.ts`.
 
 ## Common Tasks
 
-**For detailed implementation guides, see the blong skills:**
-
-- **Creating a new suite:** See **blong-suite** for suite creation, multi-platform entry points, and
-  tests
-- **Adding a new service:** See **blong-realm** for realm creation patterns
-- **Adding API endpoint:** See **blong-rest** (REST) or **blong-handler** (JSON-RPC)
-- **Database integration:** See **blong-adapter** for database adapter patterns
-- **External API:** See **blong-adapter** for webhook and HTTP adapters
-- **Adding tests:** See **blong-test** for test handler patterns
-- **Setting up the test entry point:** See **blong-test-api** for `index.ts` wiring and platform
-  loading
-- **Simulating backends:** See **blong-test-sim** for local HTTP/TCP backend simulation
-- **CI integration tests:** See **blong-test-int** for Kubernetes-based real backend tests
-- **Testing with mocks:** See **blong-mock-test** for server-side testing with mock handlers
-- **EIP patterns:** See **blong-eip** for message routing, filtering, aggregation, and
-  transformation
-- **Error definitions:** See **blong-error** for typed error patterns
-- **Validation:** See **blong-validation** for input/output validation
-- **Real-time logging:** See **blong-log** for log viewer setup and monitoring
-- **Troubleshooting runtime state:** Enable `systemDebug: {enabled: true}` in suite `dev` config to
-  expose `/api/sys/*` introspection endpoints — see Runtime Introspection section above
-- **Expected errors in tests:** Enable `gateway.expectedErrors: true` in suite `dev` config, then
-  set `$meta.expect` in test calls — see
-  [expected errors concept](../docs/blong/docs/concepts/expected-errors.md)
-- **Writing or reviewing documentation:** See **blong-docs** for the rationale/concept/pattern tier
-  structure and how to maintain docs
-
-**Manual Testing:** Use `.http` files for manual/scripted API testing
+- **Implementation guides** → invoke the skill from `[SKILLS_DELEGATOR]` above (task → skill table).
+- **Manual testing** → use `.http` files.
+- **Expected errors in tests** → enabled by default in `dev`, set `$meta.expect` in test calls — see
+  [expected errors concept](../docs/blong/docs/concepts/expected-errors.md).
 
 ## Local Development Environment
 
 ### Storybook (blong-browser / blong-marine / blong-suite)
 
-When working on `core/blong-browser/`, `core/blong-marine/`, or `core/blong-suite/`, Storybook may
+When working on `core/blong-browser/`, `core/blong-suite/` or any realm, Storybook may
 already be running on `http://localhost:6006`. A shared browser tab pointing to it may also be
 available in the session.
 
@@ -737,16 +394,17 @@ services are usually already started. The expected ports are:
 | 3306  | MySQL / MariaDB       |
 | 9000  | MinIO (S3-compatible) |
 | 8200  | Vault                 |
+| 6379  | Redis                 |
 
 **Check if backends are running:**
 
 ```bash
-ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200'
+ss -tlnp | grep -E ':8180|:9092|:27017|:3306|:9000|:8200|:6379'
 ```
 
 Any port not listed in the output means that service is not yet started.
 
-### MLE dev tooling (blong-dev proxy / trace)
+### dev tooling (blong-dev proxy / trace / log / sql)
 
 The `blong-dev` CLI ships two helpers for talking to a running gateway without re-implementing the
 MLE codec:
@@ -774,13 +432,12 @@ MLE codec:
 - **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
   output). Implemented in `core/blong-dev/src/commands/trace.ts`.
 
-- **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk (default
-  `~/.blong/log-cache`) with full detail, for on-demand inspection even after the process has
-  exited. Use it to debug when the backend is down or you need full request/error detail. Modes:
-  `condensed` (default, plain one-liners for agents), `pretty` (colorized), `json`. Filters:
-  `--level`, `--name`, `--search`, `--trace-id`, `--method`, `--after`, `--limit`; pass a ULID to
+- **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk. Pass a ULID to
   fetch one entry. Implemented in `core/blong-dev/src/commands/log.ts` on top of `cacache`. See the
   **blong-log** skill for full usage.
+
+- **`blong-dev sql`** — run SQL queries against a configured database. (blong-dev sql "SELECT * FROM ...`schema_name`.`table_name`")
+  implemented in `core/blong-dev/src/commands/sql.ts`.
 
 ## Architecture & Design Documents
 

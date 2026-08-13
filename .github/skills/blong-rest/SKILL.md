@@ -1,6 +1,6 @@
 ---
 name: blong-rest
-description: Implement REST APIs in Blong using OpenAPI/Swagger definitions. Framework defaults to JSON-RPC but supports REST for pre-defined APIs. Covers both server-side (gateway) and client-side (adapter) patterns with OpenAPI codec integration. Make sure to use this skill whenever the user mentions OpenAPI, Swagger, REST endpoints, HTTP methods like GET/PUT/DELETE, or needs to consume a pre-defined REST API from an external provider.
+description: Implement REST APIs in Blong using OpenAPI/Swagger definitions. Framework defaults to JSON-RPC but supports REST for pre-defined APIs. Covers both server-side (gateway) and client-side (adapter) patterns with OpenAPI codec integration. Use this skill whenever the user mentions OpenAPI, Swagger, REST endpoints, HTTP methods like GET/PUT/DELETE, or needs to consume a pre-defined REST API from an external provider.
 ---
 
 # Implementing REST APIs

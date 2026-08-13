@@ -1,6 +1,6 @@
 ---
 name: blong-codec
-description: Implement protocols on top of transport layers in Blong. Includes HTTP codecs (OpenAPI, JSON-RPC, MLE) and TCP codecs (Payshield, ISO8583, SMPP). Handle serialization, deserialization, and request/response matching. Make sure to use this skill for any serialization/deserialization work, binary protocol wiring, or connecting to payment networks, HSM devices, or external systems with custom wire formats — even if the user doesn't say 'codec' explicitly.
+description: Implement protocols on top of transport layers in Blong. Includes HTTP codecs (OpenAPI, JSON-RPC, MLE) and TCP codecs (Payshield, ISO8583, SMPP). Handle serialization, deserialization, and request/response matching. Use this skill for any serialization/deserialization work, binary protocol wiring, or connecting to payment networks, HSM devices, or external systems with custom wire formats — even if the user doesn't say 'codec' explicitly.
 ---
 
 # Implementing a Codec

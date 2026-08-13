@@ -1,12 +1,6 @@
 ---
 name: blong-test-api
-description:
-    Set up the test entry point to run Blong tests against the public or internal API. Covers
-    loading server and browser platforms in index.ts, wiring the @feasibleone/blong-test package,
-    and choosing between public API testing (browser-simulated) and internal API testing
-    (server-only). Use this skill whenever setting up the test runner entry point for a suite,
-    configuring index.ts for test execution, or deciding how to connect tests to a running platform
-    — even if the user just says 'how do I run the tests' or 'set up the test entry point'.
+description: Set up the test entry point to run Blong tests against the public or internal API. Covers loading server and browser platforms in index.ts, wiring the @feasibleone/blong-test package, and choosing between public API testing (browser-simulated) and internal API testing (server-only). Use this skill whenever setting up the test runner entry point for a suite, configuring index.ts for test execution, or deciding how to connect tests to a running platform — even if the user just says 'how do I run the tests' or 'set up the test entry point'.
 ---
 
 # Test API Entry Points

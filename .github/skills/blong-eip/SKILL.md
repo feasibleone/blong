@@ -1,11 +1,6 @@
 ---
 name: blong-eip
-description:
-    Implement Enterprise Integration Patterns (EIP) as Blong handlers. Each pattern (Pipes and
-    Filters, Content-Based Router, Splitter, Aggregator, Claim Check, etc.) maps to a single handler
-    that calls downstream handlers via the handler proxy. Make sure to use this skill whenever the
-    user mentions routing, filtering, splitting, aggregating, or transforming messages in a pipeline
-    — even if they don't use the term 'EIP' or 'enterprise integration'.
+description: Implement Enterprise Integration Patterns (EIP) as Blong handlers. Each pattern (Pipes and Filters, Content-Based Router, Splitter, Aggregator, Claim Check, etc.) maps to a single handler that calls downstream handlers via the handler proxy. Use this skill whenever the user mentions routing, filtering, splitting, aggregating, or transforming messages in a pipeline — even if they don't use the term 'EIP' or 'enterprise integration'.
 ---
 
 # Implementing EIP Patterns

@@ -1,22 +1,28 @@
 ---
 name: blong-error
-description: Define and throw typed errors in Blong framework. Errors are defined in the error layer or inline, with support for parameterized messages, HTTP status codes, and error wrapping. Make sure to use this skill whenever defining, throwing, or handling errors in Blong — including error.ts files, validation failures, domain-specific exceptions, or any 'throw' that needs a typed error.
+description: Define and throw typed errors in Blong framework. Errors are defined in the error layer or inline, with support for parameterized messages, HTTP status codes, and error wrapping. Use this skill whenever defining, throwing, or handling errors in Blong — including error.ts files, validation failures, domain-specific exceptions, or any 'throw' that needs a typed error.
 ---
 
 # Implementing Error Management
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Typed errors in the Blong framework provide structured error handling with domain-specific error types, parameterized messages, and proper error propagation. Errors are defined once and thrown consistently throughout the codebase.
+- **Define errors in the error layer** (`error/error.ts`) — one place, used everywhere.
+- **Namespace-prefix every error** (`user.notFound`), never bare names.
+- **Parameterize messages** with `{param}` placeholders — never string-concat inside handlers.
+- **Wrap external errors** with `cause` to preserve context.
+- **Use the simplified destructure** `{errors: {errorUserNotFound}}` (framework maps to `user.notFound`).
+- **Set `statusCode`** for gateway errors; **assert expected errors in tests** via `$meta.expect`.
+- **Never leak raw protocol errors** — translate to domain errors.
 
-## Purpose
+Canonical framework rules + archetype:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: HANDLER]`.
 
-- **Type Safety:** Define errors with specific types for better catching
-- **Parameterized Messages:** Include dynamic values in error messages
-- **Error Wrapping:** Preserve original error context with `cause`
-- **HTTP Status Codes:** Associate errors with HTTP response codes
-- **Centralized Definitions:** Define errors in one place, use everywhere
-- **Namespace Prefixes:** Avoid name collisions across realms
+## Error object shape
+
+`IErrorFactory`-defined errors carry: `type`, `message`, `print`, `validation` (validation errors),
+`params`, `req`, `res`, `stack`, `cause` (nested error). `stack`/`cause` are included only in
+`debug` mode.
 
 ## Error Definition Approaches
 
@@ -266,35 +272,6 @@ export default {
 };
 ```
 
-### Complex Error Definitions
-
-```typescript
-export default {
-    // Simple error
-    'hsm.generic': 'HSM generic error',
-
-    // Hierarchical naming
-    'hsm.notConnected': 'No connection to HSM',
-    'hsm.timeout': 'HSM timed out',
-
-    // Parameterized errors
-    'hsm.missingParameters': 'Missing parameters',
-    'hsm.invalidParameters': 'Invalid parameters',
-
-    // Method-specific errors
-    'hsm.badArqcMethod': 'Bad ARQC method',
-
-    // Protocol-specific errors with codes
-    'payshield.01': 'Verification failure or warning of imported key parity error',
-    'payshield.generateArqc3.01': 'ARQC/TC/AAC verification failed',
-    'payshield.generateArqc4.01': 'ARQC/TC/AAC/MPVV verification failure',
-
-    // Validation errors
-    'payshield.decryptDataBlock.02': 'Invalid Mode Flag field',
-    'payshield.encryptDataBlock.03': 'Invalid Input Format Flag field',
-};
-```
-
 ## Throwing Errors
 
 ### Basic Error Throw
@@ -505,16 +482,10 @@ for full documentation.
 
 ## Best Practices
 
-1. **Use Error Layer:** Define errors in `error/error.ts` for realm-wide access
-2. **Namespace Prefixes:** Always prefix errors with realm/entity name
-3. **Parameterize Messages:** Use `{param}` syntax for dynamic values
-4. **Wrap External Errors:** Use `cause` to preserve error context
-5. **HTTP Status Codes:** Include `statusCode` for gateway errors
-6. **Hierarchical Names:** Use dots for logical grouping
-7. **Descriptive Messages:** Make error messages actionable
-8. **Consistent Naming:** Follow `realm.entity.action` pattern
-9. **Document Error Codes:** Add comments for protocol-specific errors
-10. **Test Error Paths:** Write tests for error conditions
+- **Error layer first**; namespace-prefixed, hierarchical dotted names (`realm.entity.action`).
+- **Parameterized messages** (`{param}`); **`cause`** for wrapped external errors.
+- **`statusCode`** for gateway errors; comment protocol-specific error codes.
+- **Test error paths** and assert expected errors via `$meta.expect` (see Expected Errors above).
 
 ## Examples from Codebase
 

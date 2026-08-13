@@ -1,26 +1,29 @@
 ---
 name: blong-schema
-description: Define database schemas, seed data, and test seed data in a Blong realm using the declarative
-schema management system built into adapter.knex. Covers the full lifecycle - TypeBox table
-definitions (with constraints like primary keys, foreign keys, unique constraints, and indexes),
-stored procedure `.sql` files, production seed YAML files, test seed YAML files, and the
-adapter configuration that wires everything together. Make sure to use this skill whenever
-the user wants to add or modify database tables, add seed data, add test seed data,
-define stored procedures, add constraints to tables, or set up the schema layer for a realm - even
-if they just say 'add a table', 'add seed data', 'I need a DB schema', or 'set up
-the database for this realm'.
+description: Define database schemas, seed data, and test seed data in a Blong realm using the declarative schema management system built into adapter.knex. Covers the full lifecycle - TypeBox table definitions (with constraints like primary keys, foreign keys, unique constraints, and indexes), stored procedure `.sql` files, production seed YAML files, test seed YAML files, and the adapter configuration that wires everything together. Use this skill whenever the user wants to add or modify database tables, add seed data, add test seed data, define stored procedures, add constraints to tables, or set up the schema layer for a realm - even if they just say 'add a table', 'add seed data', 'I need a DB schema', or 'set up the database for this realm'.
 ---
 
 # Declarative Schema Management (blong-schema)
 
+## [CRITICAL_GUARDRAILS]
+
+- **Use convenience types, never raw TypeBox** (`type.increment()`, `type.stringNotNull()`, …) —
+  never `Type.String()` / `Type.Integer()` / `Type.Optional(T)`.
+- **Seeds are always YAML, never TypeScript.** TypeScript files only for custom merge logic (Case 3).
+- **`*JSON` columns are auto-(de)serialized** — declare as `type.stringNull()`; no manual parse/stringify.
+- **No `type.Optional()` needed** — the `Null`/`NotNull` suffix already implies nullability.
+- **Constraints apply in a second pass** after all tables exist (FK targets guaranteed).
+- **Don't recreate the built-in `adapter/db.ts`** — extend via `schema.tables` / `procedurePaths`.
+- **Name PKs/FKs deliberately:** `increment` (simple PK) · `ulid`/`uuid` (distributed PK) · `uid` (FK).
+
+Canonical framework rules + archetype:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`.
+
 ## Overview
 
-The `adapter.knex` built into `blong-gogo` provides a **declarative schema management** system.
-Instead of writing migration files, you declare the desired state of your database tables,
-constraints, stored procedures, and seed data as TypeScript/TypeBox definitions and YAML files. The
-framework reconciles the actual database against the declared state automatically.
-
-The system has three concerns that happen at different times:
+`adapter.knex` in `blong-gogo` = **declarative schema management** — declare the desired state
+(tables/constraints/procedures/seeds) as TypeBox + YAML; the framework reconciles the DB
+automatically (no migration files). Concerns run at different times:
 
 | Concern               | When it runs                     | Enabled by               |
 | --------------------- | -------------------------------- | ------------------------ |
@@ -157,21 +160,7 @@ Choosing the right identifier type is critical for correct behaviour:
 
 ### TypeBox → SQL type mapping (raw TypeBox equivalents)
 
-The convenience types map to these SQL types internally. You should **not** use these raw forms
-directly — this table is for reference:
-
-| Underlying TypeBox type              | SQL column type                                                    |
-| ------------------------------------ | ------------------------------------------------------------------ |
-| `Type.Integer()` (via `increment`)   | `INT` / `AUTO_INCREMENT` (if name ends `Id`)                       |
-| `Type.String({maxLength: N≤255})`    | `VARCHAR(N)`                                                       |
-| `Type.String({maxLength: N>255})`    | `TEXT`                                                             |
-| `Type.String()` (no maxLength)       | `VARCHAR(255)` (default when no maxLength is given)                |
-| `Type.String({format: 'date-time'})` | `DATETIME`                                                         |
-| `Type.String({format: 'date'})`      | `DATE`                                                             |
-| `Type.String({format: 'uuid'})`      | `UUID` (only for explicit `format: 'uuid'`, NOT for `type.uuid()`) |
-| `Type.Boolean()`                     | `BOOLEAN`                                                          |
-| `Type.Number()`                      | `DOUBLE`                                                           |
-| `Type.Unknown()` / `Type.Object()`   | `JSON`                                                             |
+Reference-only (you should not use the raw forms directly): `references/raw-typebox-mapping.md`.
 
 ### Structured JSON columns (`*JSON` suffix)
 

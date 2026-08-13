@@ -1,28 +1,34 @@
 ---
 name: blong-model
-description: >
-    Use the blong-browser model system to implement CRUD pages in a blong realm or suite. The model
-    system generates Browse/New/Open/Report pages automatically from IModelSpec declarations. Use
-    this skill whenever a realm needs to contribute UI pages for domain entities — even if the user
-    just says "add list and edit pages for this entity" or "wire up the UI for this API". For
-    developing or improving the model system internals, use blong-model-dev instead.
+description: Use the blong-browser model system to implement CRUD pages in a blong realm or suite. The model system generates Browse/New/Open/Report pages automatically from IModelSpec declarations. Use this skill whenever a realm needs to contribute UI pages for domain entities — even if the user just says "add list and edit pages for this entity" or "wire up the UI for this API". For developing or improving the model system internals, use blong-model-dev instead.
 ---
 
 # blong-model Skill
 
+## [CRITICAL_GUARDRAILS]
+
+- **`type.uuid()` PKs** (not `uidNotNull()`/`increment()`) → auto-bound dropdowns + `core_resource`
+  row + working generic CRUD. `uidNotNull()` does NOT.
+- **Never use a single `saveAction` pointing to `.add` for `subjectObjectNew`** — duplicate records
+  (see `_shared` `[PITFALLS]`).
+- **`public: true` + `subject.validation`** — mark the model public to expose the CRUD endpoints on the gateway; without
+  them the generic RPC routes aren't exposed and browse 404s.
+- **Binary PK round-trip** — `uuid()` PKs are `binary(16)`: `get`/`find` return base64; dropdown
+  values for binary PKs must be base64 too.
+- **Model files end in `Model.ts`**, exported from a `{subject}{Object}Model` handler (`.model` kind)
+  — that's what the portal orchestrator + mock adapter match on.
+
+Canonical framework rules + pitfalls + archetype:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[PITFALLS]`, `[ARCHETYPE: MODELSPEC]`.
+Sibling skills: **blong-browser** (components), **blong-model-dev** (internals), **blong-core**
+(resource-backed tables).
+
 ## What this skill covers
 
-The model system is the primary and most efficient way to add browser UI pages for a domain entity
-in a blong suite. This skill covers **using** the model system: how to declare `IModelSpec` objects,
-wire them into a realm's component handler, write mock data for Storybook, and configure dropdown
-references.
-
-For concept and architecture see:
-
-- [blong-browser Model concept](../../docs/blong/docs/concepts/blong-model.md)
-- [blong-browser Model Pattern](../../docs/blong/docs/patterns/blong-model.md)
-
-For developing the model system internals, use the **blong-model-dev** skill.
+**Using** the model system: declaring `IModelSpec` objects, wiring them into a realm component
+handler, mock data for Storybook, and dropdown references. For internals see **blong-model-dev**;
+for concept/architecture see [blong-browser Model concept](../../docs/blong/docs/concepts/blong-model.md)
+and [Model Pattern](../../docs/blong/docs/patterns/blong-model.md).
 
 ---
 
@@ -325,14 +331,9 @@ below). A realm only implements `{subject}.dropdown.list` itself for **non-resou
 
 ## How the model system relates to `core.resource`
 
-`core.resource` is the framework's universal entity registry: every resource-backed table row has a
-`resourceId` (the primary key) and a `resourceName` (the human-readable label), typed by `typeId` →
-`core.type` alias `${subject}.${object}` (see `core/blong-core/meta/type/schema.ts` and the
-**blong-core** skill).
-
-**Resource-backed table** = a table whose primary key is declared with `type.uuid()` and whose PK
-value doubles as `core.resource.resourceId`. This single fact determines several model-system
-behaviours:
+`core.resource` = universal entity registry (`resourceId` PK + `resourceName` label, typed via
+`core.type` alias `${subject}.${object}` — see **blong-core**). A **resource-backed table** has a
+`type.uuid()` PK doubling as `core.resource.resourceId`; that one fact determines:
 
 - **Dropdowns are auto-bound.** The knex adapter serves `{subject}.dropdown.list` for every
   resource-backed table directly from `core_resource JOIN core_type` (see `_dropdownList` in
@@ -366,11 +367,9 @@ Fields render according to their JSON Schema type (unless `widget.type` is set e
 | `boolean`   | boolean (checkbox)                                                        |
 | `anyOf`     | resolved from the first non-null member (e.g. `bigIntNotNull()` → bigint) |
 
-A `bigint` column (`type.bigIntNotNull()` = `Union[BigInt, Integer]`) has `anyOf` in its JSON
-schema; without the bigint mapping it fell through to a plain text input, the form submitted a
-STRING and strict TypeBox validation failed ("must be bigint, must be integer..."). The framework
-maps `bigint`/number-`anyOf` to the BigIntWidget, which emits a JS number within the safe range and
-a string above it (the `bigInt*` types accept both forms).
+A `bigint` column (`type.bigIntNotNull()` = `Union[BigInt, Integer]`) maps to `anyOf` in JSON schema.
+The framework routes `bigint`/number-`anyOf` to the **BigIntWidget** (JS number within safe range,
+string above it) — otherwise a plain text input submits a STRING and strict TypeBox validation fails.
 
 ### Model & schema authoring tricks
 
@@ -470,11 +469,9 @@ methods: {
 
 All six method names default to `{subject}.{object}.{find|get|add|edit|remove|report}`.
 
-> **Tip — avoid duplicate records:** The model's `subjectObjectNew` page uses `createAction`
-> (`methods.add`) for the **first** save only, then automatically switches to `mode='edit'` and uses
-> `saveAction` (`methods.edit`) for subsequent saves. Never configure `subjectObjectNew` with a
-> single `saveAction` pointing to `.add` — that would call `.add` on every save and create duplicate
-> records.
+> **Tip — avoid duplicate records:** `subjectObjectNew` uses `createAction` (`.add`) for the first
+> save only, then switches to `mode='edit'` + `saveAction` (`.edit`). Never use a single
+> `saveAction` pointing to `.add` — see `_shared` `[PITFALLS]`.
 
 ---
 

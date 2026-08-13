@@ -1,12 +1,6 @@
 ---
 name: blong-cucumber
-description:
-    Implement BDD-style Cucumber/Gherkin tests in Blong using @cucumber/gherkin as the fully
-    compliant parser. Converts .feature file strings into blong ChainStep[] arrays via
-    featureToSteps. Step definitions map Gherkin patterns to handler calls. Supports Scenario
-    Outline, Background, and all cucumber expression types. Use this skill whenever the user wants
-    to write Gherkin feature files, define Given/When/Then steps, run BDD tests, or integrate
-    cucumber-style testing with blong handlers.
+description: Implement BDD-style Cucumber/Gherkin tests in Blong using @cucumber/gherkin as the fully compliant parser. Converts .feature file strings into blong ChainStep[] arrays via featureToSteps. Step definitions map Gherkin patterns to handler calls. Supports Scenario Outline, Background, and all cucumber expression types. Use this skill whenever the user wants to write Gherkin feature files, define Given/When/Then steps, run BDD tests, or integrate cucumber-style testing with blong handlers.
 ---
 
 # Implementing Cucumber/Gherkin Tests

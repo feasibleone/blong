@@ -1,11 +1,6 @@
 ---
 name: blong-test-int
-description:
-    Provision and use real backend services in Kubernetes for Blong integration tests. Covers the
-    test/integration/ kustomization.yaml structure, k3d cluster setup in CI, the ci-test Rush bulk
-    command, wait.sh pattern, and tap-wrapped index.test.ts. Use this skill only when the user
-    explicitly requests CI integration tests with real databases or services in a k3d cluster, or
-    needs to wire Kubernetes manifests for a test backend.
+description: Provision and use real backend services in Kubernetes for Blong integration tests. Covers the test/integration/ kustomization.yaml structure, k3d cluster setup in CI, the ci-test Rush bulk command, wait.sh pattern, and tap-wrapped index.test.ts. Use this skill only when the user explicitly requests CI integration tests with real databases or services in a k3d cluster, or needs to wire Kubernetes manifests for a test backend.
 ---
 
 # Integration Tests with Kubernetes Backends

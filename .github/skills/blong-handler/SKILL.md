@@ -1,21 +1,21 @@
 ---
 name: blong-handler
-description: Create API handlers and library functions in Blong using semantic triple naming (subjectObjectPredicate). Handlers implement business operations, protocol tasks, or reusable logic. Make sure to use this skill whenever you're writing any function in a Blong realm — API endpoints, library helpers, adapter logic, or test steps. Even if the user just says 'add a function' or 'implement this logic in Blong', use this skill.
+description: Create API handlers and library functions in Blong using semantic triple naming (subjectObjectPredicate). Handlers implement business operations, protocol tasks, or reusable logic. Use this skill whenever you're writing any function in a Blong realm — API endpoints, library helpers, adapter logic, or test steps. Even if the user just says 'add a function' or 'implement this logic in Blong', use this skill.
 ---
 
 # Implementing Handlers
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Handlers are functions called by adapters and orchestrators to implement functionality. They follow the framework's conventions for naming, parameter passing, and interoperability.
+- **Triple naming.** `subjectObjectPredicate`; file = export = wire name. Flag violations.
+- **Never import other handlers.** Use `handler: {}` proxy (IoC). Direct imports break IoC + hot reload.
+- **Always forward `$meta`** as the 2nd arg on every downstream call.
+- **One handler per file.** Library functions get their own files too.
+- **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge`; `insert`/`update`/`delete`.
+- **Two-word properties.** `userName` not `name`; `customerId` not `id`.
 
-## Purpose
-
-- **Business Logic:** Implement specific business operations
-- **API Implementation:** Expose business functionality through semantic names
-- **Reusable Functions:** Share common logic via library functions
-- **Protocol Handling:** Implement adapter loop handlers (send, receive, encode, decode)
-- **Type Safety:** Define types for automatic validation
+Canonical framework rules + `[ARCHETYPE: HANDLER]` type signature:
+`.github/skills/_shared/conventions.md`.
 
 ## Handler Types
 
@@ -85,50 +85,30 @@ user/
 
 ### Basic Handler
 
+Canonical skeleton: `.github/skills/_shared/conventions.md` → `[ARCHETYPE: HANDLER]`. Minimal form:
+
 ```typescript
-// realmname/orchestrator/entity/realmEntityAction.ts
 import {IMeta, handler} from '@feasibleone/blong';
 
-// Define type for automatic validation
-type Handler = ({
-    param1: string;
-    param2: number;
-}) => Promise<{
-    result: string;
-}>;
+// Type = API definition (validation + docs auto-derived)
+type Handler = ({param1: string; param2: number}) => Promise<{result: string}>;
 
-export default handler(({
-    lib: {
-        helperFunction    // Library function
-    },
-    errors: {             // Domain errors with simplified syntax
-        errorEntityNotFound,
-        errorInvalidInput
-    },
-    config,               // Configuration
-    handler: {
-        adapterHandler,   // Other handlers
-        otherHandler
-    }
-}) =>
-    async function realmEntityAction(
-        params: Parameters<Handler>[0],
-        $meta: IMeta
-    ): ReturnType<Handler> {
-        // Implementation
-        const processed = helperFunction(params.param1);
-
-        const result = await adapterHandler({
-            data: processed,
-            count: params.param2
-        }, $meta);
-
-        return {
-            result: result.value
-        };
-    }
+export default handler(
+    ({lib: {helperFunction}, errors: {errorInvalidInput}, config, handler: {adapterHandler}}) =>
+        async function realmEntityAction(
+            params: Parameters<Handler>[0],
+            $meta: IMeta,
+        ): ReturnType<Handler> {
+            const processed = helperFunction(params.param1);                            // lib
+            const result = await adapterHandler({data: processed, count: params.param2}, $meta); // IoC + $meta
+            return {result: result.value};
+        },
 );
 ```
+
+Runtime destructure keys: `lib` (same-group fns), `errors` (realm error layer, simplified
+`{errorEntityNotFound}` → `entity.notFound`), `config` (component config slice), `log`, `handler`
+(IoC proxy to imported handlers).
 
 ### Library Function
 
@@ -147,19 +127,11 @@ export default library(
 );
 ```
 
-> **Library return types are `unknown` — annotate at the call site.** Library functions
-> destructured from `lib: {myFn}` are typed as `LibFn` (`<T>(...params: unknown[]) => T`), so
-> their return type is inferred only from context. Two cases bite:
->
-> - **Destructuring the result:** `const {hash, params} = hashPassword(...)` fails with
->   `Property 'hash' does not exist on type 'unknown'`. Fix by passing the expected type as a
->   call-site generic: `const {hash, params} = hashPassword<{hash: string; params: P}>(...)`.
-> - **`return libFn(...)`:** works only when the enclosing function has a declared return type
->   (contextual typing), e.g. `function storageTokenGet(): string | null { return storeGet(k); }`.
->
-> Import the shared param type (`import {type P} from './password.ts'`) to keep the annotation
-> DRY — type-only imports of the library module are fine (they are erased at runtime and do not
-> break the IoC `lib` injection).
+> **Library return types are `unknown`** (`LibFn` = `<T>(...params: unknown[]) => T`) — annotate at
+> the call site:
+> - Destructure the result via a call-site generic: `const {hash, params} = hashPassword<{hash: string; params: P}>(...)`.
+> - `return libFn(...)` works only when the enclosing fn has a declared return type.
+> - Type-only imports (`import {type P} from './password.ts'`) are erased at runtime — safe, keep DRY.
 
 ## API Parameter: Destructuring
 
@@ -369,10 +341,10 @@ export default handler(
 
 ## Folder-Level Configuration (config.ts)
 
-Place a `config.ts` file in any handler folder to define configuration for all handlers in that
-folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.) using the same
-pattern as `server.ts`, keeping environment-specific values co-located with the handlers that use
-them.
+Canonical pattern: `.github/skills/_shared/conventions.md` → `[CONFIG_EXAMPLE]`. Place a `config.ts`
+file in any handler folder to define configuration for all handlers in that folder. The file
+supports activation-based config (`default`, `dev`, `prod`, etc.) using the same pattern as
+`server.ts`, keeping environment-specific values co-located with the handlers that use them.
 
 ```
 realmname/
@@ -437,6 +409,9 @@ export default realm(blong => ({
 
 ## Automatic Validation
 
+See **blong-validation** for the full pattern (Handler type → `~.schema.ts` → runtime validation +
+OpenAPI docs).
+
 ### Define Handler Type
 
 ```typescript
@@ -476,36 +451,12 @@ export default handler(
 
 ## Best Practices
 
-1. **Semantic Naming:** Use subject-object-predicate consistently
-2. **One Handler Per File:** Easier navigation and review
-3. **Type Definitions:** Define Handler types for validation
-4. **Library Functions:** Extract reusable logic
-5. **Error Handling:** Use domain errors, not generic exceptions
-6. **Async by Default:** Framework converts all handlers to async
-7. **$meta Propagation:** Always pass $meta to handler calls
-8. **Minimal Dependencies:** Import only what you need from api
-9. **Documentation:** Use JSDoc descriptions in types
-10. **Test Coverage:** Write test handlers for all business handlers
-11. **Co-locate Config:** Use `config.ts` in handler folders for folder-level defaults instead of putting config in `server.ts`
-
-## Handler Conversion
-
-All handlers are converted to async functions:
-
-```typescript
-// Synchronous handler
-export default handler(
-    () =>
-        function syncHandler(params) {
-            return {result: 'done'};
-        },
-);
-
-// Framework converts to:
-async function syncHandler(params) {
-    return {result: 'done'};
-}
-```
+- **Types as API definition:** `type Handler` drives validation + OpenAPI docs (`~.schema.ts` auto-generated).
+- **Errors:** throw domain errors (`errors.xxx`), never generic `Error`.
+- **$meta:** always forward; `{...$meta, expect}` for expected errors.
+- **Co-locate config:** `config.ts` in the handler folder over `server.ts`.
+- **JSDoc descriptions** in `Handler` types feed the generated API docs.
+- **Coverage:** write test handlers for every business handler.
 
 ## Examples from Codebase
 

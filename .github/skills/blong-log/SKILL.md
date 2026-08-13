@@ -1,13 +1,6 @@
 ---
 name: blong-log
-description:
-    Use the Blong logging tools to monitor and debug applications via the real-time log server REST
-    API (`http://127.0.0.1:9998`) and the `blong-dev log` CLI for on-disk entries. Provides
-    filtering by level, service name, trace ID, and free text search. Use this skill whenever
-    monitoring application behaviour, debugging issues, verifying feature behaviour, searching for
-    errors, tracing requests across services, or checking logs after making code changes — even if
-    logs aren't explicitly mentioned. For developing or extending the logging tooling itself, use
-    the blong-log-dev skill instead.
+description: Use the Blong logging tools to monitor and debug applications via the real-time log server REST API (`http://127.0.0.1:9998`) and the `blong-dev log` CLI for on-disk entries. Provides filtering by level, service name, trace ID, and free text search. Use this skill whenever monitoring application behaviour, debugging issues, verifying feature behaviour, searching for errors, tracing requests across services, or checking logs after making code changes — even if logs aren't explicitly mentioned. For developing or extending the logging tooling itself, use the blong-log-dev skill instead.
 ---
 
 # blong-log Skill

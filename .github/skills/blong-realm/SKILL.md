@@ -1,30 +1,26 @@
 ---
 name: blong-realm
-description:
-    Create business domain boundaries in Blong framework. Realms separate business logic into
-    independent, modular units that can be deployed as monolith or microservices. Make sure to use
-    this skill whenever creating a new business domain or service in Blong — even if the user says
-    'add a new module', 'create a new service', or 'set up a new package'.
+description: Create business domain boundaries in Blong framework. Realms separate business logic into independent, modular units that can be deployed as monolith or microservices. Use this skill whenever creating a new business domain or service in Blong — even if the user says 'add a new module', 'create a new service', or 'set up a new package'.
 ---
 
 # Implementing a Realm
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-A realm is a business domain boundary in the Blong framework. Realms separate business logic into
-independent, modular units that can be developed independently and deployed together (monolith) or
-separately (microservices).
+- **Well-known layer folders auto-discover** (`error`, `adapter`, `orchestrator`, `gateway`,
+  `sim`, `test`) — no `layer.*.ts` needed. Custom names need one.
+- **Layer config is co-located** in the layer file (`adapter(blong => …)`) — `server.ts` only for
+  realm-level validation/config shared across layers.
+- **`adapter/dbTest/` handlers are `dev`-only** — never ship in production; `adapter/db/` loads in
+  all intents.
+- **Browser namespace file REQUIRED** for portal pages: `browser/orchestrator/subject/init.ts`
+  exporting `namespace: '<realmname>'` — without it browse fails "Method binding failed".
+- **Omit `server.ts`** for standard realms.
+- **Name consistency:** realm folder = package name = namespace prefix.
 
-**Key Pattern:** Well-known layer folders (`error`, `adapter`, `orchestrator`, `gateway`, `sim`,
-`test`) are auto-discovered — no `layer.server.ts` needed. Custom folder names can add a
-`layer.server.ts` / `layer.browser.ts` to declare activation.
-
-## Purpose
-
-- **Modular Development:** Focus on specific business functionality
-- **Team Independence:** Teams can develop realms end-to-end
-- **Deployment Flexibility:** Same code can run as monolith or microservices
-- **Clear Boundaries:** Avoid coupling between different business domains
+Canonical framework rules + layer table:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`,
+`[CONFIG_EXAMPLE]`. Siblings: **blong-layer**, **blong-suite**.
 
 ## File Structure
 
@@ -74,20 +70,8 @@ export default layer({
 
 ### Well-known Folder Defaults
 
-Well-known folders are automatically activated without any `layer.*.ts` file. The key in each cell
-is the **intent** that must be active for the layer to load:
-
-| Folder         | Server intent      | Browser intent     |
-| -------------- | ------------------ | ------------------ |
-| `error`        | `default` (always) | —                  |
-| `adapter`      | `default` (always) | `default` (always) |
-| `orchestrator` | `default` (always) | —                  |
-| `gateway`      | `default` (always) | —                  |
-| `sim`          | `integration`      | —                  |
-| `test`         | `integration`      | `integration`      |
-
-Override any default by adding a `layer.server.ts` / `layer.browser.ts` to the folder. See the
-**blong-intent** skill for the full intents reference and how to create custom intents.
+Canonical table: `.github/skills/_shared/conventions.md` → `[LAYER_DEFAULTS_TABLE]`. Override any
+default by adding a `layer.server.ts` / `layer.browser.ts`. See **blong-intent** for custom intents.
 
 ### Test-Only Handler Groups (`dbTest`)
 
@@ -184,14 +168,8 @@ export default orchestrator(blong => ({
 
 ### Environment Activations
 
-- **`default`:** Base configuration active for all cases
-- **`dev`:** Development environment overrides
-- **`prod`:** Production/UAT environment overrides
-- **`test`:** Automated testing activation
-- **`db`:** Database creation/migration mode
-- **`realm`:** Single realm focus for development
-- **`microservice`:** Production microservice deployment
-- **`integration`:** Integration testing mode
+Intent keys merged into active config — `default` (always), `dev`, `prod`, `test`, `db`, `realm`,
+`microservice`, `integration`. See **blong-intent** for the full reference.
 
 ### Layer Activation
 
@@ -247,15 +225,9 @@ children: [
 
 ## Best Practices
 
-1. **Well-known folders are zero-config:** `error`, `adapter`, `orchestrator`, `gateway`, `sim`,
-   `test` are auto-discovered with sensible defaults — no `layer.server.ts` needed
-2. **Use `layer.server.ts` only for custom folders:** Non-well-known layer names must declare
-   activation
-3. **Omit `server.ts`** for standard realms — the framework auto-discovers well-known layer folders
-4. **Name Consistency:** Use the same name for realm folder, package name, and namespace prefix
-5. **Co-located Config:** Put adapter/orchestrator config inside the adapter/orchestrator file using
-   the `adapter(blong => ...)` pattern
-6. **Keep server.ts** only when realm-level validation schema or shared default config is needed
+- **Zero-config well-known folders**; `layer.*.ts` only for custom names.
+- **Omit `server.ts`** for standard realms; keep it only for realm-level validation/shared config.
+- **Co-locate config** in the layer file; **consistent names** (folder = package = namespace).
 
 ## Examples from Codebase
 

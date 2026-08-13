@@ -1,9 +1,23 @@
 ---
 name: blong-core
-description: Covers the three foundational Blong realms — blong-core (generic resource/type/triple graph), blong-party (persons, organizations, units, contacts, addresses, identifiers), and blong-access (RBAC: users, credentials, roles, capabilities, actions, policies, flows). Explains how and when to extend or utilize these realms: adding a resource-based entity, a new party type or sub-entity, a new role/capability/action/user, wiring authentication and authorization (JWT + permissionMap + gateway authorize), querying the resource graph via core.triple / core.path, storing hierarchies and relationships, and seeding reference data. Make sure to use this skill whenever the user wants to work with parties, RBAC/roles/permissions, users/authentication/authorization, the resource graph, org hierarchies, linking/relating entities, or any feature that should be built on top of core/party/access — even if they just say "add a role", "store a person", "add users", "link these two entities", "set up login", or "add an org unit".
+description: Covers the three foundational Blong realms — blong-core (generic resource/type/triple graph), blong-party (persons, organizations, units, contacts, addresses, identifiers), and blong-access (RBAC; users, credentials, roles, capabilities, actions, policies, flows). Explains how and when to extend or utilize these realms; adding a resource-based entity, a new party type or sub-entity, a new role/capability/action/user, wiring authentication and authorization (JWT + permissionMap + gateway authorize), querying the resource graph via core.triple / core.path, storing hierarchies and relationships, and seeding reference data. Use this skill whenever the user wants to work with parties, RBAC/roles/permissions, users/authentication/authorization, the resource graph, org hierarchies, linking/relating entities, or any feature that should be built on top of core/party/access — even if they just say "add a role", "store a person", "add users", "link these two entities", "set up login", or "add an org unit".
 ---
 
 # blong-core — Resource graph, Party & Access realms
+
+## [CRITICAL_GUARDRAILS]
+
+- **Don't invent handlers like `resourceResourceAdd`** — CRUD is auto-provided; define schema + seeds only.
+- **Use `type.uuid()` for resource PKs** — `increment`/`ulid` PKs don't get auto `core_resource` creation.
+- **Seed the type alias before instances** (`0-`-prefixed alias file sorts first).
+- **Every `resourceType` seed row needs a `name`** — it's the merge/dedup key → `resourceName`.
+- **Resource relationships often live in `core.triple`, not FK columns** — mixing breaks materialized-path queries.
+- **Refresh `core.path` after RBAC graph edits** (`CALL access_pathRefresh()`) or effective queries go stale.
+- **Reference entities by name** in seeds/custom merges, never raw DB IDs.
+
+Canonical framework rules + archetype:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`.
+Siblings: **blong-schema** (tables/seeds), **blong-model** (browser models).
 
 ## Overview
 
@@ -35,11 +49,9 @@ graph LR
     end
 ```
 
-**The core idea:** every _named_ entity in party and access is not just a row — its primary key is
-also a foreign key to `core.resource.resourceId`, and its human-readable name lives in
-`core.resource.resourceName`. Relationships between entities are stored as edges in `core.triple`,
-not as join tables or FK columns. This is what lets RBAC, org hierarchies, and arbitrary
-relationships all share one uniform query surface.
+**The core idea:** every _named_ entity in party/access is also a `core.resource` row — its PK is a
+FK to `core.resource.resourceId` and its readable name is `resourceName`; relationships are
+`core.triple` edges, not join tables. One uniform query surface for RBAC, hierarchies, and relations.
 
 ---
 
@@ -103,21 +115,8 @@ Two framework behaviors in the knex adapter (`blong-gogo`) do most of the heavy 
    the `core.type` row whose alias is `` `${subject}.${object}` ``, inserts the `core_resource` row
    (`resourceName` = `` `${subject}.${object}.${columnName}` ``), then inserts the entity row.
 
-    ```typescript
-    // The runtime does this for you — you do NOT write it.
-    const typeAlias = `${subject}.${object}`; // e.g. 'party.person'
-    const typeRow = await qb('core_type').where({typeAlias}).first('typeId');
-    if (typeRow) {
-        await qb('core_resource')
-            .insert({
-                resourceId: strToBinary(uuidStr),
-                resourceName: `${subject}.${object}.${colName}`,
-                typeId: typeRow.typeId,
-            })
-            .onConflict()
-            .ignore();
-    }
-    ```
+    (You never write this — the runtime looks up the `core.type` alias `${subject}.${object}` and
+    inserts the `core_resource` row on your behalf.)
 
 2. **`merge` with a `resourceType` param resolves/creates `core_resource` rows by `name`.** When you
    seed or merge rows and pass `resourceType`, the runtime looks up (or creates) the `core_resource`
@@ -432,24 +431,10 @@ These patterns work for any resource-based entity (core, party, access):
 
 ## Pitfalls
 
-- **Don't invent handlers like `resourceResourceAdd`.** CRUD for core-backed tables is
-  auto-provided; you define schema + seeds only.
-- **Use `type.uuid()` for resource PKs.** `increment`/`ulid` PKs don't get automatic `core_resource`
-  creation on `add`.
-- **Seed the type alias before instances.** `0-`-prefixed alias file sorts first; instances need the
-  alias to resolve `typeId` for the auto `core_resource` row.
-- **Every `resourceType` seed row needs a `name`.** It's the merge/dedup key → `resourceName`.
 - **`remove` doesn't delete the `core_resource` row** (orphaned resource — known gap). Handle
   cleanup explicitly if it matters.
-- **Register tables with order > core's.** `core.*` tables are order 1; party uses 300+, access
-  200+. A lower/equal order can break FK creation.
-- **Relationships go in `core.triple`, not FK columns** — especially for party hierarchy and RBAC.
-  Mixing approaches breaks the materialized-path queries.
-- **After mutating RBAC graph edges, refresh `core.path`** (`CALL access_pathRefresh()`), or
-  effective role/action queries return stale data.
-- **Reference entities by name in seeds/custom merges**, never by raw DB IDs.
-- **`flow`, `access`, `session`, `audit` are schema-only** — don't assume handlers exist for them.
-  `policy` is partly wired: its `credentialParamsJSON` is consumed for new credentials.
+- **Consider registering tables with order > core's.** `core.*` = order 1; party 300+, access 200+. A
+  lower/equal order can break FK creation.
 
 ---
 

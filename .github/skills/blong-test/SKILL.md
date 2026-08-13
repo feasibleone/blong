@@ -1,15 +1,23 @@
 ---
 name: blong-test
-description: Write automated tests for Blong handlers using parallel test execution. Tests run in parallel by default with automatic dependency detection via thenable proxies. Supports assertions, error testing, and test reuse. Make sure to use this skill whenever writing any test handler in Blong, including test-driven development, API testing, or verifying business logic — even if the user just says 'add a test' or 'write tests for this'.
+description: Write automated tests for Blong handlers using parallel test execution. Tests run in parallel by default with automatic dependency detection via thenable proxies. Supports assertions, error testing, and test reuse. Use this skill whenever writing any test handler in Blong, including test-driven development, API testing, or verifying business logic — even if the user just says 'add a test' or 'write tests for this'.
 ---
 
 # Implementing Tests
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Test handlers follow the same patterns as business handlers but are organized in the `server/test/test` and
-`browser/test/test` folders. They return arrays of test steps that are executed in **parallel by default**
-by the framework's test runner, with automatic dependency detection via thenable proxies.
+- **Steps run in parallel by default** — dependencies auto-detected via thenable proxies; await all
+  context access.
+- **Producer steps must `return` their data** — a dependent that destructures `{step}` throws
+  `Cannot destructure property … undefined` when the producer returns nothing (see `_shared` `[PITFALLS]`).
+- **Assert expected errors** with `$meta.expect` (demotes log to debug) + `assert.rejects(…, {type})`.
+- **Snapshots for structural regression**, `assert.equal` for business rules; `assert.snapshot()`
+  already throws on falsy results — no `assert.ok` before it.
+- **`$meta` is always available directly** (not a thenable proxy); concurrency limit default 10.
+
+Canonical framework rules + pitfalls:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[PITFALLS]`, `[ARCHETYPE: HANDLER]`.
 
 ## Test approaches
 
@@ -19,14 +27,6 @@ Choose the right approach based on your situation:
 - **Mocking backend calls** — replace adapters with a mock orchestrator: see **blong-mock-test**
 - **Simulating backends** — run a local mock HTTP or TCP server: see **blong-test-sim**
 - **K8s integration backends** — provision real services in CI: see **blong-test-int**
-
-## Purpose
-
-- **Automated Testing:** Verify business logic and integrations
-- **Test-Driven Development:** Write tests before implementation
-- **Regression Prevention:** Ensure changes don't break existing functionality
-- **API Testing:** Test handlers through their APIs
-- **Integration Testing:** Test complete workflows
 
 ## File Structure
 
@@ -692,19 +692,10 @@ npm test -- testUserAdd
 
 ## Best Practices
 
-1. **Descriptive Names:** Use clear test and step names
-2. **Independent Tests:** Each test should be runnable independently
-3. **Clean Up:** Clean up test data (or use transactions)
-4. **Assertions:** Include meaningful assertion messages
-5. **Reuse Setup:** Share common setup via test handlers
-6. **Context Flow:** Use thenable proxies - await all context property access
-7. **Error Testing:** Test both success and error cases
-8. **Parameterization:** Use parameters for flexible test data
-9. **Comprehensive Coverage:** Test all business logic paths
-10. **Fast Tests:** Leverage parallel execution for faster test runs
-11. **Dependency Clarity:** Steps accessing context properties will wait automatically
-12. **Concurrency Control:** Use `$meta.concurrency` to limit parallel execution if needed
-13. **Sequential Groups:** Use nested arrays when order must be guaranteed
+- **Descriptive names; independent, runnable-alone tests; clean up test data** (or use transactions).
+- **Meaningful assertion messages**; test both success and error paths.
+- **Reuse setup via parameterized test handlers**; **parallel by default**, nested arrays for order.
+- **Limit concurrency** with `$meta.concurrency` when needed.
 
 ## Examples from Codebase
 

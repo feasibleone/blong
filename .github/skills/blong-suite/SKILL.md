@@ -1,28 +1,31 @@
 ---
 name: blong-suite
-description:
-    Create and configure suites in the Blong framework. Suites are the top-level organizational unit
-    that group related realms and define multi-platform entry points (server, browser, desktop). Use
-    this skill for each of the following distinct tasks - (1) Creating a new top-level solution or
-    Blong project — follow the server/browser entry point patterns. - (2) Configuring test runners —
-    follow the index.ts and internal.test.ts patterns. - (3) Wiring up multiple realms into a suite
-    — follow the children and config patterns. Use this skill when the user explicitly requests any
-    of these tasks, or when their request clearly aligns with one of them.
+description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Use this skill for each of the following distinct tasks - (1) Creating a new top-level solution or Blong project — follow the server/browser entry point patterns. - (2) Configuring test runners — follow the index.ts and internal.test.ts patterns. - (3) Wiring up multiple realms into a suite — follow the children and config patterns. Use this skill when the user explicitly requests any of these tasks, or when their request clearly aligns with one of them.
 ---
 
 # Implementing a Suite
 
+## [CRITICAL_GUARDRAILS]
+
+- **`index.ts` is a simple re-export of `server.ts`** (`export {default} from './server.ts'`) so
+  `blong index.ts` auto-detects the `server()` kind.
+- **Every test group a realm runs must be listed in `integration.watch.test`** of the owning
+  platform, or it silently never executes (see **blong-test-api**).
+- **`load` signature:** `(definition, suiteName, parentConfig, intents[])` — `suiteName` controls
+  the config file (`.ut_<suite><env>rc`) and K8s namespace; lowercase, no spaces.
+- **Never enable `systemDebug` in production** — `/api/sys/config` exposes secrets as plaintext.
+- **Intents** (`dev`, `prod`, `integration`, `microservice`, `db`, `debug`) drive which config
+  blocks merge; see **blong-intent**.
+
+Canonical framework rules:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`.
+See **blong-test-api** for test-runner entry points.
+
 ## Overview
 
-A suite is the top-level organizational unit in the Blong framework. It groups related realms
-together and defines the entry points for different platforms (server, browser, desktop). Suites:
-
-- Glue reusable realms from packages together with local custom realms
-- Take architectural decisions on how the solution is deployed
-- Define configuration per deployment environment
-- Provide test runner entry points
-
-**Hierarchy:** suites → realms → layers
+Suite = top-level unit that groups realms (packages + local custom), defines per-platform entry
+points (`server.ts`/`browser.ts`/`index.ts`), deployment architecture, per-env config, and test
+runner entry points. **Hierarchy:** suite → realm → layer.
 
 ## File Structure
 
@@ -349,15 +352,9 @@ Use lowercase, no spaces.
 
 ## Interaction Origins
 
-The framework recognizes four interaction origins that suites should be designed to handle:
-
-- **Application front ends** — browser, desktop, mobile apps (administration, management,
-  user-facing)
-- **Edge devices** — ATM, POS, IoT
-- **Third-party systems** — core banking, payment systems, external APIs
-- **Automated processes** — scheduled tasks, event-driven processes
-
-The most common interaction for API tests is application front ends via the browser platform.
+Four origins (see router `[KEY_PATTERNS]`): application front ends, edge devices (ATM/POS/IoT),
+third-party systems, automated processes. Most common for API tests = front ends via the browser
+platform.
 
 ## Running Suites and Realms with `blong`
 
@@ -423,37 +420,7 @@ export default server(blong => ({
 
 ### System Debug Endpoints
 
-When `systemDebug.enabled` is `true`, the gateway exposes the following endpoints:
+Enabled by default in `dev`; rarely needs config overrides. The `/api/sys/*` endpoint list lives in
+`copilot-instructions.md` → "Runtime Introspection". For deeper understanding or extending, see the
+source `core/blong-gogo/src/SystemDebug.ts`.
 
-| Endpoint               | Returns                                                       |
-| ---------------------- | ------------------------------------------------------------- |
-| `GET /api/sys/config`  | Effective runtime configuration snapshot (full merged object) |
-| `GET /api/sys/ports`   | Names of all registered adapter/orchestrator ports            |
-| `GET /api/sys/methods` | All handler method groups with handler counts                 |
-| `GET /api/sys/modules` | Names of all registered realm modules                         |
-| `GET /api/sys/rpc`     | Internal RPC server address and port                          |
-
-```bash
-# Quick inspection when the gateway is running locally (default port 8080)
-curl http://localhost:8080/api/sys/config  | jq .
-curl http://localhost:8080/api/sys/ports   | jq .
-curl http://localhost:8080/api/sys/methods | jq .
-curl http://localhost:8080/api/sys/modules | jq .
-curl http://localhost:8080/api/sys/rpc     | jq .
-```
-
-**Advanced options** — override in config as needed:
-
-```typescript
-systemDebug: {
-    enabled: true,
-    routePrefix: '/api/sys', // default; change if it conflicts with another plugin
-    auth: 'jwt',             // default: false (no auth); set 'jwt' to require a token
-},
-```
-
-> **Never enable `systemDebug` in production.** The `/api/sys/config` endpoint returns the full
-> merged configuration snapshot. Any secrets present in the config (database passwords, API keys,
-> signing keys, etc.) will be exposed as plaintext JSON. If you need to inspect config in a non-dev
-> environment, set `auth: 'jwt'` and scope access to trusted users only, or exclude sensitive realms
-> from the suite before starting.

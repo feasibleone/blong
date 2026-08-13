@@ -1,28 +1,23 @@
 ---
 name: blong-validation
-description:
-    Define input/output validation for Blong handlers using TypeScript types or TypeBox schemas.
-    Automatic validation generates OpenAPI documentation and runtime checks. Make sure to use this
-    skill whenever a handler needs typed parameters, you're generating API docs, or the user asks
-    about schemas, validation rules, or TypeBox types in Blong — even if they don't mention
-    'validation' by name.
+description: Define input/output validation for Blong handlers using TypeScript types or TypeBox schemas. Automatic validation generates OpenAPI documentation and runtime checks. Use this skill whenever a handler needs typed parameters, you're generating API docs, or the user asks about schemas, validation rules, or TypeBox types in Blong — even if they don't mention 'validation' by name.
 ---
 
 # Implementing Validation
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Validation definitions are used for API documentation, parameter validation, and response
-construction. They can be automatically derived from TypeScript types or manually specified using
-TypeBox.
+- **Prefer automatic validation** (`Handler` type → `~.schema.ts`) over manual TypeBox.
+- **`~.schema.ts` is auto-generated** — let the framework regenerate it; don't hand-edit.
+- **Validate formats + constraints:** `format: 'email'|'uri'|'date'|'uuid'`, min/max, patterns.
+- **Enums via union literals** for fixed value sets; make truly-optional fields optional.
+- **Wire validations in the orchestrator `activation`:** `validations: ['realmname.entity.validation']`
+  or regex `/^realmname\.\w+\.validation$/`.
+- **Document error responses** (`responses`) for OpenAPI.
 
-## Purpose
-
-- **API Documentation:** Generate OpenAPI specs automatically
-- **Parameter Validation:** Ensure inputs meet requirements
-- **Response Validation:** Verify outputs match contracts
-- **Type Safety:** Enforce contracts at runtime
-- **Developer Experience:** Auto-completion and type checking
+Canonical framework rules + archetype:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: HANDLER]`.
+See **blong-handler** for the `Handler`-type pattern.
 
 ## Validation Approaches
 
@@ -433,16 +428,10 @@ tags: ['user', 'authentication'];
 
 ## Best Practices
 
-1. **Use Automatic Validation:** Prefer automatic over manual when possible
-2. **Descriptive JSDoc:** Include descriptions for all properties
-3. **Validate Formats:** Use `format` for emails, URIs, dates, UUIDs
-4. **Set Constraints:** Define min/max, minLength/maxLength, patterns
-5. **Optional vs Required:** Make optional what should be optional
-6. **Enums for Fixed Values:** Use unions/literals for fixed value sets
-7. **Keep ~.schema.ts Updated:** Let framework regenerate it
-8. **Document Errors:** Document possible error responses
-9. **Consistent Types:** Use same types for same concepts across API
-10. **Test Validation:** Verify validation catches invalid inputs
+- **Automatic over manual** validation; **descriptive JSDoc** on every property (feeds OpenAPI).
+- **Formats + constraints** (`format`, min/max, patterns); **union literals** for fixed sets.
+- **Let the framework regenerate `~.schema.ts`**; don't hand-edit.
+- **Consistent types** for the same concepts across the API; **test that invalid inputs reject**.
 
 ## Validation in Tests
 

@@ -1,14 +1,6 @@
 ---
 name: blong-log-dev
-description:
-    Develop, extend, debug, or improve the Blong logging tooling; the real-time log server
-    (`core/blong-log/`), its UDP pino transport, the pino-cacache on-disk persistence
-    (`core/blong-gogo/src/pino-cacache.ts`), the `blong-dev log` CLI
-    (`core/blong-dev/src/commands/log.ts`), the VS Code terminal-link handler (`ext/rest-fs/`), and
-    the LogViewer React client with its Storybook and visual regression tests. Use this skill
-    whenever working on any of these tools, adding filters or output modes to `blong-dev log`, or
-    debugging why entries are missing on disk or in the viewer. For using the logging tools to
-    monitor applications, use the blong-log skill instead.
+description: Develop, extend, debug, or improve the Blong logging tooling; the real-time log server (`core/blong-log/`), its UDP pino transport, the pino-cacache on-disk persistence (`core/blong-gogo/src/pino-cacache.ts`), the `blong-dev log` CLI (`core/blong-dev/src/commands/log.ts`), the VS Code terminal-link handler (`ext/rest-fs/`), and the LogViewer React client with its Storybook and visual regression tests. Use this skill whenever working on any of these tools, adding filters or output modes to `blong-dev log`, or debugging why entries are missing on disk or in the viewer. For using the logging tools to monitor applications, use the blong-log skill instead.
 ---
 
 # blong-log-dev Skill

@@ -1,21 +1,24 @@
 ---
 name: blong-adapter
-description: Integrate Blong with external systems using adapter pattern. Supports HTTP/REST APIs, TCP protocols, SQL databases, and webhooks. Hides protocol details behind high-level APIs. Make sure to use this skill whenever the user wants to connect to a database, call an external API, integrate with an HSM or payment terminal, or wire up any external dependency — even if they just say 'add database support' or 'call this API'.
+description: Integrate Blong with external systems using adapter pattern. Supports HTTP/REST APIs, TCP protocols, SQL databases, and webhooks. Hides protocol details behind high-level APIs. Use this skill whenever the user wants to connect to a database, call an external API, integrate with an HSM or payment terminal, or wire up any external dependency — even if they just say 'add database support' or 'call this API'.
 ---
 
 # Implementing an Adapter
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Adapters integrate with external systems using the adapter design pattern. They expose high-level APIs compatible with framework conventions, independent of underlying protocols (TCP, HTTP, SQL, etc.).
+- **Adapters never call other adapters directly** — coordinate via orchestrators.
+- **Thin layer.** Translate semantic-triple internal API ↔ external system API; no business logic.
+- **Translate protocol errors to domain errors** (`errors.xxx`) — never leak raw protocol errors.
+- **Never import other handlers.** Use the `handler`/`lib` proxies (IoC).
+- **Always forward `$meta`** on every downstream call.
+- **Co-locate config** in the layer's `activation` — not the realm `server.ts`.
+- **Name adapters depending on the place** - in blong-gogo they are named after the protocol or technology,
+  while their instantiations (e.g. in realms) are named after their role.
 
-## Purpose
-
-- **External Integration:** Communicate with databases, APIs, services, devices
-- **Protocol Abstraction:** Hide protocol details from business logic
-- **High-Level API:** Expose framework-compatible interfaces
-- **Reusability:** Share adapter implementations across realms
-- **Testing:** Mock external systems easily
+Canonical framework rules + archetypes:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: ADAPTER_HTTP]`,
+`[CONFIG_EXAMPLE]`. For REST client/server see **blong-rest**; protocols see **blong-codec**.
 
 ## Adapter Types
 
@@ -96,18 +99,8 @@ export default adapter(blong => ({
 }));
 ```
 
-**Configuration Properties:**
-
-```yaml
-url: https://api.example.com # Base URL for requests
-namespace: [external] # Prefixes for calling adapter
-imports: [codec.openapi] # Codecs to use
-logLevel: info # Log level
-tls: # TLS configuration
-    ca: /path/to/ca.crt
-    cert: /path/to/client.crt
-    key: /path/to/client.key
-```
+**Extra config keys:** `tls: {ca, cert, key}` for client certificates (the rest — `url`,
+`namespace`, `imports`, `logLevel` — are shown in the TS `activation` above).
 
 ### 2. TCP Adapter
 
@@ -458,24 +451,16 @@ export default handler(
 
 ## Best Practices
 
-1. **Protocol Independence:** Hide protocol details from orchestrators
-2. **Error Translation:** Convert protocol errors to domain errors
-3. **Thin Layer:** Keep adapters focused on integration, not business logic
-4. **Idempotency:** Design handlers to be safely retried
-5. **Connection Pooling:** Let framework handle connection management
-6. **Timeout Configuration:** Set appropriate timeouts for external systems
-7. **Logging:** Use appropriate log levels (trace for protocol details)
-8. **Mock for Testing:** Create mock adapters for testing
-9. **TLS Configuration:** Use TLS for production communications
-10. **One Adapter Per External System:** Create separate adapters for different systems
+- **One adapter per external system**; thin + protocol-independent.
+- **Design handlers to be safely retried** (idempotent).
+- **Set appropriate timeouts**; TLS for production; `trace` log level for protocol detail.
+- **Create mock adapters** (`adapter.mock`) for tests — see **blong-mock-test**.
 
 ## Deployment Considerations
 
-- **Microservices:** Adapters can be deployed as separate services
-- **Connection Management:** Framework handles connection pooling and reconnection
-- **Scaling:** Adapters scale independently based on load
-- **Configuration:** Use environment-specific configuration for URLs, credentials
-- **Monitoring:** Framework provides metrics for adapter performance
+- Adapters deploy as separate services (microservice) or in-process (monolith) — same code.
+- Framework handles connection pooling/reconnection; set intent or env specific URLs/credentials via
+  intent config (`dev`/`prod`).
 
 ## Examples from Codebase
 

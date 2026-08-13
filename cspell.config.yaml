@@ -34,7 +34,6 @@ words:
   - Bislama
   - bitsyntax
   - blong
-  - devrc
   - cacache
   - Cacache
   - capath
@@ -66,10 +65,12 @@ words:
   - dbaeumer
   - dedup
   - deepwater
+  - DELEGATOR
   - Dendrophylliidae
   - destructures
   - detritivore
   - Detritivore
+  - devrc
   - dfsp
   - DFSP
   - DFSPs
@@ -101,12 +102,12 @@ words:
   - gogo
   - googleusercontent
   - Gorgoniidae
+  - hdel
   - Hejlsberg
   - hepatus
   - hget
   - hgetall
   - hincrby
-  - hdel
   - hset
   - Hydrozoa
   - idempotently

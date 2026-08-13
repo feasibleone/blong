@@ -5,9 +5,18 @@ description: Implement business logic coordination in Blong, decoupled from inte
 
 # Implementing an Orchestrator
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Orchestrators implement business logic decoupled from protocols. They coordinate between adapters, define namespaces (which become Kubernetes services in microservice mode), and implement patterns like sagas for distributed transactions.
+- **Business logic only, decoupled from protocols** — adapters handle integrations.
+- **Call other orchestrators and adapters; never another realm's adapters directly.**
+- **Always forward `$meta`** on every downstream call.
+- **One namespace per orchestrator** (namespace → K8s service in microservice mode).
+- **Domain errors + compensation** for distributed transactions (saga).
+- **Co-locate `activation` config** in the orchestrator file — not the realm `server.ts`.
+
+Canonical framework rules + archetypes:
+`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: ORCHESTRATOR_DISPATCH]`,
+`[CONFIG_EXAMPLE]`. For business workflows see **blong-handler**; for adapters see **blong-adapter**.
 
 ## File Structure
 
@@ -162,30 +171,10 @@ export default library(() =>
 
 ## Configuration Properties
 
-### Common Properties
+`namespace`, `imports`, `destination`, `logLevel` — see the Dispatch `activation` above. Extras:
 
-```typescript
-orchestratorname: {
-    // Prefixes for calling orchestrator API
-    namespace: ['entity1', 'entity2'],
-
-    // Handler groups to attach (string or regex)
-    imports: ['realmname.entity1', 'realmname.entity2'],
-    // Or use regex to match multiple groups:
-    imports: [/^realmname\./],
-
-    // Validation groups to attach (string or regex)
-    validations: ['realmname.entity1.validation'],
-    // Or use regex:
-    validations: [/^realmname\.\w+\.validation$/],
-
-    // Fallback destination when no handler exists
-    destination: 'sql',
-
-    // Log level (trace, debug, info, warn, error, fatal)
-    logLevel: 'info'
-}
-```
+- `imports` / `validations` accept **regex** to match many groups: `imports: [/^realmname\./]`,
+  `validations: [/^realmname\.\w+\.validation$/]`.
 
 ### Schedule-Specific Properties
 
@@ -375,24 +364,17 @@ orchestrator/
 
 ## Best Practices
 
-1. **One Namespace Per Orchestrator:** Keep orchestrators focused on a single business entity
-2. **Protocol Independence:** Don't reference protocol-specific details (HTTP, TCP, etc.)
-3. **Business Logic Only:** Keep technical concerns in adapters
-4. **Call Adapters, Not Other Realms' Adapters:** Call other orchestrators, not their adapters directly
-5. **Error Handling:** Use domain errors, implement compensation for distributed transactions
-6. **Reusable Functions:** Extract common logic to library functions
-7. **Minimal Transformation:** Do necessary business transformations, not format conversions
-8. **Configuration Over Code:** Use configuration for destinations and fallbacks
-9. **Type Safety:** Define Handler types for automatic validation
-10. **Testing:** Write comprehensive test handlers for orchestration logic
+- **One namespace per orchestrator**; business logic only, no protocol detail.
+- **Call current realms' adapters, any orchestrators, not other realms' adapters.**
+- **Domain errors + saga compensation** for distributed transactions.
+- **Extract shared logic to library functions**; minimal transformation.
+- **Config over code** for destinations/fallbacks; `Handler` types for validation.
+- **Test handlers** covering orchestration logic.
 
 ## Deployment Considerations
 
-- **Microservices:** Each orchestrator becomes a Kubernetes service
-- **Monolith:** All orchestrators run in single process
-- **Service Discovery:** Namespace becomes service name in Kubernetes
-- **Load Balancing:** Framework handles load balancing between orchestrators
-- **Scaling:** Orchestrators can scale independently
+- Each orchestrator namespace becomes a Kubernetes service (microservice) or runs in-process
+  (monolith) — same code. The framework ensures k8s handles the load balancing between the services.
 
 ## Examples from Codebase
 

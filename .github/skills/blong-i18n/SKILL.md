@@ -1,12 +1,6 @@
 ---
 name: blong-i18n
-description: >
-    Implement multi-language support (i18n) in blong-browser: translate UI labels, validation
-    messages, and PrimeReact widget strings. Use this skill whenever working on translations,
-    localization, language switching, the Text component, Button label translation, appStore
-    setTranslations/setLanguage, PrimeReact locale registration, or adding a lang story arg —
-    even if the user just says "add Bulgarian support", "translate this label", or "make this
-    work in another language".
+description: Implement multi-language support (i18n) in blong-browser; translate UI labels, validation messages, and PrimeReact widget strings. Use this skill whenever working on translations, localization, language switching, the Text component, Button label translation, appStore setTranslations/setLanguage, PrimeReact locale registration, or adding a lang story arg — even if the user just says "add Bulgarian support", "translate this label", or "make this work in another language".
 ---
 
 # blong-i18n Skill

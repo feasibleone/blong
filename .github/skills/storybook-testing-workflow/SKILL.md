@@ -1,6 +1,6 @@
 ---
 name: storybook-testing-workflow
-description: Daily Storybook development workflow and testing patterns. Make sure to use this skill whenever working on existing Storybook stories, writing play() functions, running interaction tests, or debugging component behavior — even if the user doesn't mention 'workflow' or 'testing' explicitly. For initial setup and configuration, see the storybook-v10-setup skill.
+description: Daily Storybook development workflow and testing patterns. Use this skill whenever working on existing Storybook stories, writing play() functions, running interaction tests, or debugging component behavior — even if the user doesn't mention 'workflow' or 'testing' explicitly. For initial setup and configuration, see the storybook-v10-setup skill.
 ---
 
 # Storybook Effective Usage & Development Workflow

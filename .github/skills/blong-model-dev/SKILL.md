@@ -1,13 +1,6 @@
 ---
 name: blong-model-dev
-description: >
-    Develop, extend, debug, or improve the blong-browser model system internals. The model system
-    lives in `core/blong-browser/src/model/` and provides the `subjectObjectComponent` aggregator
-    that auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill
-    when working on the model system itself: subjectObjectComponent, entry files
-    (subjectObjectBrowse/New/Open/Report in component/), IModelSpec types, withDefaults,
-    dropdownRegistry, or the mock system (adapter/mock.ts + subjectObjectMock.ts). For using the
-    model to build realm pages, use the blong-model skill instead.
+description: Develop, extend, debug, or improve the blong-browser model system internals. The model system lives in `core/blong-browser/src/model/` and provides the `subjectObjectComponent` aggregator that auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill when working on the model system itself; subjectObjectComponent, entry files (subjectObjectBrowse/New/Open/Report in component/), IModelSpec types, withDefaults, dropdownRegistry, or the mock system (adapter/mock.ts + subjectObjectMock.ts). For using the model to build realm pages, use the blong-model skill instead.
 ---
 
 # blong-model-dev Skill

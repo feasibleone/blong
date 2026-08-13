@@ -1,31 +1,34 @@
 ---
 name: blong-browser
-description: >
-    Implement, extend, or debug the blong-browser React/TypeScript component library and portal
-    framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill
-    whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal
-    navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser
-    adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show
-    this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For
-    developing or improving the model system itself, use the blong-browser-model-dev skill. For
-    using the model to implement CRUD pages in a realm, use the blong-browser-model skill.
+description: Implement, extend, or debug the blong-browser React/TypeScript component library and portal framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For developing or improving the model system itself, use the blong-model-dev skill. For using the model to implement CRUD pages in a realm, use the blong-model skill.
 ---
 
 # blong-browser Skill
 
+## [CRITICAL_GUARDRAILS]
+
+- **Never use a single `saveAction` pointing to `.add` for a create form** — it calls `.add` on every
+  save → duplicate records. Use distinct `createAction` + `saveAction`.
+- **Hoist `title` objects outside the render fn** — inline object literals cause an infinite update loop.
+- **Internal `__xxx__` actions** (`__save__`, `__refresh__`, …) are handled inside the Editor — never
+  pass them to `ActionButton` (RPC call fails) nor dispatch them as RPC methods.
+- **Always wrap `<form>` in `handleSubmit(...)`** even with no `onSubmit` prop — else Enter/submit
+  causes browser navigation.
+- **No arbitrary `setTimeout` waits in tests** — mocks resolve synchronously; use `findBy*`/`waitFor`.
+- **Planned/stub features:** do not implement without first checking they're not already in code.
+
+Canonical pitfalls (dedup with blong-model / blong-model-dev):
+`.github/skills/_shared/conventions.md` → `[PITFALLS]`.
+
 ## What is blong-browser?
 
-`@feasibleone/blong-browser` (`core/blong-browser/`) is a schema-driven React UI framework and
-portal shell. It supersedes `ut-prime` and `ut-model`, preserving their proven UX patterns while
-adopting a cleaner architecture aligned with the Blong framework. The primary domain example used in
-stories and mocks is **marine biology** (corals, fish, etc.) — not the `ut-prime` tree metaphor.
+`@feasibleone/blong-browser` (`core/blong-browser/`) — schema-driven React UI framework + portal
+shell (supersedes `ut-prime`/`ut-model`). Story/mock domain example: **marine biology** (corals,
+fish).
 
-**Key goals:**
-
-- Schema-driven forms: derive widgets, validation, and labels automatically from OpenAPI JSON Schema
-- Micro-frontend: realms contribute components/actions without direct cross-realm imports
-- Three widget categories: scalar, scalar-array (multi-select), vector-array (tables)
-- Blong-native: uses adapters/orchestrators, not Redux; uses Zustand for global state
+**Key goals:** schema-driven forms (widgets/validation/labels from JSON Schema) · micro-frontend
+(realms contribute components/actions without cross-realm imports) · 3 widget categories (scalar,
+scalar-array, vector-array) · Blong-native (adapters/orchestrators + Zustand, not Redux).
 
 ---
 
@@ -103,23 +106,19 @@ async function ui() {
 `blong.config.portal`:
 
 ```ts
-export default handler<{shouldRender?: boolean; portal?: IBlongPortalConfig}, {container?: ...}>(
-    (blong) => {
-        const {config: {shouldRender}} = blong;
-        return async function ready(params, _$meta) {
-            const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
-                import('react'),
-                import('react-dom/client'),
-                import('../../src/components/App/App.js'),
-            ]);
-            this.config.context ||= {};
-            this.config.context.container = params =>
-                React.createElement(App, {handlerProxy: blong, log: this.log, ...params});
-            if (shouldRender !== undefined && !shouldRender) return;
-            ReactDOM.createRoot(rootEl).render(this.config.context.container(params));
-        };
-    },
-);
+// ready → mount React. Full proxy (blong) → <App handlerProxy={blong}>.
+export default handler((blong) => {
+    const {config: {shouldRender}} = blong;
+    return async function ready(params, _$meta) {
+        const [{default: React}, {default: ReactDOM}, {App}] = await Promise.all([
+            import('react'), import('react-dom/client'), import('../../src/components/App/App.js'),
+        ]);
+        this.config.context ||= {};
+        this.config.context.container = p => React.createElement(App, {handlerProxy: blong, log: this.log, ...p});
+        if (shouldRender !== undefined && !shouldRender) return;
+        ReactDOM.createRoot(rootEl).render(this.config.context.container(params));
+    };
+});
 ```
 
 The `handler` property on the proxy is wrapped with a JS Proxy that automatically emits
@@ -231,19 +230,14 @@ again. **Never use a single `saveAction` pointing to `.add` for a create form** 
 ```
 
 **Tab title for mode-switching forms:** Pass `title` as a `Record<string, string>` keyed by mode so
-the portal tab title updates when the Editor switches from `'new'` to `'edit'` after the first save.
-This is JSON-serializable and translation-friendly (each string is a discrete lookup key):
+the tab title updates when the Editor switches `'new'` → `'edit'` after the first save
+(JSON-serializable, translation-friendly). **Hoist the object outside the render fn** — inline
+literals create a new identity per render → infinite update loop (see `_shared` `[PITFALLS]`).
 
 ```ts
-// Hoisted OUTSIDE the render function — inline object literals cause an infinite update loop
-const title = {new: 'Create Coral', edit: 'Edit Coral'};
+const title = {new: 'Create Coral', edit: 'Edit Coral'}; // hoisted — NOT inline
 <Editor mode="new" title={title} ... />
 ```
-
-**Pitfall — infinite update loop:** If `title` is an inline object literal (`title={{new: '...'}}`
-inside a render function), a new object identity is created on every render. The Editor reads
-`titleProp` via a ref to guard against this, but hoisting the object outside the render function is
-still required as a React best practice.
 
 **Loading state:** While `loadAction` is pending, each field renders a `<Skeleton>` placeholder
 instead of the widget (per-field skeleton, same width as the real input).
@@ -709,110 +703,10 @@ export default defineBlongConfig({
 });
 ```
 
-### Common Storybook conventions
+### Storybook + unit-test conventions
 
-**Language / translations:** Set `lang: 'bg'` (or any registered locale code) as a story arg —
-`withDispatch` activates translations and PrimeReact locale automatically. See the **blong-i18n**
-skill for setup details.
-
-```ts
-export const ToolbarBG: StoryFn = Template.bind({});
-ToolbarBG.args = {lang: 'bg'};
-```
-
-**Toast notifications:** The global `withDispatch` decorator shows a success toast after mutations
-(excludes `portal.dropdown.list` and methods ending with `Get/Load/Find/List/Fetch`). Control per
-story via `decorators: [withDispatch({}, {notify: false})]` (suppress), `{notify: ['method.name']}`
-(specific), or `{notify: true}` (all).
-`NotifyConfig = boolean | string[] | ((method: string) => boolean)`.
-
-**`play()` functions:** Use the modern Storybook 10 pattern — `canvas` and `userEvent` are provided
-as play context args (`canvas` is pre-scoped, no need for `within`). Run play functions in unit
-tests by passing `{canvas: within(container), userEvent}`. For translated stories, see
-**blong-i18n** for which labels are translated and which aren't.
-
-```ts
-MyStory.play = async ({canvas, userEvent}) => {
-    await userEvent.click(await canvas.findByText('Row label'));
-    // A small wait may be needed in Storybook (real browser, real CSS transitions).
-    // In vitest unit tests cssTransition is disabled so no wait is necessary there.
-    await new Promise(r => setTimeout(r, 200));
-};
-```
-
-**Important**: `<Form>` must always have a real `onSubmit` handler attached (via `handleSubmit` even
-when no `onSubmit` prop is provided) — otherwise the browser will navigate on form submit.
-
-### Unit test conventions for blong-browser
-
-Tests live in `src/**/*.test.tsx` and run with Vitest (`npx vitest run`).
-
-**Test render wrapper** (`src/test/render.tsx`): Use `render()` from `../../test/render.js` — it
-wraps the component in `PrimeReactProvider value={{cssTransition: false, ripple: false}}` and
-`BlongProvider` (via `makeHandlerProxy`). This disables all PrimeReact animations, so overlays and
-dropdowns open synchronously with no real-time delays.
-
-**`pr_id_*` normalisation** (`src/test/setup.ts`): A snapshot serializer strips PrimeReact's
-internal incrementing component IDs (`pr_id_55=""`, `aria-controls="pr_id_55_panel"`, …) from every
-DOM snapshot. This makes snapshots counter-independent — they reflect structure, not identity.
-
-**No `setTimeout` waits**: Because dispatch mocks resolve immediately and transitions are
-synchronous, arbitrary `setTimeout` waits are not needed. `await findByTestId(...)` and
-`await waitFor(...)` already yield to pending microtasks on their first poll. Do not add
-`await act(async () => { await new Promise(r => setTimeout(r, N)); })` guards unless a test
-genuinely depends on real elapsed time (e.g. debounce logic).
-
-**`act()` warnings from PrimeReact**: PrimeReact's Dropdown/Select components schedule
-focus-management callbacks via `setTimeout(0)`. These fire during `@testing-library/react`'s
-`waitFor()` polling window, where `IS_REACT_ACT_ENVIRONMENT` is temporarily set to `false` by the
-library's internal `asyncWrapper`. The combination produces harmless "not configured to support act"
-noise in console output when play() functions call `canvas.findByText()` or similar async queries.
-`src/test/setup.ts` suppresses this specific message globally (and only this message) since it is a
-known PrimeReact + testing-library incompatibility — not a defect in our code. All other
-console.error output is preserved.
-
-**`flushEffects` helper** (`src/test/render.tsx`): Drains the macro-task queue inside `act()` so
-PrimeReact's post-interaction focus-management timers are flushed before the final `findByTestId`
-snapshot assertion. Use it after `await act(() => Story.play!({...}))` calls that trigger user
-interactions on PrimeReact components, and before play() is called (to drain initial-render timers):
-
-```tsx
-if (MyStory.play) {
-    await flushEffects(); // drain initial-render PrimeReact timers
-    await act(() => MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}));
-    await flushEffects(); // drain post-interaction timers
-}
-```
-
-**Zustand store mutations in tests**: If a test mutates global Zustand store state (e.g. calling
-`useAppStore.getState().setTranslations(...)`) and components that subscribe to that store are
-mounted, wrap the mutations in `await act(async () => { ... })` so React processes the resulting
-re-renders inside act. This applies to both setup and tear-down (`finally`) blocks.
-
-**Snapshot tests**:
-
-```tsx
-it('Basic render equals snapshot', async () => {
-    const {findByTestId} = render(<Basic />, {dispatch});
-    expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
-});
-```
-
-After interactions via a `play()` function, wrap it in `act` and flush PrimeReact timers:
-
-```tsx
-it('After interaction equals snapshot', async () => {
-    const {findByTestId, container} = render(<MyStory />, {dispatch});
-    if (MyStory.play) {
-        await flushEffects(); // drain PrimeReact init timers before play() calls findByText
-        await act(() => MyStory.play!({canvas: within(container), userEvent: userEvent.setup()}));
-        await flushEffects(); // drain post-interaction PrimeReact timers
-    }
-    expect(await findByTestId('blong-browser-test')).toMatchSnapshot();
-});
-```
-
-Update stale snapshots with `npx vitest run -u`.
+Full conventions — translations, toast, `play()` functions, snapshot testing, `act()`/PrimeReact
+timers, `flushEffects`, Zustand store mutations: `references/unit-testing.md`.
 
 ## Planned / stub features (not yet implemented)
 
@@ -849,10 +743,8 @@ The portal orchestrator imports all matching handlers automatically without dire
 
 ## Debugging tips
 
-Check for any shared browser tabs, where the one using localhost:6006 is the blong-browser Storybook
-and another one hosted on chromatic.com. Use them to verify blong-browser is working as expected
-(e.g. the expected is on chromatic.com). Open the iframes to avoid the Storybook UI getting in the
-way.
+Use the shared browser tabs (localhost:6006 Storybook / chromatic.com) to verify blong-browser
+behaviour; open iframes to avoid Storybook chrome getting in the way.
 
 ---
 

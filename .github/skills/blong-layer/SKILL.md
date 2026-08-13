@@ -1,27 +1,26 @@
 ---
 name: blong-layer
-description: Organize handlers into named functional groups within a Blong realm. Layers include gateway (API), adapter (external systems), orchestrator (business logic), error (domain errors), and test (automation). Make sure to use this skill whenever creating a new layer in a realm, setting up the folder structure for handlers, or configuring which layers activate in which environment — even if the user just says 'organize this' or 'add a new layer'.
+description: Organize handlers into named functional groups within a Blong realm. Layers include gateway (API), adapter (external systems), orchestrator (business logic), error (domain errors), and test (automation). Use this skill whenever creating a new layer in a realm, setting up the folder structure for handlers, or configuring which layers activate in which environment — even if the user just says 'organize this' or 'add a new layer'.
 ---
 
 # Implementing a Layer
 
-## Overview
+## [CRITICAL_GUARDRAILS]
 
-Layers are named groups of handlers that organize code by functional concern within a realm. They enable clear separation of responsibilities and support the framework's modular architecture.
+- **Layers are self-contained.** Config + validation + `activation` live in the layer file — NOT
+  the realm `server.ts`. `server.ts` only for realm-level shared config.
+- **Well-known folders auto-discover** (`error`, `adapter`, `orchestrator`, `gateway`, `sim`,
+  `test` server; `backend`, `component` browser) — no `layer.*.ts` needed. Custom names need one.
+- **One handler per file** — file = exported fn = semantic triple.
+- **Import order:** error → adapter → orchestrator → gateway → test.
+- **No direct cross-handler imports.** Load groups via `imports` in the adapter/orchestrator.
 
-**Key Pattern:** Layers are self-contained — each layer file defines its own configuration and validation, co-located with its implementation. No need to maintain configuration in a central `server.ts`.
+Canonical layer-defaults intents + config pattern:
+`.github/skills/_shared/conventions.md` → `[LAYER_DEFAULTS_TABLE]`, `[CONFIG_EXAMPLE]`.
 
-## Purpose
+## Layer Names (auto-detected)
 
-- **Separation of Concerns:** Group related functionality together
-- **Co-located Config:** Each layer owns its configuration and validation
-- **Code Organization:** Clear folder structure for handlers
-- **Deployment Control:** Layers can be activated/deactivated per environment
-- **Team Coordination:** Different teams can work on different layers
-
-## Recommended Layer Names
-
-### Server-Side Layers (auto-detected)
+### Server-Side
 
 - **`gateway`** - API gateway: routes, validation, documentation (minimal business logic)
 - **`adapter`** - External system communication: SQL, HTTP, FTP, mail protocols
@@ -30,7 +29,7 @@ Layers are named groups of handlers that organize code by functional concern wit
 - **`test`** - Test automation (dev/build only)
 - **`eft`** - Electronic Funds Transfer (high TPS OLTP requirements)
 
-### Browser-Side Layers (auto-detected)
+### Browser-Side
 
 - **`backend`** - Browser adapter talking to server
 - **`component`** - React UI components
@@ -95,22 +94,9 @@ export default layer({
 
 ### Well-Known Layer Default Intents
 
-The key is the **intent** that activates the layer. `{default: true}` means the layer is always
-active. Provide a `layer.server.ts` to override any entry.
-
-| Folder         | Server intent         | Browser intent        |
-| -------------- | --------------------- | --------------------- |
-| `error`        | `default` (always)    | —                     |
-| `sim`          | `integration`         | —                     |
-| `adapter`      | `default` (always)    | `default` (always)    |
-| `orchestrator` | `default` (always)    | —                     |
-| `gateway`      | `default` (always)    | —                     |
-| `browser`      | `default` (always)    | —                     |
-| `backend`      | —                     | `default` (always)    |
-| `component`    | —                     | `default` (always)    |
-| `test`         | `integration`         | `integration`         |
-
-See the **blong-intent** skill for the full intents reference and how to create custom intents.
+The intent that activates the layer (`{default: true}` = always active). Canonical table:
+`.github/skills/_shared/conventions.md` → `[LAYER_DEFAULTS_TABLE]`. Provide a `layer.server.ts` to
+override any entry. See **blong-intent** for the full intents reference and custom intents.
 
 ### Dev-Only Handler Groups (`.dev` suffix)
 
@@ -250,10 +236,11 @@ export default adapter(blong => ({
 
 ### Folder-Level Default Configuration (config.ts)
 
-Each handler group folder can contain a `config.ts` file that defines configuration for all
-handlers in that folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.)
-using the same pattern as `server.ts`, making the group self-contained with environment-specific
-values co-located with the handlers that use them:
+Canonical pattern: `.github/skills/_shared/conventions.md` → `[CONFIG_EXAMPLE]`. Each handler group
+folder can contain a `config.ts` file that defines configuration for all handlers in that folder.
+The file supports activation-based config (`default`, `dev`, `prod`, etc.) using the same pattern as
+`server.ts`, making the group self-contained with environment-specific values co-located with the
+handlers that use them:
 
 ```
 orchestrator/
@@ -431,40 +418,9 @@ File name = handler name:
 
 ## Adding a New Adapter
 
-### Before (Old Pattern) - Touch 2 files
-
-```typescript
-// 1. Create adapter/newadapter.ts
-export default adapter(() => ({
-    extends: 'adapter.http',
-}));
-
-// 2. Update server.ts validation + config + children
-// (3 edits in server.ts)
-```
-
-### After (New Pattern) - Touch 1 file
-
-```typescript
-// 1. Create adapter/newadapter.ts - everything co-located
-export default adapter(blong => ({
-    extends: 'adapter.http',
-
-    validation: blong.type.Object({
-        url: blong.type.String(),
-        timeout: blong.type.Number(),
-    }),
-
-    activation: {
-        default: {
-            url: 'http://api.example.com',
-            timeout: 5000,
-        },
-    },
-}));
-
-// 2. Done! Framework uses the layer's own config.
-```
+**Co-locate everything in the layer file** — `adapter/newadapter.ts` carries `extends` +
+`validation` + `activation`; zero `server.ts` edits (touch 1 file, not 2). See
+`[ARCHETYPE: ADAPTER_HTTP]` / `[CONFIG_EXAMPLE]` in `_shared/conventions.md`.
 
 ## Multi-Layer Example
 
@@ -503,16 +459,12 @@ payment/
 
 ## Best Practices
 
-1. **Co-locate Config:** Put layer configuration in the layer file, not in server.ts
-2. **Clear Separation:** Keep business logic in orchestrator, not gateway
-3. **Consistent Naming:** Use lowercase single words for layer names
-4. **Group by Entity:** Organize handlers by business entity within layers
-5. **Library Functions:** Extract reusable code into library functions
-6. **Error Definitions:** Always define errors in error layer first
-7. **Test Coverage:** Create test layer with comprehensive test handlers
-8. **One File Per Handler:** Follow the one handler per file pattern
-9. **Validation:** Use `~.schema.ts` for automatic validation generation
-10. **Import Order:** Load layers in order: error → adapter → orchestrator → gateway → test
+- **Co-locate config** in the layer file, not `server.ts`.
+- **Keep business logic in orchestrators**, not the gateway.
+- **Lowercase single-word layer names**; group handlers by entity.
+- **Define errors in the error layer first**; extract reusable logic to library fns.
+- **Validation:** `~.schema.ts` auto-generated from Handler types.
+- **Test layer** covering all business handlers.
 
 ## Examples from Codebase
 
