@@ -1,4 +1,4 @@
-import { type IAssert, type IMeta, handler } from '@feasibleone/blong';
+import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 /**
  * server/test/test/test$Object.ts — server-side `$subject.$object` flow test.
@@ -12,10 +12,7 @@ import { type IAssert, type IMeta, handler } from '@feasibleone/blong';
  * Registered as the `test.$object` group (`integration.watch.test` in index.ts).
  */
 export default handler(
-    ({
-        lib: {group},
-        handler: {loginTokenCreate, $subject$ObjectAdd, $subject$ObjectFind},
-    }) => ({
+    ({lib: {group}, handler: {loginTokenCreate, $subject$ObjectAdd, $subject$ObjectFind}}) => ({
         test$Object: ({name = '$subject flow'}: {name?: string} = {}) =>
             group(name)([
                 // 1. Authenticate via blong-access and verify the permission map.
@@ -25,8 +22,7 @@ export default handler(
                         permissions: string[];
                     }>({username: 'testAdmin', password: 'testPassword'}, $meta);
                     assert.ok(
-                        typeof result.access_token === 'string' &&
-                            result.access_token.length > 0,
+                        typeof result.access_token === 'string' && result.access_token.length > 0,
                         'login returns a non-empty access token',
                     );
                     assert.ok(
@@ -36,18 +32,19 @@ export default handler(
                     return result;
                 },
 
-                // 2. Create a `$object` with its lines — assert both succeed.
+                // 2. Create a `$object` with its `line` detail rows (sibling
+                // arrays) — assert both persist.
                 async function add$Object(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const result = await $subject$ObjectAdd<{
                         $object: {$objectId: number; $objectStatus: string};
-                        details: Array<{lineId: number; lineName: string}>;
+                        line: Array<{lineId: number; lineName: string}>;
                     }>(
                         {
                             $object: {
                                 $objectName: `ENT-TEST-${Date.now()}`,
                                 $objectStatus: 'draft',
                             },
-                            details: [
+                            line: [
                                 {lineName: 'Widget', lineQuantity: 2},
                                 {lineName: 'Gadget', lineQuantity: 1},
                             ],
@@ -56,7 +53,7 @@ export default handler(
                     );
                     assert.ok(result.$object.$objectId, '$object add succeeds');
                     assert.equal(result.$object.$objectStatus, 'draft', '$object status is draft');
-                    assert.equal(result.details.length, 2, 'two detail rows created');
+                    assert.equal(result.line.length, 2, 'two detail rows created');
                     return result.$object;
                 },
 

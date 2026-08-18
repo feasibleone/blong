@@ -4,6 +4,7 @@ metadata:
   name: mysql-init-config
 data:
   init.sql: |
+    CREATE DATABASE IF NOT EXISTS `blong-kopi`;
     CREATE DATABASE IF NOT EXISTS `blong-integration`;
     CREATE DATABASE IF NOT EXISTS `blong-suite`;
     CREATE DATABASE IF NOT EXISTS `blong-access`;

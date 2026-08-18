@@ -186,6 +186,12 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     // Toast actions
     showToast: toast => {
         const id = String(++toastIdCounter);
+        // Mirror error toasts to the browser console so agents and Playwright
+        // tests can observe them via page.on('console') even when a transient
+        // toast is missed by screenshot assertions.
+        if (toast.severity === 'error') {
+            console.error('[blong] error toast', toast.summary ?? '', toast.detail ?? '');
+        }
         set(state => ({toasts: [...state.toasts, {...toast, id}]}));
         // Auto-dismiss
         const life = toast.life ?? (toast.severity === 'error' ? 8000 : 4000);
@@ -209,7 +215,12 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     registerActions: actions => set(state => ({actions: {...state.actions, ...actions}})),
 
     // Error
-    showError: error => set({error}),
+    showError: error => {
+        // Mirror the error popup (ErrorDialog) to the browser console so agents
+        // and Playwright tests can observe it via page.on('console').
+        console.error('[blong] error dialog', error.type, error.print ?? error.message, error);
+        set({error});
+    },
     clearError: () => set({error: null}),
 
     // Hint

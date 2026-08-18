@@ -147,7 +147,9 @@ export function snakeToCamel(str: string): string {
 }
 
 export function capitalize(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    // `$`-aware: a leading `$` placeholder (e.g. `$object`) must not prevent
+    // the first letter being capitalised — `$object` → `$Object`.
+    return str.replace(/^(\$*)([a-z])/, (_m, pre: string, c: string) => pre + c.toUpperCase());
 }
 
 /** Normalise a handler name for registry look-up: remove dots, lowercase. */

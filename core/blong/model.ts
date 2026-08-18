@@ -163,6 +163,31 @@ export interface IMethodsConfig {
 }
 
 /**
+ * Master-detail detail entity. A master model (e.g. `invoice`) declares its
+ * detail entities (e.g. `line`, `payment`) here. Each detail is an **array
+ * property at the SAME level as the master record** — the model schema has a
+ * dedicated key for the master object (`schema.properties[object]`) and one
+ * sibling array key per detail (`schema.properties[detail.object]`), whose
+ * `items` hold the detail-row schema (declared right there by the realm).
+ * Each detail produces:
+ * - a sibling array in the auto `add`/`edit` validation schemas, so a public
+ *   invoice `add` accepts `{invoice: {...}, line: [...], payment: [...]}`,
+ * - an editable table + a tab in the browser New/Open forms (one per detail).
+ */
+export interface IModelDetail {
+    /**
+     * Detail entity name, e.g. 'line'. The framework looks it up as a sibling
+     * array property of the master object schema
+     * (`schema.properties[detail.object]`) whose `items` hold the detail-row
+     * schema; it fills in `type: 'array'`, the editable table widget, a
+     * `details-<object>` card and an edit-layout tab.
+     */
+    object: string;
+    /** Primary key field of the detail rows, e.g. 'lineId'. Defaults to `${object}Id`. */
+    keyField?: string;
+}
+
+/**
  * ModelSpec — the browser-side description of one "subject.object" domain entity.
  *
  * Used by modelFactory() to auto-generate Browse/New/Open/Report pages.
@@ -180,6 +205,12 @@ export interface IModelSpec {
     nameField?: string;
     /** JSON Schema overlay merged on top of server OpenAPI schema */
     schema?: ISchemaOverlay;
+    /**
+     * Optional master-detail entities. When present, the auto `add`/`edit`
+     * validations include a nested array per detail and the New/Open forms
+     * render one editable table + tab per detail.
+     */
+    details?: IModelDetail[];
     /** Named card layout definitions */
     cards?: Record<string, ICardConfig>;
     /** Browse page configuration */

@@ -204,6 +204,18 @@ export default class Remote extends Internal implements IRemote {
                 if (methodName && !this.gateway?.($applyMeta, methodName)) {
                     if (this.#config.canSkipSocket) fn = this._findMethod(methodName, methodType);
                     if (fn) unpack = true;
+                    else if (methodName && this.#config.canSkipSocket) {
+                        // Visibility: under canSkipSocket every call is expected
+                        // to resolve locally. A missing method (e.g. a derived
+                        // handler name that doesn't match a registered file —
+                        // `$subject$objectModel` vs `$subject$ObjectModel`) would
+                        // otherwise fail or hang silently. Name it so the typo /
+                        // case / placeholder mismatch is obvious.
+                        this.log?.warn?.({
+                            $meta: {mtid: 'event', method: 'remote.methodNotFound'},
+                            message: `remote method not found locally: '${methodName}'`,
+                        });
+                    }
                 }
                 if (!fn) {
                     fn = this.sender(methodType, typeName);

@@ -38,12 +38,11 @@ browser/orchestrator/subject/init.ts  browser namespace (folder `subject` stays 
 meta/type/schema.ts            TypeBox table schemas (header + line detail)
 meta/db/db.ts                  table registration + dbTest
 meta/dbTest/*.yaml             test seeds + RBAC seed (non-dotted capability names)
-meta/model/$subject$ObjectModel.ts   public model spec (drives Browse/New/Open)
-adapter/db/$subject$ObjectAdd.ts     custom DB handler (queryBuilder) — master-detail add
-gateway/$subject/$subject$ObjectAdd.ts  PUBLIC-MODEL OVERRIDE example (keep model public)
-server/test/test/test$Object.ts       server tap flow (login + add + find)
+meta/model/$subject$ObjectModel.ts   public model spec — declares `details` (master-detail) + the sibling `line`
+                                     array schema, drives Browse/New/Open tabs
+server/test/test/test$Object.ts       server tap flow (login + add with line + find)
 browser/test/test/test$Object.flow.ts browser HTTP-level access-control flow
-test/$subject.play.ts          Playwright (cleanupModel + browse + create/edit)
+test/$subject.play.ts          Playwright (cleanupModel + browse + create/edit with detail-tab screenshots)
 index.ts, index.browser.ts, index.html.ts, browser-test.ts, index.test.ts
 vite.config.ts, playwright.config.ts
 ```
@@ -63,17 +62,48 @@ vite.config.ts, playwright.config.ts
 4. **Plural labels.** The model `browser.title` / `cards.browse.label` use
    `$Objects` — adjust the plural for your entity.
 
+## Playwright screenshots (generated per realm, not shipped)
+
+The template ships the **code** that captures Playwright screenshots. After the rename steps, generate the baselines once:
+
+```bash
+npm run playwright:update     # writes baseline PNGs (including the master-detail tab shots)
+npm run playwright            # run the suite against the generated baselines
+```
+
+The generated `test/$subject.play.ts` covers:
+
+- `browse` / `create` / `edit` — standard `browseModel` / `createAndEditModel`.
+- **Master-detail tab screenshots** — because the model declares
+  `details: [{object: 'line'}]`, `createAndEditModel` is given a `details`
+  entry and captures `*-tab-<detail>-{empty,filled,open}.png` (the empty and
+  filled `line` tab during create, and the loaded `line` tab when opening the
+  record for edit). The `blong-browser` Playwright model helper
+  (`@feasibleone/blong-browser/playwright/model`) switches to the detail tab,
+  adds/fills rows and commits them; the generic knex adapter persists the
+  sibling detail arrays.
+
+A freshly scaffolded realm with the default `entry` entity will produce matching
+baselines; after renaming the entity (step 1) always re-run
+`npm run playwright:update`.
+
 ## Conventions baked in
 
 - **Reuse blong-server**: do NOT create a realm-local `adapter/db.ts` or a
-  dispatch orchestrator. Contribute `orchestrator/subject/init.ts` (namespace),
-  `adapter/db/*.ts` handlers (`this.config?.context?.queryBuilder`), and `meta/`.
+  dispatch orchestrator. Contribute `orchestrator/subject/init.ts` (namespace)
+  and `meta/`. The generic knex adapter provides all CRUD, including
+  **master-detail**: declaring `details` on the model makes `add`/`edit` accept
+  and persist sibling detail arrays, and `get` returns them (a table with a FK
+  constraint to the master's PK is treated as a detail of that master).
 - **Server-managed audit fields are nullable** (`createdAt: type.dateTimeNull()`)
   — the gateway auto-validates CRUD against `NotNull` columns.
 - **FK typing**: `type.increment()` PKs are BIGINT UNSIGNED; FK columns must be
   `type.bigIntNotNull()`. Avoid chained knex FK options.
-- **Public model + per-op override**: models are `public: true`; a differing
-  operation (e.g. `add` with `details`) is overridden by an explicit
-  `gateway/<subject>/<method>.ts` validation file — do NOT make the model
+- **Master-detail is auto**: models are `public: true`; a master-detail entity
+  declares `details: [{object: 'line'}]` + a sibling array schema
+  (`schema.properties.line` with `items.properties`) — the auto `add`/`edit`
+  validation accepts `{$object: {...}, line: [...]}` and the generic knex
+  adapter persists it. A manual `gateway/<subject>/<method>.ts` validation file
+  is only the escape hatch for non-array extras — do NOT make the model
   non-public.
 - **Capability names** in RBAC seeds are the non-dotted handler names.

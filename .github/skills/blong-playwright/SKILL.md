@@ -377,6 +377,36 @@ The `createAndEditModel()` helper solves this with a **dirty cycle**:
 This ensures the edit test works regardless of prior server state. When `search` is set, the edit
 test filters the browse table to that text before opening a row, so it never opens seeded data.
 
+### Master-Detail (IModelSpec.details)
+
+Pass `details` to `createAndEditModel` to cover the master-detail form: the create test switches to
+each detail tab, adds rows (`${object}-addButton`), fills the cell editors, commits
+(`.p-row-editor-save`), and screenshots `*-tab-<detail>-{empty,filled}.png`; the edit test captures
+the loaded rows (`*-tab-<detail>-open.png`).
+
+```typescript
+createAndEditModel(test, expect, {
+    subject: 'invoice',
+    object: 'invoice',
+    fields: {'invoice.invoiceName': 'ENT-PLAY-001'},
+    editFields: {'invoice.invoiceName': 'ENT-PLAY-001 Edited'},
+    search: 'ENT-PLAY-001',
+    details: [{object: 'line', rows: 2, fields: {lineName: 'Widget', lineQuantity: 2}}],
+});
+```
+
+Gotcha-s that bite master-detail realms:
+
+- **`text` widget renders a `<textarea>`** — the widget registry maps `text` → `TextareaWidget`. In
+  a detail table cell use `widget: {type: 'input'}` for a single-line `<input>` so the helper's
+  `[id="${object}-${rowIndex}-${field}"]` locator matches (`fillDetailRows` matches `id` regardless
+  of element type, so text areas work too).
+- **After a create save the editor switches to edit mode but keeps the last-visited detail tab
+  active**, hiding the master fields. `createAndEditModel` clicks the first
+  `.p-tabmenu-nav .p-tabmenuitem` (master tab) before the `editInCreate` `fillFields`.
+- **Deleting a master with detail rows** requires the framework's generic `remove` to cascade-delete
+  the FK-constrained detail rows first (non-cascading FK blocks the delete otherwise).
+
 ## Static Gateway Keys
 
 To prevent session invalidation when the blong server hot-reloads, the gateway includes static keys
@@ -404,6 +434,64 @@ for the `integration` intent.
 12. **Let auto-detection work** — prefer plain field values over explicit
     `{widget: ..., value: ...}` objects. Auto-detection from `blong-*` CSS classes is accurate and
     keeps tests concise.
+
+## Observing UI Errors in the Browser Console
+
+Every error popup shown in the UI is **also mirrored to the browser console** via `console.error`,
+so automated debugging never has to chase a transient toast:
+
+- Error dialogs (the modal `ErrorDialog`) log `[blong] error dialog <type> <message> <error>`.
+- Error toasts log `[blong] error toast <summary> <detail>`.
+
+The app store (`core/blong-browser/src/state/appStore.ts`) writes these from `showError`
+(ErrorDialog) and from `showToast` when `severity === 'error'` (toasts).
+
+**Terminal visibility**: the `portal` fixture forwards every browser `console.error`/`warning` (and
+uncaught `pageerror`) to the Playwright runner's stderr, prefixed `[browser]`. So `[blong] error …`
+messages appear directly in the `playwright` terminal output — a coding agent can grep the run log
+for `[browser]` / `[blong] error` without reading the trace. Capture them programmatically in a test
+with:
+
+```typescript
+import {test, expect} from '@feasibleone/blong-browser/playwright';
+
+test('surfaces a server error in the console', async ({portal}) => {
+    const errors: string[] = [];
+    portal.page.on('console', msg => {
+        if (msg.type() === 'error') errors.push(msg.text());
+    });
+
+    // ... trigger the failing action ...
+
+    expect(errors.some(text => text.includes('[blong] error'))).toBe(true);
+});
+```
+
+## Login Flake Triage
+
+Occasionally a Playwright run fails at login — typically the **create/edit** tests while browse and
+portal tests pass. The observed signature:
+
+- Timeout waiting for `input[name="username"]` (the login form never appears / a blank page).
+- In the browser trace: a **502** on the MLE handshake request `/rpc/login/.well-known/mle`.
+- In the dev-server log: `blong: graceful shutdown timed out after 30000ms, forcing exit`.
+
+The usual root cause is `blong-watch` restart churn (a file-watch restart drops the gateway while
+the browser session is mid-handshake) — not a bug in the test or the app.
+
+Triage order:
+
+1. **Trace first** — open the failure's `trace.zip` (`.playwright/results`) and check the network
+   tab for the 502 on `/rpc/login/.well-known/mle`. That pinpoints the server restarted mid-login.
+2. **Check the dev-server log** for the graceful-shutdown markers
+   (`blong: shutting down on <signal>`,
+   `blong: graceful shutdown timed out after 30000ms, forcing exit`). Their presence confirms a
+   hot-reload/restart dropped the gateway.
+3. **Rerun once** — a fresh run with no concurrent file saves usually passes. If it reproduces, look
+   for a watcher churn loop (e.g. saving files while tests run, or a background process touching the
+   tree).
+4. Only if it is consistently reproducible should you treat it as a real regression in the test or
+   the app — not as an app/login bug.
 
 ## Permissions
 

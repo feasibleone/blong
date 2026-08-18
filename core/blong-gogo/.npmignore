@@ -31,4 +31,8 @@
 # DO NOT MODIFY ABOVE THIS LINE!  Add any project-specific overrides below.
 # ---------------------------------------------------------------------------
 !/src/**
+# The realm scaffolding template is bundled here ONLY at publish time
+# (scripts/copy-template.mjs via `prepublishOnly`); the folder is git-ignored
+# but must ship inside the published tarball.
+!template/**
 

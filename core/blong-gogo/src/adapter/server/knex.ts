@@ -102,6 +102,29 @@ export function logKnexDeadlock(
 export default adapter<IConfig>(({utError, schema: objectSchema}) => {
     _errors ||= utError.register(errorMap);
 
+    /**
+     * Master-detail: tables of `subject` whose schema declares a FK constraint
+     * to the master's PK (`${subject}.${object}.${keyName}`). These are the
+     * detail tables of `${subject}.${object}` — `add`/`edit` persist sibling
+     * detail arrays into them and `get` returns their rows alongside the master.
+     */
+    const detailTables = (subject: string, object: string, keyName: string) => {
+        const masterRef = `${subject}.${object}.${keyName}`;
+        const result: Array<{table: string; fkColumn: string}> = [];
+        for (const [name, definition] of Object.entries(objectSchema[subject] ?? {})) {
+            if (name === object) continue;
+            const foreign = (
+                definition as {
+                    constraints?: {foreign?: Record<string, string>};
+                }
+            )?.constraints?.foreign;
+            if (!foreign) continue;
+            const fkColumn = Object.keys(foreign).find(col => foreign[col] === masterRef);
+            if (fkColumn) result.push({table: `${subject}_${name}`, fkColumn});
+        }
+        return result;
+    };
+
     return {
         activation: {
             default: {
@@ -334,7 +357,33 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         }
                     }
                     const row = (await query.first()) as Record<string, unknown> | undefined;
-                    return {[object]: prepareResultRow(row, binaryCols, table)};
+                    const result: Record<string, unknown> = {
+                        [object]: prepareResultRow(row, binaryCols, table),
+                    };
+                    // Master-detail: return each FK-constrained detail table's
+                    // rows as sibling arrays (e.g. `line`, `payment`) so the
+                    // Open form can render them alongside the master record.
+                    const keyName =
+                        (
+                            objectSchema[subject]?.[object] as
+                                | {constraints?: {primaryKey?: string}}
+                                | undefined
+                        )?.constraints?.primaryKey ?? `${object}Id`;
+                    const masterKey = row?.[keyName];
+                    if (masterKey !== undefined) {
+                        for (const detail of detailTables(subject, object, keyName)) {
+                            const detailBinaryCols = getBinaryCols(this.config.context);
+                            const detailRows = (await qb(detail.table).where({
+                                [detail.fkColumn]: masterKey,
+                            })) as Record<string, unknown>[];
+                            result[detail.table.slice(subject.length + 1)] = prepareResultRows(
+                                detailRows,
+                                detailBinaryCols,
+                                detail.table,
+                            );
+                        }
+                    }
+                    return result;
                 }
                 case 'find': {
                     const {
@@ -378,7 +427,12 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     return prepareResultRows(rows, binaryCols, table);
                 }
                 case 'add': {
-                    const {key: keyName = `${object}Id`, [object]: columns, resourceName} = params;
+                    const {
+                        key: keyName = `${object}Id`,
+                        [object]: columns,
+                        resourceName,
+                        ...rest
+                    } = params;
                     const definition = objectSchema[subject]?.[object] as unknown as
                         | Record<string, unknown>
                         | undefined;
@@ -437,13 +491,48 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // Convert any string values for binary columns to Buffer
                     const insertCols = prepareInputParams(cols, binaryCols, table);
                     const inserted = await qb(table).insert(insertCols);
+                    const masterKey = generatedKey ? strToBinary(generatedKey) : inserted[0];
                     const row = (await qb(table)
-                        .where({[keyName]: generatedKey ? strToBinary(generatedKey) : inserted[0]})
+                        .where({[keyName]: masterKey})
                         .first()) as Record<string, unknown>;
-                    return {[object]: prepareResultRow(row, binaryCols, table)};
+                    const result: Record<string, unknown> = {
+                        [object]: prepareResultRow(row, binaryCols, table),
+                    };
+                    // Master-detail: persist each sibling detail array (a param
+                    // whose key names a FK-constrained detail table) with the
+                    // master's key as the FK column, and return the created rows.
+                    for (const [detailName, detailRows] of Object.entries(rest)) {
+                        if (!Array.isArray(detailRows)) continue;
+                        const detail = detailTables(subject, object, keyName).find(
+                            d => d.table === `${subject}_${detailName}`,
+                        );
+                        if (!detail) continue;
+                        const detailBinaryCols = getBinaryCols(this.config.context);
+                        for (const detailRow of detailRows) {
+                            await qb(detail.table).insert(
+                                prepareInputParams(
+                                    {
+                                        ...(detailRow as Record<string, unknown>),
+                                        [detail.fkColumn]: masterKey,
+                                    },
+                                    detailBinaryCols,
+                                    detail.table,
+                                ),
+                            );
+                        }
+                        const createdRows = (await qb(detail.table).where({
+                            [detail.fkColumn]: masterKey,
+                        })) as Record<string, unknown>[];
+                        result[detailName] = prepareResultRows(
+                            createdRows,
+                            detailBinaryCols,
+                            detail.table,
+                        );
+                    }
+                    return result;
                 }
                 case 'edit': {
-                    const {key: keyName = `${object}Id`, [object]: columns} = params;
+                    const {key: keyName = `${object}Id`, [object]: columns, ...rest} = params;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
                     const cols = columns as Record<string, unknown>;
@@ -469,6 +558,32 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         editQuery = editQuery.where({[keyName]: key});
                     }
                     const editRow = (await editQuery.first()) as Record<string, unknown>;
+                    // Master-detail: replace each sibling detail array's rows for
+                    // this master (delete existing, re-insert the payload rows).
+                    const detailKey = isBinaryKey ? strToBinary(key) : key;
+                    for (const [detailName, detailRows] of Object.entries(rest)) {
+                        if (!Array.isArray(detailRows)) continue;
+                        const detail = detailTables(subject, object, keyName).find(
+                            d => d.table === `${subject}_${detailName}`,
+                        );
+                        if (!detail) continue;
+                        const detailBinaryCols = getBinaryCols(this.config.context);
+                        await qb(detail.table)
+                            .where({[detail.fkColumn]: detailKey})
+                            .del();
+                        for (const detailRow of detailRows) {
+                            await qb(detail.table).insert(
+                                prepareInputParams(
+                                    {
+                                        ...(detailRow as Record<string, unknown>),
+                                        [detail.fkColumn]: detailKey,
+                                    },
+                                    detailBinaryCols,
+                                    detail.table,
+                                ),
+                            );
+                        }
+                    }
                     return {[object]: prepareResultRow(editRow, binaryCols, table)};
                 }
                 case 'remove': {
@@ -479,9 +594,21 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const binaryCols = getBinaryCols(this.config.context);
                     const isBinaryKey =
                         isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
+                    const masterKey = isBinaryKey ? strToBinary(key as string) : key;
+                    if (!masterKey) {
+                        throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
+                    }
+                    // Master-detail: delete each FK-constrained detail table's
+                    // rows for this master BEFORE deleting the master row, so a
+                    // non-cascading FK does not block the delete.
+                    for (const detail of detailTables(subject, object, keyName)) {
+                        await this.config.context.queryBuilder!(detail.table)
+                            .where({[detail.fkColumn]: masterKey})
+                            .del();
+                    }
                     if (isBinaryKey) {
                         return this.config.context.queryBuilder!(table)
-                            .where(keyName, strToBinary(key))
+                            .where(keyName, masterKey)
                             .del();
                     }
                     return this.config.context.queryBuilder!(table)

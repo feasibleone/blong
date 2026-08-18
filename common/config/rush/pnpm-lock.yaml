@@ -622,9 +622,6 @@ importers:
       '@feasibleone/blong-config':
         specifier: workspace:^1.0.0
         version: link:../blong-config
-      '@feasibleone/blong-kopi':
-        specifier: workspace:^1.0.0
-        version: link:../blong-kopi
       '@feasibleone/blong-lib':
         specifier: workspace:^1.0.0
         version: link:../blong-lib

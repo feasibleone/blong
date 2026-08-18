@@ -23,7 +23,8 @@
         "ci-coverage": "./run-coverage.sh",
         "ci-lint": "blong-dev lint",
         "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
-        "ci-test": "blong-dev test"
+        "ci-test": "blong-dev test",
+        "prepublishOnly": "node scripts/copy-template.mjs"
     },
     "dependencies": {
         "@apidevtools/swagger-parser": "^12.1.0",
@@ -41,7 +42,6 @@
         "@feasibleone/blong": "workspace:^1.0.0",
         "@feasibleone/blong-chain": "workspace:^1.0.0",
         "@feasibleone/blong-config": "workspace:^1.0.0",
-        "@feasibleone/blong-kopi": "workspace:^1.0.0",
         "@feasibleone/blong-lib": "workspace:^1.0.0",
         "@feasibleone/blong-mle": "workspace:^1.0.0",
         "@feasibleone/blong-mock": "workspace:^1.0.0",

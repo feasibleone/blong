@@ -5,8 +5,17 @@
 # `$subject` action. `testViewer` (role `Customer`) and `testGuest` (role
 # `Guest`) get none, which lets access-control tests assert 403 for them.
 #
+# The file name is deliberately `accessAuthorizationMerge.yaml` (NOT
+# `$subject`-prefixed): the seed method is derived from the file name, so this
+# dispatches `access.authorization.merge` to blong-access's SHARED
+# `accessAuthorizationMerge` handler (attached to the `db` adapter), which
+# processes the generic `role`/`capability` params — no realm-local
+# authorization handler is needed. Only the CONTENT carries `$subject`
+# placeholders, substituted per realm at scaffold time.
+#
 # Capability names are the NON-dotted handler names (the default convention).
 role:
   Admin: $subjectManage
 capability:
   $subjectManage: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,$subject$ObjectRemove
+

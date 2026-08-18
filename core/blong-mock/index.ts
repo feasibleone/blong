@@ -307,6 +307,23 @@ export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
     for (const rawModel of models) {
         const model = withDefaults(rawModel);
         const {subject, object} = model;
+        // Master-detail: sibling detail arrays (IModelSpec.details) ride along
+        // in the `add`/`edit` params at the SAME level as the master object —
+        // e.g. `{invoice: {...}, line: [...], payment: [...]}`. Detail arrays
+        // are OPTIONAL (a master without details is valid); only the master
+        // object is required.
+        const crudParams = () =>
+            Type.Object({
+                [object]: model.schema?.properties?.[object] ?? Type.Unknown(),
+                ...Object.fromEntries(
+                    (model.details ?? []).map(detail => [
+                        detail.object,
+                        Type.Optional(
+                            model.schema?.properties?.[detail.object] ?? Type.Unknown(),
+                        ),
+                    ]),
+                ),
+            });
         Object.assign(validations, {
             [`${subject}.${object}.find`]: () => ({
                 params: Type.Unknown(),
@@ -324,16 +341,12 @@ export function validation(models: IModelSpec[]): Record<string, ValidationFn> {
                 description: `Get report data for ${object} with optional paging`,
             }),
             [`${subject}.${object}.edit`]: () => ({
-                params: Type.Object({
-                    [object]: model.schema?.properties?.[object] ?? Type.Unknown(),
-                }),
+                params: crudParams(),
                 result: Type.Awaited(Type.Unknown()),
                 description: `Edit ${object} by key`,
             }),
             [`${subject}.${object}.add`]: () => ({
-                params: Type.Object({
-                    [object]: model.schema?.properties?.[object] ?? Type.Unknown(),
-                }),
+                params: crudParams(),
                 result: Type.Awaited(Type.Unknown()),
                 description: `Add new ${object}`,
             }),

@@ -40,7 +40,6 @@
 !/server/**
 !/test/**
 !/browser/**
-!kopi.ts
 !browser.ts
 !server.ts
 !browser-test.ts

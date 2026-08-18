@@ -24,6 +24,15 @@ import {coverageFixture} from './playwright/coverage.js';
 
 export {expect};
 
+/**
+ * Default timeout (ms) for element-level waits in the Portal helpers.
+ *
+ * Kept deliberately short (3-5s) so a genuinely missing element fails fast
+ * instead of hanging on the default ~30s test timeout. Test/global timeouts
+ * stay generous because network + dev-server compile can still be slow.
+ */
+export const BLONG_ELEMENT_TIMEOUT = 5_000;
+
 /** Options configurable via playwright.config.ts `use` block or CLI. */
 export interface IBlongTestOptions {
     /** Login username. */
@@ -52,7 +61,9 @@ export class Portal {
         await this.page.fill('input[name="password"]', password);
         await this.page.getByTestId('login-submit').click();
         // Wait for portal to render (menubar appears)
-        await this.page.locator('.blong-portal-menubar').waitFor({state: 'visible'});
+        await this.page
+            .locator('.blong-portal-menubar')
+            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
     }
 
     // ── Menu ─────────────────────────────────────────────────────────────────
@@ -91,7 +102,7 @@ export class Portal {
         // Wait for the save icon to change to a check mark
         await this.page
             .locator('[data-testid="editor-save"] .pi-check')
-            .waitFor({state: 'visible'});
+            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
     }
 
     /** Click the Edit button to enter edit mode. */
@@ -153,12 +164,15 @@ export class Portal {
 
     /** Wait for the form to finish loading (loading skeleton disappears). */
     async waitForFormLoad(): Promise<void> {
-        await this.page.locator('.blong-editor').last().waitFor({state: 'visible'});
+        await this.page
+            .locator('.blong-editor')
+            .last()
+            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
         // Wait for loading indicators to disappear
         await this.page
             .locator('.p-skeleton')
             .first()
-            .waitFor({state: 'hidden'})
+            .waitFor({state: 'hidden', timeout: BLONG_ELEMENT_TIMEOUT})
             .catch(() => {});
     }
 
@@ -168,15 +182,18 @@ export class Portal {
      * to ensure the API response has been received before filling fields.
      */
     async waitForFormData(): Promise<void> {
-        await this.page.waitForFunction(() => {
-            const editors = document.querySelectorAll('.blong-editor');
-            const last = editors[editors.length - 1];
-            if (!last) return false;
-            const inputs = last.querySelectorAll(
-                'input:not([type="hidden"]):not([type="checkbox"])',
-            );
-            return Array.from(inputs).some(i => (i as HTMLInputElement).value !== '');
-        });
+        await this.page.waitForFunction(
+            () => {
+                const editors = document.querySelectorAll('.blong-editor');
+                const last = editors[editors.length - 1];
+                if (!last) return false;
+                const inputs = last.querySelectorAll(
+                    'input:not([type="hidden"]):not([type="checkbox"])',
+                );
+                return Array.from(inputs).some(i => (i as HTMLInputElement).value !== '');
+            },
+            {timeout: BLONG_ELEMENT_TIMEOUT},
+        );
     }
 
     /** Wait for the table data to load (rows appear after loading completes). */
@@ -187,9 +204,12 @@ export class Portal {
         // loading overlay to disappear first.
         await this.page
             .locator('.p-datatable-loading-overlay')
-            .waitFor({state: 'hidden'})
+            .waitFor({state: 'hidden', timeout: BLONG_ELEMENT_TIMEOUT})
             .catch(() => {});
-        await this.page.locator('.p-datatable-tbody tr').first().waitFor({state: 'visible'});
+        await this.page
+            .locator('.p-datatable-tbody tr')
+            .first()
+            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
     }
 }
 
@@ -213,6 +233,18 @@ export const test = coverageFixture(
         blongPermissions: [false, {option: true}],
 
         portal: async ({page, blongUsername, blongPassword, blongPermissions}, use) => {
+            // Forward browser console errors/warnings to the Playwright runner's
+            // stderr (prefixed `[browser]`) so a coding agent can spot them in
+            // the terminal output without digging into trace artifacts. This
+            // surfaces the app-store mirrors `[blong] error dialog` /
+            // `[blong] error toast` (see appStore.showError/showToast) as well as
+            // any other unhandled browser error.
+            page.on('console', msg => {
+                if (msg.type() === 'error') console.error(`[browser] ${msg.text()}`);
+                else if (msg.type() === 'warning') console.warn(`[browser] ${msg.text()}`);
+            });
+            page.on('pageerror', err => console.error(`[browser] pageerror: ${err.message}`));
+
             // Navigate to the app root — baseURL is set in playwright.config.ts
             await page.goto('/');
 

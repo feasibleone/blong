@@ -33,7 +33,7 @@
  * ```
  */
 import type {Expect, Page} from '@playwright/test';
-import type {Portal} from '../playwright.js';
+import {BLONG_ELEMENT_TIMEOUT, type Portal} from '../playwright.js';
 
 /** Minimal test function interface — accepts any Playwright TestType that provides a `portal` fixture. */
 interface ITestFn {
@@ -64,6 +64,28 @@ export interface ICreateAndEditModelOptions {
     fields: FieldMap;
     /** Fields to change when editing (subset of fields). */
     editFields?: FieldMap;
+    /**
+     * Master-detail (IModelSpec.details): for each detail entity the create test
+     * switches to its tab (a sibling array property, e.g. `line`), adds rows in
+     * the editable table, commits them and captures tab screenshots; the edit
+     * test also screenshots the detail tab showing the loaded rows.
+     *
+     * ```ts
+     * details: [
+     *     {object: 'line', rows: 2, fields: {
+     *         lineName: 'Widget', lineQuantity: 2,
+     *     }},
+     * ]
+     * ```
+     */
+    details?: Array<{
+        /** Detail entity name, e.g. 'line' — matches `IModelSpec.details[].object`. */
+        object: string;
+        /** Fields for one detail row (column name → value), e.g. `{lineName, lineQuantity}`. */
+        fields: FieldMap;
+        /** Number of rows to add in the create test (default 1). */
+        rows?: number;
+    }>;
     /**
      * Optional browse-search text to filter by before opening a row in the
      * generated edit test, so it targets a specific (e.g. test-created) row
@@ -131,7 +153,10 @@ export async function fillFields(page: Page, fields: FieldMap): Promise<void> {
                 // DropdownWidget sets data-testid={id ?? name} on the wrapper
                 const dropdown = page.locator(`[data-testid="${fieldId}"]`);
                 await dropdown.click();
-                await page.locator('.p-dropdown-item').first().waitFor({state: 'visible'});
+                await page
+                    .locator('.p-dropdown-item')
+                    .first()
+                    .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
                 await page.locator(`.p-dropdown-item:has-text("${String(spec.value)}")`).click();
                 break;
             }
@@ -193,6 +218,47 @@ function unwrapValue(raw: FieldMap[string]): string | number | boolean {
     return typeof raw === 'object' && raw !== null ? (raw as IFieldValue).value : raw;
 }
 
+/** Capitalize the first letter — matches the tab label `withDefaults` uses (`$object` → `$Object`). */
+function capital(s: string): string {
+    return s.replace(/^(\$*)([a-z])/, (_m, pre: string, c: string) => pre + c.toUpperCase());
+}
+
+/** Switch the editor to a master-detail tab (TabMenu item) by its label. */
+async function switchToDetailTab(page: Page, object: string): Promise<void> {
+    await page
+        .locator('.p-tabmenu-nav .p-tabmenuitem')
+        .filter({hasText: capital(object)})
+        .first()
+        .click();
+}
+
+/**
+ * Add `rows` detail rows in the given detail tab's editable table and commit
+ * each row edit, so the form value carries the detail arrays on save.
+ */
+async function fillDetailRows(
+    page: Page,
+    object: string,
+    fields: FieldMap,
+    rows = 1,
+): Promise<void> {
+    for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
+        // The "+ Add" button on the detail TableWidget (form-value mode).
+        await page.getByTestId(`${object}-addButton`).click();
+        // Fill the new (row-editing) row's cell inputs. Cell editors carry
+        // `id`/`data-testid` = `${object}-${rowIndex}-${field}`; they may be
+        // `<input>` (text/number widgets) or `<textarea>` (text widget maps to
+        // TextareaWidget), so match the `id` regardless of element type.
+        for (const [field, raw] of Object.entries(fields)) {
+            const cellId = `${object}-${rowIndex}-${field}`;
+            const input = page.locator(`[id="${cellId}"]`).first();
+            await input.fill(String(unwrapValue(raw)));
+        }
+        // Commit the row edit (PrimeReact row editor save icon).
+        await page.locator('.p-row-editor-save').last().click();
+    }
+}
+
 /**
  * Generate a browse-page test for a model.
  * Opens the browse page via the menu and takes a screenshot.
@@ -224,7 +290,7 @@ export function createAndEditModel(
     expect: Expect,
     options: ICreateAndEditModelOptions,
 ): void {
-    const {subject, object, fields, editFields, search, editInCreate = true} = options;
+    const {subject, object, fields, editFields, search, details, editInCreate = true} = options;
     const browseMethod = `${subject}.${object}.browse`;
 
     test(`create ${subject} ${object}`, async ({portal}) => {
@@ -235,11 +301,13 @@ export function createAndEditModel(
         const createTestId = `action-component-${subject}-${object}-new`;
         const addBtn = portal.page.getByTestId(createTestId).first();
         try {
-            await addBtn.waitFor({state: 'visible', timeout: 3000});
+            await addBtn.waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
             await addBtn.click();
         } catch {
             // Fallback: look for an add button by legacy testid
-            await portal.page.getByTestId(`${object}-addButton`).click({timeout: 3000});
+            await portal.page
+                .getByTestId(`${object}-addButton`)
+                .click({timeout: BLONG_ELEMENT_TIMEOUT});
         }
 
         await portal.waitForFormLoad();
@@ -249,9 +317,35 @@ export function createAndEditModel(
         await fillFields(portal.page, fields);
         await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-filled.png`);
 
+        // Master-detail: switch to each detail tab, add + fill rows, screenshot
+        // the empty and filled tabs so the detail tables are visually covered.
+        if (details && details.length > 0) {
+            for (const detail of details) {
+                await switchToDetailTab(portal.page, detail.object);
+                await portal.page
+                    .locator(`[data-testid="${detail.object}-addButton"]`)
+                    .first()
+                    .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+                await expect(portal.page).toHaveScreenshot(
+                    `${subject}-${object}-tab-${detail.object}-empty.png`,
+                );
+                await fillDetailRows(portal.page, detail.object, detail.fields, detail.rows ?? 1);
+                await expect(portal.page).toHaveScreenshot(
+                    `${subject}-${object}-tab-${detail.object}-filled.png`,
+                );
+            }
+        }
+
         // Save
         await portal.save();
         await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-saved.png`);
+
+        // After a successful create the editor switches to edit mode but keeps
+        // the last-visited detail tab active (master-detail layout), which hides
+        // the master fields. Return to the master tab (first TabMenu item) so
+        // the `editFields` (master fields) are visible again.
+        if (details && details.length > 0)
+            await portal.page.locator('.p-tabmenu-nav .p-tabmenuitem').first().click();
 
         // Edit the same record in the same tab — verifies edit does not create a duplicate
         if (editInCreate && editFields && Object.keys(editFields).length > 0) {
@@ -289,6 +383,23 @@ export function createAndEditModel(
             // Wait for the API response to populate form inputs
             await portal.waitForFormData();
             await expect(portal.page).toHaveScreenshot(`${subject}-${object}-open.png`);
+
+            // Master-detail: screenshot each detail tab showing the loaded rows,
+            // then return to the master tab before the edit dirty cycle.
+            if (details && details.length > 0) {
+                for (const detail of details) {
+                    await switchToDetailTab(portal.page, detail.object);
+                    await portal.page
+                        .locator(`[data-testid="${detail.object}-addButton"]`)
+                        .first()
+                        .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+                    await expect(portal.page).toHaveScreenshot(
+                        `${subject}-${object}-tab-${detail.object}-open.png`,
+                    );
+                }
+                // Back to the master tab (first TabMenu item).
+                await portal.page.locator('.p-tabmenu-nav .p-tabmenuitem').first().click();
+            }
 
             // Dirty cycle: text/textarea fields get a random suffix so the
             // first save writes a distinct value even when a stateful mock
@@ -373,7 +484,9 @@ export function cleanupModel(test: ITestFn, expect: Expect, options: ICleanupMod
             await del.first().click();
             // PrimeReact ConfirmDialog — screenshot the confirmation step, then
             // accept ("Yes") the deletion.
-            await portal.page.locator('.p-confirm-dialog-accept').waitFor({state: 'visible'});
+            await portal.page
+                .locator('.p-confirm-dialog-accept')
+                .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
             if (deleted === 0) {
                 await expect(portal.page).toHaveScreenshot(
                     `${subject}-${object}-cleanup-confirm.png`,

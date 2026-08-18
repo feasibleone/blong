@@ -8,8 +8,10 @@
  *
  * TROUBLESHOOTING: if create/edit fails at login while browse passes, check the
  * Playwright trace (under `.playwright` results) for a 502 on
- * `/rpc/login/.well-known/mle` — that is dev-server (`blong-watch`) restart
- * instability, not a test bug.
+ * `/rpc/login/.well-known/mle`, and the dev-server log for
+ * `blong: graceful shutdown timed out after 30000ms, forcing exit` — that is
+ * dev-server (`blong-watch`) restart instability, not a test bug. Rerun once;
+ * see the blong-playwright skill → "Login Flake Triage" for the full triage.
  */
 import {expect, test} from '@feasibleone/blong-browser/playwright';
 import {
@@ -45,5 +47,18 @@ test.describe('$Object', () => {
             '$object.$objectName': 'ENT-PLAY-001 Edited',
         },
         search: 'ENT-PLAY-001',
+        // Master-detail: the create test switches to the `line` tab, adds two
+        // rows and captures tab screenshots; the edit test captures the loaded
+        // `line` tab. The generic knex adapter persists the sibling arrays.
+        details: [
+            {
+                object: 'line',
+                rows: 2,
+                fields: {
+                    lineName: 'Widget',
+                    lineQuantity: 2,
+                },
+            },
+        ],
     });
 });

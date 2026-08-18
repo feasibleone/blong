@@ -15,10 +15,46 @@ export function methodId<T>(what: T): T {
 
 export function methodParts(what: string): string {
     if (what.includes('.')) return what;
-    const lowercase = (match: string, word1: string, word2: string, letter: string): string =>
-        `${word1}.${word2.toLowerCase()}${letter ? '.' + letter.toLowerCase() : ''}`;
-    const capitalWords = /^([^A-Z]+)([A-Z][^A-Z]+)([A-Z])?/;
-    return what.replace(capitalWords, lowercase);
+    if (!what.includes('$')) {
+        // Existing behaviour: split the leading word group only.
+        const lowercase = (match: string, word1: string, word2: string, letter: string): string =>
+            `${word1}.${word2.toLowerCase()}${letter ? '.' + letter.toLowerCase() : ''}`;
+        const capitalWords = /^([^A-Z]+)([A-Z][^A-Z]+)([A-Z])?/;
+        return what.replace(capitalWords, lowercase);
+    }
+    // `$`-containing template names (e.g. the `$subject`/`$object` placeholders
+    // in `core/blong-kopi`): split every camelCase word while keeping `$`
+    // glued to the word it prefixes. A `$` followed by an uppercase letter
+    // starts a new word, so `$subject$ObjectMerge` → `$subject.$object.merge`
+    // (not `$subject$.object.merge`, which would break table/param lookups).
+    const words: string[] = [];
+    let current = '';
+    for (let i = 0; i < what.length; i++) {
+        const ch = what[i];
+        const next = what[i + 1];
+        if (ch === '$') {
+            if (current && next && /[A-Z]/.test(next)) {
+                words.push(current);
+                current = '$';
+            } else {
+                current += '$';
+            }
+        } else if (/[A-Z]/.test(ch)) {
+            const prev = current[current.length - 1];
+            if (current && prev && (prev === '$' || /[A-Z]/.test(prev))) {
+                current += ch; // continuation of a `$Word` or an acronym
+            } else if (current) {
+                words.push(current);
+                current = ch;
+            } else {
+                current = ch;
+            }
+        } else {
+            current += ch;
+        }
+    }
+    if (current) words.push(current);
+    return [words[0], ...words.slice(1).map(w => w.toLowerCase())].join('.');
 }
 
 export function snakeToCamel(string: string): string {

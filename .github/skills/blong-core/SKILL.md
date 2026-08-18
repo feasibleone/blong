@@ -357,6 +357,11 @@ The login response also returns `permissions` (the resolved action names) for cl
 > (`invoiceInvoiceAdd`, `invoiceManage`) in action/capability seeds and in the `permissions` /
 > `permissionMap` matching (the `accessAuthorizationList` handler returns methodIds with dots
 > stripped). Dotted forms (`invoice.invoice.add`) are explicit special cases and discouraged.
+> Matching is dot- and case-insensitive (`invoice.invoice.add`, `invoiceInvoiceAdd`, and
+> `INVOICEINVOICEADD` all resolve to the same methodId), so both styles grant the same permission.
+> A dotted name is only required when the action refers to a **non-handler dotted resource** —
+> e.g. `subject.object.schema` (a schema/type resource) or third-party dotted names like
+> `vision.compute`. For handler-backed RPC methods always use the non-dotted handler name.
 
 - **New action**: seed a row with `resourceType: access.action` + `name` (the NON-dotted handler
   name, e.g. `invoiceInvoiceApprove`) in `meta/db/` (prod) or `meta/dbTest/` (test). Add a gateway

@@ -217,6 +217,7 @@ export default class Registry extends Internal implements IRegistry {
             callback = port as MatchMethodsCallback;
             port = undefined;
         }
+        const log = this.#log.logger('info', {name: 'registry'});
         for (const [name, value] of this.methods.entries()) {
             if (
                 ([] as (string | RegExp)[])
@@ -228,7 +229,20 @@ export default class Registry extends Internal implements IRegistry {
             ) {
                 if (mode === 'merge') {
                     for (const item of value) {
+                        const started = Date.now();
                         const {local, literals} = await this._createHandlers([item], port);
+                        // Visibility: a handler factory that hangs (e.g. a
+                        // `subject.validation` resolving a model handler whose
+                        // derived name doesn't match a registered file) would
+                        // otherwise stall startup silently. Warn after a slow
+                        // threshold so the stuck method is identified.
+                        const elapsed = Date.now() - started;
+                        if (elapsed > 3_000) {
+                            log.warn?.(
+                                `registry handler factory for '${name}' took ${elapsed}ms — ` +
+                                    'a hanging dependency (e.g. an unresolvable remote method) is likely',
+                            );
+                        }
                         callback!(name, local, literals);
                     }
                 } else {
@@ -255,9 +269,17 @@ export default class Registry extends Internal implements IRegistry {
                           ? validation
                           : {};
                 if (typeof validation === 'function') name = validation.name;
-                const prev = this.#validations[methodParts(name)];
-                if (prev) merge(prev, schema);
-                else this.#validations[methodParts(name)] = schema as GatewaySchema;
+                // A later-registered validation REPLACES an earlier one for the
+                // same methodParts key instead of merging. `subject.validation`
+                // (blong-server, `srv`) registers first and auto-generates the
+                // CRUD validations for every `public: true` model; an explicit
+                // realm gateway file (`gateway/<subject>/<method>.ts`) registers
+                // later and must reliably WIN for the operation it overrides.
+                // Merging TypeBox schemas with ut-function.merge also corrupts
+                // symbol-keyed Kind markers on nested schemas (e.g. a `details`
+                // array) and lets auto-required fields leak into the override,
+                // so replace instead. Unrelated keys still merge normally.
+                this.#validations[methodParts(name)] = schema as GatewaySchema;
             });
         });
         return this.#validations;

@@ -242,6 +242,7 @@ words:
   - svar
   - Synchiropus
   - tabmenu
+  - tabmenuitem
   - tabview
   - tapjs
   - tinyint

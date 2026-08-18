@@ -40,13 +40,9 @@ export function createShutdownHandler(
     const exitFn = exit ?? (code => process.exit(code));
     const writeFn = write ?? (s => process.stderr.write(s));
     const timeout = timeoutMs ?? 30_000;
-    const timer = setTimeout(() => {
-        writeFn(`blong: graceful shutdown timed out after ${timeout}ms, forcing exit\n`);
-        exitFn(1);
-    }, timeout);
-    timer.unref?.();
 
     let shuttingDown = false;
+    let timer: NodeJS.Timeout | undefined;
     const handler = (signal: string): void => {
         if (shuttingDown) {
             writeFn(`blong: second ${signal} received, forcing exit\n`);
@@ -56,15 +52,29 @@ export function createShutdownHandler(
         shuttingDown = true;
         writeFn(`blong: shutting down on ${signal}\n`);
         log?.info?.({signal}, 'shutting down');
+        // Start the bounded-wait timer only once shutdown is triggered — a
+        // graceful-shutdown timeout must bound the STOP, not the run. A timer
+        // created at handler-creation time would self-destruct a long-running
+        // dev server (e.g. `blong` / `blong-watch` backing the Playwright
+        // webServer) after `timeoutMs`, even with no signal ever received.
+        // These deterministic stderr markers are the triage signature for the
+        // Playwright login flake: a blong-watch restart mid-login shows a 502 on
+        // /rpc/login/.well-known/mle in the trace and this marker in the dev log.
+        // See the blong-playwright skill → "Login Flake Triage".
+        timer = setTimeout(() => {
+            writeFn(`blong: graceful shutdown timed out after ${timeout}ms, forcing exit\n`);
+            exitFn(1);
+        }, timeout);
+        timer.unref?.();
         stop()
             .then(() => {
-                clearTimeout(timer);
+                if (timer) clearTimeout(timer);
                 exitFn(0);
             })
             .catch((error: unknown) => {
                 writeFn(`blong: graceful shutdown failed: ${String(error)}\n`);
                 log?.error?.({error}, 'graceful shutdown failed');
-                clearTimeout(timer);
+                if (timer) clearTimeout(timer);
                 exitFn(1);
             });
     };
@@ -73,7 +83,7 @@ export function createShutdownHandler(
         unsubscribe: () => {
             process.removeListener('SIGTERM', handler);
             process.removeListener('SIGINT', handler);
-            clearTimeout(timer);
+            if (timer) clearTimeout(timer);
         },
     };
 }

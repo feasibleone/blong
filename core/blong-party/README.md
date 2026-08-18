@@ -111,6 +111,11 @@ npm run ci-test    # waits for MySQL, then runs blong-dev playwright --coverage
 npm run playwright # interactive Playwright run
 ```
 
+**Login-flake triage:** if a run fails at login (timeout on `input[name="username"]`), check the
+Playwright trace for a 502 on `/rpc/login/.well-known/mle` and the dev-server log for
+`blong: graceful shutdown timed out after 30000ms, forcing exit` — that is `blong-watch` restart
+instability, not a test bug. Rerun once. Full triage: blong-playwright skill → "Login Flake Triage".
+
 ## References
 
 - [blong-core skill](../../.github/skills/blong-core/SKILL.md) — extending/utilizing the core, party, and access realms

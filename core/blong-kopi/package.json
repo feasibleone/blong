@@ -14,7 +14,6 @@
             "import": "./browser.ts"
         },
         "./index.browser.ts": "./index.browser.ts",
-        "./kopi.ts": "./kopi.ts",
         "./package.json": "./package.json"
     },
     "scripts": {

@@ -1,0 +1,4 @@
+# Realm scaffolding template bundled at publish time (scripts/copy-template.mjs).
+# In the monorepo `createRealm` uses the sibling `core/blong-kopi`; this folder
+# only exists transiently during `npm publish` and must not be committed.
+template/

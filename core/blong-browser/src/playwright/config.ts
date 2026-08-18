@@ -116,6 +116,9 @@ export function defineBlongConfig(
     return defineConfig<IBlongTestOptions>({
         testDir: './test',
         testMatch: '**/*.play.ts',
+        // Test-level timeout stays generous (network + dev-server compile can be
+        // slow). Element-level waits in the Portal helpers deliberately use the
+        // shorter BLONG_ELEMENT_TIMEOUT (5s) so missing elements fail fast.
         timeout: 30_000,
         retries: 1,
         use: {

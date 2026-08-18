@@ -1,6 +1,11 @@
 ---
 name: blong-model
-description: Use the blong-browser model system to implement CRUD pages in a blong realm or suite. The model system generates Browse/New/Open/Report pages automatically from IModelSpec declarations. Use this skill whenever a realm needs to contribute UI pages for domain entities — even if the user just says "add list and edit pages for this entity" or "wire up the UI for this API". For developing or improving the model system internals, use blong-model-dev instead.
+description:
+    Use the blong-browser model system to implement CRUD pages in a blong realm or suite. The model
+    system generates Browse/New/Open/Report pages automatically from IModelSpec declarations. Use
+    this skill whenever a realm needs to contribute UI pages for domain entities — even if the user
+    just says "add list and edit pages for this entity" or "wire up the UI for this API". For
+    developing or improving the model system internals, use blong-model-dev instead.
 ---
 
 # blong-model Skill
@@ -18,20 +23,20 @@ description: Use the blong-browser model system to implement CRUD pages in a blo
   override — do NOT make the model non-public.
 - **Binary PK round-trip** — `uuid()` PKs are `binary(16)`: `get`/`find` return base64; dropdown
   values for binary PKs must be base64 too.
-- **Model files end in `Model.ts`**, exported from a `{subject}{Object}Model` handler (`.model` kind)
-  — that's what the portal orchestrator + mock adapter match on.
+- **Model files end in `Model.ts`**, exported from a `{subject}{Object}Model` handler (`.model`
+  kind) — that's what the portal orchestrator + mock adapter match on.
 
-Canonical framework rules + pitfalls + archetype:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[PITFALLS]`, `[ARCHETYPE: MODELSPEC]`.
-Sibling skills: **blong-browser** (components), **blong-model-dev** (internals), **blong-core**
-(resource-backed tables).
+Canonical framework rules + pitfalls + archetype: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[PITFALLS]`, `[ARCHETYPE: MODELSPEC]`. Sibling skills: **blong-browser**
+(components), **blong-model-dev** (internals), **blong-core** (resource-backed tables).
 
 ## What this skill covers
 
 **Using** the model system: declaring `IModelSpec` objects, wiring them into a realm component
 handler, mock data for Storybook, and dropdown references. For internals see **blong-model-dev**;
-for concept/architecture see [blong-browser Model concept](../../docs/blong/docs/concepts/blong-model.md)
-and [Model Pattern](../../docs/blong/docs/patterns/blong-model.md).
+for concept/architecture see
+[blong-browser Model concept](../../docs/blong/docs/concepts/blong-model.md) and
+[Model Pattern](../../docs/blong/docs/patterns/blong-model.md).
 
 ---
 
@@ -370,9 +375,10 @@ Fields render according to their JSON Schema type (unless `widget.type` is set e
 | `boolean`   | boolean (checkbox)                                                        |
 | `anyOf`     | resolved from the first non-null member (e.g. `bigIntNotNull()` → bigint) |
 
-A `bigint` column (`type.bigIntNotNull()` = `Union[BigInt, Integer]`) maps to `anyOf` in JSON schema.
-The framework routes `bigint`/number-`anyOf` to the **BigIntWidget** (JS number within safe range,
-string above it) — otherwise a plain text input submits a STRING and strict TypeBox validation fails.
+A `bigint` column (`type.bigIntNotNull()` = `Union[BigInt, Integer]`) maps to `anyOf` in JSON
+schema. The framework routes `bigint`/number-`anyOf` to the **BigIntWidget** (JS number within safe
+range, string above it) — otherwise a plain text input submits a STRING and strict TypeBox
+validation fails.
 
 ### Model & schema authoring tricks
 
@@ -380,11 +386,75 @@ string above it) — otherwise a plain text input submits a STRING and strict Ty
   gets default CRUD validations automatically (no config needed). A suite only opts out in rare
   cases: `srv: {'subject.validation': {validations: false}}` (all) or
   `{validations: {coralModel: false}}` (one model). Without the validation schemas the generic RPC
-  routes aren't exposed and browse 404s.
-  **Decision rule for a differing operation** (e.g. `invoice.invoice.add` accepts an optional
-  `lines` payload): keep the model `public: true` and OVERRIDE only that operation with an explicit
-  `gateway/<subject>/<method>.ts` validation file (it merges with the auto-generated one). Making
-  the model non-public (manual gateway files for every op) is the last resort, not the default.
+  routes aren't exposed and browse 404s. **Decision rule for a differing operation** (e.g.
+  `invoice.invoice.add` accepts an optional `lines` payload): keep the model `public: true` and
+  OVERRIDE only that operation with an explicit `gateway/<subject>/<method>.ts` validation file. The
+  explicit file **replaces** the auto-generated `subject.validation` schema for that one operation
+  (`subject.validation` registers first, so the later explicit file always wins) — the override's
+  `params` are enforced as written and the model stays public, so the other CRUD operations keep
+  their auto validation. Making the model non-public (manual gateway files for every op) is the last
+  resort, not the default.
+
+- **Master-detail (`IModelSpec.details`)** — for the common case of a public entity carrying detail
+  arrays (invoice + `line`, + `payment`), declare the detail entities on the model and NO gateway
+  override is needed. The model schema has a **dedicated key for the master record**
+  (`schema.properties.invoice`) and one **sibling array property per detail**
+  (`schema.properties.line`, `schema.properties.payment`) — the detail arrays live at the SAME level
+  as the master object, and each sibling declares its own `items.properties` (the detail-row schema)
+  right there:
+
+    ```typescript
+    export default model(
+        () =>
+            async function invoiceModel() {
+                return {
+                    subject: 'invoice',
+                    object: 'invoice',
+                    public: true,
+                    schema: {
+                        properties: {
+                            invoice: {
+                                // dedicated key for the master record
+                                properties: {
+                                    invoiceName: {title: 'Name'},
+                                },
+                            },
+                            line: {
+                                // sibling detail array, same level as `invoice`
+                                items: {
+                                    properties: {
+                                        lineName: {type: 'string'},
+                                        lineQuantity: {type: 'number'},
+                                    },
+                                },
+                            },
+                            payment: {items: {properties: {paymentAmount: {type: 'number'}}}},
+                        },
+                    },
+                    details: [{object: 'line'}, {object: 'payment'}],
+                };
+            },
+    );
+    ```
+
+    For each `details` entry the framework fills in `type: 'array'` + the editable-table widget on
+    the sibling array property, plus a `details-<object>` card and an edit-layout tab. Result:
+    - the auto `add`/`edit` validation accepts `{invoice: {...}, line: [...], payment: [...]}` — the
+      detail arrays are SIBLINGS of the master object in the params (no manual `add` override),
+    - the New/Open forms render one editable table per detail (TableWidget form-value mode:
+      add/edit/delete rows), keeping the master record's own schema free of detail arrays (browse
+      columns/DB schema unaffected).
+    - **Persistence is generic** — the knex adapter (`core/blong-gogo/src/adapter/server/knex.ts`)
+      treats any table with a FK constraint to the master's PK
+      (`schema.constraints.foreign[col] === '<subject>.<object>.<key>'`) as a detail of that
+      master: `add`/`edit` persist the sibling detail arrays and `get` returns them alongside the
+      master. Declare the detail table in `meta/type/schema.ts` (FK column `type.bigIntNotNull()`
+      for `increment()` PKs) + register it in `meta/db/db.ts`; no custom `adapter/db/<object>Add.ts`
+      handler is needed. A manual gateway override remains the escape hatch for non-array extras.
+    - **Playwright**: pass `details: [{object: 'line', fields: {...}, rows}]` to
+      `createAndEditModel` (`@feasibleone/blong-browser/playwright/model`) to switch to each detail
+      tab, add/fill rows and capture `*-tab-<detail>-{empty,filled,open}.png` screenshots.
+
 - **Browse `orderBy` shape** — the browse widget sends `orderBy` as an array of `{field, dir}`; the
   `find` handler must tolerate array-of-`{field, dir}` OR a plain `order` string.
 - **`type.uuid()` vs `type.uidNotNull()`** — `type.uuid()` (default literal `'uuid'`) lets the

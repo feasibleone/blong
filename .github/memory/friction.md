@@ -5,31 +5,26 @@ Update it when something requires unexpected effort to implement or fix.
 
 ## List of unresolved frictions
 
-- The agent fails to see the error popup in playwright tests. The UI must log errors to the console in addition to
-  showing popups, so that automated tests, including
-  Playwright, can log them too.
 - `bindSyntheticCrud` confuses agents and they fail to see that the exec function is primarily used for CRUD,
   `bindSyntheticCrud` is not really used/needed at the moment. (The related "DB handlers go in `adapter/db/`
   with `queryBuilder`" part is now resolved — see resolved list.)
 - agent tries to run the blong CLI with --help, but it crashes;
 - agent fails to notice the `blong-dev sql` ability and tries to use MySQL CLI locally or via pod.
 - agent is not aware of the DB naming pattern in dev and iterates to find it.
-- **Playwright create/edit login timeout.** The agent reported this as the single biggest time sink and an
-  environment flake (dev-server `blong-watch` restarts → 502 on the MLE handshake
-  `/rpc/login/.well-known/mle` → blank page → login timeout).
-  **HUMAN REVIEW**: I doubt these conclusions. This did not happen in both runs. One of the runs failed to
-  spot an error popup in the browser. It also seems we have too high wait timeouts for Playwright to
-  spot page elements, which causes big waits. 3-5 seconds should be enough for most of the cases.
-  Status: not addressed yet — planned as a separate work item (Playwright triage + wait-timeout reduction +
-  dev-server stability).
 
 ## List of resolved frictions
 
-Resolved by the "improve blong-kopi + realm-creation skills" plan (2026-08-18) — Areas 1 & 2 implemented.
+Resolved by the "improve blong-kopi + realm-creation skills" plan (2026-08-18) — Areas 1 & 2 implemented,
+plus the follow-up consolidation (shared RBAC handler reuse + single-source scaffolder).
 
 - **blong-access / RBAC reuse not highlighted.** The blong-core skill now documents the RBAC merge seed
   pattern (`accessAuthorizationMerge` reusing `core.triple.merge`, non-dotted capability names) and
-  blong-realm points at it; the blong-kopi template ships `meta/dbTest/$subjectAuthorizationMerge.yaml`.
+  blong-realm points at it. Follow-up (2026-08-18): the template now REUSES the shared handler in code,
+  not just in docs — it ships `meta/dbTest/accessAuthorizationMerge.yaml` (fixed filename, deliberately
+  NO `$subject` placeholder, because the seed method derives from the filename →
+  `access.authorization.merge` → blong-access's shared `accessAuthorizationMerge` handler attached to the
+  `db` adapter). The earlier `adapter/db/$subjectAuthorizationMerge.ts` duplicate handler was deleted;
+  only the seed CONTENT carries `$subject` placeholders. Non-dotted capability names stay the default.
 - **browser/orchestrator/subject/init.ts — do not replace `subject` with the realm name.** Stated as a
   guardrail in blong-realm / blong-layer / conventions and in the template file comments; the scaffolded
   folder name `subject` stays literal (only the `namespace` value is the realm name).

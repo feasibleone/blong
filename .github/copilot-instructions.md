@@ -1,15 +1,46 @@
 # Blong Coding Instructions
 
 Blong: TypeScript API framework — Rush.js monorepo (pnpm). Same codebase runs as modular monolith
-(dev) or microservices (prod) unchanged. This instruction is the **router** — providing rules and pointers to skills and details. Full detail lives in skills: invoke them via the `skill` tool.
+(dev) or microservices (prod) unchanged. This instruction is the **router** — providing rules and
+pointers to skills and details. Full detail lives in skills: invoke them via the `skill` tool.
+
+## [CRITICAL_OBSERVABILITY]
+
+- We log in chat todo metrics explicitly. This applies in **every session** — emit the marker
+  **immediately after the switch/pivot**, before starting the next todo (not at the end of the
+  session). Chat logs are exported and analyzed to spot frictions and excessive iteration, so the
+  metrics must be **output at the time of pivoting**. Emit at least once per todo point completed,
+  and also within major milestones inside a single todo (every time you pivot to a new objective,
+  finish a debugging cycle, or completely switch tasks). Use ✅ COMPLETED / ❌ ABANDONED / 🔄
+  PIVOTED for the status.
+
+    Use this exact structure for your markers:
+
+    ```markdown
+    # Task metrics: ✅/❌/🔄 [Short todo name]
+
+    - Turns: [Number of responses spent on this todo]
+    - Failures: [Count of failures/bugs hit during this todo]
+    - Friction: [Low / Medium / High]
+    - Tools: [Comma-separated list of tools used and how many times each]
+    ```
+
+- We track automatic decisions explicitly. Whenever you hesitated about what the user requested or
+  implied and made a choice, you MUST output this in .github/memory/decision.md. If this is a
+  critical decision that is likely to take a lot of effort to reconsider, you MUST stop and point
+  the user to this file and state the decision needed. Make sure that you do not allow the Autopilot
+  mode to interfere and answer questions instead of the user.
 
 ## [CRITICAL_GUARDRAILS]
 
 Hard rules — apply first, never contradict.
 
-- **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`); direct imports break IoC.
-- **Semantic triple naming** `subjectObjectPredicate`; file = export = wire name; singular subject/object, present-tense predicate. Flag violations before proceeding.
-- **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge` (single); `insert`/`update`/`delete` (bulk). Never invent if one is already standard.
+- **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
+  direct imports break IoC.
+- **Semantic triple naming** `subjectObjectPredicate`; file = export = wire name; singular
+  subject/object, present-tense predicate. Flag violations before proceeding.
+- **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge` (single);
+  `insert`/`update`/`delete` (bulk). Never invent if one is already standard.
 - **Always forward `$meta`** as the 2nd arg through every handler call.
 - **One handler per file.** File = exported fn = triple. Library fns get their own files too.
 - **Hierarchy never skipped:** suite → realm → layer → handler group → handler.
@@ -85,9 +116,9 @@ API definition as the primary source of truth and apply the conflict priority in
   `action(s)`, `test`, `browser/api`, `browser/init`, `browser/test`, `browser/orchestrator`.
   Top-level `test/` is a BROWSER layer (Playwright `*.play.ts`); server tap tests live in
   `server/test/`. Custom folder names need a `layer.server.ts` / `layer.browser.ts`.
-- **Create realms from the `blong-kopi` template** — `blong realm <name>` (or `blong create realm
-  <name>`, or the auto-trigger under `kopi.realm`), then adjust per `blong-realm`. Do not hand-build
-  the folder structure.
+- **Create realms from the `blong-kopi` template** — `blong realm <name>` (or
+  `blong create realm <name>`, or the auto-trigger under `kopi.realm`), then adjust per
+  `blong-realm`. Do not hand-build the folder structure.
 - **Lint changed files.** Use vscode error reporting or `node --run ci-lint -- [files...]` per
   affected package. For spell errors prefer proper words / snake-case / camelCase over dictionary
   additions.
@@ -95,8 +126,8 @@ API definition as the primary source of truth and apply the conflict priority in
   exploration.
 - **Record frictions.** If a task needed unexpected effort or failed, append a short note to
   `.github/memory/friction.md` (also: long investigations, hard decisions, lots of source read).
-- **TypeScript is not compiled**, unless strictly necessary. We run on latest Node.js which can strip
-  types.
+- **TypeScript is not compiled**, unless strictly necessary. We run on latest Node.js which can
+  strip types.
 
 ## Architecture Hierarchy
 
@@ -116,36 +147,36 @@ Suite             — top-level entry point, glues realms, defines deployment co
 
 **For implementation tasks:**
 
-| Your Task                                | Call `skill` with                                     |
-| ---------------------------------------- | ----------------------------------------------------- |
-| Creating a new top-level solution        | **blong-suite**                                       |
-| Creating a new business domain           | **blong-realm** (scaffold via **blong-kopi**)         |
-| Adding an API endpoint                   | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
-| Connecting to database                   | **blong-adapter** (see SQL adapter patterns)          |
-| Calling external API                     | **blong-adapter** (see HTTP adapter patterns)         |
-| Implementing business logic              | **blong-orchestrator**                                |
-| Organizing code into layers              | **blong-layer**                                       |
-| Implementing protocols                   | **blong-codec**                                       |
-| Adding input validation                  | **blong-validation**                                  |
-| Defining typed errors                    | **blong-error**                                       |
-| Writing tests                            | **blong-test**                                        |
-| Setting up test entry point (index.ts)   | **blong-test-api**                                    |
-| Simulating HTTP/TCP backends locally     | **blong-test-sim**                                    |
-| CI integration tests with K8s backends   | **blong-test-int**                                    |
-| Testing with mock handlers (server-side) | **blong-mock-test**                                   |
-| Implementing EIP integration patterns    | **blong-eip**                                         |
-| Configuring / creating CLI intents       | **blong-intent**                                      |
-| Setting up Storybook                     | **storybook-v10-setup**                               |
-| Developing with Storybook                | **storybook-testing-workflow**                        |
-| Viewing logs                             | **blong-log**                                         |
-| Developing the logging tooling           | **blong-log-dev**                                     |
-| Implementing blong-browser components    | **blong-browser**                                     |
-| Adding multi-language / i18n support     | **blong-i18n**                                        |
-| Using the model for realm CRUD pages     | **blong-model**                                       |
-| Developing the model system internals    | **blong-model-dev**                                   |
-| Full-stack Playwright testing            | **blong-playwright**                                  |
-| Writing or reviewing documentation       | **blong-docs**                                        |
-| Parties, RBAC, users, auth, resource graph | **blong-core**                                      |
+| Your Task                                  | Call `skill` with                                     |
+| ------------------------------------------ | ----------------------------------------------------- |
+| Creating a new top-level solution          | **blong-suite**                                       |
+| Creating a new business domain             | **blong-realm** (scaffold via **blong-kopi**)         |
+| Adding an API endpoint                     | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
+| Connecting to database                     | **blong-adapter** (see SQL adapter patterns)          |
+| Calling external API                       | **blong-adapter** (see HTTP adapter patterns)         |
+| Implementing business logic                | **blong-orchestrator**                                |
+| Organizing code into layers                | **blong-layer**                                       |
+| Implementing protocols                     | **blong-codec**                                       |
+| Adding input validation                    | **blong-validation**                                  |
+| Defining typed errors                      | **blong-error**                                       |
+| Writing tests                              | **blong-test**                                        |
+| Setting up test entry point (index.ts)     | **blong-test-api**                                    |
+| Simulating HTTP/TCP backends locally       | **blong-test-sim**                                    |
+| CI integration tests with K8s backends     | **blong-test-int**                                    |
+| Testing with mock handlers (server-side)   | **blong-mock-test**                                   |
+| Implementing EIP integration patterns      | **blong-eip**                                         |
+| Configuring / creating CLI intents         | **blong-intent**                                      |
+| Setting up Storybook                       | **storybook-v10-setup**                               |
+| Developing with Storybook                  | **storybook-testing-workflow**                        |
+| Viewing logs                               | **blong-log**                                         |
+| Developing the logging tooling             | **blong-log-dev**                                     |
+| Implementing blong-browser components      | **blong-browser**                                     |
+| Adding multi-language / i18n support       | **blong-i18n**                                        |
+| Using the model for realm CRUD pages       | **blong-model**                                       |
+| Developing the model system internals      | **blong-model-dev**                                   |
+| Full-stack Playwright testing              | **blong-playwright**                                  |
+| Writing or reviewing documentation         | **blong-docs**                                        |
+| Parties, RBAC, users, auth, resource graph | **blong-core**                                        |
 
 **For understanding concepts — also call `skill`:**
 
@@ -180,17 +211,17 @@ Suite             — top-level entry point, glues realms, defines deployment co
 - **Service definition** — realms/layers via builder pattern; adapters/orchestrators self-contained
   (`activation` co-located in the layer file, not `server.ts`). See `blong-realm`, `blong-adapter`,
   `blong-orchestrator`.
-- **Handler & runtime** — `handler()` factory; semantic triples; `runtime.{lib,errors,config,log,handler}`
-  proxy (IoC, hot reload, mocking). See `blong-handler`.
+- **Handler & runtime** — `handler()` factory; semantic triples;
+  `runtime.{lib,errors,config,log,handler}` proxy (IoC, hot reload, mocking). See `blong-handler`.
 - **Adapter** — integration points; stream (TCP encode/decode) vs API (HTTP/SDK) based. See
   `blong-adapter`.
 - **Orchestrator** — business-logic coordinators; dispatch + schedule; saga; namespace → K8s
   service. See `blong-orchestrator`.
 - **Gateway** — public JSON-RPC surface (default) + REST; validation + API docs. See `blong-rest`,
   `blong-validation`.
-- **Default protocol JSON-RPC 2.0** — external `POST /rpc/{subject}/{object}/{predicate}`;
-  internal `POST http://{namespace}/ports/{subject}/request` (errors via `mtid:'error'`, never
-  JSON-RPC errors); notifications `/publish`. Handler code is transport-agnostic. See `blong-rest`,
+- **Default protocol JSON-RPC 2.0** — external `POST /rpc/{subject}/{object}/{predicate}`; internal
+  `POST http://{namespace}/ports/{subject}/request` (errors via `mtid:'error'`, never JSON-RPC
+  errors); notifications `/publish`. Handler code is transport-agnostic. See `blong-rest`,
   `blong-codec`.
 - **Codec** — protocol impl on transports (OpenAPI, JSON-RPC, MLE, TCP). See `blong-codec`.
 
@@ -347,6 +378,7 @@ Uses `@feasibleone/blong-login` for JWT-based authentication with token creation
 `/rpc/login/token/create`.
 
 ### Authorization
+
 - **blong-access** - RBAC
 - **blong-gateway** - API gateway (optional)
 
@@ -374,9 +406,9 @@ extending, see the source: `core/blong-gogo/src/SystemDebug.ts`.
 
 ### Storybook (blong-browser / blong-marine / blong-suite)
 
-When working on `core/blong-browser/`, `core/blong-suite/` or any realm, Storybook may
-already be running on `http://localhost:6006`. A shared browser tab pointing to it may also be
-available in the session.
+When working on `core/blong-browser/`, `core/blong-suite/` or any realm, Storybook may already be
+running on `http://localhost:6006`. A shared browser tab pointing to it may also be available in the
+session.
 
 **Check if Storybook is running and which package it belongs to:**
 
@@ -440,12 +472,12 @@ MLE codec:
 - **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
   output). Implemented in `core/blong-dev/src/commands/trace.ts`.
 
-- **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk. Pass a ULID to
-  fetch one entry. Implemented in `core/blong-dev/src/commands/log.ts` on top of `cacache`. See the
-  **blong-log** skill for full usage.
+- **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk. Pass a
+  ULID to fetch one entry. Implemented in `core/blong-dev/src/commands/log.ts` on top of `cacache`.
+  See the **blong-log** skill for full usage.
 
-- **`blong-dev sql`** — run SQL queries against a configured database. (blong-dev sql "SELECT * FROM ...`schema_name`.`table_name`")
-  implemented in `core/blong-dev/src/commands/sql.ts`.
+- **`blong-dev sql`** — run SQL queries against a configured database. (blong-dev sql "SELECT \*
+  FROM ...`schema_name`.`table_name`") implemented in `core/blong-dev/src/commands/sql.ts`.
 
 ## Architecture & Design Documents
 

@@ -80,7 +80,7 @@ export default handler(
                                 $objectName: `ENT-BROWSER-${Date.now()}`,
                                 $objectStatus: 'draft',
                             },
-                            details: [{lineName: 'Item', lineQuantity: 1}],
+                            line: [{lineName: 'Item', lineQuantity: 1}],
                         },
                         $meta,
                     );

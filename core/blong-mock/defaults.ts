@@ -2,12 +2,12 @@
  * Model defaults — fills in standard values for unspecified ModelSpec fields.
  *
  */
-import type {IModelSpec, IResolvedModelSpec} from '@feasibleone/blong';
+import type {IModelSpec, IPropertyOverride, IResolvedModelSpec} from '@feasibleone/blong';
 import {mergeWithSymbols} from '@feasibleone/blong-lib';
 
-/** Capitalize the first character of a string */
+/** Capitalize the first letter, skipping a leading `$` placeholder (`$object` → `$Object`). */
 function capital(s: string): string {
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    return s.replace(/^(\$*)([a-z])/, (_m, pre: string, c: string) => pre + c.toUpperCase());
 }
 
 /**
@@ -22,6 +22,53 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
     const keyField = spec.keyField ?? `${object}Id`;
     const nameField = spec.nameField ?? `${object}.${object}Name`;
 
+    // ── Master-detail (IModelSpec.details) ─────────────────────────────────
+    // Each detail entity becomes an array property at the SAME level as the
+    // master record's dedicated key — `schema.properties[object]` (master) and
+    // `schema.properties[detail.object]` (detail arrays) are siblings. The
+    // detail-ROW schema (`items.properties`) is declared by the realm on that
+    // sibling and deep-merges in here (mergeWithSymbols); we fill in the array
+    // typing, the editable table widget, a card and a tab.
+    const details = spec.details ?? [];
+    const detailSchemaProps: Record<string, IPropertyOverride> = {};
+    const detailCards: Record<string, {label: string; widgets: string[]}> = {};
+    for (const detail of details) {
+        const detailObjectTitle = capital(detail.object);
+        detailSchemaProps[detail.object] = {
+            type: 'array',
+            title: detailObjectTitle,
+            widget: {
+                type: 'table',
+                keyField: detail.keyField ?? `${detail.object}Id`,
+                actions: {allowAdd: true, allowEdit: true, allowDelete: true},
+            },
+            items: {
+                type: 'object',
+                properties: {},
+            },
+            // `items` carries `type` (schema semantics) beyond IPropertyOverride's
+            // narrow `items` declaration.
+        } as IPropertyOverride;
+        const cardId = `details-${detail.object}`;
+        detailCards[cardId] = {
+            label: detailObjectTitle,
+            widgets: [detail.object],
+        };
+    }
+    const editLayout =
+        details.length > 0
+            ? {
+                  items: [
+                      {id: 'edit', label: objectTitle, widgets: ['edit']},
+                      ...details.map(detail => ({
+                          id: `details-${detail.object}`,
+                          label: capital(detail.object),
+                          widgets: [`details-${detail.object}`],
+                      })),
+                  ],
+              }
+            : ['edit', 'hidden'];
+
     return mergeWithSymbols<IResolvedModelSpec, IModelSpec>(
         {
             subject,
@@ -31,6 +78,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
             keyField,
             nameField,
             public: false,
+            details: spec.details ?? [],
             schema: {
                 properties: {
                     [object]: {
@@ -53,6 +101,9 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                             parent: '$.selected.navigator',
                         },
                     },
+                    // Detail arrays are SIBLINGS of the master object — the
+                    // realm declares their `items.properties` on these keys.
+                    ...detailSchemaProps,
                     navigator: {
                         title: '',
                         type: 'array',
@@ -86,6 +137,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                     watch: `$.selected.${object}`,
                     widgets: [`$.edit.${object}.${nameField.split('.').pop()!}`],
                 },
+                ...detailCards,
             },
             browser: {
                 title: `Browse ${objectTitle}`,
@@ -131,7 +183,7 @@ export function withDefaults(spec: IModelSpec): IResolvedModelSpec {
                 permission: `${subject}.${object}.report`,
             },
             layouts: {
-                edit: ['edit', 'hidden'],
+                edit: editLayout,
                 browse: {
                     type: 'split',
                     panels: [
