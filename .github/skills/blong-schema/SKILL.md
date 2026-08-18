@@ -15,6 +15,14 @@ description: Define database schemas, seed data, and test seed data in a Blong r
 - **Constraints apply in a second pass** after all tables exist (FK targets guaranteed).
 - **Don't recreate the built-in `adapter/db.ts`** — extend via `schema.tables` / `procedurePaths`.
 - **Name PKs/FKs deliberately:** `increment` (simple PK) · `ulid`/`uuid` (distributed PK) · `uid` (FK).
+- **[FK_TYPING]** An FK column referencing an `increment()` PK must be `type.bigIntNotNull()` —
+  the PK is BIGINT UNSIGNED; `type.uid*` FKs only point to `ulid`/`uuid` PKs. Also avoid chained
+  knex FK options (`onDelete`) on such FKs — the current knex crashes with
+  `fkr.onDelete is not a function`; use a plain string FK reference (`'subject.object.column'`).
+- **[AUTO_VALIDATION]** The gateway auto-validates CRUD params against the table's `NotNull`
+  columns (`subject.validation` for public models). Server-managed audit fields (e.g. `createdAt`)
+  must be nullable (`type.dateTimeNull()`), or `add`/`edit` fail with
+  `Validation failed: must have required properties ... createdAt`.
 
 Canonical framework rules + archetype:
 `.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`.

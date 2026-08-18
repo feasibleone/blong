@@ -1,37 +1,9 @@
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs';
-import {basename, dirname, join} from 'path';
-import {globSync} from 'tinyglobby';
-
-export async function createRealm(
-    destUrl: string,
-    logger?: {warn?: (message: string) => void},
-): Promise<string[]> {
-    const result = [];
-    const url = import.meta.resolve('@feasibleone/blong-kopi/package.json');
-    const cwd = url.startsWith('file://') ? dirname(url.slice(7)) : url;
-    destUrl = destUrl.startsWith('file://') ? dirname(destUrl.slice(7)) : destUrl;
-    const subject = basename(destUrl);
-    const replace = (str: string): string =>
-        str.replaceAll('$subject', subject).replaceAll('$Subject', subject.toUpperCase());
-    logger?.warn?.(`Creating realm ${destUrl} from ${cwd}`);
-    for (const file of globSync(['**/*.ts'], {
-        cwd,
-        ignore: ['**/node_modules/**', '.*'],
-    })) {
-        const [source, dest] = [join(cwd, file), join(destUrl, replace(file))];
-        if (!existsSync(dest) || readFileSync(dest, 'utf8').startsWith('import unchanged')) {
-            mkdirSync(dirname(dest), {recursive: true});
-            writeFileSync(
-                dest,
-                "import unchanged from '@feasibleone/blong';\r" +
-                    replace(readFileSync(source, 'utf8')),
-            );
-            result.push(dest);
-        }
-    }
-    writeFileSync(
-        join(destUrl, 'package.json'),
-        readFileSync(join(cwd, 'package.json'), 'utf8').replace('@feasibleone/blong-kopi', subject),
-    );
-    return result;
-}
+/**
+ * kopi.ts — re-export of the realm scaffolding helper.
+ *
+ * The implementation lives in `@feasibleone/blong-kopi` (the template package);
+ * blong-gogo depends on it and only re-exports here so the loader and CLI can
+ * share a single source of truth.
+ */
+export {createRealm} from '@feasibleone/blong-kopi/kopi.ts';
+export type {CreateRealmOptions} from '@feasibleone/blong-kopi/kopi.ts';

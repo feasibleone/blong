@@ -1,6 +1,11 @@
 ---
 name: blong-handler
-description: Create API handlers and library functions in Blong using semantic triple naming (subjectObjectPredicate). Handlers implement business operations, protocol tasks, or reusable logic. Use this skill whenever you're writing any function in a Blong realm — API endpoints, library helpers, adapter logic, or test steps. Even if the user just says 'add a function' or 'implement this logic in Blong', use this skill.
+description:
+    Create API handlers and library functions in Blong using semantic triple naming
+    (subjectObjectPredicate). Handlers implement business operations, protocol tasks, or reusable
+    logic. Use this skill whenever you're writing any function in a Blong realm — API endpoints,
+    library helpers, adapter logic, or test steps. Even if the user just says 'add a function' or
+    'implement this logic in Blong', use this skill.
 ---
 
 # Implementing Handlers
@@ -8,10 +13,12 @@ description: Create API handlers and library functions in Blong using semantic t
 ## [CRITICAL_GUARDRAILS]
 
 - **Triple naming.** `subjectObjectPredicate`; file = export = wire name. Flag violations.
-- **Never import other handlers.** Use `handler: {}` proxy (IoC). Direct imports break IoC + hot reload.
+- **Never import other handlers.** Use `handler: {}` proxy (IoC). Direct imports break IoC + hot
+  reload.
 - **Always forward `$meta`** as the 2nd arg on every downstream call.
 - **One handler per file.** Library functions get their own files too.
-- **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge`; `insert`/`update`/`delete`.
+- **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge`;
+  `insert`/`update`/`delete`.
 - **Two-word properties.** `userName` not `name`; `customerId` not `id`.
 
 Canonical framework rules + `[ARCHETYPE: HANDLER]` type signature:
@@ -129,9 +136,12 @@ export default library(
 
 > **Library return types are `unknown`** (`LibFn` = `<T>(...params: unknown[]) => T`) — annotate at
 > the call site:
-> - Destructure the result via a call-site generic: `const {hash, params} = hashPassword<{hash: string; params: P}>(...)`.
+>
+> - Destructure the result via a call-site generic:
+>   `const {hash, params} = hashPassword<{hash: string; params: P}>(...)`.
 > - `return libFn(...)` works only when the enclosing fn has a declared return type.
-> - Type-only imports (`import {type P} from './password.ts'`) are erased at runtime — safe, keep DRY.
+> - Type-only imports (`import {type P} from './password.ts'`) are erased at runtime — safe, keep
+>   DRY.
 
 ## API Parameter: Destructuring
 
@@ -211,6 +221,37 @@ orchestrator/
 ```
 
 Group name: `realmname.entity` (referenced in `imports`)
+
+### DB Persistence Handlers (`adapter/db/`)
+
+DB persistence handlers live in `adapter/db/` and reach the shared knex pool via
+`this.config?.context?.queryBuilder`:
+
+```typescript
+// adapter/db/subjectObjectAdd.ts
+import {handler, type IMeta, type Knex} from '@feasibleone/blong';
+
+export default handler(
+    ({errors: {errorSubjectInvalidStatus}}) =>
+        async function subjectObjectAdd(params: unknown, $meta: IMeta) {
+            const qb = this.config?.context?.queryBuilder as Knex | undefined;
+            if (!qb) throw new Error('Database not available');
+            // persistence logic
+        },
+);
+```
+
+Do NOT put DB persistence handlers in `orchestrator/`. See **blong-layer** `[REUSE_SERVER]` and
+`_shared/conventions.md` `[DB_ACCESS]`.
+
+### Plain helper files in a handler group
+
+A helper used by handlers in the SAME group may live beside them (e.g. `adapter/db/account.ts`
+exporting `splitNames`). It triggers a benign
+`probably a generic source code was put in a handler group folder` warning — imports still work. For
+helpers shared across groups, prefer a `lib/` group exported through the framework (`library()`
+factory), or a clearly `_`/`.`-prefixed plain file; do not scatter shared helpers across handler
+folders.
 
 ## Calling Other Handlers
 
@@ -383,8 +424,8 @@ export default handler(
 
 ### Overriding Folder Config via Realm
 
-The realm's `server.ts` can override folder config values using the `namespace` config property.
-Use this for values that cannot live in source code (e.g. production secrets, deployment-specific URLs):
+The realm's `server.ts` can override folder config values using the `namespace` config property. Use
+this for values that cannot live in source code (e.g. production secrets, deployment-specific URLs):
 
 ```typescript
 // realmname/server.ts
@@ -405,7 +446,8 @@ export default realm(blong => ({
 }));
 ```
 
-**Priority order:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
+**Priority order:** Realm `namespace` override > `config.ts` active environment activation >
+`config.ts` `default`
 
 ## Automatic Validation
 
@@ -451,7 +493,8 @@ export default handler(
 
 ## Best Practices
 
-- **Types as API definition:** `type Handler` drives validation + OpenAPI docs (`~.schema.ts` auto-generated).
+- **Types as API definition:** `type Handler` drives validation + OpenAPI docs (`~.schema.ts`
+  auto-generated).
 - **Errors:** throw domain errors (`errors.xxx`), never generic `Error`.
 - **$meta:** always forward; `{...$meta, expect}` for expected errors.
 - **Co-locate config:** `config.ts` in the handler folder over `server.ts`.

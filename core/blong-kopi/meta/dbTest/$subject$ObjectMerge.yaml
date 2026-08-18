@@ -1,0 +1,8 @@
+key: $objectId
+$object:
+  - $objectId: 101
+    $objectName: Sample $Object One
+    $objectStatus: draft
+  - $objectId: 102
+    $objectName: Sample $Object Two
+    $objectStatus: sent

@@ -11,8 +11,11 @@ description: Use the blong-browser model system to implement CRUD pages in a blo
   row + working generic CRUD. `uidNotNull()` does NOT.
 - **Never use a single `saveAction` pointing to `.add` for `subjectObjectNew`** — duplicate records
   (see `_shared` `[PITFALLS]`).
-- **`public: true` + `subject.validation`** — mark the model public to expose the CRUD endpoints on the gateway; without
-  them the generic RPC routes aren't exposed and browse 404s.
+- **`public: true` by default + per-operation override** — mark the model public to expose the CRUD
+  endpoints on the gateway (without `subject.validation` the generic RPC routes aren't exposed and
+  browse 404s). When ONE operation differs from the auto-generated one (e.g. `add` accepts extra
+  params), keep the model public and add an explicit `gateway/<subject>/<method>.ts` validation
+  override — do NOT make the model non-public.
 - **Binary PK round-trip** — `uuid()` PKs are `binary(16)`: `get`/`find` return base64; dropdown
   values for binary PKs must be base64 too.
 - **Model files end in `Model.ts`**, exported from a `{subject}{Object}Model` handler (`.model` kind)
@@ -373,11 +376,17 @@ string above it) — otherwise a plain text input submits a STRING and strict Ty
 
 ### Model & schema authoring tricks
 
-- **`public: true` + `subject.validation`** — mark a model as public API with `public: true` in its
-  spec and it gets default CRUD validations automatically (no config needed). A suite only opts out
-  in rare cases: `srv: {'subject.validation': {validations: false}}` (all) or
+- **`public: true` + `subject.validation`** — mark a model as public API with `public: true` and it
+  gets default CRUD validations automatically (no config needed). A suite only opts out in rare
+  cases: `srv: {'subject.validation': {validations: false}}` (all) or
   `{validations: {coralModel: false}}` (one model). Without the validation schemas the generic RPC
   routes aren't exposed and browse 404s.
+  **Decision rule for a differing operation** (e.g. `invoice.invoice.add` accepts an optional
+  `lines` payload): keep the model `public: true` and OVERRIDE only that operation with an explicit
+  `gateway/<subject>/<method>.ts` validation file (it merges with the auto-generated one). Making
+  the model non-public (manual gateway files for every op) is the last resort, not the default.
+- **Browse `orderBy` shape** — the browse widget sends `orderBy` as an array of `{field, dir}`; the
+  `find` handler must tolerate array-of-`{field, dir}` OR a plain `order` string.
 - **`type.uuid()` vs `type.uidNotNull()`** — `type.uuid()` (default literal `'uuid'`) lets the
   generic knex `add` auto-generate the PK and a backing `core_resource` row; `uidNotNull()` does
   not. Use `uuid()` for entity PKs so generic CRUD create works.

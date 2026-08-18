@@ -353,8 +353,13 @@ The login response also returns `permissions` (the resolved action names) for cl
 
 ### Extending access
 
-- **New action**: seed a row with `resourceType: access.action` + `name` (the semantic triple, e.g.
-  `invoice.invoice.approve`) in `meta/db/` (prod) or `meta/dbTest/` (test). Add a gateway
+> **Capability/action naming convention**: use NON-dotted **handler names** by default
+> (`invoiceInvoiceAdd`, `invoiceManage`) in action/capability seeds and in the `permissions` /
+> `permissionMap` matching (the `accessAuthorizationList` handler returns methodIds with dots
+> stripped). Dotted forms (`invoice.invoice.add`) are explicit special cases and discouraged.
+
+- **New action**: seed a row with `resourceType: access.action` + `name` (the NON-dotted handler
+  name, e.g. `invoiceInvoiceApprove`) in `meta/db/` (prod) or `meta/dbTest/` (test). Add a gateway
   `validation` wrapper if it should be a public RPC method. Protect it by granting a capability via
   `hasAction`.
 - **New capability**: seed with `resourceType: access.capability` + `name`; link it to its actions.

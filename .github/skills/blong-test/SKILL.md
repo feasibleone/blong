@@ -46,6 +46,12 @@ realmname/
 - Handler group: `test.test`
 - File prefix: `test` (e.g., `testUserAdd.ts`, `testPayment.ts`)
 
+> **Canonical placement:** server-side tap tests live in `server/test/` (e.g.
+> `core/blong-access/server/test/test/testLoginFlow.ts`). The `test/test/` layout shown here still
+> works (the framework auto-provisions a `testDispatch` for a server `test/` folder), but the
+> reference realms standardize on `server/test/`. The top-level `test/` folder also doubles as the
+> browser/Playwright layer (`*.play.ts`) — keep server tap tests out of it.
+
 ## Test Handler Pattern
 
 ### Basic Test

@@ -1,0 +1,12 @@
+# RBAC test seed — grants `$subject` capabilities to the existing `Admin` role.
+#
+# `testAdmin` / `testUser` (seeded by blong-access/meta/dbTest) hold the `Admin`
+# role, so adding the `$subjectManage` capability to `Admin` grants them every
+# `$subject` action. `testViewer` (role `Customer`) and `testGuest` (role
+# `Guest`) get none, which lets access-control tests assert 403 for them.
+#
+# Capability names are the NON-dotted handler names (the default convention).
+role:
+  Admin: $subjectManage
+capability:
+  $subjectManage: $subject$ObjectAdd,$subject$ObjectFind,$subject$ObjectGet,$subject$ObjectEdit,$subject$ObjectRemove

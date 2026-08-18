@@ -1,49 +1,117 @@
 ---
 name: blong-realm
-description: Create business domain boundaries in Blong framework. Realms separate business logic into independent, modular units that can be deployed as monolith or microservices. Use this skill whenever creating a new business domain or service in Blong — even if the user says 'add a new module', 'create a new service', or 'set up a new package'.
+description:
+    Create business domain boundaries in Blong framework. Realms separate business logic into
+    independent, modular units that can be deployed as monolith or microservices. Use this skill
+    whenever creating a new business domain or service in Blong — even if the user says 'add a new
+    module', 'create a new service', or 'set up a new package'.
 ---
 
 # Implementing a Realm
 
+## Start with blong-kopi (scaffold, then adjust)
+
+Create a realm by **scaffolding `@feasibleone/blong-kopi`** — do NOT hand-build the folder
+structure. The scaffolded realm is complete and runnable, and it **reuses the shared
+`@feasibleone/blong-server`** subject orchestrator + db adapter (the canonical pattern used by
+`blong-access`, `blong-party`, `blong-gateway`).
+
+### Create it
+
+```bash
+blong realm <name>                     # create is implied
+blong create realm <name>              # explicit form
+blong realm <name> --object <entity>   # entity ("object" of the triple); default `entry`
+```
+
+The framework also auto-scaffolds when a suite declares a realm child whose folder is missing and
+`kopi.realm` is enabled in config — see `core/blong-kopi/README.md` for the exact trigger conditions
+and the rename steps.
+
+### Then adjust (what to change per context)
+
+1. **Rename the entity** — the default is `entry` (plus a `line` detail table). Rename `entry` →
+   your entity (e.g. `invoice`) and `line` → your detail entity across file names, table names and
+   field prefixes. Use two-word property names everywhere (`invoiceNumber`, not `number`).
+2. **Set the package name/version** in `package.json`, register the package in `rush.json`,
+   `rush update`.
+3. **Add tables** — edit `meta/type/schema.ts` + `meta/db/db.ts` (see **blong-schema**).
+4. **Add models** — edit/extend `meta/model/*Model.ts` (see **blong-model**).
+5. **Add custom DB handlers** — `adapter/db/<subject><Object><Predicate>.ts` using `queryBuilder`
+   (see **blong-handler**); add gateway override files for non-standard operations (see
+   **blong-model**).
+6. **Add seeds** — `meta/db/*.yaml` (prod) + `meta/dbTest/*.yaml` (test), including the RBAC merge
+   seed (see **blong-core**).
+7. **Wire tests** — `server/test/` tap flow + `browser/test/` tap flow + `test/*.play.ts` Playwright
+   (see **blong-test-api**, **blong-playwright**).
+8. **Adjust ports** in `playwright.config.ts` if they clash with a locally-running realm.
+
 ## [CRITICAL_GUARDRAILS]
 
-- **Well-known layer folders auto-discover** (`error`, `adapter`, `orchestrator`, `gateway`,
-  `sim`, `test`) — no `layer.*.ts` needed. Custom names need one.
-- **Layer config is co-located** in the layer file (`adapter(blong => …)`) — `server.ts` only for
-  realm-level validation/config shared across layers.
+- **[REUSE_SERVER]** A realm REUSES blong-server's subject orchestrator + db adapter. Do NOT create
+  a realm-local `adapter/db.ts` or a dispatch orchestrator. The realm contributes
+  `orchestrator/subject/init.ts` (namespace) + `adapter/db/*.ts` handlers + `meta/`.
+- **[DB_ACCESS]** DB persistence handlers live in `adapter/db/` and reach the shared knex pool via
+  `this.config?.context?.queryBuilder` — do NOT put them in `orchestrator/`.
+- **`subject` stays literal** in `orchestrator/subject/init.ts` and
+  `browser/orchestrator/subject/init.ts` — only the `namespace` value is the realm name. Replacing
+  the folder name breaks method binding.
+- **Server test layer is `server/test/`** (tap), browser test layer is `browser/test/` (tap), and
+  the top-level `test/` folder holds Playwright `*.play.ts` (a browser layer). Do not put server tap
+  tests in top-level `test/`.
+- **Well-known layer folders auto-discover** (`error`, `adapter`, `orchestrator`, `gateway`, `meta`,
+  `sim`, `server/test`) — no `layer.*.ts` needed. Custom names need one.
+- **Layer config is co-located** in the layer file — `server.ts` only for realm-level
+  validation/config shared across layers.
 - **`adapter/dbTest/` handlers are `dev`-only** — never ship in production; `adapter/db/` loads in
   all intents.
 - **Browser namespace file REQUIRED** for portal pages: `browser/orchestrator/subject/init.ts`
   exporting `namespace: '<realmname>'` — without it browse fails "Method binding failed".
-- **Omit `server.ts`** for standard realms.
 - **Name consistency:** realm folder = package name = namespace prefix.
 
-Canonical framework rules + layer table:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`,
-`[CONFIG_EXAMPLE]`. Siblings: **blong-layer**, **blong-suite**.
+Canonical framework rules + layer table: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`, `[CONFIG_EXAMPLE]`. Siblings: **blong-layer**,
+**blong-suite**.
 
-## File Structure
+## File Structure (canonical — what blong-kopi scaffolds)
 
-```
+```text
 realmname/
-├── server.ts           # Optional — only for realm-level config/validation
-├── package.json        # Package definition (if separate package)
-├── adapter/            # Auto-discovered (well-known name)
-│   └── db.ts           # Self-contained adapter
-├── orchestrator/       # Auto-discovered (well-known name)
-│   └── dispatch.ts     # Self-contained orchestrator
-├── gateway/            # Auto-discovered (well-known name)
-├── error/              # Auto-discovered (well-known name)
-└── test/               # Auto-discovered (well-known name)
+├── server.ts                # Minimal realm entry: realm(() => ({url: import.meta.url}))
+├── browser.ts               # Realm browser entry (auto-discovers meta/ + browser/orchestrator)
+├── package.json             # Name/version set by you; devDeps for the standalone test setup
+├── index.ts                 # Standalone server bootstrap: srv + login + core + access + realm
+├── index.browser.ts         # Standalone browser bootstrap: ui + realm
+├── index.html.ts / index.test.ts / browser-test.ts
+├── vite.config.ts / playwright.config.ts
+├── orchestrator/
+│   └── subject/
+│       └── init.ts          # namespace only — REUSE blong-server (folder `subject` literal)
+├── adapter/
+│   └── db/                  # custom DB handlers (queryBuilder); auto-attached to srv.db
+├── meta/                    # schema, db config, seeds, models
+│   ├── type/schema.ts
+│   ├── db/db.ts             # table registration + dbTest
+│   ├── db/*.yaml            # prod seeds
+│   ├── dbTest/*.yaml        # test seeds (including RBAC)
+│   └── model/*Model.ts      # public model specs
+├── gateway/
+│   └── <subject>/           # explicit validation for non-standard ops (public-model override)
+├── error/error.ts
+├── server/test/test/        # server tap tests (test.<object> group)
+├── browser/test/test/       # browser tap tests (HTTP-level access control)
+└── test/                    # Playwright *.play.ts (browser layer)
 ```
 
-Custom layer folders need a `layer.server.ts`:
+Reference realms: `core/blong-access`, `core/blong-party`, `core/blong-gateway` (canonical
+blong-server reuse); `core/blong-suite` shows wiring multiple realms into one suite.
 
-```
-realmname/
-└── myCustomLayer/
-    └── layer.server.ts  # Required: declares activation for non-well-known folder
-```
+## Recommended skill set for creating a realm
+
+Load at least: **blong-realm**, **blong-schema**, **blong-handler**, **blong-error**,
+**blong-model**, **blong-test-api**, and — when UI tests are in scope — **blong-playwright**. This
+set produces architecturally correct realms; skipping skills causes re-discovery and iteration
+loops.
 
 ## layer.server.ts / layer.browser.ts
 
@@ -75,8 +143,8 @@ default by adding a `layer.server.ts` / `layer.browser.ts`. See **blong-intent**
 
 ### Test-Only Handler Groups (`dbTest`)
 
-Adapter handler groups follow the `db` adapter's `imports` patterns. The shared `db` adapter
-(`blong-server/adapter/db.ts`) imports handler groups matching `/\.db$/` in **all** intents, and
+Adapter handler groups follow the shared `db` adapter's `imports` patterns
+(`blong-server/adapter/db.ts`): it imports handler groups matching `/\.db$/` in **all** intents, and
 only adds `/\.dbTest$/`, `/\.model$/`, `/\.fixture$/` under the **`dev`** intent. Consequence:
 
 - Handlers in `adapter/db/` are loaded **always** (including production).
@@ -92,12 +160,19 @@ realmname/
     └── dbTest/      # Test-only handlers (loaded only in the dev intent)
 ```
 
-## Minimal server.ts (Only When Needed)
+## Minimal server.ts
 
-`server.ts` is **only needed** when the realm has:
+The canonical realm `server.ts` is minimal — layers are auto-discovered and blong-server is wired by
+the standalone `index.ts` (or a suite):
 
-- Realm-level validation schema
-- Realm-level default config (e.g. keys, URLs shared across layers)
+```typescript
+// realmname/server.ts
+import {realm} from '@feasibleone/blong';
+
+export default realm(() => ({url: import.meta.url}));
+```
+
+Add realm-level validation/config only when genuinely shared across layers:
 
 ```typescript
 // realmname/server.ts — only when realm-level config is needed
@@ -105,20 +180,12 @@ import {realm} from '@feasibleone/blong';
 
 export default realm(blong => ({
     url: import.meta.url,
-
-    // Realm-level validation (for config like JWT keys, URLs)
     validation: blong.type.Object({
-        myService: blong.type.Object({
-            url: blong.type.String(),
-        }),
+        myService: blong.type.Object({url: blong.type.String()}),
     }),
-
-    // Realm-level defaults shared across layers
     config: {
         default: {
-            myService: {
-                url: 'http://localhost:8080',
-            },
+            myService: {url: 'http://localhost:8080'},
         },
     },
 }));
@@ -126,66 +193,31 @@ export default realm(blong => ({
 
 ### Layer Files Define Their Own Config
 
-Each adapter/orchestrator defines its own configuration:
+Each adapter/orchestrator defines its own configuration in the layer file. A realm that needs an
+ADDITIONAL adapter (on top of the shared `srv.db`) declares it co-located:
 
 ```typescript
-// adapter/db.ts - configuration lives here, not in server.ts
+// adapter/meter.ts — a realm-local adapter, co-located config
 import {adapter} from '@feasibleone/blong';
 
 export default adapter(blong => ({
-    extends: 'adapter.knex',
-    validation: blong.type.Object({
-        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
-        imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
-    }),
+    extends: 'adapter.redis',
     activation: {
-        default: {
-            namespace: 'db/$subject',
-            imports: '$subject.db',
-        },
+        default: {namespace: 'meter', imports: []},
+        dev: {redis: {host: '127.0.0.1', port: 6379}},
     },
 }));
 ```
 
-```typescript
-// orchestrator/dispatch.ts - configuration lives here, not in server.ts
-import {orchestrator} from '@feasibleone/blong';
-
-export default orchestrator(blong => ({
-    extends: 'orchestrator.dispatch',
-    activation: {
-        default: {
-            destination: 'db',
-            namespace: ['$subject'],
-            imports: [/^$subject\./],
-            validations: [/^$subject\.\w+\.validation$/],
-        },
-    },
-}));
-```
+(Example: `core/blong-gateway/adapter/meter.ts`.)
 
 ## Configuration Concepts
 
 ### Environment Activations
 
-Intent keys merged into active config — `default` (always), `dev`, `prod`, `test`, `db`, `realm`,
-`microservice`, `integration`. See **blong-intent** for the full reference.
-
-### Layer Activation
-
-Set layer names to `true` to activate them in server.ts:
-
-```typescript
-config: {
-    test: {
-        error: true,
-        adapter: true,
-        orchestrator: true,
-        gateway: true,
-        test: true
-    }
-}
-```
+Intent keys merged into active config — `default` (always), `dev`, `prod`, `test`, `db`,
+`microservice`, `integration`, plus the realm-creation intents `realm` / `create` (CLI-only). See
+**blong-intent** for the full reference.
 
 ### Config Priority (highest to lowest)
 
@@ -218,53 +250,45 @@ When including external realm packages, use async imports in the APPLICATION-lev
 
 ```typescript
 children: [
-    async () => import('@feasibleone/blong-login/server.js'),
-    async () => import('@feasibleone/blong-openapi/server.js'),
+    async () => import('@feasibleone/blong-login/server.ts'),
+    async () => import('@feasibleone/blong-openapi/server.ts'),
 ];
 ```
 
 ## Best Practices
 
+- **Scaffold from blong-kopi**, then adjust — do not hand-build the structure.
+- **Reuse blong-server** (subject orchestrator + db adapter); only add realm-local adapters when a
+  new external system is involved.
 - **Zero-config well-known folders**; `layer.*.ts` only for custom names.
-- **Omit `server.ts`** for standard realms; keep it only for realm-level validation/shared config.
 - **Co-locate config** in the layer file; **consistent names** (folder = package = namespace).
 
 ## Examples from Codebase
 
-See `core/test/demo/` for a complete example without server.ts:
-
-- No `layer.server.ts` files — auto-discovered via well-known folder names
-- Each adapter/orchestrator file is self-contained with its own config
-
-See `core/blong-marine/` for an example of a realm that can run both **standalone** (own Vite /
-Storybook / Playwright) **and** as a child of a larger suite:
-
-- `browser.ts` and `server.ts` are `browser()` / `server()` suite entries (not `realm()`)
-- They include all their own infrastructure (blong-browser, blong-server, blong-login) as children
-- A parent suite (e.g. `core/blong-suite/`) simply imports `@feasibleone/blong-marine/browser.ts` as
-  a child;
-- Adding a second realm to the suite: append one line to the parent `browser.ts` children array and
-  add the package to `realmPackages` in `playwright.config.ts` and `.storybook/main.ts`
+- `core/blong-party/` — the simplest canonical realm: pure auto-CRUD over `meta/` tables + models,
+  no `adapter/db/*` handlers, standalone `index.ts` / `index.browser.ts` / Playwright
+  `test/*.play.ts`.
+- `core/blong-access/` — canonical realm with custom `adapter/db/*` handlers (queryBuilder), RBAC
+  merge seeds, server + browser tap tests.
+- `core/blong-gateway/` — canonical realm plus a realm-local Redis adapter (`adapter/meter.ts`).
 
 ## Standalone Realm Entry Points
 
-When a realm is developed and tested as a standalone package (with its own Vite, Storybook, and
-Playwright setup), it needs additional entry point files that wire its infrastructure dependencies.
+A realm developed and tested standalone needs entry point files that wire its infrastructure
+dependencies. `blong-kopi` scaffolds all of these.
 
 ### index.ts — server bootstrap for testing
 
-`index.ts` exports a `server()` definition that wraps the realm with the dependencies it needs
-(typically `blong-server`, `blong-login`, and the realm itself). The framework auto-detects the
-`server()` kind and runs it via `runPlatform()` — no import from `blong-gogo` needed:
+`index.ts` exports a `server()` definition that wraps the realm with its dependencies
+(`blong-server` as `srv`, `blong-login`, `blong-core`, `blong-access`, and the realm). The framework
+auto-detects the `server()` kind and runs it via `runPlatform()`:
 
 ```typescript
 // realmname/index.ts
 import {server} from '@feasibleone/blong';
-import pkg from './package.json' with {type: 'json'};
 
 export default server(() => ({
     url: import.meta.url,
-    pkg: {name: pkg.name, version: pkg.version},
     children: [
         async function srv() {
             return import('@feasibleone/blong-server/server.ts');
@@ -272,25 +296,35 @@ export default server(() => ({
         async function login() {
             return import('@feasibleone/blong-login/server.ts');
         },
+        async function core() {
+            return import('@feasibleone/blong-core/server.ts');
+        },
+        async function access() {
+            return import('@feasibleone/blong-access/server.ts');
+        },
         async function realm() {
             return import('./server.ts');
         },
     ],
     config: {
-        default: {},
-        dev: {srv: {}, realm: {}, login: {}},
+        default: {
+            gateway: {authorize: 'access.authorization.list'},
+        },
+        dev: {srv: {}, core: {}, access: {}, realm: {}, login: {}},
+        integration: {
+            watch: {test: ['test.<object>']},
+        },
     },
 }));
 ```
 
-This is a dev dependency pattern — `index.ts` wires the realm's runtime infrastructure for local
+This is a dev-dependency pattern — `index.ts` wires the realm's runtime infrastructure for local
 development and integration tests. It is not imported by a parent suite; the parent suite imports
 `./server.ts` instead.
 
 ### index.html.ts — browser entry point (Vite)
 
-`index.html.ts` is the TypeScript Vite entry point (loaded by `index.html`). It loads the browser
-platform using `blong-gogo`:
+`index.html.ts` loads the browser platform using `blong-gogo`:
 
 ```typescript
 // realmname/index.html.ts
@@ -305,8 +339,8 @@ load(browser, pkg.name, {apiSchema: false}, ['microservice', 'integration', 'dev
 
 ### index.browser.ts — browser suite definition
 
-`index.browser.ts` is the browser-platform equivalent of `index.ts`. It exports a `browser()`
-definition that wires the realm's browser infrastructure (blong-browser, login, and the realm):
+`index.browser.ts` exports a `browser()` definition wiring the realm's browser infrastructure
+(blong-browser + the realm):
 
 ```typescript
 // realmname/index.browser.ts
@@ -334,19 +368,11 @@ export default browser(blong => ({
 }));
 ```
 
-`index.html` references `./index.html.ts` as its module entry:
-
-```html
-<script
-    type="module"
-    src="./index.html.ts"
-></script>
-```
-
 ### Browser namespace file — REQUIRED for portal pages
 
-A realm that contributes portal/browse pages MUST also create `browser/orchestrator/subject/init.ts`
-exporting the realm's subject namespace:
+A realm that contributes portal/browse pages MUST export the subject namespace in
+`browser/orchestrator/subject/init.ts` (and the server-side `orchestrator/subject/init.ts`). Both
+are scaffolded by blong-kopi:
 
 ```typescript
 // realmname/browser/orchestrator/subject/init.ts
@@ -358,5 +384,4 @@ export default handler(() => ({
 ```
 
 Without it the browser cannot bind `realmname.*` calls and browse fails with "Method binding
-failed". The `blong-kopi` realm template scaffolds this file automatically (and the realm skill
-should always generate it).
+failed". The folder name `subject` stays literal.

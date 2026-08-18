@@ -20,6 +20,11 @@ Framework-level hard rules. Every skill assumes these. Apply first; never contra
 - **Hierarchy never skipped.** suite → realm → layer → handler group → handler.
 - **Two-word properties.** `userName` not `name`; `customerId` not `id`; `emailAddress` not `email`.
 - **Adapters never call adapters directly.** Coordinate via orchestrators.
+- **[REUSE_SERVER]** Realms reuse blong-server's subject orchestrator + db adapter. Do NOT create a
+  realm-local `adapter/db.ts` or a dispatch orchestrator; contribute
+  `orchestrator/subject/init.ts` (namespace) + `adapter/db/*.ts` handlers + `meta/`.
+- **[DB_ACCESS]** DB persistence handlers live in `adapter/db/` and reach the shared knex pool via
+  `this.config?.context?.queryBuilder` — not in `orchestrator/`.
 - **Never enable `systemDebug` in production.**
 - **Never commit to `dev/`** (gitignored).
 
@@ -84,7 +89,9 @@ export default orchestrator.dispatch({
 ```
 
 Rule: orchestrators coordinate business logic across adapters; namespace becomes a Kubernetes
-service in microservice mode.
+service in microservice mode. **Realms normally REUSE blong-server's `subject` orchestrator** (which
+forwards to the `db` destination) — they only add `orchestrator/subject/init.ts` with a `namespace`.
+A realm-local dispatch orchestrator is only needed for a genuinely different routing shape.
 
 ---
 
@@ -137,19 +144,35 @@ Rule: browse/new/open/report pages auto-generate from one `IModelSpec`; see blon
 
 ## [LAYER_DEFAULTS_TABLE]
 
-Well-known folders auto-activate at their default intent — no `layer.*.ts` needed. Key = intent that
-activates the layer; `default` = always.
+Well-known folders auto-activate at their default intent — no `layer.*.ts` needed. This table mirrors
+`WELL_KNOWN_LAYERS` in `core/blong-gogo/src/load.ts` (the source of truth). `default` = always active;
+`integration` = active under the `integration` intent (the default CLI intents are
+`dev + microservice + integration`, so these are active in practice).
 
-| Folder         | Server intent      | Browser intent     |
-| -------------- | ------------------ | ------------------ |
-| `error`        | `default` (always) | —                  |
-| `adapter`      | `default` (always) | `default` (always) |
-| `orchestrator` | `default` (always) | —                  |
-| `gateway`      | `default` (always) | —                  |
-| `sim`          | `integration`      | —                  |
-| `test`         | `integration`      | `integration`      |
-| `backend`      | —                  | `default` (always) |
-| `component`    | —                  | `default` (always) |
+| Folder | Server intent | Browser intent |
+| --- | --- | --- |
+| `api` | `default` | `default` |
+| `init` | `default` | `default` |
+| `meta` | `default` | `default` |
+| `error` | `integration` | — |
+| `sim` | `integration` | — |
+| `adapter` | `integration` | — |
+| `orchestrator` | `integration` | — |
+| `gateway` | `integration` | — |
+| `backend` | — | `integration` |
+| `component` | — | `integration` |
+| `action` / `actions` | — | `integration` |
+| `test` | — | `integration` |
+| `server/api` | `integration` | — |
+| `server/init` | `default` | — |
+| `server/test` | `integration` | — |
+| `browser/api` | — | `integration` |
+| `browser/init` | — | `default` |
+| `browser/test` | — | `integration` |
+| `browser/orchestrator` | — | `integration` |
+
+> Server tap tests live in `server/test/`; browser tap tests in `browser/test/`; the top-level `test/`
+> folder is a browser layer holding Playwright `*.play.ts`.
 
 Custom folder names require a `layer.server.ts` / `layer.browser.ts`.
 

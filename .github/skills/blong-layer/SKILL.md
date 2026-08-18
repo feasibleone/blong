@@ -1,22 +1,33 @@
 ---
 name: blong-layer
-description: Organize handlers into named functional groups within a Blong realm. Layers include gateway (API), adapter (external systems), orchestrator (business logic), error (domain errors), and test (automation). Use this skill whenever creating a new layer in a realm, setting up the folder structure for handlers, or configuring which layers activate in which environment — even if the user just says 'organize this' or 'add a new layer'.
+description:
+    Organize handlers into named functional groups within a Blong realm. Layers include gateway
+    (API), adapter (external systems), orchestrator (business logic), error (domain errors), and
+    test (automation). Use this skill whenever creating a new layer in a realm, setting up the
+    folder structure for handlers, or configuring which layers activate in which environment — even
+    if the user just says 'organize this' or 'add a new layer'.
 ---
 
 # Implementing a Layer
 
 ## [CRITICAL_GUARDRAILS]
 
-- **Layers are self-contained.** Config + validation + `activation` live in the layer file — NOT
-  the realm `server.ts`. `server.ts` only for realm-level shared config.
-- **Well-known folders auto-discover** (`error`, `adapter`, `orchestrator`, `gateway`, `sim`,
-  `test` server; `backend`, `component` browser) — no `layer.*.ts` needed. Custom names need one.
+- **Layers are self-contained.** Config + validation + `activation` live in the layer file — NOT the
+  realm `server.ts`. `server.ts` only for realm-level shared config.
+- **Well-known folders auto-discover** — server: `error`, `sim`, `adapter`, `orchestrator`,
+  `gateway`, `meta`, `server/api`, `server/init`, `server/test`; browser: `backend`, `component`,
+  `action(s)`, `test`, `browser/api`, `browser/init`, `browser/test`, `browser/orchestrator` — no
+  `layer.*.ts` needed. Custom names need one.
+- **[REUSE_SERVER]** Realms reuse blong-server's subject orchestrator + db adapter. Do NOT create a
+  realm-local `adapter/db.ts` or a dispatch orchestrator unless a genuinely different
+  routing/adapter is needed (e.g. a realm-local Redis adapter like
+  `core/blong-gateway/adapter/meter.ts`).
 - **One handler per file** — file = exported fn = semantic triple.
 - **Import order:** error → adapter → orchestrator → gateway → test.
 - **No direct cross-handler imports.** Load groups via `imports` in the adapter/orchestrator.
 
-Canonical layer-defaults intents + config pattern:
-`.github/skills/_shared/conventions.md` → `[LAYER_DEFAULTS_TABLE]`, `[CONFIG_EXAMPLE]`.
+Canonical layer-defaults intents + config pattern: `.github/skills/_shared/conventions.md` →
+`[LAYER_DEFAULTS_TABLE]`, `[CONFIG_EXAMPLE]`.
 
 ## Layer Names (auto-detected)
 
@@ -26,14 +37,20 @@ Canonical layer-defaults intents + config pattern:
 - **`adapter`** - External system communication: SQL, HTTP, FTP, mail protocols
 - **`orchestrator`** - Business process coordination between adapters
 - **`error`** - Domain-specific error definitions
-- **`test`** - Test automation (dev/build only)
-- **`eft`** - Electronic Funds Transfer (high TPS OLTP requirements)
+- **`meta`** - Schema (`type/schema.ts`), DB registration (`db/db.ts`), seeds (`db/*.yaml`,
+  `dbTest/*.yaml`), models (`model/*Model.ts`)
+- **`server/test`** - Server-side tap tests (handler group `realmname.test`)
 
 ### Browser-Side
 
 - **`backend`** - Browser adapter talking to server
 - **`component`** - React UI components
-- **`browser`** - Server-side code serving browser assets
+- **`test`** - Playwright `*.play.ts` (browser layer)
+- **`browser/test`** - Browser-side tap tests
+- **`browser/orchestrator`** - Browser namespace bindings + React orchestrator components
+
+> Top-level `test/` is a BROWSER layer holding Playwright `*.play.ts` — do NOT put server tap tests
+> there; use `server/test/`.
 
 ## Folder Structure
 
@@ -43,20 +60,26 @@ Well-known layer folders are auto-discovered — no `layer.server.ts` needed:
 
 ```
 realmname/
-├── server.ts            # Optional — only for realm-level config/validation
+├── server.ts            # Minimal realm entry: realm(() => ({url: import.meta.url}))
 ├── error/               # Auto-activated (well-known name)
 │   └── error.ts
 ├── adapter/             # Auto-activated (well-known name)
-│   ├── db.ts            # Self-contained database adapter (with config)
-│   ├── http.ts          # Self-contained HTTP adapter (with config)
-│   └── db/              # Handler group: realmname.db
+│   └── db/              # Handler group: realmname.db (attached to blong-server's srv.db)
 │       ├── userUserAdd.ts
 │       └── userUserFind.ts
 ├── orchestrator/        # Auto-activated (well-known name)
-│   └── dispatch.ts      # Self-contained orchestrator (with config)
-└── gateway/             # Auto-activated (well-known name)
-    └── api/
-        └── user.yaml
+│   └── subject/         # Handler group: realmname.subject
+│       └── init.ts      # namespace only — REUSE blong-server's subject orchestrator
+├── meta/                # Auto-activated (well-known name)
+│   ├── type/schema.ts
+│   ├── db/db.ts
+│   ├── db/*.yaml
+│   ├── dbTest/*.yaml
+│   └── model/*Model.ts
+├── gateway/             # Auto-activated (well-known name)
+│   └── <subject>/       # explicit validation files (public-model overrides)
+├── server/test/         # Server tap tests (server/test/ layer)
+└── test/                # Playwright *.play.ts (browser layer)
 ```
 
 Custom (non-well-known) layer folders need a `layer.server.ts` or `layer.browser.ts`:
@@ -69,17 +92,17 @@ realmname/
 
 ## layer.server.ts / layer.browser.ts
 
-For folders with non-standard names, add a `layer.server.ts` or `layer.browser.ts` to declare
-which CLI **intents** activate the layer. This eliminates the need for an explicit `children` array
-or activation config in the parent `server.ts`.
+For folders with non-standard names, add a `layer.server.ts` or `layer.browser.ts` to declare which
+CLI **intents** activate the layer. This eliminates the need for an explicit `children` array or
+activation config in the parent `server.ts`.
 
 ```typescript
 // myCustomLayer/layer.server.ts
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true,        // active regardless of which intents are present
-    microservice: true,   // additionally active when the microservice intent is present
+    default: true, // active regardless of which intents are present
+    microservice: true, // additionally active when the microservice intent is present
 });
 ```
 
@@ -100,11 +123,11 @@ override any entry. See **blong-intent** for the full intents reference and cust
 
 ### Dev-Only Handler Groups (`.dev` suffix)
 
-A handler-group folder whose name ends in `.dev` (e.g. `gateway/vision.dev/`) loads **only under
-the `dev` intent** — under any other intent the whole folder is skipped. This is the general
-mechanism for making a specific handler group (gateway validations, orchestrator namespaces,
-handlers) dev-only without touching config. It complements the `adapter/dbTest` pattern (which
-is scoped to the db adapter's import regex).
+A handler-group folder whose name ends in `.dev` (e.g. `gateway/vision.dev/`) loads **only under the
+`dev` intent** — under any other intent the whole folder is skipped. This is the general mechanism
+for making a specific handler group (gateway validations, orchestrator namespaces, handlers)
+dev-only without touching config. It complements the `adapter/dbTest` pattern (which is scoped to
+the db adapter's import regex).
 
 ```text
 gateway/
@@ -113,72 +136,55 @@ gateway/
 ```
 
 The `.dev` suffix is a **loading gate only** — it does not change names. Gateway validations are
-keyed by function name (`visionCompute` → `vision.compute`) and orchestrator namespaces are
-declared explicitly in `init.ts` (`{namespace: 'vision'}`), so a `.dev` folder keeps the same
+keyed by function name (`visionCompute` → `vision.compute`) and orchestrator namespaces are declared
+explicitly in `init.ts` (`{namespace: 'vision'}`), so a `.dev` folder keeps the same
 routes/namespaces as its non-`.dev` equivalent.
 
 ## Self-Contained Layer Pattern
 
+> The examples below are for **additional realm-local adapters/orchestrators** (e.g. a realm-local
+> Redis adapter like `core/blong-gateway/adapter/meter.ts`). For standard DB access do NOT create
+> `adapter/db.ts` — reuse blong-server's shared `srv.db` and contribute `adapter/db/*.ts` handlers
+> that read `this.config?.context?.queryBuilder`.
+
 ### Adapter Layer Definition
 
+A realm adds a realm-local adapter only when it integrates an additional external system on top of
+the shared `srv.db` — e.g. a Redis meter adapter (see `core/blong-gateway/adapter/meter.ts`):
+
 ```typescript
-// adapter/db.ts - self-contained with config and validation
+// adapter/meter.ts - self-contained realm-local adapter (config + validation co-located)
 import {adapter} from '@feasibleone/blong';
 
 export default adapter(blong => ({
-    extends: 'adapter.knex',
-
-    // Layer's own validation schema
-    validation: blong.type.Object({
-        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
-        imports: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
-        logLevel: blong.type.Optional(blong.type.String()),
-    }),
+    extends: 'adapter.redis',
 
     // Layer's own configuration per environment
     activation: {
-        default: {
-            namespace: 'db/$subject',
-            imports: '$subject.db',
-        },
-        dev: {
-            logLevel: 'trace',
-        },
-        prod: {
-            logLevel: 'warn',
-        },
+        default: {namespace: 'meter', imports: []},
+        dev: {redis: {host: '127.0.0.1', port: 6379}},
     },
 }));
 ```
 
 ### Orchestrator Layer Definition
 
+Realms normally REUSE blong-server's `subject` orchestrator (namespace `subject`, destination `db`)
+via `orchestrator/subject/init.ts`. A realm-local dispatch orchestrator is only needed for a
+genuinely different routing shape (e.g. `blong-login/orchestrator/loginDispatch.ts`):
+
 ```typescript
-// orchestrator/dispatch.ts - self-contained with config and validation
+// orchestrator/loginDispatch.ts - self-contained dispatch orchestrator (rarely needed)
 import {orchestrator} from '@feasibleone/blong';
 
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
 
-    validation: blong.type.Object({
-        namespace: blong.type.Union([blong.type.String(), blong.type.Array(blong.type.String())]),
-        imports: blong.type.Union([
-            blong.type.String(),
-            blong.type.Array(blong.type.String()),
-            blong.type.Array(blong.type.RegExp()),
-        ]),
-        validations: blong.type.Optional(
-            blong.type.Array(blong.type.Union([blong.type.String(), blong.type.RegExp()])),
-        ),
-        destination: blong.type.Optional(blong.type.String()),
-    }),
-
     activation: {
         default: {
             destination: 'db',
-            namespace: ['$subject'],
-            imports: [/^$subject\./],
-            validations: [/^$subject\.\w+\.validation$/],
+            namespace: ['login'],
+            imports: [/^login\./],
         },
     },
 }));
@@ -186,7 +192,8 @@ export default orchestrator(blong => ({
 
 ### Realm Entry Point (Only When Needed)
 
-`server.ts` is optional. It is only needed when there is realm-level config or validation shared across layers.
+`server.ts` is optional. It is only needed when there is realm-level config or validation shared
+across layers.
 
 ```typescript
 // server.ts — only when realm-level config is needed
@@ -285,7 +292,8 @@ export default realm(blong => ({
 }));
 ```
 
-**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts` `default`
+**Priority:** Realm `namespace` override > `config.ts` active environment activation > `config.ts`
+`default`
 
 ## Implementation Patterns
 

@@ -30,10 +30,25 @@
 # ---------------------------------------------------------------------------
 # DO NOT MODIFY ABOVE THIS LINE!  Add any project-specific overrides below.
 # ---------------------------------------------------------------------------
+# The whole package IS the scaffolding template — publish every file the
+# `createRealm` scaffolder copies into a new realm.
 !/adapter/**
 !/error/**
 !/gateway/**
+!/meta/**
 !/orchestrator/**
+!/server/**
 !/test/**
-browser.ts
-server.ts
+!/browser/**
+!kopi.ts
+!browser.ts
+!server.ts
+!browser-test.ts
+!index.ts
+!index.browser.ts
+!index.html.ts
+!index.test.ts
+!vite.config.ts
+!playwright.config.ts
+!tsconfig.json
+!eslint.config.mjs

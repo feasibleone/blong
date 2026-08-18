@@ -15,6 +15,9 @@ Hard rules — apply first, never contradict.
 - **Hierarchy never skipped:** suite → realm → layer → handler group → handler.
 - **Two-word properties.** `userName` not `name`; `customerId` not `id`; `emailAddress` not `email`.
 - **Adapters never call adapters directly.** Coordinate via orchestrators.
+- **[REUSE_SERVER]** Realms reuse blong-server's subject orchestrator + db adapter — do NOT create a
+  realm-local `adapter/db.ts` or a dispatch orchestrator; contribute `orchestrator/subject/init.ts`
+  (namespace) + `adapter/db/*.ts` handlers (`queryBuilder`) + `meta/`.
 - **Never enable `systemDebug` in production.**
 - **Never commit to `dev/`** (gitignored) — committed code lives in `core/`.
 - **Always invoke the matching `skill`** before implementing (see `[SKILLS_DELEGATOR]`).
@@ -77,9 +80,14 @@ API definition as the primary source of truth and apply the conflict priority in
 - **File naming.** Use semantic triple or two-word convention; avoid `index.x` where a descriptive
   name fits (ctrl+p discoverability). Classes/React components `CamelCase`; everything else
   `camelCase`.
-- **Well-known layers auto-discovered** — `error`, `adapter`, `orchestrator`, `gateway`, `sim`,
-  `test` (server); `backend`, `component` (browser). Custom folder names need a `layer.server.ts` /
-  `layer.browser.ts`.
+- **Well-known layers auto-discovered** — server: `error`, `sim`, `adapter`, `orchestrator`,
+  `gateway`, `meta`, `server/api`, `server/init`, `server/test`; browser: `backend`, `component`,
+  `action(s)`, `test`, `browser/api`, `browser/init`, `browser/test`, `browser/orchestrator`.
+  Top-level `test/` is a BROWSER layer (Playwright `*.play.ts`); server tap tests live in
+  `server/test/`. Custom folder names need a `layer.server.ts` / `layer.browser.ts`.
+- **Create realms from the `blong-kopi` template** — `blong realm <name>` (or `blong create realm
+  <name>`, or the auto-trigger under `kopi.realm`), then adjust per `blong-realm`. Do not hand-build
+  the folder structure.
 - **Lint changed files.** Use vscode error reporting or `node --run ci-lint -- [files...]` per
   affected package. For spell errors prefer proper words / snake-case / camelCase over dictionary
   additions.
@@ -111,7 +119,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Your Task                                | Call `skill` with                                     |
 | ---------------------------------------- | ----------------------------------------------------- |
 | Creating a new top-level solution        | **blong-suite**                                       |
-| Creating a new business domain           | **blong-realm**                                       |
+| Creating a new business domain           | **blong-realm** (scaffold via **blong-kopi**)         |
 | Adding an API endpoint                   | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
 | Connecting to database                   | **blong-adapter** (see SQL adapter patterns)          |
 | Calling external API                     | **blong-adapter** (see HTTP adapter patterns)         |

@@ -1,6 +1,12 @@
 ---
 name: blong-playwright
-description: Write full-stack Playwright tests for Blong applications. The blong-browser package provides reusable fixtures (auto-login, Portal helper) and generic CRUD test helpers that work with any model spec. Tests run against the live dev server (Vite + blong-watch) and use primarily screenshot-based assertions. Use this skill whenever the user wants to write E2E tests, UI integration tests, Playwright tests, or full-stack browser tests — even if they just say 'test the UI' or 'add a visual test'.
+description:
+    Write full-stack Playwright tests for Blong applications. The blong-browser package provides
+    reusable fixtures (auto-login, Portal helper) and generic CRUD test helpers that work with any
+    model spec. Tests run against the live dev server (Vite + blong-watch) and use primarily
+    screenshot-based assertions. Use this skill whenever the user wants to write E2E tests, UI
+    integration tests, Playwright tests, or full-stack browser tests — even if they just say 'test
+    the UI' or 'add a visual test'.
 ---
 
 # Full-Stack Testing with Playwright

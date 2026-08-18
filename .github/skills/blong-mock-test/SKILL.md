@@ -157,6 +157,11 @@ export default orchestrator(blong => ({
 Test handlers call the real business handler and assert on the results. They live in `test/test/`
 and follow the [blong-test](../test) pattern.
 
+> **Canonical placement:** the reference realms place server-side tap tests in `server/test/`
+> (`core/blong-access/server/test/test/`). The `test/test/` + `testDispatch` layout shown here still
+> works (the framework auto-provisions a `testDispatch` when a server `test/` folder has no
+> `testDispatch.ts`), but `server/test/` is the standard going forward.
+
 ```ts
 // realmname/test/test/testEipClaim.ts
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
