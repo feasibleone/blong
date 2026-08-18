@@ -3,8 +3,9 @@
 ## Test handlers
 
 Writing tests is very similar to writing handlers and library functions.
-The main difference is that the files are in the `test/test` folder,
-the first `test` being the layer name and the second `test` being part
+The main difference is that the files are in the `server/test/test` folder
+(server-side) or `browser/test/test` (browser-side), the first `test` being
+part of the layer name and the second `test` being part
 of the name of the handlers, which becomes `xxx.test`.
 The layer name is useful to activate tests only when needed,
 while the `xxx.test` is convenient way to find all test handlers
@@ -58,7 +59,7 @@ with the `matchSnapshot` assertion function, which is not available in
 Example:
 
 ```ts
-// realmname/test/test/testSomething.ts
+// realmname/server/test/test/testSomething.ts
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(({
@@ -199,7 +200,7 @@ Test handlers accept arbitrary parameters beyond `name`, enabling powerful reuse
 patterns. A reusable test handler defines custom parameters with default values:
 
 ```ts
-// realmname/test/test/testTransfer.ts
+// realmname/server/test/test/testTransfer.ts
 export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
     testTransfer: ({name = 'transfer', amount = 100, currency = 'USD', userId = 1}, $meta) =>
         group(name)([
@@ -216,7 +217,7 @@ export default handler(({lib: {group}, handler: {transferTransferCreate}}) => ({
 Another handler can reuse it with different parameter combinations:
 
 ```ts
-// realmname/test/test/testTransferScenarios.ts
+// realmname/server/test/test/testTransferScenarios.ts
 export default handler(({lib: {group}, handler: {testTransfer}}) => ({
     testTransferScenarios: ({name = 'transfer scenarios'}, $meta) =>
         group(name)([
@@ -298,7 +299,7 @@ export default handler(({lib: {group}, handler: {orderProcess}}) => ({
 
 Test handlers can be promoted to production handlers. The process:
 
-1. Move the handler from `test/test/` to `orchestrator/`
+1. Move the handler from `server/test/test/` to `orchestrator/`
 2. Destructure `assert` and `checkpoint` from `lib` (both use `?.` for zero-cost in production)
 3. Add checkpoints at key progress points
 4. Adjust the orchestrator dispatch configuration

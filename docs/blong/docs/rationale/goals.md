@@ -47,7 +47,7 @@ core/handler-test-poc/order/
 │   ├── orderOrderCreate.ts
 │   └── orderFlowExecute.ts
 ├── adapter/               ← integration
-└── test/test/             ← test handlers, same pattern
+└── server/test/         ← server test handlers, same pattern
     └── testOrderCheckpoint.ts
 ```
 

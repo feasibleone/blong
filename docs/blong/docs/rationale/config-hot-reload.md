@@ -195,7 +195,7 @@ Every reload emits a log entry with:
 4. **Adapters** that hold stateful connections should implement `configChanged`
    to avoid unnecessary downtime.
 
-**Real example** (`core/config-hot-reload/configReload/test/test/testConfigGet.ts`):
+**Real example** (`core/config-hot-reload/configReload/server/test/test/testConfigGet.ts`):
 
 ```typescript
 export default handler(({lib: {group}, handler: {configGet}}) => ({
@@ -297,6 +297,6 @@ the concept end-to-end. The `configReload` realm contains:
 
 - `orchestrator/config/configGet.ts` — side-by-side comparison of root access
   and partial destructuring patterns.
-- `test/test/testConfigGet.ts` — integration test validating root proxy access.
-- `test/test/testConfigThemeGet.ts` — integration test specific to partial
+- `server/test/test/testConfigGet.ts` — integration test validating root proxy access.
+- `server/test/test/testConfigThemeGet.ts` — integration test specific to partial
   destructuring (`{config: {theme}}` → `theme.name`).

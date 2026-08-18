@@ -105,7 +105,7 @@ export default handler(
 );
 ```
 
-**Test reading those checkpoints** (`core/handler-test-poc/order/test/test/testOrderCheckpoint.ts`):
+**Test reading those checkpoints** (`core/handler-test-poc/order/server/test/test/testOrderCheckpoint.ts`):
 
 ```typescript
 $meta.checkpoints = [];
@@ -184,7 +184,7 @@ export default handler(
 A test handler that proves a workflow works correctly:
 
 ```typescript
-// test/test/testPaymentFlow.ts — starts as a test
+// server/test/test/testPaymentFlow.ts — starts as a test
 export default handler(({handler: {accountCreate, paymentTransferExecute}}) => ({
     testPaymentFlow: ({currency = 'USD', balance = 1000, amount = 100}, $meta) => [
         // $meta.name is injected by the framework proxy (e.g., 'bill payment', 'loan payment')

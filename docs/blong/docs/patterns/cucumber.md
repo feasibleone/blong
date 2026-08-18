@@ -27,7 +27,7 @@ For pure handler-level tests, the regular blong test pattern is simpler
 Feature files are exported as template-literal strings:
 
 ```typescript
-// realmname/test/feature/calculator.ts
+// realmname/server/test/feature/calculator.ts
 export default `Feature: Calculator
 
   Scenario: Add two numbers
@@ -113,7 +113,7 @@ The `featureToSteps` function connects a feature string to step definitions
 and returns a named step array compatible with the blong test runner:
 
 ```typescript
-// realmname/test/test/testCalculator.ts
+// realmname/server/test/test/testCalculator.ts
 import {type IMeta, handler} from '@feasibleone/blong';
 import {featureToSteps} from '@feasibleone/blong-cucumber';
 import calculatorFeature from '../feature/calculator.ts';

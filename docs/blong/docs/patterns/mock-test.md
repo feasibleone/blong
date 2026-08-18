@@ -2,18 +2,20 @@
 
 When writing integration tests for handlers that call external systems (databases, downstream
 services, transformation engines), you can replace those systems with lightweight mock handlers
-that live in the `test` layer.  This gives you full in-process integration tests that are fast,
-deterministic, and require no running infrastructure.
+that live in the `server/test` layer.  This gives you full in-process integration tests that are
+fast, deterministic, and require no running infrastructure.
 
 ## How it works
 
-The `test` layer is activated only in the `integration` intent.  It adds two
+The `server/test` layer is activated under the `integration` intent.  It adds two
 orchestrators to the realm:
 
 - **`mockDispatch`** – exposes a `mock` namespace backed by simple handler implementations in
-  `test/mock/`.  These handlers simulate the external dependencies your business handlers rely on.
-- **`testDispatch`** – exposes a `test` namespace backed by test scenario handlers in `test/test/`.
-  Each test handler exercises one business handler and asserts on the results.
+  `server/test/mock/`.  These handlers simulate the external dependencies your business handlers
+  rely on.
+- **`testDispatch`** – exposes a `test` namespace backed by test scenario handlers in
+  `server/test/test/`.  Each test handler exercises one business handler and asserts on the
+  results.
 
 When the `integration` intent is active, the framework automatically sets `remote.canSkipSocket: true`,
 so every call (`eip.*`, `mock.*`, `test.*`) stays in the same process and resolves through the
@@ -27,17 +29,18 @@ realmname/
 │   ├── eipDispatch.ts           # Business namespace
 │   └── eip/                     # Business handlers that call mock.* handlers
 │       └── eipMessageClaim.ts
-└── test/                        # Test layer – activated only in "integration" mode
-    ├── mockDispatch.ts          # Orchestrator: exposes "mock" namespace
-    ├── testDispatch.ts          # Orchestrator: exposes "test" namespace
-    ├── mock/                    # Handler group "realmname.mock"
-    │   ├── ~.schema.ts          # IRemoteHandler type declarations for mock handlers
-    │   ├── mockDataSave.ts
-    │   ├── mockDataGet.ts
-    │   └── mockItemProcess.ts
-    └── test/                    # Handler group "realmname.test"
-        ├── testEipClaim.ts
-        └── testEipPipes.ts
+└── server/                      # Server platform
+    └── test/                    # Server test layer – auto-activated under "integration"
+        ├── mockDispatch.ts      # Orchestrator: exposes "mock" namespace
+        ├── testDispatch.ts      # Orchestrator: exposes "test" namespace
+        ├── mock/                # Handler group "realmname.mock"
+        │   ├── ~.schema.ts      # IRemoteHandler type declarations for mock handlers
+        │   ├── mockDataSave.ts
+        │   ├── mockDataGet.ts
+        │   └── mockItemProcess.ts
+        └── test/                # Handler group "realmname.test"
+            ├── testEipClaim.ts
+            └── testEipPipes.ts
 ```
 
 ## Step 1 – Write the mock handlers
@@ -46,7 +49,7 @@ Mock handlers are ordinary handlers that live in `test/mock/`.  They return hard
 in-memory data that the business handlers depend on.
 
 ```ts
-// realmname/test/mock/mockDataSave.ts
+// realmname/server/test/mock/mockDataSave.ts
 import {type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
@@ -58,7 +61,7 @@ export default handler(
 ```
 
 ```ts
-// realmname/test/mock/mockDataGet.ts
+// realmname/server/test/mock/mockDataGet.ts
 import {type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
@@ -76,7 +79,7 @@ Optionally add a `~.schema.ts` to declare the mock handler signatures so the Typ
 compiler and IDE can verify call sites:
 
 ```ts
-// realmname/test/mock/~.schema.ts
+// realmname/server/test/mock/~.schema.ts
 import {validationHandlers} from '@feasibleone/blong';
 
 export default validationHandlers({});
@@ -98,7 +101,7 @@ declare module '@feasibleone/blong' {
 It is only activated in the `integration` environment.
 
 ```ts
-// realmname/test/mockDispatch.ts
+// realmname/server/test/mockDispatch.ts
 import {orchestrator} from '@feasibleone/blong';
 
 export default orchestrator(blong => ({
@@ -118,7 +121,7 @@ export default orchestrator(blong => ({
 `testDispatch` wires the test handler group to the `test` namespace.
 
 ```ts
-// realmname/test/testDispatch.ts
+// realmname/server/test/testDispatch.ts
 import {orchestrator} from '@feasibleone/blong';
 
 export default orchestrator(blong => ({
@@ -136,10 +139,10 @@ export default orchestrator(blong => ({
 ## Step 4 – Write the test handlers
 
 Test handlers call the real business handler and assert on the results.
-They live in `test/test/` and follow the [test handler pattern](./test).
+They live in `server/test/test/` and follow the [test handler pattern](./test).
 
 ```ts
-// realmname/test/test/testEipClaim.ts
+// realmname/server/test/test/testEipClaim.ts
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
 export default handler(
@@ -162,29 +165,11 @@ export default handler(
 );
 ```
 
-## Step 5 – Activate the test layer in server.ts
+## Step 5 – Test layer activation
 
-Enable the `test` layer for the `integration` environment in the realm `server.ts`:
-
-```ts
-// realmname/server.ts
-import {realm} from '@feasibleone/blong';
-
-export default realm(blong => ({
-    url: import.meta.url,
-    validation: blong.type.Object({}),
-    children: ['./test'],           // include the test layer
-    config: {
-        default: {},
-        integration: {
-            test: true,             // activate the test layer
-        },
-        microservice: {
-            orchestrator: true,
-        },
-    },
-}));
-```
+The `server/test` layer is **auto-discovered** and activates under the `integration` intent — no
+`children: ['./test']` and no `integration: {test: true}` block are needed in the realm `server.ts`.
+The mock/test orchestrators co-locate their own `activation` (as in Steps 2-3).
 
 ## Step 6 – Enable tests in the root server
 
@@ -260,15 +245,14 @@ registry.  No code in the business handler changes between environments.
 
 ## Full example
 
-See `core/blong-eip/` for a complete working implementation:
+See `core/blong-eip/` for a complete working implementation (modern layout: server-side mock/test
+handlers under `server/test/`):
 
 - Business handlers: `eip/orchestrator/eip/`
-- Mock handlers: `eip/test/mock/`
-- Test handlers: `eip/test/test/`
-- Mock orchestrator: `eip/test/mockDispatch.ts`
-- Test orchestrator: `eip/test/testDispatch.ts`
-- Realm activation: `eip/server.ts`
-- Root server: `server.ts`
+- Mock handlers: `eip/server/test/mock/`
+- Test handlers: `eip/server/test/test/`
+- Mock orchestrator: `eip/server/test/mockDispatch.ts`
+- Test orchestrator: `eip/server/test/testDispatch.ts`
 - Test runner: `index.test.ts`
 
 ## See also

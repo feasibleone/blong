@@ -68,10 +68,10 @@ for example:
                    }
                }
            },
-       },
-       children: ['./adapter']
    }));
    ```
+
+   The `adapter` layer is auto-discovered — no `children` entry is needed.
 
 - Implement the HTTP adapter:
 

@@ -57,9 +57,11 @@ Each constraint above is addressed by a specific design rule in the pipeline:
 
 3. **Layers are activation boundaries** — a layer groups handlers, adapters,
    and orchestrators that activate or deactivate together. Well-known folder
-   names (`error`, `adapter`, `orchestrator`, `gateway`, `sim`, `test`,
-   `backend`, `component`) are auto-discovered and activated per their default
-   environment without any registration call.
+   names (`api`, `init`, `meta`, `error`, `sim`, `adapter`, `orchestrator`,
+   `gateway`, `server/api`, `server/init`, `server/test`, `backend`,
+   `component`, `action`, `actions`, `test`, `browser/api`, `browser/init`,
+   `browser/test`, `browser/orchestrator`) are auto-discovered and activated
+   per their default environment without any registration call.
 
 4. **Dual registration (Local + RpcServer)** — every method is registered in
    both `Local` (in-process) and `RpcServer` (inter-process). `Remote` checks

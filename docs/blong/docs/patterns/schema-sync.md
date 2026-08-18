@@ -397,7 +397,7 @@ For normal development the declarative config path is preferred over these helpe
 ## Integration test pattern
 
 The `blong-int-adapter` mysql suite demonstrates the full declarative path in
-`mysql/test/test/testMysqlSchema.ts`.  The table and procedure are created by the adapter's
+`mysql/server/test/test/testMysqlSchema.ts`.  The table and procedure are created by the adapter's
 `ready()` hook before any test step runs — the test does not call `sqlSchemaTableSync` or
 `sqlSchemaProcedureSync` for setup.
 

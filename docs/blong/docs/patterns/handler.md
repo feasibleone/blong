@@ -246,7 +246,6 @@ that explain their usage:
               },
           },
       },
-      children: ['./orchestrator'],
       ...rest
   }));
   ```

@@ -11,26 +11,31 @@ Well-known layer folders are auto-discovered — no `layer.server.ts` is needed:
 ```
 realmname/
 ├── server.ts            # Optional — only for realm-level shared config
-├── error/               # Auto-activated (server, always)
+├── error/               # Auto-activated (server, integration)
 │   └── error.ts
-├── adapter/             # Auto-activated (server, always)
+├── adapter/             # Auto-activated (server, integration)
 │   ├── db.ts            # Self-contained adapter with config + validation
 │   └── db/              # Handler group: realmname.db
 │       ├── userUserAdd.ts
 │       └── userUserFind.ts
-├── orchestrator/        # Auto-activated (server, always)
+├── orchestrator/        # Auto-activated (server, integration)
 │   ├── dispatch.ts      # Self-contained orchestrator with config + validation
 │   └── user/            # Handler group: realmname.user
 │       ├── ~.schema.ts  # Auto-generated validation schema
 │       └── userUserAdd.ts
-├── gateway/             # Auto-activated (server, always)
+├── gateway/             # Auto-activated (server, integration)
 │   └── api/
 │       └── user.yaml
-├── sim/                 # Auto-activated (server, integration only)
+├── sim/                 # Auto-activated (server, integration)
 │   └── backend.ts
-└── test/                # Auto-activated (server: test; browser: integration)
-    └── test/            # Handler group: test.test
-        └── testUser.ts
+├── server/              # Server-only well-known sub-layers
+│   ├── api/             # Auto-activated (server, integration)
+│   ├── init/            # Auto-activated (server, default)
+│   └── test/            # Server tap tests (server, integration)
+│       └── test/
+│           └── testUser.ts
+└── test/                # BROWSER layer (Playwright *.play.ts) — auto-activated (browser, integration)
+    └── user.play.ts
 ```
 
 Custom layer folders (non-well-known names) require a `layer.server.ts` or `layer.browser.ts`:

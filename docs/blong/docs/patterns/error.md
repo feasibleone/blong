@@ -49,17 +49,6 @@ and can be used both implicitly and explicitly, for example:
 - Implicitly in the `error` layer of a realm:
 
    ```ts
-   // realmname/server.ts
-   import {realm} from '@feasibleone/blong';
-
-   export default realm(blong => ({
-       children: ['./error']
-   }));
-   ```
-
-   The `error` function will be called implicitly for the file named `error.ts`:
-
-   ```ts
    // realmname/error/error.ts
    export default {
        subjectSum: 'Numbers must be positive'

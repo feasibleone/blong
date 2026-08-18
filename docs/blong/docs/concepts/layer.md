@@ -11,7 +11,8 @@ lowercase words.
 The following server-side layer folder names are **auto-discovered** by the framework — no
 `layer.server.ts` file is required:
 
-* `error` - domain-specific error definitions, always active on the server.
+* `error` - domain-specific error definitions, auto-activated under the `integration` intent on
+  the server.
 
 * [adapter](./adapter.md) - the part of the functionality that implements
   functions related directly to communicating with external systems, often
@@ -29,8 +30,9 @@ The following server-side layer folder names are **auto-discovered** by the fram
 
 * `sim` - simulated external backends used during integration testing only.
 
-* `test` - this layer holds the test automation functionality, which is
-  usually only activated during the development and build stages.
+* `server/test` - server-side tap tests (see [test](./test.md)).
+
+* `api`, `init`, `meta` - registered by default on the server.
 
 ### Browser-Side Layers
 
@@ -43,25 +45,38 @@ required:
 * `component` - this layer resides in the browser app and is used
   to implement specific React components for the UI.
 
-* `browser` - this layer holds the server-side code, used to serve
-  the assets needed for the browser.
+* `test` - top-level `test/` is a browser layer holding Playwright tests (`*.play.ts`),
+  auto-activated under the `integration` intent. Browser-side tap tests live in
+  `browser/test/`.
 
 ## Auto-Discovery and Activation Defaults
 
 Well-known folder names are automatically detected and activated in the correct environment.
-Custom folder names require a `layer.server.ts` or `layer.browser.ts` file.
+`default` means the layer loads regardless of intents; `integration` means it loads when the
+`integration` intent is active (the default for dev/test). Custom folder names require a
+`layer.server.ts` or `layer.browser.ts` file.
 
-| Folder         | Server active in          | Browser active in    |
-| -------------- | ------------------------- | -------------------- |
-| `error`        | always                    | —                    |
-| `adapter`      | always                    | —                    |
-| `orchestrator` | always                    | —                    |
-| `gateway`      | always                    | —                    |
-| `sim`          | `integration` only        | —                    |
-| `test`         | `test` only               | `integration` only   |
-| `backend`      | —                         | always               |
-| `component`    | —                         | always               |
-| `browser`      | always (serves assets)    | —                    |
+| Folder                  | Server active in | Browser active in |
+| ----------------------- | ---------------- | ----------------- |
+| `api`                   | default          | default           |
+| `init`                  | default          | default           |
+| `meta`                  | default          | default           |
+| `error`                 | integration      | —                 |
+| `sim`                   | integration      | —                 |
+| `adapter`               | integration      | —                 |
+| `orchestrator`          | integration      | —                 |
+| `gateway`               | integration      | —                 |
+| `server/api`            | integration      | —                 |
+| `server/init`           | default          | —                 |
+| `server/test`           | integration      | —                 |
+| `backend`               | —                | integration       |
+| `component`             | —                | integration       |
+| `action` / `actions`    | —                | integration       |
+| `test`                  | —                | integration       |
+| `browser/api`           | —                | integration       |
+| `browser/init`          | —                | default           |
+| `browser/test`          | —                | integration       |
+| `browser/orchestrator`  | —                | integration       |
 
 ## Dev-Only Handler Groups (`.dev` suffix)
 

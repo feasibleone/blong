@@ -55,7 +55,7 @@ or TAP `t.matchSnapshot()` call is needed in business test code.
 Snapshot files are stored in `tap-snapshots/` directories alongside the test
 file entry point and regenerated with `TAP_SNAPSHOT=1`.
 
-**Example test handler (`core/blong-hello/test/test/testHelloNumberSum.ts`):**
+**Example test handler (`core/blong-hello/server/test/test/testHelloNumberSum.ts`):**
 
 ```typescript
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
