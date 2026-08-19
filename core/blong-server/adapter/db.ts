@@ -15,7 +15,7 @@ export default adapter<{
             mock: {},
             knex: {
                 connection: {
-                    database: '${suite}',
+                    database: '${suite.replaceAll("$", "")}',
                     user: 'blong-admin',
                     password: 'password',
                 },
@@ -26,7 +26,7 @@ export default adapter<{
         ci: {
             knex: {
                 connection: {
-                    database: '${suite}',
+                    database: '${suite.replaceAll("$", "")}',
                 },
             },
         },
