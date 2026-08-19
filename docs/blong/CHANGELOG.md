@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.18.0...blong-docs-v1.19.0) (2026-08-19)
+
+
+### Features
+
+* blong-access UI ([999de20](https://github.com/feasibleone/blong/commit/999de20b5f8e36979787bed71695de45a4006f5f))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.17.0...blong-docs-v1.18.0) (2026-08-19)
 
 

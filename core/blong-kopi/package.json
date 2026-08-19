@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-kopi",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "description": "Realm scaffolding template — `blong realm <name>` scaffolds a new realm that reuses blong-server",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"
