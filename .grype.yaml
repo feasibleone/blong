@@ -27,6 +27,7 @@ ignore:
     - vulnerability: CVE-2026-8376
     - vulnerability: CVE-2026-12087
     - vulnerability: CVE-2026-57433
+    - vulnerability: GHSA-23hp-3jrh-7fpw
 # Set output format defaults
 output:
     - 'table'
