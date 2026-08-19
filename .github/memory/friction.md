@@ -9,6 +9,21 @@ _None currently._
 
 ## List of resolved frictions
 
+Resolved by the "blong-int-sql CI test timeout" debug (2026-08-19) — the deadlock test helpers
+left 20s `setTimeout` handles behind, holding the process open ~19s after `platform.stop()` (over
+tap's 30s per-file limit in CI).
+
+- **Post-stop process hang in `blong-int-sql` tests.** The three deadlock helpers
+  (`mysql/adapter/sql/sqlDeadlock{Builder,Trigger,ProcTrigger}.ts`) each wrapped their work in a
+  duplicated `withDeadlockTimeout` that raced a 20s `setTimeout` via `Promise.race` but never
+  cleared the timer when the operation settled. Three ref'd 20s timers therefore survived
+  `platform.stop()`, so the test process only exited ~19s later (locally ~24s total, over tap's 30s
+  per-file timeout in CI → `timeout!`). Extracted a single shared `withDeadlockTimeout.ts`
+  (`export const`, no default — the loader ignores non-default-export files) that clears the timer
+  in `.finally`; `ci-test` now completes in ~8s. Debug technique that worked: `process.getActiveResourcesInfo()`
+  to spot the leaked `Timeout` after an unref'd stdio red-herring, then a timer registry capturing
+  creation stacks to identify the source.
+
 Resolved by the "fix unresolved frictions" plan (2026-08-19) — `--help` no longer crashes on
 `blong` / `blong-watch` / `blong-dev`; `blong-dev sql` derives the dev DB name; the knex adapter
 auto-creates missing dev databases.
