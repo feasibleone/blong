@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.3.0...blong-marine-v1.4.0) (2026-08-19)
+
+
+### Features
+
+* blong-access UI ([999de20](https://github.com/feasibleone/blong/commit/999de20b5f8e36979787bed71695de45a4006f5f))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.2.0...blong-marine-v1.3.0) (2026-08-19)
 
 
