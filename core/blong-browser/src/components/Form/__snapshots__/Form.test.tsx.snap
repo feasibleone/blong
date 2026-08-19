@@ -299,16 +299,8 @@ exports[`Form > renders multiple card groups 1`] = `
                 <div
                   class="field grid mb-0"
                 >
-                  <label
-                    class="col-12 md:col-4"
-                    for="userName"
-                  >
-                    <span>
-                      User Name
-                    </span>
-                  </label>
                   <div
-                    class="flex align-items-center relative col-12 md:col-8"
+                    class="flex align-items-center relative col-12"
                   >
                     <span
                       class="blong-input-wrapper w-full"

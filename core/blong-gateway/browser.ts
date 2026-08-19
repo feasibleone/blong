@@ -11,6 +11,6 @@ import {realm} from '@feasibleone/blong';
 export default realm(() => ({
     url: import.meta.url,
     children: globalThis.window
-        ? import.meta.glob(['./meta/**/*.ts', './browser/**/*.ts'])
-        : ['./meta', './browser'],
+        ? import.meta.glob(['./meta/model/**/*.ts', './browser/**/*.ts'])
+        : ['./meta/model', './browser'],
 }));

@@ -53,6 +53,12 @@ export interface IDeckProps {
     readOnly?: boolean;
     loading?: boolean;
     className?: string;
+    /**
+     * When true, each rendered card hides its own title (used for tabs that
+     * contain exactly one card, so the card title does not duplicate the tab
+     * label). Titles still show in design mode.
+     */
+    hideCardTitles?: boolean;
 }
 
 // ── Helper: render a grid of column Decks from grouped card name arrays ───────
@@ -64,6 +70,9 @@ function TabContent({
     deckGroups: string[][];
     cards: Record<string, IResolvedCard>;
 }) {
+    // A tab that holds exactly one card shows only that card — its title would
+    // duplicate the tab label, so hide it (see Card hideTitle).
+    const singleCardTab = deckGroups.reduce((sum, g) => sum + g.length, 0) === 1;
     return (
         <div className="grid col align-self-start max-w-screen">
             {deckGroups.map((groupNames, groupIdx) => {
@@ -77,6 +86,7 @@ function TabContent({
                         id={`deck-tab-${groupIdx}`}
                         className={colClass}
                         cardNames={groupNames}
+                        hideCardTitles={singleCardTab}
                     />
                 );
             })}
@@ -432,7 +442,14 @@ const RootDeck = memo(function RootDeck() {
 
 // ── Main Deck export ──────────────────────────────────────────────────────────
 
-export function Deck({id, cardNames, hiddenCardNames, children, className}: IDeckProps) {
+export function Deck({
+    id,
+    cardNames,
+    hiddenCardNames,
+    children,
+    className,
+    hideCardTitles,
+}: IDeckProps) {
     const {active: isDesignMode} = useDesignMode();
     const formCtx = useBlongForm();
     const formState = useBlongFormState();
@@ -512,6 +529,7 @@ export function Deck({id, cardNames, hiddenCardNames, children, className}: IDec
                     cardName={cardName}
                     colIdx={colIdx}
                     className={isLast ? 'w-full' : 'w-full mb-3'}
+                    hideTitle={hideCardTitles}
                 />
             );
         });

@@ -250,13 +250,127 @@ that explain their usage:
   }));
   ```
 
+## Overriding the default handling
+
+Handlers and adapter/orchestrator ports can override a method that the framework
+(or another handler group) already provides and delegate back to the default
+implementation. This is how custom persistence reuses the automatic CRUD, how
+codecs transform requests, and how adapters hook the lifecycle.
+
+### The `super` object — prototype-chain delegation
+
+`super` is plain JavaScript prototype-chain inheritance, not a framework
+abstraction. The runtime wires handler groups into a chain with
+`Object.setPrototypeOf()` (see the
+[wiring-pipeline rationale](../rationale/wiring-pipeline#prototype-chain-wiring))
+so `super.<method>` resolves the "parent" implementation: an earlier-attached
+handler group, a synthetic handler bound to the port (procedures, CRUD
+bindings), the port instance, or the `AdapterBase` lifecycle defaults.
+
+To use `super`, a handler must return an **object literal with method
+shorthand**. A plain `function` expression cannot reference `super`.
+
+```ts
+// example/orchestrator/math/mathNumberAverage.ts
+import {handler} from '@feasibleone/blong';
+
+export default handler(({lib: {precision}}) => ({
+    async mathNumberAverage(params, $meta) {
+        const sum = await super.mathNumberSum(params, $meta); // delegate
+        return (sum / params.length).toPrecision(precision);
+    },
+}));
+```
+
+### `super.exec` — reuse the automatic CRUD
+
+The generic knex adapter implements `find`/`get`/`add`/`edit`/`remove`/
+`merge`/`insert`/`update`/`delete` for every declared table (see
+[`adapter.knex`](../concepts/adapter#database)). A custom persistence handler
+that must run business logic before or after the standard operation is named
+after the method (e.g. `accessUserEdit` → `access.user.edit`) and delegates the
+generic part with `super.exec`:
+
+```ts
+// realmname/adapter/db/accessUserEdit.ts
+import {handler} from '@feasibleone/blong';
+
+export default handler(
+    ({handler: {'db/coreTripleMerge': coreTripleMerge}}) => ({
+        async accessUserEdit(params, $meta) {
+            const result = await super.exec(params, $meta); // standard update
+            // … custom handling (e.g. graph-edge sync) …
+            await coreTripleMerge({triples, refreshPath: true}, $meta);
+            return result;
+        },
+    }),
+);
+```
+
+For `get`/`find` this is the idiomatic way to enrich results (e.g. joining
+`core_resource` names onto resource-backed rows); for `edit`/`remove` it lets
+the standard row operation run while custom code handles related graph edges.
+
+### `send` / `receive` — transform parameters and results
+
+The adapter loop applies two conversion handlers around every method call:
+
+- **`send`** — transforms the **outgoing parameters** before the API method
+  executes at the target port.
+- **`receive`** — transforms the **incoming result** after the method returns.
+
+Both are looked up by `getConversion` in priority order: a per-method
+conversion (`<subject>.<object>.<predicate>.request.send`), an opcode or mtid
+level conversion (`request.send`), then the generic `send`/`receive`. They can
+be stacked — a handler group higher in the chain overrides `send`/`receive` and
+delegates to the one beneath via `super`:
+
+```ts
+// adapter codec stack (e.g. MLE on top of JSON-RPC)
+export default handler(() => ({
+    async send(params, $meta) {
+        params = await encrypt(params, $meta);
+        return super.send(params, $meta); // encrypt, then let the next codec send
+    },
+    async receive(result, $meta) {
+        await decrypt(result.body);
+        return super.receive(result, $meta);
+    },
+}));
+```
+
+### Adapter lifecycle overrides
+
+Adapters hook the lifecycle (`start`/`stop`/`connect`/`init`/`ready`) and
+delegate with `super` so the base behaviour still runs:
+
+```ts
+// realmname/adapter/http/sim/echo.ts
+async start() {
+    // custom startup (e.g. open a TCP server)
+    super.connect(); // bind handle() into the port loop
+    return super.start(); // default start: attach handlers + register ports
+},
+async stop(...params) {
+    try {
+        /* custom shutdown */
+    } finally {
+        return super.stop(...params);
+    }
+},
+```
+
+See also [schema-sync](./schema-sync#overriding-a-synthetic-handler) for the
+`super.sqlItem*` delegation pattern used to override synthetic procedure
+handlers.
+
 ## Folder-Level Configuration (config.ts)
 
 A `config.ts` file can be placed in any handler folder to define configuration for all handlers in
 that folder. The file supports activation-based config (`default`, `dev`, `prod`, etc.), keeping
 environment-specific values co-located with the handlers that use them.
 
-```
+```text
 example/
 └── orchestrator/
     └── math/

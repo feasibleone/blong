@@ -1,4 +1,4 @@
-import {withProgress} from '@feasibleone/blong-lib';
+import {ulid, withProgress} from '@feasibleone/blong-lib';
 import {
     adapter,
     type Adapter,
@@ -15,8 +15,8 @@ import {type TFunction, type TObject} from 'typebox';
 import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
-import {ensureDatabase} from '../schema/knex/database.ts';
 import {
+    binaryToStr,
     discoverBinaryColumns,
     isBinaryColumn,
     prepareInputParams,
@@ -24,6 +24,7 @@ import {
     prepareResultRows,
     strToBinary,
 } from '../schema/knex/binary.ts';
+import {ensureDatabase} from '../schema/knex/database.ts';
 import {wrapKnex} from '../schema/knex/json.ts';
 import {
     bindSyntheticHandlers,
@@ -37,6 +38,7 @@ import {
 } from '../schema/knex/schemaTable.ts';
 import {
     type IConfig,
+    type IEdgeBinding,
     type IKnexConfig,
     type ISchemaTable,
     type ITableConstraints,
@@ -152,9 +154,12 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     }
                 } catch (error) {
                     // Warn-and-continue: schema sync will surface the real error.
-                    this.log?.warn?.({
-                        err: (error as {message?: string}).message ?? String(error),
-                    }, 'could not auto-create database — will continue');
+                    this.log?.warn?.(
+                        {
+                            err: (error as {message?: string}).message ?? String(error),
+                        },
+                        'could not auto-create database — will continue',
+                    );
                 }
             }
             this.config.context = {
@@ -367,6 +372,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const {select: _select, ...where} = params;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
+                    const opts = tableOptions(objectSchema, this.config, subject, object);
                     let query = qb(table);
                     for (const [key, val] of Object.entries(where)) {
                         if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
@@ -376,19 +382,34 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         }
                     }
                     const row = (await query.first()) as Record<string, unknown> | undefined;
-                    const result: Record<string, unknown> = {
-                        [object]: prepareResultRow(row, binaryCols, table),
-                    };
-                    // Master-detail: return each FK-constrained detail table's
-                    // rows as sibling arrays (e.g. `line`, `payment`) so the
-                    // Open form can render them alongside the master record.
                     const keyName =
                         (
                             objectSchema[subject]?.[object] as
                                 | {constraints?: {primaryKey?: string}}
                                 | undefined
                         )?.constraints?.primaryKey ?? `${object}Id`;
+                    // Capture the raw PK **before** `prepareResultRow` mutates
+                    // the row in place (Buffers → base64 strings). The edge
+                    // attachment needs the binary master key.
                     const masterKey = row?.[keyName];
+                    const result: Record<string, unknown> = {
+                        [object]: prepareResultRow(row, binaryCols, table),
+                    };
+                    const masterRow = result[object] as Record<string, unknown> | undefined;
+                    // Resource-backed: join the display name from
+                    // `core_resource.resourceName` as `${object}Name`.
+                    if (opts.resource && masterRow && typeof masterRow[keyName] === 'string') {
+                        const [joined] = await joinResourceNames(
+                            qb,
+                            [masterRow],
+                            keyName,
+                            `${object}Name`,
+                        );
+                        result[object] = joined;
+                    }
+                    // Master-detail: return each FK-constrained detail table's
+                    // rows as sibling arrays (e.g. `line`, `payment`) so the
+                    // Open form can render them alongside the master record.
                     if (masterKey !== undefined) {
                         for (const detail of detailTables(subject, object, keyName)) {
                             const detailBinaryCols = getBinaryCols(this.config.context);
@@ -400,6 +421,18 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                                 detailBinaryCols,
                                 detail.table,
                             );
+                        }
+                        // Graph-edge master-detail (declarative `edges`) — the
+                        // rows live in `core_triple` keyed by the resource id.
+                        // Only binary (resource-backed) master keys participate.
+                        if (Buffer.isBuffer(masterKey)) {
+                            for (const binding of opts.edges) {
+                                if (!binding.table) continue; // reverse-only cleanup binding
+                                const detailObject =
+                                    binding.object ??
+                                    binding.predicate.replace(/^has/, '').toLowerCase();
+                                result[detailObject] = await attachEdgeRows(qb, masterKey, binding);
+                            }
                         }
                     }
                     return result;
@@ -418,6 +451,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     } = params;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
+                    const opts = tableOptions(objectSchema, this.config, subject, object);
                     let query = qb(table);
                     for (const [key, val] of Object.entries({...filterBy, ...where})) {
                         if (isBinaryColumn(binaryCols, table, key) && typeof val === 'string') {
@@ -443,7 +477,13 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     if (limit) query = query.limit(limit);
                     if (offset) query = query.offset(offset);
                     const rows = (await query.select(select)) as Record<string, unknown>[];
-                    return prepareResultRows(rows, binaryCols, table);
+                    const prepared = prepareResultRows(rows, binaryCols, table);
+                    // Resource-backed: join the display name from
+                    // `core_resource.resourceName` as `${object}Name`.
+                    if (opts.resource) {
+                        return joinResourceNames(qb, prepared, `${object}Id`, `${object}Name`);
+                    }
+                    return prepared;
                 }
                 case 'add': {
                     const {
@@ -452,9 +492,17 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         resourceName,
                         ...rest
                     } = params;
-                    const definition = objectSchema[subject]?.[object] as unknown as
-                        | Record<string, unknown>
-                        | undefined;
+                    // Resolve the table definition from the declarative
+                    // `schema.tables` entry first (falling back to the realm
+                    // `objectSchema`), so namespace-scoped methods (e.g.
+                    // `sql.person.add`) find their properties/FK constraints
+                    // when the definition lives in the adapter table config.
+                    const definition = resolveTableSpec(
+                        objectSchema,
+                        this.config.schema?.tables?.[`${subject}.${object}`],
+                        subject,
+                        object,
+                    ).definition as unknown as Record<string, unknown> | undefined;
                     const properties = definition?.properties as
                         | Record<string, IColumnSchema>
                         | undefined;
@@ -465,52 +513,95 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     )?.foreign;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
+                    const opts = tableOptions(objectSchema, this.config, subject, object);
                     const cols = columns as Record<string, unknown>;
-                    // Generate real UUIDs for type.uuid() columns that have the
-                    // literal default value 'uuid'.  Track generated UUIDs so we
-                    // can select back the inserted row by UUID.
+                    // Resource-backed: `${object}Name` is a virtual display field
+                    // (the name lives in `core_resource.resourceName`) — capture
+                    // it for the resource row and exclude it from the table insert.
+                    const nameColValue = opts.resource
+                        ? (cols[`${object}Name`] as string | undefined)
+                        : undefined;
+                    if (opts.resource) {
+                        delete cols[`${object}Name`];
+                    }
+                    // Generate real PKs server-side for id columns that carry a
+                    // 'uuid' / 'ulid' default marker (`type.uuid()` / `type.ulid()`
+                    // are submitted as the literal placeholder) OR whose not-null
+                    // id the caller did not supply on a resource-backed table
+                    // (PK is a FK to `core.resource`, e.g. `type.uidNotNull()`).
+                    // Track the generated key so the inserted row can be selected
+                    // back by it.
                     let generatedKey: string | undefined;
+                    // Ensure a `core_type` row exists (mirrors core.resource.ensure)
+                    // so resource-backed inserts always get a type.
+                    const ensureType = async (typeAlias: string): Promise<number | undefined> => {
+                        const existing = await qb('core_type').where({typeAlias}).first('typeId');
+                        if (existing) return existing.typeId as number;
+                        await qb('core_type').insert({typeAlias}).onConflict().ignore();
+                        const inserted = await qb('core_type').where({typeAlias}).first('typeId');
+                        return inserted ? (inserted.typeId as number) : undefined;
+                    };
+                    // Create the matching `core_resource` row for a generated
+                    // resource-backed PK.  The name is the entity's display label
+                    // in `{subject}.dropdown.list`.
+                    const ensureResourceRow = async (
+                        idStr: string,
+                        resourceKeyCol: string,
+                    ): Promise<void> => {
+                        const typeAlias = `${subject}.${object}`;
+                        const typeId = await ensureType(typeAlias);
+                        if (!typeId) return;
+                        const name =
+                            (typeof resourceName === 'string' && resourceName) ||
+                            nameColValue ||
+                            `${subject}.${object}.${resourceKeyCol}`;
+                        await qb('core_resource')
+                            .insert({
+                                resourceId: strToBinary(idStr),
+                                resourceName: name,
+                                typeId,
+                            })
+                            .onConflict()
+                            .ignore();
+                    };
+                    // 1) Literal 'uuid' / 'ulid' default markers on id columns.
                     for (const colName of Object.keys(cols)) {
-                        if (cols[colName] !== 'uuid') continue;
+                        if (cols[colName] !== 'uuid' && cols[colName] !== 'ulid') continue;
                         const prop = properties?.[colName];
-                        if (!prop || propDefault(prop) !== 'uuid') continue;
-                        const uuidStr = crypto.randomUUID();
-                        cols[colName] = strToBinary(uuidStr);
-                        generatedKey = uuidStr;
-                        // If this PK is also a FK to core.resource, create the
-                        // corresponding core_resource row.
+                        const marker = cols[colName] as 'uuid' | 'ulid';
+                        if (!prop || propDefault(prop) !== marker) continue;
+                        const idStr = marker === 'ulid' ? ulid() : crypto.randomUUID();
+                        cols[colName] = strToBinary(idStr);
+                        generatedKey = idStr;
                         if (foreignKeys?.[colName] === 'core.resource.resourceId') {
-                            const typeAlias = `${subject}.${object}`;
-                            const typeRow = await qb('core_type')
-                                .where({typeAlias})
-                                .first('typeId');
-                            if (typeRow) {
-                                // Use a meaningful resourceName when available:
-                                // an explicit `resourceName` param, else the
-                                // `${object}Name` column value, else the synthetic
-                                // name.  The name is the entity's display label in
-                                // `{subject}.dropdown.list`.
-                                const name =
-                                    (typeof resourceName === 'string' && resourceName) ||
-                                    (typeof cols[`${object}Name`] === 'string'
-                                        ? (cols[`${object}Name`] as string)
-                                        : undefined) ||
-                                    `${subject}.${object}.${colName}`;
-                                await qb('core_resource')
-                                    .insert({
-                                        resourceId: strToBinary(uuidStr),
-                                        resourceName: name,
-                                        typeId: typeRow.typeId,
-                                    })
-                                    .onConflict()
-                                    .ignore();
-                            }
+                            await ensureResourceRow(idStr, colName);
+                        }
+                    }
+                    // 2) Resource-backed not-null PK (no default marker, e.g.
+                    //    `type.uidNotNull()`) with no key supplied by the caller.
+                    if (
+                        !generatedKey &&
+                        cols[keyName] == null &&
+                        foreignKeys?.[keyName] === 'core.resource.resourceId'
+                    ) {
+                        const pkProp = properties?.[keyName];
+                        if (!pkProp || !propDefault(pkProp)) {
+                            generatedKey = crypto.randomUUID();
+                            cols[keyName] = strToBinary(generatedKey);
+                            await ensureResourceRow(generatedKey, keyName);
                         }
                     }
                     // Convert any string values for binary columns to Buffer
                     const insertCols = prepareInputParams(cols, binaryCols, table);
                     const inserted = await qb(table).insert(insertCols);
-                    const masterKey = generatedKey ? strToBinary(generatedKey) : inserted[0];
+                    // Select the inserted row back by the PK. Prefer the explicit
+                    // key value (post-conversion) when the caller supplied one
+                    // (e.g. a real ULID/UUID string) — `insertId` only works for
+                    // auto-increment PKs and is 0 for a binary-PK table.
+                    const masterKey =
+                        generatedKey
+                            ? strToBinary(generatedKey)
+                            : (insertCols[keyName] as Buffer | string | undefined) ?? inserted[0];
                     const row = (await qb(table)
                         .where({[keyName]: masterKey})
                         .first()) as Record<string, unknown>;
@@ -548,16 +639,69 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             detail.table,
                         );
                     }
+                    // Graph-edge master-detail: persist each declared edge from
+                    // its sibling array (filtering `granted !== false` when the
+                    // binding uses the pivot convention) and attach the rows.
+                    if (Buffer.isBuffer(masterKey)) {
+                        const opts = tableOptions(objectSchema, this.config, subject, object);
+                        for (const binding of opts.edges) {
+                            if (!binding.table) continue; // reverse-only cleanup binding
+                            const detailObject =
+                                binding.object ??
+                                binding.predicate.replace(/^has/, '').toLowerCase();
+                            const edgeRows = Array.isArray(rest[detailObject])
+                                ? (rest[detailObject] as Array<Record<string, unknown>>)
+                                : [];
+                            const objectKey = binding.objectKey ?? `${detailObject}Id`;
+                            const ids = edgeRows
+                                .filter(r => (binding.granted ? r.granted !== false : true))
+                                .map(r => {
+                                    const id = r[objectKey];
+                                    return typeof id === 'string'
+                                        ? strToBinary(id).toString('hex')
+                                        : undefined;
+                                })
+                                .filter((x): x is string => !!x);
+                            if (ids.length) {
+                                await syncGraphEdges(qb, masterKey, binding.predicate, ids);
+                            }
+                            result[detailObject] = await attachEdgeRows(qb, masterKey, binding);
+                        }
+                    }
+                    // Resource-backed: join the display name onto the master so
+                    // the caller sees `${object}Name` in the created row.
+                    if (opts.resource && Buffer.isBuffer(masterKey)) {
+                        const masterRow = result[object] as Record<string, unknown> | undefined;
+                        if (masterRow && typeof masterRow[`${object}Id`] === 'string') {
+                            const [joined] = await joinResourceNames(
+                                qb,
+                                [masterRow],
+                                `${object}Id`,
+                                `${object}Name`,
+                            );
+                            result[object] = joined;
+                        }
+                    }
                     return result;
                 }
                 case 'edit': {
                     const {key: keyName = `${object}Id`, [object]: columns, ...rest} = params;
                     const qb = this.config.context.queryBuilder!;
                     const binaryCols = getBinaryCols(this.config.context);
+                    const opts = tableOptions(objectSchema, this.config, subject, object);
                     const cols = columns as Record<string, unknown>;
                     const {[keyName]: key, ...update} = cols as Record<string, unknown>;
                     const isBinaryKey =
                         isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
+                    // Resource-backed: `${object}Name` is a virtual field — the
+                    // display name lives in `core_resource.resourceName`, so
+                    // rename that row instead of updating a table column.
+                    const resourceName = opts.resource
+                        ? (update[`${object}Name`] as string | undefined)
+                        : undefined;
+                    if (opts.resource) {
+                        delete update[`${object}Name`];
+                    }
                     // Convert any string values for binary columns to Buffer (the
                     // form round-trips them as base64 strings returned by `get`).
                     const preparedUpdate = prepareInputParams(update, binaryCols, table);
@@ -568,6 +712,16 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         await qb(table)
                             .where({[keyName]: key})
                             .update(preparedUpdate);
+                    }
+                    if (
+                        opts.resource &&
+                        isBinaryKey &&
+                        typeof resourceName === 'string' &&
+                        resourceName
+                    ) {
+                        await qb('core_resource')
+                            .where('resourceId', strToBinary(key))
+                            .update({resourceName});
                     }
                     // Select back with Buffer → base64 conversion
                     let editQuery = qb(table);
@@ -603,7 +757,39 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             );
                         }
                     }
-                    return {[object]: prepareResultRow(editRow, binaryCols, table)};
+                    const result: Record<string, unknown> = {
+                        [object]: prepareResultRow(editRow, binaryCols, table),
+                    };
+                    // Graph-edge master-detail: bring each declared edge in line
+                    // with the submitted sibling array (when present) and re-attach
+                    // the fresh edge rows to the result.
+                    if (isBinaryKey) {
+                        const masterKeyBuf = strToBinary(key);
+                        for (const binding of opts.edges) {
+                            if (!binding.table) continue; // reverse-only cleanup binding
+                            const detailObject =
+                                binding.object ??
+                                binding.predicate.replace(/^has/, '').toLowerCase();
+                            const edgeRows = Array.isArray(rest[detailObject])
+                                ? (rest[detailObject] as Array<Record<string, unknown>>)
+                                : undefined;
+                            if (edgeRows !== undefined) {
+                                const objectKey = binding.objectKey ?? `${detailObject}Id`;
+                                const ids = edgeRows
+                                    .filter(r => (binding.granted ? r.granted !== false : true))
+                                    .map(r => {
+                                        const id = r[objectKey];
+                                        return typeof id === 'string'
+                                            ? strToBinary(id).toString('hex')
+                                            : undefined;
+                                    })
+                                    .filter((x): x is string => !!x);
+                                await syncGraphEdges(qb, masterKeyBuf, binding.predicate, ids);
+                            }
+                            result[detailObject] = await attachEdgeRows(qb, masterKeyBuf, binding);
+                        }
+                    }
+                    return result;
                 }
                 case 'remove': {
                     const {key: keyName = `${object}Id`, [keyName]: key} = params;
@@ -611,28 +797,54 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
                     }
                     const binaryCols = getBinaryCols(this.config.context);
+                    const opts = tableOptions(objectSchema, this.config, subject, object);
                     const isBinaryKey =
                         isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
                     const masterKey = isBinaryKey ? strToBinary(key as string) : key;
                     if (!masterKey) {
                         throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
                     }
+                    const qb = this.config.context.queryBuilder!;
                     // Master-detail: delete each FK-constrained detail table's
                     // rows for this master BEFORE deleting the master row, so a
                     // non-cascading FK does not block the delete.
                     for (const detail of detailTables(subject, object, keyName)) {
-                        await this.config.context.queryBuilder!(detail.table)
+                        await qb(detail.table)
                             .where({[detail.fkColumn]: masterKey})
                             .del();
                     }
-                    if (isBinaryKey) {
-                        return this.config.context.queryBuilder!(table)
-                            .where(keyName, masterKey)
-                            .del();
+                    // Graph edges: delete the subject's own edges and (when the
+                    // binding declares `reverse`) the edges pointing AT it.
+                    if (Buffer.isBuffer(masterKey)) {
+                        const subjectBuf = masterKey as Buffer;
+                        for (const binding of opts.edges) {
+                            await qb('core_triple')
+                                .where('subjectId', subjectBuf)
+                                .where('predicateName', binding.predicate)
+                                .del();
+                            if (binding.reverse) {
+                                await qb('core_triple')
+                                    .where('objectId', subjectBuf)
+                                    .where('predicateName', binding.predicate)
+                                    .del();
+                            }
+                        }
+                        if (opts.edges.length) {
+                            await qb.raw('CALL access_pathRefresh()');
+                        }
                     }
-                    return this.config.context.queryBuilder!(table)
-                        .where({[keyName]: key})
-                        .del();
+                    // Entity row first — its PK is a FK to `core_resource`, so
+                    // the resource row must be deleted only after the entity row.
+                    const removed = isBinaryKey
+                        ? await qb(table).where(keyName, masterKey).del()
+                        : await qb(table)
+                              .where({[keyName]: key})
+                              .del();
+                    // Resource-backed: delete the `core_resource` row last.
+                    if (Buffer.isBuffer(masterKey) && opts.resource) {
+                        await qb('core_resource').where('resourceId', masterKey).del();
+                    }
+                    return removed;
                 }
                 case 'merge': {
                     const {key = `${object}Id`, [object]: objectRows, resourceType} = params;
@@ -936,21 +1148,35 @@ async function processSeedAssets(
 
 export {attachHandlers, methodId, snakeToCamel};
 
+/** Resolved per-table CRUD options (resource-backed + graph-edge bindings). */
+export interface IResolvedTableOptions {
+    /** Whether the table is resource-backed (PK → `core.resource`). */
+    resource: boolean;
+    /** Declarative graph-edge master-detail bindings. */
+    edges: IEdgeBinding[];
+}
+
 /**
  * Resolve a `schema.tables` entry into its definition + dropdown override.
  *
  * A table entry is one of:
  * - a plain order number → definition from `objectSchema[subject][object]`
- * - an `ISchemaTable` spec `{definition?, order?, dropdown?}` — definition
- *   falls back to `objectSchema[subject][object]`
+ * - an `ISchemaTable` spec `{definition?, order?, dropdown?, resource?, edges?}`
+ *   — definition falls back to `objectSchema[subject][object]`
  * - a bare TypeBox `TObject`
  */
 function resolveTableSpec(
     objectSchema: IObjectSchema,
-    tableConfig: number | ISchemaTable | TObject,
+    tableConfig: number | ISchemaTable | TObject | undefined,
     subject: string,
     object: string,
-): {definition?: TObject; dropdown?: ISchemaTable['dropdown']} {
+): {
+    definition?: TObject;
+    dropdown?: ISchemaTable['dropdown'];
+    resource?: boolean;
+    edges?: IEdgeBinding[];
+} {
+    if (tableConfig === undefined) return {};
     if (typeof tableConfig === 'number') {
         return {definition: objectSchema[subject]?.[object]};
     }
@@ -958,14 +1184,160 @@ function resolveTableSpec(
         // An ISchemaTable spec — either with an explicit `definition`, or a
         // partial spec (e.g. only `{order, dropdown}`) that falls back to the
         // realm schema for its definition.
-        if ('definition' in tableConfig || 'order' in tableConfig || 'dropdown' in tableConfig) {
+        if (
+            'definition' in tableConfig ||
+            'order' in tableConfig ||
+            'dropdown' in tableConfig ||
+            'resource' in tableConfig ||
+            'edges' in tableConfig
+        ) {
             const spec = tableConfig as ISchemaTable;
             return {
                 definition: spec.definition ?? objectSchema[subject]?.[object],
                 dropdown: spec.dropdown,
+                resource: spec.resource,
+                edges: spec.edges,
             };
         }
         return {definition: tableConfig as TObject};
     }
     return {};
+}
+
+/**
+ * Resolve the declarative CRUD options for `subject.object` from the schema
+ * table config. Tables declared with `resource: true` (or an `edges` binding)
+ * get the resource-backed + graph-edge generic behaviour.
+ */
+function tableOptions(
+    objectSchema: IObjectSchema,
+    config: {schema?: {tables?: Record<string, number | ISchemaTable | TObject>}} | undefined,
+    subject: string,
+    object: string,
+): IResolvedTableOptions {
+    const tableConfig = config?.schema?.tables?.[`${subject}.${object}`];
+    const spec =
+        tableConfig !== undefined
+            ? resolveTableSpec(objectSchema, tableConfig, subject, object)
+            : {};
+    const edges = spec.edges ?? [];
+    return {
+        resource: spec.resource === true || edges.length > 0,
+        edges,
+    };
+}
+
+/**
+ * Batched join of `core_resource.resourceName` onto rows as the given name
+ * field (e.g. `roleName`). Row ids are base64/hex strings (post
+ * `prepareResultRow`); rows that already carry the name field are left as-is.
+ */
+async function joinResourceNames(
+    qb: Knex,
+    rows: Record<string, unknown>[],
+    idField: string,
+    nameField: string,
+): Promise<Record<string, unknown>[]> {
+    if (!rows.length) return rows;
+    const ids = rows
+        .map(r => (typeof r[idField] === 'string' ? (r[idField] as string) : undefined))
+        .filter((x): x is string => !!x);
+    if (!ids.length) return rows;
+    const found = (await qb('core_resource')
+        .whereIn(
+            'resourceId',
+            ids.map(id => strToBinary(id)),
+        )
+        .select('resourceId', 'resourceName')) as Array<{resourceId: Buffer; resourceName: string}>;
+    const names = new Map<string, string>();
+    for (const r of found) names.set(r.resourceId.toString('hex'), r.resourceName);
+    return rows.map(row => {
+        if (row[nameField] !== undefined) return row;
+        const id = typeof row[idField] === 'string' ? (row[idField] as string) : undefined;
+        if (!id) return row;
+        const name = names.get(strToBinary(id).toString('hex'));
+        return name !== undefined ? ({...row, [nameField]: name} as Record<string, unknown>) : row;
+    });
+}
+
+/**
+ * The hex object ids of a subject's graph edges (`core_triple`).
+ */
+async function edgeObjectIds(qb: Knex, subjectId: Buffer, predicate: string): Promise<string[]> {
+    const rows = (await qb('core_triple')
+        .where('subjectId', subjectId)
+        .where('predicateName', predicate)
+        .select('objectId')) as Array<{objectId: Buffer}>;
+    return rows.map(r => r.objectId.toString('hex'));
+}
+
+/**
+ * Bring `subjectId -predicate-> objectId` edges in line with `objectHexIds`
+ * (add missing, delete stale, refresh `access_path` once).
+ */
+async function syncGraphEdges(
+    qb: Knex,
+    subjectId: Buffer,
+    predicate: string,
+    objectHexIds: string[],
+): Promise<void> {
+    const existing = await edgeObjectIds(qb, subjectId, predicate);
+    const existingSet = new Set(existing);
+    const target = new Set(objectHexIds);
+    const toAdd = objectHexIds.filter(id => !existingSet.has(id));
+    const toRemove = existing.filter(id => !target.has(id));
+    if (!toAdd.length && !toRemove.length) return;
+    await qb.transaction(async trx => {
+        if (toAdd.length) {
+            await trx('core_triple').insert(
+                toAdd.map(objectId => ({
+                    subjectId,
+                    predicateName: predicate,
+                    objectId: Buffer.from(objectId, 'hex'),
+                })),
+            );
+        }
+        if (toRemove.length) {
+            await trx('core_triple')
+                .where('subjectId', subjectId)
+                .where('predicateName', predicate)
+                .whereIn(
+                    'objectId',
+                    toRemove.map(id => Buffer.from(id, 'hex')),
+                )
+                .del();
+        }
+        await trx.raw('CALL access_pathRefresh()');
+    });
+}
+
+/**
+ * Attach a graph-edge binding's rows to a result as a sibling array: the edge
+ * object rows joined with their resource name (and a `granted: true` marker
+ * when the binding uses the `granted` pivot convention).
+ */
+async function attachEdgeRows(
+    qb: Knex,
+    subjectId: Buffer,
+    binding: IEdgeBinding,
+): Promise<Record<string, unknown>[]> {
+    const object = binding.object ?? binding.predicate.replace(/^has/, '').toLowerCase();
+    const objectKey = binding.objectKey ?? `${object}Id`;
+    const nameField = binding.nameField ?? `${object}Name`;
+    const ids = await edgeObjectIds(qb, subjectId, binding.predicate);
+    if (!ids.length) return [];
+    const rows = (await qb(binding.table)
+        .whereIn(
+            objectKey,
+            ids.map(hex => Buffer.from(hex, 'hex')),
+        )
+        .select('*')) as Record<string, unknown>[];
+    // Prepare binary keys to base64 before joining names — joinResourceNames
+    // expects string ids (base64/hex), not Buffers.
+    const prepared = rows.map(row => ({
+        ...row,
+        [objectKey]: binaryToStr(row[objectKey] as Buffer),
+    }));
+    const named = await joinResourceNames(qb, prepared, objectKey, nameField);
+    return named.map(row => (binding.granted ? {...row, granted: true} : row));
 }

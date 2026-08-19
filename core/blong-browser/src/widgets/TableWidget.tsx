@@ -17,13 +17,19 @@ import {
     type DataTableSelectionChangeParams,
 } from '../primereact/index.js';
 
-import type {IEnrichedFieldSchema, IWidgetProps, IWidgetToolbarButton} from '@feasibleone/blong';
+import type {
+    IDropdownOption,
+    IEnrichedFieldSchema,
+    IWidgetProps,
+    IWidgetToolbarButton,
+} from '@feasibleone/blong';
 import {useQuery} from '@tanstack/react-query';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Button} from '../components/Button/Button.js';
 import {useBlongFormState} from '../components/Form/FormContext.js';
 import {Text} from '../components/Text/Text.js';
 import {useBlong} from '../context/BlongContext.js';
+import {dropdownRegistry} from '../model/dropdownRegistry.js';
 import {dateIn, dateOut} from './DateWidget.js';
 
 type Row = Record<string, unknown>;
@@ -413,8 +419,14 @@ function renderEditor(
         case 'boolean':
         case 'checkbox':
             return (
-                <span onClick={e => e.stopPropagation()}>
+                // data-testid mirrors the display cell (`${tableId}-${row}-${field}`)
+                // so tests can target the boolean cell editor for check/uncheck.
+                <span
+                    data-testid={cellId}
+                    onClick={e => e.stopPropagation()}
+                >
                     <Checkbox
+                        inputId={cellId}
                         checked={Boolean(value)}
                         onChange={e => editorCallback(e.checked)}
                     />
@@ -565,6 +577,35 @@ export function TableWidget({
     const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const {handler} = useBlong();
+
+    // Pivot tables source their rows from a named dropdown. When the caller did
+    // not supply the options via the `dropdowns` prop (e.g. model pages), load
+    // them on demand through the portal orchestrator so the pivot rows render.
+    const [pivotOptions, setPivotOptions] = useState<Row[] | undefined>(undefined);
+    const pivotDropdownKey = (schema.widget?.pivot as {dropdown?: string} | undefined)?.dropdown;
+    useEffect(() => {
+        if (!pivotDropdownKey) return;
+        if (dropdowns?.[pivotDropdownKey]) return; // caller provided the options
+        let cancelled = false;
+        const loader = (name: string): Promise<IDropdownOption[]> =>
+            (
+                handler.portalDropdownList({names: [name]}, {}) as Promise<Record<string, unknown>>
+            ).then(result => {
+                const data = result[name];
+                return (Array.isArray(data) ? data : []) as IDropdownOption[];
+            });
+        dropdownRegistry
+            .get(pivotDropdownKey, loader)
+            .then(data => {
+                if (!cancelled) setPivotOptions(data as Row[]);
+            })
+            .catch(() => {
+                // Error surfaced by the central dispatch wrapper; render without rows.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [pivotDropdownKey, dropdowns, handler]);
 
     // Subscribe to table selections from FormStateContext (slow-changing — only updates on
     // row selection events, never on keystrokes).  Falls back gracefully to undefined when
@@ -725,7 +766,7 @@ export function TableWidget({
     const pivotBaseRows: Row[] | undefined = pivotCfg
         ? (pivotCfg.examples ??
           (pivotCfg.dropdown
-              ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? undefined)
+              ? ((dropdowns?.[pivotCfg.dropdown] as Row[] | undefined) ?? pivotOptions ?? undefined)
               : undefined))
         : undefined;
     const pivotJoinDataFields = new Set<string>(Object.values(pivotCfg?.join ?? {}));

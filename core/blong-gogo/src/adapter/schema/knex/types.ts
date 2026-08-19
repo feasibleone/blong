@@ -40,6 +40,44 @@ export interface ITableConstraints {
     >;
 }
 
+export interface IEdgeBinding {
+    /**
+     * The `core_triple` predicate of the edge, e.g. `hasRole`.
+     */
+    predicate: string;
+    /**
+     * The entity table holding the edge's object rows (e.g. `access_role`).
+     * The edges themselves live in `core_triple` (`subjectId -predicate->
+     * objectId`), keyed by the resource id.
+     */
+    table: string;
+    /**
+     * The detail object name — the sibling array key returned on `get` and
+     * accepted on `add`/`edit` (defaults to the predicate's object segment,
+     * e.g. `role` for `hasRole`).
+     */
+    object?: string;
+    /**
+     * The object table's PK column (defaults to `${object}Id`).
+     */
+    objectKey?: string;
+    /**
+     * The object display-name field joined from `core_resource.resourceName`
+     * (defaults to `${object}Name`).
+     */
+    nameField?: string;
+    /**
+     * When true, only rows with `granted !== false` are kept when syncing
+     * edges on `add`/`edit` (the model pivot submits a `granted` boolean).
+     */
+    granted?: boolean;
+    /**
+     * When true, `remove` also deletes the reverse edges (`objectId` of this
+     * subject) pointing at this subject from other entities.
+     */
+    reverse?: boolean;
+}
+
 export interface ISchemaTable {
     /**
      * The TypeBox `TObject` for the table.  Optional when the definition is
@@ -48,6 +86,24 @@ export interface ISchemaTable {
      */
     definition?: TObject;
     order?: number;
+    /**
+     * Marks the table as resource-backed: its PK is a FK to
+     * `core.resource.resourceId` and its display name lives in
+     * `core_resource.resourceName`.  When true the generic CRUD:
+     *  - `add` generates a server-side PK + `core_resource` row for a missing
+     *    not-null id (and when the PK carries a `uuid`/`ulid` default marker);
+     *  - `find`/`get` join `resourceName` as `${object}Name`;
+     *  - `edit` renames `core_resource.resourceName` from `${object}Name`;
+     *  - `remove` deletes the `core_resource` row (and the declared `edges`).
+     */
+    resource?: boolean;
+    /**
+     * Declarative graph-edge master-detail bindings (`core_triple` edges such
+     * as `hasRole` / `hasCapability`). `get` attaches the edge rows as a
+     * sibling array; `add`/`edit` diff-sync the edges (plus one
+     * `access_pathRefresh`); `remove` cleans them.
+     */
+    edges?: IEdgeBinding[];
     /**
      * Optional per-table dropdown binding override used by the auto-bound
      * `{subject}.dropdown.list` handler (see the knex adapter `exec()`).

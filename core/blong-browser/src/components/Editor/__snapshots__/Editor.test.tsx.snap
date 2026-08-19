@@ -15675,16 +15675,8 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
                 <div
                   class="field grid mb-0"
                 >
-                  <label
-                    class="col-12 md:col-4"
-                    for="field1"
-                  >
-                    <span>
-                      field1
-                    </span>
-                  </label>
                   <div
-                    class="flex align-items-center relative col-12 md:col-8"
+                    class="flex align-items-center relative col-12"
                   >
                     <span
                       class="blong-input-wrapper w-full"
@@ -15890,16 +15882,8 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
                 <div
                   class="field grid mb-0"
                 >
-                  <label
-                    class="col-12 md:col-4"
-                    for="field1"
-                  >
-                    <span>
-                      field1
-                    </span>
-                  </label>
                   <div
-                    class="flex align-items-center relative col-12 md:col-8"
+                    class="flex align-items-center relative col-12"
                   >
                     <span
                       class="blong-input-wrapper w-full"
@@ -16204,16 +16188,8 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
                 <div
                   class="field grid mb-0"
                 >
-                  <label
-                    class="col-12 md:col-4"
-                    for="field1"
-                  >
-                    <span>
-                      field1
-                    </span>
-                  </label>
                   <div
-                    class="flex align-items-center relative col-12 md:col-8"
+                    class="flex align-items-center relative col-12"
                   >
                     <span
                       class="blong-input-wrapper w-full"
@@ -16266,16 +16242,8 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
                 <div
                   class="field grid mb-0"
                 >
-                  <label
-                    class="col-12 md:col-4"
-                    for="field1"
-                  >
-                    <span>
-                      field1
-                    </span>
-                  </label>
                   <div
-                    class="flex align-items-center relative col-12 md:col-8"
+                    class="flex align-items-center relative col-12"
                   >
                     <span
                       class="blong-input-wrapper w-full"
@@ -16332,16 +16300,8 @@ exports[`<Editor /> > ResponsiveLayout render equals snapshot 1`] = `
                 <div
                   class="field grid mb-0"
                 >
-                  <label
-                    class="col-12 md:col-4"
-                    for="field1"
-                  >
-                    <span>
-                      field1
-                    </span>
-                  </label>
                   <div
-                    class="flex align-items-center relative col-12 md:col-8"
+                    class="flex align-items-center relative col-12"
                   >
                     <span
                       class="blong-input-wrapper w-full"
@@ -22839,16 +22799,8 @@ exports[`<Editor /> > TabbedLayout render equals snapshot 1`] = `
                     <div
                       class="field grid mb-0"
                     >
-                      <label
-                        class="col-12 md:col-4"
-                        for="field1"
-                      >
-                        <span>
-                          field1
-                        </span>
-                      </label>
                       <div
-                        class="flex align-items-center relative col-12 md:col-8"
+                        class="flex align-items-center relative col-12"
                       >
                         <span
                           class="blong-input-wrapper w-full"
@@ -24600,16 +24552,8 @@ exports[`<Editor /> > ThumbIndexLayout render equals snapshot 1`] = `
                     <div
                       class="field grid mb-0"
                     >
-                      <label
-                        class="col-12 md:col-4"
-                        for="field1"
-                      >
-                        <span>
-                          field1
-                        </span>
-                      </label>
                       <div
-                        class="flex align-items-center relative col-12 md:col-8"
+                        class="flex align-items-center relative col-12"
                       >
                         <span
                           class="blong-input-wrapper w-full"

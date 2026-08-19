@@ -634,7 +634,7 @@ describe('Editor reset behaviour', () => {
         // Wait for initial render and value sync.
         await act(async () => {});
 
-        const input = screen.getByLabelText('User Name') as HTMLInputElement;
+        const input = document.querySelector('input[name="userName"]') as HTMLInputElement;
 
         // ── Step 1: edit the field ───────────────────────────────────────────
         await act(async () => {
@@ -768,8 +768,9 @@ describe('Editor mode behaviour', () => {
         );
         await act(async () => {});
 
-        // Make the form dirty
-        const input = screen.getByLabelText('Name') as HTMLInputElement;
+        // Make the form dirty (the card holds a single widget, so the input has
+        // no visible label — query by name).
+        const input = document.querySelector('input[name="coralName"]') as HTMLInputElement;
         await act(async () => {
             fireEvent.change(input, {target: {value: 'Brain Coral'}});
         });
@@ -943,7 +944,9 @@ describe('createAction / saveAction separation', () => {
 
         // ── First save (create) ──────────────────────────────────────────────
         await act(async () => {
-            fireEvent.change(screen.getByLabelText('Name'), {target: {value: 'Brain Coral'}});
+            fireEvent.change(document.querySelector('input[name="coralName"]') as HTMLInputElement, {
+                target: {value: 'Brain Coral'},
+            });
         });
         await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).not.toBeDisabled());
 
@@ -958,7 +961,9 @@ describe('createAction / saveAction separation', () => {
 
         // ── Second save (edit) ───────────────────────────────────────────────
         await act(async () => {
-            fireEvent.change(screen.getByLabelText('Name'), {target: {value: 'Brain Coral II'}});
+            fireEvent.change(document.querySelector('input[name="coralName"]') as HTMLInputElement, {
+                target: {value: 'Brain Coral II'},
+            });
         });
         await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).not.toBeDisabled());
 
@@ -1038,7 +1043,7 @@ describe("mode='new' — typed value stability", () => {
         );
         await act(async () => {});
 
-        const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
+        const input = document.querySelector('input[name="coralName"]') as HTMLInputElement;
 
         // Typing triggers a dirty-state transition which re-renders the Editor.
         await act(async () => {
@@ -1065,7 +1070,7 @@ describe("mode='new' — typed value stability", () => {
         );
         await act(async () => {});
 
-        const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
+        const input = document.querySelector('input[name="coralName"]') as HTMLInputElement;
 
         // Simulate typing a full name character by character.
         for (const val of ['S', 'St', 'Sta', 'Stag', 'Staghorn']) {
@@ -1098,7 +1103,7 @@ describe("mode='new' — typed value stability", () => {
         render(<BuggyNewPage />);
         await act(async () => {});
 
-        const input = screen.getByLabelText('Coral Name') as HTMLInputElement;
+        const input = document.querySelector('input[name="coralName"]') as HTMLInputElement;
 
         await act(async () => {
             fireEvent.change(input, {target: {value: 'Staghorn'}});

@@ -36,6 +36,7 @@ export default server(blong => ({
                 test: [
                     'test.mysql.query',
                     'test.mysql.crud',
+                    'test.mysql.resource',
                     'test.mysql.schema',
                     'test.mysql.objectSchema',
                 ],

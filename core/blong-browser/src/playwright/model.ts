@@ -43,7 +43,15 @@ interface ITestFn {
 
 export interface IFieldValue {
     /** Explicit widget type override (normally auto-detected from the DOM). */
-    widget?: 'select' | 'dropdown' | 'textarea' | 'number' | 'date' | 'checkbox' | 'text';
+    widget?:
+        | 'select'
+        | 'dropdown'
+        | 'textarea'
+        | 'number'
+        | 'date'
+        | 'datetime'
+        | 'checkbox'
+        | 'text';
     /** Value to set. */
     value: string | number | boolean;
 }
@@ -68,23 +76,46 @@ export interface ICreateAndEditModelOptions {
      * Master-detail (IModelSpec.details): for each detail entity the create test
      * switches to its tab (a sibling array property, e.g. `line`), adds rows in
      * the editable table, commits them and captures tab screenshots; the edit
-     * test also screenshots the detail tab showing the loaded rows.
+     * test also screenshots the detail tab showing the loaded rows and, when
+     * `editFields` is set, toggles cells on the first loaded row to prove that
+     * editing details works end-to-end.
      *
      * ```ts
      * details: [
      *     {object: 'line', rows: 2, fields: {
      *         lineName: 'Widget', lineQuantity: 2,
      *     }},
+     *     // Pivot detail (rows come from a dropdown, no Add button):
+     *     {object: 'role', pivot: true, fields: {granted: true}},
      * ]
      * ```
      */
     details?: Array<{
         /** Detail entity name, e.g. 'line' — matches `IModelSpec.details[].object`. */
         object: string;
+        /**
+         * Pivot-table detail (the model widget declares `widget.pivot`): the
+         * rows come from a named dropdown (there is no Add button) and
+         * assignment happens by toggling boolean cells in row-edit mode. The
+         * create test toggles `fields` on the first `rows` pivot rows.
+         */
+        pivot?: boolean;
+        /**
+         * Whether the detail table offers an Add button for creating rows.
+         * Defaults to true for non-pivot tables; set false for view/toggle-only
+         * tables (e.g. the model widget has `actions.allowAdd: false`).
+         */
+        allowAdd?: boolean;
         /** Fields for one detail row (column name → value), e.g. `{lineName, lineQuantity}`. */
-        fields: FieldMap;
+        fields?: FieldMap;
         /** Number of rows to add in the create test (default 1). */
         rows?: number;
+        /**
+         * Fields to toggle on the first loaded row during the edit test — proves
+         * that editing a detail (not just creating it) works end-to-end. The
+         * change is persisted by the final form save of the edit test.
+         */
+        editFields?: FieldMap;
     }>;
     /**
      * Optional browse-search text to filter by before opening a row in the
@@ -233,29 +264,117 @@ async function switchToDetailTab(page: Page, object: string): Promise<void> {
 }
 
 /**
- * Add `rows` detail rows in the given detail tab's editable table and commit
- * each row edit, so the form value carries the detail arrays on save.
+ * Set a single detail-table cell value while its row is in row-edit mode.
+ *
+ * Cell editors carry `id`/`data-testid` = `${object}-${rowIndex}-${field}`. The
+ * editor widget is auto-detected from the value (boolean → checkbox) or taken
+ * from the explicit `widget` hint in the field spec: boolean cells are toggled
+ * via the PrimeReact Checkbox box, select cells via the SelectButton option
+ * button, date/datetime cells via the Calendar input, everything else via the
+ * input/textarea.
+ */
+async function setCellValue(
+    page: Page,
+    object: string,
+    rowIndex: number,
+    field: string,
+    raw: FieldMap[string],
+): Promise<void> {
+    const cellId = `${object}-${rowIndex}-${field}`;
+    const spec: IFieldValue =
+        typeof raw === 'object' && raw !== null ? (raw as IFieldValue) : {value: raw};
+    const value = spec.value;
+    const widget = spec.widget ?? (typeof value === 'boolean' ? 'checkbox' : 'text');
+
+    switch (widget) {
+        case 'checkbox': {
+            // PrimeReact Checkbox renders a hidden `<input id={cellId}>` that
+            // overlays (and intercepts pointer events on) the `.p-checkbox-box`,
+            // so toggle the input directly with a forced click.
+            const input = page.locator(`input[id="${cellId}"]`);
+            if ((await input.isChecked()) !== Boolean(value)) {
+                await input.click({force: true});
+            }
+            break;
+        }
+        case 'select': {
+            // PrimeReact SelectButton — click the option button with the label.
+            await page
+                .getByTestId(cellId)
+                .locator(`.p-button:has-text("${String(value)}")`)
+                .first()
+                .click();
+            break;
+        }
+        case 'date':
+        case 'datetime': {
+            const input = page.locator(`input[id="${cellId}"]`);
+            await input.fill(String(value));
+            await input.press('Escape');
+            break;
+        }
+        case 'textarea':
+            await page.locator(`textarea[id="${cellId}"]`).fill(String(value));
+            break;
+        default:
+            await page.locator(`input[id="${cellId}"]`).fill(String(value));
+            break;
+    }
+}
+
+/**
+ * Enter row-edit mode for a detail-table row (unless it is already editing,
+ * e.g. a freshly added row), set the given cell values and commit the row
+ * (PrimeReact row editor), waiting for the row to leave edit mode before
+ * returning.
+ */
+async function editDetailRow(
+    page: Page,
+    object: string,
+    rowIndex: number,
+    fields: FieldMap,
+    alreadyEditing = false,
+): Promise<void> {
+    // `:visible` scopes to the active tab panel — sibling detail tables stay in
+    // the DOM (hidden) and would otherwise match these selectors too.
+    const row = page.locator('.p-datatable-tbody tr:visible').nth(rowIndex);
+    if (!alreadyEditing) {
+        // The row-editor column's edit button (PrimeReact RowEditor — accessible
+        // name "Edit Row" in the current version).
+        await row.getByRole('button', {name: /edit/i}).first().click();
+    }
+    for (const [field, raw] of Object.entries(fields)) {
+        await setCellValue(page, object, rowIndex, field, raw);
+    }
+    await page.locator('.p-row-editor-save:visible').last().click();
+    await page
+        .locator('.p-row-editor-save:visible')
+        .last()
+        .waitFor({state: 'hidden', timeout: BLONG_ELEMENT_TIMEOUT});
+}
+
+/**
+ * Add `rows` detail rows in the given detail tab's editable table (using the
+ * table's "+ Add" button) and set each row's cells, so the form value carries
+ * the detail arrays on save. For pivot tables (`pivot: true`) there is no Add
+ * button — the rows come from the dropdown, so only the cells are toggled.
  */
 async function fillDetailRows(
     page: Page,
     object: string,
     fields: FieldMap,
     rows = 1,
+    pivot = false,
 ): Promise<void> {
     for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
-        // The "+ Add" button on the detail TableWidget (form-value mode).
-        await page.getByTestId(`${object}-addButton`).click();
-        // Fill the new (row-editing) row's cell inputs. Cell editors carry
-        // `id`/`data-testid` = `${object}-${rowIndex}-${field}`; they may be
-        // `<input>` (text/number widgets) or `<textarea>` (text widget maps to
-        // TextareaWidget), so match the `id` regardless of element type.
-        for (const [field, raw] of Object.entries(fields)) {
-            const cellId = `${object}-${rowIndex}-${field}`;
-            const input = page.locator(`[id="${cellId}"]`).first();
-            await input.fill(String(unwrapValue(raw)));
+        if (pivot) {
+            await editDetailRow(page, object, rowIndex, fields);
+        } else {
+            // The "+ Add" button on the detail TableWidget (form-value mode)
+            // creates a row that is already in edit mode.
+            await page.getByTestId(`${object}-addButton`).click();
+            await editDetailRow(page, object, rowIndex, fields, true);
         }
-        // Commit the row edit (PrimeReact row editor save icon).
-        await page.locator('.p-row-editor-save').last().click();
     }
 }
 
@@ -317,19 +436,46 @@ export function createAndEditModel(
         await fillFields(portal.page, fields);
         await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-filled.png`);
 
-        // Master-detail: switch to each detail tab, add + fill rows, screenshot
-        // the empty and filled tabs so the detail tables are visually covered.
+        // Master-detail: switch to each detail tab, add + fill rows (pivot rows
+        // are toggled in place — there is no Add button), screenshot the empty
+        // and filled tabs so the detail tables are visually covered.
         if (details && details.length > 0) {
             for (const detail of details) {
                 await switchToDetailTab(portal.page, detail.object);
-                await portal.page
-                    .locator(`[data-testid="${detail.object}-addButton"]`)
-                    .first()
-                    .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+                if (detail.pivot) {
+                    // Pivot rows come from the dropdown — wait for a real row in
+                    // the visible tab panel (`:visible` excludes hidden siblings).
+                    await portal.page
+                        .locator('.p-datatable-tbody tr:visible')
+                        .filter({hasNotText: 'No available options'})
+                        .first()
+                        .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+                } else if (detail.allowAdd !== false) {
+                    // Editable table — wait for the "+ Add" button.
+                    await portal.page
+                        .locator(`[data-testid="${detail.object}-addButton"]`)
+                        .first()
+                        .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+                } else {
+                    // View/toggle-only table (e.g. allowAdd: false) — wait for
+                    // the visible table body to render (may be the empty state).
+                    await portal.page
+                        .locator('.p-datatable-tbody:visible')
+                        .first()
+                        .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+                }
                 await expect(portal.page).toHaveScreenshot(
                     `${subject}-${object}-tab-${detail.object}-empty.png`,
                 );
-                await fillDetailRows(portal.page, detail.object, detail.fields, detail.rows ?? 1);
+                if (detail.fields && (detail.pivot || detail.allowAdd !== false)) {
+                    await fillDetailRows(
+                        portal.page,
+                        detail.object,
+                        detail.fields,
+                        detail.rows ?? 1,
+                        detail.pivot,
+                    );
+                }
                 await expect(portal.page).toHaveScreenshot(
                     `${subject}-${object}-tab-${detail.object}-filled.png`,
                 );
@@ -385,16 +531,33 @@ export function createAndEditModel(
             await expect(portal.page).toHaveScreenshot(`${subject}-${object}-open.png`);
 
             // Master-detail: screenshot each detail tab showing the loaded rows,
-            // then return to the master tab before the edit dirty cycle.
+            // operate on the first detail that declares editFields (proving that
+            // editing details works end-to-end), then return to the master tab
+            // before the edit dirty cycle.
             if (details && details.length > 0) {
                 for (const detail of details) {
                     await switchToDetailTab(portal.page, detail.object);
                     await portal.page
-                        .locator(`[data-testid="${detail.object}-addButton"]`)
+                        .locator('.p-datatable-tbody:visible')
                         .first()
                         .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
                     await expect(portal.page).toHaveScreenshot(
                         `${subject}-${object}-tab-${detail.object}-open.png`,
+                    );
+                }
+                const detailToEdit = details.find(
+                    d => d.editFields && Object.keys(d.editFields).length > 0,
+                );
+                if (detailToEdit?.editFields) {
+                    await switchToDetailTab(portal.page, detailToEdit.object);
+                    await editDetailRow(
+                        portal.page,
+                        detailToEdit.object,
+                        0,
+                        detailToEdit.editFields,
+                    );
+                    await expect(portal.page).toHaveScreenshot(
+                        `${subject}-${object}-tab-${detailToEdit.object}-edit-dirty.png`,
                     );
                 }
                 // Back to the master tab (first TabMenu item).

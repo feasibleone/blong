@@ -36,7 +36,7 @@ export default server(() => ({
         },
         integration: {
             watch: {
-                test: ['test.login.flow', 'test.authorization.flow'],
+                test: ['test.login.flow', 'test.authorization.flow', 'test.access.model.flow'],
             },
         },
     },

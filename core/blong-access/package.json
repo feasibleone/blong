@@ -19,6 +19,8 @@
         "ci-lint": "blong-dev lint",
         "ci-test": "../../test/integration/wait.sh mysql && blong-dev test",
         "dev": "vite",
+        "playwright": "blong-dev playwright",
+        "playwright:update": "blong-dev playwright --update-snapshots",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
@@ -26,12 +28,21 @@
         "typebox": "^1.1.5"
     },
     "devDependencies": {
+        "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-core": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
         "@feasibleone/blong-test": "workspace:^1.0.0",
+        "@playwright/test": "^1.60.0",
+        "@types/react": "^19.1.2",
+        "@types/react-dom": "^19.1.2",
+        "@vitejs/plugin-react": "^6.0.1",
+        "allure-playwright": "^3.6.2",
+        "primeicons": "^7.0.0",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
         "tap": "^21.6.3",
         "typescript": "^6.0.3",
         "vite": "^8.2.1"

@@ -9,6 +9,20 @@ _None currently._
 
 ## List of resolved frictions
 
+Resolved by the "blong-int-adapter resource/edge integration tests" round (2026-08) — get-case edge
+attachment silently skipped in the generic knex `exec`.
+
+- **`prepareResultRow` mutates the row in place — masking binary PKs.** In the exec `get` case,
+  `masterKey = row?.[keyName]` was read AFTER `prepareResultRow(row, binaryCols, table)` which
+  converts Buffer → base64 **in place** (documented behaviour), so `Buffer.isBuffer(masterKey)` was
+  `false` and the declared graph-edge attachment block was silently skipped. It took several debug
+  runs to spot because the raw row (pre-mutation) IS a Buffer and direct knex repros return Buffers —
+  only the mutation ordering differed. Fix: capture `masterKey` from the raw `row` BEFORE
+  `prepareResultRow`. Lesson: never read the PK off a row after passing it to a mutating "prepare"
+  helper; grab the key first or have the helper return a copy. Debug technique that worked: printing
+  `JSON.stringify(row, (k,v) => Buffer.isBuffer(v) ? 'BUFFER:'+v.length : v)` right after
+  `query.first()` vs. after `prepareResultRow` to see the mutation.
+
 Resolved by the "blong-int-sql CI test timeout" debug (2026-08-19) — the deadlock test helpers
 left 20s `setTimeout` handles behind, holding the process open ~19s after `platform.stop()` (over
 tap's 30s per-file limit in CI).

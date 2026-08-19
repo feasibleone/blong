@@ -12,6 +12,16 @@ user:
     password: testPassword
     roles: Guest
 role:
-  Admin: testManagement
+  Admin: testManagement,accessModelAdmin
 capability:
   testManagement: accessTestPrivate,subject.object.schema
+  # Grants the Admin role (testAdmin / testUser) every action the access UI
+  # models need, so the Playwright suite can browse/create/edit the entities
+  # and load schemas + dropdowns through the authorized gateway.
+  accessModelAdmin: >-
+    accessUserFind,accessUserGet,accessUserAdd,accessUserEdit,accessUserRemove,
+    accessRoleFind,accessRoleGet,accessRoleAdd,accessRoleEdit,accessRoleRemove,
+    accessCapabilityFind,accessCapabilityGet,accessCapabilityAdd,accessCapabilityEdit,accessCapabilityRemove,
+    accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
+    accessSessionFind,accessSessionClose,accessAuditFind,
+    accessDropdownList,subject.object.schema

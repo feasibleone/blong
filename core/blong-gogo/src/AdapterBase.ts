@@ -195,14 +195,22 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         return null;
     }
 
+    namespaces(): (string | RegExp)[] {
+        const namespace = this.config.namespace;
+        return ([] as (string | RegExp)[]).concat(
+            namespace
+                ? Array.isArray(namespace) || typeof namespace === 'string'
+                    ? namespace
+                    : Object.keys(namespace)
+                : this.config.imports || this.config.id.replace(/\./g, '-'),
+        );
+    }
+
     handles(name: string): boolean {
         if (reserved.includes(name)) return true;
-        const id = this.config.id.replace(/\./g, '-');
-        return ([] as (string | RegExp)[])
-            .concat(this.config.namespace || this.config.imports || id)
-            .some(namespace =>
-                typeof namespace === 'string' ? name.startsWith(namespace) : namespace.test(name),
-            );
+        return this.namespaces().some(namespace =>
+            typeof namespace === 'string' ? name.startsWith(namespace) : namespace.test(name),
+        );
     }
 
     methodPath(methodName: string): string {
@@ -297,10 +305,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     }
 
     forNamespaces<R>(reducer: (prev: R, current: unknown) => R, initial: R): R {
-        const id = this.config.id.replace(/\./g, '-');
-        return ([] as (string | RegExp)[])
-            .concat(this.config.namespace || this.config.imports || id)
-            .reduce(reducer.bind(this), initial);
+        return this.namespaces().reduce(reducer.bind(this), initial);
     }
 
     async start(): Promise<unknown> {
@@ -390,12 +395,34 @@ export default async function adapter<T, C extends IContext>(
 
     const base = new AdapterBase<T, C>(api, configBase, activationNames);
 
-    const result = handlers!({utError, remote, type, schema: registry.objectSchema, manifest: api.manifest});
+    const result = handlers!({
+        utError,
+        remote,
+        type,
+        schema: registry.objectSchema,
+        manifest: api.manifest,
+    });
     let current = result;
     while (current.extends) {
         const parent = await (typeof current.extends === 'string'
-            ? adapterFactory(current.extends)!({utError, remote, rpc, local, registry, schema, manifest: api.manifest})
-            : current.extends({utError, remote, rpc, local, registry, schema, manifest: api.manifest}));
+            ? adapterFactory(current.extends)!({
+                  utError,
+                  remote,
+                  rpc,
+                  local,
+                  registry,
+                  schema,
+                  manifest: api.manifest,
+              })
+            : current.extends({
+                  utError,
+                  remote,
+                  rpc,
+                  local,
+                  registry,
+                  schema,
+                  manifest: api.manifest,
+              }));
         Object.setPrototypeOf(current, parent);
         current = parent;
     }

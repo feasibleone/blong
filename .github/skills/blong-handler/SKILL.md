@@ -314,6 +314,97 @@ async function handlerName(params, $meta) {
 }
 ```
 
+## Overriding / Customizing Default Handling
+
+A handler file can override a method the framework (or another group) already provides and delegate
+back to the default via `super`. This covers adapter lifecycle methods, the automatic CRUD `exec`,
+and the `send`/`receive` conversion handlers.
+
+### The `super` object
+
+`super` is **native JS prototype-chain delegation**. The runtime chains handler groups with
+`Object.setPrototypeOf` (see the `wiring-pipeline.md` rationale → "Prototype Chain Wiring"), so
+`super.<method>` resolves the parent implementation — an earlier-attached handler group, a synthetic
+handler bound to the port, or the adapter base.
+
+To use `super`, the handler must return an **object literal with method shorthand** (a plain
+function expression cannot reference `super`):
+
+```typescript
+export default handler(({lib: {helper}}) => ({
+    async realmEntityEdit(params, $meta) {
+        const result = await super.exec(params, $meta); // default handling
+        await helper(params, $meta); // custom logic
+        return result;
+    },
+}));
+```
+
+### `super.exec` — reuse automatic CRUD
+
+For a persistence handler that must run custom logic around the automatic CRUD, name the handler
+after the method (e.g. `accessUserEdit` → `access.user.edit`) and delegate the standard part with
+`super.exec(params, $meta)`. The generic knex `exec` then performs `find`/`get`/`add`/`edit`/
+`remove` against the table.
+
+```typescript
+// adapter/db/accessUserEdit.ts
+export default handler(({handler: {'db/coreTripleMerge': coreTripleMerge}}) => ({
+    async accessUserEdit(params, $meta) {
+        const result = await super.exec(params, $meta); // generic edit
+        // ... custom graph-edge persistence ...
+        return result;
+    },
+}));
+```
+
+### `send` / `receive` — transform parameters and results
+
+- `send` transforms the **outgoing parameters** before the method executes.
+- `receive` transforms the **incoming result** after the method returns.
+
+They are conversion handlers probed by the port loop (`getConversion`): a per-method conversion
+(`<subject>.<object>.<predicate>.request.send`), an mtid level conversion (`request.send`), or the
+generic `send`/`receive`. They stack on top of each other — e.g. the MLE codec overrides
+`send`/`receive` and calls `super.send`/`super.receive` to reach the JSON-RPC codec beneath it.
+
+```typescript
+export default handler(() => ({
+    async send(params, $meta) {
+        params = normalize(params);
+        return super.send ? super.send(params, $meta) : params;
+    },
+    async receive(result, $meta) {
+        const data = super.receive ? await super.receive(result, $meta) : result;
+        return decorate(data);
+    },
+}));
+```
+
+### Adapter lifecycle overrides
+
+Stock adapters override the lifecycle and delegate with `super`:
+
+```typescript
+async start() {
+    // custom startup (e.g. open a TCP server)
+    super.connect(); // bind handle() into the port loop
+    return super.start(); // default start (attach handlers, register ports)
+},
+async stop(...params) {
+    try {
+        /* custom shutdown */
+    } finally {
+        return super.stop(...params);
+    }
+},
+```
+
+Real-world examples: `core/blong-int-adapter/http/sim/echo.ts` (lifecycle),
+`core/blong-gateway/adapter/meter.ts` (`super.exec` fall-through),
+`core/blong-gogo/src/codec/adapter/mle/ready.ts` (`send`/`receive` stack), and `schema-sync.md`
+(`super.sqlItem*` synthetic-handler delegation).
+
 ## Error Handling
 
 ### Throwing Domain Errors

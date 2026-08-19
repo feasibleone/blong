@@ -56,6 +56,11 @@ export interface ICardProps {
     cardName?: string;
     /** Column index within the form grid — supplied by Deck for design-mode DnD. */
     colIdx?: number;
+    /**
+     * Suppress the card title. Used when a tab contains a single card whose
+     * title would duplicate the tab's label. Titles still show in design mode.
+     */
+    hideTitle?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +255,7 @@ function FieldRow({
     isLast,
     columnOverride,
     log,
+    hideLabel,
 }: {
     fieldName: string;
     fieldClass?: string;
@@ -257,6 +263,8 @@ function FieldRow({
     isLast: boolean;
     columnOverride?: string[];
     log?: ILogger;
+    /** Suppress the widget label (single-widget card duplicates its title) */
+    hideLabel?: boolean;
 }) {
     // ── Context subscriptions (all unconditional) ──────────────────────────────
     const stableCtx = useBlongForm();
@@ -402,7 +410,7 @@ function FieldRow({
             // Both are non-null here: FieldRow returns null before the <Controller>
             // JSX if either is undefined (see early returns further below).
             const Widget = WidgetComponent!;
-            const hasLabel = effectiveSchema?.title !== '';
+            const hasLabel = !hideLabel && effectiveSchema?.title !== '';
             const error = fieldState.error;
             return (
                 <>
@@ -487,6 +495,7 @@ function FieldRow({
             instanceId,
             baseName,
             effectiveSchema,
+            hideLabel,
             onChange,
             onChangeName,
             methods,
@@ -519,7 +528,7 @@ function FieldRow({
                   ?.visible === false;
     if (isHidden) return null;
 
-    const hasLabel = effectiveSchema.title !== '';
+    const hasLabel = !hideLabel && effectiveSchema.title !== '';
 
     if (loading) {
         return (
@@ -733,12 +742,14 @@ function WatchFieldRow({
     selection,
     watchField,
     cardReadOnly,
+    hideLabel,
 }: {
     rawFieldName: string;
     isLast: boolean;
     selection: ITableSelection;
     watchField: string;
     cardReadOnly: boolean | undefined;
+    hideLabel?: boolean;
 }) {
     const stableCtx = useBlongForm();
     const stateCtx = useBlongFormState();
@@ -773,7 +784,7 @@ function WatchFieldRow({
     const WidgetComponent = widgetRegistry.get(resolveWidgetType(fieldSchema, fieldName));
     if (!WidgetComponent) return null;
 
-    const hasLabel = fieldSchema.title !== '';
+    const hasLabel = !hideLabel && fieldSchema.title !== '';
     // For listAction tables the form array is empty; fall back to the selection row directly
     const hasFormData = Array.isArray(watchedArray) && watchedArray.length > selection.index;
     const currentVal = hasFormData
@@ -842,6 +853,7 @@ export function Card({
     id,
     cardName,
     colIdx,
+    hideTitle,
 }: ICardProps) {
     const [collapsed, setCollapsed] = useState(false);
     const {active: isDesignMode} = useDesignMode();
@@ -855,6 +867,9 @@ export function Card({
     // When cardName is active, prefer resolved values over explicit props
     const resolvedTitle: string | ReactNode | undefined = label(resolved?.label, title);
     const titleLabel = typeof resolvedTitle === 'string' ? resolvedTitle : (cardName ?? elementId);
+    // Whether the card shows a title — used to decide if a lone widget's label
+    // would duplicate it (see the hideLabel logic in the content build below).
+    const hasCardTitle = resolvedTitle != null && resolvedTitle !== '';
 
     const {log} = useBlong();
     const {isSelected, select, dragProps, setRef, designClass, style} = useDesignable(
@@ -889,6 +904,7 @@ export function Card({
                 // tableSelections comes from FormStateContext (slow) — Card rerenders only on
                 // row selection events, not on every field-value change.
                 const selection = (formState?.tableSelections ?? {})[watchField] ?? null;
+                const singleWatchWidget = resolved.fields.length === 1;
                 content = selection ? (
                     resolved.fields.map((rawFieldName, idx) => (
                         <WatchFieldRow
@@ -898,6 +914,7 @@ export function Card({
                             selection={selection}
                             watchField={watchField}
                             cardReadOnly={cardReadOnly}
+                            hideLabel={singleWatchWidget && hasCardTitle}
                         />
                     ))
                 ) : (
@@ -918,6 +935,10 @@ export function Card({
                 // Card itself does NOT rerender when values change.
                 // Custom editor widget names (matching `editors` keys) are rendered via
                 // CustomEditorRow instead of the standard FieldRow.
+                // When a card holds exactly one widget, its label would duplicate the
+                // card title — hide it (unless the card itself is untitled, in which
+                // case the field label is all that identifies the widget).
+                const hideWidgetLabel = resolved.fields.length === 1 && hasCardTitle;
                 content = resolved.fields.map((fieldName, idx) => {
                     const isLast = idx === resolved.fields.length - 1;
                     if (formCtx?.editors?.[fieldName]) {
@@ -939,6 +960,7 @@ export function Card({
                             isLast={isLast}
                             columnOverride={resolved.columnOverrides?.[fieldName]}
                             log={log}
+                            hideLabel={hideWidgetLabel}
                         />
                     );
                 });
@@ -948,9 +970,11 @@ export function Card({
         content = children;
     }
 
-    // Title node — collapse toggle (whole card is draggable via wrapper div in design mode)
+    // Title node — collapse toggle (whole card is draggable via wrapper div in design mode).
+    // When hideTitle is set (single-card tab), suppress the label outside design mode so it
+    // doesn't duplicate the tab's title.
     const titleNode =
-        resolvedTitle || resolvedCollapsible ? (
+        !(hideTitle && !isDesignMode) && (resolvedTitle || resolvedCollapsible) ? (
             <span
                 className="blong-card__label"
                 onClick={

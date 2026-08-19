@@ -1,4 +1,6 @@
-# Decisions — Area 3 implementation (2026-08-18)
+# Decisions
+
+## Area 3 implementation (2026-08-18)
 
 - **A3.4 override fix — REPLACE over `override` flag**: Chose to make `Registry._validations()`
   replace a later-registered validation per `methodParts` key (plan's primary option) instead of
@@ -19,7 +21,7 @@
   fixed `run.mjs` `globToRegExp` (`**/` matching zero dirs) and the `anyFile` string-includes bug,
   because without them the "fixed items" (suite-wiring etc.) could not score.
 
-# Decisions — kopi runnable + framework `$` handling + diagnostics (2026-08-18 follow-up)
+## Kopi runnable + framework `$` handling + diagnostics (2026-08-18 follow-up)
 
 - **Do NOT scaffold a new realm for the screenshot demo**: Reverted the throwaway `dev/testrealm`
   (rush.json entry + lockfile) per the directive "do not create new realms". Instead made
@@ -50,7 +52,7 @@
   model handler name doesn't match a registered file (names the closest match). These would have
   pinpointed the `$`-mismatch hang and `_validations()` stall instantly.
 
-# Decision — break the gogo↔kopi↔access workspace cycle (keep kopi runnable)
+## Break the gogo↔kopi↔access workspace cycle (keep kopi runnable)
 
 - **Constraint**: `blong-kopi` must stay a runnable/testable realm, so `kopi →
   gogo` (for `load` in index.test.ts) and `kopi → access` (RBAC demo) stay.
@@ -78,7 +80,7 @@
   `scripts/copy-template.mjs` (which imports the `.ts` module directly — Node 24
   strips types), so the two can never drift again.
 
-# Decision — reuse shared `accessAuthorizationMerge`, drop the template's duplicate RBAC handler
+## Reuse shared `accessAuthorizationMerge`, drop the template's duplicate RBAC handler
 
 - **Question**: Is `adapter/db/$subjectAuthorizationMerge.ts` in the kopi template really needed,
   or can the seed use `accessAuthorizationMerge.ts` (via `accessAuthorizationMerge.yaml`) like the
@@ -97,3 +99,59 @@
 - **Verified**: kopi tap 6/6 (RBAC 401/403/200 + permissions assertion) and Playwright 4/4 both
   pass after the change; the `accessAuthorizationMerge.yaml` seed now re-ensures `$subjectManage`
   idempotently via the shared handler.
+
+## Capability action pivot collapses CRUD actions to entity rows via a custom dropdown
+
+- **Question**: The capability editor's action tab should not list `accessCapabilityRemove` etc. as
+  separate rows. How to make the pivot list ONE row per entity with CRUD verbs as columns — and
+  should it apply only to `accessCapability` or all entities?
+- **Answer**: Applies to ALL entities (user clarified): any action whose name ends with a standard
+  CRUD suffix (`accessUserFind`, `accessRoleEdit`, …) collapses to one entity row. Implemented by:
+  1. A custom `access.crudEntity` dropdown served by a new realm handler
+     `adapter/db/accessDropdownList.ts` that calls `super.exec` for the auto per-table dropdowns and
+     ADDS the entity list derived from `access_action` + `core_resource` (distinct `access<Entity>`
+     prefixes of standard-CRUD actions). Realm handlers override the knex adapter's auto
+     `access.dropdown.list` (same mechanism as any `access.*` db handler).
+  2. Model pivot `{dropdown:'access.crudEntity', join:{value:'entityName', label:'entityName'}}`.
+  3. `crudActionParts`/`crudPivotActionIds` helpers map ticked cells → ensure + sync
+     `access<Entity><Pred>` action edges. Non-CRUD actions → `otherAction` card inside the Action tab.
+- **Trade-off accepted**: overriding `access.dropdown.list` means every access dropdown call pays the
+  extra `access_action` query; guarded by returning base on missing `qb`. The `access.crudEntity`
+  list reflects only entities that have at least one registered CRUD action (correct — you can only
+  grant what exists).
+- **Verified**: live DOM showed entity rows (accessUser/accessRole/accessCapability with full CRUD,
+  others with Find) + Other Actions card (subject.object.schema, accessDropdownList,
+  accessSessionClose); Playwright 19/19 + tap flow + both packages' lint green.
+
+## Generic CRUD handles resource-backed entities + graph edges (opt-in)
+
+- **Question**: blong-access has ~18 adapter/db handlers that just do resource-backed CRUD
+  (`coreResourceEnsure` on add, name join on find/get, resource rename on edit, cascade on remove,
+  `core_triple` hasRole/hasCapability/hasAction edge sync). Can the built-in knex `exec` absorb them?
+- **Answer**: Yes — opt-in via `ISchemaTable.resource: true` + `ISchemaTable.edges[]`. The exec `add`
+  now generates server-side PKs for `uuid`/`ulid` default markers AND for resource-backed not-null
+  PKs (FK→core.resource, no default, PK absent), creates `core_type`+`core_resource`, strips the
+  virtual `${object}Name` from the insert, and joins the name onto the result. find/get join the
+  name, edit renames the resource, remove cascades (entity row → resource row) + declared edges
+  (incl. `reverse` bindings). Declarative `edges` give graph-edge master-detail on get/add/edit.
+- **Trade-off**: opt-in means zero impact on realms that don't declare `resource`/`edges`. Role CRUD
+  is now fully generic (10 handlers deleted: 4 browse finds, role find/get/add/edit/remove,
+  capability find). User/capability handlers stay custom (credentials/session/CRUD-action pivot).
+  USER GUIDANCE honored: exec now handles `ulid` (was a genuine gap) and the `uidNotNull`-PK caveat
+  is documented in the blong-schema skill; not-null PK generation is safe (only fires when PK absent).
+- **Verified**: tap 22/22 + Playwright 19/19 + both packages' lint green. Bugs fixed along the way:
+  remove order (FK), reverse-only edge binding clobbering the master key, edge name join on Buffers,
+  add result missing `${object}Name`.
+
+## Integration coverage (blong-int-adapter)
+
+- **Question**: the new resource/edge exec features need integration test coverage.
+- **Answer**: wired `@feasibleone/blong-core` as a mysql realm child (user-approved) and added a
+  `mysql resource/edge CRUD` group (12 steps: resource-backed person CRUD, ulid/uuid PK generation,
+  hasMember graph-edge team master-detail, cascade remove). All pass.
+- **Bug found by the tests**: exec `get` read `masterKey = row?.[keyName]` AFTER
+  `prepareResultRow(row, …)` mutates the row in-place (Buffer→base64 string), so
+  `Buffer.isBuffer(masterKey)` was false and declared edges were never attached. Fixed by capturing
+  the raw PK before the mutation. Also widened `resolveTableSpec` to accept `undefined` tableConfig.
+- **Noted**: binary(16) columns round-trip as 24-char base64, not 26-char ULID (documented in the
+  blong-schema skill).
