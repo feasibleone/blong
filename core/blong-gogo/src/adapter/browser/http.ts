@@ -23,6 +23,8 @@ const errorMap: IErrorMap = {
 };
 
 let _errors: Errors<typeof errorMap>;
+const undici = 'undici';
+const nodeFs = 'node:fs';
 
 export default adapter<IConfig>(({utError, manifest}) => {
     _errors ||= utError.register(errorMap);
@@ -51,8 +53,8 @@ export default adapter<IConfig>(({utError, manifest}) => {
                 // Dynamic imports — only run on the server; @vite-ignore prevents
                 // Vite from trying to bundle these Node.js-only modules for the browser.
                 const [{Agent}, {readFileSync}] = await Promise.all([
-                    import(/* @vite-ignore */ 'undici') as Promise<typeof import('undici')>,
-                    import(/* @vite-ignore */ 'node:fs') as Promise<typeof import('node:fs')>,
+                    import(/* @vite-ignore */ undici) as Promise<typeof import('undici')>,
+                    import(/* @vite-ignore */ nodeFs) as Promise<typeof import('node:fs')>,
                 ]);
                 const {tls} = this.config;
                 const agent = new Agent({

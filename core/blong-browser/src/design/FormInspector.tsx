@@ -19,6 +19,7 @@ import type {Control} from 'react-hook-form';
 import {useFormState, useWatch} from 'react-hook-form';
 import {useBlongForm, useBlongFormState} from '../components/Form/FormContext.js';
 import {Json} from '../components/Json/Json.js';
+import './index.css';
 
 // ── Section (collapsible) ────────────────────────────────────────────────────
 
