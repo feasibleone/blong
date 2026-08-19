@@ -55,6 +55,10 @@ export default class Registry extends Internal implements IRegistry {
     public ports: Map<string, IAdapterRegistry> = new Map();
     public methods: Map<string, Handlers> = new Map();
     public objectSchema: IObjectSchema = {};
+    #stopped = false;
+    #logger:
+        | {info?: (...args: unknown[]) => void; warn?: (...args: unknown[]) => void}
+        | undefined = undefined;
     #reload: PQueue = new PQueue({concurrency: 1});
     #ports: Map<string, Adapter> = new Map();
     #error: IErrorFactory;
@@ -396,12 +400,14 @@ export default class Registry extends Internal implements IRegistry {
     }
 
     public async start(configOverride: object): Promise<IRegistry> {
+        this.#stopped = false;
+
         await this._collectObjectSchema();
-        const log = this.#log.logger('info', {name: 'registry'});
+        this.#logger = this.#log.logger('info', {name: 'registry'});
         let created = 0;
         const portIds = Array.from(this.ports.keys());
         await blongLib.withProgress(
-            log,
+            this.#logger,
             'create ports',
             (async () => {
                 for (const id of portIds) {
@@ -414,7 +420,7 @@ export default class Registry extends Internal implements IRegistry {
         let started = 0;
         const startPorts = Array.from(this.#ports.values());
         await blongLib.withProgress(
-            log,
+            this.#logger,
             'start ports',
             (async () => {
                 for (const port of startPorts) {
@@ -427,7 +433,7 @@ export default class Registry extends Internal implements IRegistry {
         let ready = 0;
         const readyPorts = Array.from(this.#ports.values());
         await blongLib.withProgress(
-            log,
+            this.#logger,
             'ready ports',
             (async () => {
                 for (const port of readyPorts) {
@@ -464,6 +470,7 @@ export default class Registry extends Internal implements IRegistry {
     }
 
     public async stop(): Promise<IRegistry> {
+        if (this.#stopped) return this;
         await this.#watch?.stop();
         await this.#gateway?.stop();
         await this.#remote?.stop();
@@ -472,7 +479,7 @@ export default class Registry extends Internal implements IRegistry {
         let stopped = 0;
         const ports = Array.from(this.#ports.values());
         await blongLib.withProgress(
-            this.#log.logger('info', {name: 'registry'}),
+            this.#logger,
             'stop ports',
             (async () => {
                 for (const port of ports) {
@@ -482,6 +489,8 @@ export default class Registry extends Internal implements IRegistry {
             })(),
             {getProgress: () => ({done: stopped, total: ports.length})},
         );
+        this.#stopped = true;
+        this.#logger = undefined;
         return this;
     }
 
