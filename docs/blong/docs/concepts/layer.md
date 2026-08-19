@@ -30,7 +30,7 @@ The following server-side layer folder names are **auto-discovered** by the fram
 
 * `sim` - simulated external backends used during integration testing only.
 
-* `server/test` - server-side tap tests (see [test](./test.md)).
+* `server/test` - server-side tap tests (see [test](../patterns/test.md)).
 
 * `api`, `init`, `meta` - registered by default on the server.
 
