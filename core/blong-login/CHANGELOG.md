@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-login-v1.8.0...blong-login-v1.9.0) (2026-08-19)
+
+
+### Features
+
+* redis adapter and blong-gateway ([c28a68f](https://github.com/feasibleone/blong/commit/c28a68f5f9cfc2398771cca05c4366efc147eb6e))
+* self registration ([20f3791](https://github.com/feasibleone/blong/commit/20f3791c453d0f6f4cbf28c2e3af1fbb959a8d0d))
+
 ## [1.8.0](https://github.com/feasibleone/blong/compare/blong-login-v1.7.0...blong-login-v1.8.0) (2026-07-14)
 
 

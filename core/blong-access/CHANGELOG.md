@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-access-v1.0.1...blong-access-v1.1.0) (2026-08-19)
+
+
+### Features
+
+* redis adapter and blong-gateway ([c28a68f](https://github.com/feasibleone/blong/commit/c28a68f5f9cfc2398771cca05c4366efc147eb6e))
+* self registration ([20f3791](https://github.com/feasibleone/blong/commit/20f3791c453d0f6f4cbf28c2e3af1fbb959a8d0d))
+
+
+### Bug Fixes
+
+* circular dependency ([cda5589](https://github.com/feasibleone/blong/commit/cda558920d306be78b0a62bc7529db83d8680448))
+* lint / dev dependencies ([c5ebc91](https://github.com/feasibleone/blong/commit/c5ebc9194626cc167a8e39842bab1c37418d1013))
+* missing party permissions ([afeb4da](https://github.com/feasibleone/blong/commit/afeb4da93412c0d93da3b2d735471fd3e3a28b27))
+* schema refresh and model list handling ([920e453](https://github.com/feasibleone/blong/commit/920e453f69b9335a07d8c901d042c3d360d4c010))
+* update dependencies ([0f86433](https://github.com/feasibleone/blong/commit/0f86433e1777df5348643e69ecfc28d31dceac35))
+
 ## [1.0.1](https://github.com/feasibleone/blong/compare/blong-access-v1.0.0...blong-access-v1.0.1) (2026-07-17)
 
 

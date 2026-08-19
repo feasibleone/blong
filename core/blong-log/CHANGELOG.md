@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/feasibleone/blong/compare/blong-log-v1.4.1...blong-log-v1.4.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* lint / dev dependencies ([c5ebc91](https://github.com/feasibleone/blong/commit/c5ebc9194626cc167a8e39842bab1c37418d1013))
+
 ## [1.4.1](https://github.com/feasibleone/blong/compare/blong-log-v1.4.0...blong-log-v1.4.1) (2026-07-14)
 
 

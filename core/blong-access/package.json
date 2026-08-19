@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-access",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "description": "RBAC access control realm — user profiles, credentials, actions, capabilities, roles, policies, and access flows",
     "type": "module",
     "exports": {

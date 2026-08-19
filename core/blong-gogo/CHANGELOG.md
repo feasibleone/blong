@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.28.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.27.0...blong-gogo-v1.28.0) (2026-08-19)
+
+
+### Features
+
+* blong-dev log ([88ea53b](https://github.com/feasibleone/blong/commit/88ea53bbe411803a540c3158d151220a1c9bee26))
+* master-detail handling ([03c5bbd](https://github.com/feasibleone/blong/commit/03c5bbd9401a82a9427577e7611f2622aadee4e5))
+* redis adapter and blong-gateway ([c28a68f](https://github.com/feasibleone/blong/commit/c28a68f5f9cfc2398771cca05c4366efc147eb6e))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+* resolve some AI agent frictions and improve the framework features ([23b6986](https://github.com/feasibleone/blong/commit/23b69863b458e97f1dad249fcdeec5e182a69b74))
+* self registration ([20f3791](https://github.com/feasibleone/blong/commit/20f3791c453d0f6f4cbf28c2e3af1fbb959a8d0d))
+* update blong-kopi and relevant skills to the latest patterns ([52dacae](https://github.com/feasibleone/blong/commit/52dacae17410933d262637de593bd8dc5db628e8))
+
+
+### Bug Fixes
+
+* improve tooling ([c484c28](https://github.com/feasibleone/blong/commit/c484c28de5ec3e574297b27e49ea42365ea956c1))
+* missing party permissions ([afeb4da](https://github.com/feasibleone/blong/commit/afeb4da93412c0d93da3b2d735471fd3e3a28b27))
+* registry logger ([443a9ed](https://github.com/feasibleone/blong/commit/443a9ed3948a871d42a5c7ff748751ec99ee460b))
+* remove unused functions ([3de9db3](https://github.com/feasibleone/blong/commit/3de9db31032d269cbda9b1e57bc06eec5a3a2061))
+* schema refresh and model list handling ([920e453](https://github.com/feasibleone/blong/commit/920e453f69b9335a07d8c901d042c3d360d4c010))
+* UI issues ([653baaf](https://github.com/feasibleone/blong/commit/653baaf796b20dd4c42ba5be9a2a8be3668e7227))
+* update dependencies ([0f86433](https://github.com/feasibleone/blong/commit/0f86433e1777df5348643e69ecfc28d31dceac35))
+
 ## [1.27.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.26.0...blong-gogo-v1.27.0) (2026-07-23)
 
 

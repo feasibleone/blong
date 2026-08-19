@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.7.0...blong-suite-v1.8.0) (2026-08-19)
+
+
+### Features
+
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+
+
+### Bug Fixes
+
+* lint / dev dependencies ([c5ebc91](https://github.com/feasibleone/blong/commit/c5ebc9194626cc167a8e39842bab1c37418d1013))
+
 ## [1.7.0](https://github.com/feasibleone/blong/compare/blong-suite-v1.6.0...blong-suite-v1.7.0) (2026-07-23)
 
 
