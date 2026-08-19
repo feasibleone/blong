@@ -35,7 +35,7 @@ export default adapter<{
             knex: {
                 connection: {
                     database:
-                        '${[suite, user].map(s => s.toLowerCase().replace(/[^a-z0-9-]/g, "_")).join("-")}',
+                        '${[suite, user].map(s => s.toLowerCase().replaceAll("$", "").replace(/[^a-z0-9-]/g, "_")).join("-")}',
                 },
             },
             schema: {

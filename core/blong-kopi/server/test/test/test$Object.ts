@@ -53,7 +53,7 @@ export default handler(
                     );
                     assert.ok(result.$object.$objectId, '$object add succeeds');
                     assert.equal(result.$object.$objectStatus, 'draft', '$object status is draft');
-                    assert.equal(result.line.length, 2, 'two detail rows created');
+                    assert.equal(result.line?.length, 2, 'two detail rows created');
                     return result.$object;
                 },
 

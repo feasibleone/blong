@@ -5,12 +5,10 @@ Update it when something requires unexpected effort to implement or fix.
 
 ## List of unresolved frictions
 
-- `bindSyntheticCrud` confuses agents and they fail to see that the exec function is primarily used for CRUD,
-  `bindSyntheticCrud` is not really used/needed at the moment. (The related "DB handlers go in `adapter/db/`
-  with `queryBuilder`" part is now resolved — see resolved list.)
-- agent tries to run the blong CLI with --help, but it crashes;
-- agent fails to notice the `blong-dev sql` ability and tries to use MySQL CLI locally or via pod.
-- agent is not aware of the DB naming pattern in dev and iterates to find it.
+- coding agent tries to run the blong CLI with --help, but it crashes;
+- coding agent fails to notice the `blong-dev sql` ability and tries to use MySQL CLI locally or via pod.
+- coding agent is not aware of the DB naming pattern in dev and iterates to find it. knex adapter should
+  try to auto-create the DB if it doesn't exist unless opted out via a config flag.
 
 ## List of resolved frictions
 

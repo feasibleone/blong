@@ -231,7 +231,7 @@ realmname/meta/db/
 character (minus the extension). Examples:
 
 | Filename | Method name |
-|---|---|
+| --- | --- |
 | `0-coreTypeMerge.yaml` | `coreTypeMerge` |
 | `realmnameRoleMerge.yaml` | `realmnameRoleMerge` |
 | `accessRoleMerge.yaml` | `accessRoleMerge` |
@@ -266,7 +266,7 @@ in `dev` and `integration` intents — never in `upgrade` or `microservice`.
 ### Intent-specific behaviour
 
 | Intent | `schema.seed` | `schema.dbTest` |
-|---|---|---|
+| --- | --- | --- |
 | `dev` | ✅ | ✅ |
 | `integration` | ✅ | ✅ |
 | `upgrade` | ✅ | ❌ |
@@ -386,7 +386,6 @@ imperative control is needed (e.g., integration test cleanup or one-off migratio
 | ------------------------ | ------------------------------------------------------------ |
 | `sqlSchemaTableSync`     | Create or alter a specific table to match a TypeBox schema   |
 | `sqlSchemaTableDrop`     | Drop a specific table                                        |
-| `sqlSchemaCrudBind`      | Return CRUD handler closures bound to a specific table       |
 | `sqlSchemaProcedureSync` | Create / replace a list of stored procedures                 |
 | `sqlSchemaProcedureBind` | Discover all procedures and return them as handler closures  |
 

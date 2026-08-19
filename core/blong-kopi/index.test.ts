@@ -19,8 +19,8 @@ const intents = ['microservice', 'integration', 'dev', ...(process.env.CI ? ['ci
 const manifest: Record<string, unknown> = {};
 
 const [serverPlatform, browserPlatform] = await Promise.all([
-    load(serverSuite, '$subject', '$subject', intents, manifest),
-    load(browserSuite, '$subject', '$subject', intents, manifest),
+    load(serverSuite, 'blong-$subject', 'blong-$subject', intents, manifest),
+    load(browserSuite, 'blong-$subject', 'blong-$subject', intents, manifest),
 ]);
 await Promise.all([serverPlatform.start({}), browserPlatform.start({})]);
 await tap.test('$subject flow (server)', async (test: Test) => {

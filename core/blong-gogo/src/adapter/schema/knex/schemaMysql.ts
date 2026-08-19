@@ -1,6 +1,5 @@
 import {type Knex} from '@feasibleone/blong/types';
 import {Type, type TFunction, type TSchema} from 'typebox';
-import {attachHandlers} from './schemaTable.ts';
 import {
     extractProcedureBody,
     methodId,
@@ -179,30 +178,5 @@ export async function bindSyntheticHandlers(
         const callable = _makeCallable(knex, spName, inParams);
         self[methodId(camelName)] = callable;
         self[camelName] = callable;
-    }
-}
-
-/**
- * Bind CRUD synthetic handlers for every table in `tables`, keyed by namespace.
- * Called from `ready()` when `config.namespace` is set.
- */
-export async function bindSyntheticCrud(
-    self: Record<string, unknown>,
-    knex: Knex,
-    namespace: string,
-    tables: Array<{tableName: string; definition: import('typebox').TObject}>,
-): Promise<void> {
-    const {schemaCrudBindImpl} = await import('./schemaTable.ts');
-    for (const {tableName, definition} of tables) {
-        const objectName = snakeToCamel(tableName);
-        const {handlers} = await schemaCrudBindImpl(
-            knex,
-            namespace,
-            objectName,
-            definition,
-            [],
-            tableName,
-        );
-        attachHandlers(self, handlers);
     }
 }

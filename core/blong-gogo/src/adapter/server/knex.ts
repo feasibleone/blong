@@ -31,7 +31,6 @@ import {
 } from '../schema/knex/schemaMysql.ts';
 import {
     attachHandlers,
-    schemaCrudBindImpl,
     schemaTableConstraintSyncImpl,
     schemaTableSyncImpl,
 } from '../schema/knex/schemaTable.ts';
@@ -817,32 +816,6 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 tableName,
                 schema,
                 options,
-            );
-        },
-        /**
-         * Generate CRUD handler functions and their TypeBox schemas for a given
-         * table.  Only operations absent from `existingHandlers` are generated.
-         */
-        async schemaCrudBind(
-            this: Adapter<IConfig>,
-            subject: string,
-            objectName: string,
-            schema: TObject,
-            existingHandlers: string[] = [],
-            tableName?: string,
-        ): Promise<{
-            handlers: Record<string, (params: Record<string, unknown>) => Promise<unknown>>;
-            schemas: Record<string, TFunction>;
-        }> {
-            if (!this.config.context?.queryBuilder)
-                throw new Error('Knex queryBuilder not available');
-            return schemaCrudBindImpl(
-                this.config.context.queryBuilder!,
-                subject,
-                objectName,
-                schema,
-                existingHandlers,
-                tableName,
             );
         },
         /**

@@ -1,6 +1,14 @@
 ---
 name: blong-schema
-description: Define database schemas, seed data, and test seed data in a Blong realm using the declarative schema management system built into adapter.knex. Covers the full lifecycle - TypeBox table definitions (with constraints like primary keys, foreign keys, unique constraints, and indexes), stored procedure `.sql` files, production seed YAML files, test seed YAML files, and the adapter configuration that wires everything together. Use this skill whenever the user wants to add or modify database tables, add seed data, add test seed data, define stored procedures, add constraints to tables, or set up the schema layer for a realm - even if they just say 'add a table', 'add seed data', 'I need a DB schema', or 'set up the database for this realm'.
+description:
+    Define database schemas, seed data, and test seed data in a Blong realm using the declarative
+    schema management system built into adapter.knex. Covers the full lifecycle - TypeBox table
+    definitions (with constraints like primary keys, foreign keys, unique constraints, and indexes),
+    stored procedure `.sql` files, production seed YAML files, test seed YAML files, and the adapter
+    configuration that wires everything together. Use this skill whenever the user wants to add or
+    modify database tables, add seed data, add test seed data, define stored procedures, add
+    constraints to tables, or set up the schema layer for a realm - even if they just say 'add a
+    table', 'add seed data', 'I need a DB schema', or 'set up the database for this realm'.
 ---
 
 # Declarative Schema Management (blong-schema)
@@ -9,23 +17,26 @@ description: Define database schemas, seed data, and test seed data in a Blong r
 
 - **Use convenience types, never raw TypeBox** (`type.increment()`, `type.stringNotNull()`, …) —
   never `Type.String()` / `Type.Integer()` / `Type.Optional(T)`.
-- **Seeds are always YAML, never TypeScript.** TypeScript files only for custom merge logic (Case 3).
-- **`*JSON` columns are auto-(de)serialized** — declare as `type.stringNull()`; no manual parse/stringify.
+- **Seeds are always YAML, never TypeScript.** TypeScript files only for custom merge logic (Case
+  3).
+- **`*JSON` columns are auto-(de)serialized** — declare as `type.stringNull()`; no manual
+  parse/stringify.
 - **No `type.Optional()` needed** — the `Null`/`NotNull` suffix already implies nullability.
 - **Constraints apply in a second pass** after all tables exist (FK targets guaranteed).
 - **Don't recreate the built-in `adapter/db.ts`** — extend via `schema.tables` / `procedurePaths`.
-- **Name PKs/FKs deliberately:** `increment` (simple PK) · `ulid`/`uuid` (distributed PK) · `uid` (FK).
-- **[FK_TYPING]** An FK column referencing an `increment()` PK must be `type.bigIntNotNull()` —
-  the PK is BIGINT UNSIGNED; `type.uid*` FKs only point to `ulid`/`uuid` PKs. Also avoid chained
-  knex FK options (`onDelete`) on such FKs — the current knex crashes with
-  `fkr.onDelete is not a function`; use a plain string FK reference (`'subject.object.column'`).
-- **[AUTO_VALIDATION]** The gateway auto-validates CRUD params against the table's `NotNull`
-  columns (`subject.validation` for public models). Server-managed audit fields (e.g. `createdAt`)
-  must be nullable (`type.dateTimeNull()`), or `add`/`edit` fail with
+- **Name PKs/FKs deliberately:** `increment` (simple PK) · `ulid`/`uuid` (distributed PK) · `uid`
+  (FK).
+- **[FK_TYPING]** An FK column referencing an `increment()` PK must be `type.bigIntNotNull()` — the
+  PK is BIGINT UNSIGNED; `type.uid*` FKs only point to `ulid`/`uuid` PKs. Also avoid chained knex FK
+  options (`onDelete`) on such FKs — the current knex crashes with `fkr.onDelete is not a function`;
+  use a plain string FK reference (`'subject.object.column'`).
+- **[AUTO_VALIDATION]** The gateway auto-validates CRUD params against the table's `NotNull` columns
+  (`subject.validation` for public models). Server-managed audit fields (e.g. `createdAt`) must be
+  nullable (`type.dateTimeNull()`), or `add`/`edit` fail with
   `Validation failed: must have required properties ... createdAt`.
 
-Canonical framework rules + archetype:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`.
+Canonical framework rules + archetype: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`.
 
 ## Overview
 
@@ -172,27 +183,27 @@ Reference-only (you should not use the raw forms directly): `references/raw-type
 
 ### Structured JSON columns (`*JSON` suffix)
 
-Any string column whose name ends in `JSON` is treated as a **JSON document** by the knex
-adapter and is (de)serialized automatically — no manual `JSON.parse`/`JSON.stringify` in
-handlers:
+Any string column whose name ends in `JSON` is treated as a **JSON document** by the knex adapter
+and is (de)serialized automatically — no manual `JSON.parse`/`JSON.stringify` in handlers:
 
-- Declare it as a normal string column: `type.stringNull()` → `VARCHAR(255)` or specify size > 255 for `TEXT`.
+- Declare it as a normal string column: `type.stringNull()` → `VARCHAR(255)` or specify size > 255
+  for `TEXT`.
 - On `insert`/`update`, object/array values for `*JSON` columns are `JSON.stringify`'d before
   hitting the database.
-- On `select`/`first`, `*JSON` string values are `JSON.parse`'d back into objects (lenient —
-  values that are not valid JSON are left untouched).
+- On `select`/`first`, `*JSON` string values are `JSON.parse`'d back into objects (lenient — values
+  that are not valid JSON are left untouched).
 
 ```typescript
 credentialParamsJSON: type.stringNull(), // auto-(de)serialized by the adapter
 ```
 
 The convention is **name-based** (`/JSON$/`) and applies to every QueryBuilder produced by the
-shared `srv.db` knex adapter (see `blong-gogo/src/adapter/schema/knex/json.ts`), including
-direct handler queries — you can `insert`/`select` an object into such a column as if it were a
-plain value. This lets a realm store structured parameters in a single column; e.g.
-`access_credential.credentialParamsJSON` holds `{"function":"hash","algorithm":"pbkdf2",...}`
-so verification re-uses the exact parameters that produced the hash, and future non-hash
-credential functions (TOTP, etc.) store their own params alongside the `function` name.
+shared `srv.db` knex adapter (see `blong-gogo/src/adapter/schema/knex/json.ts`), including direct
+handler queries — you can `insert`/`select` an object into such a column as if it were a plain
+value. This lets a realm store structured parameters in a single column; e.g.
+`access_credential.credentialParamsJSON` holds `{"function":"hash","algorithm":"pbkdf2",...}` so
+verification re-uses the exact parameters that produced the hash, and future non-hash credential
+functions (TOTP, etc.) store their own params alongside the `function` name.
 
 ### Defining constraints
 
@@ -779,13 +790,12 @@ on an unchanged schema produces no SQL.
 The adapter also exposes schema operations as callable handler methods for explicit imperative
 control (e.g., integration test cleanup):
 
-| Handler                 | Description                                            |
-| ----------------------- | ------------------------------------------------------ |
-| `dbSchemaTableSync`     | Create or alter a specific table                       |
-| `dbSchemaTableDrop`     | Drop a specific table                                  |
-| `dbSchemaCrudBind`      | Return CRUD handler closures bound to a specific table |
-| `dbSchemaProcedureSync` | Create/replace stored procedures                       |
-| `dbSchemaProcedureBind` | Discover procedures and return handler closures        |
+| Handler                 | Description                                     |
+| ----------------------- | ----------------------------------------------- |
+| `dbSchemaTableSync`     | Create or alter a specific table                |
+| `dbSchemaTableDrop`     | Drop a specific table                           |
+| `dbSchemaProcedureSync` | Create/replace stored procedures                |
+| `dbSchemaProcedureBind` | Discover procedures and return handler closures |
 
 For normal development, the declarative config path (`schema.tables`, `procedurePaths`) is preferred
 over these helpers.

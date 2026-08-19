@@ -21,7 +21,7 @@ type StepMeta = {$meta: Record<string, unknown>};
  *   4. The table is dropped at the end so the next run exercises the CREATE path.
  *
  * Explicit calls to the schema helper methods (`sqlSchemaTableSync`,
- * `sqlSchemaCrudBind`, `sqlSchemaProcedureSync`, `sqlSchemaProcedureBind`) are
+ * `sqlSchemaProcedureSync`, `sqlSchemaProcedureBind`) are
  * kept only where they add coverage or are needed for setup / cleanup.
  */
 export default handler(
@@ -40,9 +40,6 @@ export default handler(
             group(name, {mask: ['schemaItemId', '*.schemaItemId']})([
                 // ── 1. Clean any data left from a previous run ───────────────────
                 //    The table exists because the adapter already ran ready().
-                //    CRUD handlers are auto-bound by the knex adapter in ready()
-                //    when `config.namespace` is set — no explicit call to
-                //    `schemaCrudBind` needed.
                 async function cleanData(assert: IAssert, {$meta}: StepMeta) {
                     const allRows = (await sqlItemFind({}, $meta)) as Array<{
                         itemId: number;
