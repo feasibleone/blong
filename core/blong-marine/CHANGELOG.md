@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.2.0...blong-marine-v1.3.0) (2026-08-19)
+
+
+### Features
+
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+
+
+### Bug Fixes
+
+* lint / dev dependencies ([c5ebc91](https://github.com/feasibleone/blong/commit/c5ebc9194626cc167a8e39842bab1c37418d1013))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.1.0...blong-marine-v1.2.0) (2026-07-23)
 
 

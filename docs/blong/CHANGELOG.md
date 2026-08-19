@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.17.0...blong-docs-v1.18.0) (2026-08-19)
+
+
+### Features
+
+* redis adapter and blong-gateway ([c28a68f](https://github.com/feasibleone/blong/commit/c28a68f5f9cfc2398771cca05c4366efc147eb6e))
+* resolve some AI agent frictions and improve the framework features ([23b6986](https://github.com/feasibleone/blong/commit/23b69863b458e97f1dad249fcdeec5e182a69b74))
+* self registration ([20f3791](https://github.com/feasibleone/blong/commit/20f3791c453d0f6f4cbf28c2e3af1fbb959a8d0d))
+
+
+### Bug Fixes
+
+* docs ([2364799](https://github.com/feasibleone/blong/commit/23647992a115a85dd656ee4eb7b6eaeb89c3b721))
+* remove unused functions ([3de9db3](https://github.com/feasibleone/blong/commit/3de9db31032d269cbda9b1e57bc06eec5a3a2061))
+
 ## [1.17.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.16.0...blong-docs-v1.17.0) (2026-07-23)
 
 

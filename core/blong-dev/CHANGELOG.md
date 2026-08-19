@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.1.1...blong-dev-v1.2.0) (2026-08-19)
+
+
+### Features
+
+* blong-dev log ([88ea53b](https://github.com/feasibleone/blong/commit/88ea53bbe411803a540c3158d151220a1c9bee26))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+* resolve some AI agent frictions and improve the framework features ([23b6986](https://github.com/feasibleone/blong/commit/23b69863b458e97f1dad249fcdeec5e182a69b74))
+
+
+### Bug Fixes
+
+* improve tooling ([c484c28](https://github.com/feasibleone/blong/commit/c484c28de5ec3e574297b27e49ea42365ea956c1))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-dev-v1.1.0...blong-dev-v1.1.1) (2026-07-17)
 
 

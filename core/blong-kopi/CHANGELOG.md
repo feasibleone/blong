@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.10.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.9.0...blong-kopi-v1.10.0) (2026-08-19)
+
+
+### Features
+
+* master-detail handling ([03c5bbd](https://github.com/feasibleone/blong/commit/03c5bbd9401a82a9427577e7611f2622aadee4e5))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+* update blong-kopi and relevant skills to the latest patterns ([52dacae](https://github.com/feasibleone/blong/commit/52dacae17410933d262637de593bd8dc5db628e8))
+
+
+### Bug Fixes
+
+* remove unused functions ([3de9db3](https://github.com/feasibleone/blong/commit/3de9db31032d269cbda9b1e57bc06eec5a3a2061))
+
 ## [1.9.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.8.0...blong-kopi-v1.9.0) (2026-07-14)
 
 

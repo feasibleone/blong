@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.12.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.11.0...blong-browser-v1.12.0) (2026-08-19)
+
+
+### Features
+
+* master-detail handling ([03c5bbd](https://github.com/feasibleone/blong/commit/03c5bbd9401a82a9427577e7611f2622aadee4e5))
+* redis adapter and blong-gateway ([c28a68f](https://github.com/feasibleone/blong/commit/c28a68f5f9cfc2398771cca05c4366efc147eb6e))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+* self registration ([20f3791](https://github.com/feasibleone/blong/commit/20f3791c453d0f6f4cbf28c2e3af1fbb959a8d0d))
+
+
+### Bug Fixes
+
+* lint / dev dependencies ([c5ebc91](https://github.com/feasibleone/blong/commit/c5ebc9194626cc167a8e39842bab1c37418d1013))
+* UI issues ([653baaf](https://github.com/feasibleone/blong/commit/653baaf796b20dd4c42ba5be9a2a8be3668e7227))
+
 ## [1.11.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.10.0...blong-browser-v1.11.0) (2026-07-23)
 
 

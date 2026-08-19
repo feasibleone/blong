@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/test-v1.13.0...test-v1.14.0) (2026-08-19)
+
+
+### Features
+
+* resolve some AI agent frictions and improve the framework features ([23b6986](https://github.com/feasibleone/blong/commit/23b69863b458e97f1dad249fcdeec5e182a69b74))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/test-v1.12.1...test-v1.13.0) (2026-07-14)
 
 

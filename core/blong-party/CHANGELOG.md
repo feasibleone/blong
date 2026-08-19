@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-party-v1.1.0...blong-party-v1.2.0) (2026-08-19)
+
+
+### Features
+
+* blong-dev log ([88ea53b](https://github.com/feasibleone/blong/commit/88ea53bbe411803a540c3158d151220a1c9bee26))
+* master-detail handling ([03c5bbd](https://github.com/feasibleone/blong/commit/03c5bbd9401a82a9427577e7611f2622aadee4e5))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+* self registration ([20f3791](https://github.com/feasibleone/blong/commit/20f3791c453d0f6f4cbf28c2e3af1fbb959a8d0d))
+
+
+### Bug Fixes
+
+* blong-party test ([76ee67e](https://github.com/feasibleone/blong/commit/76ee67ef0a38a47eb12fbccdee8be435ae074a46))
+* circular dependency ([cda5589](https://github.com/feasibleone/blong/commit/cda558920d306be78b0a62bc7529db83d8680448))
+* lint / dev dependencies ([c5ebc91](https://github.com/feasibleone/blong/commit/c5ebc9194626cc167a8e39842bab1c37418d1013))
+* missing party permissions ([afeb4da](https://github.com/feasibleone/blong/commit/afeb4da93412c0d93da3b2d735471fd3e3a28b27))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-party-v1.0.1...blong-party-v1.1.0) (2026-07-23)
 
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-int-sql-v1.2.2...blong-int-sql-v1.3.0) (2026-08-19)
+
+
+### Features
+
+* resolve some AI agent frictions and improve the framework features ([23b6986](https://github.com/feasibleone/blong/commit/23b69863b458e97f1dad249fcdeec5e182a69b74))
+
+
+### Bug Fixes
+
+* deadlock testing timer leak ([b036824](https://github.com/feasibleone/blong/commit/b03682498d5547ac13569320d3b9cbda3daee32e))
+
 ## [1.2.2](https://github.com/feasibleone/blong/compare/blong-int-sql-v1.2.1...blong-int-sql-v1.2.2) (2026-07-14)
 
 

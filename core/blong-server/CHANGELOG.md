@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-server-v1.0.0...blong-server-v1.1.0) (2026-08-19)
+
+
+### Features
+
+* master-detail handling ([03c5bbd](https://github.com/feasibleone/blong/commit/03c5bbd9401a82a9427577e7611f2622aadee4e5))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+
+
+### Bug Fixes
+
+* db name ([9617276](https://github.com/feasibleone/blong/commit/9617276ad6290287592b1ea09a99ab2c0f577111))
+* improve tooling ([c484c28](https://github.com/feasibleone/blong/commit/c484c28de5ec3e574297b27e49ea42365ea956c1))
+* remove unused functions ([3de9db3](https://github.com/feasibleone/blong/commit/3de9db31032d269cbda9b1e57bc06eec5a3a2061))
+* schema refresh and model list handling ([920e453](https://github.com/feasibleone/blong/commit/920e453f69b9335a07d8c901d042c3d360d4c010))
+
 ## 1.0.0 (2026-07-14)
 
 

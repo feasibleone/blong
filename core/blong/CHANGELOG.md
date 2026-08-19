@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.24.0](https://github.com/feasibleone/blong/compare/blong-v1.23.0...blong-v1.24.0) (2026-08-19)
+
+
+### Features
+
+* master-detail handling ([03c5bbd](https://github.com/feasibleone/blong/commit/03c5bbd9401a82a9427577e7611f2622aadee4e5))
+* redis adapter and blong-gateway ([c28a68f](https://github.com/feasibleone/blong/commit/c28a68f5f9cfc2398771cca05c4366efc147eb6e))
+* resolve some AI agent frictions ([13ca27f](https://github.com/feasibleone/blong/commit/13ca27f09f0271a25ea7ad45a2ce3f73bf6710e0))
+* resolve some AI agent frictions and improve the framework features ([23b6986](https://github.com/feasibleone/blong/commit/23b69863b458e97f1dad249fcdeec5e182a69b74))
+
 ## [1.23.0](https://github.com/feasibleone/blong/compare/blong-v1.22.0...blong-v1.23.0) (2026-07-14)
 
 
