@@ -667,6 +667,29 @@ other: ${suite}
 
 ---
 
+### Querying the Database (dev)
+
+Use `blong-dev sql` to run SQL against the local dev database — this is the intended way for coding
+agents to inspect data. Use it instead of a MySQL CLI locally or `kubectl exec` into a pod.
+
+```bash
+blong-dev sql "SELECT * FROM access_role"
+blong-dev sql "SELECT 1" --output json        # JSON for agents; pretty table for TTY
+blong-dev sql "UPDATE x SET y=1" --database blong-integration
+```
+
+- Resolves the connection from `.blong_devrc` (cwd → parents → `~`), default key `srv.db`
+  (`srv.db.knex.connection`); override with `--config <dot.path>` and the CLI flags
+  `--host/--port/--user/--password/--database`.
+- When no `database` is configured it **derives the dev name** using the pattern above
+  (`${suite}-${user}`, e.g. `blong-access-kalin`) — no need to guess it. `suite` comes from the
+  `.blong_devrc` `suite` key, the cwd `package.json` name (scope stripped), or `--suite`.
+- The `dev` intent auto-creates a missing database (`srv.db.knex.createDatabase: true`, default in
+  the shared `srv.db` adapter), so the dev DB usually already exists when you query it. Opt out with
+  `srv.db.dev.knex.createDatabase: false` in the suite `server.ts`/`index.ts`.
+
+---
+
 ## Execution Order (Complete Lifecycle)
 
 When `blong` runs with the `dev` intent (or `upgrade`), the framework processes schema in this exact

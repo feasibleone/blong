@@ -15,6 +15,7 @@ import {type TFunction, type TObject} from 'typebox';
 import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
+import {ensureDatabase} from '../schema/knex/database.ts';
 import {
     discoverBinaryColumns,
     isBinaryColumn,
@@ -34,7 +35,12 @@ import {
     schemaTableConstraintSyncImpl,
     schemaTableSyncImpl,
 } from '../schema/knex/schemaTable.ts';
-import {type IConfig, type ISchemaTable, type ITableConstraints} from '../schema/knex/types.ts';
+import {
+    type IConfig,
+    type IKnexConfig,
+    type ISchemaTable,
+    type ITableConstraints,
+} from '../schema/knex/types.ts';
 import {
     type IColumnSchema,
     methodId,
@@ -136,7 +142,21 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 },
             },
         },
-        start() {
+        async start() {
+            const knexConfig = this.config.knex;
+            if (knexConfig.createDatabase) {
+                try {
+                    const {created, database} = await ensureDatabase(knexConfig.connection ?? {});
+                    if (created) {
+                        this.log?.info?.({database}, 'created missing database');
+                    }
+                } catch (error) {
+                    // Warn-and-continue: schema sync will surface the real error.
+                    this.log?.warn?.({
+                        err: (error as {message?: string}).message ?? String(error),
+                    }, 'could not auto-create database — will continue');
+                }
+            }
             this.config.context = {
                 queryBuilder: wrapKnex(KnexLib(this.config.knex), {
                     onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
@@ -312,7 +332,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 ((next as Record<string, unknown>)?.[this.config.id] as Record<string, unknown>)?.[
                     'knex'
                 ] ?? this.config.knex;
-            this.config.knex = newKnexConfig as object;
+            this.config.knex = newKnexConfig as IKnexConfig;
             this.config.context = {
                 queryBuilder: wrapKnex(KnexLib(newKnexConfig as object), {
                     onDeadlock: error => logKnexDeadlock(this.config, this.log, error),

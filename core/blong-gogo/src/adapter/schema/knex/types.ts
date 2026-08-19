@@ -72,8 +72,32 @@ export interface IColumnSchema {
     readonly?: boolean;
 }
 
+/** Knex connection settings accepted by a DB adapter. */
+export interface IKnexConnection {
+    host?: string;
+    port?: number;
+    user?: string;
+    password?: string;
+    database?: string;
+    [key: string]: unknown;
+}
+
+/** The `knex` config block of a DB adapter (adapter.knex / the shared `srv.db`). */
+export interface IKnexConfig {
+    client?: string;
+    connection?: IKnexConnection;
+    /**
+     * When `true`, the adapter tries to `CREATE DATABASE` if it does not exist
+     * before connecting. Default on in the `dev` intent via the shared `srv.db`
+     * adapter (`core/blong-server/adapter/db.ts`); opt out with `false`. Off in
+     * `default` / `ci` / `prod`, where the database is provisioned externally.
+     */
+    createDatabase?: boolean;
+    [key: string]: unknown;
+}
+
 export interface IConfig {
-    knex: object;
+    knex: IKnexConfig;
     context: {
         queryBuilder?: Knex;
     };

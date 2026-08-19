@@ -5,12 +5,30 @@ Update it when something requires unexpected effort to implement or fix.
 
 ## List of unresolved frictions
 
-- coding agent tries to run the blong CLI with --help, but it crashes;
-- coding agent fails to notice the `blong-dev sql` ability and tries to use MySQL CLI locally or via pod.
-- coding agent is not aware of the DB naming pattern in dev and iterates to find it. knex adapter should
-  try to auto-create the DB if it doesn't exist unless opted out via a config flag.
+_None currently._
 
 ## List of resolved frictions
+
+Resolved by the "fix unresolved frictions" plan (2026-08-19) — `--help` no longer crashes on
+`blong` / `blong-watch` / `blong-dev`; `blong-dev sql` derives the dev DB name; the knex adapter
+auto-creates missing dev databases.
+
+- **`blong --help` crashed.** The `blong` / `blong-watch` CLIs now short-circuit `--help`/`-h` and
+  print usage + exit 0 before realm-create / `autoRun` (shared helper
+  `core/blong-gogo/src/cliHelp.ts`), so help works from any directory. The sibling `blong-dev` CLI
+  also prints usage + exit 0 on `--help`/`-h`/`help` (`core/blong-dev/src/usage.ts`); its usage list
+  was previously only shown via the unknown-command branch that exited 1.
+- **Agent not noticing `blong-dev sql`.** `blong-dev sql` now derives the dev DB name
+  (`${suite}-${user}`, e.g. `blong-access-kalin`) when none is configured (`.blong_devrc` `suite` key
+  → cwd `package.json` name → `--suite`; user from os user) and renders `${suite}`/`${user}`
+  templates. It is now documented as the intended way to query the DB in the `blong-schema` /
+  `blong-adapter` skills and `copilot-instructions.md` ("use instead of MySQL CLI / kubectl exec").
+- **Dev DB naming pattern unknown + no auto-create.** The knex adapter auto-creates a missing
+  database in `start()` when `knex.createDatabase: true` (default in the `dev` intent via the shared
+  `srv.db` adapter; opt out with `srv.db.dev.knex.createDatabase: false`). The dev naming pattern is
+  documented in `blong-schema` and derived automatically by `blong-dev sql`, so agents no longer
+  iterate to find the name. `ensureDatabase` (`core/blong-gogo/src/adapter/schema/knex/database.ts`)
+  is covered by unit tests with an injected connection.
 
 Resolved by the "improve blong-kopi + realm-creation skills" plan (2026-08-18) — Areas 1 & 2 implemented,
 plus the follow-up consolidation (shared RBAC handler reuse + single-source scaffolder).

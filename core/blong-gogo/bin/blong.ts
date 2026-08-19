@@ -3,6 +3,7 @@
 import minimist from 'minimist';
 import {existsSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {printUsage, shouldShowHelp} from '../src/cliHelp.ts';
 import {autoRun} from '../src/runServer.ts';
 
 const rawArgv = minimist(process.argv.slice(2)) as {
@@ -10,6 +11,13 @@ const rawArgv = minimist(process.argv.slice(2)) as {
     object?: string;
     [key: string]: unknown;
 };
+
+// `--help` / `-h` — short-circuit before realm-create / autoRun so usage works
+// from any directory (even one without a suite entry point).
+if (shouldShowHelp(rawArgv)) {
+    printUsage(() => process.exit(0));
+}
+
 const {_: positionals, object: objectName} = rawArgv;
 
 // `blong realm <name>` (or `blong create realm <name>`) — scaffold a new realm.

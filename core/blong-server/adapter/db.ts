@@ -2,6 +2,7 @@ import {adapter} from '@feasibleone/blong';
 
 export default adapter<{
     knex: {
+        createDatabase?: boolean;
         connection: {
             database?: string;
             user?: string;
@@ -33,6 +34,7 @@ export default adapter<{
         dev: {
             imports: [/\.db$/, /\.dbTest$/, /\.model$/, /\.fixture$/],
             knex: {
+                createDatabase: true,
                 connection: {
                     database:
                         '${[suite, user].map(s => s.toLowerCase().replaceAll("$", "").replace(/[^a-z0-9-]/g, "_")).join("-")}',

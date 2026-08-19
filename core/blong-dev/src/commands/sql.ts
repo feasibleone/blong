@@ -15,6 +15,8 @@
 
 import {createConnection} from 'mysql2/promise';
 import {readFileSync} from 'node:fs';
+import {userInfo} from 'node:os';
+import {join} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 import yaml from 'yaml';
 import {findUp} from '../utils/findConfig.ts';
@@ -49,11 +51,74 @@ export function getPath(config: Record<string, unknown>, path: string): unknown 
 }
 
 /**
+ * The dev database naming pattern, mirroring the `dev` block of the shared
+ * `srv.db` adapter (`core/blong-server/adapter/db.ts`):
+ * `[suite, user].map(s => s.toLowerCase().replaceAll("$", "").replace(/[^a-z0-9-]/g, "_")).join("-")`
+ * e.g. suite `my-suite` + user `dev` → `my-suite-dev` (lowercased, `$` stripped,
+ * non-alphanumerics → `_`).
+ */
+export function devDbName(suite: string, user: string): string {
+    return [suite, user]
+        .map(s =>
+            s
+                .toLowerCase()
+                .replaceAll('$', '')
+                .replace(/[^a-z0-9-]/g, '_'),
+        )
+        .join('-');
+}
+
+/** Render the `${suite}` / `${user}` template expressions used in connection values. */
+function renderTemplate(value: string, ctx: {suite?: string; user?: string}): string {
+    return value.replaceAll('${suite}', ctx.suite ?? '').replaceAll('${user}', ctx.user ?? '');
+}
+
+/** The os user, matching the `user` context var used by the dev DB naming template. */
+export function currentUser(): string {
+    return process.env.USER || userInfo().username || 'unknown';
+}
+
+/**
+ * Resolve the suite name used to derive a dev database name, in priority order:
+ *   1. `--suite` CLI override
+ *   2. top-level `suite` key in `.blong_devrc`
+ *   3. cwd `package.json` `name` (scope stripped)
+ *
+ * Falls back to `undefined` (no derivation) when none is available.
+ */
+export function resolveSuite(
+    config: Record<string, unknown> | undefined,
+    args: ReturnType<typeof parseArgs>,
+): string | undefined {
+    const cliSuite = args.options.get('suite');
+    if (cliSuite) return cliSuite;
+    const configSuite =
+        config && typeof config === 'object'
+            ? (config as Record<string, unknown>).suite
+            : undefined;
+    if (typeof configSuite === 'string' && configSuite) return configSuite;
+    try {
+        const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
+            name?: string;
+        };
+        if (typeof pkg.name === 'string' && pkg.name) {
+            return pkg.name.replace(/^@[^/]+\//, '');
+        }
+    } catch {
+        // No readable package.json — the caller prints a hint to pass --database/--suite.
+    }
+    return undefined;
+}
+
+/**
  * Resolve the DB connection from `.blong_devrc` (+ `--config` key), with CLI
  * overrides (`--host/--port/--user/--password/--database`) taking precedence.
  *
- * Note: config template expressions (e.g. `${suite}`) are not rendered — for
- * those, pass the resolved values explicitly via the CLI flags.
+ * When no `database` is configured, it falls back to the dev naming pattern
+ * `${suite}-${user}` (see {@link devDbName}) so an agent can run
+ * `blong-dev sql "SELECT ..."` without knowing the derived dev database name.
+ * `${suite}` / `${user}` template expressions inside a configured value are
+ * rendered with the resolved suite / os user.
  */
 export function readConnection(args: ReturnType<typeof parseArgs>): {
     connection: IConnectionInfo;
@@ -61,9 +126,10 @@ export function readConnection(args: ReturnType<typeof parseArgs>): {
 } {
     const configKey = args.options.get('config') ?? 'srv.db';
     const configPath = findUp(process.cwd(), '.blong_devrc');
+    let config: Record<string, unknown> | undefined;
     let connection: IConnectionInfo = {};
     if (configPath) {
-        const config = parseDevRc(readFileSync(configPath, 'utf8'));
+        config = parseDevRc(readFileSync(configPath, 'utf8'));
         const node = getPath(config, configKey);
         const nested =
             node && typeof node === 'object'
@@ -78,7 +144,17 @@ export function readConnection(args: ReturnType<typeof parseArgs>): {
     if (o.has('user')) connection.user = o.get('user');
     if (o.has('password')) connection.password = o.get('password');
     if (o.has('database')) connection.database = o.get('database');
-    return {connection, source: configPath ? `${configKey} (${configPath})` : configKey};
+
+    let source = configPath ? `${configKey} (${configPath})` : configKey;
+    const suite = resolveSuite(config, args);
+    const user = currentUser();
+    if (connection.database) {
+        connection.database = renderTemplate(connection.database, {suite, user});
+    } else if (suite) {
+        connection.database = devDbName(suite, user);
+        source = `${source} — derived dev DB (${connection.database})`;
+    }
+    return {connection, source};
 }
 
 export async function sql(args: string[]): Promise<void> {
@@ -91,7 +167,10 @@ export async function sql(args: string[]): Promise<void> {
             'Usage: blong-dev sql "SELECT ..." [--config srv.db] [--output json|pretty] [--no-color]\n',
         );
         process.stderr.write(
-            '       [--host h] [--port p] [--user u] [--password p] [--database d]\n',
+            '       [--host h] [--port p] [--user u] [--password p] [--database d] [--suite s]\n',
+        );
+        process.stderr.write(
+            '       (database falls back to the dev naming pattern {suite}-{user})\n',
         );
         process.exit(1);
     }

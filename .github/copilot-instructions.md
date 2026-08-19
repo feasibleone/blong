@@ -476,8 +476,11 @@ MLE codec:
   ULID to fetch one entry. Implemented in `core/blong-dev/src/commands/log.ts` on top of `cacache`.
   See the **blong-log** skill for full usage.
 
-- **`blong-dev sql`** — run SQL queries against a configured database. (blong-dev sql "SELECT \*
-  FROM ...`schema_name`.`table_name`") implemented in `core/blong-dev/src/commands/sql.ts`.
+- **`blong-dev sql`** — run SQL queries against the local dev database (use this instead of a MySQL
+  CLI locally or `kubectl exec` into a pod). Reuses `.blong_devrc` (default key `srv.db`); derives
+  the dev database name (`${suite}-${user}`, e.g. `blong-access-kalin`) when none is configured.
+  `--output json` is the agent-friendly default for non-TTY. Implemented in
+  `core/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
 
 ## Architecture & Design Documents
 

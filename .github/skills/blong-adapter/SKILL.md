@@ -467,5 +467,5 @@ export default handler(
 - **HTTP adapter:** `core/test/demo/adapter/http.ts`
 - **TCP/Payshield:** `core/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative `adapter.tcp`)
 - **TCP simulation (listen: true):** `core/blong-sim-tcp/payshield/sim/payshieldSim.ts`
-- **Database:** `core/test/db/adapter/sql.ts`
+- **Database:** `core/test/db/adapter/sql.ts` — inspect data in dev with `blong-dev sql "SELECT ..."` (see **blong-schema** for the dev DB name derivation and auto-create)
 - **Mock adapter:** `core/test/demo/adapter/mock.ts`

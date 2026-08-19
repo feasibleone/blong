@@ -1,5 +1,7 @@
 export {}; // mark as ESM module so top-level await is valid
 
+import {writeUnknownCommand, writeUsage} from './usage.ts';
+
 const [, , command, ...args] = process.argv;
 
 switch (command) {
@@ -27,30 +29,14 @@ switch (command) {
     case 'sql':
         await (await import('./commands/sql.ts')).sql(args);
         break;
+    case '--help':
+    case '-h':
+    case 'help':
+        // Print the command list (exit 0) so `--help` is never mistaken for a crash.
+        writeUsage(process.stdout);
+        process.exit(0);
+        break;
     default:
-        process.stderr.write(`blong-dev: Unknown command "${command ?? ''}"\n`);
-        process.stderr.write('Usage:\n');
-        process.stderr.write(
-            '  blong-dev lint [files...]    Run tsc + cspell + eslint in current package\n',
-        );
-        process.stderr.write(
-            '  blong-dev lint-staged        Lint git staged files across all affected packages\n',
-        );
-        process.stderr.write('  blong-dev test               Run tap tests in current package\n');
-        process.stderr.write(
-            '  blong-dev playwright [args]  Run Playwright tests in current package\n',
-        );
-        process.stderr.write(
-            '  blong-dev proxy [opts]       MLE proxy for curl (--port/--target/--username/--password)\n',
-        );
-        process.stderr.write(
-            '  blong-dev trace <trace.zip>  Print a human-readable Playwright trace timeline\n',
-        );
-        process.stderr.write(
-            '  blong-dev log [ulid] [opts]  Fetch log entries from cacache (--output/--level/--search/...)\n',
-        );
-        process.stderr.write(
-            '  blong-dev sql [opts]         Run a SQL query via .blong_devrc (--output json|pretty)\n',
-        );
+        writeUnknownCommand(process.stderr, command);
         process.exit(1);
 }
