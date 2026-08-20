@@ -576,6 +576,11 @@ export default async function loadRealm<T extends TSchema>(
                           load: () => import(/* @vite-ignore */ './Gateway' + extension),
                       },
                       {
+                          name: 'apiGateway',
+                          deps: ['log', 'gateway', 'local'],
+                          load: () => import(/* @vite-ignore */ './ApiGateway' + extension),
+                      },
+                      {
                           name: 'restFs',
                           deps: ['log', 'gateway'],
                           load: () => import(/* @vite-ignore */ './RestFs' + extension),

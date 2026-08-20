@@ -185,7 +185,11 @@ target).
 
 - **New metered API**: add a handler + a gateway validation wrapper declaring `bundle` and
   `creditCost` (see `gateway/vision.dev/visionCompute.ts`); the ApiGateway plugin meters it
-  automatically. Use `meter: false` to opt a route out.
+  automatically. Use `meter: false` to opt a route out. The namespace also needs a
+  `ports.<ns>.request` dispatch to the `db` backend (a gateway route 404s "namespace not found"
+  without it): for a **production** namespace list it in `orchestrator/subject/init.ts` (like
+  `gateway`); for a **dev-only** namespace give it its own `orchestrator/<ns>.dev/init.ts` dispatch
+  orchestrator (like `vision`/`customer`/`meterprobe`) so it never exists outside `dev`.
 - **New bundle**: seed via `gatewayBundleMerge.yaml` (name + roleBit + capabilities/actions +
   rate/credit limits) or call `gateway.bundle.add`; roleBits must not collide with the access
   realm's seeded roles (0–4) — use 100+.
@@ -202,6 +206,14 @@ npm run ci-test    # waits for MySQL, then blong-dev test (tap) + blong-dev play
   real MySQL + Redis: registers an app, merges bundles/subscriptions, exchanges a
   `client_credentials` token, and asserts metering (rate limits, credit deduction, cross-bundle
   blocking, adjustment). Idempotent — no DB reset needed between runs.
+- **Tap meter HTTP flow** (`index.test.ts` → `browser/test/test/testMeterHttpFlow.ts`) runs on the
+  **browser platform over real HTTP** (MLE backend adapter → server gateway, real MySQL + Redis,
+  no mocks). It registers two unique apps, merges the dev-only `meterprobe` fixture bundles
+  (`meterprobe.rate` / `meterprobe.credit`), subscribes, mints `client_credentials` tokens, then
+  asserts the plugin-only **429 (rate)** and **429 (credits)** blocks — proving the ApiGateway
+  Fastify plugin is on the request path — plus the `vision.compute` happy path. (The rate and
+  credit fixtures need separate apps because the monthly credit bucket is shared per application
+  across bundles.)
 - **Playwright** (`test/*.play.ts`) drives the management UI: each file is
   `cleanupModel` + `browseModel` + `createAndEditModel` (12 tests). `cleanupModel` deletes
   previous runs' test rows via the browse filter (searchable "Playwright"/"suspended" markers), so
