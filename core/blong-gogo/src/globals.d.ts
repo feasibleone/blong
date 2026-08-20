@@ -57,12 +57,6 @@ declare module 'ut-dns-discovery' {
     export default discovery;
 }
 
-// Vite / esbuild glob-import support
-interface ImportMeta {
-    glob(patterns: string | string[]): Record<string, () => Promise<unknown>>;
-    glob<T>(patterns: string | string[], options?: object): Record<string, () => Promise<T>>;
-}
-
 declare module 'picomatch' {
     function picomatch(glob: string | string[], options?: object): (path: string) => boolean;
     export default picomatch;

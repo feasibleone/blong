@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import {realm} from '@feasibleone/blong/types';
 
 export default realm(blong => ({
