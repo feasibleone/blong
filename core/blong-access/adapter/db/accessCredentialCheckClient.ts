@@ -26,6 +26,10 @@ export default handler(
         ): Promise<{
             applicationId: string;
             isActive: boolean;
+            /** Base64 of the raw binary(16) application key — for session creation. */
+            applicationKey: string;
+            /** Active credential id — for session creation. */
+            credentialId: number;
             permissionMap: string;
             actions: string[];
         }> {
@@ -82,6 +86,8 @@ export default handler(
             return {
                 applicationId: crockfordEncode(app.applicationId),
                 isActive: app.isActive,
+                applicationKey: Buffer.from(app.applicationId).toString('base64'),
+                credentialId: credential.credentialId,
                 permissionMap,
                 actions: actionNames,
             };

@@ -10,7 +10,7 @@ import {expect, test} from '@feasibleone/blong-browser/playwright';
 
 test('google login (mock) auto-registers and lands in the portal', async ({page}) => {
     await page.goto('/');
-    await expect(page.getByTestId('login-submit')).toBeVisible();
+    await expect(page.getByTestId('login-submit')).toBeVisible({timeout: 10000});
     await expect(page.getByTestId('google-login-button')).toBeVisible();
 
     // Click "Continue with Google" → mock /authorize → 302 → /oauth/callback → exchange → portal

@@ -15,12 +15,17 @@ export default browser(blong => ({
         version: pkg.version,
     },
     validation: blong.type.Object({
+        login: blong.type.Object({}),
         access: blong.type.Object({}),
     }),
     children: [
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
+        },
+        /** blong-login browser realm — `login.*` subject namespace (login.token.* etc.) */
+        async function login() {
+            return import('@feasibleone/blong-login/browser.ts');
         },
         /** blong-access realm (brings the access models + browser namespace) */
         async function access() {
@@ -36,7 +41,27 @@ export default browser(blong => ({
                     },
                 },
             },
+            login: {},
             access: {},
         },
+        // TEST-ONLY: the `integration` intent (active in the browser for
+        // dev/test/Playwright runs — the browser entry `index.html.ts`
+        // hardcodes `microservice integration dev`) enables the test hook that
+        // exposes the wrapped handler as `window.__blongHandler` (gated in
+        // BlongContext by `portal.testHook`) so E2E tests can invoke server
+        // methods directly.  Production uses the `prod` intent — never
+        // `integration` — so real deployments do not expose the handler.
+        // (The cast is a framework typing limitation: non-default intent
+        // blocks only type the realm's own validation keys, while child-realm
+        // config like `ui` is allowed at runtime via `activeConfigs`.)
+        integration: {
+            ui: {
+                portal: {
+                    portal: {
+                        testHook: true,
+                    },
+                },
+            },
+        } as never,
     },
 }));

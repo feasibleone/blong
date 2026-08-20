@@ -526,6 +526,10 @@ user:
         password: testPassword
         roles: Customer
 role:
+    # NOTE: `Admin` already grants `loginCapability` (→ `accessLogin`) from the
+    # SHARED blong-access production seed — a realm seed only MERGES its own
+    # capabilities into the existing role, so login eligibility is never
+    # repeated here.  (The accessLogin gate is always on.)
     Admin: testManagement
 capability:
     testManagement: accessTestPrivate

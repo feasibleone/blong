@@ -23,7 +23,9 @@ import {useAppStore} from '../../state/appStore.js';
 import {type IPortalConfig} from '../../storybook.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {ActionHint} from '../Hint/Hint.js';
+import {Button} from '../Button/Button.js';
 import {Login} from '../Login/Login.js';
+import {LoginPopup} from '../LoginPopup/LoginPopup.js';
 import {OAuthCallback} from '../OAuthCallback/OAuthCallback.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
@@ -65,6 +67,26 @@ function AppShell({
 }) {
     const {handler, config} = useBlong();
     const isAuthenticated = useAppStore(s => s.auth.isAuthenticated);
+    // Boot-time session restore: exchange the restore cookie for fresh tokens
+    // so a reload with a live session skips the login screen.  `restored`
+    // gates the first paint to avoid a login-screen flash while the request
+    // round-trips.
+    const [restored, setRestored] = React.useState(false);
+    React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                await handler.authSessionGet({}, {});
+            } catch {
+                // Ignore — stays logged out.
+            } finally {
+                if (!cancelled) setRestored(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [handler]);
     // OAuth callback handling runs once — after a successful exchange the
     // callback URL is stripped and the App must drop this screen (the session
     // token is already in the store by then).
@@ -100,6 +122,20 @@ function AppShell({
         [handler],
     );
 
+    const onLogout = React.useCallback(async () => {
+        // Server-side revoke (closes the session + clears the restore cookie)
+        // then resets the local auth state.
+        await handler.authLogout({}, {});
+    }, [handler]);
+    const logoutButton = (
+        <Button
+            label="Logout"
+            icon="pi pi-sign-out"
+            className="p-button-text p-button-sm blong-portal-logout"
+            onClick={onLogout}
+        />
+    );
+
     // OAuth callback route — the Google (or mock) redirect target. The app may
     // be served under a base path (e.g. `/s/`), so match the suffix.
     if (
@@ -109,6 +145,10 @@ function AppShell({
     ) {
         return <OAuthCallback onExchange={onExchange} onSuccess={() => setOauthHandled(true)} />;
     }
+
+    // Wait for the boot-time session restore before painting — avoids flashing
+    // the login screen when a live session is restored from the cookie.
+    if (!restored) return null;
 
     if (!isAuthenticated) {
         return LoginComponent ? (
@@ -125,7 +165,7 @@ function AppShell({
             />
         );
     }
-    return children ?? <Portal {...portalProps} />;
+    return children ?? <Portal {...portalProps} menubarEnd={logoutButton} />;
 }
 
 export function App({
@@ -149,6 +189,7 @@ export function App({
                     >
                         {children}
                     </AppShell>
+                    <LoginPopup />
                     <ErrorDialog />
                     <ConfirmDialog />
                     <ConfirmPopup />

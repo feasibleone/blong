@@ -56,6 +56,7 @@ export default library<{
                     sign: keys.sign,
                     token_type: 'Bearer',
                     scope: 'openid',
+                    session_id: sessionId,
                     access_token: await new SignJWT({
                         ...rest,
                         typ: 'Bearer',

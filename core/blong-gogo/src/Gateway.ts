@@ -78,6 +78,17 @@ interface IConfig extends IConfigMLE {
      * then enforces that every request's methodId is in the allowed list.
      */
     authorize?: string;
+    /**
+     * Optional access-check audit.  When set, the gateway records every
+     * authorization decision (allow/deny) at the access-check point into the
+     * configured handler, plus sanitised DML context for access.* write
+     * methods.  `exclude` lists methodId patterns (exact or `prefix*`) that
+     * must not be audited.  Best-effort — audit failures never block requests.
+     */
+    audit?: {
+        handler: string;
+        exclude?: string[];
+    };
     errorFields: unknown[];
     jwt: {
         cache: object;
@@ -171,6 +182,7 @@ export default class Gateway extends Internal implements IGateway {
         debug: false,
         expectedErrors: false,
         authorize: undefined,
+        audit: undefined,
         errorFields: [],
         jwt: {
             cache: {},
@@ -369,6 +381,8 @@ export default class Gateway extends Internal implements IGateway {
                     ...(value.bundle !== undefined && {bundle: value.bundle}),
                     ...(value.creditCost !== undefined && {creditCost: value.creditCost}),
                     ...(value.meter !== undefined && {meter: value.meter}),
+                    ...(value.audit !== undefined && {audit: value.audit}),
+                    ...(value.skipAuthorize && {skipAuthorize: true}),
                 },
                 schema: Type && {
                     ...('body' in value
@@ -614,6 +628,7 @@ export default class Gateway extends Internal implements IGateway {
                 errors: this.#errors,
                 audience: this.#config.jwt.audience,
                 authorize: this.#config.authorize,
+                audit: this.#config.audit,
                 local: this.#local,
                 methodId: methodId,
                 methodParts: methodParts,

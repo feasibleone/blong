@@ -586,6 +586,7 @@ export interface IMeta {
         redirect?: string;
         code?: number;
         state?: unknown[];
+        unstate?: unknown[];
         header?: string[] | [string, unknown][];
     };
     httpRequest?: {
@@ -599,6 +600,10 @@ export interface IMeta {
         permissionMap?: Buffer;
         actorId?: string | number;
         sessionId?: string;
+        /** Audit record id of the access-check audit recorded for this request. */
+        auditId?: string;
+        /** Allowed action methodIds — populated by the gateway authorize handler. */
+        actions?: string[];
     };
     language?: {
         languageId?: string | number;
@@ -806,6 +811,19 @@ export type GatewaySchema = (
     bundle?: string;
     creditCost?: number;
     meter?: boolean;
+    /**
+     * Opt this route OUT of the gateway access-check audit (`gateway.audit`).
+     * Use for operations that record their own audit trail (e.g. payments)
+     * or that must not generate audit noise (e.g. integration-test probes).
+     */
+    audit?: boolean;
+    /**
+     * Authenticate the route (bearer) but skip the RBAC action-list check.
+     * Use ONLY for self-service methods that operate on the caller's own
+     * session (e.g. `login.token.revoke`) — the action is scoped by the
+     * token's own `ses` claim, so no cross-user action is possible.
+     */
+    skipAuthorize?: boolean;
 };
 
 export type SchemaObject = OpenAPIV3_1.SchemaObject | OpenAPIV2.SchemaObject;
@@ -919,6 +937,16 @@ export interface ILib {
             level?: 'info' | 'warn';
         },
     ) => Promise<T>;
+    /**
+     * Optional map of configurable method/handler bindings that a library may
+     * expose under the conventional `methods` member — the idiomatic way to
+     * bundle soft dependencies (e.g. the access-realm methods that blong-login's
+     * `sessionLib` resolves from config).  Handlers read the resolved handlers
+     * through `lib.methods.<name>`; each value is a bound handler or `undefined`
+     * when the binding is disabled.  See the blong-handler skill →
+     * "Library as a configurable-bindings bundle (soft dependencies)".
+     */
+    methods?: LibMethods;
 }
 
 export type ValidationFn = () => GatewaySchema;
@@ -968,6 +996,15 @@ export type PortHandlerBound = (<T>(
     [name: string]: PortHandlerBound;
 };
 export type LibFn = <T>(...params: unknown[]) => T;
+/**
+ * A map of configurable handler/method bindings exposed by a library under the
+ * conventional `methods` member (see the blong-handler skill).  Values are
+ * bound handlers (usually resolved from config against the `handler` proxy);
+ * `undefined` when the binding is disabled.
+ */
+export type LibMethods = {
+    [method: string]: LibFn | undefined;
+};
 export interface IRemoteHandler {
     [name: string]: PortHandlerBound;
 }

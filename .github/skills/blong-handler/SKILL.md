@@ -143,6 +143,67 @@ export default library(
 > - Type-only imports (`import {type P} from './password.ts'`) are erased at runtime — safe, keep
 >   DRY.
 
+### Library as a configurable-bindings bundle (soft dependencies)
+
+When a group's handlers share the same configurable dependencies — e.g. which access/external
+method to call — resolve them **once in a `library()` factory** and return the object directly.
+Handlers destructure the members straight from `lib` instead of each handler re-resolving the
+same bindings.
+
+```typescript
+// realmname/orchestrator/entity/entityLib.ts
+import {library} from '@feasibleone/blong';
+
+export default library(
+    ({config, handler}) => {
+        // Runs ONCE at layer assembly:
+        const methods = {
+            externalCheck: resolveBinding(config, handler), // soft dependency (handler proxy)
+            audit: resolveBinding(config, handler),
+        };
+        return {
+            /**
+             * Conventional `methods` map — typed via `ILib.methods` in
+             * `core/blong/types.ts`: each value is a bound handler or
+             * `undefined` when disabled.
+             */
+            methods,
+            sha256, // pure helper (no config)
+        };
+    },
+);
+```
+
+Handlers read config **directly** — the library never re-exports config values — and call the
+resolved handlers through the conventional `methods` map (destructure with a default, since it is
+optional):
+
+```typescript
+export default handler(
+    ({errors, config, lib: {methods = {}, sha256}}) => {
+        const timeout = config.timeout ?? 5000; // read straight from config
+        return async function realmEntityAction(params, $meta) {
+            await methods.externalCheck?.(params, $meta);
+            const hash = sha256<string>(...);
+            // ...
+        };
+    },
+);
+```
+
+**Why this pattern:** it is the idiomatic way to create **soft dependencies / configurable
+bindings** between a realm and another component (e.g. blong-login → blong-access) without hard
+imports. One factory resolves every binding from config and from the `handler` proxy into the
+`methods` map; suites override or disable each binding via config, and the whole group picks up
+the change. Plain constants live in config — handlers read their own `config` — so only the
+handler bindings (which need the `handler` proxy) and pure helpers belong in the library.
+
+Real-world example: `core/blong-login/orchestrator/login/sessionLib.ts` — resolves the 11
+configurable `login.methods.*` access methods into the conventional `methods` map and exposes
+pure helpers (`sha256Hex`, `newCookieHandle`, `sessionCookieOptions(config)`, `readSessionCookie`);
+`login.token.create` / `refresh` / `restore` / `revoke` / `exchange` consume `lib.methods` and
+read cookie/expiry values straight from `config`.
+
 ## API Parameter: Destructuring
 
 The `api` parameter provides access to framework and realm functionality:

@@ -7,7 +7,10 @@ type KnexQb = any;
 /**
  * Resolve a user's effective role bits and action names from the materialized
  * `core_path` (`access.effectiveRole` / `access.effectiveAction`) and pack the
- * role bits into a base64 `permissionMap` bitmask (roleBit 0–1023).
+ * role bits into a base64 `permissionMap` bitmask (roleBit 0–1023).  Also
+ * returns whether the user row is active — the session-lifecycle gates
+ * (`login.token.create` / `refresh` / `restore`) use it to refuse disabled
+ * users at login and at every token renewal.
  *
  * Wire: `access.permission.list` — shared RBAC helper in the `access.db`
  * handler group, reused by credential check and identity resolution.
@@ -18,11 +21,17 @@ export default handler(
             params: {userId: string},
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             _$meta: IMeta,
-        ): Promise<{roleBits: number[]; actions: string[]; permissionMap: string}> {
+        ): Promise<{roleBits: number[]; actions: string[]; permissionMap: string; isActive: boolean}> {
             const qb: KnexQb = this.config?.context?.queryBuilder;
             if (!qb) throw new Error('Database not available');
 
             const userId = uuidBuf(params.userId);
+
+            const user = await qb
+                .select('u.isActive')
+                .from('access_user as u')
+                .where('u.userId', userId)
+                .first();
 
             const roles = await qb
                 .select('r.roleBit')
@@ -57,6 +66,6 @@ export default handler(
                 ),
             ).toString('base64');
 
-            return {roleBits, actions: actionNames, permissionMap};
+            return {roleBits, actions: actionNames, permissionMap, isActive: Boolean(user?.isActive)};
         },
 );

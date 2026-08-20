@@ -12,7 +12,9 @@ export default validation(
         function accessSessionClose() {
             return {
                 params: type.Object({
-                    sessionId: type.String(),
+                    // Optional: when omitted, the caller's CURRENT session
+                    // (`$meta.auth.sessionId`) is closed.
+                    sessionId: type.Optional(type.String()),
                 }),
                 result: type.Object(
                     {

@@ -20,13 +20,7 @@ type LoginResult = {
  * authenticated — the same storage path `authLogin` uses.
  */
 export default handler(
-    ({
-        handler: {
-            'backend/login.token.exchange': loginTokenExchange,
-            storageTokenSet,
-            storagePermissionsSet,
-        },
-    }) =>
+    ({handler: {loginTokenExchange, storageTokenSet, storagePermissionsSet}}) =>
         async function authGoogleLogin(params: ExchangeParams, $meta: IMeta): Promise<LoginResult> {
             try {
                 const result = (await loginTokenExchange(

@@ -20,6 +20,15 @@ export interface IBlongPortalConfig {
     /** Enable debug mode */
     debug?: boolean;
     /**
+     * TEST-ONLY: when `true`, the wrapped handler proxy is exposed as the
+     * `window.__blongHandler` global so Playwright / E2E tests can invoke
+     * server methods directly from the page.  Exposing the handler in a real
+     * deployment would let any script call privileged methods, so this must
+     * only ever be enabled by a test intent (e.g. the `playwright` intent) —
+     * never in production.
+     */
+    testHook?: boolean;
+    /**
      * Login route — when set, the global error dialog shows a "Login" button
      * that navigates here. Typically used when a dropdown / load error indicates
      * an expired session (401 / unauthenticated).
@@ -99,6 +108,40 @@ function createQueryClient() {
 }
 
 /**
+ * Runtime error types that indicate an expired/invalid session.  The MLE
+ * codec already attempts a token renewal; when that fails the
+ * remaining 401 surfaces here and the user is asked to log in again.
+ */
+const AUTH_ERROR_TYPES = new Set([
+    'identity.unauthenticated',
+    'identity.invalidCredentials',
+    'identity.sessionExpired',
+    'rpc.jwtInvalid',
+    'rpc.refreshFailed',
+    'gateway.jwtMissingHeader',
+    'login.refreshTokenExpired',
+    'login.sessionNotFound',
+    'login.sessionRevoked',
+    'login.sessionInactive',
+    'login.sessionExpired',
+    'login.invalidCookie',
+]);
+
+/** Whether an error indicates the session is no longer usable (needs re-login). */
+function isAuthError(error: unknown): boolean {
+    const e = error as {
+        type?: string;
+        statusCode?: number;
+        res?: {statusCode?: number};
+    };
+    return (
+        e?.res?.statusCode === 401 ||
+        e?.statusCode === 401 ||
+        AUTH_ERROR_TYPES.has(e?.type ?? '')
+    );
+}
+
+/**
  * Wrap the handler proxy so all method calls emit action events and surface
  * non-validation errors via the global error dialog automatically.
  * Field-validation errors are intentionally left for the form to handle.
@@ -123,11 +166,17 @@ function wrapHandlerProxy(handler: AnyHandlerProxy['handler']): AnyHandlerProxy[
                     blongEvents.emit('action:error', {method, params, error: err});
                     const blongErr = err as Partial<IBlongError>;
                     if (!blongErr.validation?.length) {
-                        useAppStore.getState().showError({
-                            type: blongErr.type ?? 'error',
-                            message: blongErr.message ?? 'An unexpected error occurred.',
-                            print: blongErr.print,
-                        } as IBlongError);
+                        if (isAuthError(err)) {
+                            // Token renewal already failed in the codec — ask the
+                            // user to log in again via the popup (no auto-retry).
+                            useAppStore.getState().setLoginPrompt(true);
+                        } else {
+                            useAppStore.getState().showError({
+                                type: blongErr.type ?? 'error',
+                                message: blongErr.message ?? 'An unexpected error occurred.',
+                                print: blongErr.print,
+                            } as IBlongError);
+                        }
                     }
                     throw err;
                 }
@@ -148,6 +197,17 @@ export function BlongProvider({
     const {handler, config, lib, errors} = handlerProxy;
 
     const wrappedHandler = useMemo(() => wrapHandlerProxy(handler), [handler]);
+
+    // TEST-ONLY test hook: expose the wrapped handler (`__blongHandler`) and the
+    // app store (`__blongStore`) on `window` for Playwright / E2E tests.  Gated
+    // behind `config.portal.testHook` — a flag that is ONLY set by a test intent
+    // (e.g. `playwright`), never in production, so a real deployment never
+    // exposes the handler proxy or the store to page scripts.
+    if (typeof window !== 'undefined' && (config as {portal?: IBlongPortalConfig}).portal?.testHook) {
+        const win = window as unknown as Record<string, unknown>;
+        win.__blongHandler = wrappedHandler;
+        win.__blongStore = useAppStore;
+    }
 
     const value = useMemo<IBlongContextValue>(
         () => ({

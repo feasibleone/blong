@@ -1,11 +1,10 @@
 import {model} from '@feasibleone/blong';
 
 /**
- * accessSessionModel — browse-only view of the active sessions.
+ * accessSessionModel — browse view of the active sessions.
  *
  * Sessions are standalone rows (`access_session`) written on authentication
- * (currently the login flow issues stateless JWTs, so the table is populated
- * by future session persistence). The "Close Session" toolbar button calls the
+ * and refreshed on token renewal. The "Close Session" toolbar button calls the
  * custom `access.session.close` action to revoke the selected session.
  */
 export default model(

@@ -9,13 +9,15 @@ type IdentityCheckResult = {
 
 /**
  * Social login token exchange — the counterpart of `login.token.create` for
- * OAuth code flows.  Delegates identity resolution to the access realm
- * (`access.identity.check`) and mints a JWT with the resolved permission map.
- * `flow` selects the Google identity flow per call (`oidc` default, `oauth`).
+ * OAuth code flows.  Delegates identity resolution to the configured method
+ * (`access.identity.check` by default — override via `login.methods.identityCheck`)
+ * and mints a JWT with the resolved permission map.  `flow` selects the Google
+ * identity flow per call (`oidc` default, `oauth`).
  */
 export default handler(
-    ({lib: {token}, handler: {accessIdentityCheck}}) =>
-        async function loginTokenExchange(
+    ({errors, lib: {methods = {}, token}}) => {
+        const identityCheck = methods.identityCheck;
+        return async function loginTokenExchange(
             params: {
                 provider: string;
                 code: string;
@@ -25,7 +27,10 @@ export default handler(
             },
             $meta: IMeta,
         ) {
-            const {userId, permissionMap, actions, isNewUser} = (await accessIdentityCheck(
+            if (!identityCheck) {
+                throw errors['login.configurationError']({params: {method: 'identityCheck'}});
+            }
+            const {userId, permissionMap, actions, isNewUser} = (await identityCheck(
                 {
                     provider: params.provider,
                     code: params.code,
@@ -36,6 +41,12 @@ export default handler(
                 // the method name and routing info automatically.
                 $meta,
             )) as IdentityCheckResult;
+
+            // Login-eligibility gate (role-based) — same rule as password login:
+            // the user must hold the `accessLogin` action.
+            if (!actions?.includes('accessLogin')) {
+                throw errors['login.loginNotAllowed']();
+            }
 
             const result = (await token({
                 clientId: params.provider,
@@ -50,5 +61,6 @@ export default handler(
             })) as Record<string, unknown>;
 
             return {...result, isNewUser};
-        },
+        };
+    },
 );

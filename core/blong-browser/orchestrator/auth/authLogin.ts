@@ -20,13 +20,7 @@ type BackendResult = {
 };
 
 export default handler(
-    ({
-        handler: {
-            'backend/login.token.create': loginTokenCreate,
-            storageTokenSet,
-            storagePermissionsSet,
-        },
-    }) =>
+    ({handler: {loginTokenCreate, storageTokenSet, storagePermissionsSet}}) =>
         async function authLogin(params: LoginParams, $meta: IMeta): Promise<LoginResult> {
             try {
                 const result = (await loginTokenCreate(

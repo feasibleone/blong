@@ -62,8 +62,11 @@ export default handler<{
 
     // Public (auth: 'login') endpoints — pre-auth callers hold no blong token, so the MLE
     // request is encrypted with the handshake keys carried in the JWE protected header.
-    // Shared by the loginTokenCreate / accessRegistrationAdd / loginTokenExchange request senders.
-    const encryptPublic = async (params: {$http?: unknown}): Promise<{$http?: unknown}> => {
+    // Shared by the loginTokenCreate / accessRegistrationAdd / loginTokenExchange /
+    // loginTokenRefresh / loginTokenRestore request senders.
+    const encryptPublic = async (
+        params: {$http?: unknown} & Record<string, unknown>,
+    ): Promise<{$http?: unknown} & Record<string, unknown>> => {
         if (!jose) return params;
         const {$http, ...rest} = params;
         const encrypted = (await encrypt(rest, {
@@ -89,34 +92,74 @@ export default handler<{
         refreshTokenExpire = 0;
     }
 
+    /**
+     * Redeem a refresh token at `login.token.refresh` (auth: 'login' — MLE
+     * handshake keys, plain JSON-RPC response).  On success the new access +
+     * refresh tokens are stored in memory.  On refusal (revoked / inactive /
+     * expired session) the tokens are cleared so the next request surfaces a
+     * clean 401 to the caller, which the UI turns into a login prompt.
+     */
     async function refresh(this: {
         exec?(...params: unknown[]): Promise<unknown>;
         error?(error: unknown, $meta?: unknown): void;
-    }): Promise<void> {
+    }, opts: {force?: boolean} = {}): Promise<void> {
         const now = Date.now();
-        if (token && tokenExpire < now) {
+        if (token && (opts.force || tokenExpire < now)) {
             if (refreshToken && refreshTokenExpire > now) {
                 try {
                     pending =
                         pending ||
-                        (this.exec!(
-                            {
-                                path: '/rpc/login/token',
-                                method: 'POST',
-                                form: {
-                                    grant_type: 'refresh_token',
-                                    refresh_token: refreshToken,
+                        (async () => {
+                            const params = await encryptPublic({refreshToken});
+                            const result = (await this.exec!(
+                                {
+                                    path: '/rpc/login/token/refresh',
+                                    method: 'POST',
+                                    responseType: 'json',
+                                    json: {
+                                        jsonrpc: '2.0',
+                                        id: 1,
+                                        method: 'login.token.refresh',
+                                        params,
+                                    },
                                 },
-                            },
-                            {},
-                        ) as Promise<{body?: unknown}>);
+                                {},
+                            )) as {
+                                statusCode?: number;
+                                body?: {result?: IToken; error?: {type?: string; message?: string; statusCode?: number}};
+                            };
+                            return result;
+                        })();
                     const result = await pending!;
                     if (pending !== null) pending = null;
-                    readToken(result.body as IToken);
+                    const {body, statusCode} = result as {
+                        statusCode?: number;
+                        body?: {result?: IToken; error?: {type?: string; message?: string; statusCode?: number}};
+                    };
+                    // The gateway MLE-encrypts the response with the handshake
+                    // keys, so decrypt the result before reading the token.
+                    await decrypt(body as object, 'result');
+                    if (body?.error || (statusCode != null && statusCode >= 400)) {
+                        clearTokens();
+                        const error = new Error(
+                            body?.error?.message || 'Token refresh failed',
+                        ) as Error & {
+                            type?: string;
+                            statusCode?: number;
+                            auth?: boolean;
+                        };
+                        error.type = body?.error?.type || 'rpc.refreshFailed';
+                        error.statusCode = body?.error?.statusCode ?? statusCode ?? 401;
+                        error.auth = true;
+                        throw error;
+                    }
+                    readToken(body!.result as IToken);
                 } catch (error) {
                     pending = null;
-                    clearTokens();
-                    this.error!(error);
+                    // Keep auth-classified failures as-is; otherwise drop tokens
+                    // so the next request reports a clean 401.
+                    if (!(error as {auth?: boolean}).auth) clearTokens();
+                    throw error;
                 }
             } else clearTokens();
         }
@@ -184,6 +227,12 @@ export default handler<{
                 $http.headers.authorization = 'Bearer ' + token;
             }
             if ($http && params) params.$http = $http;
+            // An unexpected 401 is surfaced as-is: the automatic pre-send
+            // `refresh()` above already renewed the token when it was close to
+            // expiry, so a 401 here means the session is genuinely unusable
+            // (e.g. revoked/closed server-side) — a forced renewal would only
+            // add a failing round-trip.  The UI turns the 401 into a login
+            // prompt.
             return super.send(params, $meta);
         },
         async receive(
@@ -214,6 +263,18 @@ export default handler<{
         },
         async loginTokenCreateResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
             await decrypt(result.body, 'result');
+            if ((result.body as {error?: unknown})?.error) return super.receive(result, $meta);
+            readToken(result.body.result as IToken);
+            return super.receive(result, $meta);
+        },
+        // Explicit token renewal (auth: 'login') — the same path the automatic
+        // `refresh()` uses; feeds the new tokens into memory.
+        async loginTokenRefreshRequestSend(params: {$http?: unknown}, $meta: unknown) {
+            return super.send(await encryptPublic(params), $meta);
+        },
+        async loginTokenRefreshResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
+            await decrypt(result.body, 'result');
+            if ((result.body as {error?: unknown})?.error) return super.receive(result, $meta);
             readToken(result.body.result as IToken);
             return super.receive(result, $meta);
         },
@@ -223,6 +284,17 @@ export default handler<{
         },
         async loginTokenExchangeRequestSend(params: {$http?: unknown}, $meta: unknown) {
             return super.send(await encryptPublic(params), $meta);
+        },
+        // Session restore (auth: 'login') — exchanges the path-scoped HttpOnly
+        // cookie for fresh tokens; the response feeds the same readToken path.
+        async loginTokenRestoreRequestSend(params: {$http?: unknown}, $meta: unknown) {
+            return super.send(await encryptPublic(params), $meta);
+        },
+        async loginTokenRestoreResponseReceive(result: Response<{result: unknown}>, $meta: unknown) {
+            await decrypt(result.body, 'result');
+            if ((result.body as {error?: unknown})?.error) return super.receive(result, $meta);
+            readToken(result.body.result as IToken);
+            return super.receive(result, $meta);
         },
     };
 });

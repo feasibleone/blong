@@ -191,11 +191,13 @@ export default handler(
                     return created;
                 },
 
-                // 4. Session close — revokes a (fabricated) session id.
+                // 4. Session close — revokes a (fabricated) session id.  The target is
+                //    not the caller's own, so the `access.session.close` action is
+                //    required (granted on the meta below).
                 async function closeSession(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const result = await accessSessionClose<{success: boolean}>(
                         {sessionId: '00000000000000000000000000000000'},
-                        $meta,
+                        {...$meta, auth: {...$meta.auth, actions: ['access.session.close']}},
                     );
                     assert.ok(result.success !== undefined, 'session close returns a result');
                     return result;

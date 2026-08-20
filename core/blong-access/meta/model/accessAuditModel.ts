@@ -26,6 +26,8 @@ export default model(
                                     filter: true,
                                 },
                                 userId: {title: 'User'},
+                                actorId: {title: 'Actor'},
+                                sessionId: {title: 'Session'},
                                 actionName: {
                                     title: 'Action',
                                     filter: true,
@@ -40,6 +42,7 @@ export default model(
                                     type: 'boolean',
                                 },
                                 failureReason: {title: 'Failure Reason'},
+                                statusCode: {title: 'HTTP'},
                                 occurredAt: {
                                     title: 'Occurred',
                                     widget: {type: 'dateTime'},
@@ -49,6 +52,9 @@ export default model(
                                 columns: [
                                     'occurredAt',
                                     'actionName',
+                                    'actorId',
+                                    'sessionId',
+                                    'statusCode',
                                     'userId',
                                     'credentialType',
                                     'ipAddress',

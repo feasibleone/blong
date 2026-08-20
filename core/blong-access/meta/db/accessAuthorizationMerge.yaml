@@ -1,7 +1,16 @@
 role:
   Guest: guestBasic
+  # Well-known `Admin` role grants the right to log in (`loginCapability` →
+  # `accessLogin`).  Because this is the SHARED production seed, any realm that
+  # grants a user the `Admin` role gets login eligibility for free — realm
+  # seeds only MERGE their own capabilities into this role, never repeat it.
+  Admin: loginCapability
 capability:
   guestBasic: accessTestGuest,access.profile.get
+  # The well-known `accessLogin` action — grants the right to establish/renew a
+  # session (the login-eligibility gate is always on).  Grant it to any other
+  # role that may log in.
+  loginCapability: accessLogin
 policy:
   password:
     credentialType: password

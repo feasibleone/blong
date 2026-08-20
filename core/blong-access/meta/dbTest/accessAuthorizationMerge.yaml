@@ -11,8 +11,18 @@ user:
   testGuest:
     password: testPassword
     roles: Guest
+  # Has valid credentials but its role grants NO `login` action — used to prove
+  # the login-eligibility gate refuses login/refresh (the gate is always on).
+  testNoLogin:
+    password: testPassword
+    roles: NoLogin
 role:
-  Admin: testManagement,accessModelAdmin
+  Admin: testManagement,accessModelAdmin,loginCapability
+  Customer: loginCapability
+  Guest: guestBasic,loginCapability
+  # No `login` capability → the user cannot establish/renew a session
+  # (the login-eligibility gate is always on).
+  NoLogin: guestBasic
 capability:
   testManagement: accessTestPrivate,subject.object.schema
   # Grants the Admin role (testAdmin / testUser) every action the access UI
@@ -25,3 +35,6 @@ capability:
     accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
     accessSessionFind,accessSessionClose,accessAuditFind,
     accessDropdownList,subject.object.schema
+  # The well-known `accessLogin` action — grants the right to establish/renew
+  # a session. Every role that may log in must grant it (the gate is always on).
+  loginCapability: accessLogin

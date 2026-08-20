@@ -227,11 +227,35 @@ export default schema(async ({lib: {type}}) => ({
             sessionId: type.uidNotNull(),
             userId: type.uidNotNull(),
             credentialId: type.bigIntNotNull(),
+            /**
+             * SHA-256 hex digest of the current refresh token.  Rotated on
+             * every token renewal so a stolen refresh token can be detected
+             * and the session revoked.
+             */
             tokenHash: type.stringNotNull(),
             issuedAt: type.dateTimeNotNull(),
+            /**
+             * Absolute expiry of the refresh token (issuedAt + refresh TTL).
+             * Renewal is refused once this passes.
+             */
             expiresAt: type.dateTimeNotNull(),
+            /**
+             * Last activity timestamp.  Updated on token renewal and by
+             * explicit `access.session.verify` (critical ops).  Sessions whose
+             * last activity is older than the inactivity timeout are refused
+             * renewal and reported as inactive by `verify`.
+             */
+            lastActivityAt: type.dateTimeNotNull(),
             ipAddress: type.stringNull(),
             isRevoked: type.booleanNotNull(),
+            /** When the session was revoked (logout / security action). */
+            revokedAt: type.dateTimeNull(),
+            /**
+             * SHA-256 hex digest of the opaque restore-cookie handle (set on
+             * login, cleared on revoke, rotated on restore).  Only the restore
+             * endpoint (path-scoped cookie) can use it.
+             */
+            cookieHash: type.stringNull(),
         },
         {
             constraints: {
@@ -252,12 +276,32 @@ export default schema(async ({lib: {type}}) => ({
      */
     audit: type.Object({
         auditId: type.ulid(),
+        /** Binary user key (base64 on the wire) — used by login events. */
         userId: type.uidNull(),
+        /**
+         * Readable actor reference (crockford/base64 actorId from the JWT)
+         * — used by gateway access-check events where the raw binary key is
+         * not available.
+         */
+        actorId: type.stringNull(),
+        /** Session id (dashed UUID string) the event belongs to, if any. */
+        sessionId: type.stringNull(),
+        /**
+         * The operation recorded — a semantic-triple method name for
+         * access-check/DML events, or a label like 'login' / 'logout'.
+         */
         actionName: type.stringNotNull(),
         credentialType: type.stringNull(),
         ipAddress: type.stringNull(),
         isSuccess: type.booleanNotNull(),
         failureReason: type.stringNull(),
+        /** HTTP status code for access-check events (200 allow / 403 deny). */
+        statusCode: type.integerNull(),
+        /**
+         * Optional JSON context — for access-table DML events a sanitised
+         * summary of the affected entity key(s), never full params.
+         */
+        detail: type.stringNull(),
         occurredAt: type.dateTimeNotNull(),
     }),
 }));

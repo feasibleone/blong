@@ -38,6 +38,12 @@ export interface IAppState {
     actions: ActionRegistry;
     error: IBlongError | null;
     hint: IHint | null;
+    /**
+     * When true, the login popup is shown — set when an operation hits an
+     * expired/invalid session (401) and the client-side token renewal failed.
+     * The user logs in via the popup and re-invokes the operation.
+     */
+    loginPrompt: boolean;
 }
 
 /** App store actions */
@@ -79,6 +85,9 @@ export interface IAppActions {
     showError: (error: IBlongError) => void;
     clearError: () => void;
 
+    // Login prompt
+    setLoginPrompt: (visible: boolean) => void;
+
     // Hint
     showHint: (target: HTMLElement | null, message: string, error: boolean) => void;
     clearHint: () => void;
@@ -109,6 +118,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     actions: {},
     error: null,
     hint: null,
+    loginPrompt: false,
 
     // Auth actions
     setToken: token =>
@@ -223,12 +233,10 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     },
     clearError: () => set({error: null}),
 
+    // Login prompt
+    setLoginPrompt: visible => set({loginPrompt: visible}),
+
     // Hint
     showHint: (target, message, error) => set({hint: {target, message, error}}),
     clearHint: () => set({hint: null}),
 }));
-
-// Expose for Playwright / E2E tests
-if (typeof window !== 'undefined') {
-    (window as unknown as Record<string, unknown>).__blongStore = useAppStore;
-}

@@ -50,6 +50,7 @@ export {Hint} from './components/Hint/Hint.js';
 export {Json} from './components/Json/Json.js';
 export {Loader} from './components/Loader/Loader.js';
 export {Login} from './components/Login/Login.js';
+export {LoginPopup} from './components/LoginPopup/LoginPopup.js';
 export {Navigator} from './components/Navigator/Navigator.js';
 export {OAuthCallback, type IOAuthCallbackProps} from './components/OAuthCallback/OAuthCallback.js';
 export {Page} from './components/Page/Page.js';

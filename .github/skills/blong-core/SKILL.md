@@ -284,7 +284,7 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 | `access.policy`     | `policyId` → core.resource     | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; `password` policy is seeded)          |
 | `access.flow`       | `flowId` → core.resource       | MFA step definitions, e.g. `["password","totp"]` (**schema-only**)                                                                         |
 | `access.access`     | `accessId` → core.resource     | time/IP/geo rule config (**schema-only**)                                                                                                  |
-| `access.session`    | `sessionId` (uid, standalone)  | active sessions (**schema-only — not persisted as resources**)                                                                             |
+| `access.session`    | `sessionId` (uid, standalone)  | active sessions (created on login, refreshed on renewal)                                                                                  |
 | `access.audit`      | `auditId` (ulid)               | append-only auth event log (**schema-only**)                                                                                               |
 
 ### The RBAC model
@@ -323,7 +323,8 @@ Authorization queries read the **materialized** `core_path` (a single indexed lo
    (falling back to the `config.password` defaults declared in the realm's `server.ts` when not
    stored) — then reads effective role bits + action names from `core_path`.
 3. Role bits are packed into a base64 `permissionMap` bitmask (roleBit 0–1023 → bit position).
-4. `loginTokenCreate` signs a JWT carrying `per: permissionMap` (and `sub` = actorId).
+4. `loginTokenCreate` signs a JWT carrying `per: permissionMap` (and `sub` = actorId), creates the
+   DB session, and sets the restore cookie.
 5. The gateway's `authorize` hook (`access.authorization.list`) decodes `per` from the token, maps
    role bits → capabilities → actions, and returns allowed methodIds (lowercase, dots stripped —
    e.g. `accesstestprivate`). A `preHandler` hook compares the requested method's methodId against
@@ -403,10 +404,98 @@ The login response also returns `permissions` (the resolved action names) for cl
   enriches the profile from UserInfo; `oauth` uses `${baseUrl}/token` + `${baseUrl}/certs` directly.
   See `adapter/db/oidc.ts` and the mock in `sim/google/mockServer.ts`.
 - **New policy/flow** (password rules, MFA steps): policies can now dictate credential params;
-  flow/access/session/audit tables still exist schema-only — wire handlers to consume them.
+  flow/access tables exist as schema — wire handlers to consume them.
+- **Sessions / refresh / audit**: DB-backed sessions (`access.session.*`), redeemable refresh
+  tokens (`login.token.refresh`), the restore cookie (`login.token.restore`) and the access-check
+  audit (`access.audit.record`) are all wired — see **Sessions, refresh tokens & audit** below.
 - **Test endpoints**: `adapter/dbTest/accessTestPrivate` (protected) and `accessTestPublic`
   (`auth: false`) are reference endpoints proving the 401/403/200 gate — replace with real business
   actions.
+
+## Sessions, refresh tokens & audit
+
+Access tokens are stateless JWTs verified at the gateway **without a DB hit**. Sessions are
+DB-backed and add revocation + inactivity + renewal + audit on top of that fast path.
+
+### Session lifecycle
+
+- **Created** on every `login.token.create` (password and client_credentials). The JWT `ses` claim
+  carries the real `sessionId`; `tokenHash` = SHA-256 of the **current** refresh token (rotated on
+  every renewal); `lastActivityAt` anchors the inactivity timer; `cookieHash` = SHA-256 of the
+  restore-cookie handle.
+- **Renewal** (`login.token.refresh`): validates the DB session (not revoked / not expired / not
+  inactive) and **touches `lastActivityAt`**, re-resolves the CURRENT permission set, mints a fresh
+  access token + a **rotated** refresh token, and rotates `tokenHash`. Reuse of an already-rotated
+  refresh token revokes the session.
+- **Close** (`access.session.close` / logout): `isRevoked=1`, `revokedAt=now`, cookie cleared.
+  Already-issued access tokens keep working until they expire — renewal is refused, so the client
+  is effectively logged out within one access-token lifetime.
+- **Inactivity / deletion**: sessions idle longer than `login.expire.inactivity` (default 30 m) are
+  refused renewal; `access.session.cleanup` purges stale/revoked/expired rows after
+  `login.expire.deleteAfter` (default 24 h). Cleanup is dialect-neutral knex (no stored procs).
+
+### Standard method for critical operations
+
+Normal operations rely on the JWT fast path. Operations that must NOT run on a closed/inactive
+session (e.g. DB writes) should verify it at the start of the handler — `access.session.verify`
+**throws** an `access.session.*` (401) error when the session is not live:
+
+```typescript
+const {userId} = await handler.accessSessionVerify({}, $meta); // sessionId = $meta.auth.sessionId; throws on invalid
+```
+
+`access.session.verify` checks exists → not revoked → not past `expiresAt` → not inactive, throwing
+`access.session.notFound` / `access.session.revoked` / `access.session.expired` /
+`access.session.inactive` — the failing reason is on `error.params.reason`. Pass `touch: true` to
+reset the inactivity timer.
+
+### Login eligibility (who may hold a session)
+
+A user may establish or renew a session only while they are still **allowed to log in**. Two gates
+are enforced at the session-lifecycle operations — `login.token.create` / `login.token.refresh` /
+`login.token.restore`:
+
+- **Per-user** — `user.isActive` must be `true`. Deactivating a user refuses new logins (already
+  checked at `access.credential.check`) and now also refuses renewal/restore, so the disable takes
+  effect within one access-token lifetime.
+- **Per-role** — the user's effective permission set must include the well-known `accessLogin` action
+  (unconditional), granted the usual way: `role → capability → action`. The shared blong-access
+  **production seed** already grants `Admin` the `loginCapability` (→ `accessLogin`) capability, so a
+  realm only needs to add it for any **additional** roles that may log in (e.g.
+  `capability: loginCapability: accessLogin` in `meta/db/accessAuthorizationMerge.yaml`). Removing it
+  from a role disables logins for that role.
+
+Failed gates throw `login.userInactive` / `login.loginNotAllowed` (401) and are audited.
+`access.session.verify` (the critical-operation gate) ALSO enforces login eligibility — after the
+session-liveness checks it refuses a deactivated user (`access.session.userInactive`) or one whose
+roles no longer grant `accessLogin` (`access.session.loginNotAllowed`), so a disabled user is out
+immediately, not just at the next renewal.
+
+### blong-login works without blong-access (configurable methods)
+
+`blong-login` does not hard-depend on blong-access: every access method it calls is configurable
+via `login.methods.*` (wire name) and defaults to the blong-access handler. A lightweight suite
+without blong-access can override a method with its own handler, or set one to `false` to disable
+that functionality — e.g. `sessionCreate`/`sessionVerify`/… = `false` for stateless tokens,
+`auditRecord = false` to skip auditing, `permissionList = false` to issue tokens without RBAC
+permissions. A flow that needs a method which is disabled fails with a clear `login.configurationError`.
+
+### Audit
+
+With `gateway.audit: {handler: 'access.audit.record', exclude?: string[]}` every access-control
+decision (allow/deny) is recorded **at the access check** — the choke point all controlled
+operations pass — with actor, session, method, outcome, HTTP status and IP. Access-table DML
+(`access.user.add`, …) adds a sanitised detail (entity + id keys only, never credentials/hashes).
+Login success/failure is recorded by the login flow. Audit is best-effort (never blocks). Opt out
+per route with `audit: false`, or by methodId pattern in `exclude` (e.g. integration-test probes).
+
+### Restore cookie (skip login on reload)
+
+Login sets an opaque restore cookie: `HttpOnly` + `Secure` + `SameSite=Lax`, **Path-scoped to
+`/rpc/login/token/restore` only**, value = random handle (only its SHA-256 digest is stored),
+rotated on use, TTL `login.expire.cookie`. On reload the UI calls `login.token.restore` to exchange
+it for fresh tokens and skip the login screen. Logout clears the cookie + revokes the session.
+Rationale and trade-offs: `docs/blong/docs/concepts/sessions.md`.
 
 ---
 

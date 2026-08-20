@@ -13,6 +13,10 @@ export default handler(
             $meta: Record<string, unknown>,
         ): Promise<{
             userId: string;
+            /** Base64 of the raw binary(16) user key — for session creation. */
+            userKey: string;
+            /** Active credential id — for session creation. */
+            credentialId: number;
             permissionMap: string;
             actions: string[];
         }> {
@@ -84,6 +88,8 @@ export default handler(
 
             return {
                 userId: crockfordEncode(user.userId),
+                userKey: Buffer.from(user.userId).toString('base64'),
+                credentialId: credential.credentialId,
                 permissionMap,
                 actions: actionNames,
             };

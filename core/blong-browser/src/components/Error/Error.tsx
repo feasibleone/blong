@@ -8,12 +8,23 @@ import {useAppStore} from '../../state/appStore.js';
 import {Button} from '../Button/Button.js';
 
 /**
- * Error types that indicate an expired or invalid session.
+ * Error types that indicate an expired or invalid session.  The primary path
+ * for these is the LoginPopup (raised by `wrapHandlerProxy`); this dialog is
+ * the fallback when a 401 is surfaced directly via `showError`.
  */
 const AUTH_ERROR_TYPES = new Set([
     'identity.unauthenticated',
     'identity.invalidCredentials',
     'identity.sessionExpired',
+    'rpc.jwtInvalid',
+    'rpc.refreshFailed',
+    'gateway.jwtMissingHeader',
+    'login.refreshTokenExpired',
+    'login.sessionNotFound',
+    'login.sessionRevoked',
+    'login.sessionInactive',
+    'login.sessionExpired',
+    'login.invalidCookie',
 ]);
 
 function isAuthError(type?: string) {

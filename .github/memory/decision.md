@@ -155,3 +155,64 @@
   the raw PK before the mutation. Also widened `resolveTableSpec` to accept `undefined` tableConfig.
 - **Noted**: binary(16) columns round-trip as 24-char base64, not 26-char ULID (documented in the
   blong-schema skill).
+
+## client_credentials grant: no DB session (blong-login)
+
+- **Question**: should the `client_credentials` grant in `login.token.create` create a DB-backed
+  session (via `access.session.create`)?
+- **Answer**: No. App tokens are long-lived machine credentials — no refresh rotation, inactivity
+  tracking or restore cookie applies. The initial attempt created a session with the application's
+  key as `userId`, which FK-failed (`access_session.userId` → `access_user.userId`, apps have no
+  `access_user` row) and broke the blong-gateway `appToken`/meter flow. `client_credentials` now
+  mints the token + audits only; sessions are exclusive to interactive user (password) logins.
+- **Verified**: blong-gateway tap 20/20 (was failing on the FK constraint).
+
+## ILib.methods convention + object-return libraries (core/blong + blong-login)
+
+- **Question**: how should a library expose configurable handler bindings (soft deps) so handlers
+  can access them without a nested accessor function and without casts?
+- **Answer**: added a framework convention — `ILib.methods?: LibMethods` in `core/blong/types.ts`
+  (`LibMethods = {[m: string]: LibFn | undefined}`). A `library()` factory returns its object
+  DIRECTLY; the conventional `methods` member holds the resolved handler bindings, typed via ILib.
+  Handlers destructure `lib: {methods = {}, ...}` (default since the member is optional) and call
+  `methods.<name>?.(...)`. Libraries do NOT re-export config constants — handlers read `config`
+  directly; the library keeps only the method resolution + pure helpers. `blong-login/sessionLib.ts`
+  is the reference implementation (11 `login.methods.*` bindings).
+- **Trade-off**: members other than `methods` are `LibFn` (unknown returns) → call-site generics
+  where a precise type is needed (only 1 place: `sha256Hex<string>` in a string comparison).
+- **Verified**: core/blong, blong-login, blong-access, blong-gogo lint green; tap access 37/37,
+  party 15/15, gateway 20/20, kopi 6/6; Playwright 21 passed.
+
+## Access-check audit: expose auditId on $meta.auth (awaited in preHandler)
+
+- **Question**: should the gateway access-check audit expose the inserted record key to the audited
+  handler?
+- **Answer**: Yes. `access.audit.record` now returns `{inserted, auditIds}` (the ULID keys it
+  generated). `recordAccessAudit` (core/blong-gogo/src/jwt.ts) sets the first one on
+  `request.auth.credentials.auditId`, and the gateway `_meta()` spreads credentials into the handler
+  `$meta.auth` → `$meta.auth.auditId`.
+- **Trade-off**: to make the id reliably reach the business handler, the preHandler hook now AWAITS
+  the audit insert (previously fire-and-forget/"never awaited"). It is still best-effort — failures
+  are caught and never fail the request — but every access-checked request now pays a DB write on
+  the request path. Denied (403) requests are audited before the error is thrown, preserving the old
+  audit-both-outcomes behaviour. The audit id is per-request only (the credentials object is
+  re-created, so the bearer cache is not polluted).
+- **Verified**: lint green (core/blong, blong-gogo, blong-access); tap access 37/37 (incl. new
+  `access.audit.record` → `auditIds` ULID assertion), gateway 20/20, party 15/15, kopi 6/6;
+  Playwright 21 passed (confirms async preHandler + 403 behaviour intact).
+
+## Session-close authorization (accessSessionClose) + blong.type in login server.ts (2026-08-20 follow-up)
+
+- **`access.session.close` own-vs-other permission**: Closing your OWN session (params.sessionId ===
+  `$meta.auth.sessionId` JWT `ses` claim) needs NO permission — a valid token suffices (so logout /
+  revoke / refresh-reuse-detection keep working for every user). Closing ANY OTHER session requires
+  the `access.session.close` action (`$meta.auth.actions`, normalized ids). Violations throw the new
+  `access.session.closeForbidden` (403) error. Callers that close another session (test seeds,
+  token-exchange reuse) pass `{...$meta, auth: {...}}` to satisfy it; refresh marks the closing
+  session as its own (`auth.sessionId`). Chose this over "require the action always" because
+  self-close is a core logout primitive every logged-in user must have.
+- **`blong.type` in blong-login server.ts**: removed the `import {Type} from 'typebox'` in
+  `core/blong-login/server.ts`; the config-optional helper now uses `blong.type.*` exclusively
+  (typebox is still the dependency, but the framework-provided `blong.type` is the access path).
+- **Verified**: lint green (core/blong, blong-login, blong-access); tap access 37/37, gateway 20/20,
+  party 15/15, kopi 6/6; Playwright 21 passed.
