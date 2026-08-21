@@ -155,3 +155,14 @@ tests on a fresh DB but passed on the second run.
   `.merge()` so a secondary unique-key conflict can never clobber an existing row. Debug technique
   that worked: reproduce on a fresh DB, then query `access_role`/`core_resource` mid-run — the
   missing Admin row + NoLogin owning bit 0 was the smoking gun.
+
+Resolved by the "blong-dev sql usability" follow-up (2026-08-21) — the dev SQL CLI was unusable out
+of the box (had to `kubectl exec` into the MySQL pod).
+
+- **`blong-dev sql` connected as anonymous user.** `readConnection` started from `{}` and only
+  layered `.blong_devrc`/CLI values, so with no `srv.db` in `.blong_devrc` the connection had no
+  user/password → `Access denied for user ''@'...'`. Fix: fall back to the shared `srv.db` adapter's
+  dev defaults (`blong-admin`/`password` @ `localhost:3306`) for the default `srv.db` key only
+  (custom `--config` keys stay empty), and auto-create the derived dev DB (`${suite}-${user}`) when
+  missing (mirrors dev `createDatabase: true`). Lesson: the dev tool should mirror the framework's
+  own dev connection defaults instead of requiring per-developer `.blong_devrc` setup.

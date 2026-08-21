@@ -325,3 +325,35 @@
 - **Verified**: drop DB → first run passes for all four packages (access 48/48, gateway 20/20, kopi
   6/6, party 15/15 tap; Playwright access 21+3flaky, gateway 12, kopi 4, party 15+1flaky); DB now
   shows Admin(0)…Guest(4), NoLogin(5); second run idempotent.
+
+## `blong-dev sql` usability — dev-defaults fallback (2026-08-21)
+
+- **Problem**: `blong-dev sql` failed with `Access denied for user ''@'...'` when `.blong_devrc` did
+  not configure a `srv.db` connection (the repo-root `.blong_devrc` only has `db.sql` for a remote
+  ut-microservice DB and `_srv.db._google`), forcing `kubectl exec` into the MySQL pod instead.
+  `readConnection` resolved to `{}` (no user/password/host) → mysql2 connected as anonymous.
+- **Decision**: `readConnection` now starts from the shared `srv.db` adapter's dev defaults
+  (`blong-admin`/`password` @ `localhost:3306`) when resolving the default `srv.db` key, then layers
+  `.blong_devrc` + CLI overrides on top (missing fields keep the defaults). Custom `--config` keys
+  stay empty when unconfigured (preserves the `--config mysql.sql → undefined` test). Added an
+  `ensureDatabase` helper + `derived` flag so the command auto-creates the derived dev DB
+  (`${suite}-${user}`) when missing, mirroring the dev intent's `createDatabase: true`. Chose the
+  `srv.db`-only fallback over applying defaults to every key (would break the custom-key contract),
+  and auto-create only for the _derived_ database (never an explicit `--database`).
+- **Verified**: 44/44 tap tests (13 sql tests incl. 4 new), `tsc --noEmit` green; live run
+  `blong-dev sql "SELECT 1"` auto-created `blong-access-kalin` and connected; `SHOW DATABASES` /
+  table queries against `--database blong-access` work; `--config db.sql` still resolves the remote
+  devrc block untouched.
+
+## `blong-dev sql` multi-statement support (2026-08-21)
+
+- **Ask**: run multiple `;`-separated statements in one query and return all their results.
+- **Decision**: always enable `mysql2` `multipleStatements: true`. mysql2 then returns a single
+  statement's result as-is (rows array or `ResultSetHeader`) but collects multi-statement results
+  into an ARRAY of result sets. Added `isMultiResult` (an array whose every element is an array or a
+  `fieldCount`-bearing header ⇒ multi) to detect the shape, and a `formatResultSet` helper. JSON
+  output emits a single result set unchanged (backward-compatible) or the array of result sets for
+  multi; pretty output prints each result set labelled `— result N`. Added an `isMultiResult` unit
+  test (6 assertions).
+- **Verified**: 84/84 tap tests, `tsc --noEmit` green; live `SELECT…; SELECT…` → `[[rows],[rows]]`,
+  `CREATE…; INSERT…; SELECT…` → `[header, header, [rows]]`, single SELECT shape unchanged.

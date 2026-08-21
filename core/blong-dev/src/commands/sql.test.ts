@@ -12,7 +12,17 @@ import {join} from 'node:path';
 import {test} from 'tap';
 
 import {parseArgs} from './log.ts';
-import {currentUser, devDbName, getPath, parseDevRc, readConnection, resolveSuite} from './sql.ts';
+import {
+    currentUser,
+    devDbName,
+    ensureDatabase,
+    getPath,
+    isMultiResult,
+    parseDevRc,
+    readConnection,
+    resolveSuite,
+    type IConnect,
+} from './sql.ts';
 
 test('parseDevRc parses JSON-with-comments', t => {
     const config = parseDevRc(
@@ -164,5 +174,118 @@ test('readConnection does not derive when --database is provided', t => {
     );
     t.equal(connection.database, 'explicit-db', 'CLI database wins, no derivation');
     t.notMatch(source, /derived/, 'source not flagged as derived');
+    t.end();
+});
+
+test('readConnection falls back to dev defaults when devrc has no srv.db', t => {
+    const dir = join(tmpdir(), `blong-dev-defaults-${Date.now()}`);
+    mkdirSync(dir, {recursive: true});
+    // devrc exists but only configures unrelated keys (e.g. the `db.sql` block)
+    writeFileSync(
+        join(dir, '.blong_devrc'),
+        'db:\n  sql:\n    connection:\n      host: remote.example\n',
+    );
+    writeFileSync(join(dir, 'package.json'), '{"name": "@scope/blong-access"}');
+    const prev = process.cwd();
+    process.chdir(dir);
+    t.teardown(() => process.chdir(prev));
+
+    const {connection, source, derived} = readConnection(parseArgs(['SELECT 1']));
+    t.equal(connection.host, 'localhost', 'defaults host');
+    t.equal(connection.port, 3306, 'defaults port');
+    t.equal(connection.user, 'blong-admin', 'defaults user');
+    t.equal(connection.password, 'password', 'defaults password');
+    t.equal(
+        connection.database,
+        devDbName('blong-access', currentUser()),
+        'derived dev DB from package.json suite',
+    );
+    t.equal(derived, true, 'database marked derived');
+    t.match(source, /dev defaults/, 'source flags dev defaults');
+    t.end();
+});
+
+test('readConnection devrc values override dev defaults, missing fields keep defaults', t => {
+    const dir = join(tmpdir(), `blong-dev-defaults-override-${Date.now()}`);
+    mkdirSync(dir, {recursive: true});
+    writeFileSync(
+        join(dir, '.blong_devrc'),
+        'suite: blong-access\nsrv:\n  db:\n    knex:\n      connection:\n        host: devrc.local\n        user: devuser\n',
+    );
+    const prev = process.cwd();
+    process.chdir(dir);
+    t.teardown(() => process.chdir(prev));
+
+    const {connection, derived, source} = readConnection(parseArgs(['SELECT 1']));
+    t.equal(connection.host, 'devrc.local', 'devrc host wins');
+    t.equal(connection.user, 'devuser', 'devrc user wins');
+    t.equal(connection.password, 'password', 'missing password falls back to dev default');
+    t.equal(connection.port, 3306, 'missing port falls back to dev default');
+    t.equal(derived, true, 'database still derived');
+    t.notMatch(source, /dev defaults/, 'configured srv.db is not flagged as dev defaults');
+    t.end();
+});
+
+test('ensureDatabase creates a missing database', async t => {
+    const calls: string[] = [];
+    const fakeConnect: IConnect = async () => ({
+        query: async <T>(sql: string): Promise<[T, unknown]> => {
+            calls.push(sql);
+            // Missing → no schema row → CREATE issued
+            return [sql.startsWith('SELECT') ? [] : [{affectedRows: 1}], undefined] as unknown as [
+                T,
+                unknown,
+            ];
+        },
+        end: async () => {},
+    });
+    const {created} = await ensureDatabase({database: 'blong-access-kalin'}, fakeConnect);
+    t.equal(created, true, 'created when missing');
+    t.ok(
+        calls.some(sql => sql.startsWith('CREATE DATABASE')),
+        'issued CREATE DATABASE',
+    );
+    t.end();
+});
+
+test('ensureDatabase skips an existing database', async t => {
+    const calls: string[] = [];
+    const fakeConnect: IConnect = async () => ({
+        query: async <T>(sql: string): Promise<[T, unknown]> => {
+            calls.push(sql);
+            // Existing → schema row returned → no CREATE
+            return [
+                sql.startsWith('SELECT') ? [{SCHEMA_NAME: 'blong-access-kalin'}] : [],
+                undefined,
+            ] as unknown as [T, unknown];
+        },
+        end: async () => {},
+    });
+    const {created} = await ensureDatabase({database: 'blong-access-kalin'}, fakeConnect);
+    t.equal(created, false, 'skipped when present');
+    t.notOk(
+        calls.some(sql => sql.startsWith('CREATE DATABASE')),
+        'no CREATE issued',
+    );
+    t.end();
+});
+
+test('isMultiResult distinguishes single from multi-statement results', t => {
+    // Single statement — bare rows array or ResultSetHeader object
+    t.equal(isMultiResult([{a: 1}, {a: 2}]), false, 'single SELECT rows are not multi');
+    t.equal(isMultiResult([]), false, 'empty single result is not multi');
+    t.equal(
+        isMultiResult({fieldCount: 0, affectedRows: 1}),
+        false,
+        'single ResultSetHeader is not multi',
+    );
+    // Multi statements — array of result sets (rows arrays and/or headers)
+    t.equal(isMultiResult([[{a: 1}], [{b: 2}]]), true, 'multi SELECT detected');
+    t.equal(isMultiResult([[], [{b: 2}]]), true, 'multi with empty first set detected');
+    t.equal(
+        isMultiResult([{fieldCount: 0, affectedRows: 1}, [{b: 2}]]),
+        true,
+        'mixed header + rows detected',
+    );
     t.end();
 });
