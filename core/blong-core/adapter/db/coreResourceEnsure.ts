@@ -48,10 +48,15 @@ export default handler(
                 .insert({resourceId: uuidBuf(resourceId), resourceName: params.name, typeId})
                 .onConflict()
                 .ignore();
+            // `INSERT IGNORE` (not `ON DUPLICATE KEY UPDATE`): the keyName is a
+            // fresh UUID so it never conflicts here, while `merge()` would also
+            // fire on ANY other unique key — e.g. `access_role.roleBit` — and
+            // silently OVERWRITE an existing row (destroying the role). Ignore
+            // keeps the insert insert-only, matching the core_resource row above.
             await qb(params.table)
                 .insert({[params.keyName]: uuidBuf(resourceId), ...params.extraColumns})
                 .onConflict(params.keyName)
-                .merge();
+                .ignore();
             return {resourceId};
         },
 );

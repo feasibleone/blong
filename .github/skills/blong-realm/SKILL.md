@@ -255,6 +255,12 @@ children: [
 ];
 ```
 
+> **Function/async children require a config entry.** A child declared as a function/async import
+> (e.g. `async function core() { return import('@feasibleone/blong-core/server.ts'); }`) is silently
+> SKIPPED by the loader unless the realm config carries a matching block for the child's name
+> (`mergedConfig[itemName]`). Without it the child never loads — its `objectSchema` keys are missing
+> and its tables never sync. Add `core: {}` (or per-intent blocks) to the realm's `config`.
+
 ## Best Practices
 
 - **Scaffold from blong-kopi**, then adjust — do not hand-build the structure.

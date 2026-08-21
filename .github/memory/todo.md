@@ -14,9 +14,19 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 - combined storybook
 - backend for the storybook
 - translations from the DB
+- generic blong-browser model CRUD Playwright tests (`model.ts`) are flaky on first attempt
+  (screenshot/timing — pass on retry); observed in blong-access ("create access role/capability",
+  "cleanup access user") and blong-party. Worth a retry/stability pass.
 
 ## List of completed tasks
 
-- profile UI menu (top-right avatar) and profile page implemented (blong-access + blong-browser): `access.profile.get/edit/password.change`, AccountMenu, profile page, Playwright tests + screenshots
-- preferred language returned during login (`login.token.create`/`restore`/`refresh` resolve the profile → `profile.language`) and applied to the UI (`setLanguage` + `translationsByLanguage` + `bgLocale` PrimeReact locale) — blong-access Playwright test screenshots the profile page in Bulgarian (`profile-bg.png`); tap assertions cover login/refresh
-- menubar language switcher (`LanguageSwitcher`, left of the profile menu) for ad-hoc UI language switching — config-driven via `portal.languages`, falls back to `portal.translations` keys; blong-access Playwright test + screenshots (`language-switch-*.png`)
+- profile UI menu (top-right avatar) and profile page implemented (blong-access + blong-browser):
+  `access.profile.get/edit/password.change`, AccountMenu, profile page, Playwright tests +
+  screenshots
+- preferred language returned during login (`login.token.create`/`restore`/`refresh` resolve the
+  profile → `profile.language`) and applied to the UI (`setLanguage` + `translationsByLanguage` +
+  `bgLocale` PrimeReact locale) — blong-access Playwright test screenshots the profile page in
+  Bulgarian (`profile-bg.png`); tap assertions cover login/refresh
+- menubar language switcher (`LanguageSwitcher`, left of the profile menu) for ad-hoc UI language
+  switching — config-driven via `portal.languages`, falls back to `portal.translations` keys;
+  blong-access Playwright test + screenshots (`language-switch-*.png`)

@@ -15,3 +15,11 @@ role:
   - roleBit: 4
     description: Self-registered guest role with basic access rights
     name: Guest
+  # Test-only role used by `meta/dbTest/accessAuthorizationMerge.yaml` to prove
+  # the login-eligibility gate refuses login/refresh (its role grants no
+  # `accessLogin` action).  Pre-seeded with a free roleBit because the merge
+  # handler (`accessAuthorizationMerge`) hardcodes roleBit 0, which would
+  # collide with Admin's bit 0 and destroy the Admin row on first seed.
+  - roleBit: 5
+    description: Role with no login capability (test-only)
+    name: NoLogin
