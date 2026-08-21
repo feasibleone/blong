@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.30.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.29.0...blong-gogo-v1.30.0) (2026-08-21)
+
+
+### Features
+
+* access sessions and audit ([694349f](https://github.com/feasibleone/blong/commit/694349f7e70973b984a30f696d2b6e892b55ec02))
+* improve MySQL handling in CI ([4770eec](https://github.com/feasibleone/blong/commit/4770eec3a24cd38cd1931da1c553e0a804ca58dd))
+
+
+### Bug Fixes
+
+* api gateway wiring ([cbdb743](https://github.com/feasibleone/blong/commit/cbdb7439a997925ca6a4ba07e046ad2809d37218))
+* blong-access-mock, silent error, expected error ([dc00429](https://github.com/feasibleone/blong/commit/dc00429a63a973996d6e94359830cc52d149b995))
+* build ([fc98bed](https://github.com/feasibleone/blong/commit/fc98beda0e7ba800682bd663eeebd4408ce04bf1))
+
 ## [1.29.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.28.0...blong-gogo-v1.29.0) (2026-08-19)
 
 

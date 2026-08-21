@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.13.0...blong-browser-v1.14.0) (2026-08-21)
+
+
+### Features
+
+* access sessions and audit ([694349f](https://github.com/feasibleone/blong/commit/694349f7e70973b984a30f696d2b6e892b55ec02))
+* user profile, portal language ([f9fa8a4](https://github.com/feasibleone/blong/commit/f9fa8a41683dcd6cf9657b4665235a51a98b7486))
+
 ## [1.13.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.12.0...blong-browser-v1.13.0) (2026-08-19)
 
 

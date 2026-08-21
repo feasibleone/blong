@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.25.0](https://github.com/feasibleone/blong/compare/blong-v1.24.0...blong-v1.25.0) (2026-08-21)
+
+
+### Features
+
+* access sessions and audit ([694349f](https://github.com/feasibleone/blong/commit/694349f7e70973b984a30f696d2b6e892b55ec02))
+
+
+### Bug Fixes
+
+* blong-access-mock, silent error, expected error ([dc00429](https://github.com/feasibleone/blong/commit/dc00429a63a973996d6e94359830cc52d149b995))
+
 ## [1.24.0](https://github.com/feasibleone/blong/compare/blong-v1.23.0...blong-v1.24.0) (2026-08-19)
 
 

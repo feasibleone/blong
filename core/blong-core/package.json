@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-core",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Core utility realm — reusable DB schemas for resource, type, property, triple, translation, and path tables",
     "type": "module",
     "exports": {

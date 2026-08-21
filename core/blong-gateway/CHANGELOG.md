@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.1.0...blong-gateway-v1.1.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* api gateway wiring ([cbdb743](https://github.com/feasibleone/blong/commit/cbdb7439a997925ca6a4ba07e046ad2809d37218))
+* blong-access-mock, silent error, expected error ([dc00429](https://github.com/feasibleone/blong/commit/dc00429a63a973996d6e94359830cc52d149b995))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.0.0...blong-gateway-v1.1.0) (2026-08-19)
 
 

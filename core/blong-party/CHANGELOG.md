@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-party-v1.2.0...blong-party-v1.3.0) (2026-08-21)
+
+
+### Features
+
+* access sessions and audit ([694349f](https://github.com/feasibleone/blong/commit/694349f7e70973b984a30f696d2b6e892b55ec02))
+* improve MySQL handling in CI ([4770eec](https://github.com/feasibleone/blong/commit/4770eec3a24cd38cd1931da1c553e0a804ca58dd))
+* user profile, portal language ([f9fa8a4](https://github.com/feasibleone/blong/commit/f9fa8a41683dcd6cf9657b4665235a51a98b7486))
+
+
+### Bug Fixes
+
+* build ([fc98bed](https://github.com/feasibleone/blong/commit/fc98beda0e7ba800682bd663eeebd4408ce04bf1))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-party-v1.1.0...blong-party-v1.2.0) (2026-08-19)
 
 
