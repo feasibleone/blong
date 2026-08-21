@@ -5,7 +5,7 @@ export default handler(() => ({
         return {
             userId: '01',
             permissionMap: '',
-            actions: [],
+            actions: ['accessLogin'],
         };
     },
 }));

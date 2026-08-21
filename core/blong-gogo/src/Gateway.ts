@@ -544,18 +544,23 @@ export default class Gateway extends Internal implements IGateway {
                             httpResponse?: unknown;
                             [key: string]: unknown;
                         };
-                        if (
-                            isExpectedError(typedError.type as string | undefined, resolvedExpect)
-                        ) {
-                            request.log.debug(
-                                {err: error, method: methodName},
-                                'gateway expected error',
-                            );
-                        } else {
-                            request.log.error(
-                                {err: error, method: methodName},
-                                'gateway handler error',
-                            );
+                        if (!typedError.silent) {
+                            if (
+                                isExpectedError(
+                                    typedError.type as string | undefined,
+                                    resolvedExpect,
+                                )
+                            ) {
+                                request.log.debug?.(
+                                    {err: error, method: methodName},
+                                    'gateway expected error',
+                                );
+                            } else {
+                                request.log.error?.(
+                                    {err: error, method: methodName},
+                                    'gateway handler error',
+                                );
+                            }
                         }
                         this._applyMeta(
                             reply

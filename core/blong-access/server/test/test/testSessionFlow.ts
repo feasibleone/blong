@@ -71,10 +71,13 @@ export default handler(
                     {$meta, login}: {$meta: IMeta; login: Awaited<TokenResult>},
                 ) {
                     const t = await login;
-                    const check = await accessSessionVerify<{userId: string}>({
-                        sessionId: t.session_id,
-                        touch: true,
-                    }, $meta);
+                    const check = await accessSessionVerify<{userId: string}>(
+                        {
+                            sessionId: t.session_id,
+                            touch: true,
+                        },
+                        $meta,
+                    );
                     assert.ok(check.userId, 'session verify returns the userId');
                     return t;
                 },
@@ -112,7 +115,10 @@ export default handler(
                 //    is refused and the session is revoked as a precaution.
                 async function reuseDetection(
                     assert: IAssert,
-                    {$meta, refreshToken: r}: {
+                    {
+                        $meta,
+                        refreshToken: r,
+                    }: {
                         $meta: IMeta;
                         refreshToken: Awaited<{
                             session: TokenResult;
@@ -124,7 +130,13 @@ export default handler(
                     let failed = false;
                     let failureType = '';
                     try {
-                        await loginTokenRefresh({refreshToken: session.refresh_token}, $meta);
+                        await loginTokenRefresh(
+                            {refreshToken: session.refresh_token},
+                            {
+                                ...$meta,
+                                expect: ['login.invalidRefreshToken', 'login.sessionRevoked'],
+                            },
+                        );
                     } catch (error) {
                         failed = true;
                         failureType = (error as {type?: string}).type ?? '';
@@ -142,7 +154,10 @@ export default handler(
                 //    refresh token is also refused — session is revoked.
                 async function revokedSession(
                     assert: IAssert,
-                    {$meta, reuseDetection: r}: {
+                    {
+                        $meta,
+                        reuseDetection: r,
+                    }: {
                         $meta: IMeta;
                         reuseDetection: Awaited<{
                             session: TokenResult;
@@ -154,7 +169,10 @@ export default handler(
                     let failed = false;
                     let failureType = '';
                     try {
-                        await loginTokenRefresh({refreshToken: refreshed.refresh_token}, $meta);
+                        await loginTokenRefresh(
+                            {refreshToken: refreshed.refresh_token},
+                            {...$meta, expect: ['session.revoked', 'login.sessionRevoked']},
+                        );
                     } catch (error) {
                         failed = true;
                         failureType = (error as {type?: string}).type ?? '';
@@ -168,7 +186,7 @@ export default handler(
                     const {failed: verifyFailed, reason: verifyReason} = await expectVerifyFailure(
                         accessSessionVerify,
                         {sessionId: refreshed.session_id},
-                        $meta,
+                        {...$meta, expect: 'session.revoked'},
                     );
                     assert.equal(verifyFailed, true, 'verify reports the session revoked');
                     assert.equal(verifyReason, 'revoked', 'reason is revoked');
@@ -190,14 +208,17 @@ export default handler(
                     const {failed: closedFailed, reason: closedReason} = await expectVerifyFailure(
                         accessSessionVerify,
                         {sessionId: login.session_id},
-                        $meta,
+                        {...$meta, expect: 'session.revoked'},
                     );
                     assert.equal(closedFailed, true, 'closed session reports invalid');
                     assert.equal(closedReason, 'revoked', 'closed session reason is revoked');
                     let failed = false;
                     let failureType = '';
                     try {
-                        await loginTokenRefresh({refreshToken: login.refresh_token}, $meta);
+                        await loginTokenRefresh(
+                            {refreshToken: login.refresh_token},
+                            {...$meta, expect: ['session.revoked', 'login.sessionRevoked']},
+                        );
                     } catch (error) {
                         failed = true;
                         failureType = (error as {type?: string}).type ?? '';
@@ -219,14 +240,12 @@ export default handler(
                         {},
                         {...$meta, auth: {...$meta.auth, sessionId: current.session_id}},
                     );
-                    const {
-                        failed: currentClosedFailed,
-                        reason: currentClosedReason,
-                    } = await expectVerifyFailure(
-                        accessSessionVerify,
-                        {sessionId: current.session_id},
-                        $meta,
-                    );
+                    const {failed: currentClosedFailed, reason: currentClosedReason} =
+                        await expectVerifyFailure(
+                            accessSessionVerify,
+                            {sessionId: current.session_id},
+                            {...$meta, expect: 'session.revoked'},
+                        );
                     assert.equal(
                         currentClosedFailed,
                         true,
@@ -249,7 +268,7 @@ export default handler(
                     const {failed, reason} = await expectVerifyFailure(
                         accessSessionVerify,
                         {sessionId: login.session_id, inactivityTimeout: 0},
-                        $meta,
+                        {...$meta, expect: 'session.inactive'},
                     );
                     assert.equal(failed, true, 'idle session reports inactive');
                     assert.equal(reason, 'inactive', 'reason is inactive');
@@ -275,7 +294,7 @@ export default handler(
                     const {failed, reason} = await expectVerifyFailure(
                         accessSessionVerify,
                         {sessionId: sid, inactivityTimeout: 0},
-                        $meta,
+                        {...$meta, expect: ['session.inactive', 'session.notFound']},
                     );
                     assert.ok(
                         failed && (reason === 'inactive' || reason === 'notFound'),
@@ -309,19 +328,25 @@ export default handler(
                                 r.actionName === 'login' &&
                                 (r.isSuccess === true || r.isSuccess === 1),
                         ),
-                        'this run\'s login event is audited',
+                        "this run's login event is audited",
                     );
                     const recorded = await accessAuditRecord<{
                         inserted: number;
                         auditIds: string[];
                     }>(
                         {
-                            audit: [{actionName: 'test.audit.record', isSuccess: true, statusCode: 200}],
+                            audit: [
+                                {actionName: 'test.audit.record', isSuccess: true, statusCode: 200},
+                            ],
                         },
                         $meta,
                     );
                     assert.equal(recorded.inserted, 1, 'audit record inserts one row');
-                    assert.equal(recorded.auditIds.length, 1, 'audit record returns the inserted key');
+                    assert.equal(
+                        recorded.auditIds.length,
+                        1,
+                        'audit record returns the inserted key',
+                    );
                     assert.equal(
                         recorded.auditIds[0].length,
                         26,
@@ -338,7 +363,7 @@ export default handler(
                     try {
                         await loginTokenCreate(
                             {username: 'testNoLogin', password: 'testPassword'},
-                            $meta,
+                            {...$meta, expect: 'login.loginNotAllowed'},
                         );
                     } catch (error) {
                         failed = true;
@@ -370,16 +395,14 @@ export default handler(
                         $meta,
                     );
                     try {
-                        await accessUserEdit<unknown>(
-                            {user: {userId, isActive: false}},
-                            $meta,
-                        );
+                        await accessUserEdit<unknown>({user: {userId, isActive: false}}, $meta);
                         // The session gate itself refuses a deactivated user.
-                        const {failed: verifyFailed, reason: verifyReason} = await expectVerifyFailure(
-                            accessSessionVerify,
-                            {sessionId: login.session_id},
-                            $meta,
-                        );
+                        const {failed: verifyFailed, reason: verifyReason} =
+                            await expectVerifyFailure(
+                                accessSessionVerify,
+                                {sessionId: login.session_id},
+                                {...$meta, expect: 'session.userInactive'},
+                            );
                         assert.equal(verifyFailed, true, 'verify refuses a deactivated user');
                         assert.equal(verifyReason, 'userInactive', 'reason is userInactive');
                         let failed = false;
@@ -387,7 +410,7 @@ export default handler(
                         try {
                             await loginTokenRefresh(
                                 {refreshToken: login.refresh_token},
-                                $meta,
+                                {...$meta, expect: ['session.userInactive', 'login.userInactive']},
                             );
                         } catch (error) {
                             failed = true;
@@ -400,10 +423,7 @@ export default handler(
                             'failure type is login.userInactive',
                         );
                     } finally {
-                        await accessUserEdit<unknown>(
-                            {user: {userId, isActive: true}},
-                            $meta,
-                        );
+                        await accessUserEdit<unknown>({user: {userId, isActive: true}}, $meta);
                     }
                 },
             ]),

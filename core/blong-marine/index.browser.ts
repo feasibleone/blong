@@ -28,6 +28,9 @@ export default browser(blong => ({
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
+        async function login() {
+            return import('@feasibleone/blong-login/browser.ts');
+        },
         /** Marine biology realm (brings blong-browser infrastructure with it) */
         async function marine() {
             return import('./browser.ts');
@@ -42,7 +45,17 @@ export default browser(blong => ({
                     },
                 },
             },
+            login: {},
             marine: {},
         },
+        integration: {
+            ui: {
+                portal: {
+                    portal: {
+                        testHook: true,
+                    },
+                },
+            },
+        } as never,
     },
 }));

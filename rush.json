@@ -645,6 +645,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-access-mock",
+            "projectFolder": "core/blong-access-mock",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-gateway",
             "projectFolder": "core/blong-gateway",
             "reviewCategory": "core",

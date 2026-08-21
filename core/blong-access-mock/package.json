@@ -1,0 +1,28 @@
+{
+    "name": "@feasibleone/blong-access-mock",
+    "version": "1.2.0",
+    "description": "Mock for replacing blong-access",
+    "type": "module",
+    "exports": {
+        "./server.ts": "./server.ts",
+        "./browser.ts": "./browser.ts",
+        "./browser.js": {
+            "development": "./browser.ts",
+            "import": "./browser.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "scripts": {
+        "blong": "blong",
+        "blong-watch": "blong-watch",
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "tap": "^21.6.3"
+    }
+}

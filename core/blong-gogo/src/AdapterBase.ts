@@ -183,6 +183,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
 
     error(error: ITypedError, $meta: IMeta): ITypedError {
         if ($meta) error.method = $meta.method;
+        if (error.silent) return error;
         if (isExpectedError(error.type, $meta?.expect)) {
             (this.log as {debug?: (...args: unknown[]) => void})?.debug?.(error);
             return error;

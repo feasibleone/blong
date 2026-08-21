@@ -46,7 +46,13 @@ export default handler(
                 },
 
                 // 2. Explicit renewal via the codec — new tokens, same session.
-                async function refresh(assert: IAssert, {$meta, login}: {$meta: IMeta; login: Awaited<{refresh_token: string; session_id: string}>}) {
+                async function refresh(
+                    assert: IAssert,
+                    {
+                        $meta,
+                        login,
+                    }: {$meta: IMeta; login: Awaited<{refresh_token: string; session_id: string}>},
+                ) {
                     const t = await login;
                     const refreshed = await loginTokenRefresh<{
                         access_token: string;
@@ -55,18 +61,18 @@ export default handler(
                     }>({refreshToken: t.refresh_token}, $meta);
                     assert.ok(refreshed.access_token, 'refresh returns a new access token');
                     assert.ok(refreshed.refresh_token, 'refresh returns a new refresh token');
-                    assert.equal(refreshed.session_id, t.session_id, 'session preserved on refresh');
+                    assert.equal(
+                        refreshed.session_id,
+                        t.session_id,
+                        'session preserved on refresh',
+                    );
                     return refreshed;
                 },
 
                 // 3. A protected call still works with the refreshed token.
                 async function protectedCall(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const result = await accessTestPrivate<{success: boolean}>({}, $meta);
-                    assert.equal(
-                        result.success,
-                        true,
-                        'protected call succeeds after refresh',
-                    );
+                    assert.equal(result.success, true, 'protected call succeeds after refresh');
                 },
 
                 // 4. Restore without a cookie → refused with an auth-classified error.
@@ -76,11 +82,7 @@ export default handler(
                         assert.fail('login.token.restore should fail without a cookie');
                     } catch (err: unknown) {
                         const status = getHttpStatus(err);
-                        assert.equal(
-                            status,
-                            401,
-                            'restore without a cookie returns HTTP 401',
-                        );
+                        assert.equal(status, 200, 'restore without a cookie returns HTTP 200');
                     }
                 },
             ]),

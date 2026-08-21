@@ -22,6 +22,9 @@ export default browser(blong => ({
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
+        async function login() {
+            return import('@feasibleone/blong-login/browser.ts');
+        },
         /** API Gateway realm (management models) */
         async function gateway() {
             return import('./browser.ts');
@@ -37,6 +40,7 @@ export default browser(blong => ({
                 },
             },
             gateway: {},
+            login: {},
         },
     },
 }));

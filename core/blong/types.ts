@@ -672,6 +672,7 @@ export interface ITypedError extends Error {
     method?: string | string[];
     params?: object;
     code?: string;
+    silent?: boolean;
     req?: {
         httpVersion: string;
         url: URL;

@@ -19,6 +19,9 @@ export default orchestrator<{
             imports: [/\.subject$/, /\.model$/],
             destination: 'db',
         },
+        dev: {
+            imports: [/\.subject$/, /\.subject\.dev$/, /\.model$/, /\.model\.dev$/],
+        },
     },
     async createHandlers({handlers, kind}: {handlers: object; layerApi: unknown; kind: string}) {
         if (kind !== 'model') return;
@@ -39,8 +42,9 @@ export default orchestrator<{
             // first letter from being capitalised, or the derived handler name
             // (`$subject$objectModel`) stops matching the `$subject$ObjectModel`
             // file).
-            const object = model.object.replace(/^(\$*)([a-z])/, (_m, pre: string, c: string) =>
-                pre + c.toUpperCase(),
+            const object = model.object.replace(
+                /^(\$*)([a-z])/,
+                (_m, pre: string, c: string) => pre + c.toUpperCase(),
             );
             const handlerName = `${model.subject}${object}Model`;
             // Visibility: the derived name must match the model handler file

@@ -25,7 +25,15 @@ export default server(blong => ({
         dev: {
             access: {},
             parking: {},
-            login: {},
+            login: {
+                login: {
+                    methods: {
+                        sessionCreate: false,
+                        auditRecord: false,
+                        sessionCleanup: false,
+                    },
+                },
+            },
             demo: {},
             ctp: {},
         },

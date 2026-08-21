@@ -3,6 +3,7 @@
     "packages": {
         "core/blong": {},
         "core/blong-access": {},
+        "core/blong-access-mock": {},
         "core/blong-browser": {},
         "core/blong-chain": {},
         "core/blong-config": {},

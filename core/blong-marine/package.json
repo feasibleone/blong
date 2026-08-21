@@ -28,6 +28,7 @@
         "build": "true",
         "build-storybook": "storybook build",
         "ci-lint": "blong-dev lint",
+        "ci-test": "../../test/integration/wait.sh mysql && blong-dev playwright --coverage",
         "dev": "vite",
         "playwright": "blong-dev playwright",
         "playwright:update": "blong-dev playwright --update-snapshots",
@@ -39,6 +40,7 @@
         "typebox": "^1.1.5"
     },
     "devDependencies": {
+        "@feasibleone/blong-access-mock": "workspace:^1.0.0",
         "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*",
         "@feasibleone/blong-gogo": "workspace:^1.0.0",
