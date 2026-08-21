@@ -41,12 +41,14 @@ export default library<{
                 mlsk,
                 refresh,
                 actions,
+                profile,
                 ...rest
             }: {
                 refresh?: number;
                 mlek?: object | 'header';
                 mlsk: object | 'header';
                 actions?: string[];
+                profile?: {actorId?: string; language?: string};
             } & Record<string, unknown>) {
                 if (!refresh || refresh > expire.refresh) refresh = expire.refresh;
                 refresh = expire.never || refresh;
@@ -57,6 +59,7 @@ export default library<{
                     token_type: 'Bearer',
                     scope: 'openid',
                     session_id: sessionId,
+                    ...(profile !== undefined && {profile}),
                     access_token: await new SignJWT({
                         ...rest,
                         typ: 'Bearer',

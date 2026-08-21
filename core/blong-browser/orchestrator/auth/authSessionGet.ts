@@ -44,6 +44,10 @@ export default handler(
                     store.setProfile(
                         result.profile as Parameters<typeof store.setProfile>[0],
                     );
+                // Apply the user's preferred language (returned during restore)
+                // so the UI locale matches their profile.
+                const language = (result.profile as {language?: string}).language;
+                if (language) store.setLanguage(language);
                 return {
                     authenticated: true,
                     token: result.access_token,

@@ -1,5 +1,8 @@
 export default {
     'credentials.mismatch': 'Credentials do not match',
+    // Self-service profile password change — the supplied current password does
+    // not match the active credential. 401 so the UI treats it as a re-auth signal.
+    'profile.wrongPassword': {message: 'Current password is incorrect', statusCode: 401},
     'user.notFound': 'User not found',
     'user.inactive': 'User account is inactive',
     'credential.notFound': 'Active credential not found for user',

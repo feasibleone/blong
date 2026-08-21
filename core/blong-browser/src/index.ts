@@ -37,6 +37,14 @@ export {useToast} from './hooks/useToast.js';
 
 // ── Components ───────────────────────────────────────────────────────────────
 export {ActionButton} from './components/ActionButton/ActionButton.js';
+export {AccountMenu, type IAccountMenuProps} from './components/AccountMenu/AccountMenu.js';
+export {
+    LanguageSwitcher,
+    type ILanguageOption,
+    type ILanguageSwitcherProps,
+} from './components/LanguageSwitcher/LanguageSwitcher.js';
+export {Button, type ButtonProps} from './components/Button/Button.js';
+export {bgLocale} from './primereact/locales.js';
 export {App, type IAppProps} from './components/App/App.js';
 export {Async} from './components/Async/Async.js';
 export {Card} from './components/Card/Card.js';
@@ -62,6 +70,18 @@ export {SocialLoginButton, type ISocialLoginButtonProps} from './components/Soci
 export {Text} from './components/Text/Text.js';
 export {Theme} from './components/Theme/Theme.js';
 export {ThumbIndex} from './components/ThumbIndex/ThumbIndex.js';
+
+// ── Form primitives (PrimeReact intermediaries for realm pages) ─────────────
+export {
+    Dropdown,
+    InputText,
+    Message,
+    Password,
+    type DropdownProps,
+    type InputTextProps,
+    type MessageProps,
+    type PasswordProps,
+} from './primereact/index.js';
 
 // ── Design Mode ──────────────────────────────────────────────────────────────
 export {DesignModeContext, DesignModeProvider} from './design/DesignModeContext.js';

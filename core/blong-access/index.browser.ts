@@ -38,6 +38,49 @@ export default browser(blong => ({
                 portal: {
                     portal: {
                         title: 'Blong Access',
+                        // Self-service profile: the top-right account menu
+                        // (`page`) opens the profile tab, and fetches the
+                        // caller's own profile (`get`) for the avatar initials.
+                        profile: {
+                            page: 'access.user.profile',
+                            get: 'access.profile.get',
+                        },
+                        // Per-language translation dictionaries.  blong-browser
+                        // registers them at boot and `setLanguage(language)`
+                        // (driven by the user's preferred language returned at
+                        // login) swaps the active table to the matching
+                        // language's dictionary — English uses an empty dict
+                        // (fall back to the English strings).
+                        translations: {
+                            en: {},
+                            bg: {
+                                'Profile': 'Профил',
+                                'Sign out': 'Отписване',
+                                'First Name': 'Собствено име',
+                                'Last Name': 'Фамилия',
+                                'Email': 'Имейл',
+                                'Preferred Language': 'Предпочитан език',
+                                'Profile saved': 'Профилът е запазен',
+                                'Save': 'Запази',
+                                'Change Password': 'Смяна на парола',
+                                'Current Password': 'Текуща парола',
+                                'New Password': 'Нова парола',
+                                'Confirm New Password': 'Потвърди новата парола',
+                                'Password changed': 'Паролата е сменена',
+                                'Roles': 'Роли',
+                                'No roles assigned': 'Няма присвоени роли',
+                                'Passwords do not match': 'Паролите не съвпадат',
+                                'Active': 'Активен',
+                                'Inactive': 'Неактивен',
+                            },
+                        },
+                        // UI languages offered by the menubar language switcher
+                        // (ad-hoc, client-side switching).  `value` matches a
+                        // translation-dictionary key above.
+                        languages: [
+                            {value: 'en', label: 'English'},
+                            {value: 'bg', label: 'Български'},
+                        ],
                     },
                 },
             },

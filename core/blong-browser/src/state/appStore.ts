@@ -34,6 +34,13 @@ export interface IAppState {
     toasts: IToast[];
     loader: {active: boolean; message?: string; count: number};
     translations: TranslationDict;
+    /**
+     * Per-language dictionaries registered by the app via
+     * `setTranslationsByLanguage`.  When non-empty, `setLanguage` swaps the
+     * active `translations` table to the matching language's dictionary
+     * (English falls back to an empty dict = English strings).
+     */
+    translationsByLanguage: Record<string, TranslationDict>;
     language: string;
     actions: ActionRegistry;
     error: IBlongError | null;
@@ -76,6 +83,7 @@ export interface IAppActions {
 
     // Translations
     setTranslations: (dict: TranslationDict) => void;
+    setTranslationsByLanguage: (dicts: Record<string, TranslationDict>) => void;
     setLanguage: (language: string) => void;
 
     // Actions registry
@@ -114,6 +122,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     toasts: [],
     loader: {active: false, count: 0},
     translations: {},
+    translationsByLanguage: {},
     language: 'en',
     actions: {},
     error: null,
@@ -219,7 +228,26 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
 
     // Translations
     setTranslations: dict => set({translations: dict}),
-    setLanguage: language => set({language}),
+    setTranslationsByLanguage: dicts =>
+        set(state => ({
+            translationsByLanguage: dicts,
+            // Re-apply the current language's dictionary immediately so the UI
+            // reflects it even if the language was set before the dicts loaded.
+            translations:
+                Object.keys(dicts).length > 0
+                    ? (dicts[state.language] ?? {})
+                    : state.translations,
+        })),
+    setLanguage: language =>
+        set(state => ({
+            language,
+            // When the app registered per-language dictionaries, switching the
+            // language also swaps the active translation table (English = {}).
+            translations:
+                Object.keys(state.translationsByLanguage).length > 0
+                    ? (state.translationsByLanguage[language] ?? {})
+                    : state.translations,
+        })),
 
     // Actions registry
     registerActions: actions => set(state => ({actions: {...state.actions, ...actions}})),

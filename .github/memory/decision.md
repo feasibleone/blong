@@ -1,5 +1,39 @@
 # Decisions
 
+## User profile feature (2026-08-21)
+
+- **Profile storage**: personal fields (name) reuse `party.person` when present, else a no-personal-data fallback; `preferredLanguage` stored in `core.property` (`(resourceId='preferredLanguage')`); `emailAddress` stays on `access_user`. No schema migration.
+- **Self-service authz via `skipAuthorize`**: `access.profile.get/edit/password.change` are bearer-authenticated but skip the RBAC action-list check (pattern from `login.token.revoke`) → any logged-in user can use them, no role-grant seed changes.
+- **Avatar = initials only** (no photo). Initials from `party.person` name → username/email fallback → generic `pi-user` icon.
+- **Password change keeps the current session** (no revoke); enforced via the active `access_policy` minLength.
+- **Profile opens as a portal tab** via the AccountMenu (`openTab`), wired through `IPortalConfig.profile = {page, get}`.
+- **`profile` config placement**: must live INSIDE the inner `ui.portal.portal.{...}` (so `portalConfigGet`/`this.config.portal` carries it to the AccountMenu), while `login`/`google` stay as SIBLINGS of the inner `portal` key (App reads them from the portal component config). Nesting `login`/`google` inside the inner `portal` breaks the Register/Google buttons.
+- **Profile page JSX lives in `src/pages/`** (not a well-known browser layer folder) + lazy dynamic import, so the Node tap runner never tries to load `.tsx`; only Vite bundles it. Loading the whole `./browser` folder with a `.tsx` breaks `index.test.ts` (tap).
+- **blong-party full-demo wiring**: added blong-access browser child + `profile` config + the `integration` testHook block to the party app, plus a `partyTestProfileMerge` dbTest seed linking testAdmin → `party.person` via `hasProfile`. (Access browser child + profile config + testHook alone do NOT break google/selfRegistration — only nesting `login`/`google` inside the inner `portal` did.)
+- **Playwright fixture note**: a test that only destructures `{page}` never triggers the `portal` fixture (goto + login) → page stays `about:blank`. Must request `portal`.
+
+## Preferred language at login (2026-08-21 follow-up)
+
+- **Login returns `profile: {actorId, language}`** (best-effort): `login.token.create/restore/refresh` resolve the user profile via a new configurable `profileGet` login method (default `access.profile.get`). A missing/disabled `profileGet` NEVER fails login — it silently yields `language: 'en'` and no `profile` (lightweight suites unaffected). Client_credentials keeps hardcoded `'en'` + no profile (machine credential, no interactive user).
+- **`profile` is response-only, NOT a JWT/refresh claim**: `token.ts` destructures it out of the `...rest` claims spread. `language` remains a JWT claim (now the resolved preferred language instead of hardcoded `'en'`).
+- **UI applies the language in the auth handlers** (`authLogin`/`authSessionGet` → `setLanguage(profile.language)`), not in the page. Suites don't need per-page wiring.
+- **Translations are registered per-language in `appStore`** via `setTranslationsByLanguage`; `setLanguage` swaps the active `translations` table only when dicts are registered (empty `translationsByLanguage` = legacy behavior, so existing tests/storybook that call `setTranslations` + `setLanguage` are unaffected). Registration order vs `setLanguage` is order-independent (both re-apply).
+- **The suite owns its translation dictionaries** via `portal.translations` (e.g. blong-access `{en: {}, bg: {...}}`); English = empty dict → English-string fallback. Translation keys ARE the English strings (per the existing `tr()`/`useText` convention).
+- **bg PrimeReact locale is bundled in blong-browser** (`src/primereact/locales.ts` `bgLocale`, included in `DEFAULT_THEME.languages`) so `setLanguage('bg')` cannot crash any app with PrimeReact's "navigation option not found" error. Registered always, activated only when language='bg'. (Alternative — per-app `theme.languages` via portal config — rejected as more plumbing for no benefit since the locale data is framework-agnostic.)
+- **Bulgarian-language test lives only in blong-access**: set `preferredLanguage='bg'` via the test hook, `page.reload()` to re-trigger the boot restore (which returns the language), assert the menu/profile render in Bulgarian, screenshot `profile-bg.png`, then restore `'en'` so the shared dev DB and other screenshots stay stable.
+
+## Menubar language switcher (2026-08-21 follow-up)
+
+- **Ad-hoc, client-side switching**: the switcher calls `appStore.setLanguage` only — it does NOT persist to the user profile (that is the profile page's `preferredLanguage` edit). On next login the preference from the profile wins.
+- **New `LanguageSwitcher` component** (`core/blong-browser/src/components/LanguageSwitcher/`), mounted in `App.tsx` `menubarEnd` to the LEFT of `<AccountMenu />`. Renders a compact `Dropdown` (from the blong-browser wrapper) showing the current language; hidden when fewer than two languages are available.
+- **Config-driven list**: `portal.languages: Array<{value, label}>` (added to `IPortalConfig` AND `IBlongPortalConfig`). Falls back to the keys of `portal.translations` so any app with translations gets a switcher without extra config. Prop override also supported for tests.
+- **`portalConfig` store type note**: the store's `portalConfig` is typed as `IPortalConfig` (`src/types/portal.ts`), NOT `IBlongPortalConfig` — new portal config fields (here `languages`/`translations`) must be added to `IPortalConfig` too or tsc fails in components reading the store.
+- **blong-access wires it**: `languages: [{value:'en',label:'English'},{value:'bg',label:'Български'}]` alongside the existing `translations`. blong-party is intentionally unaffected (no `languages`/`translations` → switcher renders nothing → party menubar baselines unchanged).
+- **Adding the switcher changes the menubar** in every suite that shows it → re-capture ALL Playwright baselines that include the menubar (blong-access full suite re-captured via `--update-snapshots=all`).
+- **PrimeReact Dropdown in vitest**: open with `userEvent.click` on the dropdown root (mousedown toggles the panel); options render as `.p-dropdown-item` in a body portal — query by textContent (the `role="option"` name matcher is unreliable here). In Playwright, assert on `.p-dropdown-label` for the current selection (the root element's text includes the hidden input value too, e.g. `"EnglishEnglish"`).
+
+
+
 ## Area 3 implementation (2026-08-18)
 
 - **A3.4 override fix — REPLACE over `override` flag**: Chose to make `Registry._validations()`

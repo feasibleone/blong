@@ -196,16 +196,34 @@ export default handler(
                 ? Math.max(0, Math.round((payload.expire - Date.now()) / 1000))
                 : undefined;
 
+            // Best-effort profile resolution so the UI can apply the user's
+            // preferred language after renewal.  Optional — yields 'en'.
+            let profile: {actorId?: string; language?: string} | undefined;
+            let language = 'en';
+            if (methods.profileGet) {
+                try {
+                    const profileData = (await methods.profileGet(
+                        {},
+                        {...$meta, auth: {...$meta.auth, actorId}},
+                    )) as {preferredLanguage?: string | null} | undefined;
+                    language = profileData?.preferredLanguage ?? 'en';
+                    profile = {actorId, language};
+                } catch {
+                    // Profile is optional refresh metadata — never fails the refresh.
+                }
+            }
+
             const tokenResult = (await token({
                 clientId: clientId ?? '',
                 actorId,
                 sessionId,
-                language: 'en',
+                language,
                 refresh: remaining ?? payload.refresh ?? 0,
                 permissionMap,
                 mlek,
                 mlsk,
                 actions,
+                profile,
             })) as ITokenResult;
 
             if (methods.sessionRotate) {

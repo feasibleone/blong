@@ -7,7 +7,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {createContext, use, useMemo, type ReactNode} from 'react';
 import {blongEvents} from '../lib/eventBus.js';
 import {schemaRegistry as defaultSchemaRegistry} from '../schema/registry.js';
-import {useAppStore} from '../state/appStore.js';
+import {useAppStore, type TranslationDict} from '../state/appStore.js';
 import type {IBlongError} from '../types/action.js';
 import type {ISchemaRegistry} from '../types/schema.js';
 
@@ -50,6 +50,20 @@ export interface IBlongPortalConfig {
         redirectUri?: string;
         scope?: string;
     };
+    /**
+     * Per-language translation dictionaries (English key → translated string).
+     * When provided, the app registers them and `setLanguage(language)` swaps
+     * the active table to the matching language's dictionary — so the UI locale
+     * follows the user's preferred language returned at login.
+     */
+    translations?: Record<string, TranslationDict>;
+    /**
+     * UI languages offered by the menubar language switcher (ad-hoc switching).
+     * Each entry is `{value, label}` where `value` matches a translation-
+     * dictionary key.  When omitted, the switcher derives the list from the
+     * keys of `translations` (and hides when fewer than two are available).
+     */
+    languages?: Array<{value: string; label: string}>;
 }
 
 type AnyHandlerProxy = IHandlerProxy<Record<string, unknown>>;

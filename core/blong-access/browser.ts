@@ -15,6 +15,9 @@ export default realm(() => ({
     // The server-side `meta/db`, `meta/dbTest` and `meta/type` groups are
     // loaded by the server realm, not here — pulling them into the browser
     // would break the Vite bundle (e.g. `node:path` in `meta/db/db.ts`).
+    // The profile page JSX lives in `src/pages/` (not a well-known layer
+    // folder) so the Node tap runner never tries to load `.tsx`; Vite bundles
+    // it via the lazy dynamic import in the component handler.
     children: globalThis.window
         ? import.meta.glob(['./meta/model/**/*.ts', './browser/**/*.ts'])
         : ['./meta/model', './browser'],

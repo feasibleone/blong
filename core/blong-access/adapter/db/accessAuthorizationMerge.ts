@@ -20,6 +20,8 @@ export default handler(
                     {
                         password?: string;
                         credentialSalt?: string;
+                        /** Display email persisted on the access_user row. */
+                        emailAddress?: string | null;
                         isActive?: boolean;
                         roles?: string;
                     }
@@ -142,6 +144,16 @@ export default handler(
                         },
                         $meta,
                     );
+
+                    // Persist the display email even when the user already
+                    // exists (coreResourceEnsure is insert-only on conflict), so
+                    // seeds stay idempotent and the profile page shows a stable
+                    // email across restarts.
+                    if (userDef.emailAddress !== undefined) {
+                        await qb('access_user')
+                            .where('userId', account.uuidBuf(userId))
+                            .update({emailAddress: userDef.emailAddress});
+                    }
 
                     // Create credential if password is provided
                     if (userDef.password) {

@@ -20,6 +20,7 @@ export {SplitterPanel} from 'primereact/splitter';
 // ── Type re-exports ──────────────────────────────────────────────────────────
 
 export type {AutoCompleteProps} from 'primereact/autocomplete';
+export type {AvatarProps} from 'primereact/avatar';
 export type {BreadCrumbProps} from 'primereact/breadcrumb';
 export type {ButtonProps} from 'primereact/button';
 export type {CalendarProps} from 'primereact/calendar';
@@ -41,6 +42,7 @@ export type {InputTextProps} from 'primereact/inputtext';
 export type {InputTextareaProps} from 'primereact/inputtextarea';
 export type {MenubarProps} from 'primereact/menubar';
 export type {MenuItem} from 'primereact/menuitem';
+export type {MenuProps} from 'primereact/menu';
 export type {MessageProps} from 'primereact/message';
 export type {MultiSelectProps} from 'primereact/multiselect';
 export type {OverlayPanelProps} from 'primereact/overlaypanel';
@@ -78,6 +80,7 @@ export type TabPanelProps = import('primereact/tabview').TabPanelProps & {__TYPE
 // ── Component wrappers ───────────────────────────────────────────────────────
 
 import {AutoComplete as PrimeAutoComplete} from 'primereact/autocomplete';
+import {Avatar as PrimeAvatar} from 'primereact/avatar';
 import {BreadCrumb as PrimeBreadCrumb} from 'primereact/breadcrumb';
 import {Button as PrimeButton, type ButtonProps} from 'primereact/button';
 import {Calendar as PrimeCalendar} from 'primereact/calendar';
@@ -98,6 +101,7 @@ import {InputNumber as PrimeInputNumber} from 'primereact/inputnumber';
 import {InputText as PrimeInputText} from 'primereact/inputtext';
 import {InputTextarea as PrimeInputTextarea} from 'primereact/inputtextarea';
 import {Menubar as PrimeMenubar} from 'primereact/menubar';
+import {Menu as PrimeMenu} from 'primereact/menu';
 import {Message as PrimeMessage} from 'primereact/message';
 import {MultiSelect as PrimeMultiSelect} from 'primereact/multiselect';
 import {OverlayPanel as PrimeOverlayPanel} from 'primereact/overlaypanel';
@@ -124,6 +128,7 @@ import {Text} from '../components/Text/Text.js';
 import {useAppStore} from '../state/appStore.js';
 
 import type {AutoCompleteProps} from 'primereact/autocomplete';
+import type {AvatarProps} from 'primereact/avatar';
 import type {BreadCrumbProps} from 'primereact/breadcrumb';
 import type {CalendarProps} from 'primereact/calendar';
 import type {CardProps} from 'primereact/card';
@@ -142,6 +147,7 @@ import type {InputNumberProps} from 'primereact/inputnumber';
 import type {InputTextProps} from 'primereact/inputtext';
 import type {InputTextareaProps} from 'primereact/inputtextarea';
 import type {MenubarProps} from 'primereact/menubar';
+import type {MenuProps} from 'primereact/menu';
 import type {MessageProps} from 'primereact/message';
 import type {MultiSelectProps} from 'primereact/multiselect';
 import type {OverlayPanelProps} from 'primereact/overlaypanel';
@@ -162,6 +168,18 @@ import type {ToolbarProps} from 'primereact/toolbar';
 import type {TreeProps} from 'primereact/tree';
 import type {TreeSelectProps} from 'primereact/treeselect';
 import type {TreeTableProps} from 'primereact/treetable';
+
+// Avatar — shape:'square', size:'normal', imageAlt:'avatar'
+export function Avatar({shape = 'square', size = 'normal', imageAlt = 'avatar', ...props}: AvatarProps) {
+    return (
+        <PrimeAvatar
+            shape={shape}
+            size={size}
+            imageAlt={imageAlt}
+            {...props}
+        />
+    );
+}
 
 // AutoComplete — delay:300, minLength:1, scrollHeight:'200px', dropdownIcon:'pi pi-chevron-down', removeTokenIcon:'pi pi-times-circle'
 export function AutoComplete({
@@ -579,6 +597,30 @@ export function InputTextarea(props: InputTextareaProps) {
 // Menubar — no meaningful non-null defaults
 export function Menubar(props: MenubarProps) {
     return <PrimeMenubar {...props} />;
+}
+
+// Menu — popup:false, popupAlignment:'left', tabIndex:0, autoZIndex:true, baseZIndex:0
+export type Menu = PrimeMenu;
+export function Menu({
+    ref,
+    popup = false,
+    popupAlignment = 'left',
+    tabIndex = 0,
+    autoZIndex = true,
+    baseZIndex = 0,
+    ...props
+}: MenuProps & {ref?: React.Ref<PrimeMenu>}) {
+    return (
+        <PrimeMenu
+            ref={ref}
+            popup={popup}
+            popupAlignment={popupAlignment}
+            tabIndex={tabIndex}
+            autoZIndex={autoZIndex}
+            baseZIndex={baseZIndex}
+            {...props}
+        />
+    );
 }
 
 // Message — severity:'info'

@@ -43,8 +43,13 @@ export default handler(
                             ? result.permissions
                             : Object.fromEntries(result.permissions.map(p => [p, true])),
                     );
-                if (result.profile)
+                if (result.profile) {
                     store.setProfile(result.profile as Parameters<typeof store.setProfile>[0]);
+                    // Apply the user's preferred language (returned during
+                    // login) so the UI locale matches their profile.
+                    const language = (result.profile as {language?: string}).language;
+                    if (language) store.setLanguage(language);
+                }
 
                 return {step: 'success', token: result.access_token};
             } catch (err: unknown) {

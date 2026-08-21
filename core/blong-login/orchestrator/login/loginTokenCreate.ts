@@ -170,16 +170,36 @@ export default handler(
 
             const sessionId = crypto.randomUUID();
             const cookieHandle = newCookieHandle();
+
+            // Best-effort profile resolution so the UI can apply the user's
+            // preferred language right after login.  The login succeeds without
+            // it — a missing/disabled profile handler just yields 'en'.
+            let profile: {actorId?: string; language?: string} | undefined;
+            let language = 'en';
+            if (methods.profileGet) {
+                try {
+                    const profileData = (await methods.profileGet(
+                        {},
+                        {...$meta, auth: {...$meta.auth, actorId: result.userId}},
+                    )) as {preferredLanguage?: string | null} | undefined;
+                    language = profileData?.preferredLanguage ?? 'en';
+                    profile = {actorId: result.userId, language};
+                } catch {
+                    // Profile is optional login metadata — never fails the login.
+                }
+            }
+
             const tokenResult = (await token({
                 clientId: username!,
                 actorId: result.userId,
                 sessionId,
-                language: 'en',
+                language,
                 refresh: '',
                 permissionMap: result.permissionMap,
                 mlek: $meta?.auth?.mlek,
                 mlsk: $meta?.auth?.mlsk,
                 actions: result.actions,
+                profile,
             })) as ITokenResult;
             if (methods.sessionCreate) {
                 await (methods.sessionCreate(

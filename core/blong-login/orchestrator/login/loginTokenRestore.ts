@@ -158,16 +158,34 @@ export default handler(
                 }
             }
 
+            // Best-effort profile resolution so the UI can apply the user's
+            // preferred language right after restore.  Optional — yields 'en'.
+            let profile: {actorId?: string; language?: string} | undefined;
+            let language = 'en';
+            if (methods.profileGet) {
+                try {
+                    const profileData = (await methods.profileGet(
+                        {},
+                        {...$meta, auth: {...$meta.auth, actorId}},
+                    )) as {preferredLanguage?: string | null} | undefined;
+                    language = profileData?.preferredLanguage ?? 'en';
+                    profile = {actorId, language};
+                } catch {
+                    // Profile is optional restore metadata — never fails the restore.
+                }
+            }
+
             const tokenResult = (await token({
                 clientId: '',
                 actorId,
                 sessionId,
-                language: 'en',
+                language,
                 refresh: '',
                 permissionMap,
                 mlek: $meta?.auth?.mlek,
                 mlsk: $meta?.auth?.mlsk,
                 actions,
+                profile,
             })) as ITokenResult;
             if (methods.sessionCleanup) {
                 await (methods.sessionCleanup({}, $meta) as Promise<{deleted: number}>).catch(

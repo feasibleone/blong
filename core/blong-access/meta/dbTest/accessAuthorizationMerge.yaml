@@ -1,20 +1,25 @@
 user:
   testUser:
     password: testPassword
+    emailAddress: testUser@example.com
     roles: Admin
   testAdmin:
     password: testPassword
+    emailAddress: testAdmin@example.com
     roles: Admin
   testViewer:
     password: testPassword
+    emailAddress: testViewer@example.com
     roles: Customer
   testGuest:
     password: testPassword
+    emailAddress: testGuest@example.com
     roles: Guest
   # Has valid credentials but its role grants NO `login` action — used to prove
   # the login-eligibility gate refuses login/refresh (the gate is always on).
   testNoLogin:
     password: testPassword
+    emailAddress: testNoLogin@example.com
     roles: NoLogin
 role:
   Admin: testManagement,accessModelAdmin,loginCapability

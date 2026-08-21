@@ -1,0 +1,11 @@
+/* LanguageSwitcher — compact UI-language selector in the portal menubar */
+
+.blong-language-switcher {
+    margin-right: 0.5rem;
+    min-width: 7rem;
+    max-width: 12rem;
+}
+
+.blong-language-switcher .p-dropdown-label {
+    font-weight: 600;
+}

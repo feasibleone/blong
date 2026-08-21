@@ -23,14 +23,23 @@ import {useAppStore} from '../../state/appStore.js';
 import {type IPortalConfig} from '../../storybook.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {ActionHint} from '../Hint/Hint.js';
-import {Button} from '../Button/Button.js';
+import {AccountMenu} from '../AccountMenu/AccountMenu.js';
+import {LanguageSwitcher} from '../LanguageSwitcher/LanguageSwitcher.js';
 import {Login} from '../Login/Login.js';
 import {LoginPopup} from '../LoginPopup/LoginPopup.js';
 import {OAuthCallback} from '../OAuthCallback/OAuthCallback.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
+import {bgLocale} from '../../primereact/locales.js';
 
-const DEFAULT_THEME: IThemeConfig = {type: 'compact', palette: 'dark'};
+const DEFAULT_THEME: IThemeConfig = {
+    type: 'compact',
+    palette: 'dark',
+    // Bundled PrimeReact locales — registered up front so `setLanguage`
+    // (e.g. from a user's preferred language at login) never crashes the
+    // Theme with an unknown locale.  Only activated when that language is set.
+    languages: {bg: bgLocale},
+};
 
 export interface IAppProps extends IPortalProps {
     /**
@@ -110,6 +119,14 @@ function AppShell({
         login?: {registerPage?: string};
         google?: {baseUrl?: string; clientId?: string; redirectUri?: string; scope?: string};
     };
+    // Register the app's per-language translation dictionaries so the UI can
+    // apply the user's preferred language (returned at login) to the locale.
+    React.useEffect(() => {
+        const dicts = appConfig.portal?.translations;
+        if (dicts && Object.keys(dicts).length > 0) {
+            useAppStore.getState().setTranslationsByLanguage(dicts);
+        }
+    }, [appConfig.portal?.translations]);
     const registerPage = appConfig.login?.registerPage;
     const googleEnabled = Boolean(appConfig.google?.baseUrl && appConfig.google?.clientId);
     const onGoogle = React.useCallback(() => {
@@ -120,20 +137,6 @@ function AppShell({
             await handler.authGoogleLogin({code, state, redirectUri}, {});
         },
         [handler],
-    );
-
-    const onLogout = React.useCallback(async () => {
-        // Server-side revoke (closes the session + clears the restore cookie)
-        // then resets the local auth state.
-        await handler.authLogout({}, {});
-    }, [handler]);
-    const logoutButton = (
-        <Button
-            label="Logout"
-            icon="pi pi-sign-out"
-            className="p-button-text p-button-sm blong-portal-logout"
-            onClick={onLogout}
-        />
     );
 
     // OAuth callback route — the Google (or mock) redirect target. The app may
@@ -165,7 +168,17 @@ function AppShell({
             />
         );
     }
-    return children ?? <Portal {...portalProps} menubarEnd={logoutButton} />;
+    return children ?? (
+        <Portal
+            {...portalProps}
+            menubarEnd={
+                <>
+                    <LanguageSwitcher />
+                    <AccountMenu />
+                </>
+            }
+        />
+    );
 }
 
 export function App({

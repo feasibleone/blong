@@ -41,6 +41,12 @@ export interface ITokenResult {
     refresh_token_expires_in: number;
     session_id: string;
     permissions: string[] | boolean;
+    /**
+     * Resolved from the user's profile during login (best-effort).  Carries the
+     * actor id and the preferred language so the UI can apply the user's locale
+     * immediately after login — absent when no profile handler is configured.
+     */
+    profile?: {actorId?: string; language?: string};
 }
 
 /**
@@ -54,6 +60,7 @@ export type LoginMethodKey =
     | 'credentialCheckClient'
     | 'identityCheck'
     | 'permissionList'
+    | 'profileGet'
     | 'sessionCreate'
     | 'sessionVerify'
     | 'sessionRestore'
@@ -70,6 +77,7 @@ export const LOGIN_METHOD_DEFAULTS: Record<LoginMethodKey, string> = {
     credentialCheckClient: 'access.credential.checkClient',
     identityCheck: 'access.identity.check',
     permissionList: 'access.permission.list',
+    profileGet: 'access.profile.get',
     sessionCreate: 'access.session.create',
     sessionVerify: 'access.session.verify',
     sessionRestore: 'access.session.restore',
@@ -111,6 +119,7 @@ export interface ResolvedLoginMethods {
     credentialCheckClient?: ResolvedLoginMethod;
     identityCheck?: ResolvedLoginMethod;
     permissionList?: ResolvedLoginMethod;
+    profileGet?: ResolvedLoginMethod;
     sessionCreate?: ResolvedLoginMethod;
     sessionVerify?: ResolvedLoginMethod;
     sessionRestore?: ResolvedLoginMethod;
@@ -183,6 +192,7 @@ export default library(
             credentialCheckClient: resolveLoginMethod(config, 'credentialCheckClient', handler),
             identityCheck: resolveLoginMethod(config, 'identityCheck', handler),
             permissionList: resolveLoginMethod(config, 'permissionList', handler),
+            profileGet: resolveLoginMethod(config, 'profileGet', handler),
             sessionCreate: resolveLoginMethod(config, 'sessionCreate', handler),
             sessionVerify: resolveLoginMethod(config, 'sessionVerify', handler),
             sessionRestore: resolveLoginMethod(config, 'sessionRestore', handler),

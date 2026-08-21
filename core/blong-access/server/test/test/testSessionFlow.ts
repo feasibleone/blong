@@ -7,6 +7,7 @@ type TokenResult = {
     expires_in: number;
     refresh_token_expires_in: number;
     permissions: string[];
+    profile?: {actorId?: string; language?: string};
 };
 
 /**
@@ -61,6 +62,12 @@ export default handler(
                     assert.ok(result.refresh_token, 'login returns a refresh token');
                     assert.ok(result.session_id, 'login returns a session id');
                     assert.ok(result.permissions.includes('accessTestPrivate'), 'has permissions');
+                    // The user's preferred language is returned during login so
+                    // the UI can apply the locale right away (default 'en').
+                    assert.ok(
+                        result.profile?.language === 'en',
+                        'login returns the user preferred language',
+                    );
                     return result;
                 },
 
@@ -107,6 +114,11 @@ export default handler(
                     assert.ok(
                         refreshed.permissions.includes('accessTestPrivate'),
                         'refreshed token still carries permissions',
+                    );
+                    // The preferred language is also returned on renewal.
+                    assert.ok(
+                        refreshed.profile?.language === 'en',
+                        'refresh returns the user preferred language',
                     );
                     return {session, refreshed};
                 },

@@ -9,6 +9,7 @@ export default browser(blong => ({
     },
     validation: blong.type.Object({
         party: blong.type.Object({}),
+        access: blong.type.Object({}),
     }),
     children: [
         async function ui() {
@@ -20,12 +21,25 @@ export default browser(blong => ({
         async function party() {
             return import('./browser.ts');
         },
+        /** blong-access browser realm — access.* subject namespace + the self-service profile page. */
+        async function access() {
+            return import('@feasibleone/blong-access/browser.ts');
+        },
     ],
     config: {
         default: {
             ui: {
                 portal: {
-                    portal: {title: 'Blong Party'},
+                    portal: {
+                        title: 'Blong Party',
+                        // Self-service profile: the top-right account menu opens
+                        // the profile tab and fetches the caller's profile for the
+                        // avatar (personal details live on party.person here).
+                        profile: {
+                            page: 'access.user.profile',
+                            get: 'access.profile.get',
+                        },
+                    },
                     // Self-registration: Login's Register button dispatches
                     // component/user.selfRegistration (party component layer).
                     login: {registerPage: 'user.selfRegistration'},
@@ -49,6 +63,22 @@ export default browser(blong => ({
             },
             login: {},
             party: {},
+            access: {},
         },
+        // TEST-ONLY: the `integration` intent (active for dev/test/Playwright
+        // — the browser entry `index.html.ts` hardcodes `microservice
+        // integration dev`) enables the test hook that exposes the wrapped
+        // handler as `window.__blongHandler` so E2E tests can invoke server
+        // methods directly. Production uses the `prod` intent — never
+        // `integration` — so real deployments do not expose the handler.
+        integration: {
+            ui: {
+                portal: {
+                    portal: {
+                        testHook: true,
+                    },
+                },
+            },
+        } as never,
     },
 }));

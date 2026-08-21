@@ -4,6 +4,7 @@
  */
 
 import type {IAction} from '@feasibleone/blong';
+import type {TranslationDict} from '../state/appStore.js';
 
 /** A single open tab in the portal */
 export interface ITab {
@@ -38,6 +39,29 @@ export interface IPortalConfig {
     home?: IAction;
     menu?: IMenuItem[];
     rightMenu?: IMenuItem[];
+    /**
+     * Self-service account profile wiring for the top-right account menu.
+     * `page` is the component method that returns the profile page (e.g.
+     * 'access.user.profile'), `get` the server method returning the caller's
+     * own profile for the avatar (e.g. 'access.profile.get').
+     */
+    profile?: {
+        page?: string;
+        get?: string;
+    };
+    /**
+     * Per-language translation dictionaries (English key → translated string).
+     * Registered by the app so `setLanguage(language)` swaps the active table
+     * to the matching language's dictionary.
+     */
+    translations?: Record<string, TranslationDict>;
+    /**
+     * UI languages offered by the menubar language switcher (ad-hoc switching).
+     * Each entry is `{value, label}` where `value` matches a translation-
+     * dictionary key.  When omitted, the switcher derives the list from the
+     * keys of `translations` (and hides when fewer than two are available).
+     */
+    languages?: Array<{value: string; label: string}>;
 }
 
 /** Portal tab state managed by Zustand */

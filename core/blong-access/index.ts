@@ -64,6 +64,7 @@ export default server(() => ({
                     'test.authorization.flow',
                     'test.access.model.flow',
                     'test.session.flow',
+                    'test.profile.flow',
                 ],
             },
         },

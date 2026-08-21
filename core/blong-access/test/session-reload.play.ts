@@ -33,8 +33,12 @@ test.describe('Access session reload & logout', () => {
     }) => {
         await expect(page.locator('.blong-portal-menubar')).toBeVisible();
 
-        // Logout → server-side revoke + restore-cookie cleared + local state reset.
-        await page.getByRole('button', {name: /logout/i}).click();
+        // Logout via the account menu → server-side revoke + restore-cookie
+        // cleared + local state reset.
+        await page.locator('.blong-account-menu__avatar').click();
+        await page.locator('.blong-account-menu__menu .p-menuitem-link', {
+            hasText: 'Sign out',
+        }).click();
         await expect(page.locator('input[name="username"]')).toBeVisible();
 
         // Reload — no cookie → the login screen is shown again.

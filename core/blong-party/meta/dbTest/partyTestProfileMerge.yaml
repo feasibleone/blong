@@ -1,0 +1,10 @@
+# dbTest seed — link testAdmin to a party.person for the profile page demo.
+# Dispatched to the `partyTestProfileMerge` handler (`.dbTest.asset`).
+userName: testAdmin
+firstName: Test
+middleName: ''
+lastName: Admin
+birthDate: '1985-03-15'
+gender: male
+nationality: US
+occupation: System Administrator

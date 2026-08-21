@@ -1,0 +1,60 @@
+/* Access profile page — self-service user profile */
+
+/* Root is a PrimeFlex grid (see `grid col align-self-start max-w-screen` in the
+   page) — Profile + Change Password in the left column, Roles in the right. */
+.access-profile {
+    padding: 1.25rem;
+}
+
+.access-profile__account {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+}
+
+.access-profile__active {
+    color: var(--green-500, #22c55e);
+    font-size: 0.85rem;
+}
+
+.access-profile__inactive {
+    color: var(--red-500, #ef4444);
+    font-size: 0.85rem;
+}
+
+/* Field rows use the same `field grid` layout as the Editor: label on the same
+   row as the input on md+ (`col-12 md:col-4` / `col-12 md:col-8`), stacking to
+   two rows on narrow screens. */
+.access-profile__form label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    align-self: center;
+}
+
+.access-profile__actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.access-profile__msg {
+    margin-top: 0.5rem;
+}
+
+.access-profile__roles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.access-profile__roles li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+}
+
+.access-profile__roles i {
+    color: var(--primary-color, #3b82f6);
+}

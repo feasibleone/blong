@@ -1,0 +1,22 @@
+/* AccountMenu — top-right avatar + dropdown in the portal menubar */
+
+.blong-account-menu {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+}
+
+.blong-account-menu__avatar {
+    cursor: pointer;
+    background: var(--surface-300, #e5e7eb);
+    color: var(--text-color, #334155);
+    font-weight: 600;
+}
+
+.blong-account-menu__avatar:hover {
+    background: var(--surface-400, #d1d5db);
+}
+
+.blong-account-menu__menu {
+    min-width: 14rem;
+}
