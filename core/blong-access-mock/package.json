@@ -20,7 +20,8 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "@feasibleone/blong": "workspace:^1.0.0"
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-dev": "workspace:*"
     },
     "devDependencies": {
         "tap": "^21.6.3"

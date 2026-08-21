@@ -158,6 +158,9 @@ importers:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
     devDependencies:
       tap:
         specifier: ^21.6.3

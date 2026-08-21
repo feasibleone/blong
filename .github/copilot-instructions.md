@@ -6,15 +6,13 @@ pointers to skills and details. Full detail lives in skills: invoke them via the
 
 ## [CRITICAL_OBSERVABILITY]
 
-- We log in chat todo metrics explicitly. This applies in **every session** — emit the marker
-  **immediately after the switch/pivot**, before starting the next todo (not at the end of the
-  session). Chat logs are exported and analyzed to spot frictions and excessive iteration, so the
-  metrics must be **output at the time of pivoting**. Emit at least once per todo point completed,
-  and also within major milestones inside a single todo (every time you pivot to a new objective,
-  finish a debugging cycle, or completely switch tasks). Use ✅ COMPLETED / ❌ ABANDONED / 🔄
-  PIVOTED for the status.
+- Output todo metrics explicitly. Emit the marker **immediately after the switch/pivot**, before
+  during reasoning and right before starting the next task from the list. Emit at least once per
+  todo item completed, and also within major milestones inside a single todo - every time you pivot
+  to a new objective, finish a debugging cycle, or completely switch focus.
 
-    Use this exact structure for your markers:
+    Use ✅ COMPLETED / ❌ ABANDONED / 🔄 PIVOTED for the status and this exact structure for your
+    markers:
 
     ```markdown
     # Task metrics: ✅/❌/🔄 [Short todo name]
@@ -25,11 +23,15 @@ pointers to skills and details. Full detail lives in skills: invoke them via the
     - Tools: [Comma-separated list of tools used and how many times each]
     ```
 
-- We track automatic decisions explicitly. Whenever you hesitated about what the user requested or
-  implied and made a choice, you MUST output this in .github/memory/decision.md. If this is a
+- Track automatic decisions explicitly. Whenever you hesitated about what the user requested or you
+  implied and made a choice, you MUST output this in: .github/memory/decision.md. If this is a
   critical decision that is likely to take a lot of effort to reconsider, you MUST stop and point
   the user to this file and state the decision needed. Make sure that you do not allow the Autopilot
   mode to interfere and answer questions instead of the user.
+
+- Track missing, deferred or incomplete features explicitly in: .github/memory/todo.md. Update it
+  with any tasks that you are deferring or leaving incomplete because it was not explicitly
+  requested or for any other reason.
 
 ## [CRITICAL_GUARDRAILS]
 

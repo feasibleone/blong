@@ -17,6 +17,9 @@ export default browser(blong => ({
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
+        async function login() {
+            return import('@feasibleone/blong-login/browser.ts');
+        },
         async function $subject() {
             return import('./browser.ts');
         },
@@ -30,6 +33,7 @@ export default browser(blong => ({
                     },
                 },
             },
+            login: {},
             $subject: {},
         },
     },
