@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-core-v1.1.0...blong-core-v1.1.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* missing role ([4915455](https://github.com/feasibleone/blong/commit/4915455cf8aac1c64f8d551168bba8488f4463ab))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-core-v1.0.0...blong-core-v1.1.0) (2026-08-19)
 
 

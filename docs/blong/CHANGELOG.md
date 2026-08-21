@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.19.0...blong-docs-v1.20.0) (2026-08-21)
+
+
+### Features
+
+* access sessions and audit ([694349f](https://github.com/feasibleone/blong/commit/694349f7e70973b984a30f696d2b6e892b55ec02))
+
 ## [1.19.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.18.0...blong-docs-v1.19.0) (2026-08-19)
 
 

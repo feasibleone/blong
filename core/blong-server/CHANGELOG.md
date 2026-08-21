@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-server-v1.1.0...blong-server-v1.2.0) (2026-08-21)
+
+
+### Features
+
+* improve MySQL handling in CI ([4770eec](https://github.com/feasibleone/blong/commit/4770eec3a24cd38cd1931da1c553e0a804ca58dd))
+
+
+### Bug Fixes
+
+* blong-access-mock, silent error, expected error ([dc00429](https://github.com/feasibleone/blong/commit/dc00429a63a973996d6e94359830cc52d149b995))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-server-v1.0.0...blong-server-v1.1.0) (2026-08-19)
 
 

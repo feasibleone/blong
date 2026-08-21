@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-access-v1.2.0...blong-access-v1.3.0) (2026-08-21)
+
+
+### Features
+
+* access sessions and audit ([694349f](https://github.com/feasibleone/blong/commit/694349f7e70973b984a30f696d2b6e892b55ec02))
+* user profile, portal language ([f9fa8a4](https://github.com/feasibleone/blong/commit/f9fa8a41683dcd6cf9657b4665235a51a98b7486))
+
+
+### Bug Fixes
+
+* blong-access-mock, silent error, expected error ([dc00429](https://github.com/feasibleone/blong/commit/dc00429a63a973996d6e94359830cc52d149b995))
+* missing role ([4915455](https://github.com/feasibleone/blong/commit/4915455cf8aac1c64f8d551168bba8488f4463ab))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-access-v1.1.0...blong-access-v1.2.0) (2026-08-19)
 
 
