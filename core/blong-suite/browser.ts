@@ -28,6 +28,10 @@ export default browser(blong => ({
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
+        /** blong-login browser realm — `login.*` subject namespace (login.token.* etc.) */
+        async function login() {
+            return import('@feasibleone/blong-login/browser.ts');
+        },
         /** Marine biology realm (brings blong-browser infrastructure with it) */
         async function marine() {
             return import('@feasibleone/blong-marine/browser.ts');
@@ -42,7 +46,17 @@ export default browser(blong => ({
                     },
                 },
             },
+            login: {},
             marine: {},
         },
+        integration: {
+            ui: {
+                portal: {
+                    portal: {
+                        testHook: true,
+                    },
+                },
+            },
+        } as never,
     },
 }));
