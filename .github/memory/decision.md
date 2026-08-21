@@ -357,3 +357,31 @@
   test (6 assertions).
 - **Verified**: 84/84 tap tests, `tsc --noEmit` green; live `SELECT…; SELECT…` → `[[rows],[rows]]`,
   `CREATE…; INSERT…; SELECT…` → `[header, header, [rows]]`, single SELECT shape unchanged.
+
+## MySQL connection-loss retry + CI resilience (2026-08-21)
+
+- **Problem**: intermittent `PROTOCOL_CONNECTION_LOST` (`fatal: true`) in GitHub Actions CI fails
+  random packages (one+ at a time), e.g. `@feasibleone/blong-suite` "Process from config.webServer
+  was not able to start". MySQL is a k8s Deployment in k3d (`mysql/mysql-server:8.0.32`, 768Mi,
+  `max_connections=151` defaults); the knex adapter had no pool tuning, no keepalive, no retry — a
+  single transient drop during schema sync/seed (coinciding with `adapter.ready`) was fatal.
+- **Decision**: (1) opt-in retry of transient connection errors in the knex adapter
+  (`core/blong-gogo/src/adapter/schema/knex/json.ts` — `isRetryableConnectionError` +
+  `withConnectionRetry`), re-executing builders via `clone()` and `raw()` via re-invocation, with
+  linear backoff; gated by explicit `knex.retry` config — enabled ONLY in the `ci`/`dev` blocks of
+  the shared `srv.db` adapter (`core/blong-server/adapter/db.ts`), never in prod. Also enabled
+  mysql2 `enableKeepAlive` + tarn `pool.maxConnectionLifetimeMillis` in those same non-prod blocks.
+  (2) Added an `onConnectionError` logging hook (`logKnexConnectionError`, debug/logLevel-gated) for
+  diagnostics even when retry is off. (3) Hardened `test/integration/wait.sh` to wait for real MySQL
+  readiness (`mysqladmin ping` + `blong-admin SELECT 1`), fixing the cold-start race. (4) Added a
+  `failure()` k8s/MySQL diagnostic dump as a repo-owned script (`test/integration/ci-diagnostics.sh`
+  in blong); the shared `infitx-org/actions` rush workflow detects the script in its `setup` "Config
+  check" step and, on failure, runs it and uploads the `ci-diagnostics` artifact only when the
+  script exists (keeps the shared action repo-agnostic). NOT changing MySQL `max_connections`/memory
+  until diagnostics show `ER_CON_COUNT_ERROR` (1040) or OOMKilled — the observed signature
+  (`PROTOCOL_CONNECTION_LOST`) points to pod restart / idle-drop, not connection exhaustion. v1 does
+  NOT auto-retry whole transactions (only inner builder/raw queries) to avoid re-running user
+  callbacks with external side effects.
+- **Verified**: full blong-gogo `tsc --noEmit` green (exit 0); 89/89 tap tests (json + knex
+  deadlock/connection files, incl. new retry + connection-error tests); `ci-lint`
+  (tsc+cspell+eslint) clean on changed files; `wait.sh` syntax OK; `rush.yaml` YAML valid.

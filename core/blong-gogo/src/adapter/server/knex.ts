@@ -106,6 +106,41 @@ export function logKnexDeadlock(
     );
 }
 
+/**
+ * Log transient MySQL connection-error details (including the offending query)
+ * in dev mode. Called from the `wrapKnex` `onConnectionError` hook whenever a
+ * query path through the wrapped knex fails with a fatal/connection error
+ * (`PROTOCOL_CONNECTION_LOST` and similar) — whether or not retry is enabled.
+ * This is the diagnostics breadcrumb for the intermittent CI connection drops:
+ * it records which query failed and how the pool was doing at that moment.
+ */
+export function logKnexConnectionError(
+    config: {debug?: boolean; logLevel?: string},
+    log: unknown,
+    error: unknown,
+): void {
+    if (!config.debug && config.logLevel !== 'debug') return;
+    const err = error as {
+        message?: string;
+        code?: string;
+        errno?: number;
+        fatal?: boolean;
+        sql?: string;
+        sqlMessage?: string;
+    };
+    (log as {error?: (...args: unknown[]) => void})?.error?.(
+        {
+            err: err.message ?? err,
+            code: err.code,
+            errno: err.errno,
+            fatal: err.fatal,
+            sql: err.sql,
+            sqlMessage: err.sqlMessage,
+        },
+        'knex connection error',
+    );
+}
+
 export default adapter<IConfig>(({utError, schema: objectSchema}) => {
     _errors ||= utError.register(errorMap);
 
@@ -165,6 +200,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             this.config.context = {
                 queryBuilder: wrapKnex(KnexLib(this.config.knex), {
                     onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
+                    onConnectionError: error =>
+                        logKnexConnectionError(this.config, this.log, error),
+                    retry: this.config.knex.retry,
                 }) as unknown as Knex,
             };
             super.connect();
@@ -341,6 +379,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             this.config.context = {
                 queryBuilder: wrapKnex(KnexLib(newKnexConfig as object), {
                     onDeadlock: error => logKnexDeadlock(this.config, this.log, error),
+                    onConnectionError: error =>
+                        logKnexConnectionError(this.config, this.log, error),
+                    retry: (newKnexConfig as IKnexConfig).retry ?? this.config.knex.retry,
                 }) as unknown as Knex,
             };
         },

@@ -166,3 +166,18 @@ of the box (had to `kubectl exec` into the MySQL pod).
   (custom `--config` keys stay empty), and auto-create the derived dev DB (`${suite}-${user}`) when
   missing (mirrors dev `createDatabase: true`). Lesson: the dev tool should mirror the framework's
   own dev connection defaults instead of requiring per-developer `.blong_devrc` setup.
+
+## MySQL connection-lost retry (2026-08-21)
+
+- **Investigating intermittent `PROTOCOL_CONNECTION_LOST` in CI required verifying knex/tarn pool
+  internals from source**: `QueryBuilder.clone()` constructs a fresh builder from `_*` fields and
+  does NOT copy own-property `then`/`insert`/`update` overrides (safe for retry re-execution), and
+  `then()` re-runs from builder state on each call. The first retry implementation recursively
+  called the wrapped `then` on the first attempt (`target.then` after overriding `builder.then`) →
+  "Maximum call stack size exceeded". Fix: capture `originalThen` before overriding and use it for
+  attempt 0; use the clone's own (prototype) `then` for retries.
+- **`get_errors` reported a stale `Property 'retry' does not exist on type '{}'` on
+  `knex.ts(384)` long after `tsc -p tsconfig.json` passed with exit 0.** The language-server cache
+  lags multi-file type edits (types.ts added `retry` but the Problems panel kept an old module
+  graph). Lesson: when the Problems panel disagrees with a clean package `tsc --noEmit -p
+  tsconfig.json` run, trust the `tsc` run — do not chase phantom errors.

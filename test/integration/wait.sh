@@ -7,6 +7,36 @@ interval=5
 elapsed=0
 ns=blong-integration
 
+# Deployment "Available" only means the pod started — mysqld first-boot runs the
+# /docker-entrypoint-initdb.d init.sql and can restart before it serves the
+# blong-admin user. Wait for a real query here to remove the cold-start race
+# that drops the first suite connections in CI (PROTOCOL_CONNECTION_LOST).
+wait_for_mysql() {
+  echo "Waiting for MySQL to accept queries (mysqladmin ping + blong-admin SELECT 1)..."
+  local wait_timeout=180
+  local wait_interval=5
+  local wait_elapsed=0
+  local pod=""
+  while [ $wait_elapsed -lt $wait_timeout ]; do
+    pod=$(kubectl -n "${ns}" get pods -l app=mysql --no-headers -o custom-columns=":metadata.name" 2>/dev/null | head -1 || true)
+    if [ -n "$pod" ] && \
+       kubectl -n "${ns}" exec "$pod" -- mysqladmin ping -h localhost -u blong-admin -ppassword --silent >/dev/null 2>&1 && \
+       kubectl -n "${ns}" exec "$pod" -- mysql -h localhost -u blong-admin -ppassword -e "SELECT 1" >/dev/null 2>&1; then
+      echo "MySQL is ready (accepting queries for blong-admin)."
+      return 0
+    fi
+    echo "MySQL not ready yet... ${wait_elapsed}s elapsed"
+    sleep $wait_interval
+    wait_elapsed=$((wait_elapsed + wait_interval))
+  done
+  echo "Timeout waiting for MySQL readiness after ${wait_timeout}s."
+  if [ -n "$pod" ]; then
+    echo "==== MySQL pod logs (last 100 lines) ===="
+    kubectl -n "${ns}" logs "$pod" --tail=100 2>/dev/null || true
+  fi
+  return 1
+}
+
 # If args are provided, wait only for those deployments, otherwise wait for all
 if [ "$#" -gt 0 ]; then
   deployments=("$@")
@@ -41,6 +71,12 @@ while [ $elapsed -lt $timeout ]; do
   sleep $interval
   elapsed=$((elapsed + interval))
 done
+
+# MySQL needs more than "pod Available" — mysqld first-boot (init.sql) must have
+# run before suites connect, otherwise early connections get dropped.
+if [ "$available" -eq "$total" ] && [[ " ${deployments[*]} " == *" mysql "* ]]; then
+  wait_for_mysql
+fi
 
 if [ $elapsed -ge $timeout ]; then
   echo "Timeout waiting for deployments after ${timeout}s. Current status:"

@@ -11,9 +11,11 @@ import {test} from 'tap';
 
 import {
     isDeadlock,
+    isRetryableConnectionError,
     parseJsonResult,
     parseJsonRow,
     stringifyJsonValues,
+    withConnectionRetry,
     wrapJsonBuilder,
     wrapKnex,
 } from './json.ts';
@@ -216,6 +218,173 @@ test('wrapKnex transaction() wraps the resolved trx (promise form)', async t => 
     t.end();
 });
 
+const CONN_LOST = {
+    code: 'PROTOCOL_CONNECTION_LOST',
+    fatal: true,
+    sql: 'UPDATE `t` SET `x` = 1',
+    sqlMessage: 'Connection lost: The server closed the connection.',
+    message: 'Connection lost: The server closed the connection.',
+};
+
+const DUP_ENTRY = {errno: 1062, code: 'ER_DUP_ENTRY', message: 'Duplicate entry'};
+
+const BOOM = new Error('boom');
+
+test('isRetryableConnectionError detects transient connection errors only', t => {
+    t.equal(
+        isRetryableConnectionError({code: 'PROTOCOL_CONNECTION_LOST', fatal: true}),
+        true,
+        'PROTOCOL_CONNECTION_LOST with fatal flag',
+    );
+    t.equal(isRetryableConnectionError({fatal: true}), true, 'fatal flag alone');
+    t.equal(isRetryableConnectionError({code: 'ECONNRESET'}), true, 'ECONNRESET');
+    t.equal(isRetryableConnectionError({code: 'ER_CON_COUNT_ERROR'}), true, 'too many connections');
+    t.equal(
+        isRetryableConnectionError({code: 'ER_LOCK_DEADLOCK', errno: 1213}),
+        false,
+        'deadlock is not a connection error',
+    );
+    t.equal(isRetryableConnectionError(DUP_ENTRY), false, 'constraint violation');
+    t.equal(isRetryableConnectionError(BOOM), false, 'plain error');
+    t.equal(isRetryableConnectionError(null), false, 'null');
+    t.equal(isRetryableConnectionError('PROTOCOL_CONNECTION_LOST'), false, 'string');
+    t.end();
+});
+
+test('withConnectionRetry runs once when retry is disabled (default)', async t => {
+    let calls = 0;
+    const run = async () => {
+        calls += 1;
+        throw CONN_LOST;
+    };
+    await t.rejects(withConnectionRetry(run, {}), CONN_LOST, 'error propagates');
+    t.equal(calls, 1, 'exactly one attempt');
+    t.end();
+});
+
+test('withConnectionRetry retries transient connection errors and recovers', async t => {
+    let calls = 0;
+    const run = async () => {
+        calls += 1;
+        if (calls < 3) throw CONN_LOST;
+        return 'ok';
+    };
+    const result = await withConnectionRetry(run, {
+        retry: {enabled: true, maxRetries: 3, backoffMs: 1},
+    });
+    t.equal(result, 'ok');
+    t.equal(calls, 3, 'first attempt + two retries');
+    t.end();
+});
+
+test('withConnectionRetry does not retry non-connection errors', async t => {
+    let calls = 0;
+    const run = async () => {
+        calls += 1;
+        throw DUP_ENTRY;
+    };
+    await t.rejects(
+        withConnectionRetry(run, {retry: {enabled: true, maxRetries: 3, backoffMs: 1}}),
+        DUP_ENTRY,
+    );
+    t.equal(calls, 1, 'constraint violations are not retried');
+    t.end();
+});
+
+test('withConnectionRetry gives up after maxRetries and surfaces the error', async t => {
+    let calls = 0;
+    const run = async () => {
+        calls += 1;
+        throw CONN_LOST;
+    };
+    await t.rejects(
+        withConnectionRetry(run, {retry: {enabled: true, maxRetries: 2, backoffMs: 1}}),
+        CONN_LOST,
+        'final error surfaces',
+    );
+    t.equal(calls, 3, 'first attempt + maxRetries retries');
+    t.end();
+});
+
+test('wrapJsonBuilder recovers a transient connection error via clone re-execution', async t => {
+    const builder = makeFlakyBuilder(2, CONN_LOST);
+    const wrapped = wrapJsonBuilder(builder, {
+        retry: {enabled: true, maxRetries: 5, backoffMs: 1},
+    });
+
+    const result = await wrapped.then((value: unknown) => value);
+    t.same(result, {ok: 3}, 'query succeeds after two dropped connections');
+    t.equal(builder.attempts(), 3, 'original + two clone re-executions');
+    t.end();
+});
+
+test('wrapJsonBuilder reports connection errors via onConnectionError', async t => {
+    const reported: unknown[] = [];
+    const builder = makeFlakyBuilder(1, CONN_LOST);
+    const wrapped = wrapJsonBuilder(builder, {
+        retry: {enabled: true, maxRetries: 3, backoffMs: 1},
+        onConnectionError: error => reported.push(error),
+    });
+
+    const result = await wrapped.then((value: unknown) => value);
+    t.same(result, {ok: 2}, 'recovers');
+    t.same(reported, [CONN_LOST], 'the dropped connection was reported');
+    t.end();
+});
+
+test('wrapJsonBuilder does not retry when retry is disabled', async t => {
+    const reported: unknown[] = [];
+    const builder = makeFlakyBuilder(1, CONN_LOST);
+    const wrapped = wrapJsonBuilder(builder, {
+        onConnectionError: error => reported.push(error),
+    });
+
+    await t.rejects(Promise.resolve(wrapped.then(null, null)), CONN_LOST, 'error propagates');
+    t.equal(builder.attempts(), 1, 'exactly one attempt');
+    t.same(reported, [CONN_LOST], 'connection error still reported for diagnostics');
+    t.end();
+});
+
+test('wrapJsonBuilder never retries non-connection errors', async t => {
+    const builder = makeFlakyBuilder(1, BOOM);
+    const wrapped = wrapJsonBuilder(builder, {
+        retry: {enabled: true, maxRetries: 3, backoffMs: 1},
+    });
+
+    await t.rejects(Promise.resolve(wrapped.then(null, null)), /boom/, 'error propagates');
+    t.equal(builder.attempts(), 1, 'plain errors are not retried');
+    t.end();
+});
+
+test('wrapKnex raw() retries transient connection errors by re-invoking raw', async t => {
+    let calls = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fakeKnex = (() => undefined) as any;
+    fakeKnex.raw = () => {
+        calls += 1;
+        const ok = calls > 1;
+        return {
+            then(
+                onFulfilled?: (value: unknown) => unknown,
+                onRejected?: (reason: unknown) => unknown,
+            ) {
+                return ok
+                    ? Promise.resolve({rows: [{n: calls}]}).then(onFulfilled, onRejected)
+                    : Promise.reject(CONN_LOST).then(onFulfilled, onRejected);
+            },
+        };
+    };
+    const wrapped = wrapKnex(fakeKnex, {
+        retry: {enabled: true, maxRetries: 3, backoffMs: 1},
+    });
+
+    const raw = wrapped.raw('CALL something()');
+    const result = await Promise.resolve(raw.then((value: unknown) => value));
+    t.same(result, {rows: [{n: 2}]}, 'raw re-invoked on retry');
+    t.equal(calls, 2, 'knex.raw called twice');
+    t.end();
+});
+
 /** A minimal knex-like builder whose `then` rejects with `error`. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeRejectingBuilder(error: unknown): any {
@@ -240,4 +409,33 @@ function makeRejectingThenable(error: unknown): any {
             return Promise.reject(error).then(onFulfilled, onRejected);
         },
     };
+}
+
+/**
+ * A knex-like builder whose first `failures` `then` calls reject with `error`
+ * and whose later calls resolve. `clone()` returns a fresh builder sharing the
+ * same attempt counter, mirroring how the retry path re-runs a cloned builder.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeFlakyBuilder(failures: number, error: unknown): any {
+    let attempts = 0;
+    const make = () => ({
+        insert(..._args: unknown[]) {
+            return this;
+        },
+        update(..._args: unknown[]) {
+            return this;
+        },
+        then(onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) {
+            attempts += 1;
+            return attempts <= failures
+                ? Promise.reject(error).then(onFulfilled, onRejected)
+                : Promise.resolve({ok: attempts}).then(onFulfilled, onRejected);
+        },
+        clone() {
+            return make();
+        },
+        attempts: () => attempts,
+    });
+    return make();
 }

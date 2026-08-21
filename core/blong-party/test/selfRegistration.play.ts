@@ -9,7 +9,7 @@ import {expect, test} from '@feasibleone/blong-browser/playwright';
 
 test('self-registration: create account and auto-login', async ({page}) => {
     await page.goto('/');
-    await expect(page.getByTestId('login-submit')).toBeVisible();
+    await expect(page.getByTestId('login-submit')).toBeVisible({timeout: 10000});
 
     // Open the registration form via the Register button (component/user.selfRegistration)
     await page.getByRole('button', {name: 'Register'}).click();

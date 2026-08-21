@@ -135,7 +135,31 @@ export interface IKnexConnection {
     user?: string;
     password?: string;
     database?: string;
+    /**
+     * mysql2 TCP keep-alive. When `true`, idle connections send keep-alive
+     * probes so a server/proxy/LB silently closing an idle socket is noticed
+     * promptly instead of surfacing later as a mid-query
+     * `PROTOCOL_CONNECTION_LOST`. Enabled for non-prod via the shared `srv.db`
+     * adapter (`core/blong-server/adapter/db.ts`).
+     */
+    enableKeepAlive?: boolean;
     [key: string]: unknown;
+}
+
+/**
+ * Opt-in retry of transient fatal connection errors (e.g. mysql2
+ * `PROTOCOL_CONNECTION_LOST`). Intended for non-prod environments (CI / dev)
+ * where a single dropped connection must not abort a whole test run. Disabled
+ * by default so production behaviour is unchanged — enable explicitly via the
+ * `knex.retry` config block (see `core/blong-server/adapter/db.ts`).
+ */
+export interface IKnexRetryOptions {
+    /** When `true`, queries that fail with a transient connection error are retried. Default `false`. */
+    enabled?: boolean;
+    /** Maximum number of retry attempts per query (excluding the first attempt). Default `3`. */
+    maxRetries?: number;
+    /** Base delay before the first retry (ms); each retry waits `backoffMs * attempt`. Default `250`. */
+    backoffMs?: number;
 }
 
 /** The `knex` config block of a DB adapter (adapter.knex / the shared `srv.db`). */
@@ -149,6 +173,17 @@ export interface IKnexConfig {
      * `default` / `ci` / `prod`, where the database is provisioned externally.
      */
     createDatabase?: boolean;
+    /**
+     * Knex/tarn pool options (passed through to the `knex` pool config, e.g.
+     * `maxConnectionLifetimeMillis` to recycle long-lived connections).
+     */
+    pool?: {
+        /** Max lifetime of a pooled connection in ms before it is recycled. */
+        maxConnectionLifetimeMillis?: number;
+        [key: string]: unknown;
+    };
+    /** Opt-in retry of transient fatal connection errors — non-prod only. */
+    retry?: IKnexRetryOptions;
     [key: string]: unknown;
 }
 
