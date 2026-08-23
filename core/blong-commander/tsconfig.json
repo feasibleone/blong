@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "jsx": "react",
+        "outDir": "dist",
+        "resolveJsonModule": true,
+        "target": "ES2022",
+        "module": "preserve",
+        "moduleResolution": "bundler",
+        "lib": ["ES2022", "DOM"],
+        "allowImportingTsExtensions": true,
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": true
+    },
+    "ts-node": {
+        "esm": true,
+        "swc": true,
+        "transpileOnly": true,
+        "files": true,
+        "experimentalResolver": true
+    },
+    "exclude": ["node_modules", ".lint", ".docusaurus", "dist", "test/*.play.ts"],
+    "include": ["**/*.ts", "**/*.tsx"]
+}

@@ -524,6 +524,12 @@
             "tags": ["core"]
         },
         {
+            "packageName": "@feasibleone/blong-commander",
+            "projectFolder": "core/blong-commander",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
             "packageName": "@feasibleone/blong-log",
             "projectFolder": "core/blong-log",
             "reviewCategory": "core",

@@ -3,6 +3,7 @@ import {
     DeleteObjectCommand,
     GetObjectCommand,
     HeadObjectCommand,
+    ListBucketsCommand,
     ListObjectsV2Command,
     PutObjectCommand,
     S3Client,
@@ -89,7 +90,7 @@ export default adapter<IConfig>(({utError}) => {
             $meta: IMeta,
         ) {
             const {method} = $meta;
-            const [, , operation] = method!.split('.');
+            const [, object, operation] = method!.split('.');
             let bucket: string | undefined;
             let actualParams = params;
 
@@ -99,7 +100,10 @@ export default adapter<IConfig>(({utError}) => {
                 actualParams = rest;
             }
 
-            if (!bucket && !this.config.bucket?.Bucket) {
+            // Bucket enumeration (`s3.bucket.list`) does not need a target bucket.
+            const needsBucket =
+                !(object === 'bucket' && (operation === 'list' || operation === 'find'));
+            if (!bucket && !this.config.bucket?.Bucket && needsBucket) {
                 throw this.error(_errors['s3.missingBucket'](), $meta);
             }
 
@@ -202,6 +206,18 @@ export default adapter<IConfig>(({utError}) => {
                     // List objects in S3 bucket
                     if (Array.isArray(actualParams)) {
                         throw this.error(_errors['s3.invalid'](), $meta);
+                    }
+                    // `s3.bucket.list` — enumerate buckets on the endpoint
+                    if (object === 'bucket') {
+                        const command = new ListBucketsCommand({});
+                        const response = await this.config.context.s3!.send(command);
+                        return {
+                            items:
+                                response.Buckets?.map(b => ({
+                                    bucket: b.Name,
+                                    creationDate: b.CreationDate,
+                                })) ?? [],
+                        };
                     }
                     const {prefix, maxKeys = 1000} = actualParams;
 

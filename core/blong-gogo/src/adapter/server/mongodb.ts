@@ -70,12 +70,18 @@ export default adapter<IConfig>(({utError}) => {
             const {method} = $meta;
             const [, _table, operation] = method!.split('.');
             let table = _table;
+            let dbName: string | undefined;
+            // `{ns}.collection.*` triples carry `{database, collection}`; the
+            // collection is the table, the database selects the DB (and must NOT
+            // leak into the WHERE filter — previously docs were filtered by a
+            // literal `database` field, yielding empty lists).
             if (!Array.isArray(params) && _table === 'collection') {
-                const {collection, ...rest} = params;
+                const {collection, database, ...rest} = params;
                 if (collection) {
                     table = collection;
                     params = rest;
                 }
+                dbName = database as string | undefined;
             }
             const key = table.split(/\W/, 1)[0] + 'Id';
             switch (operation) {
@@ -86,8 +92,8 @@ export default adapter<IConfig>(({utError}) => {
                     }
                     const nonArrayParams = params as Record<string, unknown>;
                     const {select = '*', sort, [key]: _id, ...where} = nonArrayParams;
-                    return this.config.context
-                        .mongodb!.db()
+                    const doc = await this.config.context
+                        .mongodb!.db(dbName)
                         .collection(table)
                         .findOne(
                             {
@@ -108,6 +114,11 @@ export default adapter<IConfig>(({utError}) => {
                                 sort: sort as import('mongodb').Sort | undefined,
                             },
                         );
+                    // Surface a string `id` (mongo's `_id` is an ObjectId object,
+                    // dropped by the commander's scalar-only flattening).
+                    return doc
+                        ? {...doc, id: String((doc as {_id?: unknown})._id ?? '')}
+                        : doc;
                 }
                 case 'find': {
                     // find multiple documents
@@ -115,8 +126,8 @@ export default adapter<IConfig>(({utError}) => {
                         throw this.error(_errors['mongodb.invalid'](), $meta);
                     }
                     const {select = '*', order, limit, offset, [key]: _id, ...where} = params;
-                    return this.config.context
-                        .mongodb!.db()
+                    const docs = await this.config.context
+                        .mongodb!.db(dbName)
                         .collection(table)
                         .find(
                             {
@@ -152,6 +163,8 @@ export default adapter<IConfig>(({utError}) => {
                             },
                         )
                         .toArray();
+                    // Surface a string `id` for the commander explorer rows.
+                    return docs.map(doc => ({...doc, id: String((doc as {_id?: unknown})._id ?? '')}));
                 }
                 case 'add': {
                     // add single document
@@ -234,6 +247,47 @@ export default adapter<IConfig>(({utError}) => {
                         .mongodb!.db()
                         .collection(table)
                         .deleteMany(params as Filter<BSON.Document>);
+                case 'list': {
+                    // Enumeration for the commander explorer:
+                    //   `{ns}.database.list`   → databases on the server
+                    //   `{ns}.collection.list` → collections in a database (params.database)
+                    if (Array.isArray(params)) {
+                        throw this.error(_errors['mongodb.invalid'](), $meta);
+                    }
+                    if (_table === 'database') {
+                        const result = await this.config.context
+                            .mongodb!.db()
+                            .admin()
+                            .listDatabases();
+                        return {
+                            items:
+                                result.databases?.map(db => ({
+                                    database: db.name,
+                                    sizeOnDisk: db.sizeOnDisk,
+                                    empty: db.empty,
+                                })) ?? [],
+                        };
+                    }
+                    if (_table === 'collection') {
+                        const database = (params as Record<string, unknown>).database as
+                            | string
+                            | undefined;
+                        const collections = await this.config.context
+                            .mongodb!.db(database)
+                            .listCollections()
+                            .toArray();
+                        return {
+                            items: collections.map(c => ({
+                                collection: c.name,
+                                type: c.type,
+                                // thread the DB so deeper levels can resolve
+                                // `{parent.database}`
+                                database,
+                            })),
+                        };
+                    }
+                    throw this.error(_errors['mongodb.invalid'](), $meta);
+                }
             }
             throw this.error(_errors['mongodb.generic'](), $meta);
         },

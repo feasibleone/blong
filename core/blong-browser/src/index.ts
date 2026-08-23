@@ -30,6 +30,11 @@ export {useLayout} from './hooks/useLayout.js';
 export {useLoader} from './hooks/useLoader.js';
 export {useLocalStorage} from './hooks/useLocalStorage.js';
 export {usePermission} from './hooks/usePermission.js';
+export {
+    useCommanderNav,
+    type CommanderPane,
+    type ICommanderKeyHandlers,
+} from './hooks/useCommanderNav.js';
 export {usePortal} from './hooks/usePortal.js';
 export {useSubmit} from './hooks/useSubmit.js';
 export {useText} from './hooks/useText.js';
@@ -60,6 +65,9 @@ export {Loader} from './components/Loader/Loader.js';
 export {Login} from './components/Login/Login.js';
 export {LoginPopup} from './components/LoginPopup/LoginPopup.js';
 export {Navigator} from './components/Navigator/Navigator.js';
+export type {INavigatorProps} from './components/Navigator/Navigator.js';
+export {Commander, type ICommanderLevel, type ICommanderProps, type ICommanderSource} from './components/Commander/Commander.js';
+export {PathBar, type IPathSegment} from './components/Commander/PathBar.js';
 export {OAuthCallback, type IOAuthCallbackProps} from './components/OAuthCallback/OAuthCallback.js';
 export {Page} from './components/Page/Page.js';
 export {Permission} from './components/Permission/Permission.js';
@@ -90,6 +98,31 @@ export {useDesignMode} from './design/useDesignMode.js';
 
 // ── Widgets ──────────────────────────────────────────────────────────────────
 export {registerBuiltinWidgets, widgetRegistry} from './widgets/index.js';
+
+// ── Viewers (commander leaf viewers) ───────────────────────────────────────
+export {
+    DocumentViewer,
+    FileImageViewer,
+    JsonViewer,
+    KeyValueViewer,
+    MessageViewer,
+    PodLogViewer,
+    SecretViewer,
+    TableViewer,
+    YamlViewer,
+    getViewer,
+    hasViewer,
+    listViewers,
+    registerBuiltinViewers,
+    registerViewer,
+} from './viewers/index.js';
+export type {CommanderViewer, ICommanderViewerProps} from './viewers/registry.js';
+export {
+    resolveViewer,
+    type ICommanderLeafMeta,
+    type ICommanderModelRef,
+    type IResolvedViewer,
+} from './viewers/resolveViewer.js';
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 export {schemaRegistry} from './schema/registry.js';

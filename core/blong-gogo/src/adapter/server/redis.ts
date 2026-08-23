@@ -49,6 +49,7 @@ export interface IRedisClient {
     hincrby(key: string, field: string, increment: number): Promise<number>;
     hdel(key: string, ...fields: string[]): Promise<number>;
     eval(script: string, numKeys: number, ...keysAndArgs: unknown[]): Promise<unknown>;
+    scan(cursor: string, ...args: unknown[]): Promise<[string, string[]]>;
     quit(): Promise<unknown>;
 }
 
@@ -121,6 +122,20 @@ export default adapter<IConfig>(({utError}) => {
             expired: (await redis.expire(params.keyName as string, params.seconds as number)) === 1,
         }),
         ttl: async params => ({ttl: await redis.ttl(params.keyName as string)}),
+        list: async params => {
+            const pattern = (params.pattern as string) ?? '*';
+            const count = (params.count as number) ?? 100;
+            const limit = (params.limit as number) ?? 1000;
+            const cursor = (params.cursor as string) ?? '0';
+            const keyNames: string[] = [];
+            let next = cursor;
+            do {
+                const [newCursor, batch] = await redis.scan(next, 'MATCH', pattern, 'COUNT', count);
+                keyNames.push(...batch);
+                next = newCursor;
+            } while (next !== '0' && keyNames.length < limit);
+            return {items: keyNames.slice(0, limit).map(keyName => ({keyName})), cursor: next};
+        },
     };
 
     // Generic hash operations: redis.hash.getAll|get|set|incrBy|del
@@ -217,6 +232,12 @@ export default adapter<IConfig>(({utError}) => {
             const operation = parts[2];
             try {
                 await ensureConnected();
+                // `{ns}.database.list` — enumerate the logical databases this
+                // source exposes (the configured db index).
+                if (object === 'database' && operation === 'list') {
+                    const db = (this.config as {redis?: IConfig}).redis?.db ?? 0;
+                    return {items: [{db}]};
+                }
                 const ops =
                     object === 'key'
                         ? keyOps

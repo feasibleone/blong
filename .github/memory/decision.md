@@ -59,6 +59,74 @@
   menu/profile render in Bulgarian, screenshot `profile-bg.png`, then restore `'en'` so the shared
   dev DB and other screenshots stay stable.
 
+## Commander polish (2026-07-09)
+
+- **Portal height-chain fix (GLOBAL)**: `.p-tabview`, `.p-tabview .p-tabview-panels` and
+  `.p-tabview .p-tabview-panel` in `Portal.css` got `min-height: 0` so tabs fill the portal body and
+  NEVER grow beyond the viewport (a 573-row table used to stretch the whole page to ~18k px). This
+  affects every portal page — any page that previously relied on growing beyond the viewport would
+  now scroll internally (that was a bug, not a feature). If a non-commander page's Playwright
+  baseline shifts, regenerate it.
+- **Jump-to-path actually navigates** — the old "Jump to path…" input was a no-op (`onJump` was
+  never wired). The combined crumb/jump widget's `onJump` now resolves the typed `/`-joined label
+  path through a new `Navigator.jumpTo(labels)` handle method (lazy-materializes + reveals).
+- **Splitter state persisted locally** (`stateKey="blong-commander.splitter"`,
+  `stateStorage="local"`) — pane sizes survive reloads, Explorer-style.
+
+## Commander bug-fix pass (2026-08-23)
+
+- **Leaf `open` `{parent.X}` resolution via row stamping** — `commander.node.get` only receives the
+  leaf node, so `{parent.path}`/`{parent.namespace}` templates could never resolve (vault 404, S3
+  bucket empty). Instead of changing the RPC contract to carry the parent, rows are stamped with
+  their direct parent's fields as `parent.<field>` (`withParentContext`, dropping inherited
+  `parent.*` to avoid `parent.parent.*` accumulation). `cleanLeafNode` strips these + `__*` for
+  viewer display. This is the mechanism all leaf viewers rely on now.
+- **S3 kept AWS-native `Key`** — a first attempt lowercased S3 object list keys (`Key` → `key`),
+  which broke the `blong-int-adapter` s3 snapshots/assertions. Reverted the adapter; the commander
+  source config now uses `keyField: 'Key'` + `{Key}` (and `{parent.bucket}` via the stamped
+  context). Prefer fixing the commander config over changing a shared adapter's wire shape.
+- **mongodb `collection.find/get` add a string `id`** — the adapter's `{...doc, id: String(_id)}` is
+  an intentional (small) contract change so the commander rows have a unique label/key (mongo `_id`
+  is an ObjectId dropped by scalar flattening). The CRUD test mask and `tap-snapshots/mongodb...`
+  were updated; tap snapshots are order-sensitive, so `id` must be the last field.
+- **k8s synthetic levels have no RBAC `permission`** — category/resource/item levels use unseeded
+  permission strings that the gateway's `access.authorization.list` filter dropped, collapsing the
+  tree to one level (namespace became a leaf → wrong viewer). The namespace level's `permission`
+  gates the whole k8s source; deeper synthetic levels are ungated.
+- **Home = welcome panel, not a source table** — the initial table duplicated the tree and was
+  deemed useless. Replaced with a `.blong-commander-home` panel (title + hint + clickable source
+  tiles). `loadRows` with no selection sets `rows=[]`.
+- **`blong-int-adapter` test pollution of the shared dev redis** — running those integration tests
+  seeds `blong-test:*` keys into redis db 0, which changes the Commander's redis Playwright
+  baseline. Clean db 0 + re-seed `commander:demo`/`commander:greeting` before/after running them.
+  `redis-cli` is NOT installed on this host — use ioredis from `core/blong-gogo`.
+
+## Realm-owned RBAC merge files (2026-08-23)
+
+- **Each realm seeds its own capabilities/grants** — commander-specific RBAC (`commanderAdmin`
+  capability + the `Admin` role grant) moved OUT of
+  `core/blong-access/meta/dbTest/accessAuthorizationMerge.yaml` into the commander realm's own
+  `core/blong-commander/meta/dbTest/commander-accessAuthorizationMerge.yaml`. The blong-access merge
+  file keeps only access-realm RBAC (testAdmin/Admin, accessModelAdmin, loginCapability, ...).
+- **File → method mapping**: the last `-`-segment of the YAML filename maps to the handler method
+  (`commander-accessAuthorizationMerge.yaml` → `access.authorization.merge`). Any realm's
+  `meta/dbTest/*.yaml` is auto-bound as `<realm>.dbTest.asset` (the `meta` layer is a well-known
+  auto-discovered layer; nested `db`/`dbTest` folders are scanned as handler groups). The shared
+  `srv.db` adapter's `processSeedAssets` merges the YAML via `ctx.handle(params, {method})`.
+- **Idempotent/additive**: the merge handler is insert-only on conflict (`coreResourceEnsure`) and
+  uses `core.triple.merge` for edges, so the access file and commander file run in ANY order — both
+  can be applied to the same DB repeatedly without duplicates.
+- **Verified end-to-end**: deleted commanderAdmin's 22 `hasAction` edges in the dev DB, restarted
+  the backend, and the commander merge file re-seeded all 22 + the `Admin → commanderAdmin`
+  `hasCapability` grant; testAdmin's `commander.source.list` still returns all 8 sources (RBAC
+  pruning intact). The access `accessModelAdmin` (24 actions) was untouched.
+- **`commanderAdmin` was never in a committed git version** of the access merge file — it was an
+  uncommitted working-tree Phase 2 addition; removing it returns the file to its committed state.
+- **MongoDB dev-infra fix** (unrelated but blocking): the `mongosh` exec liveness probe (Node 16
+  startup + connect) exceeded the 10s timeout and crash-looped the pod even though mongod was
+  healthy. `test/integration/mongodb-deployment.yaml` now uses a `tcpSocket` probe on 27017 (with
+  512Mi memory limit) — pod is stable, 0 restarts.
+
 ## Menubar language switcher (2026-08-21 follow-up)
 
 - **Ad-hoc, client-side switching**: the switcher calls `appStore.setLanguage` only — it does NOT
