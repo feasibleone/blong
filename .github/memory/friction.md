@@ -9,6 +9,37 @@ _None currently._
 
 ## List of resolved frictions
 
+Resolved by the "Commander polish" session (2026-07-09):
+
+- **Commander grew to ~18k px with a tall table (573 MySQL rows) after adding the Splitter.** The
+  `height: 100%` chain resolved against content because `.p-tabview` (Portal.css) had `flex-grow: 1`
+  but no `min-height: 0` — flex `min-height: auto` blocked shrinking below content, so the tabview,
+  tab panel, `.commander-page`, and Commander all grew to the table's height. Also the inner
+  tree/content divs inside `SplitterPanel` collapsed to content width (panels are
+  `display:flex; flex-direction:row`). ~25 min of measuring ancestor heights via
+  `getBoundingClientRect` walks; root cause = missing `min-height: 0` + missing `flex:1` on panel
+  children. Fixed in Portal.css + commanderBrowsePage + Commander splitter styles.
+
+Resolved by the "Commander bug-fix pass" session (2026-08-23):
+
+- **`{parent.X}` leaf-open templates never resolved** — `commander.node.get` only received the
+  leaf node, so `{parent.path}` (vault) resolved to empty → 404 "Vault Secret Not Found"; S3
+  `{parent.bucket}` only worked because the adapter fell back to a default bucket. Root cause:
+  the parent's fields weren't carried to the leaf. Fix: stamp the direct parent's fields as
+  `parent.<field>` on every row (`withParentContext`). ~20 min across vault/S3/mongo/k8s.
+- **knex `table.list` double-prefixed table names** — `access.{tableName}.find` with
+  `tableName='access_user'` built `access_access_user`. Also listed junk `$subject_*` tables and
+  every visible schema's tables. Fix: filter to the connected DB + `{subject}_%` + junk names, and
+  strip the `{subject}_` prefix so `{tableName}` is the object name.
+- **PrimeReact DataTable kept stale body rows** after switching from a 200+ row table to a small
+  one (state was correct but the DOM showed old rows — "keeps showing db data while changing
+  columns"). Fix: remount the DataTable per navigation via `key={selected.key}` + a `loadTokenRef`
+  race guard. ~15 min of fiber-tree inspection (`__reactFiber$` state) to confirm rows state was
+  correct while the DOM was stale.
+- **tap snapshot ordering** — the mongodb adapter's `{...doc, id}` appended `id` at the END, so a
+  manually sed-inserted `id` right after `_id` failed tap's order-sensitive snapshot compare. Use
+  `TAP_SNAPSHOT=1` to regenerate, then revert unrelated snapshots (it reformats ALL of them).
+
 Resolved by the "access UI models + knex CRUD" session analysis (2026-08-21) — frictions that cost
 the most time in the "blong-access lacks the models for the UI" session.
 
