@@ -385,3 +385,51 @@
 - **Verified**: full blong-gogo `tsc --noEmit` green (exit 0); 89/89 tap tests (json + knex
   deadlock/connection files, incl. new retry + connection-error tests); `ci-lint`
   (tsc+cspell+eslint) clean on changed files; `wait.sh` syntax OK; `rush.yaml` YAML valid.
+
+## Glass theme glare continuity (blong-browser)
+
+- **Chose a single top-left light sweep, not strict line collinearity.** Computing each panel's
+  boundary from an exact global straight line (geometry division by per-panel axis length) makes
+  every lower same-column card saturate to fully black at steep angles (~140deg measured) → many
+  panels clamp flat and the layout looks wrong.
+- **Implementation** (`src/components/Theme/glassReflection.ts`): project each panel's top-left
+  corner onto the shared light direction (sin/cos of `GLARE_ANGLE_DEG`, default 150), normalize
+  over the live panel stack, and spread `--glare-shift` smoothly 42% (nearest light) → 12%
+  (farthest). CSS reads `linear-gradient(var(--glare-angle, 150deg), ...)` (cards, toolbar,
+  inspector) so JS angle and CSS gradient always agree.
+- **Knob**: `GLARE_ANGLE_DEG` in glassReflection.ts (90..180). Verified live in Editor/GlassToolbar:
+  toolbar 42% → habitat 12% descending; right Form Inspector rail lit less (31% at same row height
+  as 41% card) — coherent light read.
+- **Interval (250ms) + resize/load refresh in Theme.tsx** remains the trigger (async story content
+  defeats MutationObserver/ResizeObserver in the Storybook iframe).
+
+## Glass glare geometry — perpendicular confusion (correction, blong-browser)
+
+- **The user's "gradient line" = the visible light/dark EDGE, which is PERPENDICULAR to the CSS
+  `linear-gradient` axis.** Raising GLARE_ANGLE_DEG (135→150) made the edge MORE HORIZONTAL (the
+  opposite of the request) because axis 150° ⇒ edge ~30°; axis 135° ⇒ edge 45°; axis 90° ⇒ edge
+  vertical; axis 103° ⇒ edge ~77° (steep). Keep 90..180 knob, smaller = edge more vertical.
+- **Symptom "tops align, bottoms wrong"** = parallel per-panel edges placed by projection, not
+  collinear. Fix = strict single straight edge: shift_i = (edgeC − axis-proj of top-left) / axis
+  span_i, edgeC from the top-most anchor panel at ANCHOR_FRACTION (0.5). Verified every main-column
+  card lands on edge constant 357.8 (toolbar 50 → edit 66.3 → taxonomy 53.4 → reproduction 40.9 →
+  morphology 27.5 → links 13%). A single steep edge can only cross one vertical column; far-right
+  rail (Form Inspector) and the last low card fall back to a top-left falloff (FALLOFF_TOP .4 →
+  FALLOFF_BOTTOM .1) instead of pure black.
+- **CSS fallback** in glass.css (`var(--glare-angle, 103deg)`) must match GLARE_ANGLE_DEG.
+
+## Glass glare per-lane collinearity (final, blong-browser)
+
+- The editor re-lays itself between ONE column (narrow) and TWO card columns (wide, >~1200px),
+  plus a full-width header toolbar and a right Form Inspector rail. A single straight glare edge
+  can only cross one vertical lane, so:
+  - **Left lane = header toolbar + left-most card column** share ONE straight edge.
+  - **Right card column** gets its OWN parallel edge (can't share the full-width header line).
+  - **Form Inspector** is independent: fixed `--glare-shift` 50% ("starting at the middle").
+- Anchor for a lane's edge is its **top-most CARD** (not the header) at ANCHOR_FRACTION 0.5 —
+  anchoring on the wide header stretches/over-lights the narrow cards.
+- Implementation (`glassReflection.ts`): cluster non-header cards by centre-x (COLUMN_GAP 120px),
+  header joins columns[0]; `updateGlassReflections` re-runs on resize so lanes follow reflow.
+- Verified live @1500px (edge constants): left lane toolbar 23.2/edit 50/morphology 35.3/links 26.6
+  (C=340.7); right lane taxonomy 50/reproduction 42.6/habitat 36.3 (C=944); inspector 50.
+  Single-column: header 40.5/edit 50→habitat 15.8 all on one line.

@@ -1,7 +1,7 @@
-import {describe, expect, it} from 'vitest';
-import {render, screen} from '../../test/render.js';
+import { describe, expect, it } from 'vitest';
+import { render, screen } from '../../test/render.js';
 
-import {PALETTE_FONT_SIZES, PRIMEREACT_PALETTE_THEMES, Theme} from './Theme.js';
+import { PALETTE_FONT_SIZES, PRIMEREACT_PALETTE_THEMES, Theme } from './Theme.js';
 
 describe('Theme', () => {
     it('renders children', () => {
@@ -56,6 +56,36 @@ describe('Theme', () => {
             </Theme>,
         );
         expect(container.querySelector('.blong-app-big')).toBeInTheDocument();
+    });
+
+    it('does not apply the glass class by default', () => {
+        const {container} = render(
+            <Theme theme={{}}>
+                <span />
+            </Theme>,
+        );
+        expect(container.querySelector('.blong-app-glass')).not.toBeInTheDocument();
+    });
+
+    it('applies the glass class when variant is glass', () => {
+        const {container} = render(
+            <Theme theme={{variant: 'glass'}}>
+                <span />
+            </Theme>,
+        );
+        expect(container.querySelector('.blong-app.blong-app-glass')).toBeInTheDocument();
+    });
+
+    it('still applies palette/type classes alongside glass', () => {
+        const {container} = render(
+            <Theme theme={{variant: 'glass', palette: 'dark', type: 'compact'}}>
+                <span />
+            </Theme>,
+        );
+        const app = container.querySelector('.blong-app');
+        expect(app?.classList.contains('blong-app-glass')).toBe(true);
+        expect(app?.classList.contains('blong-app-dark')).toBe(true);
+        expect(app?.classList.contains('blong-app-compact')).toBe(true);
     });
 
     it('applies rtl class and dir when direction is rtl', () => {

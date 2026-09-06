@@ -12,14 +12,28 @@
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import 'primereact/resources/primereact.min.css';
+import './glass.css';
 
-import {addLocale, locale} from '../../primereact/index.js';
+import { addLocale, locale } from '../../primereact/index.js';
+import { updateGlassReflections } from './glassReflection.js';
 
-import {type ReactNode, useEffect} from 'react';
-import {useAppStore} from '../../state/appStore.js';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { useAppStore } from '../../state/appStore.js';
 
 export type PaletteType = 'light' | 'dark';
 export type ThemeType = 'big' | 'compact';
+/**
+ * Visual variant layered on top of the selected palette theme:
+ * - `standard` (default) — the plain PrimeReact theme.
+ * - `glass` — high-contrast grayscale glass look layered on the palette
+ *   theme (matte slate canvas, glossy charcoal panels with sharp skewed
+ *   glares + 3D bevels, dark glass input plates, rectangular polished glass
+ *   buttons, grayscale checkboxes and table rows). All glass rules live in
+ *   `glass.css` and are scoped under the `blong-app-glass` class Theme adds
+ *   to its wrapper, so the base theme stays intact unless `variant: 'glass'`
+ *   is requested.
+ */
+export type ThemeVariant = 'standard' | 'glass';
 
 /**
  * Maps each palette to the PrimeReact theme name for light and dark modes.
@@ -41,6 +55,8 @@ export interface IThemeConfig {
     palette?: PaletteType;
     direction?: 'ltr' | 'rtl';
     primary?: string;
+    /** Visual variant layered on top of the base palette theme. Defaults to 'standard'. */
+    variant?: ThemeVariant;
     /** Override the font size (px). Defaults to palette-based size. */
     fontSize?: number;
     /**
@@ -57,6 +73,7 @@ interface IThemeProps {
 }
 
 export function Theme({theme, children}: IThemeProps) {
+    const appRef = useRef<HTMLDivElement>(null);
     const language = useAppStore(s => s.language);
 
     useEffect(() => {
@@ -73,6 +90,41 @@ export function Theme({theme, children}: IThemeProps) {
 
     const palette = theme.palette ?? 'dark';
     const type = theme.type ?? 'compact';
+    const variant = theme.variant ?? 'standard';
+
+    // Glass variant: keep each panel's `--glare-shift` in sync with its
+    // vertical position so the single light ray stays continuous (no
+    // hardcoded per-card classes). Disposed automatically when the variant
+    // changes or the component unmounts.
+    const glassActive = variant === 'glass';
+    useEffect(() => {
+        if (!glassActive) return undefined;
+        // Mark the document root so portal overlays (rendered outside the
+        // `.blong-app-glass` wrapper) can be scoped to the glass theme too.
+        const root = document.documentElement;
+        root.classList.add('blong-theme-glass');
+        const node = appRef.current;
+        if (!node) {
+            root.classList.remove('blong-theme-glass');
+            return undefined;
+        }
+        // Recompute each panel's `--glare-shift` from its vertical position so
+        // the single light ray stays continuous across the whole layout. A
+        // short interval + resize listener keep it correct even when panels
+        // mount asynchronously (e.g. after auth/session restore in a story).
+        updateGlassReflections(node);
+        const refresh = () => updateGlassReflections(node);
+        const interval = window.setInterval(refresh, 250);
+        window.addEventListener('resize', refresh);
+        window.addEventListener('load', refresh);
+        return () => {
+            root.classList.remove('blong-theme-glass');
+            window.clearInterval(interval);
+            window.removeEventListener('resize', refresh);
+            window.removeEventListener('load', refresh);
+        };
+    }, [glassActive]);
+
     useEffect(() => {
         const fontSize = theme.fontSize ?? PALETTE_FONT_SIZES[type];
 
@@ -105,10 +157,12 @@ export function Theme({theme, children}: IThemeProps) {
 
     return (
         <div
+            ref={appRef}
             className={[
                 'blong-app',
                 `blong-app-${palette}`,
                 `blong-app-${type}`,
+                variant === 'glass' ? 'blong-app-glass' : '',
                 theme.direction === 'rtl' ? 'blong-app-rtl' : '',
             ]
                 .filter(Boolean)

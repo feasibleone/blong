@@ -6,18 +6,19 @@
  * - Schema and cards defined in blong-marine (coralEditorFixture) — single source of truth
  * - Handlers in .storybook/dispatch.tsx use coralCoral* prefix
  */
-import type {Meta} from '@storybook/react-vite';
-import type {within} from '@testing-library/react';
-import type {UserEvent} from '@testing-library/user-event';
+import type { Meta } from '@storybook/react-vite';
+import type { within } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
 import React from 'react';
 import coralEditorFixture, {
     coralStoryValue,
     marineDropdownData,
 } from '../../../.storybook/marine.js';
-import {Card} from '../Card/Card.js';
-import {Explorer} from '../Explorer/Explorer.js';
-import type {IEditorProps} from './Editor.js';
-import {Editor} from './Editor.js';
+import { Card } from '../Card/Card.js';
+import { Explorer } from '../Explorer/Explorer.js';
+import type { IThemeConfig } from '../Theme/Theme.js';
+import type { IEditorProps } from './Editor.js';
+import { Editor } from './Editor.js';
 
 const meta: Meta<typeof Editor> = {
     title: 'Editor',
@@ -31,6 +32,8 @@ export type StoryFn = ((args: StoryArgs) => React.ReactElement) & {
     args?: StoryArgs;
     play?: (ctx: {canvas: ReturnType<typeof within>; userEvent: UserEvent}) => Promise<void>;
     decorators?: Array<(Story: React.ComponentType) => React.ReactElement>;
+    /** Storybook parameters — `theme` opts a story into a theme variant (e.g. glass). */
+    parameters?: {theme?: Partial<IThemeConfig>};
 };
 
 export const Basic: StoryFn = (args = {}) => (
@@ -55,6 +58,61 @@ export const Basic: StoryFn = (args = {}) => (
     />
 );
 Basic.args = {};
+
+/**
+ * Glass — the coral Editor under the `variant: 'glass'` theme (flat).
+ * Bound from `Basic`, so it keeps Basic's live `value`, `dropdowns`,
+ * `designable` and full coral layout. The material language lives in
+ * `src/components/Theme/glass.css` (blueprint: `plans/theme/glass.md`):
+ * high-contrast grayscale glass — glossy charcoal panels with sharp skewed
+ * glares, dark glass inputs, rectangular polished glass buttons, grayscale
+ * checkboxes and table rows — no 3D tilt.
+ */
+export const Glass: StoryFn = Basic.bind({});
+Glass.parameters = {theme: {variant: 'glass'}};
+
+/**
+ * GlassTilt — the same glass surface wrapped in a 3D viewport that tilts and
+ * glides its glares with the pointer (blueprint §1/§5 parallax). Move the
+ * mouse to slant the panel grid. Reduced-motion users get a static render.
+ */
+export const GlassTilt: StoryFn = Basic.bind({});
+GlassTilt.parameters = {theme: {variant: 'glass'}};
+GlassTilt.decorators = [
+    Story => (
+        <GlassViewport>
+            <Story />
+        </GlassViewport>
+    ),
+];
+
+/**
+ * GlassViewport — renders `.blong-glass-viewport > .blong-glass-grid` and
+ * tracks the pointer to drive `--mouse-x` / `--mouse-y`, which glass.css uses
+ * for the tilt + glare parallax. Inert unless rendered under the glass theme.
+ */
+function GlassViewport({children}: {children: React.ReactNode}) {
+    const gridRef = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        const node = gridRef.current;
+        if (!node) return undefined;
+        const onMove = (event: MouseEvent) => {
+            const x = (event.clientX / window.innerWidth) * 2 - 1;
+            const y = (event.clientY / window.innerHeight) * 2 - 1;
+            node.style.setProperty('--mouse-x', x.toFixed(3));
+            node.style.setProperty('--mouse-y', y.toFixed(3));
+        };
+        window.addEventListener('mousemove', onMove);
+        return () => window.removeEventListener('mousemove', onMove);
+    }, []);
+    return (
+        <div className="blong-glass-viewport">
+            <div ref={gridRef} className="blong-glass-grid">
+                {children}
+            </div>
+        </div>
+    );
+}
 
 /**
  * Shared template — coral schema + save wired; stories spread their args on top.
@@ -223,6 +281,12 @@ Toolbar.play = async ({canvas, userEvent}) => {
     const errorBtn = canvas.queryByText?.('Error') as HTMLButtonElement | null;
     if (errorBtn) await userEvent.click(errorBtn);
 };
+
+export const GlassToolbar: StoryFn = Template.bind({});
+GlassToolbar.args = Toolbar.args;
+GlassToolbar.parameters = {theme: {variant: 'glass'}};
+GlassToolbar.play = Toolbar.play;
+
 
 /**
  * ToolbarBG — same as Toolbar but with Bulgarian translations applied.
