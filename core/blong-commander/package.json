@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-commander",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "Universal admin UI — explore heterogeneous backends through semantic-triple commander sources",
     "repository": {
         "url": "git+https://github.com/feasibleone/blong.git"

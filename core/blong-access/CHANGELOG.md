@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-access-v1.3.0...blong-access-v1.4.0) (2026-09-07)
+
+
+### Features
+
+* blong-commander ([#163](https://github.com/feasibleone/blong/issues/163)) ([b7fe11b](https://github.com/feasibleone/blong/commit/b7fe11b44b1d1ee0e14e4be96523d403b59311c2))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-access-v1.2.0...blong-access-v1.3.0) (2026-08-21)
 
 

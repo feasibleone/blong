@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.1.1...blong-gateway-v1.2.0) (2026-09-07)
+
+
+### Features
+
+* blong-commander ([#163](https://github.com/feasibleone/blong/issues/163)) ([b7fe11b](https://github.com/feasibleone/blong/commit/b7fe11b44b1d1ee0e14e4be96523d403b59311c2))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.1.0...blong-gateway-v1.1.1) (2026-08-21)
 
 
