@@ -88,6 +88,36 @@ describe('Theme', () => {
         expect(app?.classList.contains('blong-app-compact')).toBe(true);
     });
 
+    it('does not apply the wood class by default', () => {
+        const {container} = render(
+            <Theme theme={{}}>
+                <span />
+            </Theme>,
+        );
+        expect(container.querySelector('.blong-app-wood')).not.toBeInTheDocument();
+    });
+
+    it('applies the wood class when variant is wood', () => {
+        const {container} = render(
+            <Theme theme={{variant: 'wood'}}>
+                <span />
+            </Theme>,
+        );
+        expect(container.querySelector('.blong-app.blong-app-wood')).toBeInTheDocument();
+    });
+
+    it('still applies palette/type classes alongside wood', () => {
+        const {container} = render(
+            <Theme theme={{variant: 'wood', palette: 'dark', type: 'compact'}}>
+                <span />
+            </Theme>,
+        );
+        const app = container.querySelector('.blong-app');
+        expect(app?.classList.contains('blong-app-wood')).toBe(true);
+        expect(app?.classList.contains('blong-app-dark')).toBe(true);
+        expect(app?.classList.contains('blong-app-compact')).toBe(true);
+    });
+
     it('applies rtl class and dir when direction is rtl', () => {
         const {container} = render(
             <Theme theme={{direction: 'rtl'}}>

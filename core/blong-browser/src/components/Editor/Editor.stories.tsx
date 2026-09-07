@@ -287,6 +287,39 @@ GlassToolbar.args = Toolbar.args;
 GlassToolbar.parameters = {theme: {variant: 'glass'}};
 GlassToolbar.play = Toolbar.play;
 
+/**
+ * Wood — the coral Editor under the `variant: 'wood'` theme (flat). Bound
+ * from `Basic`, so it keeps Basic's live `value`, `dropdowns`, `designable`
+ * and full coral layout. The material language lives in
+ * `src/components/Theme/wood.css` (blueprint: `plans/theme/wood.md`):
+ * luxury oiled-walnut panels with flush steel corner screws, milled steel
+ * carved-in inputs, brushed-gold bracket controls, charcoal-steel toggles,
+ * engraved brass table grids and a brushed-brass Form Inspector.
+ */
+export const Wood: StoryFn = Basic.bind({});
+Wood.parameters = {theme: {variant: 'wood'}};
+
+/**
+ * WoodTilt — the same walnut console wrapped in the pointer-driven 3D
+ * viewport. Move the mouse to slant the panel grid (reduced-motion users get
+ * a static render).
+ */
+export const WoodTilt: StoryFn = Basic.bind({});
+WoodTilt.parameters = {theme: {variant: 'wood'}};
+WoodTilt.decorators = [
+    Story => (
+        <GlassViewport>
+            <Story />
+        </GlassViewport>
+    ),
+];
+
+/** WoodToolbar — walnut console with the milled-metal header actions. */
+export const WoodToolbar: StoryFn = Template.bind({});
+WoodToolbar.args = Toolbar.args;
+WoodToolbar.parameters = {theme: {variant: 'wood'}};
+WoodToolbar.play = Toolbar.play;
+
 
 /**
  * ToolbarBG — same as Toolbar but with Bulgarian translations applied.
