@@ -50,8 +50,10 @@ export default handler(
         },
     }) => ({
         testMongodbCrud: ({name = 'mongodb CRUD'}: {name?: string}) =>
-            // chain-level mask: `_id` for single documents, `*._id` for array results
-            group(name, {mask: ['_id', '*._id']})([
+            // chain-level mask: `_id` for single documents, `*._id` for array
+            // results, and the commander `id` (stringified ObjectId) the adapter
+            // surfaces for the explorer rows.
+            group(name, {mask: ['_id', '*._id', 'id', '*.id']})([
                 // ── 1. Cleanup any leftover test documents ────────────────
                 async function cleanData(assert: IAssert, {$meta}: StepMeta) {
                     const result = await mongoDocumentDelete({testTag: TEST_TAG}, $meta);

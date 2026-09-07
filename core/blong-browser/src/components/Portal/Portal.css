@@ -35,11 +35,12 @@
     text-align: center;
 }
 
-/* TabView fills its container and lets panels grow */
+/* TabView fills its container and lets panels grow (but never beyond it) */
 .p-tabview {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    min-height: 0;
 }
 
 .p-tabview .p-tabview-panels {
@@ -47,10 +48,12 @@
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .p-tabview .p-tabview-panel {
     flex-grow: 1;
+    min-height: 0;
 }
 
 /* MenuBar resets */

@@ -18,17 +18,14 @@
  * });
  * ```
  *
- * Override ports to avoid interference when running Playwright
- * shards or multiple suites in parallel:
- * ```ts
- * export default defineBlongConfig({
- *     backendPort: 9090,
- *     frontendPort: 5180,
- * });
- * ```
- *
- * Ports also default from environment variables `PLAYWRIGHT_BACKEND_PORT`
- * and `PLAYWRIGHT_FRONTEND_PORT`, which is the recommended approach in CI:
+ * Ports are selected in this priority:
+ *   1. explicit `backendPort` / `frontendPort` options;
+ *   2. `PLAYWRIGHT_BACKEND_PORT` / `PLAYWRIGHT_FRONTEND_PORT` env vars;
+ *   3. in CI, a per-realm pair auto-derived from the package's index in the
+ *      Rush `rush.json` (`backend = 9000 + index`, `frontend = backend + 100`)
+ *      so parallel suites never collide on the default ports;
+ *   4. locally, the classic default ports `8080` / `5173` (so a single local
+ *      run reuses your running dev server):
  * ```bash
  * PLAYWRIGHT_BACKEND_PORT=9090 PLAYWRIGHT_FRONTEND_PORT=5180 npx playwright test
  * ```
@@ -42,9 +39,10 @@
  * ```
  */
 import {defineConfig, type PlaywrightTestConfig, type Project} from '@playwright/test';
+import {existsSync, readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import * as os from 'node:os';
-import {dirname} from 'node:path';
+import {dirname, join, resolve} from 'node:path';
 import type {IBlongTestOptions} from '../playwright.js';
 
 type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
@@ -81,6 +79,86 @@ function resolveRealmTestDir(packageName: string): string | null {
     }
 }
 
+/** Backend port base for a project in CI: 9000 + rush.json project index. */
+const CI_BACKEND_BASE = 9000;
+/** Frontend = backend + this offset (keeps the established 90xx/91xx split). */
+const FRONTEND_OFFSET = 100;
+
+/** Strip JSONC comments (block `/* *\/` and line `//`) without touching strings. */
+function stripJsoncComments(text: string): string {
+    let out = '';
+    let quote: '"' | "'" | null = null;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (quote) {
+            out += c;
+            if (c === '\\') {
+                out += text[i + 1] ?? '';
+                i++;
+            } else if (c === quote) quote = null;
+            continue;
+        }
+        if (c === '"' || c === "'") {
+            quote = c;
+            out += c;
+            continue;
+        }
+        if (c === '/' && text[i + 1] === '/') {
+            while (i < text.length && text[i] !== '\n') i++;
+            out += '\n';
+            continue;
+        }
+        if (c === '/' && text[i + 1] === '*') {
+            i += 2;
+            while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++;
+            i++;
+            continue;
+        }
+        out += c;
+    }
+    return out;
+}
+
+/** Walk up from `startDir` to find `fileName`; returns its path or null. */
+function findUp(startDir: string, fileName: string): string | null {
+    let dir = resolve(startDir);
+    for (;;) {
+        const candidate = join(dir, fileName);
+        if (existsSync(candidate)) return candidate;
+        const parent = dirname(dir);
+        if (parent === dir) return null;
+        dir = parent;
+    }
+}
+
+/**
+ * Resolve a unique per-realm port pair for parallel CI runs from the calling
+ * package's index in the monorepo `rush.json` (`backend = 9000 + index`,
+ * `frontend = backend + 100`). Returns null when the current package is not part
+ * of a Rush workspace, so the default 8080/5173 is used instead.
+ */
+function resolveUniquePorts(): {backendPort: number; frontendPort: number} | null {
+    try {
+        const cwd = process.cwd();
+        const pkgFile = findUp(cwd, 'package.json');
+        const rushFile = findUp(cwd, 'rush.json');
+        if (!pkgFile || !rushFile) return null;
+        const pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) as {name?: string};
+        if (!pkg.name) return null;
+        const rush = JSON.parse(stripJsoncComments(readFileSync(rushFile, 'utf8'))) as {
+            projects?: Array<{packageName?: string}>;
+        };
+        const index = (rush.projects ?? []).findIndex(p => p.packageName === pkg.name);
+        if (index < 0) return null;
+        return {
+            backendPort: CI_BACKEND_BASE + index,
+            frontendPort: CI_BACKEND_BASE + index + FRONTEND_OFFSET,
+        };
+    } catch {
+        return null;
+    }
+}
+
 export function defineBlongConfig(
     overrides: BlongConfig = {},
 ): ReturnType<typeof defineConfig<IBlongTestOptions>> {
@@ -90,10 +168,22 @@ export function defineBlongConfig(
         reporter,
         realmPackages,
         projects: projectsOverride,
-        backendPort = Number(process.env['PLAYWRIGHT_BACKEND_PORT']) || 8080,
-        frontendPort = Number(process.env['PLAYWRIGHT_FRONTEND_PORT']) || 5173,
+        backendPort: explicitBackendPort,
+        frontendPort: explicitFrontendPort,
         ...rest
     } = overrides;
+    // Port selection: explicit option → PLAYWRIGHT_* env → (CI) a unique pair
+    // derived from the package's rush.json index → (local) default 8080/5173 so
+    // a single local run reuses your running dev server.
+    const derived = resolveUniquePorts();
+    const backendPort =
+        explicitBackendPort ??
+        (Number(process.env['PLAYWRIGHT_BACKEND_PORT']) ||
+            (process.env.CI && derived ? derived.backendPort : 8080));
+    const frontendPort =
+        explicitFrontendPort ??
+        (Number(process.env['PLAYWRIGHT_FRONTEND_PORT']) ||
+            (process.env.CI && derived ? derived.frontendPort : 5173));
 
     // Build projects: local test dir + one project per realm package
     const realmProjects: Project<IBlongTestOptions>[] = (realmPackages ?? []).flatMap(pkg => {

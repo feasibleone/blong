@@ -35,21 +35,20 @@ spec:
         resources:
           limits:
             cpu: "1.0"
-            memory: 256Mi
+            memory: 512Mi
           requests:
             cpu: "0.5"
             memory: 128Mi
+        # TCP socket probe instead of `mongosh` exec: the mongosh (Node.js)
+        # startup + connect can exceed the exec timeout under the tight CPU
+        # limit, so the exec probe spuriously crash-looped the pod even though
+        # mongod was healthy. A TCP probe matches how the app actually connects.
         livenessProbe:
-          exec:
-            command:
-            - mongosh
-            - --eval
-            - 'db.runCommand("ping").ok'
-            - localhost:27017/test
-            - --quiet
-          initialDelaySeconds: 40
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 10
+          timeoutSeconds: 5
           failureThreshold: 5
       volumes:
       - name: mongodb-data

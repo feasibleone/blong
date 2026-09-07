@@ -43,6 +43,51 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
+/**
+ * Commander explorer categories for namespaced resources. Each category groups
+ * the resource types the adapter can list (`{ns}.<resource>.find`). The
+ * category / resource levels are synthetic navigation (no cluster calls).
+ */
+const CATEGORIES: Array<{name: string; label: string; resources: Array<{type: string; label: string}>}> = [
+    {
+        name: 'workloads',
+        label: 'Workloads',
+        resources: [
+            {type: 'deployment', label: 'Deployments'},
+            {type: 'replicaset', label: 'ReplicaSets'},
+            {type: 'daemonset', label: 'DaemonSets'},
+            {type: 'statefulset', label: 'StatefulSets'},
+            {type: 'pod', label: 'Pods'},
+        ],
+    },
+    {
+        name: 'networking',
+        label: 'Networking',
+        resources: [
+            {type: 'service', label: 'Services'},
+            {type: 'ingress', label: 'Ingresses'},
+            {type: 'networkpolicy', label: 'NetworkPolicies'},
+        ],
+    },
+    {
+        name: 'storage',
+        label: 'Storage',
+        resources: [
+            {type: 'persistentvolume', label: 'PersistentVolumes'},
+            {type: 'persistentvolumeclaim', label: 'PersistentVolumeClaims'},
+            {type: 'storageclass', label: 'StorageClasses'},
+        ],
+    },
+    {
+        name: 'configuration',
+        label: 'Configuration',
+        resources: [
+            {type: 'configmap', label: 'ConfigMaps'},
+            {type: 'secret', label: 'Secrets'},
+        ],
+    },
+];
+
 export default adapter<IConfig>(({utError}) => {
     _errors ||= utError.register(errorMap);
 
@@ -318,6 +363,29 @@ export default adapter<IConfig>(({utError}) => {
             };
 
             try {
+                // Commander explorer navigation levels (synthetic, no cluster calls):
+                //   `{ns}.category.list`  → the resource categories
+                //   `{ns}.resource.list`  → the resource types within a category
+                if (_resourceType === 'category' && operation === 'list') {
+                    const ns =
+                        (!Array.isArray(params) && params.namespace) ||
+                        this.config.k8s.namespace ||
+                        'default';
+                    return {items: CATEGORIES.map(c => ({category: c.name, label: c.label, namespace: ns}))};
+                }
+                if (_resourceType === 'resource' && operation === 'list') {
+                    const category =
+                        !Array.isArray(params) ? (params.category as string | undefined) : undefined;
+                    const ns =
+                        (!Array.isArray(params) && params.namespace) ||
+                        this.config.k8s.namespace ||
+                        'default';
+                    const cat = CATEGORIES.find(c => c.name === category);
+                    const resources = cat?.resources ?? [];
+                    return {
+                        items: resources.map(r => ({resourceType: r.type, label: r.label, namespace: ns})),
+                    };
+                }
                 switch (operation) {
                     case 'get': {
                         // Get single resource
@@ -350,6 +418,28 @@ export default adapter<IConfig>(({utError}) => {
                             ...(limit && {limit}),
                             ...(continueToken && {continue: continueToken}),
                         });
+                    }
+                    case 'log': {
+                        // Read pod container logs (`{ns}.pod.log`)
+                        if (Array.isArray(params)) {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
+                        if (resourceType !== 'pod') {
+                            throw this.error(_errors['k8s.invalid'](), $meta);
+                        }
+                        const {name, container, tailLines, sinceSeconds, follow = false} = params;
+                        if (!name) {
+                            throw this.error(_errors['k8s.missingKey']({key: 'name'}), $meta);
+                        }
+                        const result = await this.config.context.coreV1Api!.readNamespacedPodLog({
+                            name: name as string,
+                            namespace,
+                            container: container as string | undefined,
+                            follow: follow as boolean,
+                            tailLines: tailLines as number | undefined,
+                            sinceSeconds: sinceSeconds as number | undefined,
+                        });
+                        return {logs: result};
                     }
                     case 'create':
                     case 'add': {

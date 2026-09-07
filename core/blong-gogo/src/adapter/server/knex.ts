@@ -407,6 +407,51 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     this as unknown as {_dropdownList(s: string): Promise<unknown>}
                 )._dropdownList(subject);
             }
+            // Structure discovery for the commander explorer:
+            //   `{ns}.schema.list` — databases/schemas on the server
+            //   `{ns}.table.list`  — tables in a schema (params.schema)
+            if (object === 'schema' && operation === 'list') {
+                const qb = this.config.context.queryBuilder!;
+                const rows = await qb
+                    .select('SCHEMA_NAME as schemaName')
+                    .from('information_schema.schemata')
+                    .orderBy('SCHEMA_NAME');
+                return {items: rows as Array<{schemaName: string}>};
+            }
+            if (object === 'table' && operation === 'list') {
+                const qb = this.config.context.queryBuilder!;
+                // When no schema is given, scope to the adapter's own database so
+                // the explorer lists the app's tables only — not every schema the
+                // connection can see (information_schema, mysql, other realms' DBs).
+                const schema = (params as Record<string, unknown>).schema as string | undefined;
+                const database =
+                    schema ?? (this.config.knex?.connection as {database?: string} | undefined)?.database;
+                let query = qb
+                    .select('TABLE_NAME as tableName', 'TABLE_TYPE as tableType')
+                    .from('information_schema.tables')
+                    .orderBy('TABLE_NAME');
+                if (database) query = query.where('TABLE_SCHEMA', database);
+                const rows = await query;
+                // Drop leftover template/placeholder tables (e.g. `$subject_$object`
+                // from an unresolved schema seed) — they are not real, queryable
+                // tables and clicking them would surface a "table doesn't exist".
+                const junk = /[\${}]/;
+                // Only the tables this subject owns (`{subject}_*`) are reachable
+                // via the generic `{subject}.{object}` CRUD triples; strip the
+                // `{subject}_` prefix so `access.{tableName}.find` resolves to the
+                // actual table (`access.user.find` → `access_user`), instead of
+                // double-prefixing (`access.access_user.find` → `access_access_user`).
+                const prefix = `${subject}_`;
+                return {
+                    items: (rows as Array<{tableName: string; tableType: string}>)
+                        .filter(row => !junk.test(row.tableName))
+                        .filter(row => row.tableName.startsWith(prefix))
+                        .map(row => ({
+                            tableName: row.tableName.slice(prefix.length),
+                            tableType: row.tableType,
+                        })),
+                };
+            }
             const table = `${subject}_${object}`;
             switch (operation) {
                 case 'get': {

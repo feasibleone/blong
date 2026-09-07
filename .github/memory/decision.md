@@ -59,6 +59,74 @@
   menu/profile render in Bulgarian, screenshot `profile-bg.png`, then restore `'en'` so the shared
   dev DB and other screenshots stay stable.
 
+## Commander polish (2026-07-09)
+
+- **Portal height-chain fix (GLOBAL)**: `.p-tabview`, `.p-tabview .p-tabview-panels` and
+  `.p-tabview .p-tabview-panel` in `Portal.css` got `min-height: 0` so tabs fill the portal body and
+  NEVER grow beyond the viewport (a 573-row table used to stretch the whole page to ~18k px). This
+  affects every portal page — any page that previously relied on growing beyond the viewport would
+  now scroll internally (that was a bug, not a feature). If a non-commander page's Playwright
+  baseline shifts, regenerate it.
+- **Jump-to-path actually navigates** — the old "Jump to path…" input was a no-op (`onJump` was
+  never wired). The combined crumb/jump widget's `onJump` now resolves the typed `/`-joined label
+  path through a new `Navigator.jumpTo(labels)` handle method (lazy-materializes + reveals).
+- **Splitter state persisted locally** (`stateKey="blong-commander.splitter"`,
+  `stateStorage="local"`) — pane sizes survive reloads, Explorer-style.
+
+## Commander bug-fix pass (2026-08-23)
+
+- **Leaf `open` `{parent.X}` resolution via row stamping** — `commander.node.get` only receives the
+  leaf node, so `{parent.path}`/`{parent.namespace}` templates could never resolve (vault 404, S3
+  bucket empty). Instead of changing the RPC contract to carry the parent, rows are stamped with
+  their direct parent's fields as `parent.<field>` (`withParentContext`, dropping inherited
+  `parent.*` to avoid `parent.parent.*` accumulation). `cleanLeafNode` strips these + `__*` for
+  viewer display. This is the mechanism all leaf viewers rely on now.
+- **S3 kept AWS-native `Key`** — a first attempt lowercased S3 object list keys (`Key` → `key`),
+  which broke the `blong-int-adapter` s3 snapshots/assertions. Reverted the adapter; the commander
+  source config now uses `keyField: 'Key'` + `{Key}` (and `{parent.bucket}` via the stamped
+  context). Prefer fixing the commander config over changing a shared adapter's wire shape.
+- **mongodb `collection.find/get` add a string `id`** — the adapter's `{...doc, id: String(_id)}` is
+  an intentional (small) contract change so the commander rows have a unique label/key (mongo `_id`
+  is an ObjectId dropped by scalar flattening). The CRUD test mask and `tap-snapshots/mongodb...`
+  were updated; tap snapshots are order-sensitive, so `id` must be the last field.
+- **k8s synthetic levels have no RBAC `permission`** — category/resource/item levels use unseeded
+  permission strings that the gateway's `access.authorization.list` filter dropped, collapsing the
+  tree to one level (namespace became a leaf → wrong viewer). The namespace level's `permission`
+  gates the whole k8s source; deeper synthetic levels are ungated.
+- **Home = welcome panel, not a source table** — the initial table duplicated the tree and was
+  deemed useless. Replaced with a `.blong-commander-home` panel (title + hint + clickable source
+  tiles). `loadRows` with no selection sets `rows=[]`.
+- **`blong-int-adapter` test pollution of the shared dev redis** — running those integration tests
+  seeds `blong-test:*` keys into redis db 0, which changes the Commander's redis Playwright
+  baseline. Clean db 0 + re-seed `commander:demo`/`commander:greeting` before/after running them.
+  `redis-cli` is NOT installed on this host — use ioredis from `core/blong-gogo`.
+
+## Realm-owned RBAC merge files (2026-08-23)
+
+- **Each realm seeds its own capabilities/grants** — commander-specific RBAC (`commanderAdmin`
+  capability + the `Admin` role grant) moved OUT of
+  `core/blong-access/meta/dbTest/accessAuthorizationMerge.yaml` into the commander realm's own
+  `core/blong-commander/meta/dbTest/commander-accessAuthorizationMerge.yaml`. The blong-access merge
+  file keeps only access-realm RBAC (testAdmin/Admin, accessModelAdmin, loginCapability, ...).
+- **File → method mapping**: the last `-`-segment of the YAML filename maps to the handler method
+  (`commander-accessAuthorizationMerge.yaml` → `access.authorization.merge`). Any realm's
+  `meta/dbTest/*.yaml` is auto-bound as `<realm>.dbTest.asset` (the `meta` layer is a well-known
+  auto-discovered layer; nested `db`/`dbTest` folders are scanned as handler groups). The shared
+  `srv.db` adapter's `processSeedAssets` merges the YAML via `ctx.handle(params, {method})`.
+- **Idempotent/additive**: the merge handler is insert-only on conflict (`coreResourceEnsure`) and
+  uses `core.triple.merge` for edges, so the access file and commander file run in ANY order — both
+  can be applied to the same DB repeatedly without duplicates.
+- **Verified end-to-end**: deleted commanderAdmin's 22 `hasAction` edges in the dev DB, restarted
+  the backend, and the commander merge file re-seeded all 22 + the `Admin → commanderAdmin`
+  `hasCapability` grant; testAdmin's `commander.source.list` still returns all 8 sources (RBAC
+  pruning intact). The access `accessModelAdmin` (24 actions) was untouched.
+- **`commanderAdmin` was never in a committed git version** of the access merge file — it was an
+  uncommitted working-tree Phase 2 addition; removing it returns the file to its committed state.
+- **MongoDB dev-infra fix** (unrelated but blocking): the `mongosh` exec liveness probe (Node 16
+  startup + connect) exceeded the 10s timeout and crash-looped the pod even though mongod was
+  healthy. `test/integration/mongodb-deployment.yaml` now uses a `tcpSocket` probe on 27017 (with
+  512Mi memory limit) — pod is stable, 0 restarts.
+
 ## Menubar language switcher (2026-08-21 follow-up)
 
 - **Ad-hoc, client-side switching**: the switcher calls `appStore.setLanguage` only — it does NOT
@@ -386,6 +454,33 @@
   deadlock/connection files, incl. new retry + connection-error tests); `ci-lint`
   (tsc+cspell+eslint) clean on changed files; `wait.sh` syntax OK; `rush.yaml` YAML valid.
 
+## Commander tests: DB auto-provisioning + deterministic screenshots (2026-09-07)
+
+- **Backend tap test was missing its DB**: `core/blong-commander/test.ts` loaded with only
+  `['integration']`, so the shared `srv.db` adapter's `createDatabase`/schema-sync/seed (which live
+  under the `dev` intent) never ran → "Unknown database 'commander'". Fixed by loading with
+  `['microservice','integration','dev', ...(CI?['ci']:[])]` (mirrors blong-access) → the DB is
+  auto-created + schema synced + `meta/db`+`meta/dbTest` seeds applied.
+- **Lingering socket on tap exit**: the redis adapter's `stop()` `quit()` on a lazy/connecting
+  ioredis client left the 6379 socket open → tap `timeout!`. `adapter/server/redis.ts` now calls
+  `disconnect()` after `quit()` (best-effort, idempotent).
+- **Backend seeds are now provisioned by cluster init jobs** in `test/integration/` (run by
+  `kubectl apply -k test/integration/` in CI and locally via k3d-create), so no manual action:
+  minio-bucket-init uploads `commander/hello.txt`; new vault-seed-init writes KV-v1
+  `secret/commander-demo`; new redis-seed-init sets `commander:demo`/`commander:greeting`;
+  kafka-topic-init now also produces ONE deterministic seed JSON message. Deterministic content →
+  identical in CI + local.
+- **Screenshots never bake machine-specific data**: replace whole-table masks (too opaque) with (a)
+  the Commander's built-in Filter… input to narrow to the seeded subset (e.g. `commander` keys,
+  `commander-demo` secret, `commander/` object, seed message, `admin` db, `master` realm) and (b)
+  magenta column masks ONLY on the specific dynamic columns (vault Accessor, k8s ResourceVersion/
+  Uid/NodeName + pod names, mongo SizeOnDisk, keycloak realm/user Id + created timestamp, kafka
+  offset). Field-name/stable columns stay visible so reviewers can tell the UI works.
+- **Filter persists across drill navigation** in the Commander (component-level `search`), so the
+  test must `clearFilter()` before drilling into a child after a filtered screenshot, or the child
+  view is wrongly filtered (keycloak users empty under the `master` filter; mongo only passed
+  because its collections carry a `Database=admin` column).
+
 ## Glass theme glare continuity (blong-browser)
 
 - **Chose a single top-left light sweep, not strict line collinearity.** Computing each panel's
@@ -393,10 +488,10 @@
   every lower same-column card saturate to fully black at steep angles (~140deg measured) → many
   panels clamp flat and the layout looks wrong.
 - **Implementation** (`src/components/Theme/glassReflection.ts`): project each panel's top-left
-  corner onto the shared light direction (sin/cos of `GLARE_ANGLE_DEG`, default 150), normalize
-  over the live panel stack, and spread `--glare-shift` smoothly 42% (nearest light) → 12%
-  (farthest). CSS reads `linear-gradient(var(--glare-angle, 150deg), ...)` (cards, toolbar,
-  inspector) so JS angle and CSS gradient always agree.
+  corner onto the shared light direction (sin/cos of `GLARE_ANGLE_DEG`, default 150), normalize over
+  the live panel stack, and spread `--glare-shift` smoothly 42% (nearest light) → 12% (farthest).
+  CSS reads `linear-gradient(var(--glare-angle, 150deg), ...)` (cards, toolbar, inspector) so JS
+  angle and CSS gradient always agree.
 - **Knob**: `GLARE_ANGLE_DEG` in glassReflection.ts (90..180). Verified live in Editor/GlassToolbar:
   toolbar 42% → habitat 12% descending; right Form Inspector rail lit less (31% at same row height
   as 41% card) — coherent light read.
@@ -420,12 +515,12 @@
 
 ## Glass glare per-lane collinearity (final, blong-browser)
 
-- The editor re-lays itself between ONE column (narrow) and TWO card columns (wide, >~1200px),
-  plus a full-width header toolbar and a right Form Inspector rail. A single straight glare edge
-  can only cross one vertical lane, so:
-  - **Left lane = header toolbar + left-most card column** share ONE straight edge.
-  - **Right card column** gets its OWN parallel edge (can't share the full-width header line).
-  - **Form Inspector** is independent: fixed `--glare-shift` 50% ("starting at the middle").
+- The editor re-lays itself between ONE column (narrow) and TWO card columns (wide, >~1200px), plus
+  a full-width header toolbar and a right Form Inspector rail. A single straight glare edge can only
+  cross one vertical lane, so:
+    - **Left lane = header toolbar + left-most card column** share ONE straight edge.
+    - **Right card column** gets its OWN parallel edge (can't share the full-width header line).
+    - **Form Inspector** is independent: fixed `--glare-shift` 50% ("starting at the middle").
 - Anchor for a lane's edge is its **top-most CARD** (not the header) at ANCHOR_FRACTION 0.5 —
   anchoring on the wide header stretches/over-lights the narrow cards.
 - Implementation (`glassReflection.ts`): cluster non-header cards by centre-x (COLUMN_GAP 120px),
@@ -433,3 +528,34 @@
 - Verified live @1500px (edge constants): left lane toolbar 23.2/edit 50/morphology 35.3/links 26.6
   (C=340.7); right lane taxonomy 50/reproduction 42.6/habitat 36.3 (C=944); inspector 50.
   Single-column: header 40.5/edit 50→habitat 15.8 all on one line.
+
+## Playwright unique ports — AUTO-DERIVED from rush.json in CI (2026-09-07, supersedes explicit-port scheme)
+
+- **Problem**: realms running Playwright under parallel `rush ci-test` all defaulted to 8080/5173 →
+  webServer "http://localhost:8080 is already used" collisions. First fix was hand-written unique
+  ports per realm (9001/9101…9086/9186) — brittle, easy to forget when adding a realm.
+- **Final design (user-chosen Option 1)**: `defineBlongConfig`
+  (`core/blong-browser/src/playwright/ config.ts`) auto-derives a per-package port pair from the
+  package's index in the Rush `rush.json` (`backend = 9000 + index`, `frontend = backend + 100`),
+  applied ONLY in CI; locally it falls back to the classic 8080/5173 so a single local run reuses
+  the running dev server.
+- **Port selection priority**: explicit `backendPort`/`frontendPort` option →
+  `PLAYWRIGHT_BACKEND_PORT` / `PLAYWRIGHT_FRONTEND_PORT` env → (CI) derived from rush.json index →
+  (local) 8080/5173. Helpers: `stripJsoncComments` (rush.json is JSONC), `findUp` (cwd →
+  package.json + rush.json).
+- **Hand-written ports removed** from all 7 realm `playwright.config.ts` (kopi, commander, marine,
+  access, gateway, party, suite) — each now just calls `defineBlongConfig()` (+ projects/
+  realmPackages where used).
+- **Derived values (ALL UNIQUE)**: kopi 9014/9114, commander 9015/9115, marine 9033/9133, access
+  9035/9135, gateway 9037/9137, party 9038/9138, suite 9040/9140. Verified numerically + by running
+  commander Playwright: local → binds 5173 (10 pass); `CI=1 PLAYWRIGHT_SKIP_INSTALL=1` → binds 9115
+  (10 pass), no conflict. blong-browser lint clean.
+- **Local `CI=1` simulation gotcha**: `blong-dev playwright` runs `playwright install --with-deps`
+  when `CI` is set (unless `PLAYWRIGHT_SKIP_INSTALL`), which on a dev box runs
+  `sudo apt-get update && apt-get install …` → password prompt. Real CI is fine: `rush.yaml` sets
+  `PLAYWRIGHT_SKIP_INSTALL: '1'` and browsers are pre-installed in the setup step. Simulate CI
+  locally with `CI=1 PLAYWRIGHT_SKIP_INSTALL=1`.
+- **Out of scope**: `blong-graph/playwright.config.{js,ts}` is a standalone config (own
+  `test:server` on port 3000, no `defineBlongConfig`) — unaffected.
+  `common/deploy/core/blong-kopi/ playwright.config.ts` (still hardcodes 9003/9103) is a git-ignored
+  deployment artifact, not used by CI.

@@ -1,7 +1,6 @@
-import type {IMeta, Adapter} from '@feasibleone/blong/types';
+import type {Adapter, IMeta} from '@feasibleone/blong/types';
 import {adapter, type Errors, type IErrorMap} from '@feasibleone/blong/types';
-import Redis from 'ioredis';
-import {Cluster} from 'ioredis';
+import Redis, {Cluster} from 'ioredis';
 
 export interface IConfig {
     /**
@@ -49,6 +48,7 @@ export interface IRedisClient {
     hincrby(key: string, field: string, increment: number): Promise<number>;
     hdel(key: string, ...fields: string[]): Promise<number>;
     eval(script: string, numKeys: number, ...keysAndArgs: unknown[]): Promise<unknown>;
+    scan(cursor: string, ...args: unknown[]): Promise<[string, string[]]>;
     quit(): Promise<unknown>;
 }
 
@@ -121,6 +121,20 @@ export default adapter<IConfig>(({utError}) => {
             expired: (await redis.expire(params.keyName as string, params.seconds as number)) === 1,
         }),
         ttl: async params => ({ttl: await redis.ttl(params.keyName as string)}),
+        list: async params => {
+            const pattern = (params.pattern as string) ?? '*';
+            const count = (params.count as number) ?? 100;
+            const limit = (params.limit as number) ?? 1000;
+            const cursor = (params.cursor as string) ?? '0';
+            const keyNames: string[] = [];
+            let next = cursor;
+            do {
+                const [newCursor, batch] = await redis.scan(next, 'MATCH', pattern, 'COUNT', count);
+                keyNames.push(...batch);
+                next = newCursor;
+            } while (next !== '0' && keyNames.length < limit);
+            return {items: keyNames.slice(0, limit).map(keyName => ({keyName})), cursor: next};
+        },
     };
 
     // Generic hash operations: redis.hash.getAll|get|set|incrBy|del
@@ -185,6 +199,15 @@ export default adapter<IConfig>(({utError}) => {
             } catch {
                 // Best-effort: a lazy client that never connected may reject quit().
             }
+            try {
+                // `quit()` waits for the QUIT round-trip and can leave the socket
+                // open when the client is mid-connect/reconnect (the commander tap
+                // test observed a lingering 6379 socket after stop). `disconnect()`
+                // force-closes without waiting, guaranteeing the handle is released.
+                (redis as {disconnect?: () => void})?.disconnect?.();
+            } catch {
+                // ignore
+            }
             return super.stop();
         },
         /**
@@ -194,8 +217,7 @@ export default adapter<IConfig>(({utError}) => {
         async configChanged(diff: Map<string, {prev: unknown; next: unknown}>, next: unknown) {
             const redisChanged = Array.from(diff.keys()).some(
                 (key: string) =>
-                    key === this.config.id + '.redis' ||
-                    key.startsWith(this.config.id + '.redis.'),
+                    key === this.config.id + '.redis' || key.startsWith(this.config.id + '.redis.'),
             );
             if (!redisChanged) return;
             const newAdapterConfig = (next as Record<string, unknown>)?.[this.config.id] as
@@ -217,6 +239,12 @@ export default adapter<IConfig>(({utError}) => {
             const operation = parts[2];
             try {
                 await ensureConnected();
+                // `{ns}.database.list` — enumerate the logical databases this
+                // source exposes (the configured db index).
+                if (object === 'database' && operation === 'list') {
+                    const db = (this.config as {redis?: IConfig}).redis?.db ?? 0;
+                    return {items: [{db}]};
+                }
                 const ops =
                     object === 'key'
                         ? keyOps

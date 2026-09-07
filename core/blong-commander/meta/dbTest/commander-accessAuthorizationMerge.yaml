@@ -1,0 +1,30 @@
+# Commander-specific RBAC grants (test seed).
+#
+# The blong-commander realm owns its own capabilities and role grants instead
+# of polluting the blong-access merge file — each realm seeds the RBAC it
+# needs. This file runs `access.authorization.merge` (the last `-`-segment of
+# the filename maps to the handler), so it is idempotent: capabilities are
+# insert-only and the `hasCapability` edge on the Admin role is merged without
+# removing existing grants.
+#
+# It depends on the `Admin` role created by the blong-access test seed
+# (`accessAuthorizationMerge.yaml`); the two files run in either order because
+# both are additive merges.
+capability:
+  # Grants the Admin role (testAdmin / testUser) the commander protocol, so the
+  # blong-commander Playwright suite can explore every source through the
+  # authorized gateway: the commander methods themselves plus the source/level
+  # permissions the commander `source.list` pruning checks (`{instance}.{object}.
+  # {predicate}` → camelCase action).
+  commanderAdmin: >-
+    commanderSourceList,commanderBranchList,commanderNodeGet,commanderNodeViewer,commanderNodeAction,
+    accessTableList,subject.object.schema,
+    k8sDevNamespaceList,k8sDevPodFind,
+    s3DevBucketList,s3DevObjectList,
+    vaultDevMountList,vaultDevSecretList,
+    mongoDevDatabaseList,mongoDevCollectionList,mongoDevCollectionFind,
+    redisDevDatabaseList,redisDevKeyList,
+    kafkaDevTopicList,kafkaDevTopicFind,
+    keycloakDevRealmList,keycloakDevUserFind
+role:
+  Admin: commanderAdmin

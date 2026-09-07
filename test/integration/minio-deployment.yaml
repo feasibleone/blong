@@ -77,8 +77,14 @@ spec:
         - |
           mc alias set local http://minio:9000 blong-admin password &&
           mc mb --ignore-existing local/blong-integration &&
-          echo "Bucket blong-integration created"
+          # Commander demo object (deterministic content so the explorer object
+          # viewer + screenshot show a fixed value, never local-only data).
+          printf 'commander hello object\n' | mc pipe local/blong-integration/commander/hello.txt &&
+          echo "Bucket blong-integration created with commander/hello.txt"
         resources:
+          requests:
+            cpu: "0.01"
+            memory: "16Mi"
           limits:
             cpu: "0.1"
             memory: 64Mi

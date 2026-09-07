@@ -23,6 +23,11 @@ export { useAppStore } from './state/appStore.js';
 export { useAction } from './hooks/useAction.js';
 export { useAsync } from './hooks/useAsync.js';
 export { useAuth } from './hooks/useAuth.js';
+export {
+    useCommanderNav,
+    type CommanderPane,
+    type ICommanderKeyHandlers
+} from './hooks/useCommanderNav.js';
 export { useDarkMode } from './hooks/useDarkMode.js';
 export { useFilter } from './hooks/useFilter.js';
 export { useHandler, useHandlerCall, useHandlerMutation } from './hooks/useHandler.js';
@@ -42,6 +47,8 @@ export { App, type IAppProps } from './components/App/App.js';
 export { Async } from './components/Async/Async.js';
 export { Button, type ButtonProps } from './components/Button/Button.js';
 export { Card } from './components/Card/Card.js';
+export { Commander, type ICommanderLevel, type ICommanderProps, type ICommanderSource } from './components/Commander/Commander.js';
+export { PathBar, type IPathSegment } from './components/Commander/PathBar.js';
 export { DateRange } from './components/DateRange/DateRange.js';
 export { Deck } from './components/Deck/Deck.js';
 export { Editor, resolveTabTitle, type EditorMode } from './components/Editor/Editor.js';
@@ -59,6 +66,7 @@ export { Loader } from './components/Loader/Loader.js';
 export { Login } from './components/Login/Login.js';
 export { LoginPopup } from './components/LoginPopup/LoginPopup.js';
 export { Navigator } from './components/Navigator/Navigator.js';
+export type { INavigatorProps } from './components/Navigator/Navigator.js';
 export { OAuthCallback, type IOAuthCallbackProps } from './components/OAuthCallback/OAuthCallback.js';
 export { Page } from './components/Page/Page.js';
 export { Permission } from './components/Permission/Permission.js';
@@ -96,6 +104,25 @@ export { useDesignMode } from './design/useDesignMode.js';
 
 // ── Widgets ──────────────────────────────────────────────────────────────────
 export { registerBuiltinWidgets, widgetRegistry } from './widgets/index.js';
+
+// ── Viewers (commander leaf viewers) ───────────────────────────────────────
+export {
+    DocumentViewer,
+    FileImageViewer, getViewer,
+    hasViewer, JsonViewer,
+    KeyValueViewer, listViewers, MessageViewer,
+    PodLogViewer, registerBuiltinViewers,
+    registerViewer, SecretViewer,
+    TableViewer,
+    YamlViewer
+} from './viewers/index.js';
+export type { CommanderViewer, ICommanderViewerProps } from './viewers/registry.js';
+export {
+    resolveViewer,
+    type ICommanderLeafMeta,
+    type ICommanderModelRef,
+    type IResolvedViewer
+} from './viewers/resolveViewer.js';
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 export { schemaRegistry } from './schema/registry.js';

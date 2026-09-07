@@ -39,16 +39,25 @@ export default server(blong => ({
                     'test.mysql.resource',
                     'test.mysql.schema',
                     'test.mysql.objectSchema',
+                    'test.mysql.list',
                 ],
             },
         },
         'adapter.mongodb': {
             mongodb: {},
-            watch: {test: ['test.mongodb.documentInsert', 'test.mongodb.crud']},
+            watch: {
+                test: [
+                    'test.mongodb.documentInsert',
+                    'test.mongodb.crud',
+                    'test.mongodb.list',
+                ],
+            },
         },
         'adapter.redis': {
             redis: {},
-            watch: {test: ['test.redis.key', 'test.redis.hash', 'test.redis.script']},
+            watch: {
+                test: ['test.redis.key', 'test.redis.hash', 'test.redis.script', 'test.redis.list'],
+            },
         },
         'adapter.http': {
             http: {},
@@ -56,16 +65,27 @@ export default server(blong => ({
         },
         'adapter.s3': {
             s3: {},
-            watch: {test: ['test.s3.objectPut', 'test.s3.objectCrud']},
+            watch: {test: ['test.s3.objectPut', 'test.s3.objectCrud', 'test.s3.bucketList']},
         },
         'adapter.kafka': {
             kafka: {},
-            watch: {test: ['test.kafka.messageProduce', 'test.kafka.messageRoundtrip']},
+            watch: {
+                test: [
+                    'test.kafka.messageProduce',
+                    'test.kafka.messageRoundtrip',
+                    'test.kafka.topicList',
+                ],
+            },
         },
         'adapter.vault': {
             vault: {},
             watch: {
-                test: ['test.vault.secretPut', 'test.vault.secretCrud', 'test.vault.secretHealth'],
+                test: [
+                    'test.vault.secretPut',
+                    'test.vault.secretCrud',
+                    'test.vault.secretHealth',
+                    'test.vault.mountList',
+                ],
             },
         },
         'adapter.keycloak': {
@@ -83,7 +103,7 @@ export default server(blong => ({
         },
         'adapter.k8s': {
             k8s: {},
-            watch: {test: ['test.k8s.namespaceFind']},
+            watch: {test: ['test.k8s.namespaceFind', 'test.k8s.podLog']},
         },
     },
 }));

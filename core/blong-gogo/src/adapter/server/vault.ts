@@ -32,6 +32,25 @@ const errorMap: IErrorMap = {
 
 let _errors: Errors<typeof errorMap>;
 
+// KV v2 secret-engine mount paths (trailing slash, e.g. `secret/`), discovered
+// from `vault.mount.list`. KV v2 stores the actual secrets under `metadata/`
+// (listing) / `data/` (reading) instead of the mount root.
+const kv2Mounts = new Set<string>();
+
+/** Collapse doubled separators from `{parent.path}/{key}` joins. */
+function normalizePath(path: string): string {
+    return path.replace(/\/{2,}/g, '/');
+}
+
+/** The KV v2 mount a path belongs to (e.g. `secret/`), or null. */
+function kv2MountFor(path: string): string | null {
+    const normalized = normalizePath(path);
+    for (const mount of kv2Mounts) {
+        if (normalized === mount || normalized.startsWith(mount)) return mount;
+    }
+    return null;
+}
+
 async function authenticateVault(this: {config: IConfig}): Promise<void> {
     const {authMethod, roleId, secretId, username, password} = this.config.vault;
 
@@ -155,9 +174,27 @@ export default adapter<IConfig>(({utError}) => {
                         throw this.error(_errors['vault.missingPath'](), $meta);
                     }
 
+                    // KV v2: secrets are read from `<mount>data/<name>`, and the
+                    // secret fields are wrapped under `data`.
+                    let readPath = normalizePath(secretPath);
+                    const mount = kv2MountFor(readPath);
+                    if (mount && !readPath.startsWith(`${mount}data/`)) {
+                        const name = readPath.slice(mount.length);
+                        readPath = `${mount}data/${name}`;
+                    }
+
                     try {
-                        const result = await this.config.context.vault!.read(secretPath);
-                        return result.data;
+                        const result = await this.config.context.vault!.read(readPath);
+                        const payload = result.data;
+                        if (
+                            payload &&
+                            typeof payload === 'object' &&
+                            !Array.isArray(payload) &&
+                            'data' in payload
+                        ) {
+                            return (payload as {data: unknown}).data;
+                        }
+                        return payload;
                     } catch (error: unknown) {
                         throw this.error(
                             (error as {response?: {statusCode?: number}})?.response?.statusCode === 404
@@ -220,19 +257,74 @@ export default adapter<IConfig>(({utError}) => {
                     if (Array.isArray(actualParams)) {
                         throw this.error(_errors['vault.invalid'](), $meta);
                     }
+                    // `vault.mount.list` — enumerate mounted secret engines
+                    if (resource === 'mount') {
+                        try {
+                            const result = await this.config.context.vault!.mounts();
+                            kv2Mounts.clear();
+                            const items = Object.entries(result?.data ?? {}).map(
+                                ([path, cfg]: [string, unknown]) => {
+                                    const c = cfg as {
+                                        type?: string;
+                                        options?: {version?: number};
+                                    };
+                                    if (c?.type === 'kv' && (c.options?.version ?? 0) === 2) {
+                                        kv2Mounts.add(path);
+                                    }
+                                    return {
+                                        path,
+                                        ...(typeof cfg === 'object' && cfg !== null
+                                            ? (cfg as Record<string, unknown>)
+                                            : {}),
+                                    };
+                                },
+                            );
+                            return {items};
+                        } catch (error: unknown) {
+                            throw this.error(_errors['vault.generic'](error), $meta);
+                        }
+                    }
                     if (!secretPath) {
                         throw this.error(_errors['vault.missingPath'](), $meta);
                     }
 
+                    // KV v2: a mount root (or its `data/` marker) lists the actual
+                    // secrets through `metadata/` — never the raw mount root.
+                    const originalPath = normalizePath(secretPath);
+                    let listPath = originalPath;
+                    const mount = kv2MountFor(listPath);
+                    if (mount) {
+                        const trimmedMount = mount.replace(/\/+$/, '');
+                        const trimmedList = listPath.replace(/\/+$/, '');
+                        if (trimmedList === trimmedMount || trimmedList === `${trimmedMount}/data`) {
+                            listPath = `${trimmedMount}/metadata/`;
+                        }
+                    }
+
                     try {
-                        const result = await this.config.context.vault!.list(secretPath);
-                        return result.data;
+                        const result = await this.config.context.vault!.list(listPath);
+                        const data = (result.data ?? {}) as {keys?: string[]};
+                        // Keep the native Vault `keys` shape (relied on by the
+                        // integration tests) and additionally expose commander-style
+                        // `items` rows (consistent with `vault.mount.list`) so the
+                        // generic explorer can render the secrets as a table. Keys
+                        // ending in `/` are sub-path (directory) markers, not leaf
+                        // secrets — clicking one would 404 ("Vault Secret Not
+                        // Found"), so they are filtered out. Rows carry the MOUNT
+                        // path so the deeper level's `{parent.path}/{key}` open
+                        // resolves to `<mount>/<name>`.
+                        const keys = (data.keys ?? []).filter(key => !key.endsWith('/'));
+                        return {
+                            ...data,
+                            keys,
+                            items: keys.map(key => ({key, path: originalPath})),
+                        };
                     } catch (error: unknown) {
                         if (
                             (error as {response?: {statusCode?: number}})?.response?.statusCode ===
                             404
                         ) {
-                            return {keys: []};
+                            return {keys: [], items: []};
                         }
                         throw this.error(_errors['vault.generic'](error), $meta);
                     }

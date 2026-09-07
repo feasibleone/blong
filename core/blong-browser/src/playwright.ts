@@ -22,7 +22,7 @@
 import {test as base, expect, type Page} from '@playwright/test';
 import {coverageFixture} from './playwright/coverage.js';
 
-export {expect};
+export {expect, Page};
 
 /**
  * Default timeout (ms) for element-level waits in the Portal helpers.
