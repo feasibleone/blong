@@ -34,16 +34,16 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 - coverage seems to miss the server tests
 - RBAC + object level permissions (ACL)
 - report hanging handlers after tests
-- blong-commander redis Playwright baseline is sensitive to `blong-int-adapter` test pollution:
-  those integration tests seed `blong-test:*` keys into redis db 0, changing
-  `explore-redis-keys.png`. Clean db 0 (ioredis from `core/blong-gogo`; `redis-cli` not installed) +
-  re-seed `commander:demo`/`commander:greeting`, then regenerate the redis baselines. Worth a
-  redis-isolated test DB so the explorer baseline never drifts.
 - blong-commander: pod log viewer is no longer wired for k8s items (they use the generic `document`
   viewer after the categories restructure). Re-wiring per-resource-type viewers (pods → podLog)
   would be a follow-up.
 
 ## List of completed tasks
+
+- ~~blong-commander redis Playwright baseline is sensitive to `blong-int-adapter` test pollution~~
+  **RESOLVED**: the redis key drill filters the commander table to the seeded `commander:*` keys
+  (built-in Filter), so `blong-test:*` pollution never reaches the screenshot; seeds are provisioned
+  by the `redis-seed-init` job in `test/integration/redis-deployment.yaml` (CI + local).
 
 - **blong-commander P5 — universal backend explorer drill-down + per-adapter Playwright screenshots
   (all 9 tests green).**
@@ -64,7 +64,10 @@ Potential unfinished, deferred or future tasks spotted during implementation.
       `keys`); seeded demo secrets.
     - Deferred: the commander suite TAP test still logs a `timeout!` on process exit (pre-existing
       harness issue — a Socket lingers after all 15 adapters stop cleanly; kafka closes in 82ms).
-      Functional subtests pass 3/3.
+      Functional subtests pass 3/3. **RESOLVED (2026-09-07)**: the lingering socket was the redis
+      adapter client — `quit()` on a lazy/connecting ioredis client left the 6379 socket open.
+      `core/blong-gogo/src/adapter/server/redis.ts` stop now calls `disconnect()` after `quit()`, so
+      the tap test exits cleanly (no `timeout!`).
 - profile UI menu (top-right avatar) and profile page implemented (blong-access + blong-browser):
   `access.profile.get/edit/password.change`, AccountMenu, profile page, Playwright tests +
   screenshots

@@ -1,5 +1,4 @@
 import {server} from '@feasibleone/blong';
-import pkg from './package.json' with {type: 'json'};
 
 /**
  * index.ts — standalone server bootstrap for the blong-commander integration
@@ -9,10 +8,6 @@ import pkg from './package.json' with {type: 'json'};
  */
 export default server(() => ({
     url: import.meta.url,
-    pkg: {
-        name: pkg.name,
-        version: pkg.version,
-    },
     children: [
         /** Built-in blong-server realm: RPC, validation orchestrator, DB adapter */
         async function srv() {

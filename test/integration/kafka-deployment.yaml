@@ -125,8 +125,15 @@ spec:
             --topic blong-integration \
             --partitions 1 \
             --replication-factor 1 && \
-          echo "Topic blong-integration created"
+          # Seed one deterministic JSON message so the commander kafka-dev drill
+          # always lists a fixed message in CI and locally (no random suffix).
+          printf '{"kind":"commander","message":"hello from blong-integration"}\n' | \
+            kafka-console-producer --bootstrap-server kafka:29092 --topic blong-integration && \
+          echo "Topic blong-integration created with a seed message"
         resources:
+          requests:
+            cpu: "0.01"
+            memory: "32Mi"
           limits:
             cpu: "0.1"
             memory: 128Mi

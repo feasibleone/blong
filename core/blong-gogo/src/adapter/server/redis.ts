@@ -1,7 +1,6 @@
-import type {IMeta, Adapter} from '@feasibleone/blong/types';
+import type {Adapter, IMeta} from '@feasibleone/blong/types';
 import {adapter, type Errors, type IErrorMap} from '@feasibleone/blong/types';
-import Redis from 'ioredis';
-import {Cluster} from 'ioredis';
+import Redis, {Cluster} from 'ioredis';
 
 export interface IConfig {
     /**
@@ -200,6 +199,15 @@ export default adapter<IConfig>(({utError}) => {
             } catch {
                 // Best-effort: a lazy client that never connected may reject quit().
             }
+            try {
+                // `quit()` waits for the QUIT round-trip and can leave the socket
+                // open when the client is mid-connect/reconnect (the commander tap
+                // test observed a lingering 6379 socket after stop). `disconnect()`
+                // force-closes without waiting, guaranteeing the handle is released.
+                (redis as {disconnect?: () => void})?.disconnect?.();
+            } catch {
+                // ignore
+            }
             return super.stop();
         },
         /**
@@ -209,8 +217,7 @@ export default adapter<IConfig>(({utError}) => {
         async configChanged(diff: Map<string, {prev: unknown; next: unknown}>, next: unknown) {
             const redisChanged = Array.from(diff.keys()).some(
                 (key: string) =>
-                    key === this.config.id + '.redis' ||
-                    key.startsWith(this.config.id + '.redis.'),
+                    key === this.config.id + '.redis' || key.startsWith(this.config.id + '.redis.'),
             );
             if (!redisChanged) return;
             const newAdapterConfig = (next as Record<string, unknown>)?.[this.config.id] as

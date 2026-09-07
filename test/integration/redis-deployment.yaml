@@ -60,3 +60,35 @@ spec:
     nodePort: 30063
     name: redis
   type: NodePort
+---
+# Seed the commander explorer redis keys (`commander:demo` / `commander:greeting`)
+# so the redis-dev drill + keys screenshot show deterministic data in CI + locally.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-seed-init
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-redis
+        image: redis:7-alpine
+        command: ["sh", "-c", "until redis-cli -h redis ping > /dev/null 2>&1; do sleep 2; done"]
+      containers:
+      - name: seed
+        image: redis:7-alpine
+        command:
+        - sh
+        - -c
+        - |
+          redis-cli -h redis SET commander:demo 'hello from commander:demo' &&
+          redis-cli -h redis SET commander:greeting 'hello from commander:greeting' &&
+          echo "Redis commander keys seeded"
+        resources:
+          requests:
+            cpu: "0.01"
+            memory: "16Mi"
+          limits:
+            cpu: "0.1"
+            memory: 64Mi

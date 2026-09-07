@@ -453,3 +453,30 @@
 - **Verified**: full blong-gogo `tsc --noEmit` green (exit 0); 89/89 tap tests (json + knex
   deadlock/connection files, incl. new retry + connection-error tests); `ci-lint`
   (tsc+cspell+eslint) clean on changed files; `wait.sh` syntax OK; `rush.yaml` YAML valid.
+
+## Commander tests: DB auto-provisioning + deterministic screenshots (2026-09-07)
+
+- **Backend tap test was missing its DB**: `core/blong-commander/test.ts` loaded with only
+  `['integration']`, so the shared `srv.db` adapter's `createDatabase`/schema-sync/seed (which live
+  under the `dev` intent) never ran → "Unknown database 'commander'". Fixed by loading with
+  `['microservice','integration','dev', ...(CI?['ci']:[])]` (mirrors blong-access) → the DB is
+  auto-created + schema synced + `meta/db`+`meta/dbTest` seeds applied.
+- **Lingering socket on tap exit**: the redis adapter's `stop()` `quit()` on a lazy/connecting
+  ioredis client left the 6379 socket open → tap `timeout!`. `adapter/server/redis.ts` now calls
+  `disconnect()` after `quit()` (best-effort, idempotent).
+- **Backend seeds are now provisioned by cluster init jobs** in `test/integration/` (run by
+  `kubectl apply -k test/integration/` in CI and locally via k3d-create), so no manual action:
+  minio-bucket-init uploads `commander/hello.txt`; new vault-seed-init writes KV-v1
+  `secret/commander-demo`; new redis-seed-init sets `commander:demo`/`commander:greeting`;
+  kafka-topic-init now also produces ONE deterministic seed JSON message. Deterministic content →
+  identical in CI + local.
+- **Screenshots never bake machine-specific data**: replace whole-table masks (too opaque) with (a)
+  the Commander's built-in Filter… input to narrow to the seeded subset (e.g. `commander` keys,
+  `commander-demo` secret, `commander/` object, seed message, `admin` db, `master` realm) and (b)
+  magenta column masks ONLY on the specific dynamic columns (vault Accessor, k8s ResourceVersion/
+  Uid/NodeName + pod names, mongo SizeOnDisk, keycloak realm/user Id + created timestamp, kafka
+  offset). Field-name/stable columns stay visible so reviewers can tell the UI works.
+- **Filter persists across drill navigation** in the Commander (component-level `search`), so the
+  test must `clearFilter()` before drilling into a child after a filtered screenshot, or the child
+  view is wrongly filtered (keycloak users empty under the `master` filter; mongo only passed
+  because its collections carry a `Database=admin` column).
