@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.31.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.30.0...blong-gogo-v1.31.0) (2026-09-07)
+
+
+### Features
+
+* blong-commander ([#163](https://github.com/feasibleone/blong/issues/163)) ([b7fe11b](https://github.com/feasibleone/blong/commit/b7fe11b44b1d1ee0e14e4be96523d403b59311c2))
+
 ## [1.30.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.29.0...blong-gogo-v1.30.0) (2026-08-21)
 
 

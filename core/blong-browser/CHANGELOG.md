@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.14.0...blong-browser-v1.15.0) (2026-09-07)
+
+
+### Features
+
+* blong-commander ([#163](https://github.com/feasibleone/blong/issues/163)) ([b7fe11b](https://github.com/feasibleone/blong/commit/b7fe11b44b1d1ee0e14e4be96523d403b59311c2))
+* glass theme ([2731b01](https://github.com/feasibleone/blong/commit/2731b01e75ff29bd3b5877cc7178ee11aec7e8f0))
+
 ## [1.14.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.13.0...blong-browser-v1.14.0) (2026-08-21)
 
 
