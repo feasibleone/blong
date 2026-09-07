@@ -5,9 +5,7 @@ import {defineBlongConfig} from '@feasibleone/blong-browser/playwright/config';
  * tests against the live dev server (blong-watch backend + Vite frontend) and
  * captures the browse/new/open/detail-tab screenshots.
  *
- * Distinct ports avoid clashing with other locally-running suites.
+ * Ports are auto-derived from this package's rush.json index in CI (unique per
+ * realm) and default to 8080/5173 for a single local run.
  */
-export default defineBlongConfig({
-    backendPort: 9083,
-    frontendPort: 9183,
-});
+export default defineBlongConfig();

@@ -21,8 +21,6 @@ Potential unfinished, deferred or future tasks spotted during implementation.
   `test/integration/mysql-deployment.yaml` memory limits if OOMKilled, add `--max_connections` if
   `ER_CON_COUNT_ERROR` (1040) shows up, tweak `wait_timeout` only if idle-close is confirmed.
   Currently left at MySQL defaults.
-- Per-suite Playwright webServer backend ports (8080 collision) — separate flake with the same
-  "webServer was not able to start" symptom; fix only if the diagnostic dump shows port collisions.
 - Whole-transaction retry for transient connection errors (v1 retries only builder/raw queries;
   transactions surface the error). Consider re-invoking the transaction callback on retryable errors
   (knex rolls back on throw) — needs care re: external side effects.
@@ -39,6 +37,14 @@ Potential unfinished, deferred or future tasks spotted during implementation.
   would be a follow-up.
 
 ## List of completed tasks
+
+- ~~Per-suite Playwright webServer ports (8080 collision in parallel `rush ci-test`)~~ **RESOLVED**
+  systematically: `defineBlongConfig` auto-derives a unique port pair from the package's index in
+  `rush.json` (backend 9000+index, frontend +100) when `CI` is set; locally it defaults to
+  8080/5173. Explicit options / `PLAYWRIGHT_BACKEND_PORT` / `PLAYWRIGHT_FRONTEND_PORT` still
+  override. Hand-written ports removed from all 7 realm configs (kopi 9014/9114, commander
+  9015/9115, marine 9033/9133, access 9035/9135, gateway 9037/9137, party 9038/9138, suite 9040/9140
+  — ALL UNIQUE). Local and CI-mode commander runs verified (10 pass each).
 
 - ~~blong-commander redis Playwright baseline is sensitive to `blong-int-adapter` test pollution~~
   **RESOLVED**: the redis key drill filters the commander table to the seeded `commander:*` keys

@@ -480,6 +480,7 @@
   test must `clearFilter()` before drilling into a child after a filtered screenshot, or the child
   view is wrongly filtered (keycloak users empty under the `master` filter; mongo only passed
   because its collections carry a `Database=admin` column).
+
 ## Glass theme glare continuity (blong-browser)
 
 - **Chose a single top-left light sweep, not strict line collinearity.** Computing each panel's
@@ -487,10 +488,10 @@
   every lower same-column card saturate to fully black at steep angles (~140deg measured) → many
   panels clamp flat and the layout looks wrong.
 - **Implementation** (`src/components/Theme/glassReflection.ts`): project each panel's top-left
-  corner onto the shared light direction (sin/cos of `GLARE_ANGLE_DEG`, default 150), normalize
-  over the live panel stack, and spread `--glare-shift` smoothly 42% (nearest light) → 12%
-  (farthest). CSS reads `linear-gradient(var(--glare-angle, 150deg), ...)` (cards, toolbar,
-  inspector) so JS angle and CSS gradient always agree.
+  corner onto the shared light direction (sin/cos of `GLARE_ANGLE_DEG`, default 150), normalize over
+  the live panel stack, and spread `--glare-shift` smoothly 42% (nearest light) → 12% (farthest).
+  CSS reads `linear-gradient(var(--glare-angle, 150deg), ...)` (cards, toolbar, inspector) so JS
+  angle and CSS gradient always agree.
 - **Knob**: `GLARE_ANGLE_DEG` in glassReflection.ts (90..180). Verified live in Editor/GlassToolbar:
   toolbar 42% → habitat 12% descending; right Form Inspector rail lit less (31% at same row height
   as 41% card) — coherent light read.
@@ -514,12 +515,12 @@
 
 ## Glass glare per-lane collinearity (final, blong-browser)
 
-- The editor re-lays itself between ONE column (narrow) and TWO card columns (wide, >~1200px),
-  plus a full-width header toolbar and a right Form Inspector rail. A single straight glare edge
-  can only cross one vertical lane, so:
-  - **Left lane = header toolbar + left-most card column** share ONE straight edge.
-  - **Right card column** gets its OWN parallel edge (can't share the full-width header line).
-  - **Form Inspector** is independent: fixed `--glare-shift` 50% ("starting at the middle").
+- The editor re-lays itself between ONE column (narrow) and TWO card columns (wide, >~1200px), plus
+  a full-width header toolbar and a right Form Inspector rail. A single straight glare edge can only
+  cross one vertical lane, so:
+    - **Left lane = header toolbar + left-most card column** share ONE straight edge.
+    - **Right card column** gets its OWN parallel edge (can't share the full-width header line).
+    - **Form Inspector** is independent: fixed `--glare-shift` 50% ("starting at the middle").
 - Anchor for a lane's edge is its **top-most CARD** (not the header) at ANCHOR_FRACTION 0.5 —
   anchoring on the wide header stretches/over-lights the narrow cards.
 - Implementation (`glassReflection.ts`): cluster non-header cards by centre-x (COLUMN_GAP 120px),
@@ -527,3 +528,34 @@
 - Verified live @1500px (edge constants): left lane toolbar 23.2/edit 50/morphology 35.3/links 26.6
   (C=340.7); right lane taxonomy 50/reproduction 42.6/habitat 36.3 (C=944); inspector 50.
   Single-column: header 40.5/edit 50→habitat 15.8 all on one line.
+
+## Playwright unique ports — AUTO-DERIVED from rush.json in CI (2026-09-07, supersedes explicit-port scheme)
+
+- **Problem**: realms running Playwright under parallel `rush ci-test` all defaulted to 8080/5173 →
+  webServer "http://localhost:8080 is already used" collisions. First fix was hand-written unique
+  ports per realm (9001/9101…9086/9186) — brittle, easy to forget when adding a realm.
+- **Final design (user-chosen Option 1)**: `defineBlongConfig`
+  (`core/blong-browser/src/playwright/ config.ts`) auto-derives a per-package port pair from the
+  package's index in the Rush `rush.json` (`backend = 9000 + index`, `frontend = backend + 100`),
+  applied ONLY in CI; locally it falls back to the classic 8080/5173 so a single local run reuses
+  the running dev server.
+- **Port selection priority**: explicit `backendPort`/`frontendPort` option →
+  `PLAYWRIGHT_BACKEND_PORT` / `PLAYWRIGHT_FRONTEND_PORT` env → (CI) derived from rush.json index →
+  (local) 8080/5173. Helpers: `stripJsoncComments` (rush.json is JSONC), `findUp` (cwd →
+  package.json + rush.json).
+- **Hand-written ports removed** from all 7 realm `playwright.config.ts` (kopi, commander, marine,
+  access, gateway, party, suite) — each now just calls `defineBlongConfig()` (+ projects/
+  realmPackages where used).
+- **Derived values (ALL UNIQUE)**: kopi 9014/9114, commander 9015/9115, marine 9033/9133, access
+  9035/9135, gateway 9037/9137, party 9038/9138, suite 9040/9140. Verified numerically + by running
+  commander Playwright: local → binds 5173 (10 pass); `CI=1 PLAYWRIGHT_SKIP_INSTALL=1` → binds 9115
+  (10 pass), no conflict. blong-browser lint clean.
+- **Local `CI=1` simulation gotcha**: `blong-dev playwright` runs `playwright install --with-deps`
+  when `CI` is set (unless `PLAYWRIGHT_SKIP_INSTALL`), which on a dev box runs
+  `sudo apt-get update && apt-get install …` → password prompt. Real CI is fine: `rush.yaml` sets
+  `PLAYWRIGHT_SKIP_INSTALL: '1'` and browsers are pre-installed in the setup step. Simulate CI
+  locally with `CI=1 PLAYWRIGHT_SKIP_INSTALL=1`.
+- **Out of scope**: `blong-graph/playwright.config.{js,ts}` is a standalone config (own
+  `test:server` on port 3000, no `defineBlongConfig`) — unaffected.
+  `common/deploy/core/blong-kopi/ playwright.config.ts` (still hardcodes 9003/9103) is a git-ignored
+  deployment artifact, not used by CI.
