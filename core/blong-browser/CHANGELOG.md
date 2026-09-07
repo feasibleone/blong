@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.15.0...blong-browser-v1.16.0) (2026-09-07)
+
+
+### Features
+
+* wood theme ([b69d174](https://github.com/feasibleone/blong/commit/b69d174d4454f7f4e08057e51a44c4e4168f330e))
+
 ## [1.15.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.14.0...blong-browser-v1.15.0) (2026-09-07)
 
 
