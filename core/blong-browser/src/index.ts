@@ -75,7 +75,13 @@ export { Report } from './components/Report/Report.js';
 export { SelfRegistration, type ISelfRegistrationProps } from './components/SelfRegistration/SelfRegistration.js';
 export { SocialLoginButton, type ISocialLoginButtonProps } from './components/SocialLoginButton/SocialLoginButton.js';
 export { Text } from './components/Text/Text.js';
-export { Theme } from './components/Theme/Theme.js';
+export {
+    Theme,
+    type IThemeConfig,
+    type PaletteType,
+    type ThemeType,
+    type ThemeVariant
+} from './components/Theme/Theme.js';
 export { ThumbIndex } from './components/ThumbIndex/ThumbIndex.js';
 export { bgLocale } from './primereact/locales.js';
 
