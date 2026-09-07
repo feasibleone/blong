@@ -1,0 +1,596 @@
+/* ==========================================================================
+   GLASS THEME — layered on top of the default PrimeReact palette theme.
+
+   Activated by rendering <Theme theme={{variant: 'glass', ...}}>. Theme adds
+   the `blong-app-glass` class to its `.blong-app` wrapper, and every rule
+   below is scoped under that class — so the base theme stays untouched for
+   every other consumer.
+
+   High-contrast GRAYSCALE glassmorphism: crisp white specular glare lines on
+   charcoal / black glass surfaces over a matte slate canvas. No ambient
+   colours, glows or tints — reflections only.
+
+   Material language:
+     §1/§5  3D camera tilt + mouse parallax (opt-in wrapper elements)
+     §2     glossy charcoal card panels — sharp skewed Z-glare + 3D bevels
+     §3     dark glass input plates layered over the cards
+     §4     glossy rectangular buttons + header utility bar
+     §6     grayscale glass-block checkboxes
+     §7     grayscale glass table rows
+
+   Scoping (`.blong-app-glass ...` descendant selectors + higher specificity
+   than the base single-class rules) is what guarantees glass wins regardless
+   of stylesheet load order. Overrides intentionally use `!important` to beat
+   the PrimeReact theme CSS.
+   ========================================================================== */
+
+/* ── Canvas ─────────────────────────────────────────────────────────────────
+   Solid, matte, dark slate-charcoal so the reflective charcoal panels pop. */
+.blong-app-glass {
+    background: #121315;
+}
+
+/* ==========================================================================
+   §2 TWO-TONE POLISHED CARD PANELS — METALLIC SHEEN → OBSIDIAN CHARCOAL
+   Applies to every blong Card (PrimeReact `.p-card`). A single razor-sharp
+   diagonal (angle `--glare-angle`, default 103deg) splits a rich metallic
+   silver sheen (bright highlight at the top-left edge melting into a solid
+   steel gray) from a polished glossy dark charcoal obsidian body that never
+   drops to pure black — so the darker glass input plates stay distinct on the
+   dark side. The boundary position `--glare-shift` is computed by
+   `glassReflection.ts` from that shared angle and each panel's geometry, so
+   the light reads as one continuous line down any layout. Edges are rounded
+   6px rims with inset rim-light shadows.
+   ========================================================================== */
+.blong-app-glass .p-card {
+    position: relative;
+    /* Dynamic two-tone polished base. The razor boundary sits at
+       `--glare-shift` — injected by `glassReflection.ts` from the shared
+       `--glare-angle` and each panel's geometry, so the light reads as one
+       continuous line down the layout. The rim is a plain rounded border +
+       inset rim-light shadows (no border-image, 6px radius preserved). */
+    background: linear-gradient(var(--glare-angle, 103deg),
+            #4c4e53 0%,
+            #3a3b3e 15%,
+            #323336 calc(var(--glare-shift, 35%) - 0.5%),
+            #111113 var(--glare-shift, 35%),
+            #17181c 100%) !important;
+    border: 1px solid rgba(0, 0, 0, 0.9) !important;
+    border-radius: 6px !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        inset 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Keep the PrimeReact card body transparent so only the glossy panel paints. */
+.blong-app-glass .p-card .p-card-body,
+.blong-app-glass .p-card .p-card-content {
+    background: transparent !important;
+}
+
+/* Card section headers ("Coral", "Taxonomy", "Biology", "Links"…) — crisp
+   off-white section titles, slightly larger with a stronger weight. */
+.blong-app-glass .p-card .p-card-title {
+    color: #f0f0f2 !important;
+    font-weight: 700 !important;
+    font-size: 22px !important;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ==========================================================================
+   §3 DARK GLASS INPUT PLATES
+   Inputs / dropdowns / textareas are thin dark glass plates stacked ON TOP of
+   the card surfaces — the same sharp top-left glare edge as the panels but a
+   much darker tint, with an elevation shadow lifting them off the card.
+   ========================================================================== */
+.blong-app-glass .p-inputtext,
+.blong-app-glass .p-inputtextarea {
+    /* Dark obsidian glass tile — deeper than the card so it reads as a raised
+       smoky block, framed by crisp white/light-gray reflection lines. */
+    background: rgba(12, 12, 14, 0.75) !important;
+    border: 1px solid rgba(0, 0, 0, 0.85) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 4px !important;
+    color: #e2e2e5 !important;
+    padding: 6px 12px;
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.blong-app-glass .p-inputtext:enabled:focus,
+.blong-app-glass .p-inputtextarea:enabled:focus {
+    border-top-color: rgba(255, 255, 255, 0.45) !important;
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Glossy dropdown shell (option list is a body-level overlay — base theme). */
+.blong-app-glass .p-dropdown {
+    /* Dark obsidian glass tile (see inputs). */
+    background: rgba(12, 12, 14, 0.75) !important;
+    border: 1px solid rgba(0, 0, 0, 0.85) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 4px !important;
+    color: #e2e2e5 !important;
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.blong-app-glass .p-dropdown:not(.p-disabled):hover {
+    border-top-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.blong-app-glass .p-dropdown.p-focus,
+.blong-app-glass .p-dropdown:focus-within {
+    border-top-color: rgba(255, 255, 255, 0.45) !important;
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* The dropdown's inner label is itself a `.p-inputtext` — strip its plate so
+   only the dropdown shell reads as the glass node. */
+.blong-app-glass .p-dropdown .p-dropdown-label {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Dropdown right-side "glass switch": a vertical divider separates the text
+   area from the arrow plate; the plate has a darker tint and a sharp chevron.
+   The hidden native select is for accessibility only — never styled. */
+.blong-app-glass .p-dropdown .p-dropdown-trigger {
+    background: rgba(0, 0, 0, 0.28) !important;
+    border: 0 !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 0 !important;
+    width: 2rem !important;
+    transition: background 0.2s ease;
+}
+
+.blong-app-glass .p-dropdown:not(.p-disabled):hover .p-dropdown-trigger,
+.blong-app-glass .p-dropdown.p-focus .p-dropdown-trigger,
+.blong-app-glass .p-dropdown:focus-within .p-dropdown-trigger {
+    background: rgba(0, 0, 0, 0.42) !important;
+}
+
+.blong-app-glass .p-dropdown .p-dropdown-trigger .p-dropdown-trigger-icon {
+    color: #ececee !important;
+    font-size: 0.8rem !important;
+    font-weight: 700;
+}
+
+.blong-app-glass .p-dropdown select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+/* ── Dropdown overlay (portal at body) ──────────────────────────────────────
+   The option list mounts OUTSIDE `.blong-app-glass` (PrimeReact portal), so
+   it is scoped on the `blong-theme-glass` root class Theme adds when the
+   glass variant is active. Obsidian glass panel with a soft silver item
+   hover — never a flat blue rectangle. */
+.blong-theme-glass .p-dropdown-panel {
+    background: rgba(20, 21, 24, 0.96) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+    padding: 4px !important;
+}
+
+.blong-theme-glass .p-dropdown-panel .p-dropdown-items-wrapper,
+.blong-theme-glass .p-dropdown-panel .p-dropdown-items {
+    background: transparent !important;
+}
+
+.blong-theme-glass .p-dropdown-panel .p-dropdown-item {
+    color: #d8d8da !important;
+    border-radius: 4px !important;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.blong-theme-glass .p-dropdown-panel .p-dropdown-item:hover,
+.blong-theme-glass .p-dropdown-panel .p-dropdown-item.p-focus,
+.blong-theme-glass .p-dropdown-panel .p-dropdown-item.p-highlight {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+
+/* ── Typography contrast ────────────────────────────────────────────────────
+   Field labels ("Name", "Description", "Type"…) are a crisp medium-light
+   silver-grey — legible against the card, quieter than the bright section
+   headers above. The required asterisk gets a muted red accent. */
+.blong-app-glass .p-card label {
+    font-weight: 500 !important;
+    color: #f0f0f2 !important;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.blong-app-glass .blong-required::after {
+    color: #cf6a5b !important;
+}
+
+/* ==========================================================================
+   §4 GLOSSY RECTANGULAR CONTROLS + HEADER UTILITY BAR
+   The header/toolbar bar receives the same glossy glass treatment as the main
+   panels. Buttons are sharp, polished, RECTANGULAR glass keys — bright top
+   glare edge, dark body, elevation — never flat colour blocks or pills.
+   ========================================================================== */
+.blong-app-glass .p-toolbar {
+    background: linear-gradient(var(--glare-angle, 103deg),
+            #4c4e53 0%,
+            #3a3b3e 15%,
+            #323336 calc(var(--glare-shift, 35%) - 0.5%),
+            #111113 var(--glare-shift, 35%),
+            #17181c 100%) !important;
+    border: 1px solid rgba(0, 0, 0, 0.9) !important;
+    border-radius: 6px !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        inset 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+.blong-app-glass .p-toolbar .p-toolbar-group-left,
+.blong-app-glass .p-toolbar .p-toolbar-group-right {
+    background: transparent !important;
+}
+
+/* In-card sub-toolbars (e.g. the Links table bar with "+ Add" / "Delete")
+   are flat charcoal anchor plates for their content, NOT glossy glare
+   panels. Their buttons keep the individual raised glass plate styles. */
+.blong-app-glass .p-card .p-toolbar {
+    border: 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.6) !important;
+    border-radius: 0 !important;
+    padding: 8px 14px !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    box-shadow: none !important;
+}
+
+/* Every solid button ("+ Add", "Delete", Save/Reset, pickers…) is a dark
+   obsidian glass tile — deeper than the surface, framed by crisp top/left
+   reflection lines so it stays visible on both card halves. */
+.blong-app-glass .p-button:not(.p-button-text):not(.p-button-link) {
+    background: rgba(12, 12, 14, 0.75) !important;
+    border: 1px solid rgba(0, 0, 0, 0.85) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 4px !important;
+    color: #e2e2e5 !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1rem !important;
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    transition: all 0.18s ease-out;
+}
+
+/* Icon-only controls (Save/Reset/Design, pickers) — square glossy glass. */
+.blong-app-glass .p-button-icon-only {
+    width: 2.2rem !important;
+    height: 2.2rem !important;
+    padding: 0 !important;
+    border-radius: 4px !important;
+}
+
+/* Header/toolbar labelled actions — compact rectangular glass keys. */
+.blong-app-glass .blong-toolbar-left .p-button,
+.blong-app-glass .blong-toolbar-right .p-button,
+.blong-app-glass .blong-design-toolbar .p-button {
+    font-size: 0.74rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.blong-app-glass .p-button:enabled:hover:not(.p-button-text):not(.p-button-link) {
+    color: #ffffff !important;
+    border-top-color: rgba(255, 255, 255, 0.55) !important;
+    border-left-color: rgba(255, 255, 255, 0.3) !important;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Active/selected state — brighter translucent lens (e.g. design toggle). */
+.blong-app-glass .blong-design-toolbar .p-button.p-button-success,
+.blong-app-glass .p-button.p-button-success {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-top-color: rgba(255, 255, 255, 0.45) !important;
+    color: #ffffff !important;
+}
+
+/* ==========================================================================
+   §5 FORM INSPECTOR — OPAQUE GRAYSCALE GLASS
+   The debug Form Inspector rail receives the same opaque charcoal panel with
+   the sharp glare line and bevelled borders as the main cards, and its text
+   (labels, badges area, JSON) drops the blue theme for neutral greys.
+   ========================================================================== */
+.blong-app-glass .blong-property-editor.blong-inspector {
+    background: linear-gradient(var(--glare-angle, 103deg),
+            #4c4e53 0%,
+            #3a3b3e 15%,
+            #323336 calc(var(--glare-shift, 35%) - 0.5%),
+            #111113 var(--glare-shift, 35%),
+            #17181c 100%) !important;
+    border: 1px solid rgba(0, 0, 0, 0.9) !important;
+    border-radius: 6px !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        inset 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+.blong-app-glass .blong-inspector .blong-property-editor__title,
+.blong-app-glass .blong-inspector__toggle {
+    color: #f0f0f0 !important;
+}
+
+.blong-app-glass .blong-inspector__field-name,
+.blong-app-glass .blong-inspector__empty {
+    color: #a0a0a0 !important;
+}
+
+.blong-app-glass .blong-inspector .blong-json {
+    color: #d0d0d0 !important;
+    background: transparent !important;
+}
+
+.blong-app-glass .blong-inspector .blong-inspector__body,
+.blong-app-glass .blong-inspector .blong-property-editor__field,
+.blong-app-glass .blong-property-editor.blong-inspector .blong-property-editor__title {
+    background: transparent !important;
+}
+
+/* ── Dynamic glare positioning (runtime) ────────────────────────────────────
+   There are NO hardcoded per-card shift classes here. A small runtime script
+   (`updateGlassReflections` in glassReflection.ts) measures each panel's
+   position inside `.blong-app-glass`, projects it along the shared light
+   angle `--glare-angle`, and injects `--glare-shift` as an inline style, so
+   the light reads as one continuous sweep across any layout. The gradient
+   above uses a center fallback until the script runs. */
+
+/* ==========================================================================
+   §6 GRAYSCALE GLASS-BLOCK CHECKBOXES
+   Checkbox blocks (Habitat inline panel, table row selection…) mirror the
+   small dark glass plates — bevel top edge, shaded bottom — with a crisp
+   white tick when selected. No colour.
+   ========================================================================== */
+.blong-app-glass .p-checkbox .p-checkbox-box {
+    background: linear-gradient(180deg,
+            rgba(28, 28, 28, 0.96) 0%,
+            rgba(8, 8, 8, 0.98) 100%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.6) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.75) !important;
+    border-radius: 3px !important;
+    width: 15px !important;
+    height: 15px !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 1px 2px rgba(0, 0, 0, 0.35) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.blong-app-glass .p-checkbox:not(.p-checkbox-disabled):hover .p-checkbox-box {
+    border-top-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.blong-app-glass .p-checkbox .p-checkbox-box.p-highlight {
+    background: linear-gradient(180deg,
+            rgba(110, 110, 110, 0.95) 0%,
+            rgba(45, 45, 45, 0.98) 100%) !important;
+    border-top-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.blong-app-glass .p-checkbox .p-checkbox-box .p-checkbox-icon {
+    font-size: 0.6rem !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    transform: scale(0.9);
+}
+
+/* Option labels (Habitat etc.) — neutral grey, brightening when picked. */
+.blong-app-glass .p-multiselect-item {
+    font-size: 0.75rem !important;
+    letter-spacing: 0.3px;
+    color: #a0a0a0 !important;
+    background: transparent !important;
+    transition: color 0.2s linear;
+}
+
+.blong-app-glass .p-multiselect-item.p-highlight {
+    color: #ffffff !important;
+}
+
+/* Inline multi-select (Habitat) — rigid 4-up CSS grid, uniform columns. */
+.blong-app-glass .p-multiselect-panel.p-multiselect-inline .p-multiselect-items {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 16px 12px !important;
+    padding: 8px 4px !important;
+    align-items: center;
+}
+
+.blong-app-glass .p-multiselect-panel.p-multiselect-inline .p-multiselect-items .p-multiselect-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: auto !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.blong-app-glass .p-multiselect-panel.p-multiselect-inline .p-multiselect-items .p-multiselect-item>span {
+    font-size: 11px !important;
+    white-space: nowrap;
+}
+
+.blong-app-glass .p-multiselect-panel.p-multiselect-inline .p-multiselect-items .p-multiselect-item:not(.p-highlight)>span {
+    color: #b0b2b8 !important;
+}
+
+.blong-app-glass .p-multiselect-panel.p-multiselect-inline .p-multiselect-items .p-multiselect-item .p-multiselect-checkbox {
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    flex: none !important;
+}
+
+/* ==========================================================================
+   §7 GRAYSCALE GLASS TABLE ROWS (Links grid)
+   Translucent charcoal rows with glossy headers; hover and selection brighten
+   in neutral greys — no colour.
+   ========================================================================== */
+.blong-app-glass .p-datatable {
+    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 4px;
+    overflow: hidden;
+    background: transparent !important;
+}
+
+.blong-app-glass .p-datatable .p-datatable-thead>tr>th {
+    /* Solid deep charcoal header — a clean hard stop above the data rows. */
+    background: #17181c !important;
+    color: #f0f0f2 !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.9) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.8) !important;
+    padding: 0.55rem 0.75rem !important;
+}
+
+.blong-app-glass .p-datatable .p-datatable-tbody>tr {
+    background: rgba(12, 12, 12, 0.4) !important;
+    color: #d0d0d0 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Subtle zebra tint keeps rows clean without heavy lines. */
+.blong-app-glass .p-datatable .p-datatable-tbody>tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Links DataTable — fixed layout with explicit column shares keeps the header
+   row and the row inputs perfectly aligned and identically scaled
+   (checkbox 40px / title flex-1 / url flex-2 / actions ~96px). */
+.blong-app-glass #card-links .p-datatable table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.blong-app-glass #card-links .p-datatable thead th:nth-child(1),
+.blong-app-glass #card-links .p-datatable tbody td:nth-child(1) {
+    width: 7% !important;
+    text-align: center;
+}
+
+.blong-app-glass #card-links .p-datatable thead th:nth-child(2),
+.blong-app-glass #card-links .p-datatable tbody td:nth-child(2) {
+    width: 26% !important;
+}
+
+.blong-app-glass #card-links .p-datatable thead th:nth-child(3),
+.blong-app-glass #card-links .p-datatable tbody td:nth-child(3) {
+    width: 52% !important;
+}
+
+.blong-app-glass #card-links .p-datatable thead th:nth-child(4),
+.blong-app-glass #card-links .p-datatable tbody td:nth-child(4) {
+    width: 15% !important;
+}
+
+.blong-app-glass .p-datatable .p-datatable-tbody>tr>td {
+    padding: 0.45rem 0.75rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+    font-size: 0.82rem !important;
+}
+
+/* Table text inputs (filter / row boxes) — solid flat charcoal with a soft
+   inner shadow, so they never pick up the card's sheen gradient or plate. */
+.blong-app-glass .p-datatable .p-inputtext {
+    background: #111215 !important;
+    background-image: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.7) !important;
+    border-top-color: rgba(0, 0, 0, 0.7) !important;
+    border-left-color: rgba(0, 0, 0, 0.7) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+    color: #e2e2e5 !important;
+}
+
+.blong-app-glass .p-datatable .p-datatable-tbody>tr:not(.p-highlight):hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    cursor: pointer;
+}
+
+.blong-app-glass .p-datatable .p-datatable-tbody>tr.p-highlight {
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.14) 0%,
+            rgba(90, 90, 90, 0.5) 60%,
+            rgba(30, 30, 30, 0.6) 100%) !important;
+    color: #ffffff !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Table checkbox blocks — slightly smaller grayscale glass. */
+.blong-app-glass .p-datatable .p-checkbox .p-checkbox-box {
+    width: 13px !important;
+    height: 13px !important;
+}
+
+/* ==========================================================================
+   §1 + §5 3D CAMERA SLANT MATRIX + MOUSE PARALLAX (opt-in)
+   Only active when a story/app wraps its content in
+   `.blong-glass-viewport > .blong-glass-grid`. A tiny React component sets
+   `--mouse-x` / `--mouse-y` (normalised -1..1) on the grid element; the CSS
+   below turns that into a subtle perspective tilt for extra 3D depth.
+   ========================================================================== */
+.blong-app-glass .blong-glass-viewport {
+    perspective: 1200px;
+    perspective-origin: 50% 30%;
+    height: 100%;
+    padding: 1.5rem 2.5rem;
+}
+
+.blong-app-glass .blong-glass-viewport .blong-glass-grid {
+    --mouse-x: 0;
+    --mouse-y: 0;
+    height: 100%;
+    transform:
+        rotateX(calc(4deg + (var(--mouse-y, 0) * 2deg))) rotateY(calc(-1.5deg + (var(--mouse-x, 0) * 2deg))) translateZ(0);
+    transform-style: preserve-3d;
+    transition: transform 0.1s ease-out;
+}
+
+/* Reduce motion — tilt becomes inert for users who ask for it. */
+@media (prefers-reduced-motion: reduce) {
+    .blong-app-glass .blong-glass-viewport .blong-glass-grid {
+        transform: none;
+        transition: none;
+    }
+}

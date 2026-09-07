@@ -26,18 +26,19 @@
  *
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
-import type {IHandlerProxy} from '@feasibleone/blong';
+import type { IHandlerProxy } from '@feasibleone/blong';
 import React from 'react';
-import {App} from '../src/components/App/App.js';
-import {Explorer} from '../src/components/Explorer/Explorer.js';
-import {SelfRegistration} from '../src/components/SelfRegistration/SelfRegistration.js';
-import {useBlongForm} from '../src/components/Form/FormContext.js';
-import {Hint} from '../src/components/Hint/Hint.js';
-import {makeHandlerProxy, type IBlongPortalConfig} from '../src/context/BlongContext.js';
-import type {IModelSpec} from '../src/index.js';
-import {blongEvents} from '../src/lib/eventBus.js';
-import {useAppStore} from '../src/state/appStore.js';
-import type {IBlongError} from '../src/types/action.js';
+import { App } from '../src/components/App/App.js';
+import { Explorer } from '../src/components/Explorer/Explorer.js';
+import { useBlongForm } from '../src/components/Form/FormContext.js';
+import { Hint } from '../src/components/Hint/Hint.js';
+import { SelfRegistration } from '../src/components/SelfRegistration/SelfRegistration.js';
+import type { IThemeConfig } from '../src/components/Theme/Theme.js';
+import { makeHandlerProxy, type IBlongPortalConfig } from '../src/context/BlongContext.js';
+import type { IModelSpec } from '../src/index.js';
+import { blongEvents } from '../src/lib/eventBus.js';
+import { useAppStore } from '../src/state/appStore.js';
+import type { IBlongError } from '../src/types/action.js';
 import {
     coralCategoryFixtures,
     coralFixtures,
@@ -310,7 +311,7 @@ export const bgTranslations = parseTranslations(`
 // Marine fixture data imported from ./marine.js:
 //   coralStoryValue, marineDropdownData, coralCategoryFixtures, coralFixtures
 // Re-export for any story files that import them directly from this module.
-export {coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData};
+export { coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData };
 
 // ── Handlers ───────────────────────────────────────────────────────────────────
 
@@ -740,6 +741,13 @@ export function withDispatch(
         const loginComponentParam = ctx?.parameters?.loginComponent as
             | React.ComponentType
             | undefined;
+        /**
+         * Optional theme overrides passed via `story.parameters.theme`
+         * (e.g. `{theme: {variant: 'glass'}}` to render under the glass
+         * theme). Spread after the default compact/dark theme below, so a
+         * story may toggle `variant`, `palette`, `type`, etc.
+         */
+        const themeParam = ctx?.parameters?.theme as Partial<IThemeConfig> | undefined;
 
         // Pass locale data for the active language via theme.languages so Theme registers it.
         const themeLanguages = React.useMemo(() => {
@@ -808,7 +816,7 @@ export function withDispatch(
                         },
                     },
                 }}
-                theme={{type: 'compact', palette: 'dark', languages: themeLanguages}}
+                theme={{type: 'compact', palette: 'dark', languages: themeLanguages, ...themeParam}}
                 loginComponent={loginComponentParam}
                 log={log}
             >

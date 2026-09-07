@@ -9,15 +9,15 @@
  */
 
 // ── Context ──────────────────────────────────────────────────────────────────
-export {BlongProvider, makeHandlerProxy, useBlong} from './context/BlongContext.js';
+export { BlongProvider, makeHandlerProxy, useBlong } from './context/BlongContext.js';
 export type {
     IBlongContextValue,
     IBlongPortalConfig,
-    IBlongProviderProps,
+    IBlongProviderProps
 } from './context/BlongContext.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
-export {useAppStore} from './state/appStore.js';
+export { useAppStore } from './state/appStore.js';
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 export {useAction} from './hooks/useAction.js';
@@ -41,12 +41,24 @@ export {useText} from './hooks/useText.js';
 export {useToast} from './hooks/useToast.js';
 
 // ── Components ───────────────────────────────────────────────────────────────
-export {ActionButton} from './components/ActionButton/ActionButton.js';
-export {AccountMenu, type IAccountMenuProps} from './components/AccountMenu/AccountMenu.js';
+export { AccountMenu, type IAccountMenuProps } from './components/AccountMenu/AccountMenu.js';
+export { ActionButton } from './components/ActionButton/ActionButton.js';
+export { App, type IAppProps } from './components/App/App.js';
+export { Async } from './components/Async/Async.js';
+export { Button, type ButtonProps } from './components/Button/Button.js';
+export { Card } from './components/Card/Card.js';
+export { DateRange } from './components/DateRange/DateRange.js';
+export { Deck } from './components/Deck/Deck.js';
+export { Editor, resolveTabTitle, type EditorMode } from './components/Editor/Editor.js';
+export { ErrorDialog } from './components/Error/Error.js';
+export { Explorer } from './components/Explorer/Explorer.js';
+export { Form } from './components/Form/Form.js';
+export { Hint } from './components/Hint/Hint.js';
+export { Json } from './components/Json/Json.js';
 export {
     LanguageSwitcher,
     type ILanguageOption,
-    type ILanguageSwitcherProps,
+    type ILanguageSwitcherProps
 } from './components/LanguageSwitcher/LanguageSwitcher.js';
 export {Button, type ButtonProps} from './components/Button/Button.js';
 export {bgLocale} from './primereact/locales.js';
@@ -77,7 +89,15 @@ export {SelfRegistration, type ISelfRegistrationProps} from './components/SelfRe
 export {SocialLoginButton, type ISocialLoginButtonProps} from './components/SocialLoginButton/SocialLoginButton.js';
 export {Text} from './components/Text/Text.js';
 export {Theme} from './components/Theme/Theme.js';
+export {
+    Theme,
+    type IThemeConfig,
+    type PaletteType,
+    type ThemeType,
+    type ThemeVariant
+} from './components/Theme/Theme.js';
 export {ThumbIndex} from './components/ThumbIndex/ThumbIndex.js';
+export { bgLocale } from './primereact/locales.js';
 
 // ── Form primitives (PrimeReact intermediaries for realm pages) ─────────────
 export {
@@ -88,16 +108,16 @@ export {
     type DropdownProps,
     type InputTextProps,
     type MessageProps,
-    type PasswordProps,
+    type PasswordProps
 } from './primereact/index.js';
 
 // ── Design Mode ──────────────────────────────────────────────────────────────
-export {DesignModeContext, DesignModeProvider} from './design/DesignModeContext.js';
-export {DesignToolbar} from './design/DesignToolbar.js';
-export {useDesignMode} from './design/useDesignMode.js';
+export { DesignModeContext, DesignModeProvider } from './design/DesignModeContext.js';
+export { DesignToolbar } from './design/DesignToolbar.js';
+export { useDesignMode } from './design/useDesignMode.js';
 
 // ── Widgets ──────────────────────────────────────────────────────────────────
-export {registerBuiltinWidgets, widgetRegistry} from './widgets/index.js';
+export { registerBuiltinWidgets, widgetRegistry } from './widgets/index.js';
 
 // ── Viewers (commander leaf viewers) ───────────────────────────────────────
 export {
@@ -125,12 +145,12 @@ export {
 } from './viewers/resolveViewer.js';
 
 // ── Schema ───────────────────────────────────────────────────────────────────
-export {schemaRegistry} from './schema/registry.js';
-export {buildValidationRules} from './schema/validate.js';
+export { schemaRegistry } from './schema/registry.js';
+export { buildValidationRules } from './schema/validate.js';
 
 // ── Event bus ────────────────────────────────────────────────────────────────
-export {blongEvents} from './lib/eventBus.js';
-export type {BlongEventMap} from './lib/eventBus.js';
+export { blongEvents } from './lib/eventBus.js';
+export type { BlongEventMap } from './lib/eventBus.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 export type {
@@ -140,7 +160,7 @@ export type {
     IPageAction,
     IQueryAction,
     ITypedAction,
-    IUseActionResult,
+    IUseActionResult
 } from './types/action.js';
 
 export type {
@@ -153,19 +173,19 @@ export type {
     IWidgetConfig,
     IWidgetProps,
     IWidgetRegistry,
-    WidgetType,
+    WidgetType
 } from '@feasibleone/blong';
 
-export type {IMenuItem, IPortalConfig, IPortalState, ITab} from './types/portal.js';
+export type { IMenuItem, IPortalConfig, IPortalState, ITab } from './types/portal.js';
 
-export type {IAuthState, IUserProfile, PermissionMap} from './types/permission.js';
+export type { IAuthState, IUserProfile, PermissionMap } from './types/permission.js';
 
-export type {ISchemaDocument, ISchemaRegistry} from './types/schema.js';
+export type { ISchemaDocument, ISchemaRegistry } from './types/schema.js';
 
-export type {ILayoutResult, IResolvedCard, LayoutConfig} from './hooks/useLayout.js';
+export type { ILayoutResult, IResolvedCard, LayoutConfig } from './hooks/useLayout.js';
 
 // ── Model system ─────────────────────────────────────────────────────────────
-export {dropdownRegistry} from './model/index.js';
+export { dropdownRegistry } from './model/index.js';
 export type {
     IBrowserConfig,
     IBrowserPermissions,
@@ -179,7 +199,8 @@ export type {
     IReportConfig,
     IResolvedModelSpec,
     ISchemaOverlay,
-    IWidgetOverride,
+    IWidgetOverride
 } from './model/index.js';
 
-export {Model} from './model/Model.js';
+export { Model } from './model/Model.js';
+
