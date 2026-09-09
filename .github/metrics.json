@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "commit": "9d2fb1d0e1ce0cae1517bc9ac1688224ff670725",
+  "run": 537,
+  "updatedAt": "2026-09-09T21:18:12.137Z",
+  "tests": {
+    "total": 578,
+    "passed": 578,
+    "failed": 0,
+    "flaky": 0
+  },
+  "coverage": {
+    "lines": {
+      "hit": 20879,
+      "found": 30536
+    }
+  },
+  "packages": {
+    "blong-access": {
+      "tests": {
+        "passed": 24,
+        "failed": 0,
+        "flaky": 0,
+        "total": 24
+      }
+    },
+    "blong-browser": {
+      "tests": {
+        "passed": 484,
+        "failed": 0,
+        "flaky": 0,
+        "total": 484
+      },
+      "coverage": {
+        "linesHit": 2185,
+        "linesTotal": 4056
+      }
+    },
+    "blong-commander": {
+      "tests": {
+        "passed": 10,
+        "failed": 0,
+        "flaky": 0,
+        "total": 10
+      }
+    },
+    "blong-gateway": {
+      "tests": {
+        "passed": 12,
+        "failed": 0,
+        "flaky": 0,
+        "total": 12
+      }
+    },
+    "blong-kopi": {
+      "tests": {
+        "passed": 4,
+        "failed": 0,
+        "flaky": 0,
+        "total": 4
+      }
+    },
+    "blong-marine": {
+      "tests": {
+        "passed": 14,
+        "failed": 0,
+        "flaky": 0,
+        "total": 14
+      },
+      "coverage": {
+        "linesHit": 167,
+        "linesTotal": 1089
+      }
+    },
+    "blong-party": {
+      "tests": {
+        "passed": 16,
+        "failed": 0,
+        "flaky": 0,
+        "total": 16
+      }
+    },
+    "blong-suite": {
+      "tests": {
+        "passed": 14,
+        "failed": 0,
+        "flaky": 0,
+        "total": 14
+      },
+      "coverage": {
+        "linesHit": 14,
+        "linesTotal": 250
+      }
+    },
+    "blong-int-adapter": {
+      "coverage": {
+        "linesHit": 4236,
+        "linesTotal": 4343
+      }
+    },
+    "test": {
+      "coverage": {
+        "linesHit": 1341,
+        "linesTotal": 1716
+      }
+    },
+    "blong-gogo": {
+      "coverage": {
+        "linesHit": 12936,
+        "linesTotal": 19082
+      }
+    }
+  },
+  "history": [
+    {
+      "commit": "9d2fb1d0e1ce0cae1517bc9ac1688224ff670725",
+      "run": 537,
+      "date": "2026-09-09T21:18:12.137Z",
+      "tests": {
+        "total": 578,
+        "passed": 578,
+        "failed": 0,
+        "flaky": 0
+      },
+      "coverage": {
+        "lines": {
+          "hit": 20879,
+          "found": 30536
+        }
+      }
+    }
+  ]
+}
