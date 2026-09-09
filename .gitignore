@@ -123,3 +123,4 @@ sandbox
 .playwright
 allure-results
 allure-report
+vitest-report

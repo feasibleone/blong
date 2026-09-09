@@ -62,16 +62,18 @@ The aggregation is orchestrated by `core/blong-gogo/run-coverage.sh`, invoked th
 1. **Stages a clean merge dir** — `core/blong-gogo/.tap/coverage-merge` is wiped and rebuilt on
    every run, so stale coverage can never distort the aggregated report.
 2. **Merges raw V8 coverage JSON** — copies every `*.json` from each configured package's
-   `.tap/coverage/` (prefixed by package name) and always adds blong-browser's vitest
-   `coverage/coverage-final.json` (Istanbul format).
-3. **Chooses which packages contribute** — the default set is `blong-gogo test blong-int-adapter`:
-   gogo's own unit tests plus the two harnesses that boot the full framework. Set
-   `COVERAGE_PACKAGES` (space-separated names) to add E2E/demo suites, e.g.
-   `COVERAGE_PACKAGES="blong-gogo test blong-int-adapter blong-suite blong-marine"`.
-4. **Runs `c8 report`** from the repository root, restricted by `--include` to the
-   framework/integration/demo/browser source trees, writing `coverage/lcov.info` and the
-   `coverage/lcov-report/` HTML report.
-5. **Guards the output** — fails loudly when no coverage JSON is found, or when the report would
+   `.tap/coverage/` (tap + Playwright), prefixed by package name.
+3. **Chooses which packages contribute** — the default set is
+   `blong-gogo test blong-int-adapter blong-marine blong-suite`. Set `COVERAGE_PACKAGES`
+   (space-separated names) to override, e.g.
+   `COVERAGE_PACKAGES="blong-gogo test blong-int-adapter"`.
+4. **Unifies on istanbul coverage maps** — `c8` converts the server V8 coverage to an istanbul map
+   (`--reporter json`), which is merged with blong-browser's vitest `coverage/coverage-final.json`
+   by `mergeCoverage.mjs`. This matters because `c8` cannot read istanbul maps (it would report
+   vitest coverage as 0%); merging at the istanbul level keeps the real browser hits.
+5. **Renders `coverage/lcov.info` + `coverage/lcov-report/`** with istanbul from the repository
+   root, so paths stay correct for the deployed report.
+6. **Guards the output** — fails loudly when no coverage JSON is found, or when the report would
    contain no `core/blong-gogo` coverage (override with `COVERAGE_ALLOW_NO_GOGO=1`), so a misleading
    browser-only report can never be produced silently.
 

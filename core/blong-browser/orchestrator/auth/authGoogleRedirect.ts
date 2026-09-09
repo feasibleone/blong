@@ -74,17 +74,23 @@ export default handler(
             const remote = await fetchGoogleConfig();
             const google: GoogleConfig = {
                 baseUrl: remote?.baseUrl ?? local.baseUrl,
-                authorizationEndpoint:
-                    remote?.authorizationEndpoint ?? local.authorizationEndpoint,
+                authorizationEndpoint: remote?.authorizationEndpoint ?? local.authorizationEndpoint,
                 clientId: remote?.clientId ?? local.clientId,
-                redirectUri: local.redirectUri ?? remote?.redirectUri ?? defaultRedirectUri(),
+                // Redirect back to the current origin (the frontend that started
+                // the flow). Config values may hard-code a fixed port, but CI
+                // derives a per-realm frontend port (9000 + rush index + 100),
+                // so a hard-coded redirect would send the user to the wrong app
+                // and the OAuth/exchange would intermittently fail.
+                redirectUri: defaultRedirectUri() ?? local.redirectUri ?? remote?.redirectUri,
                 scope: local.scope ?? remote?.scope,
             };
             if (!google.baseUrl || !google.clientId || !google.redirectUri) {
                 throw new Error('Google login is not configured');
             }
 
-            const base = google.baseUrl.endsWith('/') ? google.baseUrl.slice(0, -1) : google.baseUrl;
+            const base = google.baseUrl.endsWith('/')
+                ? google.baseUrl.slice(0, -1)
+                : google.baseUrl;
             const url = new URL(google.authorizationEndpoint ?? `${base}/authorize`);
             url.searchParams.set('client_id', google.clientId);
             url.searchParams.set('redirect_uri', google.redirectUri);

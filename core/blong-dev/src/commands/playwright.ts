@@ -48,7 +48,18 @@ export async function playwright(args: string[]): Promise<void> {
     // When collecting coverage, set NODE_V8_COVERAGE so the blong server process
     // (spawned by Playwright's webServer config) writes V8 coverage on exit.
     if (collectCoverage) {
+        // Start from a clean slate so coverage never accumulates across runs:
+        // drop leftover V8 dumps and any stale pw-* files from earlier runs.
+        rmSync(coverageDir, {recursive: true, force: true});
         mkdirSync(v8Dir, {recursive: true});
+        const tapCoverageDir = join(cwd, '.tap', 'coverage');
+        if (existsSync(tapCoverageDir)) {
+            for (const file of readdirSync(tapCoverageDir)) {
+                if (file.startsWith('pw-')) {
+                    rmSync(join(tapCoverageDir, file), {force: true});
+                }
+            }
+        }
         env['NODE_V8_COVERAGE'] = v8Dir;
         console.log(`[playwright --coverage] NODE_V8_COVERAGE=${v8Dir}`);
     }

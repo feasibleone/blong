@@ -1,3 +1,4 @@
+import {rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
@@ -17,6 +18,9 @@ export async function test(args: string[]): Promise<void> {
     };
     const run = (cmd: string, args: string[]) =>
         runTool(cmd, args, {cwd, env} satisfies RunOptions);
+
+    // Fresh coverage output each run so tap V8 JSONs never accumulate.
+    rmSync(join(cwd, '.tap', 'coverage'), {recursive: true, force: true});
 
     const exitCode = await run('tap', [
         '*.test.ts',
