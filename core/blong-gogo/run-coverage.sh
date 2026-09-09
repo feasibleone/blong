@@ -1,39 +1,91 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CORE_DIR="$(dirname "$SCRIPT_DIR")"
-C8="$CORE_DIR/../common/temp/node_modules/.pnpm/node_modules/.bin/c8"
+REPO_DIR="$(dirname "$CORE_DIR")"
 
-cd "$(dirname "$CORE_DIR")"
+cd "$REPO_DIR"
 
-# Merge coverage from all test packages into blong-gogo's .tap/coverage/
-# This includes both tap-produced coverage and Playwright coverage (pw-* files
-# written by blong-dev playwright --coverage).
+# --- Locate c8 (hoisted into the pnpm store by the tap toolchain) ----------
+C8=""
+for candidate in \
+    "$REPO_DIR/common/temp/node_modules/.pnpm/node_modules/.bin/c8" \
+    "$CORE_DIR/blong-gogo/node_modules/.bin/c8" \
+    "$REPO_DIR/node_modules/.bin/c8"; do
+    if [ -x "$candidate" ]; then
+        C8="$candidate"
+        break
+    fi
+done
+if [ -z "$C8" ]; then
+    echo "run-coverage.sh: ERROR: c8 binary not found (expected in common/temp pnpm store)" >&2
+    exit 1
+fi
 
-for pkg in blong-int-adapter test blong-suite blong-marine; do
-    src="core/$pkg/.tap/coverage"
-    if [ -d "$src" ]; then
-        cp "$src"/*.json core/blong-gogo/.tap/coverage/ 2>/dev/null || true
+# --- Staging dir: raw V8 (tap/Playwright) + istanbul (vitest) coverage JSON --
+# Coverage is merged from every package that produced any. The dir is rebuilt
+# on each run so stale files can never distort the aggregated report.
+STAGE="$CORE_DIR/blong-gogo/.tap/coverage-merge"
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
+
+# Packages whose raw V8 coverage is merged into the unified report.
+#
+# The default set deliberately stays small so c8 stays within runner memory
+# while still always covering the framework:
+#   blong-gogo         - gogo's own tap unit tests (its src/ lives here)
+#   test               - @feasibleone/test, boots the full framework
+#   blong-int-adapter  - integration tests that exercise the framework
+# blong-browser's vitest (istanbul) coverage is always merged on top.
+#
+# Override with COVERAGE_PACKAGES (space-separated package names) to include
+# more E2E/demo suites, e.g.:
+#   COVERAGE_PACKAGES="blong-gogo test blong-int-adapter blong-suite blong-marine blong-party blong-access"
+COVER_PKGS=()
+if [ -n "${COVERAGE_PACKAGES:-}" ]; then
+    read -r -a COVER_PKGS <<< "$COVERAGE_PACKAGES"
+else
+    COVER_PKGS=(blong-gogo test blong-int-adapter)
+fi
+
+merged=0
+for name in "${COVER_PKGS[@]}"; do
+    pkg="$REPO_DIR/core/$name"
+    if [ ! -d "$pkg" ]; then
+        echo "run-coverage.sh: WARNING package core/$name not found, skipping"
+        continue
+    fi
+    # tap / Playwright raw V8 coverage (uuid-*.json and pw-*.json). Files are
+    # prefixed with the package name so they never collide across packages.
+    if [ -d "$pkg/.tap/coverage" ]; then
+        while IFS= read -r f; do
+            cp -f "$f" "$STAGE/$name-$(basename "$f")"
+            merged=$((merged + 1))
+        done < <(find "$pkg/.tap/coverage" -maxdepth 1 -type f -name '*.json' 2>/dev/null | sort)
     fi
 done
 
-# Count how many Playwright coverage files were merged (informational).
-pw_count=$(ls core/blong-gogo/.tap/coverage/pw-*.json 2>/dev/null | wc -l)
-if [ "$pw_count" -gt 0 ]; then
-    echo "run-coverage.sh: Including $pw_count Playwright coverage file(s)"
+# blong-browser vitest (istanbul-format) coverage-final.json (historical name).
+if [ -f "$REPO_DIR/core/blong-browser/coverage/coverage-final.json" ]; then
+    cp -f "$REPO_DIR/core/blong-browser/coverage/coverage-final.json" "$STAGE/vitest-coverage-final.json"
+    merged=$((merged + 1))
 fi
 
-# Copy blong-browser vitest coverage (NYC-format) if available.
-# Produced by ci-test which runs vitest with --coverage.
-if [ -f core/blong-browser/coverage/coverage-final.json ]; then
-    cp core/blong-browser/coverage/coverage-final.json core/blong-gogo/.tap/coverage/vitest-coverage-final.json
-    echo "run-coverage.sh: Including vitest coverage for blong-browser"
+echo "run-coverage.sh: merged $merged coverage JSON file(s) from ${#COVER_PKGS[@]} package(s)"
+if [ "$merged" -eq 0 ]; then
+    echo "run-coverage.sh: ERROR: no coverage JSON found in any package — did ci-test run before ci-coverage?" >&2
+    exit 1
 fi
 
+# Informational: how many merged files actually exercised blong-gogo source.
+gogo_refs=$(grep -l 'blong-gogo/src' "$STAGE"/*.json 2>/dev/null | wc -l)
+echo "run-coverage.sh: $gogo_refs merged file(s) reference blong-gogo/src"
+
+# --- Aggregate into the root coverage/ report ------------------------------
 "$C8" report \
     --all \
-    --temp-directory core/blong-gogo/.tap/coverage \
+    --temp-directory "$STAGE" \
     --include "core/blong-gogo/src/**/*.ts" \
     --include "core/test/**/*.ts" \
     --include "core/blong-int-adapter/**/*.ts" \
@@ -41,8 +93,18 @@ fi
     --include "core/blong-marine/**/*.ts" \
     --include "core/blong-browser/src/**/*.ts" \
     --include "core/blong-browser/src/**/*.tsx" \
+    --exclude "core/blong-gogo/**/*.test.*" \
     --exclude "core/blong-browser/**/*.stories.*" \
     --exclude "core/blong-browser/**/*.test.*" \
+    --exclude "**/*.d.ts" \
     --reporter text \
     --reporter lcov \
     -o coverage
+
+# --- Guard: never silently ship a report without framework coverage --------
+gogo_sf=$(grep -c 'blong-gogo/src/' coverage/lcov.info 2>/dev/null || true)
+echo "run-coverage.sh: lcov.info reports $gogo_sf blong-gogo source file(s)"
+if [ "$gogo_sf" -eq 0 ] && [ "${COVERAGE_ALLOW_NO_GOGO:-0}" != "1" ]; then
+    echo "run-coverage.sh: ERROR: aggregated report contains no core/blong-gogo coverage (merged $merged JSON(s), $gogo_refs referencing gogo). Set COVERAGE_ALLOW_NO_GOGO=1 to ignore." >&2
+    exit 1
+fi

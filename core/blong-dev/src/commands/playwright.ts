@@ -96,8 +96,9 @@ export async function playwright(args: string[]): Promise<void> {
     // When --coverage was requested, copy V8 coverage files produced by
     // both the server process (via NODE_V8_COVERAGE) and the browser-side
     // coverage fixture into the invoking package's .tap/coverage/ directory.
-    // The run-coverage.sh script later copies them into blong-gogo's
-    // .tap/coverage/ for the unified c8 aggregation.
+    // run-coverage.sh (in blong-gogo) later merges these per-package files,
+    // plus gogo's own test coverage, into a clean staging dir for the unified
+    // c8 aggregation.
     if (collectCoverage && existsSync(v8Dir)) {
         const v8Files = readdirSync(v8Dir).filter(f => f.endsWith('.json'));
         if (v8Files.length > 0) {
