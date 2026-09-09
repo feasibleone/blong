@@ -13,11 +13,11 @@
     "dependencies": {
         "@feasibleone/blong-mle": "workspace:^1.0.0",
         "@playwright/test": "^1.60.0",
-        "allure": "^3.6.2",
+        "allure": "^3.17.0",
         "cacache": "^20.0.4",
         "cspell": "^10.0.0",
         "eslint": "^10.4.0",
-        "mysql2": "^3.16.3",
+        "mysql2": "^3.24.4",
         "strip-json-comments": "^5.0.3",
         "tap": "^21.6.3",
         "typescript": "^6.0.3",
