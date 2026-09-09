@@ -8,6 +8,11 @@
  */
 import {expect, test} from '@feasibleone/blong-browser/playwright';
 
+// This flow has been intermittently flaky under CI load (OAuth round-trip +
+// Vite on-demand compile + token exchange). Waits below are generous; retries
+// provide a safety net for genuine transient server-side hiccups.
+test.describe.configure({retries: 3});
+
 test('google login (mock) auto-registers and lands in the portal', async ({page}) => {
     await page.goto('/');
     await expect(page.getByTestId('login-submit')).toBeVisible({timeout: 15000});

@@ -32,21 +32,23 @@ mkdir -p "$STAGE"
 
 # Packages whose raw V8 coverage is merged into the unified report.
 #
-# The default set deliberately stays small so c8 stays within runner memory
-# while still always covering the framework:
+# The default set mirrors the packages that exercise the framework and the
+# browser UI through real V8 coverage (which c8 understands):
 #   blong-gogo         - gogo's own tap unit tests (its src/ lives here)
 #   test               - @feasibleone/test, boots the full framework
 #   blong-int-adapter  - integration tests that exercise the framework
-# blong-browser's vitest (istanbul) coverage is always merged on top.
+#   blong-marine/suite - Playwright E2E that drive the blong-browser UI
 #
-# Override with COVERAGE_PACKAGES (space-separated package names) to include
-# more E2E/demo suites, e.g.:
+# blong-browser's vitest output is NOT merged here: vitest emits istanbul
+# coverage-final.json, which c8 cannot convert to hits (it yields 0%).
+#
+# Override with COVERAGE_PACKAGES (space-separated package names):
 #   COVERAGE_PACKAGES="blong-gogo test blong-int-adapter blong-suite blong-marine blong-party blong-access"
 COVER_PKGS=()
 if [ -n "${COVERAGE_PACKAGES:-}" ]; then
     read -r -a COVER_PKGS <<< "$COVERAGE_PACKAGES"
 else
-    COVER_PKGS=(blong-gogo test blong-int-adapter)
+    COVER_PKGS=(blong-gogo test blong-int-adapter blong-marine blong-suite)
 fi
 
 merged=0
@@ -65,12 +67,6 @@ for name in "${COVER_PKGS[@]}"; do
         done < <(find "$pkg/.tap/coverage" -maxdepth 1 -type f -name '*.json' 2>/dev/null | sort)
     fi
 done
-
-# blong-browser vitest (istanbul-format) coverage-final.json (historical name).
-if [ -f "$REPO_DIR/core/blong-browser/coverage/coverage-final.json" ]; then
-    cp -f "$REPO_DIR/core/blong-browser/coverage/coverage-final.json" "$STAGE/vitest-coverage-final.json"
-    merged=$((merged + 1))
-fi
 
 echo "run-coverage.sh: merged $merged coverage JSON file(s) from ${#COVER_PKGS[@]} package(s)"
 if [ "$merged" -eq 0 ]; then
