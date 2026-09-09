@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/feasibleone/blong/compare/blong-int-sql-v1.3.0...blong-int-sql-v1.3.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* dependencies ([d9da54c](https://github.com/feasibleone/blong/commit/d9da54cbc85b3046829175df6823e8a611e4d276))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-int-sql-v1.2.2...blong-int-sql-v1.3.0) (2026-08-19)
 
 
