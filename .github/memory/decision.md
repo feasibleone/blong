@@ -559,3 +559,48 @@
   `test:server` on port 3000, no `defineBlongConfig`) — unaffected.
   `common/deploy/core/blong-kopi/ playwright.config.ts` (still hardcodes 9003/9103) is a git-ignored
   deployment artifact, not used by CI.
+
+## CI metrics deltas in summary/comment (2026-09-09) — `infitx-org/actions` + blong
+
+- **Baseline storage = B (committed file updated by a main-side updater)**: `.github/metrics.json`
+  committed on main; a reusable `update-metrics.yaml` folds the merged PR's run snapshot into it.
+  The PR branch is never mutated → no re-triggered builds / no required-check staleness.
+- **Delta meaning**: "vs last merged main state" — baseline only advances when a green PR merges.
+- **Granularity**: aggregate line + per-package Δ columns (tests count Δ and coverage pp Δ).
+- **History**: the committed file holds the latest snapshot as the baseline plus `history` array of
+  the last ~10 merged runs (newest first).
+- **Extensibility**: schema v1 is metric-agnostic at the aggregate level; future metrics add a
+  field + a small delta reducer in the same renderer. Only tests/coverage now.
+- **Implementation shape (auto-decided, minor)**: everything (parse, baseline diff, snapshot write,
+  render) lives in the single `render-ci.mjs` embedded in rush.yaml's `Render CI summary` step;
+  `metrics.json` snapshot is uploaded as the `metrics` artifact. Guarded so the very first run (no
+  baseline) renders exactly like before.
+- **Schema keying conventions (auto-decided, keep consistent)**: top-level
+  `coverage.lines = {hit, found}` (NOT `{hit,total}` — a renderer bug initially read `.total` and
+  silently produced null deltas); per-package `packages[<name>].coverage = {linesHit, linesTotal}`.
+  blong's `release.yaml` gained an `update-metrics` job calling the reusable workflow @main with
+  `RELEASE_PLEASE_TOKEN`.
+
+## Extract complex bash/heredoc steps into composite actions (2026-09-09) — `infitx-org/actions`
+
+- **Why**: the shared `rush.yaml` is a _reusable_ workflow consumed by other repos (`uses: …@main`),
+  so it runs in the **caller's** checkout — plain `run: node scripts/x.mjs` from the actions repo
+  would not resolve. That pushed logic into giant bash blocks + heredocs embedded in YAML (hard to
+  lint/test/diff; quoting hazards). Decision: **composite actions committed in the actions repo**,
+  invoked via `uses: infitx-org/actions/.github/actions/<name>@main` (GitHub clones the actions repo
+  into `${{ github.action_path }}` at runtime).
+- **Scope of this pass**: the two genuinely complex blocks → `.github/actions/render-ci` (report
+  parse + baseline diff + metrics snapshot + step summary, dependency-free `.mjs`) and
+  `.github/actions/deploy-report` (gh-pages publish: clone/init, copy, prune numeric run dirs, regen
+  index.html, force push, resolve pages URL). Small glue bash steps left as-is.
+- **Conventions that must hold** (validated): actions are dependency-free plain node (no
+  `@actions/*`/build step); composite steps use `shell: bash` +
+  `run: node "${{ github.action_path }}/index.mjs"`; inputs flow via explicit `env: INPUT_*:`
+  mapping; outputs are written by appending to `$GITHUB_OUTPUT` and declared under the action's
+  `outputs:` (consumed downstream as `steps.<id>.outputs.*`); all filesystem work is anchored to
+  `$GITHUB_WORKSPACE` via `process.chdir` / `join(workspace,…)`. publish-report gained a `- *node`
+  setup step so Node is guaranteed on PATH.
+- **Deferred**: converting the remaining small bash (Assemble comment, List reports, Config check,
+  List Dockerfiles) — smallest benefit; can follow the same pattern later.
+- Note: consumers stay pinned to `rush.yaml@main`, so these actions are exercised only after merging
+  to the actions repo's main (matches the existing model).

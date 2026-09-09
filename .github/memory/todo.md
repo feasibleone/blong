@@ -4,6 +4,17 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 
 ## List of incomplete tasks
 
+- skills as tools
+- time bound debug tokens
+- match and mask
+- markdown lint
+- transient form fields
+- table widget dual role / no singleton
+- stable keys
+- remove axios
+- playwright test runner for backend tests
+- telemetry
+- blong-kustomize
 - same queries are repeated in multiple places, they should be refactored into a single function
 - avatar photo upload (initials-only for now — per user decision)
 - allow multi statement in blong-dev sql

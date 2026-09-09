@@ -18,3 +18,17 @@ jobs:
       token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+
+  update-metrics:
+    # After a PR is merged to main, fold its rush-run metrics.json snapshot into
+    # the committed .github/metrics.json baseline so future PRs can show deltas.
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(metrics)') }}
+    permissions:
+      contents: write
+    uses: infitx-org/actions/.github/workflows/update-metrics.yaml@main
+    with:
+      metrics-file: .github/metrics.json
+      artifact-name: metrics
+      history-limit: 10
+    secrets:
+      token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
