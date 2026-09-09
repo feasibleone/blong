@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.1](https://github.com/feasibleone/blong/compare/blong-party-v1.4.0...blong-party-v1.4.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* CI reporting ([1678ace](https://github.com/feasibleone/blong/commit/1678acec404970b171e0b22ce10c22364c227dde))
+* CI reporting ([a9b96be](https://github.com/feasibleone/blong/commit/a9b96be5fa3b0a1050c030b2cd9038234da63f49))
+* dependencies ([d9da54c](https://github.com/feasibleone/blong/commit/d9da54cbc85b3046829175df6823e8a611e4d276))
+
 ## [1.4.0](https://github.com/feasibleone/blong/compare/blong-party-v1.3.0...blong-party-v1.4.0) (2026-09-07)
 
 

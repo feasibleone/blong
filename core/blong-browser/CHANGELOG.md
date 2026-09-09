@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.16.2](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.1...blong-browser-v1.16.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* CI reporting ([4530692](https://github.com/feasibleone/blong/commit/4530692aa1d306a45d5f1485caec41520bec0f57))
+* CI reporting ([1678ace](https://github.com/feasibleone/blong/commit/1678acec404970b171e0b22ce10c22364c227dde))
+* CI reporting ([a9b96be](https://github.com/feasibleone/blong/commit/a9b96be5fa3b0a1050c030b2cd9038234da63f49))
+
 ## [1.16.1](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.0...blong-browser-v1.16.1) (2026-09-08)
 
 

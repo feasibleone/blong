@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.20.1](https://github.com/feasibleone/blong/compare/blong-docs-v1.20.0...blong-docs-v1.20.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* CI reporting ([4530692](https://github.com/feasibleone/blong/commit/4530692aa1d306a45d5f1485caec41520bec0f57))
+* CI reporting ([24d8de5](https://github.com/feasibleone/blong/commit/24d8de50a5b260a60357ceecefc1c9f360bfb540))
+
 ## [1.20.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.19.0...blong-docs-v1.20.0) (2026-08-21)
 
 

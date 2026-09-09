@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/feasibleone/blong/compare/blong-marine-v1.5.0...blong-marine-v1.5.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* dependencies ([d9da54c](https://github.com/feasibleone/blong/commit/d9da54cbc85b3046829175df6823e8a611e4d276))
+
 ## [1.5.0](https://github.com/feasibleone/blong/compare/blong-marine-v1.4.1...blong-marine-v1.5.0) (2026-09-07)
 
 

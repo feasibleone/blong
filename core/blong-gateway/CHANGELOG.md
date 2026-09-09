@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/feasibleone/blong/compare/blong-gateway-v1.2.0...blong-gateway-v1.2.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* dependencies ([d9da54c](https://github.com/feasibleone/blong/commit/d9da54cbc85b3046829175df6823e8a611e4d276))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.1.1...blong-gateway-v1.2.0) (2026-09-07)
 
 
