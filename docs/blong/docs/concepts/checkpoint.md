@@ -110,7 +110,7 @@ the line between handlers and tests:
   when the test graduates to a handler, the checkpoints become
   observability points.
 
-See the [handler-test POC suite](https://github.com/feasibleone/blong/tree/main/core/handler-test-poc)
+See the [handler-test POC suite](https://github.com/feasibleone/blong/tree/main/demo/handler-test-poc)
 for working examples.
 
 ## Related Concepts

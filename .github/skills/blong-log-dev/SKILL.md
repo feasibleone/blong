@@ -1,6 +1,14 @@
 ---
 name: blong-log-dev
-description: Develop, extend, debug, or improve the Blong logging tooling; the real-time log server (`core/blong-log/`), its UDP pino transport, the pino-cacache on-disk persistence (`core/blong-gogo/src/pino-cacache.ts`), the `blong-dev log` CLI (`core/blong-dev/src/commands/log.ts`), the VS Code terminal-link handler (`ext/rest-fs/`), and the LogViewer React client with its Storybook and visual regression tests. Use this skill whenever working on any of these tools, adding filters or output modes to `blong-dev log`, or debugging why entries are missing on disk or in the viewer. For using the logging tools to monitor applications, use the blong-log skill instead.
+description:
+    Develop, extend, debug, or improve the Blong logging tooling; the real-time log server
+    (`tools/blong-log/`), its UDP pino transport, the pino-cacache on-disk persistence
+    (`core/blong-gogo/src/pino-cacache.ts`), the `blong-dev log` CLI
+    (`tools/blong-dev/src/commands/log.ts`), the VS Code terminal-link handler (`ext/rest-fs/`), and
+    the LogViewer React client with its Storybook and visual regression tests. Use this skill
+    whenever working on any of these tools, adding filters or output modes to `blong-dev log`, or
+    debugging why entries are missing on disk or in the viewer. For using the logging tools to
+    monitor applications, use the blong-log skill instead.
 ---
 
 # blong-log-dev Skill
@@ -10,12 +18,12 @@ description: Develop, extend, debug, or improve the Blong logging tooling; the r
 The Blong logging stack is a set of cooperating pieces. This skill is for **developing and
 extending** them; for using them to monitor applications, see the **blong-log** skill.
 
-- `core/blong-log/` — real-time log viewer: UDP receiver, circular buffer, REST + WebSocket server,
+- `tools/blong-log/` — real-time log viewer: UDP receiver, circular buffer, REST + WebSocket server,
   and the React LogViewer client.
 - `@feasibleone/blong-log/transport` — pino transport that ships log entries over UDP to the server.
 - `core/blong-gogo/src/pino-cacache.ts` — pino transport that persists full entries on disk
   (cacache) for on-demand inspection.
-- `core/blong-dev/src/commands/log.ts` — the `blong-dev log` CLI that reads the cacache cache.
+- `tools/blong-dev/src/commands/log.ts` — the `blong-dev log` CLI that reads the cacache cache.
 - `ext/rest-fs/src/extension.ts` — VS Code extension that opens a single cached entry when you click
   a `blong://log/<ULID>` terminal link.
 
@@ -40,7 +48,7 @@ the log server. Each entry carries a monotonic ULID `id` injected by the `Log` m
 ## File map
 
 ```
-core/blong-log/
+tools/blong-log/
   src/
     index.ts           ← public exports (LogServer, transport, types)
     server.ts          ← LogServer: UDP receiver + circular buffer + REST/WebSocket + static client
@@ -60,7 +68,7 @@ core/blong-gogo/src/
   Log.ts               ← pino logger; wires the cacache transport when `log.cacache` is set
   pino-cacache.ts      ← cacache disk transport + retention pruning
 
-core/blong-dev/src/
+tools/blong-dev/src/
   commands/log.ts      ← `blong-dev log` command (reads the cacache cache)
   cli.ts               ← command registry (adds the `log` case)
   index.ts             ← programmatic exports
@@ -71,7 +79,7 @@ ext/rest-fs/src/
 
 ## Data model
 
-Entries are plain pino log objects — see `LogEntry` in `core/blong-log/src/types.ts`. Key fields:
+Entries are plain pino log objects — see `LogEntry` in `tools/blong-log/src/types.ts`. Key fields:
 `id` (ULID), `time` (epoch ms), `level` (pino number 10..60), `msg`, `name`, `traceId`, `err`,
 `req`, `res`, `$meta` (`{mtid, method, ...}`).
 
@@ -95,7 +103,7 @@ only assumed by the CLI and the extension.
 
 ## `blong-dev log` internals
 
-`core/blong-dev/src/commands/log.ts`:
+`tools/blong-dev/src/commands/log.ts`:
 
 1. `cacache.ls(cachePath)` → index, minus the retention-state key.
 2. Concurrent `cacache.get` (32 workers) → parse JSON → build
@@ -130,28 +138,29 @@ debugging needs arise rather than reaching for shell one-liners.
 3. Keep `condensed` plain and parseable (no ANSI), keep summaries on stderr, and keep newest-first
    ordering — agents and scripts depend on these.
 
-**Register a new command:** add a `case 'name'` in `core/blong-dev/src/cli.ts`, a usage line, and an
-export in `core/blong-dev/src/index.ts`.
+**Register a new command:** add a `case 'name'` in `tools/blong-dev/src/cli.ts`, a usage line, and
+an export in `tools/blong-dev/src/index.ts`.
 
 **Dependencies:** the command uses the `cacache` package (declared in
-`core/blong-dev/package.json`). After changing dependencies, run `rush update`.
+`tools/blong-dev/package.json`). After changing dependencies, run `rush update`.
 
 **Validation:**
 
-- Type-check/lint: `node --run ci-lint` in `core/blong-dev` (or `blong-dev lint <files>`).
+- Type-check/lint: `node --run ci-lint` in `tools/blong-dev` (or `blong-dev lint <files>`).
 - Manual: populate a temp cacache with `cacache.put(path, ulid, buffer, {metadata: {timestamp}})`
   and run `node bin/blong-dev.ts log --cache-path <temp>` in each mode.
-- There is no dedicated unit test for the command yet — add one under `core/blong-dev/src/commands/`
-  following the tap pattern used across the monorepo if the command grows.
+- There is no dedicated unit test for the command yet — add one under
+  `tools/blong-dev/src/commands/` following the tap pattern used across the monorepo if the command
+  grows.
 
 ## LogViewer UI and Storybook
 
-The React client lives in `core/blong-log/src/client/`. Development uses Storybook with 10 stories
+The React client lives in `tools/blong-log/src/client/`. Development uses Storybook with 10 stories
 (full/light theme, empty, errors-only, trace/service/level filtered, search, large datasets) and
 Playwright-based visual regression tests.
 
 ```bash
-cd core/blong-log
+cd tools/blong-log
 npm run storybook          # dev server at http://localhost:6006
 npm run storybook:test     # visual regression (needs Storybook serving)
 npm run storybook:test:ci  # build static → serve → test → exit

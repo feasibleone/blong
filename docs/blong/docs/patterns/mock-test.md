@@ -1,25 +1,24 @@
 # Server-side testing with mocks
 
 When writing integration tests for handlers that call external systems (databases, downstream
-services, transformation engines), you can replace those systems with lightweight mock handlers
-that live in the `server/test` layer.  This gives you full in-process integration tests that are
-fast, deterministic, and require no running infrastructure.
+services, transformation engines), you can replace those systems with lightweight mock handlers that
+live in the `server/test` layer. This gives you full in-process integration tests that are fast,
+deterministic, and require no running infrastructure.
 
 ## How it works
 
-The `server/test` layer is activated under the `integration` intent.  It adds two
-orchestrators to the realm:
+The `server/test` layer is activated under the `integration` intent. It adds two orchestrators to
+the realm:
 
 - **`mockDispatch`** – exposes a `mock` namespace backed by simple handler implementations in
-  `server/test/mock/`.  These handlers simulate the external dependencies your business handlers
-  rely on.
+  `server/test/mock/`. These handlers simulate the external dependencies your business handlers rely
+  on.
 - **`testDispatch`** – exposes a `test` namespace backed by test scenario handlers in
-  `server/test/test/`.  Each test handler exercises one business handler and asserts on the
-  results.
+  `server/test/test/`. Each test handler exercises one business handler and asserts on the results.
 
-When the `integration` intent is active, the framework automatically sets `remote.canSkipSocket: true`,
-so every call (`eip.*`, `mock.*`, `test.*`) stays in the same process and resolves through the
-in-process local registry – no network or RPC transport needed.
+When the `integration` intent is active, the framework automatically sets
+`remote.canSkipSocket: true`, so every call (`eip.*`, `mock.*`, `test.*`) stays in the same process
+and resolves through the in-process local registry – no network or RPC transport needed.
 
 ## Folder structure
 
@@ -45,8 +44,8 @@ realmname/
 
 ## Step 1 – Write the mock handlers
 
-Mock handlers are ordinary handlers that live in `test/mock/`.  They return hardcoded or
-in-memory data that the business handlers depend on.
+Mock handlers are ordinary handlers that live in `test/mock/`. They return hardcoded or in-memory
+data that the business handlers depend on.
 
 ```ts
 // realmname/server/test/mock/mockDataSave.ts
@@ -75,8 +74,8 @@ export default handler(
 );
 ```
 
-Optionally add a `~.schema.ts` to declare the mock handler signatures so the TypeScript
-compiler and IDE can verify call sites:
+Optionally add a `~.schema.ts` to declare the mock handler signatures so the TypeScript compiler and
+IDE can verify call sites:
 
 ```ts
 // realmname/server/test/mock/~.schema.ts
@@ -97,8 +96,8 @@ declare module '@feasibleone/blong' {
 
 ## Step 2 – Add the mock orchestrator
 
-`mockDispatch` wires the mock handler group to the `mock` namespace.
-It is only activated in the `integration` environment.
+`mockDispatch` wires the mock handler group to the `mock` namespace. It is only activated in the
+`integration` environment.
 
 ```ts
 // realmname/server/test/mockDispatch.ts
@@ -138,31 +137,26 @@ export default orchestrator(blong => ({
 
 ## Step 4 – Write the test handlers
 
-Test handlers call the real business handler and assert on the results.
-They live in `server/test/test/` and follow the [test handler pattern](./test).
+Test handlers call the real business handler and assert on the results. They live in
+`server/test/test/` and follow the [test handler pattern](./test).
 
 ```ts
 // realmname/server/test/test/testEipClaim.ts
 import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
 
-export default handler(
-    ({lib: {group}, handler: {eipMessageClaim}}) => ({
-        testEipClaim: ({name = 'eip claim'}: {name?: string}, $meta: IMeta) =>
-            group(name)([
-                async function claimCheck(
-                    assert: IAssert,
-                    {$meta}: {$meta: IMeta},
-                ) {
-                    const result = (await eipMessageClaim(
-                        {large: 'payload', sensitive: true},
-                        $meta,
-                    )) as Record<string, unknown>;
-                    assert.equal(result.id, 'mock-id', 'claim ID returned');
-                    assert.equal(result.payload, 'stored-payload', 'stored payload retrieved');
-                },
-            ]),
-    }),
-);
+export default handler(({lib: {group}, handler: {eipMessageClaim}}) => ({
+    testEipClaim: ({name = 'eip claim'}: {name?: string}, $meta: IMeta) =>
+        group(name)([
+            async function claimCheck(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                const result = (await eipMessageClaim(
+                    {large: 'payload', sensitive: true},
+                    $meta,
+                )) as Record<string, unknown>;
+                assert.equal(result.id, 'mock-id', 'claim ID returned');
+                assert.equal(result.payload, 'stored-payload', 'stored payload retrieved');
+            },
+        ]),
+}));
 ```
 
 ## Step 5 – Test layer activation
@@ -174,8 +168,8 @@ The mock/test orchestrators co-locate their own `activation` (as in Steps 2-3).
 ## Step 6 – Enable tests in the root server
 
 In the root `server.ts` (loaded by the test runner), set the servers to listen on random ports and
-list the test entry-points in `watch.test`. The framework automatically sets `remote.canSkipSocket:
-true` for the `integration` intent — no need to add it manually:
+list the test entry-points in `watch.test`. The framework automatically sets
+`remote.canSkipSocket: true` for the `integration` intent — no need to add it manually:
 
 ```ts
 // server.ts
@@ -196,7 +190,7 @@ export default server(blong => ({
         },
         integration: {
             watch: {
-                test: ['test.eip.claim', 'test.eip.pipes'],  // test entry-points
+                test: ['test.eip.claim', 'test.eip.pipes'], // test entry-points
             },
         },
     },
@@ -238,14 +232,14 @@ export default handler(
 );
 ```
 
-In production the orchestrator `imports` config points to a real adapter.
-In the `integration` environment, `mockDispatch` registers `mockDataSave` and `mockDataGet`
-under the `mock` namespace, and the `handler` proxy resolves those names through the local
-registry.  No code in the business handler changes between environments.
+In production the orchestrator `imports` config points to a real adapter. In the `integration`
+environment, `mockDispatch` registers `mockDataSave` and `mockDataGet` under the `mock` namespace,
+and the `handler` proxy resolves those names through the local registry. No code in the business
+handler changes between environments.
 
 ## Full example
 
-See `core/blong-eip/` for a complete working implementation (modern layout: server-side mock/test
+See `demo/blong-eip/` for a complete working implementation (modern layout: server-side mock/test
 handlers under `server/test/`):
 
 - Business handlers: `eip/orchestrator/eip/`

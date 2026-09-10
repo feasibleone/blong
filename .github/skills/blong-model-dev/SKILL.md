@@ -1,6 +1,13 @@
 ---
 name: blong-model-dev
-description: Develop, extend, debug, or improve the blong-browser model system internals. The model system lives in `core/blong-browser/src/model/` and provides the `subjectObjectComponent` aggregator that auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill when working on the model system itself; subjectObjectComponent, entry files (subjectObjectBrowse/New/Open/Report in component/), IModelSpec types, withDefaults, dropdownRegistry, or the mock system (adapter/mock.ts + subjectObjectMock.ts). For using the model to build realm pages, use the blong-model skill instead.
+description:
+    Develop, extend, debug, or improve the blong-browser model system internals. The model system
+    lives in `core/blong-browser/src/model/` and provides the `subjectObjectComponent` aggregator
+    that auto-generates Browse/New/Open/Report pages from IModelSpec declarations. Use this skill
+    when working on the model system itself; subjectObjectComponent, entry files
+    (subjectObjectBrowse/New/Open/Report in component/), IModelSpec types, withDefaults,
+    dropdownRegistry, or the mock system (adapter/mock.ts + subjectObjectMock.ts). For using the
+    model to build realm pages, use the blong-model skill instead.
 ---
 
 # blong-model-dev Skill
@@ -199,23 +206,26 @@ export async function subjectObjectBrowse(
 - Schema fetched via `blong.handler['{subject}.{object}.schema']`, merged with `model.schema`
 - `editable: false, editMode: false, layout: 'browse'`
 - `toolbar` prepends a `{icon: 'pi pi-refresh', action: '__refresh__', title: 'Refresh'}` button
-  before `model.browser.toolbar` — clicking it invalidates all TanStack Query caches whose
-  key starts with `{subject}.{object}.` (forces the browse table to refetch)
-- `refreshNamespace: '{subject}.{object}'` is passed to `Editor` to wire up the `__refresh__` handler
+  before `model.browser.toolbar` — clicking it invalidates all TanStack Query caches whose key
+  starts with `{subject}.{object}.` (forces the browse table to refetch)
+- `refreshNamespace: '{subject}.{object}'` is passed to `Editor` to wire up the `__refresh__`
+  handler
 - `cards` and `layouts` from model (default `browse` layout has 3-panel split with navigator)
 
 **`subjectObjectNew`** — `Editor` with:
 
 - Schema fetched via `blong.handler['{subject}.{object}.schema']`
 - **`createAction`** from `model.methods.add` (called only on the first save — creates the record)
-- **`saveAction`** from `model.methods.edit` (called on subsequent saves after mode switches to `'edit'`)
+- **`saveAction`** from `model.methods.edit` (called on subsequent saves after mode switches to
+  `'edit'`)
 - `mode: 'new'` — after the first save the Editor automatically switches to `'edit'` mode so the
   second save calls `saveAction` (`.edit`), not `createAction` (`.add`). This prevents duplicate
   records when the user saves, edits a field, and saves again.
-- `title: {new: 'Create {objectTitle}', edit: 'Edit {objectTitle}'}` — a plain `Record<string,string>`
-  (JSON-serializable, translation-friendly) so the tab title updates when mode switches
-- **Important:** the `title` object is hoisted **outside** the `NewPage` render function to keep
-  its reference stable. An inline object literal would trigger the tab-title `useEffect` on every
+- `title: {new: 'Create {objectTitle}', edit: 'Edit {objectTitle}'}` — a plain
+  `Record<string,string>` (JSON-serializable, translation-friendly) so the tab title updates when
+  mode switches
+- **Important:** the `title` object is hoisted **outside** the `NewPage` render function to keep its
+  reference stable. An inline object literal would trigger the tab-title `useEffect` on every
   render, causing an infinite update loop (`Maximum update depth exceeded`).
 - `editable: false, value: {}` — always in edit mode, no view/edit toggle
 
@@ -306,10 +316,10 @@ The following are areas where the model system has known gaps:
    before adding new override keys.
 
 5. **Storybook stories for model pages in realm packages** — The model pages are exercised via the
-   realm's own `.storybook/` setup (e.g. `core/blong-marine/.storybook/`, using `withBlong(browser)`
-   + the full blong platform loaded), not via `blong-browser/.storybook/` per-component stories.
-   The `page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` generate
-   story objects with minimal boilerplate.
+   realm's own `.storybook/` setup (e.g. `demo/blong-marine/.storybook/`, using `withBlong(browser)`
+    - the full blong platform loaded), not via `blong-browser/.storybook/` per-component stories.
+      The `page()` and `portal()` helpers from `@feasibleone/blong-browser/storyHelper.tsx` generate
+      story objects with minimal boilerplate.
 
 ---
 
@@ -355,9 +365,9 @@ function NewPage(props) {
 ### `__refresh__` button tooltip error
 
 Internal action names starting with `__` (e.g. `__refresh__`, `__edit__`, `__save__`) are handled
-directly in the Editor's toolbar render loop — they are **not** dispatched as RPC methods. If a
-new `__xxx__` button falls through to `ActionButton`, it will fail with a "Method binding failed"
-error. Always add new internal actions to the `if (actionName === '__edit__' || ...)` branch in
+directly in the Editor's toolbar render loop — they are **not** dispatched as RPC methods. If a new
+`__xxx__` button falls through to `ActionButton`, it will fail with a "Method binding failed" error.
+Always add new internal actions to the `if (actionName === '__edit__' || ...)` branch in
 `Editor.tsx` and handle them in `handleToolbarAction`.
 
 ---

@@ -1,6 +1,10 @@
 ---
 name: blong-validation
-description: Define input/output validation for Blong handlers using TypeScript types or TypeBox schemas. Automatic validation generates OpenAPI documentation and runtime checks. Use this skill whenever a handler needs typed parameters, you're generating API docs, or the user asks about schemas, validation rules, or TypeBox types in Blong — even if they don't mention 'validation' by name.
+description:
+    Define input/output validation for Blong handlers using TypeScript types or TypeBox schemas.
+    Automatic validation generates OpenAPI documentation and runtime checks. Use this skill whenever
+    a handler needs typed parameters, you're generating API docs, or the user asks about schemas,
+    validation rules, or TypeBox types in Blong — even if they don't mention 'validation' by name.
 ---
 
 # Implementing Validation
@@ -11,13 +15,13 @@ description: Define input/output validation for Blong handlers using TypeScript 
 - **`~.schema.ts` is auto-generated** — let the framework regenerate it; don't hand-edit.
 - **Validate formats + constraints:** `format: 'email'|'uri'|'date'|'uuid'`, min/max, patterns.
 - **Enums via union literals** for fixed value sets; make truly-optional fields optional.
-- **Wire validations in the orchestrator `activation`:** `validations: ['realmname.entity.validation']`
-  or regex `/^realmname\.\w+\.validation$/`.
+- **Wire validations in the orchestrator `activation`:**
+  `validations: ['realmname.entity.validation']` or regex `/^realmname\.\w+\.validation$/`.
 - **Document error responses** (`responses`) for OpenAPI.
 
-Canonical framework rules + archetype:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: HANDLER]`.
-See **blong-handler** for the `Handler`-type pattern.
+Canonical framework rules + archetype: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: HANDLER]`. See **blong-handler** for the `Handler`-type
+pattern.
 
 ## Validation Approaches
 
@@ -468,6 +472,6 @@ async function testValidation(assert, {$meta}) {
 
 ## Examples from Codebase
 
-- **Auto-validation:** `core/test/demo/orchestrator/subject/~.schema.ts`
-- **Handler with types:** `core/test/demo/orchestrator/subject/subjectAge.ts`
+- **Auto-validation:** `test/framework/demo/orchestrator/subject/~.schema.ts`
+- **Handler with types:** `test/framework/demo/orchestrator/subject/subjectAge.ts`
 - **Manual validation:** Check gateway folders in realms

@@ -2,15 +2,15 @@
 
 How to define model specs in a realm.
 
-See [Model System](../concepts/blong-model.md) for the concept overview
-and the blong-model skill for agent assistance with model development.
+See [Model System](../concepts/blong-model.md) for the concept overview and the blong-model skill
+for agent assistance with model development.
 
 ---
 
 ## Folder Structure
 
 Each realm that uses the model system organises its models and fixture data in a dedicated folder.
-The conventional structure (as seen in `core/blong-marine/`) is:
+The conventional structure (as seen in `demo/blong-marine/`) is:
 
 ```text
 marine/
@@ -45,22 +45,28 @@ export default model(
         async function marineCoralModel() {
             return {
                 subject: 'marine',
-                object:  'coral',
-                objectTitle: 'Coral',   // defaults to capitalized 'object'
-                keyField: 'coralId',    // defaults to '${object}Id'
+                object: 'coral',
+                objectTitle: 'Coral', // defaults to capitalized 'object'
+                keyField: 'coralId', // defaults to '${object}Id'
 
                 // Browser-side schema overlay (merged with runtime schema from {subject}.{object}.schema handler)
                 schema: {
                     properties: {
                         coral: {
                             properties: {
-                                coralId:     {},
-                                coralName:   {title: 'Name', filter: true, sort: true},
-                                familyId:    {title: 'Family',  widget: {type: 'dropdown', dropdown: 'marine.family'}},
-                                habitatId:   {title: 'Habitat', widget: {type: 'dropdown', dropdown: 'marine.habitat'}},
-                                maxDepth:    {title: 'Max Depth (m)'},
-                                colorPattern:{title: 'Color Pattern'},
-                                discovered:  {widget: {type: 'date'}},
+                                coralId: {},
+                                coralName: {title: 'Name', filter: true, sort: true},
+                                familyId: {
+                                    title: 'Family',
+                                    widget: {type: 'dropdown', dropdown: 'marine.family'},
+                                },
+                                habitatId: {
+                                    title: 'Habitat',
+                                    widget: {type: 'dropdown', dropdown: 'marine.habitat'},
+                                },
+                                maxDepth: {title: 'Max Depth (m)'},
+                                colorPattern: {title: 'Color Pattern'},
+                                discovered: {widget: {type: 'date'}},
                                 description: {widget: {type: 'textArea'}},
                             },
                             // Override table widget options for the browse panel
@@ -80,9 +86,15 @@ export default model(
                     edit: {
                         label: 'Coral Details',
                         className: 'col-12 md:col-8',
-                        widgets: ['coral.coralName', 'coral.familyId', 'coral.habitatId',
-                                  'coral.maxDepth', 'coral.colorPattern', 'coral.discovered',
-                                  'coral.description'],
+                        widgets: [
+                            'coral.coralName',
+                            'coral.familyId',
+                            'coral.habitatId',
+                            'coral.maxDepth',
+                            'coral.colorPattern',
+                            'coral.discovered',
+                            'coral.description',
+                        ],
                     },
                 },
 
@@ -153,19 +165,20 @@ For inline fixture data (small datasets or when YAML is overkill):
 ```typescript
 import {fixture} from '@feasibleone/blong';
 
-export default fixture(() =>
-    async function marineFixture() {
-        return {
-            'marine.coral': [
-                {coralId: 1, coralName: 'Brain Coral', familyId: 1, maxDepth: 40},
-                {coralId: 2, coralName: 'Staghorn Coral', familyId: 2, maxDepth: 25},
-            ],
-            'marine.family': [
-                {familyId: 1, familyName: 'Acroporidae'},
-                {familyId: 2, familyName: 'Faviidae'},
-            ],
-        };
-    },
+export default fixture(
+    () =>
+        async function marineFixture() {
+            return {
+                'marine.coral': [
+                    {coralId: 1, coralName: 'Brain Coral', familyId: 1, maxDepth: 40},
+                    {coralId: 2, coralName: 'Staghorn Coral', familyId: 2, maxDepth: 25},
+                ],
+                'marine.family': [
+                    {familyId: 1, familyName: 'Acroporidae'},
+                    {familyId: 2, familyName: 'Faviidae'},
+                ],
+            };
+        },
 );
 ```
 
@@ -179,31 +192,31 @@ The mock generates the following handlers automatically from each model + fixtur
 
 Key field properties available in the schema overlay:
 
-| Property    | Type                         | Effect                                          |
-| ----------- | ---------------------------- | ----------------------------------------------- |
-| `title`     | string                       | Override field label in forms and column headers |
-| `filter`    | boolean                      | Show field in the browse filter bar             |
-| `sort`      | boolean                      | Make column sortable in Explorer                |
-| `required`  | boolean                      | Mark field required (client-side validation)    |
-| `default`   | any                          | Default value for new entity forms              |
-| `widget`    | `IWidgetOverride`            | Widget type and widget-specific options         |
+| Property   | Type              | Effect                                           |
+| ---------- | ----------------- | ------------------------------------------------ |
+| `title`    | string            | Override field label in forms and column headers |
+| `filter`   | boolean           | Show field in the browse filter bar              |
+| `sort`     | boolean           | Make column sortable in Explorer                 |
+| `required` | boolean           | Mark field required (client-side validation)     |
+| `default`  | any               | Default value for new entity forms               |
+| `widget`   | `IWidgetOverride` | Widget type and widget-specific options          |
 
 Key widget types:
 
-| `widget.type`         | PrimeReact component    | Extra widget props               |
-| --------------------- | ----------------------- | -------------------------------- |
-| `dropdown`            | Dropdown                | `dropdown: 'subject.name'`       |
-| `multiSelect`         | MultiSelect             | `dropdown: 'subject.name'`       |
-| `selectTable`         | DataTable (select)      | `dropdown: 'subject.name'`       |
-| `date`                | Calendar                |                                  |
-| `dateTime`            | Calendar (showTime)     |                                  |
-| `textArea`            | InputTextarea           |                                  |
-| `boolean`             | Checkbox                |                                  |
-| `integer`             | InputNumber (no decimals)|                                 |
-| `number`              | InputNumber             |                                  |
-| `currency`            | InputNumber (currency)  | `currency: 'USD'`                |
-| `select`              | SelectButton            | `options: [{value, label}]`      |
-| `table`               | DataTable (editable)    | `widgets: ['col1', 'col2']`      |
+| `widget.type` | PrimeReact component      | Extra widget props          |
+| ------------- | ------------------------- | --------------------------- |
+| `dropdown`    | Dropdown                  | `dropdown: 'subject.name'`  |
+| `multiSelect` | MultiSelect               | `dropdown: 'subject.name'`  |
+| `selectTable` | DataTable (select)        | `dropdown: 'subject.name'`  |
+| `date`        | Calendar                  |                             |
+| `dateTime`    | Calendar (showTime)       |                             |
+| `textArea`    | InputTextarea             |                             |
+| `boolean`     | Checkbox                  |                             |
+| `integer`     | InputNumber (no decimals) |                             |
+| `number`      | InputNumber               |                             |
+| `currency`    | InputNumber (currency)    | `currency: 'USD'`           |
+| `select`      | SelectButton              | `options: [{value, label}]` |
+| `table`       | DataTable (editable)      | `widgets: ['col1', 'col2']` |
 
 ---
 
@@ -232,8 +245,7 @@ browser: {
 
 ## Method Name Overrides
 
-By default, the model system infers method names from
-`{subject}.{object}.{verb}`. To override:
+By default, the model system infers method names from `{subject}.{object}.{verb}`. To override:
 
 ```typescript
 methods: {

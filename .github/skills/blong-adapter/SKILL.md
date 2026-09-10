@@ -1,6 +1,11 @@
 ---
 name: blong-adapter
-description: Integrate Blong with external systems using adapter pattern. Supports HTTP/REST APIs, TCP protocols, SQL databases, and webhooks. Hides protocol details behind high-level APIs. Use this skill whenever the user wants to connect to a database, call an external API, integrate with an HSM or payment terminal, or wire up any external dependency — even if they just say 'add database support' or 'call this API'.
+description:
+    Integrate Blong with external systems using adapter pattern. Supports HTTP/REST APIs, TCP
+    protocols, SQL databases, and webhooks. Hides protocol details behind high-level APIs. Use this
+    skill whenever the user wants to connect to a database, call an external API, integrate with an
+    HSM or payment terminal, or wire up any external dependency — even if they just say 'add
+    database support' or 'call this API'.
 ---
 
 # Implementing an Adapter
@@ -13,12 +18,12 @@ description: Integrate Blong with external systems using adapter pattern. Suppor
 - **Never import other handlers.** Use the `handler`/`lib` proxies (IoC).
 - **Always forward `$meta`** on every downstream call.
 - **Co-locate config** in the layer's `activation` — not the realm `server.ts`.
-- **Name adapters depending on the place** - in blong-gogo they are named after the protocol or technology,
-  while their instantiations (e.g. in realms) are named after their role.
+- **Name adapters depending on the place** - in blong-gogo they are named after the protocol or
+  technology, while their instantiations (e.g. in realms) are named after their role.
 
-Canonical framework rules + archetypes:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: ADAPTER_HTTP]`,
-`[CONFIG_EXAMPLE]`. For REST client/server see **blong-rest**; protocols see **blong-codec**.
+Canonical framework rules + archetypes: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: ADAPTER_HTTP]`, `[CONFIG_EXAMPLE]`. For REST client/server see
+**blong-rest**; protocols see **blong-codec**.
 
 ## Adapter Types
 
@@ -192,23 +197,23 @@ export default adapter(blong => ({
 ```
 
 **JSON columns (`*JSON` suffix).** The knex adapter automatically (de)serializes any column whose
-name ends in `JSON`: object/array values are `JSON.stringify`'d on `insert`/`update` and parsed
-back on read. Declare such columns with `type.stringNull()` in the realm schema — see the
-`blong-schema` skill. No adapter code needed; it applies to every queryBuilder produced by the
-shared `srv.db` adapter (implementation: `blong-gogo/src/adapter/schema/knex/json.ts`).
+name ends in `JSON`: object/array values are `JSON.stringify`'d on `insert`/`update` and parsed back
+on read. Declare such columns with `type.stringNull()` in the realm schema — see the `blong-schema`
+skill. No adapter code needed; it applies to every queryBuilder produced by the shared `srv.db`
+adapter (implementation: `blong-gogo/src/adapter/schema/knex/json.ts`).
 
-**Config flow: handlers vs library factories (shared `srv.db` adapter).** Handler groups imported
-by the shared `srv.db` knex adapter (e.g. an access realm's `adapter/db` group, `core.db`,
-`party.db`) get their configuration from **two distinct slices** — verify which one your code
-reads before deciding where to declare defaults:
+**Config flow: handlers vs library factories (shared `srv.db` adapter).** Handler groups imported by
+the shared `srv.db` knex adapter (e.g. an access realm's `adapter/db` group, `core.db`, `party.db`)
+get their configuration from **two distinct slices** — verify which one your code reads before
+deciding where to declare defaults:
 
-- **Handler `this.config`** = the *adapter's config slice* (`port.config[namespace]`). This is fed
+- **Handler `this.config`** = the _adapter's config slice_ (`port.config[namespace]`). This is fed
   by `srv.db.<key>` in the **suite's** server entry (`index.ts`). A realm's `server.ts` config does
   **not** reach handlers' `this.config`, and neither does suite `access.db.*`-style nesting.
-- **`library()` factory `config`** = the *realm's group config slice*
-  (`moduleConfig['<group>']`). This is fed by the realm's **own `server.ts`** under the group key,
-  e.g. `config.default.db.password` reaches the `adapter/db` library as `config.password`. This is
-  the **reusable, realm-owned** way to provide defaults that every suite gets automatically
+- **`library()` factory `config`** = the _realm's group config slice_ (`moduleConfig['<group>']`).
+  This is fed by the realm's **own `server.ts`** under the group key, e.g.
+  `config.default.db.password` reaches the `adapter/db` library as `config.password`. This is the
+  **reusable, realm-owned** way to provide defaults that every suite gets automatically
   (blong-access declares its credential-hashing fallback this way).
 
 Additionally, an imported `.db` handler group's own `config` export (e.g. `meta/db/db.ts` returning
@@ -464,8 +469,9 @@ export default handler(
 
 ## Examples from Codebase
 
-- **HTTP adapter:** `core/test/demo/adapter/http.ts`
-- **TCP/Payshield:** `core/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative `adapter.tcp`)
-- **TCP simulation (listen: true):** `core/blong-sim-tcp/payshield/sim/payshieldSim.ts`
-- **Database:** `core/test/db/adapter/sql.ts` — inspect data in dev with `blong-dev sql "SELECT ..."` (see **blong-schema** for the dev DB name derivation and auto-create)
-- **Mock adapter:** `core/test/demo/adapter/mock.ts`
+- **HTTP adapter:** `test/framework/demo/adapter/http.ts`
+- **TCP/Payshield:** `test/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative `adapter.tcp`)
+- **TCP simulation (listen: true):** `test/blong-sim-tcp/payshield/sim/payshieldSim.ts`
+- **Database:** `test/framework/db/adapter/sql.ts` — inspect data in dev with
+  `blong-dev sql "SELECT ..."` (see **blong-schema** for the dev DB name derivation and auto-create)
+- **Mock adapter:** `test/framework/demo/adapter/mock.ts`

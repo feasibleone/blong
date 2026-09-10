@@ -1,6 +1,13 @@
 ---
 name: blong-test-sim
-description: Simulate backend systems locally for Blong integration tests without requiring the real backend. Covers two patterns - OpenAPI-based HTTP simulation using orchestrator.openapi from @feasibleone/blong-openapi, and TCP-based simulation using adapter.tcp with listen=true. Use this skill whenever the real backend is unavailable, you need to stand up a local mock server for integration tests, or you want to exercise the full adapter and codec stack against a controlled simulator — even if the user just says 'mock the backend server' or 'simulate the HSM'.
+description:
+    Simulate backend systems locally for Blong integration tests without requiring the real backend.
+    Covers two patterns - OpenAPI-based HTTP simulation using orchestrator.openapi from
+    @feasibleone/blong-openapi, and TCP-based simulation using adapter.tcp with listen=true. Use
+    this skill whenever the real backend is unavailable, you need to stand up a local mock server
+    for integration tests, or you want to exercise the full adapter and codec stack against a
+    controlled simulator — even if the user just says 'mock the backend server' or 'simulate the
+    HSM'.
 ---
 
 # Simulating Backends for Tests
@@ -8,8 +15,8 @@ description: Simulate backend systems locally for Blong integration tests withou
 ## Overview
 
 When the real backend is unavailable but you still want to exercise the adapter and protocol code
-(not just skip it with a mock orchestrator), you can simulate the backend with a local server.
-The simulator runs inside the same process, activated only in `integration` mode.
+(not just skip it with a mock orchestrator), you can simulate the backend with a local server. The
+simulator runs inside the same process, activated only in `integration` mode.
 
 Two built-in patterns cover the most common cases:
 
@@ -18,10 +25,10 @@ Two built-in patterns cover the most common cases:
 
 ## Simulating OpenAPI-based back ends
 
-The simulation uses `orchestrator.openapi` from `@feasibleone/blong-openapi`. A `sim` layer
-in the realm contains handler implementations that respond to requests, and the orchestrator
-serves them via a local HTTP server on a known port. The real HTTP adapter is configured to
-point to that local server when running in integration mode.
+The simulation uses `orchestrator.openapi` from `@feasibleone/blong-openapi`. A `sim` layer in the
+realm contains handler implementations that respond to requests, and the orchestrator serves them
+via a local HTTP server on a known port. The real HTTP adapter is configured to point to that local
+server when running in integration mode.
 
 **How it works:**
 
@@ -122,19 +129,20 @@ config: {
 },
 ```
 
-A complete working example is in the [`core/blong-sim-api`](../../../core/blong-sim-api) package.
+A complete working example is in the [`test/blong-sim-api`](../../../test/blong-sim-api) package.
 
 ## Simulating TCP-based back ends
 
 For binary protocol devices (e.g., an HSM using Payshield), the simulation uses a second
-`adapter.tcp` instance with `listen: true`. This creates a TCP server on a shared port; the
-regular client adapter connects to it in integration mode exactly as it would connect to the
-real device.
+`adapter.tcp` instance with `listen: true`. This creates a TCP server on a shared port; the regular
+client adapter connects to it in integration mode exactly as it would connect to the real device.
 
 **How it works:**
 
-1. The `sim` layer (auto-activated in integration mode) contains a sim adapter using `adapter.tcp` with `listen: true`
-2. A `receive` handler in the sim adapter's handler group processes incoming requests and sets `$meta.dispatch` to generate mock responses
+1. The `sim` layer (auto-activated in integration mode) contains a sim adapter using `adapter.tcp`
+   with `listen: true`
+2. A `receive` handler in the sim adapter's handler group processes incoming requests and sets
+   `$meta.dispatch` to generate mock responses
 3. The regular client adapter connects to the same port and calls the sim
 4. Both adapters use the same codec for protocol compatibility
 
@@ -244,15 +252,15 @@ config: {
 },
 ```
 
-A complete working example is in the [`core/blong-sim-tcp`](../../../core/blong-sim-tcp) package.
+A complete working example is in the [`test/blong-sim-tcp`](../../../test/blong-sim-tcp) package.
 
 ## Choosing between simulation and mocking
 
-| Situation | Use |
-|---|---|
-| Want to exercise the adapter and codec stack | **blong-test-sim** (this skill) |
-| Backend is too complex to simulate locally | **blong-mock-test** (mock orchestrator) |
-| Need a real service but can provision it in K8s | **blong-test-int** |
+| Situation                                       | Use                                     |
+| ----------------------------------------------- | --------------------------------------- |
+| Want to exercise the adapter and codec stack    | **blong-test-sim** (this skill)         |
+| Backend is too complex to simulate locally      | **blong-mock-test** (mock orchestrator) |
+| Need a real service but can provision it in K8s | **blong-test-int**                      |
 
 ## Related skills
 

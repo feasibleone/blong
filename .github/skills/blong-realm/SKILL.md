@@ -103,8 +103,8 @@ realmname/
 └── test/                    # Playwright *.play.ts (browser layer)
 ```
 
-Reference realms: `core/blong-access`, `core/blong-party`, `core/blong-gateway` (canonical
-blong-server reuse); `core/blong-suite` shows wiring multiple realms into one suite.
+Reference realms: `realm/blong-access`, `realm/blong-party`, `realm/blong-gateway` (canonical
+blong-server reuse); `suite/blong-suite` shows wiring multiple realms into one suite.
 
 ## Recommended skill set for creating a realm
 
@@ -209,7 +209,7 @@ export default adapter(blong => ({
 }));
 ```
 
-(Example: `core/blong-gateway/adapter/meter.ts`.)
+(Example: `realm/blong-gateway/adapter/meter.ts`.)
 
 ## Configuration Concepts
 
@@ -271,12 +271,12 @@ children: [
 
 ## Examples from Codebase
 
-- `core/blong-party/` — the simplest canonical realm: pure auto-CRUD over `meta/` tables + models,
+- `realm/blong-party/` — the simplest canonical realm: pure auto-CRUD over `meta/` tables + models,
   no `adapter/db/*` handlers, standalone `index.ts` / `index.browser.ts` / Playwright
   `test/*.play.ts`.
-- `core/blong-access/` — canonical realm with custom `adapter/db/*` handlers (queryBuilder), RBAC
+- `realm/blong-access/` — canonical realm with custom `adapter/db/*` handlers (queryBuilder), RBAC
   merge seeds, server + browser tap tests.
-- `core/blong-gateway/` — canonical realm plus a realm-local Redis adapter (`adapter/meter.ts`).
+- `realm/blong-gateway/` — canonical realm plus a realm-local Redis adapter (`adapter/meter.ts`).
 
 ## Standalone Realm Entry Points
 

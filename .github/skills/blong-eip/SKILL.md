@@ -452,7 +452,7 @@ integration tests.
 
 ## Complete example
 
-See `core/blong-eip/` for a working reference implementation of all 16 patterns.
+See `demo/blong-eip/` for a working reference implementation of all 16 patterns.
 
 ## See also
 

@@ -1,10 +1,9 @@
 # Model System
 
-The **model system** is the primary way that application realms contribute
-user interface pages to a blong suite. It sits one level above the raw
-`Editor`, `Explorer` and `Report` components, providing a declarative
-specification layer (`IModelSpec`) from which complete CRUD pages are
-generated automatically.
+The **model system** is the primary way that application realms contribute user interface pages to a
+blong suite. It sits one level above the raw `Editor`, `Explorer` and `Report` components, providing
+a declarative specification layer (`IModelSpec`) from which complete CRUD pages are generated
+automatically.
 
 For the wider rationale see [Metadata-Driven UI](../rationale/metadata-driven-ui.md).
 
@@ -35,8 +34,8 @@ page handlers registered in the portal component namespace:
 | `{subject}.{object}.open`   | Edit/view | `Editor`                 |
 | `{subject}.{object}.report` | Report    | `Report`                 |
 
-The report page is optional — it is only registered when `report.permission`
-is defined in the model.
+The report page is optional — it is only registered when `report.permission` is defined in the
+model.
 
 > **Browse page:** The browse page uses `Editor` in `layout: 'browse'` mode — not the standalone
 > `Explorer` component. The default browse layout is a 3-panel split with a tree navigator, a main
@@ -46,9 +45,9 @@ is defined in the model.
 
 ## What a ModelSpec Contains
 
-An `IModelSpec` describes **one domain entity** from the browser's perspective.
-It is declared using the `model()` factory from `@feasibleone/blong`, which wraps
-an async handler function returning the spec object:
+An `IModelSpec` describes **one domain entity** from the browser's perspective. It is declared using
+the `model()` factory from `@feasibleone/blong`, which wraps an async handler function returning the
+spec object:
 
 ```typescript
 import {model} from '@feasibleone/blong';
@@ -56,7 +55,7 @@ import {model} from '@feasibleone/blong';
 export default model(
     () =>
         async function marineCoralModel() {
-            return {subject: 'marine', object: 'coral', /* ... */ };
+            return {subject: 'marine', object: 'coral' /* ... */};
         },
 );
 ```
@@ -73,9 +72,9 @@ keyField         →  "coralId"  (defaults to ${object}Id)
 
 ### 2. Schema Overlay
 
-The server OpenAPI schema for `subject.object.find` and `subject.object.get`
-is fetched at runtime. The model's `schema` property provides a browser-side
-overlay that enriches the server schema with display hints:
+The server OpenAPI schema for `subject.object.find` and `subject.object.get` is fetched at runtime.
+The model's `schema` property provides a browser-side overlay that enriches the server schema with
+display hints:
 
 - Widget type overrides (`type: 'dropdown'`, `type: 'date'`)
 - Named dropdown references (`dropdown: 'marine.family'`)
@@ -83,20 +82,20 @@ overlay that enriches the server schema with display hints:
 - Field title overrides
 - Required / validation overrides
 
-The overlay is **merged** on top of the server schema; it does not replace it.
-Fields not mentioned in the overlay receive server-schema defaults.
+The overlay is **merged** on top of the server schema; it does not replace it. Fields not mentioned
+in the overlay receive server-schema defaults.
 
 ### 3. Presentation Configuration
 
-- **`cards`** — named groups of fields, each with an optional label and
-  PrimeFlex layout class. Cards form the building blocks of the Editor layout.
-- **`layouts`** — how cards are arranged on the edit page: flat columns,
-  tabbed navigation, steps, or left-sidebar (ThumbIndex) navigation.
-- **`browser`** — browse page title, icon, permission keys, and an optional
-  default filter applied on page open.
+- **`cards`** — named groups of fields, each with an optional label and PrimeFlex layout class.
+  Cards form the building blocks of the Editor layout.
+- **`layouts`** — how cards are arranged on the edit page: flat columns, tabbed navigation, steps,
+  or left-sidebar (ThumbIndex) navigation.
+- **`browser`** — browse page title, icon, permission keys, and an optional default filter applied
+  on page open.
 - **`report`** — report page title and permission key.
-- **`methods`** — override the inferred API method names
-  (`${subject}.${object}.find`, `.get`, `.add`, `.edit`, `.remove`, `.report`).
+- **`methods`** — override the inferred API method names (`${subject}.${object}.find`, `.get`,
+  `.add`, `.edit`, `.remove`, `.report`).
 
 ---
 
@@ -119,23 +118,22 @@ IEnrichedSchema  (passed to Editor / Report)
        └─▶  Report filter + table
 ```
 
-The schema is fetched per page invocation via the `{subject}.{object}.schema` handler
-(not a static HTTP fetch). The handler returns runtime customisations (e.g. tenant-specific
-design overrides stored in the database) and `{}` when no overrides exist. The merge order
-gives `schemaOverride` highest priority over the static `model.schema`.
+The schema is fetched per page invocation via the `{subject}.{object}.schema` handler (not a static
+HTTP fetch). The handler returns runtime customisations (e.g. tenant-specific design overrides
+stored in the database) and `{}` when no overrides exist. The merge order gives `schemaOverride`
+highest priority over the static `model.schema`.
 
 ---
 
 ## Dropdown Registry
 
-Fields declared with `widget: {type: 'dropdown', dropdown: 'marine.family'}`
-are resolved by calling `{subject}.dropdown.list` on the backend.
-In development / Storybook the mock adapter auto-generates
-`{subject}.dropdown.list` from fixture data, synthesising `{value, label}` pairs
-using each model's `keyField` and `nameField`.
+Fields declared with `widget: {type: 'dropdown', dropdown: 'marine.family'}` are resolved by calling
+`{subject}.dropdown.list` on the backend. In development / Storybook the mock adapter auto-generates
+`{subject}.dropdown.list` from fixture data, synthesising `{value, label}` pairs using each model's
+`keyField` and `nameField`.
 
-The `dropdownRegistry` singleton (exported from `@feasibleone/blong-browser`)
-deduplicates concurrent loads and caches results for the browser session.
+The `dropdownRegistry` singleton (exported from `@feasibleone/blong-browser`) deduplicates
+concurrent loads and caches results for the browser session.
 
 ---
 
@@ -143,28 +141,26 @@ deduplicates concurrent loads and caches results for the browser session.
 
 The mock adapter (`adapter/mock.ts` in blong-browser) activates in `storybook` and `integration`
 environments and auto-generates all CRUD handlers from `.model` and `.fixture` handlers. No manual
-mock setup is needed — add a fixture handler named `{subject}Fixture` that returns sample data
-keyed by `'{subject}.{object}'`.
+mock setup is needed — add a fixture handler named `{subject}Fixture` that returns sample data keyed
+by `'{subject}.{object}'`.
 
 The `Model` React component (exported from `@feasibleone/blong-browser`) is the canonical way to
 render model pages in Storybook stories. It uses the full blong platform (loaded via
 `withBlong(browser)` in `.storybook/preview.tsx`) so all handlers are available.
 
-See `core/blong-marine/` for a working Storybook example using the marine biology realm.
-Stories live in `core/blong-marine/src/stories/` and use `page()` / `portal()` helpers from
-`@feasibleone/blong-browser/storyHelper.tsx`. The suite wrapper `core/blong-suite/`
-also exposes all realm stories by listing `@feasibleone/blong-marine` in `realmPackages`.
+See `demo/blong-marine/` for a working Storybook example using the marine biology realm. Stories
+live in `demo/blong-marine/src/stories/` and use `page()` / `portal()` helpers from
+`@feasibleone/blong-browser/storyHelper.tsx`. The suite wrapper `suite/blong-suite/` also exposes
+all realm stories by listing `@feasibleone/blong-marine` in `realmPackages`.
 
 ---
 
 ## Relationship to Raw Components
 
-The model system is a *convenience layer* built on top of the same components
-that are available for direct use. When a page requires custom logic that the
-model cannot express, a realm can write a component handler (`.component` suffix)
-that uses `Editor`, `Explorer`, or `Report` directly.
+The model system is a _convenience layer_ built on top of the same components that are available for
+direct use. When a page requires custom logic that the model cannot express, a realm can write a
+component handler (`.component` suffix) that uses `Editor`, `Explorer`, or `Report` directly.
 
-The model handles the 80 % case. The remaining 20 % uses the underlying
-components with hand-crafted props. Both approaches coexist naturally within
-the same realm — component handlers and model handlers are both discovered
-by the portal orchestrator.
+The model handles the 80 % case. The remaining 20 % uses the underlying components with hand-crafted
+props. Both approaches coexist naturally within the same realm — component handlers and model
+handlers are both discovered by the portal orchestrator.

@@ -13,15 +13,13 @@ OpenAPI/Swagger integration for the Blong framework
 
 ## Overview
 
-`@feasibleone/blong-openapi` provides seamless integration with external REST
-APIs using OpenAPI 2.0/3.0 (Swagger) definitions. It automatically generates
-type-safe handlers from API specifications, enabling you to call external
-services without writing manual HTTP request code.
+`@feasibleone/blong-openapi` provides seamless integration with external REST APIs using OpenAPI
+2.0/3.0 (Swagger) definitions. It automatically generates type-safe handlers from API
+specifications, enabling you to call external services without writing manual HTTP request code.
 
 ## Features
 
-- **Automatic Handler Generation**: Parse OpenAPI/Swagger definitions and
-  generate callable handlers
+- **Automatic Handler Generation**: Parse OpenAPI/Swagger definitions and generate callable handlers
 - **Type-Safe Integration**: Use `operationId` from API specs as handler names
 - **Multiple API Support**: Configure multiple API namespaces in a single orchestrator
 - **URL & File Support**: Load specifications from local files or remote URLs
@@ -99,13 +97,13 @@ const result = await this.bus.weatherGetCurrentWeather({
 
 ```yaml
 openapi:
-  logLevel: info                    # Log level for the orchestrator
-  namespace: ['api']                # Namespace prefix for calling handlers
-  api:
-    namespace:
-      weather:                      # API namespace identifier
-        - ./api/weather.yaml        # OpenAPI/Swagger definition (local)
-        - https://api.example.com/swagger.json  # or remote URL
+    logLevel: info # Log level for the orchestrator
+    namespace: ['api'] # Namespace prefix for calling handlers
+    api:
+        namespace:
+            weather: # API namespace identifier
+                - ./api/weather.yaml # OpenAPI/Swagger definition (local)
+                - https://api.example.com/swagger.json # or remote URL
 ```
 
 ### Advanced Configuration
@@ -114,22 +112,22 @@ Configure multiple APIs with custom settings:
 
 ```yaml
 openapi:
-  api:
-    namespace:
-      # External API with custom server override
-      payment:
-        - https://payment-api.example.com/openapi.json
-        - host: 'api.production.com'
-          basePath: '/v2'
-          x-blong:
-            destination: 'paymentService'
-            namespace: 'payment'
+    api:
+        namespace:
+            # External API with custom server override
+            payment:
+                - https://payment-api.example.com/openapi.json
+                - host: 'api.production.com'
+                  basePath: '/v2'
+                  x-blong:
+                      destination: 'paymentService'
+                      namespace: 'payment'
 
-      # Kubernetes API integration
-      k8s:
-        - https://kubernetes.io/api/v1/swagger.json
-        - servers:
-            - url: 'https://k8s-cluster:6443'
+            # Kubernetes API integration
+            k8s:
+                - https://kubernetes.io/api/v1/swagger.json
+                - servers:
+                      - url: 'https://k8s-cluster:6443'
 ```
 
 ### Multiple Definition Files
@@ -138,12 +136,12 @@ Split large API definitions across multiple files:
 
 ```yaml
 api:
-  namespace:
-    time:
-      - ./api/world-time.yaml              # Base OpenAPI definition
-      - ./api/world-time.operations.yaml   # Additional operationId mappings
-      - servers:
-          - url: 'http://worldtimeapi.org'
+    namespace:
+        time:
+            - ./api/world-time.yaml # Base OpenAPI definition
+            - ./api/world-time.operations.yaml # Additional operationId mappings
+            - servers:
+                  - url: 'http://worldtimeapi.org'
 ```
 
 ## Usage Patterns
@@ -184,9 +182,9 @@ Deploy as standalone microservice:
 
 ```yaml
 microservice:
-  orchestrator: true      # Enable orchestrator mode
-  gateway:
-    port: 8081           # Expose on port 8081
+    orchestrator: true # Enable orchestrator mode
+    gateway:
+        port: 8081 # Expose on port 8081
 ```
 
 ### Custom Operation IDs
@@ -196,10 +194,10 @@ If API doesn't define `operationId`, create mapping file:
 ```yaml
 # weather-operations.yaml
 paths:
-  /weather/current:
-    get:
-      operationId: getCurrentWeather
-      x-blong-method: weatherCurrent    # Alternative method name
+    /weather/current:
+        get:
+            operationId: getCurrentWeather
+            x-blong-method: weatherCurrent # Alternative method name
 ```
 
 ## Handler Naming Convention
@@ -208,11 +206,11 @@ Generated handlers follow the pattern: `{namespace}{operationId}`
 
 **Examples:**
 
-| Namespace | operationId | Handler Name |
-| ----------- | ------------- | -------------- |
-| weather | GetForecast | `weatherGetForecast` |
-| payment | CreateTransaction | `paymentCreateTransaction` |
-| k8s | listNamespaces | `k8sListNamespaces` |
+| Namespace | operationId       | Handler Name               |
+| --------- | ----------------- | -------------------------- |
+| weather   | GetForecast       | `weatherGetForecast`       |
+| payment   | CreateTransaction | `paymentCreateTransaction` |
+| k8s       | listNamespaces    | `k8sListNamespaces`        |
 
 Names are case-sensitive and trimmed of whitespace.
 
@@ -237,21 +235,19 @@ Configure incoming webhooks with OpenAPI definitions:
 
 ```yaml
 webhook:
-  imports: ['codec.openapi']
-  'codec.openapi':
-    namespace:
-      github:
-        - ./api/github-webhooks.yaml
+    imports: ['codec.openapi']
+    'codec.openapi':
+        namespace:
+            github:
+                - ./api/github-webhooks.yaml
 ```
 
 ## Related Packages
 
-- **[@feasibleone/blong](https://www.npmjs.com/package/@feasibleone/blong)** -
-  Core framework
-- **[@feasibleone/blong-gogo](https://www.npmjs.com/package/@feasibleone/blong-gogo)** -
-  Contains base `orchestrator.openapi` and `codec.openapi`
-- **[openapi-types](https://www.npmjs.com/package/openapi-types)** - TypeScript
-  types for OpenAPI
+- **[@feasibleone/blong](https://www.npmjs.com/package/@feasibleone/blong)** - Core framework
+- **[@feasibleone/blong-gogo](https://www.npmjs.com/package/@feasibleone/blong-gogo)** - Contains
+  base `orchestrator.openapi` and `codec.openapi`
+- **[openapi-types](https://www.npmjs.com/package/openapi-types)** - TypeScript types for OpenAPI
 
 ## Documentation
 
@@ -262,5 +258,5 @@ webhook:
 
 ## Example Projects
 
-See the [test/api](../../core/test/api/) folder for working examples with
-world-time API integration.
+See the [test/api](../../test/framework/demo/api/) folder for working examples with world-time API
+integration.

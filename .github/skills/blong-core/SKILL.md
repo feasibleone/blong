@@ -94,7 +94,7 @@ provide and the _extension points_ they expose.
 Type aliases are seeded via `meta/db/0-coreTypeMerge.yaml`:
 
 ```yaml
-# core/blong-core/meta/db/0-coreTypeMerge.yaml
+# realm/blong-core/meta/db/0-coreTypeMerge.yaml
 key: typeAlias
 type:
     - typeAlias: core.currency
@@ -544,5 +544,5 @@ These patterns work for any resource-based entity (core, party, access):
 - `blong-handler` / `blong-orchestrator` / `blong-error` — writing the handlers that consume or
   extend these realms.
 - `blong-rest` / `blong-validation` — exposing access-protected endpoints as RPC/REST.
-- Reference implementations: `core/blong-access` (RBAC + path materialization), `core/blong-party`
-  (resource-based entities + models), `core/blong-marine` (model system usage).
+- Reference implementations: `realm/blong-access` (RBAC + path materialization), `realm/blong-party`
+  (resource-based entities + models), `demo/blong-marine` (model system usage).

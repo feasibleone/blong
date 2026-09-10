@@ -30,7 +30,7 @@ importers:
         version: 3.1037.0
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@keycloak/keycloak-admin-client':
         specifier: ^26.6.2
         version: 26.6.2
@@ -89,83 +89,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  ../../core/blong-access:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      '@vitejs/plugin-react':
-        specifier: ^6.0.1
-        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
-      allure-playwright:
-        specifier: ^3.12.1
-        version: 3.12.1(@playwright/test@1.60.0)
-      primeicons:
-        specifier: ^7.0.0
-        version: 7.0.0
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
-
-  ../../core/blong-access-mock:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-    devDependencies:
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-
   ../../core/blong-allure:
     devDependencies:
       '@feasibleone/blong':
@@ -176,7 +99,7 @@ importers:
         version: link:../blong-chain
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -194,7 +117,7 @@ importers:
         version: 3.17.0
       tap:
         specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -231,13 +154,13 @@ importers:
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
       '@feasibleone/marine-data':
         specifier: workspace:^1.0.0
-        version: link:../marine-data
+        version: link:../../demo/marine-data
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.60.0
@@ -328,7 +251,7 @@ importers:
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -343,71 +266,10 @@ importers:
         version: 24.12.0
       tap:
         specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-commander:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-access':
-        specifier: workspace:^1.0.0
-        version: link:../blong-access
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      tap:
-        specifier: ^21.6.3
         version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
 
   ../../core/blong-config:
     dependencies:
@@ -435,7 +297,7 @@ importers:
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -450,38 +312,10 @@ importers:
         version: 24.12.0
       tap:
         specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-
-  ../../core/blong-core:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
 
   ../../core/blong-cucumber:
     dependencies:
@@ -503,7 +337,7 @@ importers:
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -519,162 +353,12 @@ importers:
       '@types/node':
         specifier: ^24
         version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-dev:
-    dependencies:
-      '@feasibleone/blong-mle':
-        specifier: workspace:^1.0.0
-        version: link:../blong-mle
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      allure:
-        specifier: ^3.17.0
-        version: 3.17.0
-      cacache:
-        specifier: ^20.0.4
-        version: 20.0.4
-      cspell:
-        specifier: ^10.0.0
-        version: 10.0.0
-      eslint:
-        specifier: ^10.4.0
-        version: 10.4.0(jiti@2.7.0)
-      mysql2:
-        specifier: ^3.24.4
-        version: 3.24.4(@types/node@24.12.0)
-      strip-json-comments:
-        specifier: ^5.0.3
-        version: 5.0.3
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      yaml:
-        specifier: ^2.8.3
-        version: 2.8.3
-    devDependencies:
-      '@types/cacache':
-        specifier: ^20.0.1
-        version: 20.0.1
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-
-  ../../core/blong-eip:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-gateway:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-access':
-        specifier: workspace:^1.0.0
-        version: link:../blong-access
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      '@vitejs/plugin-react':
-        specifier: ^6.0.1
-        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
-      allure-playwright:
-        specifier: ^3.12.1
-        version: 3.12.1(@playwright/test@1.60.0)
-      primeicons:
-        specifier: ^7.0.0
-        version: 7.0.0
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
       tap:
         specifier: ^21.6.3
         version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
 
   ../../core/blong-gogo:
     dependencies:
@@ -858,7 +542,7 @@ importers:
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@rushstack/heft':
         specifier: ^1.2.6
         version: 1.2.7(@types/node@24.12.0)
@@ -879,155 +563,13 @@ importers:
         version: 1.60.0
       tap:
         specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
         specifier: ^8.2.1
         version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
-
-  ../../core/blong-graph:
-    dependencies:
-      '@xyflow/react':
-        specifier: ^12.6.6
-        version: 12.10.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-    devDependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      http-server:
-        specifier: ^14.1.1
-        version: 14.1.1
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-hello:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-int-adapter:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-int-sql:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      mysql2:
-        specifier: ^3.24.4
-        version: 3.24.4(@types/node@24.12.0)
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-      ut-codec-payshield:
-        specifier: ^7.3.0
-        version: 7.3.0
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
 
   ../../core/blong-kopi:
     dependencies:
@@ -1043,28 +585,28 @@ importers:
     devDependencies:
       '@feasibleone/blong-access':
         specifier: workspace:^1.0.0
-        version: link:../blong-access
+        version: link:../../realm/blong-access
       '@feasibleone/blong-browser':
         specifier: workspace:^1.0.0
         version: link:../blong-browser
       '@feasibleone/blong-core':
         specifier: workspace:^1.0.0
-        version: link:../blong-core
+        version: link:../../realm/blong-core
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
         version: link:../blong-gogo
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
-        version: link:../blong-login
+        version: link:../../realm/blong-login
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../blong-server
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
-        version: link:../blong-test
+        version: link:../../realm/blong-test
       '@playwright/test':
         specifier: ^1.60.0
         version: 1.60.0
@@ -1119,16 +661,1192 @@ importers:
     devDependencies:
       '@feasibleone/blong-dev':
         specifier: workspace:*
-        version: link:../blong-dev
+        version: link:../../tools/blong-dev
       tap:
         specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
+        version: 21.7.1(@swc/core@1.15.21)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  ../../core/blong-log:
+  ../../core/blong-mle:
+    dependencies:
+      jose:
+        specifier: ^6.2.1
+        version: 6.2.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../core/blong-mock:
     dependencies:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
         version: link:../blong
+      '@feasibleone/blong-lib':
+        specifier: workspace:^1.0.0
+        version: link:../blong-lib
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../core/blong-openapi:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../core/blong-server:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      '@feasibleone/blong-mock':
+        specifier: workspace:^1.0.0
+        version: link:../blong-mock
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../core/blong-template:
+    dependencies:
+      acorn:
+        specifier: ^8.16.0
+        version: 8.16.0
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../core/config-hot-reload:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../blong-gogo
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-test
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../demo/blong-eip:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../demo/blong-hello:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../demo/blong-marine:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-access-mock':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-access-mock
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-browser
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      '@feasibleone/marine-data':
+        specifier: workspace:^1.0.0
+        version: link:../marine-data
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@storybook/addon-a11y':
+        specifier: ^10.3.6
+        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@storybook/react-vite':
+        specifier: ^10.3.6
+        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
+      '@storybook/test-runner':
+        specifier: ^0.24.3
+        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.12.1
+        version: 3.12.1(@playwright/test@1.60.0)
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      storybook:
+        specifier: ^10.3.6
+        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../demo/handler-test-poc:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-login
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-test
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../demo/marine-data:
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+
+  ../../docs/blong:
+    dependencies:
+      '@docusaurus/core':
+        specifier: ^3.10.0
+        version: 3.10.0(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      '@docusaurus/preset-classic':
+        specifier: ^3.10.0
+        version: 3.10.0(@algolia/client-search@5.51.0)(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(search-insights@2.17.3)(typescript@6.0.3)
+      '@docusaurus/theme-mermaid':
+        specifier: ^3.10.0
+        version: 3.10.0(@docusaurus/plugin-content-docs@3.10.0(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      '@mdx-js/react':
+        specifier: ^3.1.1
+        version: 3.1.1(@types/react@19.2.14)(react@19.2.4)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      prism-react-renderer:
+        specifier: ^2.4.1
+        version: 2.4.1(react@19.2.4)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@algolia/client-search':
+        specifier: ^5.51.0
+        version: 5.51.0
+      '@docusaurus/module-type-aliases':
+        specifier: ^3.10.0
+        version: 3.10.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@docusaurus/types':
+        specifier: ^3.10.0
+        version: 3.10.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      search-insights:
+        specifier: ^2.17.0
+        version: 2.17.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../ext/rest-fs:
+    dependencies:
+      cacache:
+        specifier: ^20.0.4
+        version: 20.0.4
+      ws:
+        specifier: ^8.18.0
+        version: 8.20.0
+    devDependencies:
+      '@types/cacache':
+        specifier: ^20.0.1
+        version: 20.0.1
+      '@types/mocha':
+        specifier: ^10.0.10
+        version: 10.0.10
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      '@types/vscode':
+        specifier: ^1.107.0
+        version: 1.110.0
+      '@types/ws':
+        specifier: ^8.18.0
+        version: 8.18.1
+      '@vscode/test-cli':
+        specifier: ^0.0.12
+        version: 0.0.12
+      '@vscode/test-electron':
+        specifier: ^2.5.2
+        version: 2.5.2
+      esbuild:
+        specifier: ^0.27.1
+        version: 0.27.4
+      eslint:
+        specifier: ^10.4.0
+        version: 10.4.0(jiti@2.7.0)
+      npm-run-all:
+        specifier: ^4.1.5
+        version: 4.1.5
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      typescript-eslint:
+        specifier: ^8.59.0
+        version: 8.59.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3)
+
+  ../../realm/blong-access:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-browser
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../blong-test
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.12.1
+        version: 3.12.1(@playwright/test@1.60.0)
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../realm/blong-access-mock:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+    devDependencies:
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+
+  ../../realm/blong-commander:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-access':
+        specifier: workspace:^1.0.0
+        version: link:../blong-access
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-browser
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../blong-test
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../realm/blong-core:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../realm/blong-gateway:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-access':
+        specifier: workspace:^1.0.0
+        version: link:../blong-access
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-browser
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../blong-test
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.12.1
+        version: 3.12.1(@playwright/test@1.60.0)
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../realm/blong-login:
+    dependencies:
+      jose:
+        specifier: ^6.2.1
+        version: 6.2.2
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+      ut-function.cbc:
+        specifier: ^1.1.6
+        version: 1.1.6
+    devDependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@types/ut-function.cbc':
+        specifier: file:./types/ut-function.cbc
+        version: file:../../realm/blong-login/types/ut-function.cbc
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../realm/blong-party:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-access':
+        specifier: workspace:^1.0.0
+        version: link:../blong-access
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-browser
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../blong-core
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../blong-login
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../blong-test
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      allure-playwright:
+        specifier: ^3.12.1
+        version: 3.12.1(@playwright/test@1.60.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+
+  ../../realm/blong-test:
+    devDependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../suite/blong-suite:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-access':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-access
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-core
+      '@feasibleone/blong-marine':
+        specifier: workspace:^1.0.0
+        version: link:../../demo/blong-marine
+      '@feasibleone/blong-server':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-server
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@feasibleone/blong-browser':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-browser
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-login
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@storybook/addon-a11y':
+        specifier: ^10.3.6
+        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@storybook/addon-docs':
+        specifier: ^10.3.6
+        version: 10.3.6(@types/react@19.2.14)(esbuild@0.27.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
+      '@storybook/react-vite':
+        specifier: ^10.3.6
+        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
+      '@storybook/test-runner':
+        specifier: ^0.24.3
+        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+      allure-playwright:
+        specifier: ^3.12.1
+        version: 3.12.1(@playwright/test@1.60.0)
+      primeicons:
+        specifier: ^7.0.0
+        version: 7.0.0
+      storybook:
+        specifier: ^10.3.6
+        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
+      vite-plugin-csp-guard:
+        specifier: ^4.0.1
+        version: 4.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+      vite-plugin-dts:
+        specifier: ^4.5.4
+        version: 4.5.4(@types/node@24.12.0)(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
+
+  ../../test/blong-int-adapter:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-core':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-core
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../test/blong-int-sql:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      mysql2:
+        specifier: ^3.24.4
+        version: 3.24.4(@types/node@24.12.0)
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+      ut-codec-payshield:
+        specifier: ^7.3.0
+        version: 7.3.0
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../test/blong-sim-api:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-openapi':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-openapi
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../test/blong-sim-tcp:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+      ut-codec-payshield:
+        specifier: ^7.3.0
+        version: 7.3.0
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../test/framework:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-gogo':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-gogo
+      '@feasibleone/blong-login':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-login
+      '@feasibleone/blong-openapi':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-openapi
+      '@feasibleone/blong-test':
+        specifier: workspace:^1.0.0
+        version: link:../../realm/blong-test
+      typebox:
+        specifier: ^1.1.5
+        version: 1.1.8
+      ut-bitsyntax:
+        specifier: ^6.2.7
+        version: 6.2.7
+      ut-codec-payshield:
+        specifier: ^7.3.0
+        version: 7.3.0
+      ut-dispatch-db:
+        specifier: ^1.5.0
+        version: 1.5.0(ut-port-script@7.2.1)
+      ut-function.cbc:
+        specifier: ^1.1.6
+        version: 1.1.6
+      ut-function.dispatch:
+        specifier: ^1.4.2
+        version: 1.4.2(ut-port-script@7.2.1)
+      ut-port-script:
+        specifier: ^7.2.1
+        version: 7.2.1
+      ut-port-sql:
+        specifier: ^9.2.7
+        version: 9.2.9(@azure/core-client@1.10.1)
+      ut-port-tcp:
+        specifier: ^7.5.1
+        version: 7.5.1
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@swc/core':
+        specifier: ^1.7.14
+        version: 1.15.21
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../tools/blong-dev:
+    dependencies:
+      '@feasibleone/blong-mle':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong-mle
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      allure:
+        specifier: ^3.17.0
+        version: 3.17.0
+      cacache:
+        specifier: ^20.0.4
+        version: 20.0.4
+      cspell:
+        specifier: ^10.0.0
+        version: 10.0.0
+      eslint:
+        specifier: ^10.4.0
+        version: 10.4.0(jiti@2.7.0)
+      mysql2:
+        specifier: ^3.24.4
+        version: 3.24.4(@types/node@24.12.0)
+      strip-json-comments:
+        specifier: ^5.0.3
+        version: 5.0.3
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
+    devDependencies:
+      '@types/cacache':
+        specifier: ^20.0.1
+        version: 20.0.1
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+
+  ../../tools/blong-graph:
+    dependencies:
+      '@xyflow/react':
+        specifier: ^12.6.6
+        version: 12.10.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+    devDependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../blong-dev
+      '@playwright/test':
+        specifier: ^1.60.0
+        version: 1.60.0
+      '@rushstack/heft':
+        specifier: ^1.2.6
+        version: 1.2.7(@types/node@24.12.0)
+      '@rushstack/heft-lint-plugin':
+        specifier: ^1.2.6
+        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@rushstack/heft-typescript-plugin':
+        specifier: ^1.3.1
+        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
+      '@types/react':
+        specifier: ^19.1.2
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.1.2
+        version: 19.2.3(@types/react@19.2.14)
+      http-server:
+        specifier: ^14.1.1
+        version: 14.1.1
+      react:
+        specifier: ^19.1.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.4(react@19.2.4)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  ../../tools/blong-log:
+    dependencies:
+      '@feasibleone/blong':
+        specifier: workspace:^1.0.0
+        version: link:../../core/blong
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -1218,499 +1936,23 @@ importers:
         specifier: ^8.2.1
         version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
 
-  ../../core/blong-login:
-    dependencies:
-      jose:
-        specifier: ^6.2.1
-        version: 6.2.2
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-      ut-function.cbc:
-        specifier: ^1.1.6
-        version: 1.1.6
-    devDependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@types/ut-function.cbc':
-        specifier: file:./types/ut-function.cbc
-        version: file:../../core/blong-login/types/ut-function.cbc
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
-
-  ../../core/blong-marine:
+  ../../tools/blong-ttk:
     dependencies:
       '@feasibleone/blong':
         specifier: workspace:^1.0.0
-        version: link:../blong
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-access-mock':
-        specifier: workspace:^1.0.0
-        version: link:../blong-access-mock
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      '@feasibleone/marine-data':
-        specifier: workspace:^1.0.0
-        version: link:../marine-data
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@storybook/addon-a11y':
-        specifier: ^10.3.6
-        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@storybook/react-vite':
-        specifier: ^10.3.6
-        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
-      '@storybook/test-runner':
-        specifier: ^0.24.3
-        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      '@vitejs/plugin-react':
-        specifier: ^6.0.1
-        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
-      allure-playwright:
-        specifier: ^3.12.1
-        version: 3.12.1(@playwright/test@1.60.0)
-      primeicons:
-        specifier: ^7.0.0
-        version: 7.0.0
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      storybook:
-        specifier: ^10.3.6
-        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
-
-  ../../core/blong-mle:
-    dependencies:
-      jose:
-        specifier: ^6.2.1
-        version: 6.2.2
-    devDependencies:
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-mock:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-lib':
-        specifier: workspace:^1.0.0
-        version: link:../blong-lib
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-openapi:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-party:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-access':
-        specifier: workspace:^1.0.0
-        version: link:../blong-access
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      allure-playwright:
-        specifier: ^3.12.1
-        version: 3.12.1(@playwright/test@1.60.0)
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
-
-  ../../core/blong-server:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-mock':
-        specifier: workspace:^1.0.0
-        version: link:../blong-mock
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-sim-api:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-openapi':
-        specifier: workspace:^1.0.0
-        version: link:../blong-openapi
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-sim-tcp:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-      ut-codec-payshield:
-        specifier: ^7.3.0
-        version: 7.3.0
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-suite:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-access':
-        specifier: workspace:^1.0.0
-        version: link:../blong-access
-      '@feasibleone/blong-core':
-        specifier: workspace:^1.0.0
-        version: link:../blong-core
-      '@feasibleone/blong-marine':
-        specifier: workspace:^1.0.0
-        version: link:../blong-marine
-      '@feasibleone/blong-server':
-        specifier: workspace:^1.0.0
-        version: link:../blong-server
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@feasibleone/blong-browser':
-        specifier: workspace:^1.0.0
-        version: link:../blong-browser
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
-      '@storybook/addon-a11y':
-        specifier: ^10.3.6
-        version: 10.3.6(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@storybook/addon-docs':
-        specifier: ^10.3.6
-        version: 10.3.6(@types/react@19.2.14)(esbuild@0.27.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
-      '@storybook/react-vite':
-        specifier: ^10.3.6
-        version: 10.3.6(esbuild@0.27.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.27.4))
-      '@storybook/test-runner':
-        specifier: ^0.24.3
-        version: 0.24.3(@types/node@24.12.0)(storybook@10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19.1.2
-        version: 19.2.3(@types/react@19.2.14)
-      '@vitejs/plugin-react':
-        specifier: ^6.0.1
-        version: 6.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
-      allure-playwright:
-        specifier: ^3.12.1
-        version: 3.12.1(@playwright/test@1.60.0)
-      primeicons:
-        specifier: ^7.0.0
-        version: 7.0.0
-      storybook:
-        specifier: ^10.3.6
-        version: 10.3.6(@testing-library/dom@10.4.1)(prettier@2.8.8)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3)
-      vite-plugin-csp-guard:
-        specifier: ^4.0.1
-        version: 4.0.1(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
-      vite-plugin-dts:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/node@24.12.0)(typescript@6.0.3)(vite@8.2.1(@types/node@24.12.0)(esbuild@0.27.4)(jiti@2.7.0)(terser@5.46.1)(yaml@2.8.3))
-
-  ../../core/blong-template:
-    dependencies:
-      acorn:
-        specifier: ^8.16.0
-        version: 8.16.0
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-test:
-    devDependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/blong-ttk:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
+        version: link:../../core/blong
       '@feasibleone/blong-allure':
         specifier: workspace:^1.0.0
-        version: link:../blong-allure
+        version: link:../../core/blong-allure
       '@feasibleone/blong-chain':
         specifier: workspace:^1.0.0
-        version: link:../blong-chain
+        version: link:../../core/blong-chain
       '@feasibleone/blong-gogo':
         specifier: workspace:^1.0.0
-        version: link:../blong-gogo
+        version: link:../../core/blong-gogo
       '@feasibleone/blong-openapi':
         specifier: workspace:^1.0.0
-        version: link:../blong-openapi
+        version: link:../../core/blong-openapi
       '@infitx/decision':
         specifier: ^1.0.0
         version: 1.4.4
@@ -1738,49 +1980,12 @@ importers:
         version: 24.12.0
       tap:
         specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
 
-  ../../core/config-hot-reload:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/eslint:
+  ../../tools/eslint:
     devDependencies:
       '@eslint-react/eslint-plugin':
         specifier: ^4.2.3
@@ -1797,211 +2002,6 @@ importers:
       globals:
         specifier: ^16.5.0
         version: 16.5.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.59.0
-        version: 8.59.0(eslint@10.4.0(jiti@2.7.0))(typescript@6.0.3)
-
-  ../../core/handler-test-poc:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../core/marine-data:
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-
-  ../../core/test:
-    dependencies:
-      '@feasibleone/blong':
-        specifier: workspace:^1.0.0
-        version: link:../blong
-      '@feasibleone/blong-gogo':
-        specifier: workspace:^1.0.0
-        version: link:../blong-gogo
-      '@feasibleone/blong-login':
-        specifier: workspace:^1.0.0
-        version: link:../blong-login
-      '@feasibleone/blong-openapi':
-        specifier: workspace:^1.0.0
-        version: link:../blong-openapi
-      '@feasibleone/blong-test':
-        specifier: workspace:^1.0.0
-        version: link:../blong-test
-      typebox:
-        specifier: ^1.1.5
-        version: 1.1.8
-      ut-bitsyntax:
-        specifier: ^6.2.7
-        version: 6.2.7
-      ut-codec-payshield:
-        specifier: ^7.3.0
-        version: 7.3.0
-      ut-dispatch-db:
-        specifier: ^1.5.0
-        version: 1.5.0(ut-port-script@7.2.1)
-      ut-function.cbc:
-        specifier: ^1.1.6
-        version: 1.1.6
-      ut-function.dispatch:
-        specifier: ^1.4.2
-        version: 1.4.2(ut-port-script@7.2.1)
-      ut-port-script:
-        specifier: ^7.2.1
-        version: 7.2.1
-      ut-port-sql:
-        specifier: ^9.2.7
-        version: 9.2.9(@azure/core-client@1.10.1)
-      ut-port-tcp:
-        specifier: ^7.5.1
-        version: 7.5.1
-    devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../blong-dev
-      '@rushstack/heft':
-        specifier: ^1.2.6
-        version: 1.2.7(@types/node@24.12.0)
-      '@rushstack/heft-lint-plugin':
-        specifier: ^1.2.6
-        version: 1.2.7(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@rushstack/heft-typescript-plugin':
-        specifier: ^1.3.1
-        version: 1.3.2(@rushstack/heft@1.2.7(@types/node@24.12.0))(@types/node@24.12.0)
-      '@swc/core':
-        specifier: ^1.7.14
-        version: 1.15.21
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-      tap:
-        specifier: ^21.6.3
-        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../docs/blong:
-    dependencies:
-      '@docusaurus/core':
-        specifier: ^3.10.0
-        version: 3.10.0(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
-      '@docusaurus/preset-classic':
-        specifier: ^3.10.0
-        version: 3.10.0(@algolia/client-search@5.51.0)(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(search-insights@2.17.3)(typescript@6.0.3)
-      '@docusaurus/theme-mermaid':
-        specifier: ^3.10.0
-        version: 3.10.0(@docusaurus/plugin-content-docs@3.10.0(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3))(@mdx-js/react@3.1.1(@types/react@19.2.14)(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
-      '@mdx-js/react':
-        specifier: ^3.1.1
-        version: 3.1.1(@types/react@19.2.14)(react@19.2.4)
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      prism-react-renderer:
-        specifier: ^2.4.1
-        version: 2.4.1(react@19.2.4)
-      react:
-        specifier: ^19.1.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.1.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@algolia/client-search':
-        specifier: ^5.51.0
-        version: 5.51.0
-      '@docusaurus/module-type-aliases':
-        specifier: ^3.10.0
-        version: 3.10.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@docusaurus/types':
-        specifier: ^3.10.0
-        version: 3.10.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@types/react':
-        specifier: ^19.1.2
-        version: 19.2.14
-      search-insights:
-        specifier: ^2.17.0
-        version: 2.17.3
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  ../../ext/rest-fs:
-    dependencies:
-      cacache:
-        specifier: ^20.0.4
-        version: 20.0.4
-      ws:
-        specifier: ^8.18.0
-        version: 8.20.0
-    devDependencies:
-      '@types/cacache':
-        specifier: ^20.0.1
-        version: 20.0.1
-      '@types/mocha':
-        specifier: ^10.0.10
-        version: 10.0.10
-      '@types/node':
-        specifier: ^24
-        version: 24.12.0
-      '@types/vscode':
-        specifier: ^1.107.0
-        version: 1.110.0
-      '@types/ws':
-        specifier: ^8.18.0
-        version: 8.18.1
-      '@vscode/test-cli':
-        specifier: ^0.0.12
-        version: 0.0.12
-      '@vscode/test-electron':
-        specifier: ^2.5.2
-        version: 2.5.2
-      esbuild:
-        specifier: ^0.27.1
-        version: 0.27.4
-      eslint:
-        specifier: ^10.4.0
-        version: 10.4.0(jiti@2.7.0)
-      npm-run-all:
-        specifier: ^4.1.5
-        version: 4.1.5
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -6173,8 +6173,8 @@ packages:
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
-  '@types/ut-function.cbc@file:../../core/blong-login/types/ut-function.cbc':
-    resolution: {directory: ../../core/blong-login/types/ut-function.cbc, type: directory}
+  '@types/ut-function.cbc@file:../../realm/blong-login/types/ut-function.cbc':
+    resolution: {directory: ../../realm/blong-login/types/ut-function.cbc, type: directory}
 
   '@types/ut-function.merge@file:../../core/blong/types/ut-function.merge':
     resolution: {directory: ../../core/blong/types/ut-function.merge, type: directory}
@@ -9217,10 +9217,6 @@ packages:
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
-    engines: {node: '>=0.10.0'}
-
-  iconv-lite@0.7.2:
-    resolution: {integrity: sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==}
     engines: {node: '>=0.10.0'}
 
   iconv-lite@0.7.3:
@@ -17601,7 +17597,7 @@ snapshots:
 
   '@infitx/match@1.5.4':
     dependencies:
-      lodash: 4.17.23
+      lodash: 4.18.1
 
   '@ioredis/commands@2.0.0': {}
 
@@ -19565,9 +19561,9 @@ snapshots:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       function-loop: 4.0.0
 
-  '@tapjs/after-each@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/after-each@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       function-loop: 4.0.0
 
   '@tapjs/after@3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
@@ -19575,9 +19571,9 @@ snapshots:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       is-actual-promise: 1.0.2
 
-  '@tapjs/after@3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/after@3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       is-actual-promise: 1.0.2
 
   '@tapjs/asserts@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
@@ -19591,12 +19587,12 @@ snapshots:
       - react
       - react-dom
 
-  '@tapjs/asserts@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/asserts@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/stack': 4.3.2
       is-actual-promise: 1.0.2
-      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@18.3.1)
+      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - react
@@ -19607,9 +19603,9 @@ snapshots:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       function-loop: 4.0.0
 
-  '@tapjs/before-each@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/before-each@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       function-loop: 4.0.0
 
   '@tapjs/before@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
@@ -19617,18 +19613,18 @@ snapshots:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       is-actual-promise: 1.0.2
 
-  '@tapjs/before@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/before@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       is-actual-promise: 1.0.2
 
   '@tapjs/chdir@3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  '@tapjs/chdir@3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/chdir@3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   '@tapjs/config@5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
@@ -19640,21 +19636,21 @@ snapshots:
       tap-yaml: 4.4.1
       walk-up-path: 4.0.0
 
-  '@tapjs/config@5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0))':
+  '@tapjs/config@5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       chalk: 5.6.2
       jackspeak: 4.2.3
       polite-json: 5.0.0
       tap-yaml: 4.4.1
       walk-up-path: 4.0.0
 
-  '@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)':
+  '@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@tapjs/processinfo': 3.1.9
       '@tapjs/stack': 4.3.2
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)
+      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       async-hook-domain: 4.0.1
       diff: 8.0.4
       is-actual-promise: 1.0.2
@@ -19662,7 +19658,7 @@ snapshots:
       signal-exit: 4.1.0
       tap-parser: 18.3.3
       tap-yaml: 4.4.1
-      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@18.3.1)
+      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - '@swc/core'
@@ -19671,11 +19667,11 @@ snapshots:
       - react
       - react-dom
 
-  '@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@tapjs/processinfo': 3.1.9
       '@tapjs/stack': 4.3.2
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       async-hook-domain: 4.0.1
       diff: 8.0.4
       is-actual-promise: 1.0.2
@@ -19700,9 +19696,9 @@ snapshots:
     dependencies:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  '@tapjs/filter@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/filter@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   '@tapjs/fixture@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
@@ -19710,9 +19706,9 @@ snapshots:
       mkdirp: 3.0.1
       rimraf: 6.1.3
 
-  '@tapjs/fixture@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/fixture@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       mkdirp: 3.0.1
       rimraf: 6.1.3
 
@@ -19722,10 +19718,10 @@ snapshots:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/stack': 4.3.2
 
-  '@tapjs/intercept@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/intercept@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/stack': 4.3.2
 
   '@tapjs/mock@4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
@@ -19736,10 +19732,10 @@ snapshots:
       resolve-import: 2.4.0
       walk-up-path: 4.0.0
 
-  '@tapjs/mock@4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/mock@4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/stack': 4.3.2
       resolve-import: 2.4.0
       walk-up-path: 4.0.0
@@ -19751,9 +19747,9 @@ snapshots:
       '@tapjs/stack': 4.3.2
       tap-parser: 18.3.3
 
-  '@tapjs/node-serialize@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/node-serialize@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/error-serdes': 4.3.1
       '@tapjs/stack': 4.3.2
       tap-parser: 18.3.3
@@ -19790,10 +19786,10 @@ snapshots:
       - react-dom
       - utf-8-validate
 
-  '@tapjs/reporter@4.4.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0))':
+  '@tapjs/reporter@4.4.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))':
     dependencies:
-      '@tapjs/config': 5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/config': 5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/stack': 4.3.2
       chalk: 5.6.2
       ink: 5.2.1(@types/react@19.2.14)(react@18.3.1)
@@ -19858,18 +19854,18 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@tapjs/run@4.5.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@tapjs/run@4.5.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@isaacs/which': 7.0.4
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/config': 5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/config': 5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tapjs/processinfo': 3.1.9
-      '@tapjs/reporter': 4.4.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))
-      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/reporter': 4.4.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))
+      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       c8: 10.1.3
       chalk: 5.6.2
       chokidar: 4.0.3
@@ -19888,50 +19884,6 @@ snapshots:
       tap-parser: 18.3.3
       tap-yaml: 4.4.1
       tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      trivial-deferred: 2.0.0
-    transitivePeerDependencies:
-      - '@swc/core'
-      - '@swc/wasm'
-      - '@types/node'
-      - '@types/react'
-      - bufferutil
-      - monocart-coverage-reports
-      - react
-      - react-devtools-core
-      - react-dom
-      - supports-color
-      - utf-8-validate
-
-  '@tapjs/run@4.5.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)':
-    dependencies:
-      '@isaacs/which': 7.0.4
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/config': 5.6.1(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
-      '@tapjs/processinfo': 3.1.9
-      '@tapjs/reporter': 4.4.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0))
-      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)
-      c8: 10.1.3
-      chalk: 5.6.2
-      chokidar: 4.0.3
-      foreground-child: 4.0.3
-      glob: 13.0.6
-      minipass: 7.1.3
-      mkdirp: 3.0.1
-      node-options-to-argv: 1.0.0
-      opener: 1.5.2
-      pacote: 21.5.0
-      path-scurry: 2.0.2
-      resolve-import: 2.4.0
-      rimraf: 6.1.3
-      semver: 7.7.4
-      signal-exit: 4.1.0
-      tap-parser: 18.3.3
-      tap-yaml: 4.4.1
-      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@18.3.1)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - '@swc/core'
@@ -19956,11 +19908,11 @@ snapshots:
       - react
       - react-dom
 
-  '@tapjs/snapshot@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/snapshot@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       is-actual-promise: 1.0.2
-      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@18.3.1)
+      tcompare: 9.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       trivial-deferred: 2.0.0
     transitivePeerDependencies:
       - react
@@ -19970,9 +19922,9 @@ snapshots:
     dependencies:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  '@tapjs/spawn@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/spawn@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   '@tapjs/stack@4.3.2': {}
 
@@ -19980,9 +19932,9 @@ snapshots:
     dependencies:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  '@tapjs/stdin@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/stdin@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   '@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
@@ -20022,26 +19974,26 @@ snapshots:
       - react
       - react-dom
 
-  '@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)':
+  '@tapjs/test@4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.7(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@5.9.3)
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/after-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/asserts': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/before-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/chdir': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
-      '@tapjs/filter': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/fixture': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/intercept': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/mock': 4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/node-serialize': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/snapshot': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/typescript': 3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)(typescript@5.9.3)
-      '@tapjs/worker': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
+      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/after-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/asserts': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/before-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/chdir': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/filter': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/fixture': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/intercept': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/mock': 4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/node-serialize': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/snapshot': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/typescript': 3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
+      '@tapjs/worker': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       glob: 13.0.6
       jackspeak: 4.2.3
       mkdirp: 3.0.1
@@ -20080,20 +20032,20 @@ snapshots:
       - '@types/node'
       - typescript
 
-  '@tapjs/typescript@3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)(typescript@5.9.3)':
+  '@tapjs/typescript@3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.7(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@5.9.3)
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.7(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
       - '@types/node'
       - typescript
 
-  '@tapjs/typescript@3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)(typescript@6.0.3)':
+  '@tapjs/typescript@3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)':
     dependencies:
-      '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.7(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3)
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@isaacs/ts-node-temp-fork-for-pr-2009': 10.9.7(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@5.9.3)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     transitivePeerDependencies:
       - '@swc/core'
       - '@swc/wasm'
@@ -20104,9 +20056,9 @@ snapshots:
     dependencies:
       '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  '@tapjs/worker@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))':
+  '@tapjs/worker@4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   '@tediousjs/connection-string@0.3.0': {}
 
@@ -20527,7 +20479,7 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@types/ut-function.cbc@file:../../core/blong-login/types/ut-function.cbc': {}
+  '@types/ut-function.cbc@file:../../realm/blong-login/types/ut-function.cbc': {}
 
   '@types/ut-function.merge@file:../../core/blong/types/ut-function.merge': {}
 
@@ -22112,7 +22064,7 @@ snapshots:
   cspell-glob@10.0.0:
     dependencies:
       '@cspell/url': 10.0.0
-      picomatch: 4.0.4
+      picomatch: 4.0.5
 
   cspell-grammar@10.0.0:
     dependencies:
@@ -22176,7 +22128,7 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       flatted: 3.4.2
       semver: 7.7.4
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
 
   css-blank-pseudo@7.0.1(postcss@8.5.8):
     dependencies:
@@ -24094,7 +24046,7 @@ snapshots:
   http-proxy@1.18.1:
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.15.11(debug@4.4.3)
+      follow-redirects: 1.16.0
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -24148,11 +24100,6 @@ snapshots:
   iconv-lite@0.6.3:
     dependencies:
       safer-buffer: 2.1.2
-
-  iconv-lite@0.7.2:
-    dependencies:
-      safer-buffer: 2.1.2
-    optional: true
 
   iconv-lite@0.7.3:
     dependencies:
@@ -24721,7 +24668,7 @@ snapshots:
       chalk: 4.1.2
       get-stdin: 5.0.1
       glur: 1.1.2
-      lodash: 4.17.23
+      lodash: 4.18.1
       pixelmatch: 5.3.0
       pngjs: 3.4.0
       ssim.js: 3.5.0
@@ -26072,7 +26019,7 @@ snapshots:
       minipass-sized: 2.0.0
       minizlib: 3.1.0
     optionalDependencies:
-      iconv-lite: 0.7.2
+      iconv-lite: 0.7.3
 
   minipass-flush@1.0.7:
     dependencies:
@@ -28600,63 +28547,27 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  tap@21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3):
+  tap@21.7.1(@swc/core@1.15.21)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/after-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/asserts': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/before-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/chdir': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tapjs/filter': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/fixture': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/intercept': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/mock': 4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/node-serialize': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/run': 4.5.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tapjs/snapshot': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tapjs/typescript': 3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/node@24.12.0)(typescript@6.0.3)
-      '@tapjs/worker': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
-      resolve-import: 2.4.0
-    transitivePeerDependencies:
-      - '@swc/core'
-      - '@swc/wasm'
-      - '@types/node'
-      - '@types/react'
-      - bufferutil
-      - monocart-coverage-reports
-      - react
-      - react-devtools-core
-      - react-dom
-      - supports-color
-      - typescript
-      - utf-8-validate
-
-  tap@21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(typescript@6.0.3):
-    dependencies:
-      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/after-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/asserts': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/before-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/chdir': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(@types/node@24.12.0)
-      '@tapjs/filter': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/fixture': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/intercept': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/mock': 4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/node-serialize': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/run': 4.5.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)
-      '@tapjs/snapshot': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
-      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)
-      '@tapjs/typescript': 3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))(@types/node@24.12.0)(typescript@6.0.3)
-      '@tapjs/worker': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(@types/node@24.12.0))
+      '@tapjs/after': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/after-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/asserts': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/before': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/before-each': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/chdir': 3.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/core': 4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/filter': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/fixture': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/intercept': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/mock': 4.4.5(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/node-serialize': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/run': 4.5.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/snapshot': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/spawn': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/stdin': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/test': 4.4.5(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tapjs/typescript': 3.5.7(@swc/core@1.15.21)(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+      '@tapjs/worker': 4.3.7(@tapjs/core@4.5.5(@swc/core@1.15.21)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       resolve-import: 2.4.0
     transitivePeerDependencies:
       - '@swc/core'
@@ -29411,7 +29322,7 @@ snapshots:
     dependencies:
       axios: 1.14.0(debug@4.4.3)
       joi: 17.13.3
-      lodash: 4.17.23
+      lodash: 4.18.1
       minimist: 1.2.8
       rxjs: 7.8.2
     transitivePeerDependencies:

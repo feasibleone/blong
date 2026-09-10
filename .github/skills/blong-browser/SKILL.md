@@ -656,7 +656,7 @@ Named handlers in `dispatch.tsx` follow the pattern `{entity}{Entity}{Verb}`:
 - `coralCoralLoad` — never resolves (skeleton state)
 - `coralCoralEditError` — rejects with server-side validation errors
 
-### Realm model page stories (e.g. `core/blong-marine/src/stories/`)
+### Realm model page stories (e.g. `demo/blong-marine/src/stories/`)
 
 Uses `withBlong(browser)` from `@feasibleone/blong-browser/storybook.tsx` which loads the full blong
 platform (including the mock adapter) so model pages work without a running server. Stories use the

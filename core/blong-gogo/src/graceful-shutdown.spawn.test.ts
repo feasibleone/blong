@@ -17,7 +17,7 @@ import {test} from 'tap';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const blongBin = resolve(repoRoot, 'core', 'blong-gogo', 'bin', 'blong.ts');
-const helloDir = resolve(repoRoot, 'core', 'blong-hello');
+const helloDir = resolve(repoRoot, 'demo', 'blong-hello');
 
 test(
     'blong CLI exits 0 with the shutdown marker after timeout sends SIGTERM',

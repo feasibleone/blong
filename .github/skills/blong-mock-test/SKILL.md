@@ -1,6 +1,11 @@
 ---
 name: blong-mock-test
-description: Write server-side integration tests using mock handlers in Blong. Mock handlers in test/mock/ simulate external systems (databases, services). mockDispatch and testDispatch orchestrators in the test layer wire the mocks and tests together. Use this skill whenever the user wants to test without real infrastructure, mentions mocking adapters or external services, or needs server-side integration testing with deterministic mock data.
+description:
+    Write server-side integration tests using mock handlers in Blong. Mock handlers in test/mock/
+    simulate external systems (databases, services). mockDispatch and testDispatch orchestrators in
+    the test layer wire the mocks and tests together. Use this skill whenever the user wants to test
+    without real infrastructure, mentions mocking adapters or external services, or needs
+    server-side integration testing with deterministic mock data.
 ---
 
 # Server-Side Testing with Mocks
@@ -158,8 +163,8 @@ Test handlers call the real business handler and assert on the results. They liv
 and follow the [blong-test](../test) pattern.
 
 > **Canonical placement:** the reference realms place server-side tap tests in `server/test/`
-> (`core/blong-access/server/test/test/`). The `test/test/` + `testDispatch` layout shown here still
-> works (the framework auto-provisions a `testDispatch` when a server `test/` folder has no
+> (`realm/blong-access/server/test/test/`). The `test/test/` + `testDispatch` layout shown here
+> still works (the framework auto-provisions a `testDispatch` when a server `test/` folder has no
 > `testDispatch.ts`), but `server/test/` is the standard going forward.
 
 ```ts
@@ -326,7 +331,7 @@ export default handler(({errors}) => {
 
 ## Complete example
 
-See `core/blong-eip/` for a working reference:
+See `demo/blong-eip/` for a working reference:
 
 - Mock handlers: `eip/test/mock/`
 - Test handlers: `eip/test/test/`

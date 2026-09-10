@@ -1,7 +1,7 @@
 # Test API Entry Point
 
-Before test handlers run, the suite needs an `index.ts` that loads the platform(s), starts them,
-and triggers test execution. There are two approaches depending on what is being tested.
+Before test handlers run, the suite needs an `index.ts` that loads the platform(s), starts them, and
+triggers test execution. There are two approaches depending on what is being tested.
 
 ## Public API Testing (recommended)
 
@@ -100,16 +100,16 @@ export default async (load: Load): Promise<void> => {
 };
 ```
 
-An example of this approach is in `core/blong-eip/`.
+An example of this approach is in `demo/blong-eip/`.
 
 ## Choosing Between the Two
 
-| Situation | Approach |
-| --- | --- |
-| Testing business logic exposed via the public API gateway | Public API (browser-simulated) |
-| Testing an EIP pipeline, integration layer, or internal adapter | Internal API (server-only) |
-| Want tests to exercise the full HTTP request/response path | Public API |
-| Back end has no browser-facing endpoints | Internal API |
+| Situation                                                       | Approach                       |
+| --------------------------------------------------------------- | ------------------------------ |
+| Testing business logic exposed via the public API gateway       | Public API (browser-simulated) |
+| Testing an EIP pipeline, integration layer, or internal adapter | Internal API (server-only)     |
+| Want tests to exercise the full HTTP request/response path      | Public API                     |
+| Back end has no browser-facing endpoints                        | Internal API                   |
 
 ## Related Patterns
 

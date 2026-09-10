@@ -13,57 +13,57 @@
 ### Mock Fixtures File (`__fixtures__/data.ts`)
 
 ```typescript
-import type { LogEntry, ClientConfig } from '../types';
+import type {LogEntry, ClientConfig} from '../types';
 
 export const sampleEntries: LogEntry[] = [
-  {
-    id: '1',
-    timestamp: Date.now() - 10000,
-    level: 30,
-    levelName: 'INFO',
-    msg: 'Application started',
-    service: 'api-gateway',
-  },
-  {
-    id: '2',
-    timestamp: Date.now() - 5000,
-    level: 50,
-    levelName: 'ERROR',
-    msg: 'Database connection failed',
-    service: 'auth-service',
-    error: {
-      message: 'ECONNREFUSED 127.0.0.1:5432',
-      stack: '...',
+    {
+        id: '1',
+        timestamp: Date.now() - 10000,
+        level: 30,
+        levelName: 'INFO',
+        msg: 'Application started',
+        service: 'api-gateway',
     },
-  },
+    {
+        id: '2',
+        timestamp: Date.now() - 5000,
+        level: 50,
+        levelName: 'ERROR',
+        msg: 'Database connection failed',
+        service: 'auth-service',
+        error: {
+            message: 'ECONNREFUSED 127.0.0.1:5432',
+            stack: '...',
+        },
+    },
 ];
 
 export const errorEntries: LogEntry[] = sampleEntries.filter(e => e.level >= 40);
 
 export const generateLargeDataset = (count: number): LogEntry[] => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `${i}`,
-    timestamp: Date.now() - (count - i) * 1000,
-    level: [20, 30, 40, 50][i % 4],
-    msg: `Log entry ${i}`,
-    service: ['auth', 'api', 'db'][i % 3],
-  }));
+    return Array.from({length: count}, (_, i) => ({
+        id: `${i}`,
+        timestamp: Date.now() - (count - i) * 1000,
+        level: [20, 30, 40, 50][i % 4],
+        msg: `Log entry ${i}`,
+        service: ['auth', 'api', 'db'][i % 3],
+    }));
 };
 
 export const darkThemeConfig: ClientConfig = {
-  theme: 'dark',
-  colors: {
-    background: '#1e1e1e',
-    text: '#e0e0e0',
-  },
+    theme: 'dark',
+    colors: {
+        background: '#1e1e1e',
+        text: '#e0e0e0',
+    },
 };
 
 export const lightThemeConfig: ClientConfig = {
-  theme: 'light',
-  colors: {
-    background: '#ffffff',
-    text: '#000000',
-  },
+    theme: 'light',
+    colors: {
+        background: '#ffffff',
+        text: '#000000',
+    },
 };
 ```
 
@@ -129,32 +129,32 @@ name: Storybook Tests
 on: [push, pull_request]
 
 jobs:
-  storybook-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    storybook-tests:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
 
-      - run: npm install
+            - run: npm install
 
-      # Build Storybook static site
-      - run: npm run storybook:build
+            # Build Storybook static site
+            - run: npm run storybook:build
 
-      # Run visual regression tests
-      - run: npx --yes http-server storybook-static --port 6006 --silent &
-      - run: sleep 2
-      - run: npm run storybook:test
+            # Run visual regression tests
+            - run: npx --yes http-server storybook-static --port 6006 --silent &
+            - run: sleep 2
+            - run: npm run storybook:test
 
-      # Upload diff images if tests fail
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: storybook-diffs
-          path: __diff_output__/
+            # Upload diff images if tests fail
+            - if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: storybook-diffs
+                  path: __diff_output__/
 ```
 
 ### Testing CI/CD Checklist
@@ -174,7 +174,8 @@ jobs:
 
 ### A11y Addon Integration
 
-The `@storybook/addon-a11y` addon is automatically integrated. Stories are checked automatically for:
+The `@storybook/addon-a11y` addon is automatically integrated. Stories are checked automatically
+for:
 
 - Color contrast
 - ARIA attributes
@@ -185,21 +186,21 @@ The `@storybook/addon-a11y` addon is automatically integrated. Stories are check
 
 ```typescript
 export const AccessibilityTest: Story = {
-  args: {
-    label: 'Accessible button',
-  },
-  parameters: {
-    a11y: {
-      config: {
-        rules: [
-          {
-            id: 'color-contrast',
-            enabled: true,
-          },
-        ],
-      },
+    args: {
+        label: 'Accessible button',
     },
-  },
+    parameters: {
+        a11y: {
+            config: {
+                rules: [
+                    {
+                        id: 'color-contrast',
+                        enabled: true,
+                    },
+                ],
+            },
+        },
+    },
 };
 ```
 
@@ -212,31 +213,31 @@ For Blong projects using Rush.js workspaces, follow the Monorepo Composition pat
 **1. Install Storybook in blong-log (or designated package)**
 
 ```bash
-cd core/blong-log
+cd tools/blong-log
 npx -y storybook@latest init --type react --builder vite
 ```
 
 **2. Update .storybook/main.ts**
 
 ```typescript
-import type { StorybookConfig } from '@storybook/react-vite';
+import type {StorybookConfig} from '@storybook/react-vite';
 
 const config: StorybookConfig = {
-  stories: [
-    '../src/**/*.stories.tsx',
-    '../../core/blong-rest/src/**/*.stories.tsx',
-    '../../core/blong-login/src/**/*.stories.tsx',
-    '../../ext/rest-fs/src/**/*.stories.tsx',
-  ],
-  addons: [
-    '@storybook/addon-links',
-    '@storybook/addon-essentials',
-    '@storybook/addon-interactions',
-    '@storybook/addon-a11y',
-    '@storybook/addon-docs',
-  ],
-  framework: '@storybook/react-vite',
-  docs: { autodocs: 'tag' },
+    stories: [
+        '../src/**/*.stories.tsx',
+        '../../core/blong-rest/src/**/*.stories.tsx',
+        '../../realm/blong-login/src/**/*.stories.tsx',
+        '../../ext/rest-fs/src/**/*.stories.tsx',
+    ],
+    addons: [
+        '@storybook/addon-links',
+        '@storybook/addon-essentials',
+        '@storybook/addon-interactions',
+        '@storybook/addon-a11y',
+        '@storybook/addon-docs',
+    ],
+    framework: '@storybook/react-vite',
+    docs: {autodocs: 'tag'},
 };
 
 export default config;
@@ -245,15 +246,15 @@ export default config;
 **3. Add npm scripts to all referenced packages**
 
 ```json
-// In core/blong-log/package.json
+// In tools/blong-log/package.json
 {
-  "scripts": {
-    "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build -o storybook-static",
-    "storybook:test": "test-storybook",
-    "storybook:test:ci": "storybook build -o storybook-static && test-storybook --url http://127.0.0.1:6006",
-    "visual:update": "npm run storybook:test -- --updateSnapshot"
-  }
+    "scripts": {
+        "storybook": "storybook dev -p 6006",
+        "storybook:build": "storybook build -o storybook-static",
+        "storybook:test": "test-storybook",
+        "storybook:test:ci": "storybook build -o storybook-static && test-storybook --url http://127.0.0.1:6006",
+        "visual:update": "npm run storybook:test -- --updateSnapshot"
+    }
 }
 ```
 
@@ -292,22 +293,22 @@ Use title hierarchy reflecting Blong package structure:
 ```typescript
 // blong-log stories
 export const meta = {
-  title: 'Framework/blong-log/LogViewer',
+    title: 'Framework/blong-log/LogViewer',
 };
 
 // blong-rest stories
 export const meta = {
-  title: 'Framework/blong-rest/RestAPI',
+    title: 'Framework/blong-rest/RestAPI',
 };
 
 // Example: blong-realm component
 export const meta = {
-  title: 'Framework/blong/Realm',
+    title: 'Framework/blong/Realm',
 };
 
 // Example: custom adapter UI
 export const meta = {
-  title: 'Framework/blong-adapter/HttpAdapter',
+    title: 'Framework/blong-adapter/HttpAdapter',
 };
 ```
 

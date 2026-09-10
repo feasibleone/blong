@@ -432,7 +432,7 @@
         //
         {
             "packageName": "@feasibleone/eslint",
-            "projectFolder": "core/eslint",
+            "projectFolder": "tools/eslint",
             "reviewCategory": "core",
             "shouldPublish": false,
             "tags": ["core"]
@@ -465,7 +465,7 @@
         },
         {
             "packageName": "@feasibleone/blong-dev",
-            "projectFolder": "core/blong-dev",
+            "projectFolder": "tools/blong-dev",
             "reviewCategory": "core",
             "tags": ["core"]
         },
@@ -489,7 +489,7 @@
         },
         {
             "packageName": "@feasibleone/blong-graph",
-            "projectFolder": "core/blong-graph",
+            "projectFolder": "tools/blong-graph",
             "reviewCategory": "core",
             "tags": ["core"]
         },
@@ -525,19 +525,19 @@
         },
         {
             "packageName": "@feasibleone/blong-commander",
-            "projectFolder": "core/blong-commander",
+            "projectFolder": "realm/blong-commander",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-log",
-            "projectFolder": "core/blong-log",
+            "projectFolder": "tools/blong-log",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-login",
-            "projectFolder": "core/blong-login",
+            "projectFolder": "realm/blong-login",
             "reviewCategory": "core",
             "shouldPublish": true,
             "tags": ["core"]
@@ -550,13 +550,13 @@
         },
         {
             "packageName": "@feasibleone/blong-test",
-            "projectFolder": "core/blong-test",
+            "projectFolder": "realm/blong-test",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-eip",
-            "projectFolder": "core/blong-eip",
+            "projectFolder": "demo/blong-eip",
             "reviewCategory": "core",
             "tags": ["core"]
         },
@@ -574,43 +574,43 @@
         },
         {
             "packageName": "@feasibleone/blong-ttk",
-            "projectFolder": "core/blong-ttk",
+            "projectFolder": "tools/blong-ttk",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-int-sql",
-            "projectFolder": "core/blong-int-sql",
+            "projectFolder": "test/blong-int-sql",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-int-adapter",
-            "projectFolder": "core/blong-int-adapter",
+            "projectFolder": "test/blong-int-adapter",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-sim-tcp",
-            "projectFolder": "core/blong-sim-tcp",
+            "projectFolder": "test/blong-sim-tcp",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-sim-api",
-            "projectFolder": "core/blong-sim-api",
+            "projectFolder": "test/blong-sim-api",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-hello",
-            "projectFolder": "core/blong-hello",
+            "projectFolder": "demo/blong-hello",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/test",
-            "projectFolder": "core/test",
+            "projectFolder": "test/framework",
             "reviewCategory": "core",
             "tags": ["core"]
         },
@@ -628,55 +628,55 @@
         },
         {
             "packageName": "@feasibleone/handler-test-poc",
-            "projectFolder": "core/handler-test-poc",
+            "projectFolder": "demo/handler-test-poc",
             "reviewCategory": "core",
             "tags": ["dev"]
         },
         {
             "packageName": "@feasibleone/blong-marine",
-            "projectFolder": "core/blong-marine",
+            "projectFolder": "demo/blong-marine",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-core",
-            "projectFolder": "core/blong-core",
+            "projectFolder": "realm/blong-core",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-access",
-            "projectFolder": "core/blong-access",
+            "projectFolder": "realm/blong-access",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-access-mock",
-            "projectFolder": "core/blong-access-mock",
+            "projectFolder": "realm/blong-access-mock",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-gateway",
-            "projectFolder": "core/blong-gateway",
+            "projectFolder": "realm/blong-gateway",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-party",
-            "projectFolder": "core/blong-party",
+            "projectFolder": "realm/blong-party",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/marine-data",
-            "projectFolder": "core/marine-data",
+            "projectFolder": "demo/marine-data",
             "reviewCategory": "core",
             "tags": ["core"]
         },
         {
             "packageName": "@feasibleone/blong-suite",
-            "projectFolder": "core/blong-suite",
+            "projectFolder": "suite/blong-suite",
             "reviewCategory": "core",
             "tags": ["core"]
         }

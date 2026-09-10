@@ -1,6 +1,11 @@
 ---
 name: blong-orchestrator
-description: Implement business logic coordination in Blong, decoupled from integration protocols. Orchestrators coordinate between adapters, define API namespaces, and become Kubernetes services. Use this skill whenever implementing business workflows, coordinating multiple adapter calls, adding business rules, defining new namespaces, or translating sequence diagrams to code — even without the word 'orchestrator'.
+description:
+    Implement business logic coordination in Blong, decoupled from integration protocols.
+    Orchestrators coordinate between adapters, define API namespaces, and become Kubernetes
+    services. Use this skill whenever implementing business workflows, coordinating multiple adapter
+    calls, adding business rules, defining new namespaces, or translating sequence diagrams to code
+    — even without the word 'orchestrator'.
 ---
 
 # Implementing an Orchestrator
@@ -14,9 +19,9 @@ description: Implement business logic coordination in Blong, decoupled from inte
 - **Domain errors + compensation** for distributed transactions (saga).
 - **Co-locate `activation` config** in the orchestrator file — not the realm `server.ts`.
 
-Canonical framework rules + archetypes:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: ORCHESTRATOR_DISPATCH]`,
-`[CONFIG_EXAMPLE]`. For business workflows see **blong-handler**; for adapters see **blong-adapter**.
+Canonical framework rules + archetypes: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: ORCHESTRATOR_DISPATCH]`, `[CONFIG_EXAMPLE]`. For business
+workflows see **blong-handler**; for adapters see **blong-adapter**.
 
 ## File Structure
 
@@ -38,7 +43,8 @@ orchestrator/
 
 ### 1. Dispatch Orchestrator
 
-The most common orchestrator type. Enables calling attached handlers using configured namespaces, with optional fallback to another destination.
+The most common orchestrator type. Enables calling attached handlers using configured namespaces,
+with optional fallback to another destination.
 
 **Use Cases:**
 
@@ -58,13 +64,13 @@ export default orchestrator(blong => ({
     // Co-located configuration (no need to add to server.ts)
     activation: {
         default: {
-            namespace: ['entity1', 'entity2'],        // Namespaces to expose
-            imports: ['realmname.entity1', 'realmname.entity2'],  // Handler groups
-            validations: ['realmname.entity1.validation'],        // Validation groups
-            destination: 'sql',                        // Fallback when no handler exists
-            logLevel: 'info'
-        }
-    }
+            namespace: ['entity1', 'entity2'], // Namespaces to expose
+            imports: ['realmname.entity1', 'realmname.entity2'], // Handler groups
+            validations: ['realmname.entity1.validation'], // Validation groups
+            destination: 'sql', // Fallback when no handler exists
+            logLevel: 'info',
+        },
+    },
 }));
 ```
 
@@ -161,11 +167,12 @@ export default handler(({
 // realmname/orchestrator/user/validateEmail.ts
 import {library} from '@feasibleone/blong';
 
-export default library(() =>
-    function validateEmail(email: string): boolean {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
+export default library(
+    () =>
+        function validateEmail(email: string): boolean {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        },
 );
 ```
 
@@ -196,14 +203,15 @@ schedule: {
 Single adapter call with transformation:
 
 ```typescript
-export default handler(({handler: {sqlUserFind}}) =>
-    async function userUserGet(params, $meta) {
-        const users = await sqlUserFind(params, $meta);
-        return users.map(user => ({
-            id: user.userId,
-            name: user.username
-        }));
-    }
+export default handler(
+    ({handler: {sqlUserFind}}) =>
+        async function userUserGet(params, $meta) {
+            const users = await sqlUserFind(params, $meta);
+            return users.map(user => ({
+                id: user.userId,
+                name: user.username,
+            }));
+        },
 );
 ```
 
@@ -212,32 +220,33 @@ export default handler(({handler: {sqlUserFind}}) =>
 Coordinate between multiple adapters:
 
 ```typescript
-export default handler(({
-    handler: {
-        sqlUserFind,
-        sqlPermissionFind,
-        httpNotificationSend
-    }
-}) =>
-    async function userUserGrantPermission(params, $meta) {
-        // Get user
-        const user = await sqlUserFind({userId: params.userId}, $meta);
+export default handler(
+    ({handler: {sqlUserFind, sqlPermissionFind, httpNotificationSend}}) =>
+        async function userUserGrantPermission(params, $meta) {
+            // Get user
+            const user = await sqlUserFind({userId: params.userId}, $meta);
 
-        // Grant permission
-        await sqlPermissionFind({
-            userId: params.userId,
-            permission: params.permission
-        }, $meta);
+            // Grant permission
+            await sqlPermissionFind(
+                {
+                    userId: params.userId,
+                    permission: params.permission,
+                },
+                $meta,
+            );
 
-        // Send notification
-        await httpNotificationSend({
-            email: user.email,
-            subject: 'Permission Granted',
-            body: `You have been granted ${params.permission}`
-        }, $meta);
+            // Send notification
+            await httpNotificationSend(
+                {
+                    email: user.email,
+                    subject: 'Permission Granted',
+                    body: `You have been granted ${params.permission}`,
+                },
+                $meta,
+            );
 
-        return {success: true};
-    }
+            return {success: true};
+        },
 );
 ```
 
@@ -246,35 +255,42 @@ export default handler(({
 Call orchestrators from other realms:
 
 ```typescript
-export default handler(({
-    handler: {
-        paymentTransferPrepare,  // From payment realm
-        ledgerAccountDebit,      // From ledger realm
-        sqlTransactionCreate     // Local adapter
-    }
-}) =>
-    async function transferMoneyBetweenAccounts(params, $meta) {
-        // Create transaction record
-        const tx = await sqlTransactionCreate(params, $meta);
+export default handler(
+    ({
+        handler: {
+            paymentTransferPrepare, // From payment realm
+            ledgerAccountDebit, // From ledger realm
+            sqlTransactionCreate, // Local adapter
+        },
+    }) =>
+        async function transferMoneyBetweenAccounts(params, $meta) {
+            // Create transaction record
+            const tx = await sqlTransactionCreate(params, $meta);
 
-        // Prepare payment
-        const payment = await paymentTransferPrepare({
-            transactionId: tx.id,
-            amount: params.amount
-        }, $meta);
+            // Prepare payment
+            const payment = await paymentTransferPrepare(
+                {
+                    transactionId: tx.id,
+                    amount: params.amount,
+                },
+                $meta,
+            );
 
-        // Update ledger
-        await ledgerAccountDebit({
-            accountId: params.fromAccount,
-            amount: params.amount,
-            reference: payment.id
-        }, $meta);
+            // Update ledger
+            await ledgerAccountDebit(
+                {
+                    accountId: params.fromAccount,
+                    amount: params.amount,
+                    reference: payment.id,
+                },
+                $meta,
+            );
 
-        return {
-            transactionId: tx.id,
-            paymentId: payment.id
-        };
-    }
+            return {
+                transactionId: tx.id,
+                paymentId: payment.id,
+            };
+        },
 );
 ```
 
@@ -283,48 +299,54 @@ export default handler(({
 Implement compensation logic for failures:
 
 ```typescript
-export default handler(({
-    handler: {
-        paymentTransferPrepare,
-        ledgerAccountDebit,
-        paymentTransferCommit,
-        paymentTransferCancel,
-        ledgerAccountCredit
-    },
-    errors
-}) =>
-    async function transferWithCompensation(params, $meta) {
-        let payment, debit;
+export default handler(
+    ({
+        handler: {
+            paymentTransferPrepare,
+            ledgerAccountDebit,
+            paymentTransferCommit,
+            paymentTransferCancel,
+            ledgerAccountCredit,
+        },
+        errors,
+    }) =>
+        async function transferWithCompensation(params, $meta) {
+            let payment, debit;
 
-        try {
-            // Step 1: Prepare payment
-            payment = await paymentTransferPrepare(params, $meta);
+            try {
+                // Step 1: Prepare payment
+                payment = await paymentTransferPrepare(params, $meta);
 
-            // Step 2: Debit account
-            debit = await ledgerAccountDebit({
-                accountId: params.fromAccount,
-                amount: params.amount
-            }, $meta);
+                // Step 2: Debit account
+                debit = await ledgerAccountDebit(
+                    {
+                        accountId: params.fromAccount,
+                        amount: params.amount,
+                    },
+                    $meta,
+                );
 
-            // Step 3: Commit payment
-            await paymentTransferCommit({paymentId: payment.id}, $meta);
+                // Step 3: Commit payment
+                await paymentTransferCommit({paymentId: payment.id}, $meta);
 
-            return {success: true, paymentId: payment.id};
-
-        } catch (error) {
-            // Compensation: Undo what was done
-            if (debit) {
-                await ledgerAccountCredit({
-                    accountId: params.fromAccount,
-                    amount: params.amount
-                }, $meta);
+                return {success: true, paymentId: payment.id};
+            } catch (error) {
+                // Compensation: Undo what was done
+                if (debit) {
+                    await ledgerAccountCredit(
+                        {
+                            accountId: params.fromAccount,
+                            amount: params.amount,
+                        },
+                        $meta,
+                    );
+                }
+                if (payment) {
+                    await paymentTransferCancel({paymentId: payment.id}, $meta);
+                }
+                throw errors.transferFailed({cause: error});
             }
-            if (payment) {
-                await paymentTransferCancel({paymentId: payment.id}, $meta);
-            }
-            throw errors.transferFailed({cause: error});
-        }
-    }
+        },
 );
 ```
 
@@ -336,19 +358,19 @@ When a realm has multiple concerns, create separate orchestrators — each co-lo
 // orchestrator/userDispatch.ts
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    activation: {default: {namespace: ['user'], imports: ['realmname.user']}}
+    activation: {default: {namespace: ['user'], imports: ['realmname.user']}},
 }));
 
 // orchestrator/roleDispatch.ts
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    activation: {default: {namespace: ['role'], imports: ['realmname.role']}}
+    activation: {default: {namespace: ['role'], imports: ['realmname.role']}},
 }));
 
 // orchestrator/permissionDispatch.ts
 export default orchestrator(blong => ({
     extends: 'orchestrator.dispatch',
-    activation: {default: {namespace: ['permission'], imports: ['realmname.permission']}}
+    activation: {default: {namespace: ['permission'], imports: ['realmname.permission']}},
 }));
 ```
 
@@ -378,6 +400,6 @@ orchestrator/
 
 ## Examples from Codebase
 
-- **Simple dispatch:** `core/test/demo/orchestrator/subjectDispatch.ts`
+- **Simple dispatch:** `test/framework/demo/orchestrator/subjectDispatch.ts`
 - **Multi-entity:** `ml/agreement/orchestrator/agreementDispatch.ts`
 - **Complex workflow:** `ml/payment/orchestrator/`

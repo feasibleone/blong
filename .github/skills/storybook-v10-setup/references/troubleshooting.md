@@ -28,8 +28,8 @@ npm run storybook:test:ci  # Uses http-server NPM package (already in scripts)
 
 ```typescript
 export const FilteredView: Story = {
-  args: { filter: 'errors' },
-  // No play() function - can't verify filter actually works
+    args: {filter: 'errors'},
+    // No play() function - can't verify filter actually works
 };
 ```
 
@@ -37,12 +37,12 @@ export const FilteredView: Story = {
 
 ```typescript
 export const FilteredView: Story = {
-  args: { filter: 'errors' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: /errors/i }));
-    expect(canvas.getByText(/no errors/i)).toBeInTheDocument();
-  },
+    args: {filter: 'errors'},
+    play: async ({canvasElement}) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', {name: /errors/i}));
+        expect(canvas.getByText(/no errors/i)).toBeInTheDocument();
+    },
 };
 ```
 
@@ -53,9 +53,9 @@ export const FilteredView: Story = {
 ```typescript
 const [data, setData] = React.useState(null);
 React.useEffect(() => {
-  fetch('http://localhost:3000/api/data')
-    .then(r => r.json())
-    .then(setData);
+    fetch('http://localhost:3000/api/data')
+        .then(r => r.json())
+        .then(setData);
 }, []);
 ```
 
@@ -74,9 +74,9 @@ React.useEffect(() => {
 
 ```typescript
 export const TimestampStory: Story = {
-  args: {
-    timestamp: Date.now(), // Changes every time!
-  },
+    args: {
+        timestamp: Date.now(), // Changes every time!
+    },
 };
 ```
 
@@ -84,9 +84,9 @@ export const TimestampStory: Story = {
 
 ```typescript
 export const TimestampStory: Story = {
-  args: {
-    timestamp: 1708000000000, // Fixed timestamp
-  },
+    args: {
+        timestamp: 1708000000000, // Fixed timestamp
+    },
 };
 ```
 
@@ -95,9 +95,9 @@ export const TimestampStory: Story = {
 **WRONG:**
 
 ```typescript
-Math.random() // Changes every render
-uuid.v4()     // Different ID each time
-new Date()    // Current time
+Math.random(); // Changes every render
+uuid.v4(); // Different ID each time
+new Date(); // Current time
 ```
 
 **RIGHT:**
@@ -113,9 +113,12 @@ seed.fill(42);
 
 ### CSF: missing default export
 
-**Symptom**: Storybook starts but shows `🚨 Unable to index files: ./src/SomeComponent.stories.tsx: CSF: missing default export`. The file's stories never appear in the sidebar.
+**Symptom**: Storybook starts but shows
+`🚨 Unable to index files: ./src/SomeComponent.stories.tsx: CSF: missing default export`. The file's
+stories never appear in the sidebar.
 
-**Cause**: Every story file must export a `Meta` object as the default export. Storybook uses it to index and categorize stories. Files without it are silently skipped.
+**Cause**: Every story file must export a `Meta` object as the default export. Storybook uses it to
+index and categorize stories. Files without it are silently skipped.
 
 **Fix**: Add a `Meta` default export after your imports:
 
@@ -136,9 +139,11 @@ export const MyStory = () => <MyComponent />;
 
 ### Version mismatch: storybook core vs addons
 
-**Symptom**: `pnpm install` or Storybook startup fails with peer dependency errors or incompatible API errors about missing named exports.
+**Symptom**: `pnpm install` or Storybook startup fails with peer dependency errors or incompatible
+API errors about missing named exports.
 
-**Cause**: Mixing Storybook v10 core (`storybook@10.x`) with v8-era addon packages (`@storybook/addon-essentials@8.x`, `@storybook/addon-interactions@8.x`, `@storybook/test@8.x`).
+**Cause**: Mixing Storybook v10 core (`storybook@10.x`) with v8-era addon packages
+(`@storybook/addon-essentials@8.x`, `@storybook/addon-interactions@8.x`, `@storybook/test@8.x`).
 
 **Fix**: Use ONLY these packages in v10 — all pinned to the same minor:
 
@@ -153,15 +158,19 @@ export const MyStory = () => <MyComponent />;
 }
 ```
 
-Remove: `addon-essentials`, `addon-interactions`, `addon-links`, `@storybook/test`, `@chromatic-com/storybook@3.x` (Chromatic v3 only supports Storybook v8).
+Remove: `addon-essentials`, `addon-interactions`, `addon-links`, `@storybook/test`,
+`@chromatic-com/storybook@3.x` (Chromatic v3 only supports Storybook v8).
 
 ---
 
 ### Addon resolution fails in Rush/pnpm monorepo
 
-**Symptom**: `Cannot find module '@storybook/addon-a11y'` or Storybook starts but addons are missing/broken.
+**Symptom**: `Cannot find module '@storybook/addon-a11y'` or Storybook starts but addons are
+missing/broken.
 
-**Cause**: With pnpm's non-hoisted node_modules, bare string addon names in `addons: [...]` and `framework: '...'` resolve relative to the calling package and fail when the package lives in a different part of the monorepo's symlink tree.
+**Cause**: With pnpm's non-hoisted node_modules, bare string addon names in `addons: [...]` and
+`framework: '...'` resolve relative to the calling package and fail when the package lives in a
+different part of the monorepo's symlink tree.
 
 **Fix**: Use the `getAbsolutePath()` helper to resolve addon paths at startup:
 
@@ -174,10 +183,7 @@ function getAbsolutePath(value: string): string {
 }
 
 const config: StorybookConfig = {
-    addons: [
-        getAbsolutePath('@storybook/addon-a11y'),
-        getAbsolutePath('@storybook/addon-docs'),
-    ],
+    addons: [getAbsolutePath('@storybook/addon-a11y'), getAbsolutePath('@storybook/addon-docs')],
     framework: {
         name: getAbsolutePath('@storybook/react-vite') as '@storybook/react-vite',
         options: {},
@@ -189,9 +195,11 @@ const config: StorybookConfig = {
 
 ### `process.env` / `process is not defined` crash in Vite
 
-**Symptom**: Storybook starts but immediately crashes in the browser with `ReferenceError: process is not defined`, or Vite build fails with polyfill errors.
+**Symptom**: Storybook starts but immediately crashes in the browser with
+`ReferenceError: process is not defined`, or Vite build fails with polyfill errors.
 
-**Cause**: Some packages reference `process.env.NODE_ENV` or similar Node.js globals that don't exist in browser context. Vite doesn't polyfill `process` by default.
+**Cause**: Some packages reference `process.env.NODE_ENV` or similar Node.js globals that don't
+exist in browser context. Vite doesn't polyfill `process` by default.
 
 **Fix**: Add `viteFinal` to `main.ts` to define the global:
 
@@ -217,7 +225,10 @@ viteFinal(config) {
 http://localhost:6006/@fs/home/.../common/temp/node_modules/.pnpm/primeicons@6.0.1/node_modules/primeicons/fonts/primeicons.woff
 ```
 
-**Cause**: Vite's dev server filesystem security (`server.fs.allow`) only permits files within the project root by default. In a Rush monorepo, packages like `primeicons` resolve through the pnpm virtual store at `common/temp/node_modules/.pnpm/...`, which is outside the `blong-browser` package root.
+**Cause**: Vite's dev server filesystem security (`server.fs.allow`) only permits files within the
+project root by default. In a Rush monorepo, packages like `primeicons` resolve through the pnpm
+virtual store at `common/temp/node_modules/.pnpm/...`, which is outside the `blong-browser` package
+root.
 
 **Fix**: Add `server.fs.allow` in `viteFinal` in `.storybook/main.ts`:
 
@@ -245,13 +256,14 @@ viteFinal(config) {
 
 `__dirname` here is the `.storybook/` folder. Count levels up carefully:
 
-| From | To |
-|------|----|
-| `.storybook/` | package root (`../`) |
-| package root | `core/` (`../../`) |
-| `core/` | monorepo root (`../../../`) |
+| From            | To                          |
+| --------------- | --------------------------- |
+| `.storybook/`   | package root (`../`)        |
+| package root    | category folder (`../../`)  |
+| category folder | monorepo root (`../../../`) |
 
-So from `.storybook/main.ts`, `../../../common/temp/node_modules` reaches `<monorepo-root>/common/temp/node_modules`. Adjust if your package is nested differently.
+So from `.storybook/main.ts`, `../../../common/temp/node_modules` reaches
+`<monorepo-root>/common/temp/node_modules`. Adjust if your package is nested differently.
 
 ---
 
@@ -284,8 +296,10 @@ use: {
 ```typescript
 // Use in story decorator
 React.useEffect(() => {
-  const OriginalWS = window.WebSocket;
-  window.WebSocket = MockWebSocket;
-  return () => { window.WebSocket = OriginalWS; };
+    const OriginalWS = window.WebSocket;
+    window.WebSocket = MockWebSocket;
+    return () => {
+        window.WebSocket = OriginalWS;
+    };
 }, []);
 ```

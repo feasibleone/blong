@@ -349,7 +349,8 @@ below). A realm only implements `{subject}.dropdown.list` itself for **non-resou
 - **`add` auto-creates the resource row.** Generic knex `add` on a resource-backed table inserts the
   matching `core_resource` row; `merge` with `resourceType` + `name` idempotently resolves/creates
   it.
-- **Seeds use `resourceType` + `name`** (e.g. `core/blong-party/meta/dbTest/partyPersonMerge.yaml`).
+- **Seeds use `resourceType` + `name`** (e.g.
+  `realm/blong-party/meta/dbTest/partyPersonMerge.yaml`).
 
 Practical guidance for model authors:
 
@@ -446,10 +447,10 @@ validation fails.
       columns/DB schema unaffected).
     - **Persistence is generic** — the knex adapter (`core/blong-gogo/src/adapter/server/knex.ts`)
       treats any table with a FK constraint to the master's PK
-      (`schema.constraints.foreign[col] === '<subject>.<object>.<key>'`) as a detail of that
-      master: `add`/`edit` persist the sibling detail arrays and `get` returns them alongside the
-      master. Declare the detail table in `meta/type/schema.ts` (FK column `type.bigIntNotNull()`
-      for `increment()` PKs) + register it in `meta/db/db.ts`; no custom `adapter/db/<object>Add.ts`
+      (`schema.constraints.foreign[col] === '<subject>.<object>.<key>'`) as a detail of that master:
+      `add`/`edit` persist the sibling detail arrays and `get` returns them alongside the master.
+      Declare the detail table in `meta/type/schema.ts` (FK column `type.bigIntNotNull()` for
+      `increment()` PKs) + register it in `meta/db/db.ts`; no custom `adapter/db/<object>Add.ts`
       handler is needed. A manual gateway override remains the escape hatch for non-array extras.
     - **Playwright**: pass `details: [{object: 'line', fields: {...}, rows}]` to
       `createAndEditModel` (`@feasibleone/blong-browser/playwright/model`) to switch to each detail

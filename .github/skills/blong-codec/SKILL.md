@@ -1,13 +1,20 @@
 ---
 name: blong-codec
-description: Implement protocols on top of transport layers in Blong. Includes HTTP codecs (OpenAPI, JSON-RPC, MLE) and TCP codecs (Payshield, ISO8583, SMPP). Handle serialization, deserialization, and request/response matching. Use this skill for any serialization/deserialization work, binary protocol wiring, or connecting to payment networks, HSM devices, or external systems with custom wire formats — even if the user doesn't say 'codec' explicitly.
+description:
+    Implement protocols on top of transport layers in Blong. Includes HTTP codecs (OpenAPI,
+    JSON-RPC, MLE) and TCP codecs (Payshield, ISO8583, SMPP). Handle serialization, deserialization,
+    and request/response matching. Use this skill for any serialization/deserialization work, binary
+    protocol wiring, or connecting to payment networks, HSM devices, or external systems with custom
+    wire formats — even if the user doesn't say 'codec' explicitly.
 ---
 
 # Implementing a Codec
 
 ## Overview
 
-Codecs implement protocols on top of lower-level transport layers. They handle serialization/deserialization for TCP protocols or implement higher-level protocol semantics for HTTP.
+Codecs implement protocols on top of lower-level transport layers. They handle
+serialization/deserialization for TCP protocols or implement higher-level protocol semantics for
+HTTP.
 
 ## Purpose
 
@@ -121,7 +128,8 @@ export default adapter(blong => ({
 
 **x-blong Extension:**
 
-The framework supports a custom `x-blong` extension for configuring webhook destinations and namespaces:
+The framework supports a custom `x-blong` extension for configuring webhook destinations and
+namespaces:
 
 ```typescript
 {
@@ -424,7 +432,7 @@ export default handler(({handler: {encode, decode}}) => ({
 
 ## Examples from Codebase
 
-- **OpenAPI:** `core/blong-sim-api/time/sim/openapi/adapter.ts` (mock server config)
-- **Payshield:** `core/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative adapter.tcp)
-- **JSON-RPC:** `core/test/demo/browser.ts`
-- **Custom protocol:** `core/test/ctp/adapter/payshield/`
+- **OpenAPI:** `test/blong-sim-api/time/sim/openapi/adapter.ts` (mock server config)
+- **Payshield:** `test/blong-sim-tcp/payshield/adapter/tcp.ts` (declarative adapter.tcp)
+- **JSON-RPC:** `test/framework/demo/browser.ts`
+- **Custom protocol:** `test/framework/ctp/adapter/payshield/`

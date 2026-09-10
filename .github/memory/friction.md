@@ -22,20 +22,20 @@ Resolved by the "Commander polish" session (2026-07-09):
 
 Resolved by the "Commander bug-fix pass" session (2026-08-23):
 
-- **`{parent.X}` leaf-open templates never resolved** — `commander.node.get` only received the
-  leaf node, so `{parent.path}` (vault) resolved to empty → 404 "Vault Secret Not Found"; S3
-  `{parent.bucket}` only worked because the adapter fell back to a default bucket. Root cause:
-  the parent's fields weren't carried to the leaf. Fix: stamp the direct parent's fields as
+- **`{parent.X}` leaf-open templates never resolved** — `commander.node.get` only received the leaf
+  node, so `{parent.path}` (vault) resolved to empty → 404 "Vault Secret Not Found"; S3
+  `{parent.bucket}` only worked because the adapter fell back to a default bucket. Root cause: the
+  parent's fields weren't carried to the leaf. Fix: stamp the direct parent's fields as
   `parent.<field>` on every row (`withParentContext`). ~20 min across vault/S3/mongo/k8s.
 - **knex `table.list` double-prefixed table names** — `access.{tableName}.find` with
   `tableName='access_user'` built `access_access_user`. Also listed junk `$subject_*` tables and
   every visible schema's tables. Fix: filter to the connected DB + `{subject}_%` + junk names, and
   strip the `{subject}_` prefix so `{tableName}` is the object name.
-- **PrimeReact DataTable kept stale body rows** after switching from a 200+ row table to a small
-  one (state was correct but the DOM showed old rows — "keeps showing db data while changing
-  columns"). Fix: remount the DataTable per navigation via `key={selected.key}` + a `loadTokenRef`
-  race guard. ~15 min of fiber-tree inspection (`__reactFiber$` state) to confirm rows state was
-  correct while the DOM was stale.
+- **PrimeReact DataTable kept stale body rows** after switching from a 200+ row table to a small one
+  (state was correct but the DOM showed old rows — "keeps showing db data while changing columns").
+  Fix: remount the DataTable per navigation via `key={selected.key}` + a `loadTokenRef` race guard.
+  ~15 min of fiber-tree inspection (`__reactFiber$` state) to confirm rows state was correct while
+  the DOM was stale.
 - **tap snapshot ordering** — the mongodb adapter's `{...doc, id}` appended `id` at the END, so a
   manually sed-inserted `id` right after `_id` failed tap's order-sensitive snapshot compare. Use
   `TAP_SNAPSHOT=1` to regenerate, then revert unrelated snapshots (it reformats ALL of them).
@@ -207,8 +207,52 @@ of the box (had to `kubectl exec` into the MySQL pod).
   called the wrapped `then` on the first attempt (`target.then` after overriding `builder.then`) →
   "Maximum call stack size exceeded". Fix: capture `originalThen` before overriding and use it for
   attempt 0; use the clone's own (prototype) `then` for retries.
-- **`get_errors` reported a stale `Property 'retry' does not exist on type '{}'` on
-  `knex.ts(384)` long after `tsc -p tsconfig.json` passed with exit 0.** The language-server cache
-  lags multi-file type edits (types.ts added `retry` but the Problems panel kept an old module
-  graph). Lesson: when the Problems panel disagrees with a clean package `tsc --noEmit -p
-  tsconfig.json` run, trust the `tsc` run — do not chase phantom errors.
+- **`get_errors` reported a stale `Property 'retry' does not exist on type '{}'` on `knex.ts(384)`
+  long after `tsc -p tsconfig.json` passed with exit 0.** The language-server cache lags multi-file
+  type edits (types.ts added `retry` but the Problems panel kept an old module graph). Lesson: when
+  the Problems panel disagrees with a clean package `tsc --noEmit -p tsconfig.json` run, trust the
+  `tsc` run — do not chase phantom errors.
+- **A folder-only refactor surfaced three classes of relative-path coupling that a `core/<pkg>` text
+  grep does NOT catch**, each found only by running the tooling: (1) every package's
+  `eslint.config.mjs` did `import config from '../eslint/config.mjs'` — 25 files broke the moment
+  `eslint` moved to `tools/eslint`; (2) `tools/blong-graph/tsconfig.json` extended a sibling
+  tsconfig by relative path; (3) `common/git-hooks/pre-commit` invoked
+  `core/blong-dev/bin/blong-dev.ts` by path. Lesson: after moving packages, run `rush ci-lint` AND
+  `rush build` before declaring done, and grep for `../<pkg>` (not just `core/<pkg>`) repo-wide.
+- **`blong-dev lint` failing on one package masked that lint was the only thing catching the
+  breakage** — `rush build` had already passed clean, because `eslint.config.mjs` is not part of any
+  build graph. Do not treat a green build as sufficient for a path-only refactor.
+- **The edit tool added a trailing comma when the original JSON line had none**, producing invalid
+  JSON in `tools/blong-graph/tsconfig.json`. The malformed config made TypeScript fall back to the
+  base config's `rootDir` and emit a cascade of TS6059 errors that looked like a path-mapping bug.
+  `blong-dev lint` gave the decisive clue (`Parsing error: Unexpected token RBrace`). Lesson: after
+  editing JSON/JSONC, re-read or parse the file to confirm punctuation.
+- **`test/blong-int-adapter/s3.test.ts` failed with `NoSuchBucket` for `blong-integration`, and the
+  terminal showed only `Alarm clock` / exit 142 — easy to misread as a refactor regression.**
+  Neither the test nor the restructure was at fault. `minio-deployment.yaml` declares no
+  `volumeMounts`/`persistentVolumeClaim`, so `/data` is container-ephemeral (unlike mysql/mongodb/
+  keycloak, which do have PVCs). The k3d cluster restarted at 11:12:08 today (all backend pods show
+  `RESTARTS 1`); the MinIO container had died uncleanly (Exit 255, Reason `Unknown`) and came back
+  with an empty `/data` (only `.minio.sys`). The one-shot `minio-bucket-init` Job was already
+  `Complete` from 2d19h earlier, so the bucket was never recreated. **Fix: re-run the documented
+  init job** —
+  `kubectl -n blong-integration delete job minio-bucket-init && kubectl apply -k test/integration/`
+  — after which the test passes 15/15. Lesson: exit 142 is SIGALRM, not a process error; here it
+  means the harness timeout fired because the first failing group left
+  `Watch: operation "run test groups" still running (progress 1/3)` hanging, which buried the real
+  error. When an integration test fails right after a cluster restart, check backend data
+  (`kubectl exec deploy/minio -- ls /data`) before suspecting the test.
+- **Making the Kafka seed Job idempotent took three attempts because the obvious guards are wrong.**
+  (1) Guarding on "does topic `blong-integration` exist?" looks right but silently skips re-seeding
+  after a reboot: `kafka-deployment.yaml` has a `lifecycle.postStart` hook that runs
+  `kafka-topics --create --if-not-exists`, so every container start recreates an *empty* topic — the
+  topic exists while the seed message is gone. The guard must test for the MESSAGE. (2) Probing with
+  a plain `kafka-console-consumer --from-beginning --timeout-ms 3000` returned "0 messages" even
+  though messages were there: it exited with `TimeoutException`, because `--timeout-ms` maps to the
+  request timeout and a group-based consumer must first wait out the broker's
+  `group.initial.rebalance.delay.ms` (default 3000ms) — so the probe looked like "no seed" and
+  seeded a duplicate on every run. (3) `kafka-console-consumer --partition 0 --offset 0` reads the
+  partition directly with no consumer group and is therefore fast and deterministic — that is the
+  form used in the Job now. Verified both ways: after `rollout restart deployment/kafka` (empty
+  topic, i.e. the real post-reboot state) the Job seeds exactly one message, and running it again
+  logs "Seed message already present" with the count still 1.

@@ -14,7 +14,7 @@ const TIMEOUT_MS = 30_000;
 
 async function startVite() {
     const proc = spawn('node', ['../../common/scripts/install-run-rush-pnpm.js', 'run', 'dev'], {
-        cwd: new URL('../../blong-suite', import.meta.url).pathname,
+        cwd: new URL('../../../suite/blong-suite', import.meta.url).pathname,
         stdio: 'pipe',
     });
     // Wait until Vite prints its "ready" line; strip ANSI codes before matching

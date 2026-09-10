@@ -1,13 +1,20 @@
 ---
 name: blong-rest
-description: Implement REST APIs in Blong using OpenAPI/Swagger definitions. Framework defaults to JSON-RPC but supports REST for pre-defined APIs. Covers both server-side (gateway) and client-side (adapter) patterns with OpenAPI codec integration. Use this skill whenever the user mentions OpenAPI, Swagger, REST endpoints, HTTP methods like GET/PUT/DELETE, or needs to consume a pre-defined REST API from an external provider.
+description:
+    Implement REST APIs in Blong using OpenAPI/Swagger definitions. Framework defaults to JSON-RPC
+    but supports REST for pre-defined APIs. Covers both server-side (gateway) and client-side
+    (adapter) patterns with OpenAPI codec integration. Use this skill whenever the user mentions
+    OpenAPI, Swagger, REST endpoints, HTTP methods like GET/PUT/DELETE, or needs to consume a
+    pre-defined REST API from an external provider.
 ---
 
 # Implementing REST APIs
 
 ## Overview
 
-The Blong framework uses **JSON-RPC by default** for API endpoints based on validations and namespaces. For implementing **pre-defined REST APIs** (OpenAPI/Swagger-based), use the patterns described here.
+The Blong framework uses **JSON-RPC by default** for API endpoints based on validations and
+namespaces. For implementing **pre-defined REST APIs** (OpenAPI/Swagger-based), use the patterns
+described here.
 
 ## Purpose
 
@@ -55,7 +62,7 @@ import {api} from '@feasibleone/blong';
 export default api(() => ({
     namespace: {
         entityname: [
-            './entityname.yaml',  // Local OpenAPI file
+            './entityname.yaml', // Local OpenAPI file
         ],
     },
 }));
@@ -68,8 +75,8 @@ export default api(() => ({
 export default api(() => ({
     namespace: {
         agreement: [
-            'https://raw.githubusercontent.com/org/service/main/swagger.json',  // Remote
-            './agreement.yaml',  // Local additions/overrides
+            'https://raw.githubusercontent.com/org/service/main/swagger.json', // Remote
+            './agreement.yaml', // Local additions/overrides
         ],
     },
 }));
@@ -90,58 +97,58 @@ Create OpenAPI YAML file with `operationId` for each operation:
 # realmname/gateway/api/release.yaml
 openapi: 3.0.3
 info:
-  title: Release API
-  version: 1.0.0
-  description: API for release management
+    title: Release API
+    version: 1.0.0
+    description: API for release management
 servers:
-  - url: ''
+    - url: ''
 paths:
-  /health:
-    get:
-      summary: Health check
-      description: Check service health status
-      operationId: HealthGet
-      tags:
-        - release
-      responses:
-        '200':
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
+    /health:
+        get:
+            summary: Health check
+            description: Check service health status
+            operationId: HealthGet
+            tags:
+                - release
+            responses:
+                '200':
+                    description: Service is healthy
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    status:
+                                        type: string
+                                        example: ok
 
-  /release:
-    get:
-      summary: Get release information
-      operationId: ReleaseReport
-      tags:
-        - release
-      responses:
-        '200':
-          description: Release information
-          content:
-            application/json:
-              schema:
-                type: object
+    /release:
+        get:
+            summary: Get release information
+            operationId: ReleaseReport
+            tags:
+                - release
+            responses:
+                '200':
+                    description: Release information
+                    content:
+                        application/json:
+                            schema:
+                                type: object
 
-  /release/{id}:
-    get:
-      summary: Get specific release
-      operationId: ReleaseGet
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Release details
+    /release/{id}:
+        get:
+            summary: Get specific release
+            operationId: ReleaseGet
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                '200':
+                    description: Release details
 ```
 
 **Using x-blong-method Extension:**
@@ -151,22 +158,23 @@ For simpler REST definitions without full OpenAPI spec:
 ```yaml
 # realmname/gateway/api/discovery.yaml
 paths:
-  /participants/{Type}/{ID}:
-    post:
-      x-blong-method: ParticipantAdd
-    get:
-      x-blong-method: ParticipantGet
-    put:
-      x-blong-method: ParticipantEdit
-    delete:
-      x-blong-method: ParticipantRemove
+    /participants/{Type}/{ID}:
+        post:
+            x-blong-method: ParticipantAdd
+        get:
+            x-blong-method: ParticipantGet
+        put:
+            x-blong-method: ParticipantEdit
+        delete:
+            x-blong-method: ParticipantRemove
 
-  /participants/{Type}/{ID}/error:
-    put:
-      x-blong-method: ParticipantError
+    /participants/{Type}/{ID}/error:
+        put:
+            x-blong-method: ParticipantError
 ```
 
-**Note:** `x-blong-method` is a framework extension that maps REST operations to handler names without requiring full OpenAPI specification.
+**Note:** `x-blong-method` is a framework extension that maps REST operations to handler names
+without requiring full OpenAPI specification.
 
 ### Step 3: Implement Handlers
 
@@ -184,12 +192,12 @@ export default handler(
     () =>
         async function releaseHealthGet(
             params: Parameters<Handler>[0],
-            $meta: IMeta
+            $meta: IMeta,
         ): ReturnType<Handler> {
             return {
-                status: 'ok'
+                status: 'ok',
             };
-        }
+        },
 );
 ```
 
@@ -201,12 +209,12 @@ export default handler(
 
 **Examples:**
 
-| Endpoint | operationId | Handler Name |
-|----------|-------------|--------------|
-| `GET /rest/release/health` | `HealthGet` | `releaseHealthGet` |
-| `GET /rest/release/release` | `ReleaseReport` | `releaseReleaseReport` |
-| `POST /rest/release/job/{jobName}` | `JobTrigger` | `releaseJobTrigger` |
-| `GET /rest/agreement/quotes/{id}` | `QuoteGet` | `agreementQuoteGet` |
+| Endpoint                           | operationId     | Handler Name           |
+| ---------------------------------- | --------------- | ---------------------- |
+| `GET /rest/release/health`         | `HealthGet`     | `releaseHealthGet`     |
+| `GET /rest/release/release`        | `ReleaseReport` | `releaseReleaseReport` |
+| `POST /rest/release/job/{jobName}` | `JobTrigger`    | `releaseJobTrigger`    |
+| `GET /rest/agreement/quotes/{id}`  | `QuoteGet`      | `agreementQuoteGet`    |
 
 ### Step 4: Configure Realm
 
@@ -224,12 +232,12 @@ export default realm(blong => ({
             orchestratorDispatch: {
                 namespace: ['entity'],
                 imports: ['realmname.entity'],
-            }
+            },
         },
         microservice: {
-            gateway: true,  // Enable gateway in microservice mode
-        }
-    }
+            gateway: true, // Enable gateway in microservice mode
+        },
+    },
 }));
 ```
 
@@ -244,7 +252,7 @@ import {realm} from '@feasibleone/blong';
 export default realm(blong => ({
     url: import.meta.url,
     validation: blong.type.Object({
-        http: blong.type.Object({})
+        http: blong.type.Object({}),
     }),
     children: ['./adapter', './orchestrator'],
     config: {
@@ -254,13 +262,10 @@ export default realm(blong => ({
                 namespace: ['external'],
                 'codec.openapi': {
                     namespace: {
-                        external: [
-                            'https://api.example.com/swagger.json',
-                            './api/operations.yaml'
-                        ]
-                    }
-                }
-            }
+                        external: ['https://api.example.com/swagger.json', './api/operations.yaml'],
+                    },
+                },
+            },
         },
         dev: {
             http: {
@@ -271,17 +276,19 @@ export default realm(blong => ({
                             '../api/world-time.yaml',
                             '../api/world-time.operations.yaml',
                             {
-                                servers: [{
-                                    url: 'http://localhost:8080/api'
-                                }]
-                            }
+                                servers: [
+                                    {
+                                        url: 'http://localhost:8080/api',
+                                    },
+                                ],
+                            },
                         ],
-                        github: ['../api/github.json']
-                    }
-                }
-            }
-        }
-    }
+                        github: ['../api/github.json'],
+                    },
+                },
+            },
+        },
+    },
 }));
 ```
 
@@ -292,7 +299,7 @@ export default realm(blong => ({
 import {adapter} from '@feasibleone/blong';
 
 export default adapter(() => ({
-    extends: 'adapter.http'
+    extends: 'adapter.http',
 }));
 ```
 
@@ -308,16 +315,19 @@ export default handler(
     ({handler: {timeTimezoneGet}}) =>
         async function handlerName(params, $meta: IMeta) {
             // Calls GET /timezone/{area}/{location} from OpenAPI spec
-            const result = await timeTimezoneGet({
-                area: 'Europe',
-                location: 'Sofia'
-            }, $meta);
+            const result = await timeTimezoneGet(
+                {
+                    area: 'Europe',
+                    location: 'Sofia',
+                },
+                $meta,
+            );
 
             return {
                 timezone: result.timezone,
-                datetime: result.datetime
+                datetime: result.datetime,
             };
-        }
+        },
 );
 ```
 
@@ -438,10 +448,10 @@ config: {
 ## Examples from Codebase
 
 - **Server example:** `tools/release/gateway/api/`
-- **Client example:** `core/test/demo/server.ts` and `orchestrator/clock/`
+- **Client example:** `test/framework/demo/server.ts` and `orchestrator/clock/`
 - **External API:** `ml/agreement/gateway/api/agreement.ts`
 - **x-blong-method:** `ml/discovery/gateway/api/discovery.yaml`
-- **Multiple specs:** `core/test/api/world-time.yaml` + `world-time.operations.yaml`
+- **Multiple specs:** `test/framework/api/world-time.yaml` + `world-time.operations.yaml`
 
 ## Integration with Other Skills
 

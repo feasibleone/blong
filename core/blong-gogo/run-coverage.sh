@@ -35,24 +35,41 @@ mkdir -p "$STAGE"
 #
 # Default set mirrors the packages that exercise the framework:
 #   blong-gogo         - gogo's own tap unit tests (its src/ lives here)
-#   test               - @feasibleone/test, boots the full framework
+#   framework          - @feasibleone/test, boots the full framework
 #   blong-int-adapter  - integration tests that exercise the framework
 #   blong-marine/suite - E2E suites (also cover their own realm sources)
 #
 # Override with COVERAGE_PACKAGES (space-separated package names):
-#   COVERAGE_PACKAGES="blong-gogo test blong-int-adapter blong-marine blong-suite"
+#   COVERAGE_PACKAGES="blong-gogo framework blong-int-adapter blong-marine blong-suite"
 COVER_PKGS=()
 if [ -n "${COVERAGE_PACKAGES:-}" ]; then
     read -r -a COVER_PKGS <<< "$COVERAGE_PACKAGES"
 else
-    COVER_PKGS=(blong-gogo test blong-int-adapter blong-marine blong-suite)
+    COVER_PKGS=(blong-gogo framework blong-int-adapter blong-marine blong-suite)
 fi
+
+# Map a coverage package name to its path relative to the repo root.
+pkg_path() {
+    case "$1" in
+        blong-gogo)        echo "core/blong-gogo" ;;
+        framework)         echo "test/framework" ;;
+        blong-int-adapter) echo "test/blong-int-adapter" ;;
+        blong-marine)      echo "demo/blong-marine" ;;
+        blong-suite)       echo "suite/blong-suite" ;;
+        *)                 echo "" ;;
+    esac
+}
 
 merged=0
 for name in "${COVER_PKGS[@]}"; do
-    pkg="$REPO_DIR/core/$name"
+    rel="$(pkg_path "$name")"
+    if [ -z "$rel" ]; then
+        echo "run-coverage.sh: WARNING unknown coverage package '$name', skipping" >&2
+        continue
+    fi
+    pkg="$REPO_DIR/$rel"
     if [ ! -d "$pkg" ]; then
-        echo "run-coverage.sh: WARNING package core/$name not found, skipping"
+        echo "run-coverage.sh: WARNING package $rel not found, skipping" >&2
         continue
     fi
     if [ -d "$pkg/.tap/coverage" ]; then
@@ -80,10 +97,10 @@ mkdir -p "$SERVER_MAP"
     --all \
     --temp-directory "$STAGE" \
     --include "core/blong-gogo/src/**/*.ts" \
-    --include "core/test/**/*.ts" \
-    --include "core/blong-int-adapter/**/*.ts" \
-    --include "core/blong-suite/**/*.ts" \
-    --include "core/blong-marine/**/*.ts" \
+    --include "test/framework/**/*.ts" \
+    --include "test/blong-int-adapter/**/*.ts" \
+    --include "suite/blong-suite/**/*.ts" \
+    --include "demo/blong-marine/**/*.ts" \
     --exclude "**/*.test.*" "**/*.d.ts" \
     --reporter json \
     -o "$SERVER_MAP"

@@ -61,15 +61,15 @@ Start both servers manually, then run tests:
 
 ```bash
 # Terminal 1: Start the blong server (with hot reload)
-cd core/blong-marine   # or core/blong-suite for the full suite
+cd demo/blong-marine   # or suite/blong-suite for the full suite
 node --run blong
 
 # Terminal 2: Start the Vite dev server
-cd core/blong-marine   # or core/blong-suite
+cd demo/blong-marine   # or suite/blong-suite
 node --run dev
 
 # Terminal 3: Run Playwright tests
-cd core/blong-marine   # or core/blong-suite
+cd demo/blong-marine   # or suite/blong-suite
 node --run playwright
 ```
 
@@ -153,7 +153,7 @@ export default defineBlongConfig({
 them in `realmPackages`. Each package's `test/` folder becomes a separate Playwright project:
 
 ```typescript
-// core/blong-suite/playwright.config.ts — blong-suite
+// suite/blong-suite/playwright.config.ts — blong-suite
 export default defineBlongConfig({
     realmPackages: ['@feasibleone/blong-marine'],
     // To add another realm: append its package name here

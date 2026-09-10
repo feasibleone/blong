@@ -198,7 +198,7 @@ imports. One factory resolves every binding from config and from the `handler` p
 the change. Plain constants live in config — handlers read their own `config` — so only the
 handler bindings (which need the `handler` proxy) and pure helpers belong in the library.
 
-Real-world example: `core/blong-login/orchestrator/login/sessionLib.ts` — resolves the 11
+Real-world example: `realm/blong-login/orchestrator/login/sessionLib.ts` — resolves the 11
 configurable `login.methods.*` access methods into the conventional `methods` map and exposes
 pure helpers (`sha256Hex`, `newCookieHandle`, `sessionCookieOptions(config)`, `readSessionCookie`);
 `login.token.create` / `refresh` / `restore` / `revoke` / `exchange` consume `lib.methods` and
@@ -461,8 +461,8 @@ async stop(...params) {
 },
 ```
 
-Real-world examples: `core/blong-int-adapter/http/sim/echo.ts` (lifecycle),
-`core/blong-gateway/adapter/meter.ts` (`super.exec` fall-through),
+Real-world examples: `test/blong-int-adapter/http/sim/echo.ts` (lifecycle),
+`realm/blong-gateway/adapter/meter.ts` (`super.exec` fall-through),
 `core/blong-gogo/src/codec/adapter/mle/ready.ts` (`send`/`receive` stack), and `schema-sync.md`
 (`super.sqlItem*` synthetic-handler delegation).
 
@@ -655,9 +655,9 @@ export default handler(
 
 ## Examples from Codebase
 
-- **API handler:** `core/test/demo/orchestrator/subject/subjectNumberSum.ts`
-- **Library function:** `core/test/demo/orchestrator/subject/sum.ts`
-- **Adapter handler:** `core/test/demo/adapter/http.ts`
-- **TCP codec:** `core/test/payshield/adapter/tcp/encode.ts`
+- **API handler:** `test/framework/demo/orchestrator/subject/subjectNumberSum.ts`
+- **Library function:** `test/framework/demo/orchestrator/subject/sum.ts`
+- **Adapter handler:** `test/framework/demo/adapter/http.ts`
+- **TCP codec:** `test/framework/payshield/adapter/tcp/encode.ts`
 - **Multiple handlers:** `ml/payment/orchestrator/transfer/`
-- **Folder config:** `core/test/nscfg/orchestrator/cfg/config.ts`
+- **Folder config:** `test/framework/nscfg/orchestrator/cfg/config.ts`

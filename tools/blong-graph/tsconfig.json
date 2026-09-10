@@ -1,0 +1,7 @@
+{
+    "extends": "../../core/blong/tsconfig.json",
+    "compilerOptions": {
+        "rootDir": ".",
+        "outDir": "dist"
+    }
+}

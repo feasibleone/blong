@@ -192,10 +192,10 @@ entity, like the access realm's `user`/`role`/`capability`/`action` tables) you 
    `core_triple` relations — see the blong-adapter / blong-core skills). Then the generic `add`
    generates a server-side UUID, creates the `core_resource` row (name from the `${object}Name`
    virtual column), and `find`/`get` join the name, `edit` renames it, `remove` cascades it.
-2. **Create the resource row yourself** in a custom `add` handler via
-   `core.resource.ensure` (the `coreResourceEnsure` db handler) and pass the PK explicitly —
-   this is the pattern used before `resource: true` existed and for tables whose add logic is
-   otherwise custom (e.g. credential hashing).
+2. **Create the resource row yourself** in a custom `add` handler via `core.resource.ensure` (the
+   `coreResourceEnsure` db handler) and pass the PK explicitly — this is the pattern used before
+   `resource: true` existed and for tables whose add logic is otherwise custom (e.g. credential
+   hashing).
 
 `ulid` PKs (`type.ulid()`) ARE handled by the generic `add` (generated via the `ulidx` monotonic
 factory, same as `uuid`). Both are stored as `binary(16)`.
@@ -561,7 +561,7 @@ export default handler(
 );
 ```
 
-See `core/blong-access/adapter/db/accessAuthorizationMerge.ts` for a complete reference
+See `realm/blong-access/adapter/db/accessAuthorizationMerge.ts` for a complete reference
 implementation — it handles capabilities (actions), roles with capability bindings, and users with
 password credentials in a single handler.
 

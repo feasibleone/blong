@@ -50,7 +50,7 @@
         "build:watch": "vite build --watch",
         "build-storybook": "storybook build -o storybook-static",
         "build_": "vite build && tsc --emitDeclarationOnly && tsc --project tsconfig.realm.json",
-        "ci-chromatic": "../common/chromatic.sh",
+        "ci-chromatic": "../../common/chromatic.sh",
         "ci-lint": "blong-dev lint",
         "ci-test": "vitest run --coverage --coverage.thresholds.lines=0 --coverage.thresholds.branches=0 --coverage.thresholds.functions=0 --coverage.thresholds.statements=0 --reporter=default --reporter=json --outputFile.json=coverage/vitest.json; rc=$?; node scripts/vitestSummary.mjs || true; exit $rc",
         "storybook": "storybook dev --port 6006",

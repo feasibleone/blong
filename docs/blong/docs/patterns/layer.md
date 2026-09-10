@@ -1,7 +1,7 @@
 # Layer
 
-Layers are named groups of handlers that organise code by functional concern within a realm.
-For the conceptual overview and the list of well-known layer names, see
+Layers are named groups of handlers that organise code by functional concern within a realm. For the
+conceptual overview and the list of well-known layer names, see
 [concepts/layer](../concepts/layer.md).
 
 ## Folder Structure
@@ -45,16 +45,16 @@ Custom layer folders (non-well-known names) require a `layer.server.ts` or `laye
 import {layer} from '@feasibleone/blong';
 
 export default layer({
-    default: true,       // active in all environments
-    microservice: true,  // additionally active in microservice deployment
+    default: true, // active in all environments
+    microservice: true, // additionally active in microservice deployment
 });
 ```
 
 ## Self-Contained Layer Pattern
 
 Each layer owns its configuration and validation. Avoid putting layer config in the parent
-`server.ts` — this makes the layer reusable and reduces the number of files to change when
-adding a new adapter or orchestrator.
+`server.ts` — this makes the layer reusable and reduces the number of files to change when adding a
+new adapter or orchestrator.
 
 ### Adapter
 
@@ -184,8 +184,7 @@ Each handler lives in its own file named after the semantic triple:
 - `userUserAdd` → `userUserAdd.ts`
 - `paymentTransferSend` → `paymentTransferSend.ts`
 
-This makes `ctrl+p` / quick-open discovery fast: typing `uua` immediately finds
-`userUserAdd.ts`.
+This makes `ctrl+p` / quick-open discovery fast: typing `uua` immediately finds `userUserAdd.ts`.
 
 ## Best Practices
 
@@ -197,5 +196,5 @@ This makes `ctrl+p` / quick-open discovery fast: typing `uua` immediately finds
 
 ## Examples
 
-- Complete realm: `core/test/demo/`
-- EIP patterns with mocks: `core/blong-eip/`
+- Complete realm: `test/framework/demo/`
+- EIP patterns with mocks: `demo/blong-eip/`

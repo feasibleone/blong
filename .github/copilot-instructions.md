@@ -62,7 +62,8 @@ Hard rules — apply first, never contradict.
   realm-local `adapter/db.ts` or a dispatch orchestrator; contribute `orchestrator/subject/init.ts`
   (namespace) + `adapter/db/*.ts` handlers (`queryBuilder`) + `meta/`.
 - **Never enable `systemDebug` in production.**
-- **Never commit to `dev/`** (gitignored) — committed code lives in `core/`.
+- **Never commit to `dev/`** (gitignored) — committed code lives in the category folders (`core/`,
+  `realm/`, `suite/`, `demo/`, `test/`, `tools/`).
 - **Always invoke the matching `skill`** before implementing (see `[SKILLS_DELEGATOR]`).
 - **Verify after every change** — `get_errors`, tests, lint; never claim "complete" unverified.
 
@@ -79,19 +80,38 @@ Hard rules — apply first, never contradict.
   file — not the realm `server.ts`.
 - **Conflict priority.** handler/runtime pattern → API definition → adapters/orchestrators → DRY →
   RAD → DMMT → KISS.
-- **Reusable realms.** `core/blong-core` (resource/party/access graph), `blong-party`,
-  `blong-access` (RBAC: users, roles, capabilities, actions, authz).
+- **Reusable realms.** `realm/blong-core` (resource/party/access graph), `realm/blong-party`,
+  `realm/blong-access` (RBAC: users, roles, capabilities, actions, authz).
 
 ## [CRITICAL_DEPENDENCY_PATHS]
 
 - `core/blong/` — TS types + small utils; primary `@feasibleone/blong` dependency.
 - `core/blong-gogo/` — runtime; never imported directly; run via global `blong` CLI.
 - `core/blong-browser/` — browser realm (UI components, model system).
-- `core/blong-login/` — JWT auth (`/rpc/login/token/create`).
-- `core/blong-test/` — public API testing realm.
-- `core/blong-suite/` — full-stack demonstration suite (reference).
+- `realm/blong-login/` — JWT auth (`/rpc/login/token/create`).
+- `realm/blong-test/` — public API testing realm.
+- `suite/blong-suite/` — full-stack demonstration suite (reference).
 - `docs/blong/docs/rationale/` — design rationale docs.
 - Canonical shared framework rules: `.github/skills/_shared/conventions.md`.
+
+## [REPOSITORY_LAYOUT]
+
+The repo's packages are grouped into six top-level category folders, so search and discovery stay
+focused. Every package sits at `category/package` (depth 2), which keeps relative paths such as
+`../../common/...` and `../../test/integration/wait.sh` identical in every package.
+
+| Folder   | Contents                                                                      |
+| -------- | ----------------------------------------------------------------------------- |
+| `core/`  | Framework packages (runtime, browser, server, libs, codecs, EIP, mock)        |
+| `realm/` | Reusable realms (core, party, access, gateway, login, commander, test, mocks) |
+| `suite/` | Reusable suites (`blong-suite`)                                               |
+| `demo/`  | Demonstration realms and suites (marine, hello, eip, handler-test-poc)        |
+| `test/`  | Framework test packages (framework, int-adapter, int-sql, sim-api, sim-tcp)   |
+| `tools/` | Dev tooling (dev, log, graph, ttk, eslint)                                    |
+
+`test/integration/` (not a package) holds the k8s manifests used by the CI integration tests. Do not
+reorder the `projects` array in `rush.json` — Playwright ports are derived from each package's index
+there.
 
 ## [ANCHOR_TOKENS]
 
@@ -415,7 +435,7 @@ extending, see the source: `core/blong-gogo/src/SystemDebug.ts`.
 
 ### Storybook (blong-browser / blong-marine / blong-suite)
 
-When working on `core/blong-browser/`, `core/blong-suite/` or any realm, Storybook may already be
+When working on `core/blong-browser/`, `suite/blong-suite/` or any realm, Storybook may already be
 running on `http://localhost:6006`. A shared browser tab pointing to it may also be available in the
 session.
 
@@ -425,14 +445,14 @@ session.
 PID=$(ss -tlnp | grep ':6006' | grep -oP 'pid=\K[0-9]+'); [ -n "$PID" ] && readlink /proc/$PID/cwd || echo "Storybook not running"
 ```
 
-This prints the working directory of the Storybook process (e.g. `.../core/blong-marine`,
-`.../core/blong-suite`, or `.../core/blong-browser`), making it clear which package's Storybook is
+This prints the working directory of the Storybook process (e.g. `.../demo/blong-marine`,
+`.../suite/blong-suite`, or `.../core/blong-browser`), making it clear which package's Storybook is
 running. If the port is listening, open or reuse the shared browser tab at `http://localhost:6006`
 to validate UI changes interactively after each edit.
 
 ### Integration test backends (blong-int-adapter)
 
-When working on `core/blong-int-adapter/` or running its integration tests, the required backend
+When working on `test/blong-int-adapter/` or running its integration tests, the required backend
 services are usually already started in k8s (using k3d) with ports exposed. The ports are:
 
 | Port  | Service               |
@@ -475,21 +495,21 @@ MLE codec:
     ```
 
     Credentials fall back to `MLE_USERNAME` / `MLE_PASSWORD` env vars. Implemented in
-    `core/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
+    `tools/blong-dev/src/commands/proxy.ts` on top of `@feasibleone/blong-mle`
     (`core/blong-mle/src/client.ts`).
 
 - **`blong-dev trace`** — inspect a `trace.zip` bundle (client actions, failed requests, console
-  output). Implemented in `core/blong-dev/src/commands/trace.ts`.
+  output). Implemented in `tools/blong-dev/src/commands/trace.ts`.
 
 - **`blong-dev log`** — fetch log entries that the `pino-cacache` transport stored on disk. Pass a
-  ULID to fetch one entry. Implemented in `core/blong-dev/src/commands/log.ts` on top of `cacache`.
+  ULID to fetch one entry. Implemented in `tools/blong-dev/src/commands/log.ts` on top of `cacache`.
   See the **blong-log** skill for full usage.
 
 - **`blong-dev sql`** — run SQL queries against the local dev database (use this instead of a MySQL
   CLI locally or `kubectl exec` into a pod). Reuses `.blong_devrc` (default key `srv.db`); derives
   the dev database name (`${suite}-${user}`, e.g. `blong-access-kalin`) when none is configured.
   `--output json` is the agent-friendly default for non-TTY. Implemented in
-  `core/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
+  `tools/blong-dev/src/commands/sql.ts`. Example: `blong-dev sql "SELECT * FROM access_role"`.
 
 ## Architecture & Design Documents
 

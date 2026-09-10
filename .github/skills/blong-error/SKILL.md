@@ -489,9 +489,9 @@ for full documentation.
 
 ## Examples from Codebase
 
-- **Simple errors:** `core/test/demo/error/error.ts`
-- **Hierarchical errors:** `core/test/payshield/error/error.ts`
-- **Library errors:** `core/test/ctp/adapter/payshield/_errors.ts`
-- **Inline errors:** `core/test/parking/orchestrator/parking.ts`
-- **Error throwing:** `core/test/demo/orchestrator/subject/sum.ts`
-- **Error testing:** `core/test/demo/test/test/testNumberSum.ts`
+- **Simple errors:** `test/framework/demo/error/error.ts`
+- **Hierarchical errors:** `test/framework/payshield/error/error.ts`
+- **Library errors:** `test/framework/ctp/adapter/payshield/_errors.ts`
+- **Inline errors:** `test/framework/parking/orchestrator/parking.ts`
+- **Error throwing:** `test/framework/demo/orchestrator/subject/sum.ts`
+- **Error testing:** `test/framework/demo/test/test/testNumberSum.ts`

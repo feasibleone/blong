@@ -1,6 +1,13 @@
 ---
 name: blong-suite
-description: Create and configure suites in the Blong framework. Suites are the top-level organizational unit that group related realms and define multi-platform entry points (server, browser, desktop). Use this skill for each of the following distinct tasks - (1) Creating a new top-level solution or Blong project — follow the server/browser entry point patterns. - (2) Configuring test runners — follow the index.ts and internal.test.ts patterns. - (3) Wiring up multiple realms into a suite — follow the children and config patterns. Use this skill when the user explicitly requests any of these tasks, or when their request clearly aligns with one of them.
+description:
+    Create and configure suites in the Blong framework. Suites are the top-level organizational unit
+    that group related realms and define multi-platform entry points (server, browser, desktop). Use
+    this skill for each of the following distinct tasks - (1) Creating a new top-level solution or
+    Blong project — follow the server/browser entry point patterns. - (2) Configuring test runners —
+    follow the index.ts and internal.test.ts patterns. - (3) Wiring up multiple realms into a suite
+    — follow the children and config patterns. Use this skill when the user explicitly requests any
+    of these tasks, or when their request clearly aligns with one of them.
 ---
 
 # Implementing a Suite
@@ -17,9 +24,8 @@ description: Create and configure suites in the Blong framework. Suites are the 
 - **Intents** (`dev`, `prod`, `integration`, `microservice`, `db`, `debug`) drive which config
   blocks merge; see **blong-intent**.
 
-Canonical framework rules:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[LAYER_DEFAULTS_TABLE]`.
-See **blong-test-api** for test-runner entry points.
+Canonical framework rules: `.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`,
+`[LAYER_DEFAULTS_TABLE]`. See **blong-test-api** for test-runner entry points.
 
 ## Overview
 
@@ -362,9 +368,9 @@ The `blong` CLI auto-detects the context based on files in the current directory
 
 ```bash
 # Run from any suite or realm folder — no arguments needed
-cd core/blong-sim-tcp  &&  blong
-cd core/blong-sim-api  &&  blong
-cd core/blong-eip      &&  blong
+cd test/blong-sim-tcp  &&  blong
+cd test/blong-sim-api  &&  blong
+cd demo/blong-eip      &&  blong
 
 # Or provide a specific file
 blong index.ts
@@ -423,4 +429,3 @@ export default server(blong => ({
 Enabled by default in `dev`; rarely needs config overrides. The `/api/sys/*` endpoint list lives in
 `copilot-instructions.md` → "Runtime Introspection". For deeper understanding or extending, see the
 source `core/blong-gogo/src/SystemDebug.ts`.
-

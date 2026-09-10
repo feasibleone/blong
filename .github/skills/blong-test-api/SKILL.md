@@ -1,6 +1,12 @@
 ---
 name: blong-test-api
-description: Set up the test entry point to run Blong tests against the public or internal API. Covers loading server and browser platforms in index.ts, wiring the @feasibleone/blong-test package, and choosing between public API testing (browser-simulated) and internal API testing (server-only). Use this skill whenever setting up the test runner entry point for a suite, configuring index.ts for test execution, or deciding how to connect tests to a running platform — even if the user just says 'how do I run the tests' or 'set up the test entry point'.
+description:
+    Set up the test entry point to run Blong tests against the public or internal API. Covers
+    loading server and browser platforms in index.ts, wiring the @feasibleone/blong-test package,
+    and choosing between public API testing (browser-simulated) and internal API testing
+    (server-only). Use this skill whenever setting up the test runner entry point for a suite,
+    configuring index.ts for test execution, or deciding how to connect tests to a running platform
+    — even if the user just says 'how do I run the tests' or 'set up the test entry point'.
 ---
 
 # Test API Entry Points
@@ -129,12 +135,12 @@ export default async (load: Load): Promise<void> => {
 };
 ```
 
-An example of this test approach is available in the [blong-eip](../../../core/blong-eip) package.
+An example of this test approach is available in the [blong-eip](../../../demo/blong-eip) package.
 
 ## Wiring test groups: `integration.watch.test`
 
-Both platforms declare which test groups to run under the `integration` intent via `watch.test` —
-a list of group names. A test handler keyed `testRegistrationFlow` registers a group named
+Both platforms declare which test groups to run under the `integration` intent via `watch.test` — a
+list of group names. A test handler keyed `testRegistrationFlow` registers a group named
 `test.registration.flow` (the key is normalised by `methodParts`), so the list entry must be that
 derived name, not the raw key.
 
@@ -151,8 +157,8 @@ config: {
 **Browser-side groups must be declared in the BROWSER suite too.** The browser platform does not
 automatically run every `browser/test/test` group — if a group is missing from the browser suite's
 `integration.watch.test` it silently never executes (coverage then reports "incomplete" functions
-and the test is never asserted). When a realm runs a browser half of the tap runner (see below),
-add the group there as well.
+and the test is never asserted). When a realm runs a browser half of the tap runner (see below), add
+the group there as well.
 
 ## Browser-side test suite (`browser-test.ts`)
 

@@ -7,7 +7,7 @@
  *
  * The generic protocol: the UI only calls the triples declared on each level's
  * `list`/`open` (semantic triples routed to the configured adapters). Phase 3
- * (`core/blong-commander` realm) supplies `commander.source.list` and the
+ * (`realm/blong-commander` realm) supplies `commander.source.list` and the
  * concrete source descriptors.
  */
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
@@ -76,7 +76,7 @@ interface IPathEntry extends ISelectedNode {
 }
 
 export interface ICommanderProps {
-    /** Configured source descriptors (see `core/blong-commander`). */
+    /** Configured source descriptors (see `realm/blong-commander`). */
     sources: ICommanderSource[];
     /** Custom children loader (overrides the default handler[method] call). */
     listChildren?: (

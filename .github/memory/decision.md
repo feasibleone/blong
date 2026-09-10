@@ -604,3 +604,31 @@
   List Dockerfiles) — smallest benefit; can follow the same pattern later.
 - Note: consumers stay pinned to `rush.yaml@main`, so these actions are exercised only after merging
   to the actions repo's main (matches the existing model).
+
+## Package folders split into six categories (`core/`, `realm/`, `suite/`, `demo/`, `test/`, `tools/`)
+
+- **Scope (implied choice)**: only packages under `core/` were relocated. `ext/rest-fs`, `docs/blong`
+  and the gitignored `dev/` were left in place — even though `ext/rest-fs` is dev tooling that would
+  fit `tools/` — because the shared `infitx-org/actions` CI workflow and both `.vscode/launch.json`
+  files assume `ext/` exists for other consumers of that workflow.
+- **Category assignment (user-confirmed)**: framework → `core/`; reusable realms → `realm/`;
+  reusable suites → `suite/`; demonstration realms/suites → `demo/`; framework tests → `test/`;
+  dev tooling → `tools/`. Explicitly chosen: `config-hot-reload` + `blong-kopi` stay in `core/`;
+  `blong-eip` → `demo/`; `blong-access-mock` + `blong-test` → `realm/`; `blong-sim-api` +
+  `blong-sim-tcp` → `test/`; `blong-ttk` → `tools/`; `blong-allure` + `blong-chain` +
+  `blong-cucumber` stay in `core/`.
+- **`test/` naming**: framework test packages merged into the pre-existing top-level `test/` folder
+  (which also holds the non-package `test/integration/` k8s manifests). `@feasibleone/test` was
+  renamed `test/framework` to avoid `test/test/`.
+- **`chromatic.sh`**: `core/common/chromatic.sh` moved to repo-root `common/chromatic.sh`, removing
+  the undocumented `core/common` sibling trick. Both consumers now use `../../common/chromatic.sh`.
+- **`blong-graph` tsconfig (pre-existing bug, fixed)**: `tools/blong-graph/tsconfig.json` extended
+  `core/blong/tsconfig.json`, whose `rootDir: "."` TypeScript resolves relative to the **base**
+  config's directory — so `rootDir` became `core/blong` and every blong-graph source file fell
+  outside it (TS6059), with `outDir` likewise pointing at `core/blong/dist`. Verified via a minimal
+  repro that this predates the move. Fixed by adding an explicit `rootDir`/`outDir` override in
+  blong-graph's own config. **Reconsider if** blong-graph should instead get a standalone tsconfig.
+- **Deliberately not rewritten**: `plans/**` (historical plans + friction archives, ~1000 stale
+  refs), `.github/memory/*.md`, and the untracked (regenerated) Docusaurus `docs/blong/build/`.
+- **`rush.json` order frozen**: `projects` was rewritten in place, never reordered, because
+  `blong-browser/src/playwright/config.ts` derives Playwright ports from each package's index.

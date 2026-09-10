@@ -124,12 +124,32 @@ spec:
             --create --if-not-exists \
             --topic blong-integration \
             --partitions 1 \
-            --replication-factor 1 && \
+            --replication-factor 1
           # Seed one deterministic JSON message so the commander kafka-dev drill
           # always lists a fixed message in CI and locally (no random suffix).
-          printf '{"kind":"commander","message":"hello from blong-integration"}\n' | \
-            kafka-console-producer --bootstrap-server kafka:29092 --topic blong-integration && \
-          echo "Topic blong-integration created with a seed message"
+          #
+          # The guard checks the MESSAGE, not the topic. Kafka keeps no
+          # PersistentVolumeClaim and this Deployment's postStart hook recreates
+          # an empty blong-integration topic on every container start, so after a
+          # restart the topic exists but the seed is gone. Guarding on the topic
+          # would skip re-seeding exactly when it is needed; guarding on the
+          # message re-seeds a wiped topic and never appends a duplicate.
+          #
+          # --partition/--offset is deliberate: it reads the partition directly
+          # instead of joining a consumer group, which avoids the broker's
+          # group.initial.rebalance.delay.ms (3s) that otherwise makes a
+          # group-based consumer exit with TimeoutException before reading
+          # anything and look like "no seed present".
+          seed=$(kafka-console-consumer --bootstrap-server kafka:29092 \
+                   --topic blong-integration --partition 0 --offset 0 --timeout-ms 5000 \
+                   2>/dev/null | grep -c '"kind":"commander"' || true)
+          if [ "${seed:-0}" -gt 0 ]; then
+            echo "Seed message already present, leaving the topic untouched"
+          else
+            printf '{"kind":"commander","message":"hello from blong-integration"}\n' | \
+              kafka-console-producer --bootstrap-server kafka:29092 --topic blong-integration
+            echo "Seeded blong-integration with the commander demo message"
+          fi
         resources:
           requests:
             cpu: "0.01"

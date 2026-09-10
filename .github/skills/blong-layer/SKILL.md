@@ -21,7 +21,7 @@ description:
 - **[REUSE_SERVER]** Realms reuse blong-server's subject orchestrator + db adapter. Do NOT create a
   realm-local `adapter/db.ts` or a dispatch orchestrator unless a genuinely different
   routing/adapter is needed (e.g. a realm-local Redis adapter like
-  `core/blong-gateway/adapter/meter.ts`).
+  `realm/blong-gateway/adapter/meter.ts`).
 - **One handler per file** — file = exported fn = semantic triple.
 - **Import order:** error → adapter → orchestrator → gateway → test.
 - **No direct cross-handler imports.** Load groups via `imports` in the adapter/orchestrator.
@@ -143,14 +143,14 @@ routes/namespaces as its non-`.dev` equivalent.
 ## Self-Contained Layer Pattern
 
 > The examples below are for **additional realm-local adapters/orchestrators** (e.g. a realm-local
-> Redis adapter like `core/blong-gateway/adapter/meter.ts`). For standard DB access do NOT create
+> Redis adapter like `realm/blong-gateway/adapter/meter.ts`). For standard DB access do NOT create
 > `adapter/db.ts` — reuse blong-server's shared `srv.db` and contribute `adapter/db/*.ts` handlers
 > that read `this.config?.context?.queryBuilder`.
 
 ### Adapter Layer Definition
 
 A realm adds a realm-local adapter only when it integrates an additional external system on top of
-the shared `srv.db` — e.g. a Redis meter adapter (see `core/blong-gateway/adapter/meter.ts`):
+the shared `srv.db` — e.g. a Redis meter adapter (see `realm/blong-gateway/adapter/meter.ts`):
 
 ```typescript
 // adapter/meter.ts - self-contained realm-local adapter (config + validation co-located)
@@ -476,6 +476,6 @@ payment/
 
 ## Examples from Codebase
 
-- **Complete realm:** `core/test/demo/`
+- **Complete realm:** `test/framework/demo/`
 - **Payment realm:** `ml/payment/`
 - **Agreement realm:** `ml/agreement/`

@@ -51,3 +51,33 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 - blong-commander: pod log viewer is no longer wired for k8s items (they use the generic `document`
   viewer after the categories restructure). Re-wiring per-resource-type viewers (pods → podLog)
   would be a follow-up.
+- **Test runs skipped after the folder restructure** (backends not running this session):
+  `test/framework` (`@feasibleone/test`), `test/blong-int-sql`, `test/blong-int-adapter`,
+  `realm/blong-access`, `realm/blong-party`, `realm/blong-gateway`, `realm/blong-commander`,
+  `realm/blong-test`, `demo/blong-marine`, `suite/blong-suite`, `tools/blong-ttk` — all need MySQL
+  (3306) and/or browser backends. Verified in their place: `core/blong-gogo` (incl. the
+  graceful-shutdown spawn test against `demo/blong-hello`), `demo/blong-eip` (23/23), `rush build`,
+  `rush ci-lint`; scaffolder + `copy-template.mjs` template resolution smoke-tested.
+- `rush ci-coverage` was not run end-to-end (it needs `ci-test` artifacts first), so
+  `run-coverage.sh`'s new `pkg_path` category map was validated by path existence only.
+- **`rush.json` `tags` still say `core`** for packages now under `realm/`, `suite/`, `demo/`,
+  `test/` and `tools/`. Left unchanged deliberately (nothing filters on `tag:*` today), but worth
+  aligning with the new categories.
+- Consider moving `ext/rest-fs` → `tools/rest-fs` once the widened `infitx-org/actions` CI globs are
+  merged to `main` and other consumers no longer rely on `ext/`.
+- **Backend state is ephemeral for `minio`, `redis`, `kafka`, `vault`** (no `volumeMounts`/
+  `persistentVolumeClaim` in their `test/integration/*.yaml` manifests, unlike
+  mysql/mongodb/keycloak which have PVCs). Any cluster restart silently wipes their data while the
+  corresponding one-shot init Jobs stay `Complete`, so they never re-seed. **Mitigated**: the local
+  `~/.local/bin/k3d-up` now deletes all init Jobs, re-applies `test/integration/`, waits for them,
+  and ensures the `blong-<suite>-<user>` MySQL databases — so a host restart self-heals. Every init
+  Job is idempotent as of that change (see the Kafka note in `friction.md`). CI is unaffected
+  because it always starts a fresh k3d cluster. Remaining candidates, not implemented: (a) add a PVC
+  to `minio-deployment.yaml`/`kafka-deployment .yaml` so restarts preserve the data outright; (b)
+  make the s3 test create its own bucket — rejected for now because the `commander/hello.txt` object
+  is intentionally provisioned by k8s so Playwright screenshots stay deterministic.
+- `test/blong-int-adapter/s3/test/fixtures/object.ts` is a plain data module sitting inside the
+  `test/` layer, so the loader logs
+  `Error loading ... probably a generic source code was put in a handler group folder`. Benign (it
+  is imported directly by the CRUD test) and pre-dates the restructure, but it could be moved out of
+  the layer to silence the warning.

@@ -341,7 +341,7 @@ ignorePaths:
   - rush.json
   - "**/*.json"
   - common/temp/**
-  - core/**/~.schema.ts
+  - "**/~.schema.ts"
   - "**/*.test.ts"
   - "**/*.test.tsx"
   - "**/*.play.ts"

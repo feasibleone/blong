@@ -1,6 +1,13 @@
 ---
 name: blong-log
-description: Use the Blong logging tools to monitor and debug applications via the real-time log server REST API (`http://127.0.0.1:9998`) and the `blong-dev log` CLI for on-disk entries. Provides filtering by level, service name, trace ID, and free text search. Use this skill whenever monitoring application behaviour, debugging issues, verifying feature behaviour, searching for errors, tracing requests across services, or checking logs after making code changes — even if logs aren't explicitly mentioned. For developing or extending the logging tooling itself, use the blong-log-dev skill instead.
+description:
+    Use the Blong logging tools to monitor and debug applications via the real-time log server REST
+    API (`http://127.0.0.1:9998`) and the `blong-dev log` CLI for on-disk entries. Provides
+    filtering by level, service name, trace ID, and free text search. Use this skill whenever
+    monitoring application behaviour, debugging issues, verifying feature behaviour, searching for
+    errors, tracing requests across services, or checking logs after making code changes — even if
+    logs aren't explicitly mentioned. For developing or extending the logging tooling itself, use
+    the blong-log-dev skill instead.
 ---
 
 # blong-log Skill
@@ -257,8 +264,8 @@ something it does not yet cover — a new filter (e.g. by `context`, `req.url`, 
 new output mode, or a different cache location — **extend the tool** instead of working around it
 with shell one-liners:
 
-- The command lives in `core/blong-dev/src/commands/log.ts`, is registered as `log` in
-  `core/blong-dev/src/cli.ts`, and is exported from `core/blong-dev/src/index.ts`.
+- The command lives in `tools/blong-dev/src/commands/log.ts`, is registered as `log` in
+  `tools/blong-dev/src/cli.ts`, and is exported from `tools/blong-dev/src/index.ts`.
 - Add a filter by following the existing `--level` / `--name` / `--trace-id` pattern and document it
   in the `blong-dev log` options table above.
 - Keep `condensed` plain and parseable (no ANSI), keep summaries on **stderr**, and list newest

@@ -72,11 +72,10 @@ export default browser(blong => ({
 
 ## Well known reusable realms
 
-Blong provides some reusable realms, that can be used in the suite or in other realms.
-For example:
+Blong provides some reusable realms, that can be used in the suite or in other realms. For example:
 
-- `@feasibleone/blong-test` - helps with browser front end API testing,
-  by providing a realm with the HTTP adapter
+- `@feasibleone/blong-test` - helps with browser front end API testing, by providing a realm with
+  the HTTP adapter
 - `@feasibleone/blong-login` - helps with user authentication
 - `@feasibleone/blong-openapi` - helps with implementing handlers for OpenAPI definitions
 
@@ -84,51 +83,52 @@ To use them, include them in the `children` property of the suite or realm, for 
 
 - `server.ts` - defines the suite and includes the reusable realms.
 
-  ```ts
-  import {server} from '@feasibleone/blong';
+    ```ts
+    import {server} from '@feasibleone/blong';
 
-  export default server(blong => ({
-      url: import.meta.url,
-      children: [
-          async function testServer() {
-              return import('@feasibleone/blong-test/server.js');
-          },
-          async function login() {
-              return import('@feasibleone/blong-login/server.js');
-          },
-          async function openapi() {
-              return import('@feasibleone/blong-openapi/server.js');
-          },
-      ],
-  }));
-  ```
+    export default server(blong => ({
+        url: import.meta.url,
+        children: [
+            async function testServer() {
+                return import('@feasibleone/blong-test/server.js');
+            },
+            async function login() {
+                return import('@feasibleone/blong-login/server.js');
+            },
+            async function openapi() {
+                return import('@feasibleone/blong-openapi/server.js');
+            },
+        ],
+    }));
+    ```
 
 - `browser.ts` - defines the browser suite and includes the reusable realms.
 
-  ```ts
-  import {browser} from '@feasibleone/blong';
+    ```ts
+    import {browser} from '@feasibleone/blong';
 
-  export default browser(blong => ({
-      url: import.meta.url,
-      children: [
-          async function testServer() {
-              return import('@feasibleone/blong-test/browser.js');
-          },
-          async function login() {
-              return import('@feasibleone/blong-login/browser.js');
-          },
-          async function openapi() {
-              return import('@feasibleone/blong-openapi/browser.js');
-          },
-      ],
-  }));
-  ```
+    export default browser(blong => ({
+        url: import.meta.url,
+        children: [
+            async function testServer() {
+                return import('@feasibleone/blong-test/browser.js');
+            },
+            async function login() {
+                return import('@feasibleone/blong-login/browser.js');
+            },
+            async function openapi() {
+                return import('@feasibleone/blong-openapi/browser.js');
+            },
+        ],
+    }));
+    ```
 
 ## Common concepts
 
 Suites export a single function, which receives the Blong's `load` function as parameter and
-initiates the loading of realms and optionally runs the tests. Suites are launched from the command line,
-using the `blong` CLI tool in the suite's root folder. The `load` function has the following signature:
+initiates the loading of realms and optionally runs the tests. Suites are launched from the command
+line, using the `blong` CLI tool in the suite's root folder. The `load` function has the following
+signature:
 
 ```ts
 type Load = (
@@ -145,52 +145,52 @@ type Load = (
 
 The parameters are:
 
-- `definition`: The server or browser definition as factory function - this is the default export of the
-  `server.ts`, `browser.ts` or other platform file in the suite's root folder
+- `definition`: The server or browser definition as factory function - this is the default export of
+  the `server.ts`, `browser.ts` or other platform file in the suite's root folder
 - `suiteName`: The name of the suite. The name has some impact on various entities:
-  - It determines the name of the configuration file where additional
-    config is stored. The name is: `.ut_<suite><env>rc`, where `<suite>` is the lowercase suite name and
-    `<env>` is the environment, for example `dev` or `test`.
-  - It determines the default k8s namespace where the suite is deployed.
+    - It determines the name of the configuration file where additional config is stored. The name
+      is: `.ut_<suite><env>rc`, where `<suite>` is the lowercase suite name and `<env>` is the
+      environment, for example `dev` or `test`.
+    - It determines the default k8s namespace where the suite is deployed.
 - `parentConfig`: Configuration overrides for the suite. This parameter is used to avoid the need of
-   additional configuration files for the cases of running automated tests.
-- `activations`: Config activations to apply. This is used to activate the
-  appropriate configurations within the realms to avoid the need to do this via configuration files
-  or command line parameters.
+  additional configuration files for the cases of running automated tests.
+- `activations`: Config activations to apply. This is used to activate the appropriate
+  configurations within the realms to avoid the need to do this via configuration files or command
+  line parameters.
 
 ## Tests
 
-There can be different tests, depending on what part of the functionality
-is tested and the specific [interaction](../concepts/interactions.md):
+There can be different tests, depending on what part of the functionality is tested and the specific
+[interaction](../concepts/interactions.md):
 
 ## API tests
 
-These tests cover part of the most common interaction - **Application front ends**.
-They simulate calls from the front end to the API gateway, without
-running the UI. They are faster to run and easier to debug, but they do not test the UI.
+These tests cover part of the most common interaction - **Application front ends**. They simulate
+calls from the front end to the API gateway, without running the UI. They are faster to run and
+easier to debug, but they do not test the UI.
 
-To achieve this, the browser and server platforms are loaded and the tests are initiated
-from the browser side. For the browser platform only the adapter, orchestrator and test
-layers are activated. The browser platform is chosen, as it is the best
-to simulate in automated tests due to these reasons:
+To achieve this, the browser and server platforms are loaded and the tests are initiated from the
+browser side. For the browser platform only the adapter, orchestrator and test layers are activated.
+The browser platform is chosen, as it is the best to simulate in automated tests due to these
+reasons:
 
 - Fastest to run in node.js
 - Closest to the most used interaction - application front running in a browser
 - It uses the same components that are used in the real browser front end.
 
-This is also the usual way to run the suite during development, as it allows
-for the most frequent interactions to be developed and tested with low latency loop.
-As such, it is often present in the `index.ts` file in the suite's root folder.
+This is also the usual way to run the suite during development, as it allows for the most frequent
+interactions to be developed and tested with low latency loop. As such, it is often present in the
+`index.ts` file in the suite's root folder.
 
 ```ts
 import browser from './browser.ts';
 import server from './server.ts';
 
 type Load = (
-  definition: object,
-  suiteName: string,
-  parentConfig: string | object,
-  activations: string[],
+    definition: object,
+    suiteName: string,
+    parentConfig: string | object,
+    activations: string[],
 ) => Promise<{
     start: () => Promise<unknown>;
     test: () => Promise<unknown>;
@@ -216,12 +216,11 @@ export default async (load: Load): Promise<void> => {
 
 ### Internal API tests
 
-These tests simulate internal calls, usually to the orchestrators.
-To achieve this, only the server platform is loaded and the tests are initiated
-from the server side.
+These tests simulate internal calls, usually to the orchestrators. To achieve this, only the server
+platform is loaded and the tests are initiated from the server side.
 
-In this case, the test is wrapped in the `tap` testing framework, to provide
-some test coverage report.
+In this case, the test is wrapped in the `tap` testing framework, to provide some test coverage
+report.
 
 ```ts
 // internal.test.ts
@@ -230,12 +229,12 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-const platform = await load(
-    server,
-    'suite-name',
-    'suite-name',
-    ['microservice', 'dev', 'test', 'integration']
-);
+const platform = await load(server, 'suite-name', 'suite-name', [
+    'microservice',
+    'dev',
+    'test',
+    'integration',
+]);
 await platform.start();
 await tap.test('internal api', async test => {
     await platform.test(test);
@@ -243,7 +242,8 @@ await tap.test('internal api', async test => {
 await platform.stop();
 ```
 
-A complete working example is in the [blong-eip](https://github.com/feasibleone/blong/tree/main/core/blong-eip) package.
+A complete working example is in the
+[blong-eip](https://github.com/feasibleone/blong/tree/main/demo/blong-eip) package.
 
 ### Integration tests with K8s test back ends
 
@@ -252,18 +252,19 @@ back end can be provisioned automatically in a temporary Kubernetes cluster.
 
 **How it works:**
 
-1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and Kubernetes
-   resource manifests (Deployments, Services, ConfigMaps, PVCs) that provision the test back end.
+1. A `test/integration/` folder at the repository root contains a `kustomization.yaml` and
+   Kubernetes resource manifests (Deployments, Services, ConfigMaps, PVCs) that provision the test
+   back end.
 2. In CI the GitHub Actions `integration` job creates a k3d cluster and deploys the services:
 
-   ```text
-   kubectl apply -k test/integration/
-   ```
+    ```text
+    kubectl apply -k test/integration/
+    ```
 
 3. The Rush `ci-test` bulk command then runs each package's `ci-test` npm script.
 4. The `ci-test` in case of integration tests:
-   - Waits for all deployments in the test namespace to become `Available`
-   - Runs `blong-dev test`
+    - Waits for all deployments in the test namespace to become `Available`
+    - Runs `blong-dev test`
 5. `*.test.ts` is the tap-wrapped entry point that loads only the server platform with the
    `integration` activation and calls `platform.test(test)`.
 
@@ -284,14 +285,14 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: blong-integration
 resources:
-  - namespace.yaml
-  - mysql-deployment.yaml
-  - mongodb-deployment.yaml
-  - keycloak-deployment.yaml
-  - keycloak-init-job.yaml
-  - minio-deployment.yaml
-  - kafka-deployment.yaml
-  - vault-deployment.yaml
+    - namespace.yaml
+    - mysql-deployment.yaml
+    - mongodb-deployment.yaml
+    - keycloak-deployment.yaml
+    - keycloak-init-job.yaml
+    - minio-deployment.yaml
+    - kafka-deployment.yaml
+    - vault-deployment.yaml
 ```
 
 **`test.ts`** — tap entry point for the integration run:
@@ -302,10 +303,7 @@ import tap from 'tap';
 
 import server from './server.ts';
 
-export default async function test(
-    intents: string[] = [],
-    config: string | object = 'suite-name',
-) {
+export default async function test(intents: string[] = [], config: string | object = 'suite-name') {
     const platform = await load(server, 'suite-name', config, ['integration'].concat(intents));
     await platform.start({});
     await tap.test('blong suite-name', async test => {
@@ -354,16 +352,16 @@ config: {
 },
 ```
 
-A complete working example is in the [blong-int-adapter](https://github.com/feasibleone/blong/tree/main/core/blong-int-adapter)
-package.
+A complete working example is in the
+[blong-int-adapter](https://github.com/feasibleone/blong/tree/main/test/blong-int-adapter) package.
 
 ## UI tests
 
-These tests run the full browser app and simulate user interactions with the UI.
-They are slower to run and harder to debug, but they test the UI as well.
+These tests run the full browser app and simulate user interactions with the UI. They are slower to
+run and harder to debug, but they test the UI as well.
 
-This is not yet implemented, as the front end framework is not yet ready, but the idea is to
-run the tests from the browser side, using a test runner like Playwright.
+This is not yet implemented, as the front end framework is not yet ready, but the idea is to run the
+tests from the browser side, using a test runner like Playwright.
 
 ## Edge device tests
 
@@ -371,4 +369,5 @@ These tests simulate interactions from edge devices such as ATMs, POS terminals,
 They initiate requests at the TCP/binary protocol level rather than at the HTTP API level.
 
 This is not yet documented. For protocol-level simulation patterns see the
-[blong-sim-tcp](https://github.com/feasibleone/blong/tree/main/core/blong-sim-tcp) package and the `blong-codec` skill.
+[blong-sim-tcp](https://github.com/feasibleone/blong/tree/main/test/blong-sim-tcp) package and the
+`blong-codec` skill.

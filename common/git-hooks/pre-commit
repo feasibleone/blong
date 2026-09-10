@@ -20,4 +20,4 @@
 
 # exit 0  # remove this line to activate
 
-node core/blong-dev/bin/blong-dev.ts lint-staged || exit $?
+node tools/blong-dev/bin/blong-dev.ts lint-staged || exit $?

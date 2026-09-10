@@ -1,7 +1,7 @@
 # Real-Time Log
 
-The Blong framework ships with a real-time log viewer. When the framework is running locally, a
-log server is available at `http://127.0.0.1:9998`. All queries use a REST API.
+The Blong framework ships with a real-time log viewer. When the framework is running locally, a log
+server is available at `http://127.0.0.1:9998`. All queries use a REST API.
 
 ## Quick Reference
 
@@ -28,14 +28,14 @@ curl -s 'http://127.0.0.1:9998/api/entries?traceId=abc-123' | jq '.entries[]'
 
 Returns the most recent log entries. Supports filtering.
 
-| Parameter | Type   | Description |
-| --------- | ------ | ----------- |
+| Parameter | Type   | Description                                                           |
+| --------- | ------ | --------------------------------------------------------------------- |
 | `level`   | string | Minimum log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal` |
-| `name`    | string | Service name (substring match, case-insensitive) |
-| `traceId` | string | Exact trace ID match |
-| `search`  | string | Free-text search across all properties |
-| `after`   | string | Return only entries after this ULID (pagination) |
-| `limit`   | number | Max entries to return (default: 200) |
+| `name`    | string | Service name (substring match, case-insensitive)                      |
+| `traceId` | string | Exact trace ID match                                                  |
+| `search`  | string | Free-text search across all properties                                |
+| `after`   | string | Return only entries after this ULID (pagination)                      |
+| `limit`   | number | Max entries to return (default: 200)                                  |
 
 ### GET /api/search
 
@@ -43,8 +43,8 @@ Same as `/api/entries` but searches the full buffer instead of just recent entri
 
 ### GET /api/config
 
-Returns server configuration including recognised property names. Useful for discovering
-available filter fields.
+Returns server configuration including recognised property names. Useful for discovering available
+filter fields.
 
 ## Common Workflows
 
@@ -95,19 +95,19 @@ curl -s "http://127.0.0.1:9998/api/entries?after=$LAST_ID" \
 
 ## Log Entry Properties
 
-| Property  | Type   | Description |
-| --------- | ------ | ----------- |
-| `id`      | string | ULID — monotonically increasing, sortable |
-| `time`    | number | Unix timestamp in milliseconds |
-| `level`   | number | Pino level: 10=trace 20=debug 30=info 40=warn 50=error 60=fatal |
-| `levelName` | string | Human-readable level name |
-| `msg`     | string | Log message |
-| `name`    | string | Service/module name |
-| `traceId` | string | Distributed trace ID |
-| `err`     | object | Error details: `{message, stack, type}` |
-| `req`     | object | HTTP request: `{method, url, headers, body}` |
-| `res`     | object | HTTP response: `{statusCode, headers, responseTime}` |
-| `$meta`   | object | Blong framework metadata: `{mtid, method, …}` |
+| Property    | Type   | Description                                                     |
+| ----------- | ------ | --------------------------------------------------------------- |
+| `id`        | string | ULID — monotonically increasing, sortable                       |
+| `time`      | number | Unix timestamp in milliseconds                                  |
+| `level`     | number | Pino level: 10=trace 20=debug 30=info 40=warn 50=error 60=fatal |
+| `levelName` | string | Human-readable level name                                       |
+| `msg`       | string | Log message                                                     |
+| `name`      | string | Service/module name                                             |
+| `traceId`   | string | Distributed trace ID                                            |
+| `err`       | object | Error details: `{message, stack, type}`                         |
+| `req`       | object | HTTP request: `{method, url, headers, body}`                    |
+| `res`       | object | HTTP response: `{statusCode, headers, responseTime}`            |
+| `$meta`     | object | Blong framework metadata: `{mtid, method, …}`                   |
 
 ## Runtime Introspection Endpoints
 
@@ -123,13 +123,13 @@ config: {
 }
 ```
 
-| Endpoint             | Returns |
-| -------------------- | ------- |
-| `GET /api/sys/config`  | Effective merged runtime configuration |
+| Endpoint               | Returns                                        |
+| ---------------------- | ---------------------------------------------- |
+| `GET /api/sys/config`  | Effective merged runtime configuration         |
 | `GET /api/sys/ports`   | All registered adapter/orchestrator port names |
-| `GET /api/sys/methods` | All handler method groups with handler counts |
-| `GET /api/sys/modules` | All registered realm module names |
-| `GET /api/sys/rpc`     | Internal RPC server address |
+| `GET /api/sys/methods` | All handler method groups with handler counts  |
+| `GET /api/sys/modules` | All registered realm module names              |
+| `GET /api/sys/rpc`     | Internal RPC server address                    |
 
 ### Typical troubleshooting workflow
 
@@ -151,8 +151,7 @@ curl -s 'http://127.0.0.1:9998/api/entries?level=error&limit=10' \
 
 ## Implementation
 
-The log viewer lives in `core/blong-log/`. It exposes a React `LogViewer` component (used in the
+The log viewer lives in `tools/blong-log/`. It exposes a React `LogViewer` component (used in the
 browser) and a server that stores log entries forwarded from Pino.
 
-For more on the design rationale see
-[rationale/real-time-log](../rationale/real-time-log.md).
+For more on the design rationale see [rationale/real-time-log](../rationale/real-time-log.md).
