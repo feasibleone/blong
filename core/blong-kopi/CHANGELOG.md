@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/feasibleone/blong/compare/blong-kopi-v1.12.1...blong-kopi-v1.12.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* split core to folders ([3900de8](https://github.com/feasibleone/blong/commit/3900de88defe8a3e9c492c5cf9388ac4ee81d781))
+
 ## [1.12.1](https://github.com/feasibleone/blong/compare/blong-kopi-v1.12.0...blong-kopi-v1.12.1) (2026-09-09)
 
 

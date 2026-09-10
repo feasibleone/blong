@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.31.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.31.2...blong-gogo-v1.31.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* split core to folders ([3900de8](https://github.com/feasibleone/blong/commit/3900de88defe8a3e9c492c5cf9388ac4ee81d781))
+
 ## [1.31.2](https://github.com/feasibleone/blong/compare/blong-gogo-v1.31.1...blong-gogo-v1.31.2) (2026-09-09)
 
 

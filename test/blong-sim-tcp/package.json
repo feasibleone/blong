@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-sim-tcp",
-    "version": "1.1.2",
+    "version": "1.1.3",
     "private": true,
     "type": "module",
     "scripts": {

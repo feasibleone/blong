@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/feasibleone/blong/compare/marine-data-v1.0.0...marine-data-v1.0.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* split core to folders ([3900de8](https://github.com/feasibleone/blong/commit/3900de88defe8a3e9c492c5cf9388ac4ee81d781))
+
 ## 1.0.0 (2026-07-14)
 
 
