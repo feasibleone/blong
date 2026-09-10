@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/feasibleone/blong/compare/blong-sim-tcp-v1.1.2...blong-sim-tcp-v1.1.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* split core to folders ([3900de8](https://github.com/feasibleone/blong/commit/3900de88defe8a3e9c492c5cf9388ac4ee81d781))
+
 ## [1.1.2](https://github.com/feasibleone/blong/compare/blong-sim-tcp-v1.1.1...blong-sim-tcp-v1.1.2) (2026-07-14)
 
 

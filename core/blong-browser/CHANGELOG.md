@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.3](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.2...blong-browser-v1.16.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* split core to folders ([3900de8](https://github.com/feasibleone/blong/commit/3900de88defe8a3e9c492c5cf9388ac4ee81d781))
+
 ## [1.16.2](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.1...blong-browser-v1.16.2) (2026-09-09)
 
 
