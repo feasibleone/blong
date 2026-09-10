@@ -35,43 +35,52 @@
    draws the four flush metal hex screws in the panel corners.
    ========================================================================== */
 .blong-app-wood .p-card {
-    position: relative;
-    background:
-        linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.3)),
-        linear-gradient(90deg, #5c3a21 0%, #4a2e1b 40%, #52331c 70%, #3d2414 100%) !important;
-    border: 1px solid #28170c !important;
+    position: relative !important;
+    /* Guaranteed high-fidelity cross-browser base64 oiled-walnut texture grain */
+    background-color: #4a2e1b !important;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.45)),
+        url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiB2aWV3Qm94PSIwIDAgNDAwIDQwMCI+PHBhdGggZD0iTTAsNTAgUTEwMCw0NSAyMDAsNTIgVDQwMCw0OCBNMCwxMjAgUTgwLDEzMCAxODAsMTE1IFQ0MDAsMTI1IE0wLDIwMCBRMTUwLDE4MCAyNTAsMjEwIFQ0MDAsMTk1IE0wLDI4MCBROTAsMjkwIDIyMCwyNzUgVDQwMCwyODUgTTAsMzUwIFFpMjAsMzQwIDIwMCwzNjAgVDQwMCwzNDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzI4MTcwYyIgc3Ryb2tlLXdpZHRoPSI0IiBvcGFjaXR5PSIwLjU1Ii8+PHBhdGggZD0iTTAsODAgUTEyMCw3NSAyMjAsODUgVDQwMCw3OCBNMCwxNjAgUTcwLDE3NSAxOTAsMTU1IFQ0MDAsMTY1IE0wLDI0MCBRMTMwLDIyNSAyNzAsMjQ1IFQ0MDAsMjM1IE0wLDMxMCBRMTEwLDMyNSAyMTAsMzA1IFQ0MDAsMzE1IiBmaWxsPSJub25lIiBzdHJva2U9IiMxZjExMDciIHN0cm9rZS13aWR0aD0iMyIgb3BhY2l0eT0iMC42Ii8+PGNpcmNsZSBjeD0iMTQwIiBjeT0iMTgwIiByPSIxMiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjgxNzBjIiBzdHJva2Utd2lkdGg9IjIiIG9wYWNpdHM9IjAuMzUiLz48Y2lyY2xlIGN4PSIxNDAiIGN5PSIxODAiIHI9IjI1IiBmaWxsPSJub25lIiBzdHJva2U9IiMyODE3MGMiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjI1Ii8+PGNpcmNsZSBjeD0iMjgwIiBjeT0iOTAiIHI9IjE4IiBmaWxsPSJub25lIiBzdHJva2U9IiMxZjExMDciIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iMC4zNSIvPjwvc3ZnPg==") !important;
+    background-size: 300px 300px !important;
+    background-repeat: repeat !important;
+    border: 1px solid #23140a !important;
     border-radius: 6px !important;
+    overflow: visible !important;
+    /* Prevents large corner screws from getting clipped */
     box-shadow:
-        0 16px 32px rgba(0, 0, 0, 0.7),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.6) !important;
+        0 14px 28px rgba(0, 0, 0, 0.7),
+        inset 0 1px 1px rgba(255, 255, 255, 0.12),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.55) !important;
     z-index: 1;
 }
 
-/* Flush gunmetal hex screws in the four corners. */
 .blong-app-wood .p-card::after {
     content: "";
     position: absolute;
-    top: 6px;
-    right: 6px;
-    bottom: 6px;
-    left: 6px;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
     pointer-events: none;
     z-index: 5;
     background-image:
-        radial-gradient(circle, #737373 20%, #404040 50%, #171717 80%),
-        radial-gradient(circle, #737373 20%, #404040 50%, #171717 80%),
-        radial-gradient(circle, #737373 20%, #404040 50%, #171717 80%),
-        radial-gradient(circle, #737373 20%, #404040 50%, #171717 80%);
-    background-size: 7px 7px;
+        /* Top Left Screw */
+        radial-gradient(circle at 7px 7px, #1a1a1a 20%, #333 21%, #222 35%, #555 54%, #666 59%, #333 64%, rgba(0, 0, 0, 0.8) 70%, transparent 72%),
+        /* Top Right Screw */
+        radial-gradient(circle at calc(100% - 7px) 7px, #1a1a1a 20%, #333 21%, #222 35%, #555 54%, #666 59%, #333 64%, rgba(0, 0, 0, 0.8) 70%, transparent 72%),
+        /* Bottom Left Screw */
+        radial-gradient(circle at 7px calc(100% - 7px), #1a1a1a 20%, #333 21%, #222 35%, #555 54%, #666 59%, #333 64%, rgba(0, 0, 0, 0.8) 70%, transparent 72%),
+        /* Bottom Right Screw */
+        radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), #1a1a1a 20%, #333 21%, #222 35%, #555 54%, #666 59%, #333 64%, rgba(0, 0, 0, 0.8) 70%, transparent 72%);
+    background-size: 14px 14px;
     background-repeat: no-repeat;
     background-position:
         top left,
         top right,
         bottom left,
         bottom right;
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
 }
+
 
 /* Keep the PrimeReact card body transparent so only the walnut plate paints. */
 .blong-app-wood .p-card .p-card-body,
@@ -109,15 +118,21 @@
 .blong-app-wood .p-inputtext,
 .blong-app-wood .p-inputtextarea,
 .blong-app-wood .p-dropdown {
-    background-color: #12100e !important;
-    border: 1px solid #231d19 !important;
-    border-top: 1px solid #090807 !important;
+    /* Carbon-fiber knurled micro-mesh pattern */
+    background-color: #1a1715 !important;
+    background-image:
+        linear-gradient(45deg, #13100e 25%, transparent 25%, transparent 75%, #13100e 75%, #13100e),
+        linear-gradient(45deg, #13100e 25%, transparent 25%, transparent 75%, #13100e 75%, #13100e) !important;
+    background-size: 4px 4px !important;
+    background-position: 0 0, 2px 2px !important;
+
+    border: 1px solid #1f1814 !important;
+    border-top: 1px solid #0a0807 !important;
     border-radius: 4px !important;
-    color: #f7f5f3 !important;
+    color: #f3efe9 !important;
     box-shadow:
-        inset 0 4px 8px rgba(0, 0, 0, 0.95),
-        0 1px 0 rgba(255, 255, 255, 0.05) !important;
-    transition: all 0.2s ease-in-out;
+        inset 0 3px 6px rgba(0, 0, 0, 0.85),
+        0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 
 .blong-app-wood .p-inputtext:enabled:focus,
@@ -219,6 +234,7 @@
    The Links operational controls swap the flat buttons for bracket-framed
    burnished gold / copper HUD text controls.
    ========================================================================== */
+
 .blong-app-wood .p-card .p-toolbar .p-button {
     position: relative;
     background: transparent !important;
@@ -286,16 +302,14 @@
    burnished gold element.
    ========================================================================== */
 .blong-app-wood .p-checkbox .p-checkbox-box {
-    background-color: #12100e !important;
-    border: 1px solid #2d2621 !important;
-    border-top: 1px solid #090807 !important;
-    border-radius: 3px !important;
-    width: 14px !important;
-    height: 14px !important;
-    box-shadow:
-        inset 0 3px 6px rgba(0, 0, 0, 0.95),
-        0 1px 0 rgba(255, 255, 255, 0.05) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: #1a1715 !important;
+    background-image:
+        linear-gradient(45deg, #13100e 25%, transparent 25%, transparent 75%, #13100e 75%, #13100e),
+        linear-gradient(45deg, #13100e 25%, transparent 25%, transparent 75%, #13100e 75%, #13100e) !important;
+    background-size: 3px 3px !important;
+    background-position: 0 0, 1.5px 1.5px !important;
+    border: 1px solid #241d18 !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9) !important;
 }
 
 .blong-app-wood .p-checkbox:not(.p-checkbox-disabled):hover .p-checkbox-box {
@@ -326,6 +340,11 @@
 }
 
 /* Habitat inline matrix — rigid 4-up layout, uniform columns. */
+.blong-app-wood .p-multiselect {
+    background: none;
+    border: none;
+}
+
 .blong-app-wood .p-multiselect-panel.p-multiselect-inline .p-multiselect-items {
     display: grid !important;
     grid-template-columns: repeat(4, 1fr) !important;
@@ -337,7 +356,8 @@
 .blong-app-wood .p-multiselect-panel.p-multiselect-inline .p-multiselect-item {
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    /* gap: 8px !important; */
+    width: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     color: #a3a3a3 !important;
@@ -346,9 +366,9 @@
 }
 
 .blong-app-wood .p-multiselect-panel.p-multiselect-inline .p-multiselect-item>span {
-    font-size: 0.75rem !important;
+    /* font-size: 0.75rem !important; */
     font-weight: 600 !important;
-    letter-spacing: 0.3px;
+    /* letter-spacing: 0.3px; */
     color: #a3a3a3 !important;
     transition: color 0.2s ease, text-shadow 0.2s ease;
 }
@@ -406,7 +426,7 @@
 .blong-app-wood .p-datatable .p-datatable-tbody>tr>td {
     padding: 0.45rem 0.75rem !important;
     border-bottom: 1px solid #231d19 !important;
-    font-size: 0.82rem !important;
+    /* font-size: 0.82rem !important; */
 }
 
 .blong-app-wood .p-datatable .p-datatable-tbody>tr:not(.p-highlight):hover {

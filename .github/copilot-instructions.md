@@ -6,7 +6,10 @@ pointers to skills and details. Full detail lives in skills: invoke them via the
 
 ## [CRITICAL_OBSERVABILITY]
 
-- Output todo metrics explicitly. Emit the marker **immediately after the switch/pivot**, before
+When creating a plan or a todo list, always include a **Track Critical Observability** section for
+each todo item.
+
+- **Output todo metrics explicitly**. Emit the marker **immediately after the switch/pivot**, before
   during reasoning and right before starting the next task from the list. Emit at least once per
   todo item completed, and also within major milestones inside a single todo - every time you pivot
   to a new objective, finish a debugging cycle, or completely switch focus.
@@ -23,14 +26,18 @@ pointers to skills and details. Full detail lives in skills: invoke them via the
     - Tools: [Comma-separated list of tools used and how many times each]
     ```
 
-- Track automatic decisions explicitly. Whenever you hesitated about what the user requested or you
-  implied and made a choice, you MUST output this in: .github/memory/decision.md. If this is a
+- **Record frictions.** If a task needed unexpected effort or failed, append a short note to
+  `.github/memory/friction.md` (also: long investigations, hard decisions, lots of source read).
+
+- **Track automatic decisions explicitly**. Whenever you hesitated about what the user requested or
+  you implied and made a choice, you MUST output this in `.github/memory/decision.md`. If this is a
   critical decision that is likely to take a lot of effort to reconsider, you MUST stop and point
   the user to this file and state the decision needed. Make sure that you do not allow the Autopilot
-  mode to interfere and answer questions instead of the user.
+  mode to interfere and answer questions instead of the user. If you receive a response that the
+  user is away, you MUST stop and claim that you cannot complete the task.
 
-- Track missing, deferred or incomplete features explicitly in: .github/memory/todo.md. Update it
-  with any tasks that you are deferring or leaving incomplete because it was not explicitly
+- **Track missing, deferred or incomplete features explicitly** in `.github/memory/todo.md`. Update
+  it with any tasks that you are deferring or leaving incomplete because it was not explicitly
   requested or for any other reason.
 
 ## [CRITICAL_GUARDRAILS]
@@ -39,6 +46,9 @@ Hard rules — apply first, never contradict.
 
 - **Never import handlers directly.** Cross-handler deps via `handler()` proxy (`runtime.handler`);
   direct imports break IoC.
+- **Prefer library functions** when feasible for reusing logic across handlers (see blong-handler
+  skill).
+- **New realm or suite** - use the proper skills `blong-realm` or `blong-suite`.
 - **Semantic triple naming** `subjectObjectPredicate`; file = export = wire name; singular
   subject/object, present-tense predicate. Flag violations before proceeding.
 - **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge` (single);
@@ -85,8 +95,7 @@ Hard rules — apply first, never contradict.
 
 ## [ANCHOR_TOKENS]
 
-Voluntary search markers — add at model discretion where they aid locating implementations; never
-enforced.
+Search markers — add where they aid locating framework patterns.
 
 ```typescript
 // @framework-archetype: HANDLER
@@ -126,8 +135,6 @@ API definition as the primary source of truth and apply the conflict priority in
   additions.
 - **Search before read.** Prefer `grep_search` / `file_search` over linear `read_file` for targeted
   exploration.
-- **Record frictions.** If a task needed unexpected effort or failed, append a short note to
-  `.github/memory/friction.md` (also: long investigations, hard decisions, lots of source read).
 - **TypeScript is not compiled**, unless strictly necessary. We run on latest Node.js which can
   strip types.
 
@@ -151,8 +158,8 @@ Suite             — top-level entry point, glues realms, defines deployment co
 
 | Your Task                                  | Call `skill` with                                     |
 | ------------------------------------------ | ----------------------------------------------------- |
-| Creating a new top-level solution          | **blong-suite**                                       |
-| Creating a new business domain             | **blong-realm** (scaffold via **blong-kopi**)         |
+| Creating a new top-level solution/suite    | **blong-suite**                                       |
+| Creating a new business domain/realm       | **blong-realm** (scaffold via **blong-kopi**)         |
 | Adding an API endpoint                     | **blong-handler** (JSON-RPC) or **blong-rest** (REST) |
 | Connecting to database                     | **blong-adapter** (see SQL adapter patterns)          |
 | Calling external API                       | **blong-adapter** (see HTTP adapter patterns)         |
@@ -174,7 +181,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Developing the logging tooling             | **blong-log-dev**                                     |
 | Implementing blong-browser components      | **blong-browser**                                     |
 | Adding multi-language / i18n support       | **blong-i18n**                                        |
-| Using the model for realm CRUD pages       | **blong-model**                                       |
+| Using the model for realm API, CRUD pages  | **blong-model**                                       |
 | Developing the model system internals      | **blong-model-dev**                                   |
 | Full-stack Playwright testing              | **blong-playwright**                                  |
 | Writing or reviewing documentation         | **blong-docs**                                        |
@@ -426,7 +433,7 @@ to validate UI changes interactively after each edit.
 ### Integration test backends (blong-int-adapter)
 
 When working on `core/blong-int-adapter/` or running its integration tests, the required backend
-services are usually already started. The expected ports are:
+services are usually already started in k8s (using k3d) with ports exposed. The ports are:
 
 | Port  | Service               |
 | ----- | --------------------- |
