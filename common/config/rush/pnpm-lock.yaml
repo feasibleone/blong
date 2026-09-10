@@ -736,9 +736,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
     devDependencies:
-      '@feasibleone/blong-dev':
-        specifier: workspace:*
-        version: link:../../tools/blong-dev
       '@types/node':
         specifier: ^24
         version: 24.12.0

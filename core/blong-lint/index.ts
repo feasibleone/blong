@@ -362,7 +362,13 @@ export async function lintCollect(
     if (enabled.has('eslint') && hasEslintConfig(cwd)) {
         const targets = staged ? lintFiles : ['.'];
         if (targets.length > 0) {
-            const result = await failure('eslint', ['--max-warnings', '0', '-f', 'json', ...targets]);
+            const result = await failure('eslint', [
+                '--max-warnings',
+                '0',
+                '-f',
+                'json',
+                ...targets,
+            ]);
             if (result) diagnostics.push(...parseEslint(result.stdout));
         }
     }
@@ -373,4 +379,22 @@ export async function lintCollect(
 /** Convenience: true when {@link lintCollect} found neither errors nor warnings. */
 export function hasProblems(result: LintResult): boolean {
     return result.diagnostics.length > 0 || result.exitCode !== 0;
+}
+
+/**
+ * One diagnostic as a single terminal line.
+ *
+ * A rendering of {@link Diagnostic}, so it belongs beside the type — and both
+ * `blong-dev lint` and this package's own `bin/lint.ts` need it.
+ */
+export function formatDiagnostic(diagnostic: Diagnostic): string {
+    const location =
+        diagnostic.file == null
+            ? ''
+            : `${diagnostic.file}${diagnostic.line == null ? '' : `:${diagnostic.line}`}${
+                  diagnostic.column == null ? '' : `:${diagnostic.column}`
+              }  `;
+    const rule = diagnostic.rule ? ` [${diagnostic.rule}]` : '';
+    const mark = diagnostic.severity === 'warning' ? '⚠' : '✖';
+    return `  ${mark} ${location}${diagnostic.tool}${rule}: ${diagnostic.message}`;
 }
