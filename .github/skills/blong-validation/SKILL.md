@@ -9,6 +9,14 @@ description:
 
 # Implementing Validation
 
+> **Scaffold, don't transcribe.** Gateway overrides come from
+> `kukum gateway add --subject=<realm> --object=<method> --kind=validation`
+> (`[KUKUM_API]` in `_shared/conventions.md`).
+>
+> **`~.schema.ts` is GENERATED — never hand-write it.** The framework derives it from each handler's
+> `type Handler` declaration (`Watch._generate()` + `TypeScriptToBox.Generate`); writing it by hand
+> only creates drift. Declare the `Handler` type and let the runtime produce the file.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Prefer automatic validation** (`Handler` type → `~.schema.ts`) over manual TypeBox.
@@ -73,46 +81,20 @@ export default handler(() =>
 );
 ```
 
-### Step 2: Create ~.schema.ts
+### Step 2: Let the framework generate ~.schema.ts
 
-Place `~.schema.ts` file in the handler folder:
+**Do not write this file.** The runtime generates and updates `<group>/~.schema.ts` from the
+`type Handler` declarations in the folder (`Watch._generate()` → `TypeScriptToBox.Generate`), and
+`adapter.knex` consumes it. It regenerates when the file is older than the handler files or when a
+handler type changes. Declaring the type (Step 1) is the whole job; a hand-written `~.schema.ts`
+just drifts from the handlers.
 
-```typescript
-// realmname/orchestrator/entity/~.schema.ts
+To see what the framework produced for a realm:
 
-import {validationHandlers} from '@feasibleone/blong';
-import {Type, type Static} from 'typebox';
-
-type realmEntityAction = Static<typeof realmEntityAction>;
-const realmEntityAction = Type.Function(
-    [
-        Type.Object({
-            param1: Type.String({description: 'Parameter 1 description'}),
-            param2: Type.Optional(Type.Number({description: 'Optional parameter description'})),
-            status: Type.Union([Type.Literal('active'), Type.Literal('inactive')], {
-                description: 'Enum parameter',
-            }),
-        }),
-    ],
-    Type.Promise(
-        Type.Object({
-            resultId: Type.Number({description: 'Result property description'}),
-            message: Type.String({description: 'Result message'}),
-        }),
-    ),
-    {description: 'Description for API documentation'},
-);
-
-export default validationHandlers({
-    realmEntityAction,
-});
+```bash
+kukum source get --target=<realm> --path=orchestrator/<group>/~.schema.ts
+kukum method find          # which groups are registered, with handler counts
 ```
-
-**Note:** This file is auto-generated/updated by the framework when:
-
-- File is older than handler files
-- Handler types have changed
-- Framework detects Handler type definitions
 
 ### Step 3: Configure Validation
 

@@ -20,9 +20,10 @@ Usage:
 
 Well-known intents:
   dev            Development — verbose logs, hot reload
-  integration    Integration testing — watch + test reruns
+  integration    Integration testing — watch + test reruns (exits when CI is set)
   microservice   Run a realm as a standalone microservice
   prod           Production / UAT
+  cli            Run a command in-process and exit — no HTTP server, no watcher
   db             Database creation / seeding (short-lived)
   debug          Enable /api/sys/* introspection + stack traces
 

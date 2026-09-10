@@ -72,12 +72,13 @@ export default handler(
                         {username: 'testAdmin', password: 'testPassword'},
                         $meta,
                     );
+                    const $objectName = `ENT-BROWSER-${Date.now()}`;
                     const result = await $subject$ObjectAdd<{
-                        $object: {$objectId: number};
+                        $object: {$objectId: number; $objectName: string};
                     }>(
                         {
                             $object: {
-                                $objectName: `ENT-BROWSER-${Date.now()}`,
+                                $objectName,
                                 $objectStatus: 'draft',
                             },
                             line: [{lineName: 'Item', lineQuantity: 1}],
@@ -86,8 +87,17 @@ export default handler(
                     );
                     assert.ok(result.$object.$objectId, 'authorized $object add succeeds');
 
-                    const resultFind = await $subject$ObjectFind<Array<{$objectId: number}>>(
-                        {paging: {pageNumber: 1, pageSize: 100}},
+                    // Filter by the row this run created instead of paging the
+                    // whole table: the table keeps growing between runs, so page
+                    // 1 of an unfiltered find stops containing the new row once
+                    // there are more rows than pageSize.
+                    const resultFind = await $subject$ObjectFind<
+                        Array<{$objectId: number; $objectName: string}>
+                    >(
+                        {
+                            paging: {pageNumber: 1, pageSize: 10},
+                            filterBy: {$objectName},
+                        },
                         $meta,
                     );
                     assert.ok(

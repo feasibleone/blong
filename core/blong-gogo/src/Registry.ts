@@ -14,6 +14,7 @@ import type {
     IObjectSchema,
     IPlatformApi,
     IRegistry,
+    IRegistryDescription,
     IRemote,
     IRpcServer,
 } from '@feasibleone/blong/types';
@@ -375,6 +376,19 @@ export default class Registry extends Internal implements IRegistry {
                 renderAll(Array.isArray(what) ? merge(...what) : what, this.#platform.context),
             timing: this.#platform.timing,
             ...blongLib,
+            // The runtime services a `library()` function needs, mirroring the
+            // port API (`registry: this`, `platform: …`).
+            //
+            // A `library()` *factory* is not given the platform: `layerApi`
+            // carries only config/handler/errors/schema/gateway/apiSchema. And
+            // the lib proxy returns an attached function **raw**, so `this`
+            // inside it is this object — not the port, which is only bound in the
+            // proxy's not-yet-attached fallback path. Without these keys a
+            // library function therefore cannot reach the platform or registry at
+            // all, which is what a library needs to be reusable outside a
+            // request.
+            platform: this.#platform,
+            registry: this,
         };
         const local = {};
         const literals: object[] = [];
@@ -467,6 +481,31 @@ export default class Registry extends Internal implements IRegistry {
 
     public async test(framework: unknown): Promise<void> {
         return await this.#watch.test(framework);
+    }
+
+    /**
+     * Structural snapshot of the loaded realm graph.
+     *
+     * Combines the live registry (realms, ports, registered method groups) with
+     * the on-disk view owned by `Watch` (handler folders and files). This is the
+     * runtime source of truth that tooling and agents should query instead of
+     * re-deriving layout from conventions.
+     */
+    public describe(): IRegistryDescription {
+        const disk = this.#watch?.describe?.();
+        return {
+            realms: Array.from(this.modules.keys()).filter(
+                (key): key is string => typeof key === 'string',
+            ),
+            ports: Array.from(this.ports.keys()),
+            groups: Array.from(this.methods.entries()).map(([name, handlers]) => ({
+                name,
+                handlerCount: handlers.length,
+            })),
+            folders: disk?.folders ?? [],
+            files: disk?.files ?? [],
+            layerFiles: disk?.layerFiles ?? [],
+        };
     }
 
     public async stop(): Promise<IRegistry> {

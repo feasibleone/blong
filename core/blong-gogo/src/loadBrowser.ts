@@ -94,6 +94,9 @@ export default load.bind(null, {
     writeFileSync: () => {
         throw new Error('writeFileSync is not supported in the browser');
     },
+    mkdirSync: () => {
+        throw new Error('mkdirSync is not supported in the browser');
+    },
     statSync: (() => undefined) as unknown as import('node:fs').StatSyncFn,
     timing: timing(hrtime),
     configs: ['browser'],

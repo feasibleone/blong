@@ -11,6 +11,11 @@ description:
 
 # Full-Stack Testing with Playwright
 
+> **Scaffold, don't transcribe.** Generate the spec with
+> `kukum test add --subject=<realm> --object=<entity> --kind=playwright`
+> (`[KUKUM_API]` in `_shared/conventions.md`) — a scaffolded realm already ships
+> `playwright.config.ts` and the `blong-dev playwright` scripts.
+
 ## Overview
 
 Blong provides a Playwright testing setup that runs full-stack tests against the live development

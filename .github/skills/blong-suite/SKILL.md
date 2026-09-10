@@ -12,6 +12,10 @@ description:
 
 # Implementing a Suite
 
+> **Scaffold, don't transcribe.** Generate the entry points with
+> `kukum suite add --subject=<name> --target=<dir>` (`[KUKUM_API]` in `_shared/conventions.md`),
+> then adjust the children and config for your solution.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **`index.ts` is a simple re-export of `server.ts`** (`export {default} from './server.ts'`) so
@@ -213,15 +217,17 @@ The `intents` array controls which config blocks inside each realm/adapter/orche
 in. These correspond to positional CLI arguments: `blong integration dev` passes
 `['integration', 'dev']` as intents. Standard intents:
 
-| Intent         | Purpose                                         | Process lifetime                       |
-| -------------- | ----------------------------------------------- | -------------------------------------- |
-| `default`      | Always active (base config — cannot be removed) | —                                      |
-| `dev`          | Development — verbose logs, hot-reload          | Long-running, restarts on file changes |
-| `prod`         | Production / UAT environments                   | Long-running                           |
-| `integration`  | Integration testing; enables watch/test mode    | Long-running, reruns tests on change   |
-| `microservice` | Enables per-layer deployment activation         | Long-running                           |
-| `db`           | Database creation / seeding                     | Short-lived — exits after completion   |
-| `debug`        | Expose `/api/sys/*`, include stack traces       | No effect on lifetime                  |
+| Intent         | Purpose                                                                | Process lifetime                                             |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `default`      | Always active (base config — cannot be removed)                        | —                                                            |
+| `dev`          | Development — verbose logs, hot-reload                                 | Long-running, restarts on file changes                       |
+| `prod`         | Production / UAT environments                                          | Long-running                                                 |
+| `integration`  | Integration testing; enables watch/test mode                           | Long-running, reruns tests on change; exits when `CI` is set |
+| `microservice` | Enables per-layer deployment activation                                | Long-running                                                 |
+| `db`           | Database creation / seeding                                            | Short-lived — exits after completion                         |
+| `cli`          | Serves nothing and watches nothing; every dispatch resolves in-process | Short-lived — exits after its work                           |
+| `playwright`   | Marker: the Playwright runner owns the process lifetime                | Long-running until the runner stops it                       |
+| `debug`        | Expose `/api/sys/*`, include stack traces                              | No effect on lifetime                                        |
 
 See the **blong-intent** skill for the full intents reference and how to create custom intents.
 

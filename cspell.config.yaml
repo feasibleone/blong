@@ -155,7 +155,10 @@ words:
   - knex
   - kopi
   - kubeconfig
+  - kukum
   - kustomization
+  - modelcontextprotocol
+  - onsessioninitialized
   - lightgreen
   - Liquibase
   - LONGTEXT
@@ -349,3 +352,6 @@ ignorePaths:
   - "**/storybook-static/**"
   - "**/allure-results/**"
   - "**/.playwright/**"
+  # The kukum end-to-end fixture is generated output, committed so its Playwright
+  # baselines live in git.
+  - core/blong-kukum/test/fixture/**

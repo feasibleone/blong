@@ -1,0 +1,16 @@
+# Artifacts of the scaffold.test.ts end-to-end run: it scaffolds real realms here
+# (so Node resolves the framework packages from the ancestor node_modules) and
+# removes them again unless KUKUM_KEEP=1 is set.
+.kukum-test/
+
+# The e2e fixture realm is generated on every `e2e.test.ts` run, so only its
+# Playwright baselines are committed — they are what pins the generated UI, and
+# a template change that alters it has to be reviewed as a PNG diff.
+#
+# The nested negations are the standard git idiom: a file cannot be re-included
+# while any parent directory is excluded, so each level is re-included before
+# the next one is excluded.
+/test/fixture/e2e-realm/*
+!/test/fixture/e2e-realm/test/
+/test/fixture/e2e-realm/test/*
+!/test/fixture/e2e-realm/test/e2e.play.ts-snapshots/

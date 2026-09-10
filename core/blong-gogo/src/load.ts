@@ -19,6 +19,7 @@ import {
 } from '@feasibleone/blong/types';
 
 import {withProgress} from '@feasibleone/blong-lib';
+import {WELL_KNOWN_LAYERS} from '@feasibleone/blong-lib/layers';
 import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
@@ -29,6 +30,25 @@ import type {IWatch} from './Watch.ts';
 const extension = '.ts';
 
 const LAYER_FILE = 'layer' as const;
+
+/**
+ * Whether the process runs on CI.
+ *
+ * `load.ts` is shared by both platforms, and `process` does not exist in the
+ * browser bundle — a bare `process.env.CI` throws a `ReferenceError` while the
+ * browser realm loads (every browser test then fails with "process is not
+ * defined"). The optional chain keeps the server behaviour and degrades to
+ * `false` in the browser, which is correct: the server platform's `exit` drives
+ * the shutdown of both.
+ *
+ * A function rather than a module constant so the value is read when the config
+ * is built, not when the module is first imported.
+ */
+function isCI(): boolean {
+    return Boolean(
+        (globalThis as {process?: {env?: Record<string, string | undefined>}}).process?.env?.['CI'],
+    );
+}
 
 /**
  * An infrastructure item declaration with explicit dependencies.
@@ -71,30 +91,6 @@ function topoSort(items: InfraItem[]): InfraItem[] {
     for (const item of items) visit(item);
     return sorted;
 }
-
-/** Well-known layer folder names and their default activation per kind */
-const WELL_KNOWN_LAYERS: Record<string, {server?: object; browser?: object}> = {
-    api: {server: {default: true}, browser: {default: true}},
-    init: {server: {default: true}, browser: {default: true}},
-    meta: {server: {default: true}, browser: {default: true}},
-    error: {server: {integration: true}},
-    sim: {server: {integration: true}},
-    adapter: {server: {integration: true}},
-    orchestrator: {server: {integration: true}},
-    gateway: {server: {integration: true}},
-    backend: {browser: {integration: true}},
-    component: {browser: {integration: true}},
-    action: {browser: {integration: true}},
-    actions: {browser: {integration: true}},
-    test: {browser: {integration: true}},
-    'server/api': {server: {integration: true}},
-    'server/init': {server: {default: true}},
-    'server/test': {server: {integration: true}},
-    'browser/api': {browser: {integration: true}},
-    'browser/init': {browser: {default: true}},
-    'browser/test': {browser: {integration: true}},
-    'browser/orchestrator': {browser: {integration: true}},
-};
 
 /**
  * Discover layer folders in a realm directory that are not already listed as children.
@@ -400,6 +396,12 @@ export default async function loadRealm<T extends TSchema>(
     if (!('pkg' in mod) && platformApi.platform === 'server')
         mod.pkg = platformApi.createRequire?.(mod.url)('./package.json');
     const loadedConfigs = [];
+    /**
+     * The framework's own intent blocks (`default` + the active intents),
+     * resolved once per root load. Kept so their explicit `false` values can be
+     * re-asserted after every source has merged.
+     */
+    let frameworkConfigs: (boolean | object)[] = [];
     let items:
         | IModuleConfig['children']
         | {
@@ -413,85 +415,124 @@ export default async function loadRealm<T extends TSchema>(
             platform: platformApi,
             manifest,
         } as unknown as typeof api;
-        loadedConfigs.push(
-            ...activeConfigs(
-                {
-                    url: '',
-                    config: {
-                        default: {
-                            watch: {
-                                test: [],
-                            },
-                            log: {},
-                            apiSchema: {},
-                            error: {},
-                            registry: {},
-                            port: {},
-                            codec: {},
-                            adapter: {},
-                            orchestrator: {},
-                            remote: {
-                                canSkipSocket: rootKind === 'browser',
-                            },
-                            local: {},
-                            rpcServer: {},
-                            gateway: {},
-                            restFs: {},
-                            systemDebug: {},
-                            apiGateway: {},
+        // Retained so the "an intent's `false` wins" reconciliation can re-assert
+        // these after every source has merged (see below).
+        frameworkConfigs = activeConfigs(
+            {
+                url: '',
+                config: {
+                    default: {
+                        watch: {
+                            test: [],
                         },
-                        dev: {
-                            resolution: true,
-                            rpcServer: {
-                                port: 0,
-                            },
-                            log: {
-                                cacache: {
-                                    cachePath: '~/.blong/log-cache',
-                                },
-                            },
-                            gateway: {
-                                port: 0,
-                                static: {},
-                                debug: true,
-                                expectedErrors: true,
-                                // Static development keys, so sessions survive server hot-reloads
-                                /* cSpell:disable */
-                                sign: {
-                                    kty: 'EC',
-                                    crv: 'P-384',
-                                    alg: 'ES384',
-                                    use: 'sig',
-                                    x: 'VlRkjgqRHJSk9WN8CaAqHn34BUMy9pgKQUAAW9MrOqh0yvCmJW7JTr6LUCbm9zfW',
-                                    y: '8eYxbAZrv-HZEc4LSgdEHeSp21zO3D8KrynMcVcNAmZKTf3RMkbkh1B26lePHQNz',
-                                    d: 'aj6BkYmpwkKRbmcO1LO6d__HX5bvkqcRjqadlX7plXlGfj1d42XiSUWa4c9xrxwt',
-                                },
-                                encrypt: {
-                                    kty: 'EC',
-                                    crv: 'P-384',
-                                    alg: 'ECDH-ES+A256KW',
-                                    use: 'enc',
-                                    x: '86IBoWsatO3Vky9CRMxmuYcfYoTY1Yr0D1sJGDgLlREMjbL9cIOHcBQnEaW52QJV',
-                                    y: 'fsKOmTuXaIRFXXteh7uU0Z8mncX4VsPhqaz9pMKMm8EktQlF7HBS_fYFdkLwqMMN',
-                                    d: 'rBY50TZzjONw_oYzWPqaR3DdoFwO-F9sWcmkOltrJHYnfbnTojNImX2xN1DhhC5-',
-                                },
-                                /* cSpell:enable */
-                            },
-                            systemDebug: {enabled: true},
+                        log: {},
+                        apiSchema: {},
+                        error: {},
+                        registry: {},
+                        port: {},
+                        codec: {},
+                        adapter: {},
+                        orchestrator: {},
+                        remote: {
+                            canSkipSocket: rootKind === 'browser',
                         },
-                        integration: {
-                            remote: {canSkipSocket: true},
-                            gateway: {
-                                debug: true,
-                                expectedErrors: true,
+                        local: {},
+                        rpcServer: {},
+                        gateway: {},
+                        restFs: {},
+                        systemDebug: {},
+                        mcp: {},
+                        apiGateway: {},
+                    },
+                    dev: {
+                        resolution: true,
+                        rpcServer: {
+                            port: 0,
+                        },
+                        log: {
+                            cacache: {
+                                cachePath: '~/.blong/log-cache',
                             },
                         },
+                        gateway: {
+                            port: 0,
+                            static: {},
+                            debug: true,
+                            expectedErrors: true,
+                            // Static development keys, so sessions survive server hot-reloads
+                            /* cSpell:disable */
+                            sign: {
+                                kty: 'EC',
+                                crv: 'P-384',
+                                alg: 'ES384',
+                                use: 'sig',
+                                x: 'VlRkjgqRHJSk9WN8CaAqHn34BUMy9pgKQUAAW9MrOqh0yvCmJW7JTr6LUCbm9zfW',
+                                y: '8eYxbAZrv-HZEc4LSgdEHeSp21zO3D8KrynMcVcNAmZKTf3RMkbkh1B26lePHQNz',
+                                d: 'aj6BkYmpwkKRbmcO1LO6d__HX5bvkqcRjqadlX7plXlGfj1d42XiSUWa4c9xrxwt',
+                            },
+                            encrypt: {
+                                kty: 'EC',
+                                crv: 'P-384',
+                                alg: 'ECDH-ES+A256KW',
+                                use: 'enc',
+                                x: '86IBoWsatO3Vky9CRMxmuYcfYoTY1Yr0D1sJGDgLlREMjbL9cIOHcBQnEaW52QJV',
+                                y: 'fsKOmTuXaIRFXXteh7uU0Z8mncX4VsPhqaz9pMKMm8EktQlF7HBS_fYFdkLwqMMN',
+                                d: 'rBY50TZzjONw_oYzWPqaR3DdoFwO-F9sWcmkOltrJHYnfbnTojNImX2xN1DhhC5-',
+                            },
+                            /* cSpell:enable */
+                        },
+                        systemDebug: {enabled: true},
+                    },
+                    integration: {
+                        remote: {canSkipSocket: true},
+                        gateway: {
+                            debug: true,
+                            expectedErrors: true,
+                        },
+                        // Long-lived normally, but in CI the test run IS the
+                        // work, so the process is expected to end after it.
+                        exit: isCI(),
+                    },
+                    // Playwright drives the platform from its own webServer,
+                    // so it has to outlive the test command. Declared here so
+                    // the runner can ask the config instead of pattern-matching
+                    // the intent names.
+                    playwright: {exit: false},
+                    // Schema creation / seeding finishes, then exits.
+                    db: {exit: true},
+                    /**
+                     * A CLI process does its work in-process and exits: it
+                     * serves nothing, watches nothing, and resolves every
+                     * dispatch locally.
+                     */
+                    cli: {
+                        gateway: false,
+                        rpcServer: false,
+                        apiGateway: false,
+                        restFs: false,
+                        systemDebug: false,
+                        mcp: false,
+                        resolution: false,
+                        // `{enabled: false}`, NOT `false`: the load step that
+                        // records handler folders and files still runs (it is
+                        // what feeds `Registry.describe()`); only chokidar is
+                        // skipped.
+                        watch: {enabled: false},
+                        // Dispatch in-process instead of over HTTP.
+                        remote: {canSkipSocket: true},
+                        // A command's stdout carries its result and has to stay
+                        // parseable, so the framework's own logging is quietened
+                        // here rather than by each CLI remembering to do it.
+                        log: {level: 'warn'},
+                        apiSchema: {logLevel: 'warn'},
+                        exit: true,
                     },
                 },
-                configNames,
-                platformApi.configs,
-            ),
+            },
+            configNames,
+            platformApi.configs,
         );
+        loadedConfigs.push(...frameworkConfigs);
         items = topoSort([
             {
                 name: 'log',
@@ -591,6 +632,11 @@ export default async function loadRealm<T extends TSchema>(
                           load: () => import(/* @vite-ignore */ './SystemDebug' + extension),
                       },
                       {
+                          name: 'mcp',
+                          deps: ['log', 'gateway', 'registry', 'remote', 'apiSchema'],
+                          load: () => import(/* @vite-ignore */ './Mcp' + extension),
+                      },
+                      {
                           name: 'registry',
                           deps: [
                               'log',
@@ -660,6 +706,18 @@ export default async function loadRealm<T extends TSchema>(
     // parsed by blong-config into `mergedConfig.manifest.gatewayPort`).
     if (manifest && mergedConfig.manifest && typeof mergedConfig.manifest === 'object') {
         Object.assign(manifest, mergedConfig.manifest);
+    }
+
+    // An intent that switches a feature OFF is not overridable by a template's
+    // convenience defaults. The standalone-realm wrapper below declares
+    // ephemeral `gateway`/`rpcServer` ports in its `default` block; that block is
+    // pushed *after* the framework's intent blocks and would otherwise silently
+    // re-enable a listener the `cli` intent deliberately disabled.
+    for (const config of frameworkConfigs) {
+        if (!config || typeof config !== 'object') continue;
+        for (const [key, value] of Object.entries(config)) {
+            if (value === false) (mergedConfig as Record<string, unknown>)[key] = false;
+        }
     }
 
     // Wire ConfigRuntime into Watch so config-file changes trigger in-process
@@ -963,5 +1021,10 @@ export default async function loadRealm<T extends TSchema>(
     }
     realm ||= new RealmImpl(mergedConfig, api!, rootKind);
     if (!api?.registry) throw new Error('Registry not found in loaded modules');
+    // Resolved from the active intents (see the `exit` keys in the synthetic
+    // config above). The runner uses it to decide whether this process outlives
+    // its work; absent means "keep running". Set here rather than in the
+    // constructor so the value is read after every config source has merged.
+    api.registry.exit = Boolean(mergedConfig.exit);
     return api.registry;
 }

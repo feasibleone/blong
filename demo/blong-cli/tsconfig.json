@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "moduleResolution": "bundler",
+        "esModuleInterop": true,
+        "module": "preserve",
+        "sourceMap": true,
+        "jsx": "react",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "outDir": "dist",
+        "target": "ES2022",
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "strict": true
+    },
+    "ts-node": {
+        "esm": true,
+        "swc": true,
+        "transpileOnly": true,
+        "files": true,
+        "experimentalResolver": true
+    },
+    "exclude": ["node_modules", ".lint", ".docusaurus", "dist"]
+}

@@ -1,0 +1,25 @@
+{
+    "name": "@feasibleone/blong-lint",
+    "version": "0.1.0",
+    "description": "Structured tsc + cspell + eslint diagnostics for Blong tooling and agents",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test"
+    },
+    "dependencies": {
+        "cspell": "^10.0.0",
+        "eslint": "^10.4.0",
+        "typescript": "^6.0.3"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@types/node": "^24",
+        "tap": "^21.6.3"
+    }
+}

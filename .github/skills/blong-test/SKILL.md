@@ -10,6 +10,10 @@ description:
 
 # Implementing Tests
 
+> **Scaffold, don't transcribe.** Generate the group with
+> `kukum test add --subject=<realm> --object=<entity> --kind=server|browser|playwright`
+> (`[KUKUM_API]` in `_shared/conventions.md`) and fill in the steps.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Steps run in parallel by default** — dependencies auto-detected via thenable proxies; await all

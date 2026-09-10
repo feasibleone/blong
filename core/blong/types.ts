@@ -21,6 +21,7 @@ import {
     type TNumber,
     type TNumberOptions,
     type TObject,
+    type TOptional,
     type TSchema,
     type TSchemaOptions,
     type TString,
@@ -189,6 +190,8 @@ export interface IPlatformApi {
         data: string | Buffer,
         options?: {encoding: BufferEncoding},
     ) => void;
+    /** Recursively create a directory (server platform only). */
+    mkdirSync?: (path: string) => void;
     statSync: StatSyncFn;
     watch?: (path: string | string[], options?: ChokidarOptions) => IWatcher;
     timing: {
@@ -314,6 +317,23 @@ export interface IGateway {
     registerPlugin: (plugin: unknown, options?: unknown) => void;
     start: () => Promise<IGateway>;
     stop: () => Promise<IGateway>;
+    /**
+     * The routes currently registered, as data. Optional so existing
+     * implementations stay valid; consumers must tolerate `undefined`.
+     */
+    describe?: () => IGatewayRoute[];
+}
+
+/** A registered gateway route, described as data. */
+export interface IGatewayRoute {
+    /** Wired method name, e.g. `kukum.handler.add`. */
+    method: string;
+    /** Route path, e.g. `/rpc/kukum/handler/add`. */
+    url: string;
+    /** HTTP verb the route answers on. */
+    httpMethod: string;
+    /** Auth requirement for the route. */
+    auth: unknown;
 }
 
 export type Handlers = ((params: {
@@ -346,6 +366,64 @@ export interface IRegistry {
         source: string,
     ) => Promise<void>;
     connected: () => Promise<boolean>;
+    /**
+     * Whether this process is expected to end once its work is done.
+     *
+     * Resolved from the active intents (`cli` and `db` are short-lived,
+     * `playwright` must outlive its test command, `integration` only in CI) so a
+     * runner can ask the registry instead of pattern-matching intent names.
+     * Optional so existing implementations stay valid; `load()` always sets it
+     * (to `false` when no active intent asked for a short life), and a missing
+     * value means "keep running".
+     */
+    exit?: boolean;
+    /**
+     * Structural snapshot of the loaded realm graph — realms, ports, handler
+     * groups and the source files behind them. Optional so existing
+     * implementations stay valid; consumers must tolerate `undefined`.
+     */
+    describe?: () => IRegistryDescription;
+}
+
+/** A handler group (folder) discovered on disk. */
+export interface IHandlerGroupInfo {
+    /** Group id as registered, `<realm>.<folder>`. */
+    group: string;
+    /** Realm/module that owns the group. */
+    realm: string;
+    /** Directory the group was loaded from. */
+    dir: string;
+}
+
+/** A source file participating in the loaded graph. */
+export interface IHandlerFileInfo {
+    /** File path as reported by the platform (relative to the process cwd). */
+    file: string;
+    /** Realm/module that owns the file. */
+    realm: string;
+}
+
+/**
+ * Structural introspection result.
+ *
+ * Deliberately data-only (no functions) so it can be serialised straight to an
+ * API caller. This is the runtime counterpart of scanning the filesystem: it
+ * reflects what is actually LOADED, which is what tooling and agents need in
+ * order to avoid guessing method names.
+ */
+export interface IRegistryDescription {
+    /** Realm/module names that contributed to the registry. */
+    realms: string[];
+    /** Registered port ids (adapters + orchestrators). */
+    ports: string[];
+    /** Registered method groups with their handler counts. */
+    groups: Array<{name: string; handlerCount: number}>;
+    /** Handler groups discovered from disk. */
+    folders: IHandlerGroupInfo[];
+    /** Handler source files discovered from disk. */
+    files: IHandlerFileInfo[];
+    /** `layer.*.ts` activation files discovered from disk. */
+    layerFiles: IHandlerFileInfo[];
 }
 
 type BlongType = typeof Type & {
@@ -468,6 +546,7 @@ export type Adapter<T = Record<string, unknown>, C = Record<string, unknown>> = 
         | 'getConversion'
         | 'dispatch'
         | 'platform'
+        | 'registry'
     >;
 export interface IAdapter<T, C> {
     validation?: TSchema;
@@ -480,6 +559,12 @@ export interface IAdapter<T, C> {
     importedMap?: Map<string, IRemoteHandler>;
     extends?: object | `adapter.${string}` | `orchestrator.${string}`;
     platform?: IPlatformApi;
+    /**
+     * The live registry. Present on adapter/orchestrator instances so handlers can
+     * introspect the loaded graph (`describe()`), for example to resolve a method
+     * back to its source file.
+     */
+    registry?: IRegistry;
     activeConfig?(this: Adapter<T, C>): Partial<Config<T, C>>;
     init?(this: Adapter<T, C>, ...config: unknown[]): Promise<unknown>;
     start?(this: Adapter<T, C>, ...params: unknown[]): Promise<unknown>;
@@ -689,9 +774,12 @@ export type Errors<T> = {
 };
 
 export interface IBaseConfig extends TObject<{
-    watch: TObject<{
-        test?: TArray<TString>;
-    }>;
+    /**
+     * File-watcher configuration. Left unshaped on purpose: the intent tables
+     * set `test`, `enabled` and `logLevel` here, and a nested `TObject` shape
+     * makes every declared key required rather than optional.
+     */
+    watch: TObject;
     remote: TObject<{
         canSkipSocket?: TBoolean;
     }>;
@@ -711,7 +799,14 @@ export interface IBaseConfig extends TObject<{
     rpcServer: TBoolean | TObject;
     restFs: TBoolean | TObject;
     systemDebug: TBoolean | TObject;
+    mcp: TBoolean | TObject;
     apiGateway: TBoolean | TObject;
+    /**
+     * Whether the process is expected to end once its work is done. Declared by
+     * the intent that wants a short life (`cli`, `db`, `integration` in CI);
+     * `playwright` declares `false` because its webServer owns the lifetime.
+     */
+    exit: TOptional<TBoolean>;
 }> {
     additionalProperties: false;
 }
@@ -721,6 +816,15 @@ export interface IActivationConfig<T> {
     deployment?: T;
     microservice?: T;
     dev?: T;
+    /**
+     * Any other intent name.
+     *
+     * Intents are open-ended: a realm, suite or adapter declares a config block
+     * for an intent it defines itself (`migrate`, `seed`, `cli`, …) and the
+     * framework merges whichever blocks are active. Enumerating only the
+     * built-in names made every custom intent a type error.
+     */
+    [intent: string]: T | undefined;
 }
 
 export interface IModuleConfig<T extends TSchema = TNever> {

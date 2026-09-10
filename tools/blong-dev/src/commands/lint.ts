@@ -1,20 +1,31 @@
-import {join} from 'node:path';
+import {lintCollect, type Diagnostic} from '@feasibleone/blong-lint';
 import {fileURLToPath} from 'node:url';
-import {hasEslintConfig, hasTsConfig} from '../utils/discover.ts';
-import {findUp} from '../utils/findConfig.ts';
-import {runTool, type RunOptions} from '../utils/runTool.ts';
 
-// Tools bundled with blong-dev (e.g. cspell) live in blong-dev's own node_modules.
-// lint.ts is at src/commands/lint.ts → ../../node_modules/.bin is the package root's bin dir.
+// Tools bundled with blong-dev (cspell, eslint, tsc) live in blong-dev's own
+// node_modules. lint.ts is at src/commands/lint.ts → ../../node_modules/.bin is
+// the package root's bin dir.
 const blongDevBin = fileURLToPath(new URL('../../node_modules/.bin', import.meta.url));
 
 const TS_EXT = /\.[cm]?tsx?$/i;
-const SPELL_EXT = /\.([cm]?tsx?|md)$/i;
-const LINT_EXT = /\.[cm]?[jt]sx?$/i;
-const PATH_SEP = process.platform === 'win32' ? ';' : ':';
+
+function formatDiagnostic(diagnostic: Diagnostic): string {
+    const location =
+        diagnostic.file == null
+            ? ''
+            : `${diagnostic.file}${diagnostic.line == null ? '' : `:${diagnostic.line}`}${
+                  diagnostic.column == null ? '' : `:${diagnostic.column}`
+              }  `;
+    const rule = diagnostic.rule ? ` [${diagnostic.rule}]` : '';
+    const mark = diagnostic.severity === 'warning' ? '⚠' : '✖';
+    return `  ${mark} ${location}${diagnostic.tool}${rule}: ${diagnostic.message}`;
+}
 
 /**
  * Run lint tools in the current working directory.
+ *
+ * Thin CLI wrapper over `@feasibleone/blong-lint`'s `lintCollect`: this owns the
+ * terminal presentation and the exit code; the package owns tool discovery and
+ * output parsing (shared with the `blong-kukum` API surface).
  *
  * @param fileArgs - Optional list of files to lint (paths relative to CWD).
  *   When supplied (staged-file mode), tsc still runs on the full package but
@@ -25,59 +36,31 @@ export async function lint(fileArgs: string[]): Promise<void> {
     const cwd = process.cwd();
     const staged = fileArgs.length > 0;
     const tsFiles = staged ? fileArgs.filter(f => TS_EXT.test(f)) : [];
-    const spellFiles = staged ? fileArgs.filter(f => SPELL_EXT.test(f)) : [];
-    const lintFiles = staged ? fileArgs.filter(f => LINT_EXT.test(f)) : [];
 
-    // Augment PATH: target blong-dev's own .bin first, then package's .bin
-    // (provides cspell and other bundled tools), then the inherited PATH.
-    const localBin = join(cwd, 'node_modules', '.bin');
-    const env: NodeJS.ProcessEnv = {
-        ...process.env,
-        PATH: [blongDevBin, localBin, process.env['PATH'] ?? ''].join(PATH_SEP),
-    };
-    const run = (cmd: string, args: string[]) =>
-        runTool(cmd, args, {cwd, env} satisfies RunOptions);
+    const {diagnostics, exitCode, ran} = await lintCollect(cwd, {
+        files: staged ? fileArgs : undefined,
+        scope: staged ? 'changed' : 'package',
+        binPaths: [blongDevBin],
+    });
 
-    const ok = (tool: string, scope: string) => console.log(`  ✓ ${tool}: ${scope}`);
+    for (const diagnostic of diagnostics) console.log(formatDiagnostic(diagnostic));
 
-    let exitCode = 0;
-
-    // ── tsc ──────────────────────────────────────────────────────────────────
-    // Always runs on the full package — passing individual files to tsc breaks
-    // tsconfig inheritance and cross-file type resolution.
-    // Skipped in staged mode if none of the staged files are TypeScript.
-    if (hasTsConfig(cwd) && (!staged || tsFiles.length > 0)) {
-        const code = await run('tsc', ['--noEmit']);
-        if (code !== 0) exitCode = code;
-        else ok('tsc', staged ? `${tsFiles.length} file(s)` : 'full package');
-    }
-
-    // ── cspell ───────────────────────────────────────────────────────────────
-    // Always applicable — uses the repo-level cspell.config.yaml found by
-    // walking up from CWD.  In staged mode, only the staged TS/MD files are
-    // checked.  In full-package mode, all .ts/.tsx/.md files are checked.
-    {
-        const cspellConfig = findUp(cwd, 'cspell.config.yaml');
-        const args = ['--no-progress', '--no-summary', '--no-must-find-files'];
-        if (cspellConfig) args.push('--config', cspellConfig);
-        const spellTargets =
-            spellFiles.length > 0 ? spellFiles : ['**/*.ts', '**/*.tsx', '**/*.md'];
-        args.push(...spellTargets);
-
-        const code = await run('cspell', args);
-        if (code !== 0) exitCode = code;
-        else ok('cspell', staged ? `${spellFiles.length} file(s)` : '**/*.ts, **/*.tsx, **/*.md');
-    }
-
-    // ── eslint ───────────────────────────────────────────────────────────────
-    // Applied only when an ESLint config file is present in the package root.
-    if (hasEslintConfig(cwd)) {
-        const targets = staged ? lintFiles : ['.'];
-        if (targets.length > 0) {
-            const code = await run('eslint', ['--max-warnings', '0', ...targets]);
-            if (code !== 0) exitCode = code;
-            else ok('eslint', staged ? `${lintFiles.length} file(s)` : 'full package');
+    if (diagnostics.length === 0) {
+        for (const tool of ran) {
+            const scope =
+                tool === 'tsc'
+                    ? staged
+                        ? `${tsFiles.length} file(s)`
+                        : 'full package'
+                    : staged
+                      ? `${fileArgs.length} file(s)`
+                      : 'full package';
+            console.log(`  ✓ ${tool}: ${scope}`);
         }
+    } else {
+        const errors = diagnostics.filter(d => d.severity === 'error').length;
+        const warnings = diagnostics.length - errors;
+        console.log(`  ${errors} error(s), ${warnings} warning(s)`);
     }
 
     if (exitCode !== 0) process.exit(exitCode);

@@ -94,6 +94,20 @@ user/
 
 Canonical skeleton: `.github/skills/_shared/conventions.md` → `[ARCHETYPE: HANDLER]`. Minimal form:
 
+**Do not type this out from memory — generate it, then edit.** The API emits the correct idiom for
+the current framework, stamps the `import unchanged` marker, embeds any instructions, and lints the
+result ([KUKUM_API] in `_shared/conventions.md`):
+
+```bash
+kukum handler add --subject=shop --object=order --predicate=add --kind=api   # scaffold
+kukum handler get --kind=api                                                # current template
+kukum handler add --subject=shop --object=order --predicate=add --kind=library
+kukum handler add --subject=shop --object=order --predicate=add --kind=db
+kukum handler edit --path=orchestrator/shop/shopOrderAdd.ts --instructions="handle idempotency"
+```
+
+The result, for reference, is exactly the shape below.
+
 ```typescript
 import {IMeta, handler} from '@feasibleone/blong';
 

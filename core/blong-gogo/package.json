@@ -10,7 +10,8 @@
             "browser": "./src/loadBrowser.ts",
             "import": "./src/loadServer.ts"
         },
-        "./ConfigRuntime.js": "./src/ConfigRuntime.ts"
+        "./ConfigRuntime.js": "./src/ConfigRuntime.ts",
+        "./cli.ts": "./src/cli.ts"
     },
     "bin": {
         "blong": "./bin/blong.ts",
@@ -28,6 +29,7 @@
     },
     "dependencies": {
         "@apidevtools/swagger-parser": "^12.1.0",
+        "@modelcontextprotocol/sdk": "^1.0.0",
         "@aws-sdk/client-s3": "^3.1037.0",
         "@fastify/basic-auth": "^6.2.0",
         "@fastify/bearer-auth": "^10.1.2",

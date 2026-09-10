@@ -1,7 +1,7 @@
 import type {IPlatformApi} from '@feasibleone/blong';
 import {watch} from 'chokidar';
 import type {Dirent} from 'fs';
-import {existsSync, readFileSync, statSync, writeFileSync} from 'fs';
+import {existsSync, mkdirSync, readFileSync, statSync, writeFileSync} from 'fs';
 import {readdir} from 'fs/promises';
 import minimist from 'minimist';
 import {createRequire} from 'node:module';
@@ -67,6 +67,7 @@ export default load.bind(null, {
     relative,
     readFileSync,
     writeFileSync,
+    mkdirSync,
     statSync,
     watch,
     timing: timing(hrtime),

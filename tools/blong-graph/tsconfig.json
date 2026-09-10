@@ -2,6 +2,8 @@
     "extends": "../../core/blong/tsconfig.json",
     "compilerOptions": {
         "rootDir": ".",
-        "outDir": "dist"
+        "outDir": "dist",
+        "allowImportingTsExtensions": true,
+        "noEmit": true
     }
 }

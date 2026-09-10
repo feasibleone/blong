@@ -22,6 +22,9 @@ export async function test(args: string[]): Promise<void> {
     // Fresh coverage output each run so tap V8 JSONs never accumulate.
     rmSync(join(cwd, '.tap', 'coverage'), {recursive: true, force: true});
 
+    // The globs are explicit rather than left to tap's own discovery: tap's
+    // default `include` also matches non-test files that merely live under a
+    // `test/` folder (Playwright specs, layer files), which are not tap tests.
     const exitCode = await run('tap', [
         '*.test.ts',
         '**/*.test.ts',

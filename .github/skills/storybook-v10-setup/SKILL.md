@@ -5,6 +5,10 @@ description: Initial Storybook v10 setup and configuration for React/TypeScript 
 
 # Storybook v10 Component Testing
 
+> **Scaffold, don't transcribe.** `.storybook/main.ts`, `.storybook/preview.tsx` and story files
+> come from `kukum storybook add --subject=<realm> --object=<Component> --kind=main|preview|story`
+> (`[KUKUM_API]` in `_shared/conventions.md`).
+
 ## Overview
 
 Configure Storybook v10 for React/TypeScript component libraries with automatic screenshot and

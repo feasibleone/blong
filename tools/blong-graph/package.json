@@ -24,6 +24,7 @@
         "_ci-ui": "playwright test",
         "build": "true",
         "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test",
         "test": "playwright test",
         "test:server": "npx http-server tests/fixtures -p 3000 -c-1"
     },
@@ -42,6 +43,7 @@
         "http-server": "^14.1.1",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
+        "tap": "^21.6.3",
         "typescript": "^6.0.3"
     },
     "peerDependencies": {

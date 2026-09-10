@@ -10,6 +10,10 @@ description:
 
 # Implementing an Adapter
 
+> **Scaffold, don't transcribe.** Generate the declaration with
+> `kukum adapter add --subject=<realm> --object=<name> --kind=http|tcp|knex|webhook|…`
+> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Adapters never call other adapters directly** — coordinate via orchestrators.

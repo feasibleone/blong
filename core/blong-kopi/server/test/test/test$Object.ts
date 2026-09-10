@@ -35,13 +35,14 @@ export default handler(
                 // 2. Create a `$object` with its `line` detail rows (sibling
                 // arrays) — assert both persist.
                 async function add$Object(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    const $objectName = `ENT-TEST-${Date.now()}`;
                     const result = await $subject$ObjectAdd<{
-                        $object: {$objectId: number; $objectStatus: string};
+                        $object: {$objectId: number; $objectStatus: string; $objectName: string};
                         line: Array<{lineId: number; lineName: string}>;
                     }>(
                         {
                             $object: {
-                                $objectName: `ENT-TEST-${Date.now()}`,
+                                $objectName,
                                 $objectStatus: 'draft',
                             },
                             line: [
@@ -54,7 +55,7 @@ export default handler(
                     assert.ok(result.$object.$objectId, '$object add succeeds');
                     assert.equal(result.$object.$objectStatus, 'draft', '$object status is draft');
                     assert.equal(result.line?.length, 2, 'two detail rows created');
-                    return result.$object;
+                    return {...result.$object, $objectName};
                 },
 
                 // 3. Find `$objects` — the added one must be in the result set.
@@ -65,13 +66,23 @@ export default handler(
                         add$Object: created,
                     }: {
                         $meta: IMeta;
-                        add$Object: Awaited<{$objectId: number}>;
+                        add$Object: Awaited<{$objectId: number; $objectName: string}>;
                     },
                 ) {
                     const $object = await created;
+                    // Filter by the row this run created instead of paging the
+                    // whole table: the table keeps growing between runs, so page
+                    // 1 of an unfiltered find stops containing the new row once
+                    // there are more rows than pageSize.
                     const result = await $subject$ObjectFind<
                         Array<{$objectId: number; $objectName: string}>
-                    >({paging: {pageNumber: 1, pageSize: 100}}, $meta);
+                    >(
+                        {
+                            paging: {pageNumber: 1, pageSize: 10},
+                            filterBy: {$objectName: $object.$objectName},
+                        },
+                        $meta,
+                    );
                     assert.ok(
                         result.some(item => item.$objectId === $object.$objectId),
                         '$object find returns the added $object',

@@ -13,6 +13,12 @@ description:
 
 # Declarative Schema Management (blong-schema)
 
+> **Scaffold, don't transcribe.** Generate schema files with the primitive API
+> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result:
+> `kukum schema add --subject=<realm> --object=<entity> --kind=table|register|procedure`,
+> `kukum seed add --subject=<realm> --object=<entity> --kind=prod|test`.
+> The skeletons below are what it emits — use them to read and edit, not to type out.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Use convenience types, never raw TypeBox** (`type.increment()`, `type.stringNotNull()`, …) —

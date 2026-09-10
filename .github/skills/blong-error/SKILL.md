@@ -5,6 +5,10 @@ description: Define and throw typed errors in Blong framework. Errors are define
 
 # Implementing Error Management
 
+> **Scaffold, don't transcribe.** Generate the error layer with
+> `kukum error add --subject=<realm> --object=<entity> --kind=layer|inline|librarySet`
+> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Define errors in the error layer** (`error/error.ts`) — one place, used everywhere.

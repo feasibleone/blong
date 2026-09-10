@@ -4,7 +4,9 @@
     "description": "Blong utility functions",
     "type": "module",
     "exports": {
-        ".": "./index.ts"
+        ".": "./index.ts",
+        "./layers": "./layers.ts",
+        "./template": "./template.ts"
     },
     "scripts": {
         "build": "true",
@@ -12,6 +14,7 @@
         "ci-test": "blong-dev test"
     },
     "dependencies": {
+        "tinyglobby": "^0.2.16",
         "typebox": "^1.1.5",
         "ulidx": "^2.4.1",
         "ut-function.merge": "^1.5.6",

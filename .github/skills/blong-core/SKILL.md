@@ -5,6 +5,12 @@ description: Covers the three foundational Blong realms — blong-core (generic 
 
 # blong-core — Resource graph, Party & Access realms
 
+> **Scaffold, don't transcribe.** The resource-entity recipe below (uuid PK + FK to
+> `core.resource.resourceId`, table registration, `resourceType`/`name` seed) is emitted by
+> `kukum schema add --subject=<realm> --object=<entity> --kind=table|register` plus
+> `kukum seed add --kind=prod` (`[KUKUM_API]` in `_shared/conventions.md`). Keep the conceptual
+> sections here; use the API for the file shapes.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Don't invent handlers like `resourceResourceAdd`** — CRUD is auto-provided; define schema + seeds only.

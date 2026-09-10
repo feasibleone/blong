@@ -135,7 +135,10 @@ export async function runPlatform(
     await platform.start!({});
     const shutdown = gracefulShutdown(() => platform.stop!());
     await platform.test!(undefined);
-    if (process.env.CI && !intents.includes('playwright')) {
+    // Whether the process outlives its work is a config decision, declared per
+    // intent (`cli`/`db` exit, `playwright` does not, `integration` only in CI) —
+    // see the synthetic intent config in `load.ts`. No intent-name matching here.
+    if (platform.exit) {
         shutdown();
         await platform.stop!();
     }
@@ -207,7 +210,9 @@ export async function autoRun(options: {
             for (const platform of platforms) await platform.stop();
         });
         await platforms[1].test!(undefined);
-        if (process.env.CI && !intents.includes('playwright')) {
+        // Both platforms are loaded with the same intents, so either one carries
+        // the same resolved flag.
+        if (platforms[0].exit) {
             shutdown();
             for (const platform of platforms) await platform.stop();
         }

@@ -10,6 +10,10 @@ description:
 
 # Implementing a Layer
 
+> **Scaffold, don't transcribe.** Well-known folders need no file at all; for anything else use
+> `kukum layer add --subject=<realm> --object=<folder> --kind=server|browser|custom`
+> (`[KUKUM_API]` in `_shared/conventions.md`).
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Layers are self-contained.** Config + validation + `activation` live in the layer file — NOT the

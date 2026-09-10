@@ -5,6 +5,7 @@ import type {
     IErrorFactory,
     IErrorMap,
     IGateway,
+    IGatewayRoute,
     ILocal,
     ILog,
     IManifest,
@@ -194,6 +195,25 @@ export default class Gateway extends Internal implements IGateway {
     #rpcClient: IRpcClient;
     #routes: RouteOptions[] = [];
     #local: ILocal;
+
+    /**
+     * The registered routes as plain data.
+     *
+     * Derived from the same list that is handed to fastify, so callers (for
+     * example the MCP server) see exactly the surface that is served — including
+     * the per-route auth requirement, which is not inferable from the method name.
+     */
+    public describe(): IGatewayRoute[] {
+        return this.#routes.map(route => {
+            const config = route.config as {methodName?: string; auth?: unknown} | undefined;
+            return {
+                method: config?.methodName ?? '',
+                url: route.url,
+                httpMethod: String(route.method ?? 'POST'),
+                auth: config?.auth ?? 'jwt',
+            };
+        });
+    }
     #errorFields: [string, unknown][] = [];
     #plugins: {plugin: unknown; options: unknown}[] = [];
     #platform: IPlatformApi;

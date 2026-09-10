@@ -4,6 +4,8 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 
 ## List of incomplete tasks
 
+- sort metrics.json
+- lib unit tests - allow easy testing of library() functions
 - skills as tools
 - flow diagram for method calls
 - component diagram for a suite

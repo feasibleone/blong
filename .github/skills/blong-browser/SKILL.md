@@ -5,6 +5,11 @@ description: Implement, extend, or debug the blong-browser React/TypeScript comp
 
 # blong-browser Skill
 
+> **Scaffold, don't transcribe.** Page/actions/portal files come from
+> `kukum component add --subject=<realm> --object=<page> --kind=component|actions|portal`
+> (`[KUKUM_API]` in `_shared/conventions.md`) — note the realm must also have a browser namespace
+> file (`browser/orchestrator/subject/init.ts`), which `kukum realm add` already emits.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Never use a single `saveAction` pointing to `.add` for a create form** — it calls `.add` on every

@@ -10,6 +10,10 @@ description:
 
 # blong-model Skill
 
+> **Scaffold, don't transcribe.** Generate the spec with
+> `kukum model add --subject=<realm> --object=<entity> --kind=model|fixture`
+> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **`type.uuid()` PKs** (not `uidNotNull()`/`increment()`) → auto-bound dropdowns + `core_resource`

@@ -1,0 +1,30 @@
+{
+    "name": "@feasibleone/blong-cli",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Demo: a minimal realm driven by the `cli` intent",
+    "type": "module",
+    "exports": {
+        "./cli.ts": "./cli.ts",
+        "./package.json": "./package.json"
+    },
+    "bin": {
+        "blong-cli": "./bin/blong-cli.ts"
+    },
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test",
+        "cli": "node ./bin/blong-cli.ts"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-gogo": "workspace:^1.0.0"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

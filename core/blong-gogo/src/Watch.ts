@@ -36,6 +36,18 @@ export interface IWatch {
     setConfigRuntime?(configRuntime: IConfigRuntime): void;
     /** Attach the registry objectSchema so hot-reload paths can pass it to layerProxy */
     setObjectSchema?(schema: IObjectSchema): void;
+    /**
+     * Structural snapshot of the handler folders/files discovered on disk.
+     * Data-only so it can be returned straight from an API endpoint.
+     */
+    describe(): IWatchDescription;
+}
+
+/** Handler folders/files discovered from disk, keyed by their owning realm. */
+export interface IWatchDescription {
+    folders: Array<{group: string; realm: string; dir: string}>;
+    files: Array<{file: string; realm: string}>;
+    layerFiles: Array<{file: string; realm: string}>;
 }
 
 interface ITestContext {
@@ -97,6 +109,13 @@ export default class Watch extends Internal implements IWatch {
         new Map();
     #handlerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> = new Map();
     #layerFiles: Map<string, {name: string; pkg: IModuleConfig['pkg']; base: string}> = new Map();
+    /**
+     * Every code file discovered inside a handler folder, mapped to its realm.
+     * Kept separate from `#handlerFiles` (which drives hot-reload decisions and
+     * is deliberately populated only for single-file loads) so introspection can
+     * report the full file set without changing reload behaviour.
+     */
+    #discoveredFiles: Map<string, string> = new Map();
     #watchers: IWatcher[] = [];
     #port: () => unknown;
     #error: IErrorFactory;
@@ -136,6 +155,37 @@ export default class Watch extends Internal implements IWatch {
     /** Attach the registry objectSchema so hot-reload paths can pass it to layerProxy */
     public setObjectSchema(schema: IObjectSchema): void {
         this.#objectSchema = schema;
+    }
+
+    /**
+     * Structural snapshot of what is loaded from disk.
+     *
+     * Group ids follow the same convention the loader registers with
+     * (`<realm>.<folder>`, see `_loadHandlers`). Paths are made relative to the
+     * process cwd so the result is stable across machines.
+     */
+    public describe(): IWatchDescription {
+        const relative = (file: string): string => this.#platform.relative('.', file);
+        const folderEntries = Array.from(this.#handlerFolders.entries()).map(([dir, config]) => ({
+            group: `${config.name}.${this.#platform.basename(dir)}`,
+            realm: config.name,
+            dir: relative(dir),
+        }));
+        const toFiles = (
+            map: Map<string, {name: string}>,
+        ): Array<{file: string; realm: string}> =>
+            Array.from(map.entries()).map(([file, config]) => ({
+                file: relative(file),
+                realm: config.name,
+            }));
+        return {
+            folders: folderEntries,
+            files: Array.from(this.#discoveredFiles.entries()).map(([file, realm]) => ({
+                file: relative(file),
+                realm,
+            })),
+            layerFiles: toFiles(this.#layerFiles),
+        };
     }
 
     /** Attach a ConfigRuntime so config-file changes trigger in-process reloads */
@@ -327,6 +377,7 @@ export default class Watch extends Internal implements IWatch {
                 filename,
                 this.#platform.extname(filename),
             );
+            this.#discoveredFiles.set(filename, config.name);
             const name = expectedName;
             (kind(item) === 'validation'
                 ? validations

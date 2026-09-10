@@ -10,6 +10,10 @@ description:
 
 # Implementing REST APIs
 
+> **Scaffold, don't transcribe.** Generate the namespace and stub handlers with
+> `kukum gateway add --subject=<realm> --object=<name> --kind=openapi`
+> (`[KUKUM_API]` in `_shared/conventions.md`), then fill in the operations.
+
 ## Overview
 
 The Blong framework uses **JSON-RPC by default** for API endpoints based on validations and

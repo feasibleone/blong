@@ -11,6 +11,7 @@
         "ci-lint": "tsc --noEmit"
     },
     "dependencies": {
+        "@feasibleone/blong-lint": "workspace:*",
         "@feasibleone/blong-mle": "workspace:^1.0.0",
         "@playwright/test": "^1.60.0",
         "allure": "^3.17.0",

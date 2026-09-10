@@ -1,0 +1,49 @@
+{
+    "name": "@feasibleone/blong-kukum",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Blong primitive scaffolding, introspection and modification API",
+    "type": "module",
+    "exports": {
+        "./server.ts": "./server.ts",
+        "./cli.ts": "./cli.ts",
+        "./engine.ts": "./engine.ts",
+        "./operation.ts": "./operation.ts",
+        "./primitives/index.ts": "./primitives/index.ts",
+        "./package.json": "./package.json"
+    },
+    "bin": {
+        "kukum": "./bin/kukum.ts"
+    },
+    "scripts": {
+        "blong": "blong",
+        "blong-watch": "blong-watch",
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test",
+        "kukum:fixture": "node ./bin/fixture.ts",
+        "kukum:fixture:update": "node ./bin/fixture.ts --baselines",
+        "test": "blong-dev test",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@feasibleone/blong": "workspace:^1.0.0",
+        "@feasibleone/blong-lib": "workspace:^1.0.0",
+        "@feasibleone/blong-lint": "workspace:*",
+        "@feasibleone/blong-server": "workspace:^1.0.0",
+        "minimist": "^1.2.8"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-access": "workspace:^1.0.0",
+        "@feasibleone/blong-browser": "workspace:^1.0.0",
+        "@feasibleone/blong-core": "workspace:^1.0.0",
+        "@feasibleone/blong-dev": "workspace:*",
+        "@feasibleone/blong-gogo": "workspace:^1.0.0",
+        "@feasibleone/blong-login": "workspace:^1.0.0",
+        "@feasibleone/blong-test": "workspace:^1.0.0",
+        "@playwright/test": "^1.60.0",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

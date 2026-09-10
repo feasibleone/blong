@@ -28,6 +28,18 @@ The framework also auto-scaffolds when a suite declares a realm child whose fold
 `kopi.realm` is enabled in config — see `core/blong-kopi/README.md` for the exact trigger conditions
 and the rename steps.
 
+**From an agent or tool, prefer the API** ([KUKUM_API] in `_shared/conventions.md`) — it emits the
+same tree, embeds any instructions you pass, and reports diagnostics:
+
+```bash
+kukum realm add --subject=shop --target=./realm/shop --object=order
+kukum realm get --subject=shop            # list the files it would produce
+```
+
+The realm name must be a **single lowercase word** (`shop`): the template substitutes `$subject`
+into identifiers and derives seed method names from `<subject><Object>Merge`. `blong realm` has the
+same constraint, but fails later and less clearly.
+
 ### Then adjust (what to change per context)
 
 1. **Rename the entity** — the default is `entry` (plus a `line` detail table). Rename `entry` →
@@ -75,33 +87,23 @@ Canonical framework rules + layer table: `.github/skills/_shared/conventions.md`
 
 ## File Structure (canonical — what blong-kopi scaffolds)
 
-```text
-realmname/
-├── server.ts                # Minimal realm entry: realm(() => ({url: import.meta.url}))
-├── browser.ts               # Realm browser entry (auto-discovers meta/ + browser/orchestrator)
-├── package.json             # Name/version set by you; devDeps for the standalone test setup
-├── index.ts                 # Standalone server bootstrap: srv + login + core + access + realm
-├── index.browser.ts         # Standalone browser bootstrap: ui + realm
-├── index.html.ts / index.test.ts / browser-test.ts
-├── vite.config.ts / playwright.config.ts
-├── orchestrator/
-│   └── subject/
-│       └── init.ts          # namespace only — REUSE blong-server (folder `subject` literal)
-├── adapter/
-│   └── db/                  # custom DB handlers (queryBuilder); auto-attached to srv.db
-├── meta/                    # schema, db config, seeds, models
-│   ├── type/schema.ts
-│   ├── db/db.ts             # table registration + dbTest
-│   ├── db/*.yaml            # prod seeds
-│   ├── dbTest/*.yaml        # test seeds (including RBAC)
-│   └── model/*Model.ts      # public model specs
-├── gateway/
-│   └── <subject>/           # explicit validation for non-standard ops (public-model override)
-├── error/error.ts
-├── server/test/test/        # server tap tests (test.<object> group)
-├── browser/test/test/       # browser tap tests (HTTP-level access control)
-└── test/                    # Playwright *.play.ts (browser layer)
-```
+Do not reproduce this tree by hand, and do not treat it as a checklist to type out: it is exactly
+what `blong realm <name>` / `kukum realm add` writes. Ask the API for the current truth instead —
+`kukum realm get` lists every file it would produce, and `kukum tree find --target=<realm>` lists
+what actually exists.
+
+The shape, for orientation only:
+
+- **Entry points** — `server.ts`, `browser.ts` (minimal `realm(() => ({url: import.meta.url}))`),
+  plus the standalone bootstrap set `index.ts`, `index.browser.ts`, `index.html.ts`,
+  `index.test.ts`, `browser-test.ts`, `vite.config.ts`, `playwright.config.ts`, `package.json`.
+- **Namespace** — `orchestrator/subject/init.ts` and `browser/orchestrator/subject/init.ts`
+  (namespace only; REUSE blong-server, folder name `subject` stays literal).
+- **Persistence** — `adapter/db/` for custom handlers; `meta/` for `type/schema.ts`, `db/db.ts`,
+  `db/*.yaml` (prod seeds), `dbTest/*.yaml` (test seeds), `model/*Model.ts`.
+- **API surface** — `gateway/<subject>/` for explicit validations of non-standard operations.
+- **Errors and tests** — `error/error.ts`; `server/test/test/` (tap), `browser/test/test/` (tap),
+  `test/` (Playwright `*.play.ts`, a browser layer).
 
 Reference realms: `realm/blong-access`, `realm/blong-party`, `realm/blong-gateway` (canonical
 blong-server reuse); `suite/blong-suite` shows wiring multiple realms into one suite.

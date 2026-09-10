@@ -2,13 +2,15 @@
 
 A [realm](../concepts/realm.md) is a business domain boundary. Realms are scaffolded with the
 `blong realm <name>` CLI (from the `blong-kopi` template) — do not hand-build the folder structure.
+The same scaffold is available through the API as `kukum.realm.add` — see the
+[kukum pattern](./kukum.md).
 
 ## The modern minimal `server.ts`
 
 Well-known layer folders (`error/`, `sim/`, `adapter/`, `orchestrator/`, `gateway/`, `meta/`,
 `server/api`, `server/init`, `server/test`) are **auto-discovered** — a realm's `server.ts` does
-**not** need a `children: [...]` list to activate them, and there is no per-layer activation
-config in `server.ts` (layers co-locate their own `activation`).
+**not** need a `children: [...]` list to activate them, and there is no per-layer activation config
+in `server.ts` (layers co-locate their own `activation`).
 
 `server.ts` is **optional** and is only included when realm-level shared config/validation is
 needed:

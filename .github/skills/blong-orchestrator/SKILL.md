@@ -10,6 +10,10 @@ description:
 
 # Implementing an Orchestrator
 
+> **Scaffold, don't transcribe.** Generate it with
+> `kukum orchestrator add --subject=<realm> --object=<name> --kind=dispatch|init|schedule`
+> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result.
+
 ## [CRITICAL_GUARDRAILS]
 
 - **Business logic only, decoupled from protocols** — adapters handle integrations.

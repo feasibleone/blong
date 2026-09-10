@@ -65,6 +65,11 @@ Hard rules — apply first, never contradict.
 - **Never commit to `dev/`** (gitignored) — committed code lives in the category folders (`core/`,
   `realm/`, `suite/`, `demo/`, `test/`, `tools/`).
 - **Always invoke the matching `skill`** before implementing (see `[SKILLS_DELEGATOR]`).
+- **Generate primitives with the API, don't transcribe recipes.** `blong-kukum`
+  (`core/blong-kukum/`) scaffolds and introspects realms, suites, layers, handlers, orchestrators,
+  adapters, errors, schemas, seeds, models, tests, gateway/component/storybook files — via JSON-RPC
+  (`/rpc/kukum/{primitive}/{predicate}`), MCP tools, or the `kukum` CLI. See
+  `.github/skills/_shared/conventions.md` → `[KUKUM_API]`.
 - **Verify after every change** — `get_errors`, tests, lint; never claim "complete" unverified.
 
 ## [CORE_PARADIGMS]
@@ -320,15 +325,17 @@ the full reference.
 
 **Standard intents:**
 
-| Intent         | Purpose                                                                 | Process lifetime                         |
-| -------------- | ----------------------------------------------------------------------- | ---------------------------------------- |
-| `default`      | Base configuration (always active)                                      | —                                        |
-| `dev`          | Development — verbose logs, hot-reload                                  | Long-running, restarts on file changes   |
-| `prod`         | Production/UAT environments                                             | Long-running                             |
-| `integration`  | Integration testing — enables watch/test mode                           | Long-running, reruns tests on change     |
-| `microservice` | Activates the layers needed to run a realm as a standalone microservice | Long-running                             |
-| `db`           | Database creation / seeding                                             | **Short-lived** — exits after completion |
-| `debug`        | Enable `/api/sys/*` introspection, stack traces                         | No effect on lifetime                    |
+| Intent         | Purpose                                                                                                                   | Process lifetime                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `default`      | Base configuration (always active)                                                                                        | —                                                            |
+| `dev`          | Development — verbose logs, hot-reload                                                                                    | Long-running, restarts on file changes                       |
+| `prod`         | Production/UAT environments                                                                                               | Long-running                                                 |
+| `integration`  | Integration testing — enables watch/test mode                                                                             | Long-running, reruns tests on change; exits when `CI` is set |
+| `microservice` | Activates the layers needed to run a realm as a standalone microservice                                                   | Long-running                                                 |
+| `db`           | Database creation / seeding                                                                                               | **Short-lived** — exits after completion                     |
+| `cli`          | Serves nothing (no gateway/RPC server/API gateway/rest-fs/debug/MCP), watches nothing, resolves every dispatch in-process | **Short-lived** — exits after its work                       |
+| `playwright`   | Marker: the Playwright runner owns the process lifetime                                                                   | Long-running until the runner stops it                       |
+| `debug`        | Enable `/api/sys/*` introspection, stack traces                                                                           | No effect on lifetime                                        |
 
 **Platform intents (implicit — added by the framework, never passed on CLI):**
 

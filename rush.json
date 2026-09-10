@@ -679,6 +679,24 @@
             "projectFolder": "suite/blong-suite",
             "reviewCategory": "core",
             "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-lint",
+            "projectFolder": "core/blong-lint",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-kukum",
+            "projectFolder": "core/blong-kukum",
+            "reviewCategory": "core",
+            "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-cli",
+            "projectFolder": "demo/blong-cli",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

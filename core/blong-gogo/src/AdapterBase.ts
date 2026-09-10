@@ -87,6 +87,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
     log: unknown = null;
     importedMap?: Map<string, Record<string, (...args: unknown[]) => unknown>>;
     platform: IApi['platform'];
+    registry: IApi['registry'];
 
     // These are prefixed with _ rather than using # private class fields.
     // The adapter uses Object.setPrototypeOf(current, base) to set the base as
@@ -125,6 +126,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
             | 'attachCheckpoint'
             | 'render'
             | 'platform'
+            | 'registry'
             | 'attach'
         >,
         configBase: string,
@@ -137,6 +139,7 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         this._methodId = api.methodId;
         this._getPath = api.getPath;
         this.platform = api.platform;
+        this.registry = api.registry;
         this._api = api;
         this._createLog = api.createLog;
         this._attachCheckpoint = api.attachCheckpoint;

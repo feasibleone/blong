@@ -1,6 +1,12 @@
 ---
 name: blong-intent
-description: Implement, configure, or extend Blong CLI intents. Intents are named CLI signals (positional arguments to the `blong` command) that activate configuration blocks, layers, and framework features. Use this skill when creating a new intent for the `blong` CLI, configuring intent-based activation in a realm or adapter, documenting intent behaviour for agents, or understanding how the existing well-known intents work. Also use this skill when a user asks about "activations" — that is the older term for intents.
+description:
+    Implement, configure, or extend Blong CLI intents. Intents are named CLI signals (positional
+    arguments to the `blong` command) that activate configuration blocks, layers, and framework
+    features. Use this skill when creating a new intent for the `blong` CLI, configuring
+    intent-based activation in a realm or adapter, documenting intent behaviour for agents, or
+    understanding how the existing well-known intents work. Also use this skill when a user asks
+    about "activations" — that is the older term for intents.
 ---
 
 # Blong Intents
@@ -39,21 +45,23 @@ Intents flow through the entire framework:
 
 ## Well-Known Intents Reference
 
-| Intent | Layer / config activated | Process lifetime |
-|--------|--------------------------|-----------------|
-| `dev` | Verbose logs, hot-reload, debug-friendly config, **loads `.dev`-suffixed handler groups** (e.g. `gateway/vision.dev/`) | Long-running; restarts on file changes |
-| `prod` | Production endpoints, strict config | Long-running; no restart |
-| `integration` | Test layer, watch mode, test-runner | Long-running; reruns tests on change; exits on CI |
-| `microservice` | Activates layers needed to run a realm as a standalone microservice | Long-running; no restart |
-| `db` | DB creation / seeding adapters | **Short-lived** — exits after completion |
-| `debug` | `/api/sys/*` endpoints, stack traces in errors | No effect on lifetime |
-| `server` *(implicit)* | Always injected on server platform | — |
-| `browser` *(implicit)* | Always injected on browser platform | — |
+| Intent                 | Layer / config activated                                                                                                                         | Process lifetime                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `dev`                  | Verbose logs, hot-reload, debug-friendly config, **loads `.dev`-suffixed handler groups** (e.g. `gateway/vision.dev/`)                           | Long-running; restarts on file changes                       |
+| `prod`                 | Production endpoints, strict config                                                                                                              | Long-running; no restart                                     |
+| `integration`          | Test layer, watch mode, test-runner                                                                                                              | Long-running; reruns tests on change; exits when `CI` is set |
+| `microservice`         | Activates layers needed to run a realm as a standalone microservice                                                                              | Long-running; no restart                                     |
+| `db`                   | DB creation / seeding adapters                                                                                                                   | **Short-lived** — exits after completion                     |
+| `cli`                  | Serves nothing: gateway, RPC server, API gateway, rest-fs, system debug and MCP are all off, watching is off, every dispatch resolves in-process | **Short-lived** — exits after its work                       |
+| `playwright`           | Marker: the Playwright runner owns the process lifetime                                                                                          | Long-running until the runner stops it                       |
+| `debug`                | `/api/sys/*` endpoints, stack traces in errors                                                                                                   | No effect on lifetime                                        |
+| `server` _(implicit)_  | Always injected on server platform                                                                                                               | —                                                            |
+| `browser` _(implicit)_ | Always injected on browser platform                                                                                                              | —                                                            |
 
-> **Default intents:** When no intents are provided, the framework uses `dev + microservice +
-> integration`. This default is designed to give developers an immediate feedback loop: file changes
-> are hot-reloaded and integration tests rerun automatically, fulfilling the framework's
-> "Minimising development effort" goal.
+> **Default intents:** When no intents are provided, the framework uses
+> `dev + microservice + integration`. This default is designed to give developers an immediate
+> feedback loop: file changes are hot-reloaded and integration tests rerun automatically, fulfilling
+> the framework's "Minimising development effort" goal.
 
 ---
 
@@ -62,6 +70,7 @@ Intents flow through the entire framework:
 ### Step 1 — Name the intent
 
 Follow these conventions:
+
 - Lowercase, single word if possible: `seed`, `migrate`, `export`, `k8s`
 - If two words are needed, use a hyphen: `dry-run`, `no-watch`
 - The name should be the _imperative form_ of what the process will do
@@ -70,11 +79,11 @@ Follow these conventions:
 
 Document in the realm's README and in a comment in the activation block:
 
-| Behaviour | When to use |
-|-----------|------------|
-| Process exits after completion | One-shot operations: `db`, `seed`, `export`, `k8s` |
-| Process keeps running | Servers, watchers: `dev`, `integration`, `microservice` |
-| Process behaviour unchanged | Feature flags: `debug`, `verbose` |
+| Behaviour                      | When to use                                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| Process exits after completion | One-shot operations: `db`, `cli`, `seed`, `export`, `k8s`                           |
+| Process keeps running          | Servers, watchers, test runners: `dev`, `integration`, `microservice`, `playwright` |
+| Process behaviour unchanged    | Feature flags: `debug`, `verbose`                                                   |
 
 ### Step 3 — Add the activation block to relevant components
 
@@ -121,8 +130,8 @@ export default realm(blong => ({
     url: import.meta.url,
     config: {
         default: {myRealm: {mode: 'serve'}},
-        migrate: {myRealm: {mode: 'migrate'}},   // override for migrate intent
-        seed:    {myRealm: {mode: 'seed'}},
+        migrate: {myRealm: {mode: 'migrate'}}, // override for migrate intent
+        seed: {myRealm: {mode: 'seed'}},
     },
 }));
 ```
@@ -137,8 +146,8 @@ When two intents should not be used together, declare an exclusion group in `ser
 export default server(blong => ({
     url: import.meta.url,
     intentsExclusionGroups: [
-        ['dev', 'prod'],        // must not combine
-        ['migrate', 'seed'],    // run one at a time
+        ['dev', 'prod'], // must not combine
+        ['migrate', 'seed'], // run one at a time
     ],
 }));
 ```
@@ -146,6 +155,7 @@ export default server(blong => ({
 The framework will log a warning if incompatible intents are detected at startup.
 
 Default exclusion groups (no declaration needed):
+
 - `['dev', 'prod']`
 - `['server', 'browser']` (implicit — one process is one platform)
 
@@ -162,7 +172,7 @@ import {layer} from '@feasibleone/blong';
 
 export default layer({
     default: true,
-    k8s: false,   // do NOT activate gateway during k8s generation
+    k8s: false, // do NOT activate gateway during k8s generation
 });
 ```
 
@@ -190,18 +200,18 @@ generates manifests, writes them to disk, and exits.
 
 The framework uses this lookup when auto-discovering layers (no `layer.server.ts`):
 
-| Folder | Server | Browser |
-|--------|--------|---------|
-| `api` | `{default: true}` | `{default: true}` |
-| `init` | `{default: true}` | `{default: true}` |
-| `error` | `{default: true}` | — |
-| `adapter` | `{default: true}` | `{default: true}` |
-| `orchestrator` | `{default: true}` | — |
-| `gateway` | `{default: true}` | — |
-| `sim` | `{integration: true}` | — |
-| `test` | `{integration: true}` | `{integration: true}` |
-| `backend` | — | `{default: true}` |
-| `component` | — | `{default: true}` |
+| Folder         | Server                | Browser               |
+| -------------- | --------------------- | --------------------- |
+| `api`          | `{default: true}`     | `{default: true}`     |
+| `init`         | `{default: true}`     | `{default: true}`     |
+| `error`        | `{default: true}`     | —                     |
+| `adapter`      | `{default: true}`     | `{default: true}`     |
+| `orchestrator` | `{default: true}`     | —                     |
+| `gateway`      | `{default: true}`     | —                     |
+| `sim`          | `{integration: true}` | —                     |
+| `test`         | `{integration: true}` | `{integration: true}` |
+| `backend`      | —                     | `{default: true}`     |
+| `component`    | —                     | `{default: true}`     |
 
 Override any of these by adding a `layer.server.ts` / `layer.browser.ts` to the folder.
 
@@ -213,7 +223,7 @@ When a suite has an `index.ts`, it receives a `load` function and passes intents
 
 ```typescript
 // index.ts
-export default async (load) => {
+export default async load => {
     const intents = ['microservice', 'integration', 'dev'];
     const [serverPlatform, browserPlatform] = await Promise.all([
         load(server, 'my-suite', 'my-suite', intents),
@@ -225,9 +235,9 @@ export default async (load) => {
 };
 ```
 
-The `intents` array is also automatically populated from the CLI arguments — the fourth parameter
-to `load()` overrides the CLI-provided intents for that particular platform. Use this to have
-different intents per platform.
+The `intents` array is also automatically populated from the CLI arguments — the fourth parameter to
+`load()` overrides the CLI-provided intents for that particular platform. Use this to have different
+intents per platform.
 
 ---
 
