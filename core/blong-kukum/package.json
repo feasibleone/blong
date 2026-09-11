@@ -20,10 +20,10 @@
         "blong-watch": "blong-watch",
         "build": "true",
         "ci-lint": "blong-dev lint",
-        "ci-test": "blong-dev test",
+        "ci-test": "blong-dev test --jobs=1",
         "kukum:fixture": "node ./bin/fixture.ts",
         "kukum:fixture:update": "node ./bin/fixture.ts --baselines",
-        "test": "blong-dev test --jobs=1",
+        "test": "blong-dev test",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {

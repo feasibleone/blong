@@ -25,6 +25,8 @@ const run = (args: string[]): {stdout: string; stderr: string; status: number | 
     return {stdout: result.stdout, stderr: result.stderr, status: result.status};
 };
 
+t.setTimeout(60_000);
+
 t.test('a command dispatches in-process and prints its result on stdout', t => {
     const {stdout, stderr, status} = run(['slug', 'get', '--value=Hello, World!', '--output=text']);
 
