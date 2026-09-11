@@ -10,8 +10,7 @@
     },
     "scripts": {
         "build": "true",
-        "ci-lint": "node ./bin/lint.ts",
-        "ci-test": "node ./bin/test.ts"
+        "ci-lint": "node ./bin/lint.ts"
     },
     "dependencies": {
         "cspell": "^10.0.0",

@@ -23,7 +23,7 @@
         "ci-test": "blong-dev test",
         "kukum:fixture": "node ./bin/fixture.ts",
         "kukum:fixture:update": "node ./bin/fixture.ts --baselines",
-        "test": "blong-dev test",
+        "test": "blong-dev test --jobs=1",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {

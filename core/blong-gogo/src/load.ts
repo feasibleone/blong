@@ -517,7 +517,7 @@ export default async function loadRealm<T extends TSchema>(
                         // records handler folders and files still runs (it is
                         // what feeds `Registry.describe()`); only chokidar is
                         // skipped.
-                        watch: {enabled: false},
+                        watch: {enabled: false, logLevel: 'warn'},
                         // Dispatch in-process instead of over HTTP.
                         remote: {canSkipSocket: true},
                         // A command's stdout carries its result and has to stay

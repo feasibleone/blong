@@ -39,6 +39,12 @@ export default adapter<{
             backoffMs?: number;
         };
     };
+    schema: {
+        sync?: boolean;
+        seed?: boolean;
+        dbTest?: boolean;
+        dropColumns?: boolean;
+    };
 }>(() => ({
     extends: 'adapter.knex',
     activation: {

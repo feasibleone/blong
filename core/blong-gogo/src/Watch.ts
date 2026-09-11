@@ -171,9 +171,7 @@ export default class Watch extends Internal implements IWatch {
             realm: config.name,
             dir: relative(dir),
         }));
-        const toFiles = (
-            map: Map<string, {name: string}>,
-        ): Array<{file: string; realm: string}> =>
+        const toFiles = (map: Map<string, {name: string}>): Array<{file: string; realm: string}> =>
             Array.from(map.entries()).map(([file, config]) => ({
                 file: relative(file),
                 realm: config.name,
@@ -710,13 +708,14 @@ export default class Watch extends Internal implements IWatch {
         remote: IRemote,
         configOverride: object,
     ): Promise<void> {
-        this.log?.debug?.({
-            $meta: {mtid: 'event', method: 'watch.start'},
-            dir: Array.from(this.#handlerFolders.keys())
-                .concat(Array.from(this.#handlerFiles.keys()))
-                .concat(Array.from(this.#layerFiles.keys()))
-                .map(folder => this.#platform.relative('.', folder)),
-        });
+        if (this.#config.enabled)
+            this.log?.debug?.({
+                $meta: {mtid: 'event', method: 'watch.start'},
+                dir: Array.from(this.#handlerFolders.keys())
+                    .concat(Array.from(this.#handlerFiles.keys()))
+                    .concat(Array.from(this.#layerFiles.keys()))
+                    .map(folder => this.#platform.relative('.', folder)),
+            });
         if (this.#config.test) {
             this.#emit.addEventListener('test', async (event: Event) => {
                 const {done, test} = ((event as CustomEvent).detail ?? {}) as {
