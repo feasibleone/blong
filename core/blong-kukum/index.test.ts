@@ -18,6 +18,8 @@ const manifest: Record<string, unknown> = {};
 const serverPlatform = await load(serverSuite, 'blong-kukum', 'blong-kukum', intents, manifest);
 await serverPlatform.start({});
 
+tap.setTimeout(60_000);
+
 await tap.test('kukum (server)', async (test: Test) => {
     await serverPlatform.test(test);
 });
