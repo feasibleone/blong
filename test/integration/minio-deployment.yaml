@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: minio
-        image: coollabsio/minio:2025-10-15T17-29-55Z
+        image: ghcr.io/coollabsio/minio:2025-10-15T17-29-55Z
         args: ["server", "/data", "--console-address", ":9001"]
         ports:
         - containerPort: 9000
