@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: minio
-        image: minio/minio:RELEASE.2024-04-18T19-09-19Z
+        image: cgr.dev/chainguard/minio:v0.20260520.234452
         args: ["server", "/data", "--console-address", ":9001"]
         ports:
         - containerPort: 9000
