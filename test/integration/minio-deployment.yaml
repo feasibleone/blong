@@ -70,7 +70,7 @@ spec:
         command: ["sh", "-c", "until wget -q -O- http://minio:9000/minio/health/live; do sleep 2; done"]
       containers:
       - name: mc
-        image: minio/mc:RELEASE.2024-04-18T16-45-29Z
+        image: ghcr.io/coollabsio/minio:2025-10-15T17-29-55Z
         command:
         - sh
         - -c
