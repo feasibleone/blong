@@ -72,11 +72,22 @@ export function defineBlongViteConfig({
                 '/rpc': rpcTarget,
             },
             fs: {
-                // Allow Vite to serve files from the Rush pnpm virtual store
-                // (needed for fonts/assets in packages like primeicons).
+                // Allow Vite to serve files from the Rush pnpm virtual store.
+                //
+                // Needed for:
+                //  - fonts/assets in packages like primeicons;
+                //  - `primereact` theme CSS, loaded at runtime as `?inline`
+                //    dynamic imports by the theme switcher (`themeRegistry.ts`).
+                //    Vite's dev-server fs guard runs the allow-list check on
+                //    query-bearing requests (`?inline`/`?url`/`?raw`), so a
+                //    package that is only reachable through the module graph is
+                //    served as raw CSS instead of being transformed to a JS
+                //    module — the browser then rejects it with a
+                //    `text/css` MIME type error and no theme is applied.
                 allow: [
                     dir(importMetaUrl),
                     dir(new URL(import.meta.resolve('primeicons/package.json')).pathname),
+                    dir(new URL(import.meta.resolve('primereact/package.json')).pathname),
                 ],
             },
         },

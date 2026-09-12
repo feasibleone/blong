@@ -61,6 +61,14 @@
     border: 0;
 }
 
+/* Keep the end region a single row. PrimeReact leaves `.p-menubar-end` as a
+   block box, so more than one widget (theme switcher, language switcher,
+   account menu) stacks vertically and stretches the menubar. */
+.p-menubar-end {
+    display: flex;
+    align-items: center;
+}
+
 .p-menubar.blong-menubar--grow {
     flex-grow: 1;
 }
