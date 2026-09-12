@@ -3,8 +3,8 @@ import type {Meta, StoryObj} from '@storybook/react-vite';
 import {ThemeSwitcher} from './ThemeSwitcher.js';
 
 /**
- * ThemeSwitcher stories — the theme + light/dark selector rendered in the portal
- * menubar, to the left of the language switcher.
+ * ThemeSwitcher stories — the theme dropdown + dark/light mode toggle rendered
+ * in the portal menubar, to the left of the language switcher.
  *
  * The global `withDispatch` decorator wraps every story in <App>, which renders
  * <Theme> — so `useTheme()` resolves and the switcher reflects the story's
@@ -21,12 +21,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** The app default (compact + dark → Vela Blue) — a single variant, no toggle. */
+/** The app default (compact + dark → Vela Blue) — a single variant, so no toggle. */
 export const Default: Story = {
     render: () => <ThemeSwitcher />,
 };
 
-/** A family with both variants — the sun/moon toggle is shown. */
+/** A family with both variants — a single sun/moon icon toggle is shown. */
 export const FamilyWithToggle: Story = {
     render: () => <ThemeSwitcher />,
     parameters: {theme: {name: 'lara-blue'}},

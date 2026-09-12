@@ -607,13 +607,13 @@
 
 ## Package folders split into six categories (`core/`, `realm/`, `suite/`, `demo/`, `test/`, `tools/`)
 
-- **Scope (implied choice)**: only packages under `core/` were relocated. `ext/rest-fs`, `docs/blong`
-  and the gitignored `dev/` were left in place — even though `ext/rest-fs` is dev tooling that would
-  fit `tools/` — because the shared `infitx-org/actions` CI workflow and both `.vscode/launch.json`
-  files assume `ext/` exists for other consumers of that workflow.
+- **Scope (implied choice)**: only packages under `core/` were relocated. `ext/rest-fs`,
+  `docs/blong` and the gitignored `dev/` were left in place — even though `ext/rest-fs` is dev
+  tooling that would fit `tools/` — because the shared `infitx-org/actions` CI workflow and both
+  `.vscode/launch.json` files assume `ext/` exists for other consumers of that workflow.
 - **Category assignment (user-confirmed)**: framework → `core/`; reusable realms → `realm/`;
-  reusable suites → `suite/`; demonstration realms/suites → `demo/`; framework tests → `test/`;
-  dev tooling → `tools/`. Explicitly chosen: `config-hot-reload` + `blong-kopi` stay in `core/`;
+  reusable suites → `suite/`; demonstration realms/suites → `demo/`; framework tests → `test/`; dev
+  tooling → `tools/`. Explicitly chosen: `config-hot-reload` + `blong-kopi` stay in `core/`;
   `blong-eip` → `demo/`; `blong-access-mock` + `blong-test` → `realm/`; `blong-sim-api` +
   `blong-sim-tcp` → `test/`; `blong-ttk` → `tools/`; `blong-allure` + `blong-chain` +
   `blong-cucumber` stay in `core/`.
@@ -639,7 +639,8 @@
   families = 32 folders) + 24 single-variant themes + the blong `glass`/`wood` variants = 42
   entries. A sun/moon light/dark toggle appears only when the selected option has BOTH variants.
 - **Glass/Wood are standalone** (user-chosen): dark base, no light/dark toggle (their CSS is
-  dark-only). They layer over the config default folder (`PRIMEREACT_PALETTE_THEMES[type][palette]`).
+  dark-only). They layer over the config default folder
+  (`PRIMEREACT_PALETTE_THEMES[type][palette]`).
 - **State lives in `appStore.theme`** (`{themeId?, palette?}` + `setTheme`), persisted to
   `localStorage['blong.theme']` (read at store creation, guarded by `typeof localStorage`). The
   `<Theme>` provider merges it over the `IThemeConfig` prop — an explicit selection outranks config.
@@ -668,28 +669,28 @@ card). The reference has **no corner screws**, so the old `::after` hex-screw la
 
 ### Second pass — the reference is a 2× (DPR-2) capture
 
-The first pass matched the *relative* styling but produced edges that were twice too thick, an
+The first pass matched the _relative_ styling but produced edges that were twice too thick, an
 invented bottom shadow on the inputs, and "low-res" textures. Root cause: **`wood-card.png` is
 rendered at 2× DPR**, so every measured pixel distance is 2 device px per CSS px. Measured geometry
 (image px → CSS px):
 
-| Feature | Design | CSS target |
-| --- | --- | --- |
-| Card corner radius | ~12 | **6** |
-| Card outer dark rim | 2–3 | ~1–1.5 |
-| Card top highlight | band ~10 total, peak at 4 | peak ~2 inside, gone by ~5 |
-| Input corner radius | ~6 | **3–4** (used 4) |
-| Input top occlusion | 6–7, near-black | ~3.5, near-black |
-| Input bottom | light glare band 4, **no shadow** | light glare peak ~2.5 up, 0 at floor |
-| Mesh cell / period | 4 / 8 | 2 / 4 |
-| Input height | 68 | 34 |
+| Feature             | Design                            | CSS target                           |
+| ------------------- | --------------------------------- | ------------------------------------ |
+| Card corner radius  | ~12                               | **6**                                |
+| Card outer dark rim | 2–3                               | ~1–1.5                               |
+| Card top highlight  | band ~10 total, peak at 4         | peak ~2 inside, gone by ~5           |
+| Input corner radius | ~6                                | **3–4** (used 4)                     |
+| Input top occlusion | 6–7, near-black                   | ~3.5, near-black                     |
+| Input bottom        | light glare band 4, **no shadow** | light glare peak ~2.5 up, 0 at floor |
+| Mesh cell / period  | 4 / 8                             | 2 / 4                                |
+| Input height        | 68                                | 34                                   |
 
 - **Every texture is now authored at 2× and drawn at half size**, so it is 1:1 on a DPR-2 display:
   grain 512px drawn at `background-size: 256px`, edge art 32px slices drawn into a **16 CSS-px**
   border (`border-image-width: 16px`), ramps drawn at `100% 4px`.
 - **The mesh is SVG, not a raster tile.** A raster tile is necessarily crisp at one DPR only; an
-  inline SVG checkerboard (2 CSS-px squares, drawn at `background-size: 4px`) is vector-crisp at
-  any ratio. This is what fixed the "low-res" complaint.
+  inline SVG checkerboard (2 CSS-px squares, drawn at `background-size: 4px`) is vector-crisp at any
+  ratio. This is what fixed the "low-res" complaint.
 - **The wood grain is fine stranded fibre, not broad bands.** Measurement drove this: the design's
   clean band is `rgb(77,48,35)` with **per-channel sdev ≈ 9.9**; the first pass rendered sdev ≈ 4.6
   (too flat). Two heavily x-stretched fBm octaves (`fbm(u,v,3,170)` and `fbm(u,v,2,320)`) now carry
@@ -710,31 +711,31 @@ toolbar buttons to `plans/theme/wood-buttons.png`.
   warm highlight peaking at **+1.5 CSS px** and back to the wood by **+5**. My art had its own
   opaque rim stacked on the card's 1px CSS `border`, producing a ~2px near-black edge. Fix: **the
   art no longer paints a rim at all** — the CSS `border` (recoloured `#2a1608` → `#1d1310`, the
-  design's actual rim rgb(29,19,16)) is the rim, and the art carries only the highlight. The
-  profile is now `wLight = smoothstep(1.2, 3.0, b) · (1 − smoothstep(3.0, 10.5, b)) · lit` with
-  `lit = max(0, −gy/gl)` (top-facing only — the design's left/right edges show a *shade*, no
+  design's actual rim rgb(29,19,16)) is the rim, and the art carries only the highlight. The profile
+  is now `wLight = smoothstep(1.2, 3.0, b) · (1 − smoothstep(3.0, 10.5, b)) · lit` with
+  `lit = max(0, −gy/gl)` (top-facing only — the design's left/right edges show a _shade_, no
   highlight, so the old `nx` term was wrong).
 - **The "tiny fibres" are short, not long.** My first fibre octaves were stretched so far
   (`fbm(u,v,3,170)`, `fbm(u,v,2,320)`) that they produced long continuous streaks; the design is a
-  **dense stipple of ~1–3 device-px-tall, ~10–50-px-long fibres**. Rebalanced to
-  `(12,170)`, `(24,340)`, `(44,480)` plus `(5,120)` for the long grain lines. Calibrated with two
-  measurements against a clean design swatch: **tone** (`rgb 77,48,35`) and **high-frequency
-  energy** (`sdev` of `image − blur(1px)` = 1.35). Final: tone `rgb(76,48,35)`, hf 1.25, sdev 9.5
-  vs the design's 9.9 — the hf metric was the one that actually correlated with "feels low-res".
-- **Grain quantised to 5-bit** (`-depth 5`): 59 KB → 44 KB; verified indistinguishable from 8-bit
-  at 2×. Total generated sheet: **66 KB raw / 49 KB gzip**.
+  **dense stipple of ~1–3 device-px-tall, ~10–50-px-long fibres**. Rebalanced to `(12,170)`,
+  `(24,340)`, `(44,480)` plus `(5,120)` for the long grain lines. Calibrated with two measurements
+  against a clean design swatch: **tone** (`rgb 77,48,35`) and **high-frequency energy** (`sdev` of
+  `image − blur(1px)` = 1.35). Final: tone `rgb(76,48,35)`, hf 1.25, sdev 9.5 vs the design's 9.9 —
+  the hf metric was the one that actually correlated with "feels low-res".
+- **Grain quantised to 5-bit** (`-depth 5`): 59 KB → 44 KB; verified indistinguishable from 8-bit at
+  2×. Total generated sheet: **66 KB raw / 49 KB gzip**.
 - **§W8 toolbar buttons rewritten** from the old flat steel switches to the design's brass keys.
   Measured at 2×: frame 6 device px (3 CSS px), radius ≈9 (5 CSS px), height 78 (39 CSS px), brass
   rgb(120,90,56)→rgb(219,183,135), panel rgb(35,32,29) with rgb(74,64,56) dots on a 4 CSS-px pitch,
-  label gold rgb(222,187,138), ~4 CSS-px drop shadow, title case (the old `text-transform:
-  uppercase` was wrong).
-  - The metal is a **`border-box` gradient behind `padding-box` inner layers** with a 3px
-    transparent border — the gradient spans the whole button, so the top/bottom *borders* pick up
-    the bright stops and the sides take the mid tones, giving the measured "bright top **and**
-    bottom, dimmer sides" tube look with no image.
-  - The panel dots are a second generated SVG (`--wood-btn-dots`, 8-unit tile drawn at 8px).
-  - The icon-only buttons were previously **unstyled** (the old selector excluded them, and they
-    render `p-disabled`); they now get the same frame plus a struck-back disabled state.
+  label gold rgb(222,187,138), ~4 CSS-px drop shadow, title case (the old
+  `text-transform: uppercase` was wrong).
+    - The metal is a **`border-box` gradient behind `padding-box` inner layers** with a 3px
+      transparent border — the gradient spans the whole button, so the top/bottom _borders_ pick up
+      the bright stops and the sides take the mid tones, giving the measured "bright top **and**
+      bottom, dimmer sides" tube look with no image.
+    - The panel dots are a second generated SVG (`--wood-btn-dots`, 8-unit tile drawn at 8px).
+    - The icon-only buttons were previously **unstyled** (the old selector excluded them, and they
+      render `p-disabled`); they now get the same frame plus a struck-back disabled state.
 - **Verified**: 46 files / 502 tests pass; `vite build` clean; generator byte-reproducible; card
   bevel + input + buttons compared against the design at 1:1 and 3–4× zoom; toolbar checked in the
   `editor--wood-toolbar` story.
@@ -745,26 +746,26 @@ Follow-ups from `plans/theme/wood-buttons-2.png` (a new 2× capture showing the 
 error/active buttons plus the failure hint) plus "the card bevel is still too thick" and "fix the
 card, label and input fonts".
 
-- **The bevel peak was right; the *falloff* was wrong.** My art peaked at the design's +1.5 CSS px
-  but held near-peak out to ~4.5 px. Measured deltas from the design's scan
-  (`wood-card.png` x=540): +34 / +68 / +48 / +27 / 0 at **1.0 / 1.5 / 2.0 / 2.5 / 3.0 CSS px** —
-  a band only ~3 px wide. Fix: the fall ends at art 6.0 (was 10.5) with the peak alpha 0.59 → 0.52,
-  and the unlit-side shade was shortened (art 13 → 11) and weakened (0.42 → 0.34). Verified against
-  the design: +29 / +70 / +52 / +18. **Lesson: when a gradient "looks too thick", compare the
-  *decay profile*, not just the peak.**
+- **The bevel peak was right; the _falloff_ was wrong.** My art peaked at the design's +1.5 CSS px
+  but held near-peak out to ~4.5 px. Measured deltas from the design's scan (`wood-card.png` x=540):
+  +34 / +68 / +48 / +27 / 0 at **1.0 / 1.5 / 2.0 / 2.5 / 3.0 CSS px** — a band only ~3 px wide. Fix:
+  the fall ends at art 6.0 (was 10.5) with the peak alpha 0.59 → 0.52, and the unlit-side shade was
+  shortened (art 13 → 11) and weakened (0.42 → 0.34). Verified against the design: +29 / +70 / +52 /
+  +18. **Lesson: when a gradient "looks too thick", compare the _decay profile_, not just the
+  peak.**
 - **Buttons — the frame is a bullnose, not a flat bevel.** Per-pixel scan (device px, outer→inner):
   top **107,162,116,133,125,73**, bottom **57,117,116,122,159,126** — so the brass peaks near the
-  *outer* edge on top and near the *inner* edge on the bottom, i.e. a rounded ring lit from above.
-  Normal peak ≈rgb(162,138,110); error/active ≈rgb(196,164,126). The earlier frame was far too
-  light (`#e2c396`, peak 226). Now: `#a58c6e → #7a6448 → #6d5940 → #7a6448 → #a58c6e`.
+  _outer_ edge on top and near the _inner_ edge on the bottom, i.e. a rounded ring lit from above.
+  Normal peak ≈rgb(162,138,110); error/active ≈rgb(196,164,126). The earlier frame was far too light
+  (`#e2c396`, peak 226). Now: `#a58c6e → #7a6448 → #6d5940 → #7a6448 → #a58c6e`.
 - **Outset frame / inset body** now come from the shadow stack: `0 0 0 1px rgba(0,0,0,.5)` (outer
   ring) + `0 3px 6px` (cast) + `inset 0 0 0 1px #150c05` (the seam) + `inset 0 2px 3px` and
   `inset 0 0 6px` (the recessed panel).
-- **The dot panel is now a *translucent* SVG** (`#000` @0.22 field + `#fff` @0.09 dots) so one asset
-  tints for both states — the normal and error panels differ only by their base colour
-  (`#1f1f20` vs `#a04f32` ⇒ field rgb(25,25,26) vs rgb(125,62,39), matching the design). Pitch
-  reduced 4 → **3 CSS px** (drawn at `background-size: 6px`, the design's ≈6 device px at 2×).
-  `rgba()` is not reliable in SVG presentation attributes, so `fill` + `fill-opacity` is used.
+- **The dot panel is now a _translucent_ SVG** (`#000` @0.22 field + `#fff` @0.09 dots) so one asset
+  tints for both states — the normal and error panels differ only by their base colour (`#1f1f20` vs
+  `#a04f32` ⇒ field rgb(25,25,26) vs rgb(125,62,39), matching the design). Pitch reduced 4 → **3 CSS
+  px** (drawn at `background-size: 6px`, the design's ≈6 device px at 2×). `rgba()` is not reliable
+  in SVG presentation attributes, so `fill` + `fill-opacity` is used.
 - **Error/active button state is now wired, not just styled.** `ActionButton` gained a `failed`
   state set for **2000 ms** after a rejected call — deliberately matching `ActionHint`'s own
   auto-dismiss — which adds `blong-action-error`; the theme also honours `.p-button-danger`. The
@@ -776,37 +777,37 @@ card, label and input fonts".
   achievable from CSS alone. Added `--wood-font`
   (`'Poppins','Montserrat','Jost','Century Gothic','Segoe UI',…`; also declared on the
   `blong-theme-wood` root marker so body-portal overlays resolve it) and matched the **metrics**
-  against measured cap heights: card title 14.5 px cap ⇒ `1.45rem`, field label 9 ⇒ `0.92rem`,
-  input text 10 ⇒ `1.02rem` + warm cream `#f2ddc4`, button text 11 ⇒ `1.1rem` @ weight 500.
-  Line 0.70 em cap ratio was assumed for the rem maths. Colours taken from the design: title
-  `#efd3b4`, label `#e9ceb5`, button gold `#dcb98a`, hint `#e0b085`.
+  against measured cap heights: card title 14.5 px cap ⇒ `1.45rem`, field label 9 ⇒ `0.92rem`, input
+  text 10 ⇒ `1.02rem` + warm cream `#f2ddc4`, button text 11 ⇒ `1.1rem` @ weight 500. Line 0.70 em
+  cap ratio was assumed for the rem maths. Colours taken from the design: title `#efd3b4`, label
+  `#e9ceb5`, button gold `#dcb98a`, hint `#e0b085`.
 - **Verified**: 46 files / 502 tests pass; `vite build` clean; button normal/disabled/error + hint
   compared against the reference in a 3× harness; card bevel + title/label/input compared at 2.4×;
   error state confirmed live in `editor--wood-toolbar` (`.blong-action-error` + `.p-overlaypanel`).
 
 ### Structural decisions (unchanged from the first pass)
 
-- **Synthesis over extraction for the wood grain** (user-approved wording "extract/synthesize"):
-  the design has no large clean wood patch (every wide area is interrupted by text/inputs), so the
-  grain is generated procedurally with **periodic** value-noise fBm (hash lattice that wraps at the
-  tile edge) → seamless by construction, then colour-matched to the sampled palette. Extracted
-  values drove the tuning; the pixels are synthesised.
+- **Synthesis over extraction for the wood grain** (user-approved wording "extract/synthesize"): the
+  design has no large clean wood patch (every wide area is interrupted by text/inputs), so the grain
+  is generated procedurally with **periodic** value-noise fBm (hash lattice that wraps at the tile
+  edge) → seamless by construction, then colour-matched to the sampled palette. Extracted values
+  drove the tuning; the pixels are synthesised.
 - **Tileable vs stretch-safe assets** (the two size-independence strategies):
-  - tileable both axes: `wood-grain` (512px grayscale, `overlay`-blended so CSS supplies the hue)
-    and `wood-mesh` (SVG, drawn at `4px`).
-  - 1-D, uniform along the other axis → stretched with `background-size: 100% <px>`: the two
-    `wood-recess-*` ramps.
-  - 9-slice, stretched with `border-image`: `wood-edge` (32px slices, 12-unit arc).
-- **Edges = alpha-channel image + CSS, not gradients alone.** The card bevel is a 9-slice RGBA
-  frame on `.p-card::after` (`border: 16px solid transparent; border-image-*`), drawn from an SDF so
-  the rim darkens and the warm facet follows the facet normal. Its **outer arc is transparent**,
-  which is what lets the card's own `border-radius: 6px` supply the rounding — `border-image` is
-  *not* clipped by `border-radius`, and a pseudo-element avoids the border shifting `.p-card`
-  layout. **Coupling**: art arc radius × 0.5 (the 2× draw scale) must equal the CSS `border-radius`;
+    - tileable both axes: `wood-grain` (512px grayscale, `overlay`-blended so CSS supplies the hue)
+      and `wood-mesh` (SVG, drawn at `4px`).
+    - 1-D, uniform along the other axis → stretched with `background-size: 100% <px>`: the two
+      `wood-recess-*` ramps.
+    - 9-slice, stretched with `border-image`: `wood-edge` (32px slices, 12-unit arc).
+- **Edges = alpha-channel image + CSS, not gradients alone.** The card bevel is a 9-slice RGBA frame
+  on `.p-card::after` (`border: 16px solid transparent; border-image-*`), drawn from an SDF so the
+  rim darkens and the warm facet follows the facet normal. Its **outer arc is transparent**, which
+  is what lets the card's own `border-radius: 6px` supply the rounding — `border-image` is _not_
+  clipped by `border-radius`, and a pseudo-element avoids the border shifting `.p-card` layout.
+  **Coupling**: art arc radius × 0.5 (the 2× draw scale) must equal the CSS `border-radius`;
   `EDGE.radius = 12` ⇒ 6px.
 - **Input recess = alpha ramps + `border-radius` clipping.** Ramps are `no-repeat` pinned to
   `top`/`bottom` so the occlusion thickness is constant at any input height; because background
-  layers *are* clipped by `border-radius`, the recess rounds correctly without corner art.
+  layers _are_ clipped by `border-radius`, the recess rounds correctly without corner art.
 - **Assets are inlined as base64 data URIs in a generated `wood-assets.css`**, imported before
   `wood.css` and exposed as `--wood-*` custom properties. Emitted asset files were tried and
   **reverted**: Storybook's Vite (rolldown) does not rewrite relative `url(...)` inside project CSS
@@ -816,46 +817,45 @@ card, label and input fonts".
   seamless).
 - **Canvas recoloured** `#1a1613` → `#16171c`: the reference backdrop is a cool charcoal steel, not
   the old warm brown, so the walnut cards read as mounted on a cold chassis.
-- **Verified**: `theme:wood-assets` regenerated; 46 files / 502 tests pass; `vite build` clean
-  (419 KB CSS, 81 KB gzip); design compared side-by-side against the extracted swatches at 1:1
-  *and* at 3× zoom in an isolated harness (card bevel + input recess + mesh).
+- **Verified**: `theme:wood-assets` regenerated; 46 files / 502 tests pass; `vite build` clean (419
+  KB CSS, 81 KB gzip); design compared side-by-side against the extracted swatches at 1:1 _and_ at
+  3× zoom in an isolated harness (card bevel + input recess + mesh).
 
 ## Fifth pass — Habitat checkboxes, Links datatable, Form Inspector (§W4–§W7)
 
 Three regions of `plans/theme/wood.png` (2752×1536, **2× DPR** ⇒ ÷2 for CSS px) were measured
-pixel-by-pixel rather than eyeballed, because two earlier passes had already been rejected for
-"too thick" / "too low-res" eyeball readings. Measurements are crop-relative device px; the
-`/tmp/wcmp/m2.mjs` helper (row/col run scans, ink bounding boxes, colour samples) was written ad
-hoc and is not committed.
+pixel-by-pixel rather than eyeballed, because two earlier passes had already been rejected for "too
+thick" / "too low-res" eyeball readings. Measurements are crop-relative device px; the
+`/tmp/wcmp/m2.mjs` helper (row/col run scans, ink bounding boxes, colour samples) was written ad hoc
+and is not committed.
 
 ### Decisions
 
 - **§W4 was deleted, not restyled.** The reference shows the Links `+ Add` / `Delete` controls are
-  the *same* brass key as the header toolbars, so §W8's selector list became
+  the _same_ brass key as the header toolbars, so §W8's selector list became
   `:is(.blong-toolbar-left, .blong-toolbar-right, .blong-design-toolbar, .p-card .p-toolbar)` and
   §W4 is now a tombstone comment. This avoided a second, divergent button language.
 - **Habitat group stays transparent** (explicit user instruction) even though the reference paints
-  dark bands behind some columns — those read as a screenshot artifact of the app's own panel
-  fill, not a deliberate per-item highlight, so `.p-highlight` no longer tints the row.
-- **Checkbox is a brass *bezel*, not a brass *disc*.** Measured on the design: box **44 device =
-  22 CSS px**, frame **4 device = 2 CSS px**, radius 6 device = 3 CSS px, socket rgb(34,29,26).
-  The frame is *not* uniformly dark-topped: top rgb(171,145,112) `#ab9170`, flanks
-  rgb(117,95,71) `#77604a`, **bottom re-lit** rgb(141,121,88) `#8d7958`, plus a hard 1px dark line
-  under the floor. Selected keeps the dark socket and only lights the indicator (`#a68d63`);
-  the reference's second state is a **solid amber dot** (44→22 device px wide,
-  rgb(174,136,76) `#ae884c`) which PrimeReact has no class for, so it is painted on
-  `.p-checkbox-box.p-indeterminate .p-checkbox-icon` via `radial-gradient` with
-  `color: transparent`.
+  dark bands behind some columns — those read as a screenshot artifact of the app's own panel fill,
+  not a deliberate per-item highlight, so `.p-highlight` no longer tints the row.
+- **Checkbox is a brass _bezel_, not a brass _disc_.** Measured on the design: box **44 device = 22
+  CSS px**, frame **4 device = 2 CSS px**, radius 6 device = 3 CSS px, socket rgb(34,29,26). The
+  frame is _not_ uniformly dark-topped: top rgb(171,145,112) `#ab9170`, flanks rgb(117,95,71)
+  `#77604a`, **bottom re-lit** rgb(141,121,88) `#8d7958`, plus a hard 1px dark line under the floor.
+  Selected keeps the dark socket and only lights the indicator (`#a68d63`); the reference's second
+  state is a **solid amber dot** (44→22 device px wide, rgb(174,136,76) `#ae884c`) which PrimeReact
+  has no class for, so it is painted on `.p-checkbox-box.p-indeterminate .p-checkbox-icon` via
+  `radial-gradient` with `color: transparent`.
 - **Row pitch is 23 CSS px** (boxes 44 device tall, stacked 46 device apart) — a **1px** grid row
   gap, not the 12px first guessed. `.p-multiselect-item` needed `min-height: 22px` or the 22px
   socket overflowed the 20px line box and the pitch came out at 21.
 - **Table and rows are transparent** — sampled at x=300 the "row background" is wood
-  (rgb(50–63,30–43,23–34)). The header rule is a **groove**, not a line: rgb(17,8,1) over a
-  re-lit rgb(63,50,44) at the next device row, so it is `border-bottom: 1px solid #150c04` **plus**
+  (rgb(50–63,30–43,23–34)). The header rule is a **groove**, not a line: rgb(17,8,1) over a re-lit
+  rgb(63,50,44) at the next device row, so it is `border-bottom: 1px solid #150c04` **plus**
   `box-shadow: 0 1px 0 rgba(212,190,165,0.13)`. Row separators use the same shape, far fainter.
 - **Inspector = walnut plate + one continuous dark recess**, not the old brass faceplate. The
   reference's panel runs all the way to the bottom rail with a uniform ~11px wood margin, and the
-  title is a *sibling* of the sections, so the plate became `display: flex; flex-direction: column`
+  title is a _sibling_ of the sections, so the plate became `display: flex; flex-direction: column`
   and `:last-child` gets `flex: 1 1 auto` — that is what makes the recess reach the bottom instead
   of stopping after the last section. Outer/inner rounding comes from
   `.blong-property-editor__title + .blong-inspector__section` (6/6/0/0) and `:last-child` (0/0/6/6)
@@ -864,13 +864,13 @@ hoc and is not committed.
 - **Type sizes were re-derived from ink bounding boxes, not from the earlier estimates**, and the
   width method was found to be ~19% pessimistic (it assumes Poppins advances) so **only the
   ascender/cap-height method was trusted**: habitat label 12 CSS-px ascender ⇒ `1.14rem`; datatable
-  header 12.5 ⇒ `1.14rem` (title case, *not* uppercase); datatable rows ⇒ `1.14rem`; inspector
-  title 9.5 cap ⇒ `0.95rem` uppercase; section toggle 9 asc ⇒ `0.88rem`; chevron ⇒ `0.7rem`;
-  empty-state italic ⇒ `0.82rem`; JSON 8.5 cap / 12.5 pitch ⇒ `0.85rem` @ `line-height: 1.28`.
+  header 12.5 ⇒ `1.14rem` (title case, _not_ uppercase); datatable rows ⇒ `1.14rem`; inspector title
+  9.5 cap ⇒ `0.95rem` uppercase; section toggle 9 asc ⇒ `0.88rem`; chevron ⇒ `0.7rem`; empty-state
+  italic ⇒ `0.82rem`; JSON 8.5 cap / 12.5 pitch ⇒ `0.85rem` @ `line-height: 1.28`.
 - **The fallback face is wider than the design's.** `document.fonts` confirms no Poppins is loaded
   (only Nunito Sans + primeicons); the browser falls through to a host font (Century Gothic shape —
   single-storey `a`) that measures 93 CSS px for "Shallow Reef" against the design's 83 at the same
-  ascender height. **Height was matched deliberately** so a machine that *does* have Poppins gets an
+  ascender height. **Height was matched deliberately** so a machine that _does_ have Poppins gets an
   exact result; matching width instead would over-shrink everywhere else.
 
 ### Verified
@@ -888,30 +888,30 @@ Three follow-up defects, all measured before touching CSS.
 ### Decisions
 
 - **All toolbar keys are now a fixed 37 CSS px tall and the two icon keys are square.** Measured on
-  `wood.png`: the save/replay keys and Browse/Open/Error all span y 8..81 device px (74–75 ⇒ 37 CSS),
-  and the icon keys are square in the design. The live row was 33×39 for the icon keys vs 34 for the
-  labelled ones — not uniform, not square. `height: 37px` + `box-sizing: border-box` on the shared
-  `.p-button` rule, and `width: 37px` (+ inline-flex centring, `padding: 0`) on `.p-button-icon-only`.
-  Verified live: 37/37, 37/37, then 108.8/94.5/92.1/95.9 × **37**. The same 37 applies to the in-card
-  Links keys (design ≈36.5 there), so §W8's shared selector list stayed shared.
+  `wood.png`: the save/replay keys and Browse/Open/Error all span y 8..81 device px (74–75 ⇒ 37
+  CSS), and the icon keys are square in the design. The live row was 33×39 for the icon keys vs 34
+  for the labelled ones — not uniform, not square. `height: 37px` + `box-sizing: border-box` on the
+  shared `.p-button` rule, and `width: 37px` (+ inline-flex centring, `padding: 0`) on
+  `.p-button-icon-only`. Verified live: 37/37, 37/37, then 108.8/94.5/92.1/95.9 × **37**. The same
+  37 applies to the in-card Links keys (design ≈36.5 there), so §W8's shared selector list stayed
+  shared.
 - **The ActionHint caret was genuinely broken, and the cause was a cascade-order bug, not my CSS.**
   PrimeReact v10 now ships `primereact.min.css` as an **explicitly empty stub** and moved the
   structural CSS into **`@layer primereact`**, injected from the component. `theme.css` is injected
   separately by `themeRegistry` and its rule
   `.p-overlaypanel:before { border: solid transparent; border-color: …; border-bottom-color: … }`
   contains **no `border-width`** — the shorthand resets it to `medium` (3px), and because the theme
-  sheet lands *later in the same layer* it beats the structural `.p-overlaypanel::before {
-  border-width: 10px; margin-left: -10px }`. Result: all four borders 3px → a ~2px square nub
-  instead of a triangle. **Fix**: restate the caret geometry in the wood theme unlayered with
-  `!important` (content/position/size/border-style/border-color/border-width + `bottom: 100%`), and
-  mirror it for `p-overlaypanel-flipped`.
-  Sized from the design: the notch is a **wide shallow tab — 32 × 11 CSS px** (device x 658..728,
-  y 78..100), not the default 20×10, with the frame's 3px brass rim on the two slopes. Outer
-  `border-width: 0 16px 11px 16px`, inner `0 13px 8px 13px` at `margin-left: -13px`, `::before`
-  brass `#c6a67f` behind `::after` rust `#a04f32`. `left: calc(var(--overlayArrowLeft, 0px) +
-  1.25rem)` is kept from the structural sheet so the caret still tracks the trigger; with the 10px
-  panel offset the apex lands exactly on the button's bottom edge (verified: button bottom 44.0,
-  panel top 54.0, caret height 10).
+  sheet lands _later in the same layer_ it beats the structural
+  `.p-overlaypanel::before { border-width: 10px; margin-left: -10px }`. Result: all four borders 3px
+  → a ~2px square nub instead of a triangle. **Fix**: restate the caret geometry in the wood theme
+  unlayered with `!important` (content/position/size/border-style/border-color/border-width +
+  `bottom: 100%`), and mirror it for `p-overlaypanel-flipped`. Sized from the design: the notch is a
+  **wide shallow tab — 32 × 11 CSS px** (device x 658..728, y 78..100), not the default 20×10, with
+  the frame's 3px brass rim on the two slopes. Outer `border-width: 0 16px 11px 16px`, inner
+  `0 13px 8px 13px` at `margin-left: -13px`, `::before` brass `#c6a67f` behind `::after` rust
+  `#a04f32`. `left: calc(var(--overlayArrowLeft, 0px) + 1.25rem)` is kept from the structural sheet
+  so the caret still tracks the trigger; with the 10px panel offset the apex lands exactly on the
+  button's bottom edge (verified: button bottom 44.0, panel top 54.0, caret height 10).
 - **The dropdown popup now speaks the theme's language.** It was a flat `rgba(20,15,11,0.97)` panel
   with a 1px dull-brown border and a copper wash on the selected row — none of which appears
   anywhere else in the variant. It is now a **carved charcoal recess** built from the same three
@@ -932,7 +932,7 @@ Three follow-up defects, all measured before touching CSS.
 
 ## Seventh pass — the caret, take two: it was geometry, not colour
 
-The first caret fix restored *a* caret but the user still saw a patch: the rim read as a thin
+The first caret fix restored _a_ caret but the user still saw a patch: the rim read as a thin
 outline against the frame, and the hint's frame line plus its inset seam ran straight across under
 the bump. Both turned out to be geometry, and both were only visible once the caret could actually
 be looked at at 16×.
@@ -940,38 +940,41 @@ be looked at at 16×.
 ### Decisions
 
 - **The seam, not the colour.** An absolutely positioned child is measured against the panel's
-  **padding box**, so the bump's rust ended 3px short of the panel's outer edge and the frame's brass
-  band (`border-box` gradient) plus the panel's `inset 0 0 0 1px #3a1608` seam stayed painted across
-  the notch. The panel's seam is real and correct everywhere else — measured at rgb(38,9,0) at device
-  y110 — so it is not removed. Instead the rust silhouette is a bump **plus a 2.5px skirt** and its
-  base is anchored with `bottom: 100%` (= the panel's *inner* edge), while the brass silhouette is
-  anchored with `bottom: calc(100% + 3px)` (= its *outer* edge). The skirt is what swallows the band
-  and the seam; the brass base being 3px higher is what leaves 3px of band each side and makes the
-  rim read as the frame turning outward.
-- **The rim was thin because the slopes were not parallel.** Traced row by row on `wood.png`, the rim
-  is a constant 7 device px (3.5 CSS) *horizontally* on both slopes — which only holds if the rust
-  half-width is the brass half-width minus the rim at every height. The first attempt used
+  **padding box**, so the bump's rust ended 3px short of the panel's outer edge and the frame's
+  brass band (`border-box` gradient) plus the panel's `inset 0 0 0 1px #3a1608` seam stayed painted
+  across the notch. The panel's seam is real and correct everywhere else — measured at rgb(38,9,0)
+  at device y110 — so it is not removed. Instead the rust silhouette is a bump **plus a 2.5px
+  skirt** and its base is anchored with `bottom: 100%` (= the panel's _inner_ edge), while the brass
+  silhouette is anchored with `bottom: calc(100% + 3px)` (= its _outer_ edge). The skirt is what
+  swallows the band and the seam; the brass base being 3px higher is what leaves 3px of band each
+  side and makes the rim read as the frame turning outward.
+- **The rim was thin because the slopes were not parallel.** Traced row by row on `wood.png`, the
+  rim is a constant 7 device px (3.5 CSS) _horizontally_ on both slopes — which only holds if the
+  rust half-width is the brass half-width minus the rim at every height. The first attempt used
   Béziers with an effective slope of ~1.55 against the rust's 1.0, so the gap closed up the flanks
   and opened at the apex. Silhouettes are now built in one coordinate system and the rust is the
-  brass's curve scaled about the centre (x × 0.7, y × 0.7), so the two stay parallel by construction.
-  Shape: a **bell**, not a triangle — brass 20 × 10 with a long concave fillet into the frame line and
-  a broadly rounded apex, rust 14 × 9.5 with an apex 3.4px lower.
+  brass's curve scaled about the centre (x × 0.7, y × 0.7), so the two stay parallel by
+  construction. Shape: a **bell**, not a triangle — brass 20 × 10 with a long concave fillet into
+  the frame line and a broadly rounded apex, rust 14 × 9.5 with an apex 3.4px lower.
 - **The interior is no longer a separate colour patch.** The rust silhouette carries the panel's own
   dot layer with `background-position: 0 100%`, anchored to its base so the mesh phase matches the
-  panel's rather than restarting at the notch, and only a gentle tone ramp on top — the first attempt's
-  ramp (0.44 → 0.19) made the whole bump sit in the dark end and read as a blob. Now 0.34 → 0.12.
+  panel's rather than restarting at the notch, and only a gentle tone ramp on top — the first
+  attempt's ramp (0.44 → 0.19) made the whole bump sit in the dark end and read as a blob. Now 0.34
+  → 0.12.
 - **Verification approach, recorded because it took several wrong turns.** `document.styleSheets`
   cannot see PrimeReact v10's styles (they live in `@layer primereact`), so the caret's geometry was
   finally found with CDP `getMatchedStylesForNode`. `page.screenshot({clip})` proved unreliable for
-  this (the capture came back offset by ~13px/6px from the requested rect, so pixel maps contradicted
-  the DOM), so the working method is a **CSS harness**: clone the panel into
+  this (the capture came back offset by ~13px/6px from the requested rect, so pixel maps
+  contradicted the DOM), so the working method is a **CSS harness**: clone the panel into
   `.blong-theme-wood > .p-overlaypanel` at a known position with a real class chain, wrap it in
-  `transform: scale(6)`, and use the built-in screenshot tool on the wrapper. For a design comparison,
-  copy the reference PNG into the package so Storybook's dev server serves it, and set
+  `transform: scale(6)`, and use the built-in screenshot tool on the wrapper. For a design
+  comparison, copy the reference PNG into the package so Storybook's dev server serves it, and set
   `background-size: <device>×2` + `background-position: -<device x>×2 -<device y>×2` on a div — that
-  puts the 2×-DPR capture at exactly the same scale as a `scale(4)` harness. The temp PNG was removed.
-- The hint is auto-dismissed by a 2000 ms `setTimeout` in `Hint.tsx`; holding it open for a live look
-  is done by patching `window.setTimeout` in the page to ignore a 2000 ms delay (no code change).
+  puts the 2×-DPR capture at exactly the same scale as a `scale(4)` harness. The temp PNG was
+  removed.
+- The hint is auto-dismissed by a 2000 ms `setTimeout` in `Hint.tsx`; holding it open for a live
+  look is done by patching `window.setTimeout` in the page to ignore a 2000 ms delay (no code
+  change).
 
 ### Verified
 
@@ -983,28 +986,30 @@ be looked at at 16×.
 ## Eighth pass — caret settled as SOLID brass (supersedes the two rim attempts)
 
 **Product decision (user): "make the caret solid and match the hint border."** After two passes
-building the caret as a brass *rim* around a rust interior — first with border triangles, then with a
-bell-shaped brass silhouette over a matching rust one — it still read as patchy, and the rim's width
-never quite matched the frame's. The instruction is to stop trying to reproduce the reference's
-interior and fill the caret with the frame's brass instead.
+building the caret as a brass _rim_ around a rust interior — first with border triangles, then with
+a bell-shaped brass silhouette over a matching rust one — it still read as patchy, and the rim's
+width never quite matched the frame's. The instruction is to stop trying to reproduce the
+reference's interior and fill the caret with the frame's brass instead.
 
 ### Decisions
 
 - **The rim approach was abandoned deliberately, not fixed a third time.** Reproducing the reference
   exactly required the caret's interior to redraw the panel's mesh, its top occlusion and its
-  `inset 0 0 0 1px #3a1608` seam at a *different background origin* from the panel's own. However
-  carefully that is calibrated it leaves a visible join, and the rim's width is then a third thing to
-  keep in step with the frame. Solid brass deletes that entire problem class: there is no interior to
-  blend, so the frame line simply runs underneath and the caret merges with it.
-- **Construction.** A single `::before`, `clip-path: path('M0,10 L8.6,1.4 Q10,0.2 11.4,1.4 L20,10 Z')`
-  — 20 × 10 CSS px, i.e. the reference's notch **outline** (device x677..715, y85..105), now filled.
-  The base sits at `bottom: calc(100% + 2px)`, which is 2px above the panel's *padding box* top and
-  therefore **1px inside the 3px frame**, so the two overlap and no hairline can appear between them.
-  Gradient `#d3b183 → #c0a075 → #a98d66` matches the frame's top-of-border tone, so the eye reads one
-  cast shape. `::after` — which existed only for the inner silhouette — is switched off with
+  `inset 0 0 0 1px #3a1608` seam at a _different background origin_ from the panel's own. However
+  carefully that is calibrated it leaves a visible join, and the rim's width is then a third thing
+  to keep in step with the frame. Solid brass deletes that entire problem class: there is no
+  interior to blend, so the frame line simply runs underneath and the caret merges with it.
+- **Construction.** A single `::before`,
+  `clip-path: path('M0,10 L8.6,1.4 Q10,0.2 11.4,1.4 L20,10 Z')` — 20 × 10 CSS px, i.e. the
+  reference's notch **outline** (device x677..715, y85..105), now filled. The base sits at
+  `bottom: calc(100% + 2px)`, which is 2px above the panel's _padding box_ top and therefore **1px
+  inside the 3px frame**, so the two overlap and no hairline can appear between them. Gradient
+  `#d3b183 → #c0a075 → #a98d66` matches the frame's top-of-border tone, so the eye reads one cast
+  shape. `::after` — which existed only for the inner silhouette — is switched off with
   `content: none`. The flipped mirror uses the vertically reflected path.
-- Superseded reasoning, kept for context: the padding-box vs border-box anchoring problem described in
-  the seventh pass is still real, it just no longer matters — nothing is anchored to the inner edge.
+- Superseded reasoning, kept for context: the padding-box vs border-box anchoring problem described
+  in the seventh pass is still real, it just no longer matters — nothing is anchored to the inner
+  edge.
 
 ### Verified
 
@@ -1015,28 +1020,29 @@ interior and fill the caret with the frame's brass instead.
 
 ## Ninth pass — ConfirmPopup (Reset key's "discard changes?")
 
-The last unstyled surface in the wood variant. Reached from `editor--wood-toolbar` by editing a field
-(which enables the toolbar's two icon keys) and pressing the second one, `pi pi-replay` — the Reset
-key. `Editor.tsx` raises it with `confirmPopup({…})`, which renders a **`.p-confirm-popup`** at the
-body portal, so like the hint it is scoped on the `blong-theme-wood` root marker.
+The last unstyled surface in the wood variant. Reached from `editor--wood-toolbar` by editing a
+field (which enables the toolbar's two icon keys) and pressing the second one, `pi pi-replay` — the
+Reset key. `Editor.tsx` raises it with `confirmPopup({…})`, which renders a **`.p-confirm-popup`**
+at the body portal, so like the hint it is scoped on the `blong-theme-wood` root marker.
 
 ### Decisions
 
-- **It is a sibling of the ActionHint, not a new language.** PrimeReact gives it the *same* caret
-  machinery — `.p-confirm-popup:before/after { bottom: 100%; left: calc(var(--overlayArrowLeft, 0) +
-  1.25rem) }` with `border-width: 10px/8px` in `@layer primereact`, which the theme's unlayered
+- **It is a sibling of the ActionHint, not a new language.** PrimeReact gives it the _same_ caret
+  machinery —
+  `.p-confirm-popup:before/after { bottom: 100%; left: calc(var(--overlayArrowLeft, 0) + 1.25rem) }`
+  with `border-width: 10px/8px` in `@layer primereact`, which the theme's unlayered
   `border: solid transparent` shorthand collapses to a nub exactly as it does for the hint. So it
-  reuses the hint's 3px brass frame, its outset ring + drop shadow, and the **solid brass caret** from
-  the eighth pass (with `::after` switched off).
+  reuses the hint's 3px brass frame, its outset ring + drop shadow, and the **solid brass caret**
+  from the eighth pass (with `::after` switched off).
 - **Only the panel differs**: charcoal `#1f1f20` + the dot texture rather than the hint's rust
   `#a04f32`. Both are transient plates pinned to the button that raised them, but the hint reports a
-  *failure* while this is a neutral *question*, so they should not share a body colour. The warning
+  _failure_ while this is a neutral _question_, so they should not share a body colour. The warning
   triangle is amber `#e0b085` rather than a red.
-- **The two answers are compact versions of the theme's key** (`height: 30px`, 2px brass frame via the
-  same `padding-box`/`border-box` double-gradient trick as §W8) rather than stock text buttons; `Yes`
-  gets the brighter brass already used for the engaged toggle and the selected dropdown row, so the
-  affirmative action is the one that reads as active. Needed `!important` on `background-image` to
-  beat PrimeReact's `.p-button-text`.
+- **The two answers are compact versions of the theme's key** (`height: 30px`, 2px brass frame via
+  the same `padding-box`/`border-box` double-gradient trick as §W8) rather than stock text buttons;
+  `Yes` gets the brighter brass already used for the engaged toggle and the selected dropdown row,
+  so the affirmative action is the one that reads as active. Needed `!important` on
+  `background-image` to beat PrimeReact's `.p-button-text`.
 - Sizing/typography follow §W3/§W7: message `1.02rem` in `--wood-font` on `#dcc8b6`, icon `1.4rem`,
   content `0.7/0.95rem`, footer `0/0.95/0.8rem`, buttons right-aligned.
 
@@ -1044,18 +1050,18 @@ body portal, so like the hint it is scoped on the `blong-theme-wood` root marker
 
 - 46 files / 502 tests pass; `vite build` clean (**439.07 KB** CSS, 90.83 KB gzip).
 - Live: popup 486.9 × 83.1, border 2.22px (the 3px authored, snapped at the reporter's DPR 0.9),
-  radius 5px, `--wood-font` resolved, message `14.28px`; accept key 48.8 × 30, radius 4;
-  caret `::before` 20 × 10 with the solid path and `::after` `content: none`.
+  radius 5px, `--wood-font` resolved, message `14.28px`; accept key 48.8 × 30, radius 4; caret
+  `::before` 20 × 10 with the solid path and `::after` `content: none`.
 - Captured live: brass frame + dotted panel, amber warning triangle, parchment message, two brass
   keys with `Yes` brighter, and the solid caret pointing up at the Reset key.
 
 ### Popup family, complete
 
-| Surface | Frame | Panel | Caret |
-| --- | --- | --- | --- |
-| `.p-overlaypanel` (ActionHint) | 3px brass `#c6a67f…` | rust `#a04f32` + dots | solid brass |
-| `.p-confirm-popup` | 3px brass `#c6a67f…` | charcoal `#1f1f20` + dots | solid brass |
-| `.p-dropdown-panel` | 2px brass bezel | charcoal recess + mesh | — |
+| Surface                        | Frame                | Panel                     | Caret       |
+| ------------------------------ | -------------------- | ------------------------- | ----------- |
+| `.p-overlaypanel` (ActionHint) | 3px brass `#c6a67f…` | rust `#a04f32` + dots     | solid brass |
+| `.p-confirm-popup`             | 3px brass `#c6a67f…` | charcoal `#1f1f20` + dots | solid brass |
+| `.p-dropdown-panel`            | 2px brass bezel      | charcoal recess + mesh    | —           |
 
 ## Tenth pass — focus states (last unstyled surface)
 
@@ -1064,31 +1070,33 @@ body portal, so like the hint it is scoped on the `blong-theme-wood` root marker
 - **The design does show a focused field, and it is not a glow.** `wood.png`'s `Type` dropdown is
   focused: its thin dark edge widens into a ~3 CSS-px **brass bezel**, brightest along the top and
   left and falling away to the right and floor. Sampled along device columns/rows — top
-  rgb(222,188,143), left rgb(194,160,112), right rgb(148,112,62), bottom rgb(166,132,84), with a dark
-  outer line rgb(38,12,0) and a dark inner lip. That is the same bezel language as the §W5 socket,
-  so the theme already had the vocabulary; the old rule (an `#b45309` orange border plus a `0 0 10px`
-  amber halo) was inherited from the pre-redesign palette and matched nothing else.
+  rgb(222,188,143), left rgb(194,160,112), right rgb(148,112,62), bottom rgb(166,132,84), with a
+  dark outer line rgb(38,12,0) and a dark inner lip. That is the same bezel language as the §W5
+  socket, so the theme already had the vocabulary; the old rule (an `#b45309` orange border plus a
+  `0 0 10px` amber halo) was inherited from the pre-redesign palette and matched nothing else.
 - **Implemented as per-side border colours plus four directional `inset` shadows**, not a thicker
   border: the 1px `border` supplies the bezel's outer pixel and the insets add the second, so the
-  field does not change size on focus (a wider border made the whole form jitter). The `inset 0 0 0
-  3px rgba(14,8,3,0.4)` reproduces the dark lip inside the bezel, and the two depth shadows are kept.
+  field does not change size on focus (a wider border made the whole form jitter). The
+  `inset 0 0 0 3px rgba(14,8,3,0.4)` reproduces the dark lip inside the bezel, and the two depth
+  shadows are kept.
 - **The dropdown is one continuous channel.** The design shows no separate trigger panel and no
   divider — the mesh runs to the frame — and both the chevron and the clear `×` are warm cream
   (sampled rgb(220,200,175) and rgb(226,205,180)). They were still on the old palette's `#fcd34d`
   amber with `background: rgba(0,0,0,0.25)` and a gold `border-left`, so the trigger is now
   transparent/divider-less and both icons are `#dfcbb2`.
 - **Two PrimeReact focus mechanics worth knowing, both discovered the hard way:**
-  - `--focus-ring` looks like the knob for focus colour, and PrimeReact's *newer* themes consume it,
-    but the vendored `vela-blue` **hard-codes `#93cbf9`** in every rule, so setting the token alone
-    changes nothing. It is still declared (brass) for forward compatibility, but it is not the fix.
-  - §W8's keys and §W5's sockets set their own `!important` `box-shadow`, which **silently
-    overrode the theme's focus ring** — leaving those controls with *no* visible focus at all. This
-    was a regression introduced by the earlier passes, not a pre-existing one. Fixed by repainting
-    the ring with `outline` on `:focus-visible`, which nothing else in the file touches, instead of
-    joining the `!important` shadow war.
+    - `--focus-ring` looks like the knob for focus colour, and PrimeReact's _newer_ themes consume
+      it, but the vendored `vela-blue` **hard-codes `#93cbf9`** in every rule, so setting the token
+      alone changes nothing. It is still declared (brass) for forward compatibility, but it is not
+      the fix.
+    - §W8's keys and §W5's sockets set their own `!important` `box-shadow`, which **silently
+      overrode the theme's focus ring** — leaving those controls with _no_ visible focus at all.
+      This was a regression introduced by the earlier passes, not a pre-existing one. Fixed by
+      repainting the ring with `outline` on `:focus-visible`, which nothing else in the file
+      touches, instead of joining the `!important` shadow war.
 - Also worth recording: `.p-dropdown`/`.p-inputtext` carry `transition: border-color 0.2s`, so a
-  `getComputedStyle` read taken immediately after adding a focus class returns the **pre-transition**
-  value. Two rounds of "the CSS isn't applying" were this, not the CSS.
+  `getComputedStyle` read taken immediately after adding a focus class returns the
+  **pre-transition** value. Two rounds of "the CSS isn't applying" were this, not the CSS.
 
 ### Verified
 
@@ -1113,21 +1121,21 @@ during the wood theme creation").
   lives in `.github/skills/blong-theme/` and is registered in the `[SKILLS_DELEGATOR]` table in
   `copilot-instructions.md` (plus a routing sentence in `blong-browser`'s description and body).
 - **Named `blong-theme`**, matching the `blong-<domain>` convention (`blong-i18n`, `blong-model`).
-  The subject is specifically *visual variant layers*, not PrimeReact theme families; the
+  The subject is specifically _visual variant layers_, not PrimeReact theme families; the
   description says so and routes components/pages to `blong-browser` and Storybook to
   `storybook-v10-setup`.
 - **Four reference files rather than one long SKILL.md** (progressive loading): `design-match`
   (measurement + verification harnesses + environment limits), `prime-react-cascade` (v10 layer
-  mechanics, focus, CDP), `textures` (tiling law, calibration, formats, delivery), `wood-theme`
-  (the worked example with the measured constants). SKILL.md is 171 lines and carries the
-  guardrails, procedure, variant contract and definition of done.
+  mechanics, focus, CDP), `textures` (tiling law, calibration, formats, delivery), `wood-theme` (the
+  worked example with the measured constants). SKILL.md is 171 lines and carries the guardrails,
+  procedure, variant contract and definition of done.
 - **No `scripts/` in the skill.** The measurement recipes live as commands inside the references
   instead of as an untested helper script — shipping executable code that was never run would be
   worse than the recipes it would replace.
-- **The wood caret decision is codified as binding** (guardrail 8: stop after two failed attempts
-  at a pixel-exact detail and get an explicit product decision; never "restore" such a decision).
-  This was the single most expensive lesson of the session and the likeliest to be undone by a
-  future agent trying to be helpful.
+- **The wood caret decision is codified as binding** (guardrail 8: stop after two failed attempts at
+  a pixel-exact detail and get an explicit product decision; never "restore" such a decision). This
+  was the single most expensive lesson of the session and the likeliest to be undone by a future
+  agent trying to be helpful.
 - **Fixed the stale `wood.css` header while passing.** Its header still claimed inlining was
   deliberate because Storybook does not rewrite relative `url()` — the exact claim disproved and
   corrected in the generator header in the previous pass. Left alone, the two headers would have
@@ -1159,22 +1167,22 @@ addressing.** A minimal build reproducing `defineBlongViteConfig`'s shape (`base
 `assets/edge-Dh0T0AsO.webp` as **content-hashed files** and rewrote the stylesheet to
 `url(/s/assets/…)` — a **151-byte** CSS. That is exactly the prefix `static.ts` serves
 (`prefix: '/s'`, `maxAge: 1y`, `immutable`), so the suite's `base` already handles it. One relative
-`url()` works in Storybook dev *and* in the `/s/` production build.
+`url()` works in Storybook dev _and_ in the `/s/` production build.
 
 **Finding 3 — the package's own lib build INLINES assets.** Adding a 45 KB `url()` grew
-`dist/assets/blong-browser.css` from 439.65 KB to 501.39 KB (+61.7 KB ≈ base64 of 45.5 KB) and emitted
-no asset file — Vite library mode inlines. So `dist/` consumers keep today's behaviour: no
+`dist/assets/blong-browser.css` from 439.65 KB to 501.39 KB (+61.7 KB ≈ base64 of 45.5 KB) and
+emitted no asset file — Vite library mode inlines. So `dist/` consumers keep today's behaviour: no
 regression, but no win either. (The suite resolves `blong-browser` from **source** via the
 `development` export condition, which is why the suite build does get files.)
 
 **Finding 4 — WebP only wins on one of the six assets.**
 
-| asset | today | WebP lossless | verdict |
-| --- | --- | --- | --- |
-| `wood-grain` 512² grey | PNG **44,104 B** | **45,488 B** | worse (+3%) |
-| `wood-edge` 96² RGBA | PNG **3,189 B** | **1,842 B** | **−42%** |
-| `wood-mesh` / `wood-btn-dots` | SVG 230 / 284 B | — | keep SVG (vector, crisp at any DPR) |
-| `wood-recess-top/bottom` 1×8 | PNG 137 B each | — | keep PNG (WebP header ≥ payload) |
+| asset                         | today            | WebP lossless | verdict                             |
+| ----------------------------- | ---------------- | ------------- | ----------------------------------- |
+| `wood-grain` 512² grey        | PNG **44,104 B** | **45,488 B**  | worse (+3%)                         |
+| `wood-edge` 96² RGBA          | PNG **3,189 B**  | **1,842 B**   | **−42%**                            |
+| `wood-mesh` / `wood-btn-dots` | SVG 230 / 284 B  | —             | keep SVG (vector, crisp at any DPR) |
+| `wood-recess-top/bottom` 1×8  | PNG 137 B each   | —             | keep PNG (WebP header ≥ payload)    |
 
 **Finding 5 — lossy WebP is not an option for the grain.** q80 → 27,184 B (−38%), but against the
 original: RMSE **3.10** (the texture's own sdev is ~9.9) and, decisively, the **wrap discontinuity
@@ -1199,20 +1207,492 @@ tile stays 512².** Changed `scripts/woodAssets.mjs`:
 - the stale "Storybook does not rewrite relative `url()`" paragraph in the generator header was
   replaced with the measured behaviour, and the generated stylesheet's own header updated to match.
 
-Result: `wood-assets.css` **65,448 B → 2,616 B**; `wood-edge` 3,189 → 1,842 B; the grain unchanged at
-44,104 B.
+Result: `wood-assets.css` **65,448 B → 2,616 B**; `wood-edge` 3,189 → 1,842 B; the grain unchanged
+at 44,104 B.
 
 **Verified in all four environments, with no config change in any of them:**
 
-| environment | grain | edge |
-| --- | --- | --- |
-| Storybook dev | file, `200 image/png`, 44,104 B | file, `200 image/webp`, 1,842 B |
-| suite build (`base:'/s/'`, `assetsInlineLimit: 0`) | `url(/s/assets/wood-grain-CQ5NWcEa.png)` | `url(/s/assets/wood-edge-Dh0T0AsO.webp)` |
-| `storybook build` | file, `url(./wood-grain-CQ5NWcEa.png)` | inlined (1.8 KB < its 4 KB default) |
-| package lib build | inlined | inlined — `dist/` consumers unchanged, CSS 439.65 → 437.85 kB |
+| environment                                        | grain                                    | edge                                                          |
+| -------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------- |
+| Storybook dev                                      | file, `200 image/png`, 44,104 B          | file, `200 image/webp`, 1,842 B                               |
+| suite build (`base:'/s/'`, `assetsInlineLimit: 0`) | `url(/s/assets/wood-grain-CQ5NWcEa.png)` | `url(/s/assets/wood-edge-Dh0T0AsO.webp)`                      |
+| `storybook build`                                  | file, `url(./wood-grain-CQ5NWcEa.png)`   | inlined (1.8 KB < its 4 KB default)                           |
+| package lib build                                  | inlined                                  | inlined — `dist/` consumers unchanged, CSS 439.65 → 437.85 kB |
 
 The content hashes were identical across two independent builds, so the output is deterministic.
 Note the suite's `assetsInlineLimit: 0` is what forces files there while Storybook's 4 KB default
 leaves the small edge inline — that is Vite doing the right thing per environment, not a
 configuration to align.
 
+- **`blong-kukum` capability lives in an orchestrator, not an adapter.** The replica of
+  `[REUSE_SERVER]` is that kukum needs filesystem + registry access, which only port factories get.
+  Chose `orchestrator.dispatch` with `namespace: 'kukum'` (registers `ports.kukum.request`) over
+  either an adapter or adding `platform`/`fs` to `IHandlerProxy`. The latter would have exposed
+  filesystem writes to _every_ handler in the framework; the orchestrator keeps the blast radius to
+  one layer. **Reconsider if** kukum ever needs to be loaded without blong-server.
+- **The kukum API surface is generated from the primitive catalogue, not written per method.** One
+  `validation` export emits the ~70 dotted-triple keys and one `handler` export emits the matching
+  object map; `layerProxy` normalises both. This is the `subject.validation` +
+  `blong-mock.validation(models)` pattern. Consequence: adding a primitive to
+  `core/blong-kukum/primitives/catalog.ts` adds five routes with no new files, but the functions
+  MUST carry an explicit `.name` (see `friction.md`).
+- **Hooks are explicitly `auth: false`.** kukum mutates source files on the local filesystem and is
+  loaded alongside a dev suite; requiring a JWT would make it unusable (kukum's own `index.ts`
+  intentionally has no login/access realm so the API needs no database). This mirrors
+  `systemDebug`/`RestFs` being dev-oriented. **Reconsider if** kukum is ever enabled in a shared or
+  production environment — it needs the same `enabled` config gate as `systemDebug`.
+- **`blong-lint` is a new core package rather than code inside `blong-dev`.** Both the CLI and the
+  runtime API need the same tsc/cspell/eslint pipeline, and a realm cannot depend on a tool. The CLI
+  keeps its own dependency copies and passes its bin directory in; the package also resolves its own
+  `node_modules/.bin` so it works from the runtime with no PATH setup.
+- **`WELL_KNOWN_LAYERS` and `listTemplateFiles` moved to `@feasibleone/blong-lib`** (subpath exports
+  `./layers`, `./template`). gogo re-exports `src/template-files.ts` unchanged so
+  `copy-template.mjs` and `kopi.ts` keep working. `**/.tap/**` was added to the ignore list — it was
+  leaking hundreds of coverage files into every scaffolded realm.
+- **`IPlatformApi.mkdirSync` added (optional).** Scaffolders must create directories; the
+  alternative was requiring callers to pre-create them. Optional so the browser stub stays valid.
+- **The kukum CLI is its own `kukum` bin, not `blong-dev kukum`.** `blong-dev` cannot depend on
+  `blong-kukum` because `blong-kukum` already devDepends on `blong-dev` for its `ci-lint`/`ci-test`
+  scripts — Rush would see a project cycle. Shipping the bin with the realm also means it works for
+  anyone who installs the realm, without the dev toolchain. **Reconsider if** the repo ever gains a
+  tool package that may depend on realms.
+- **MCP sessions are stateful (one transport per `Mcp-Session-Id`).** The protocol requires
+  `initialize` to precede other methods on the same session; the stateless per-request pattern
+  answers every follow-up with `Method not found`. Tools are derived from the gateway's route table
+  (`IGateway.describe()`) so the MCP surface cannot drift from the API, and the item is off by
+  default — kukum's own suite turns it on in `dev` so the blast radius is one suite.
+- **`realm` scaffolding delegates to the `blong-kopi` template** rather than the descriptor's
+  minimal four files, read through the host (`../blong-kopi` resolved from `operations.ts`). The
+  realm must not import `blong-gogo` (runtime), and `createRealm` lives there, so the template is
+  copied by the engine. Consequence: the `realm` primitive inherits the template's naming constraint
+  (single lowercase word) and the CLI works only where the sibling package exists.
+- **`Registry.describe()` / `Watch.describe()` are data-only and optional.** Introspection returns
+  plain serialisable data (realms, ports, groups, folders, files) from `IRegistry`/`IGateway` as
+  optional methods, so existing implementations and mocks stay valid. `Watch` gained a separate
+  `#discoveredFiles` map rather than being asked to expose `#handlerFiles`, because the latter
+  drives hot-reload decisions and must not change.
+- **kukum's skills guidance is one canonical section, not per-skill recipes.** `[KUKUM_API]` in
+  `_shared/conventions.md` is the source of truth; skills link to it. Verbatim skeletons were kept
+  where they double as "what the API emits" references rather than deleted, to avoid losing the
+  worked examples while the prose is still being trimmed.
+- **Overwrite risk is reported, not silently merged.** `add`/`edit` return a `warnings` array naming
+  any file it replaced, and calling out the two shared ones (`meta/type/schema.ts`, `meta/db/db.ts`)
+  as lossy because they hold every entity in the realm. Chose this over implementing a merge mode
+  now: the framework keys declared object schemas as `schema[subject][object]`, so it is not obvious
+  that a second file in the `meta/type` group is additive — that needs to be established first (see
+  `todo.md`). Warning text is mode-aware for the same reason the skip logic is: a hand-written file
+  that is left untouched must not be reported as replaced.
+- **`blong-graph` reconciliation deferred, with the real blocker recorded.** Its `server.ts` wires
+  `children: ['./adapter', './gateway']` (no `gateway/` exists) and a `graphDispatch` config with no
+  orchestrator file to consume it, so its handler never sees a registry. Adopting
+  `Registry.describe()` therefore means building the missing dispatch orchestrator first — a
+  package-sized job, not a one-line swap, so it stays out of the kukum change set.
+- **`add` composes by default; `--replace` is the escape hatch (supersedes the warning-only decision
+  above).** The framework keys declared schemas as `schema[<realm>][<object>]` and `layerProxy`
+  merges each `meta/type/*.ts` into `{[<realm>]: <that file>}`, so a second file under `meta/type/`
+  is **additive** — proven by `test/blong-int-adapter/mysql/meta/type/{schema.ts, schemaPage.ts}`,
+  whose test asserts both entities land in `objectSchema`. That unblocked real merging:
+  `schema`/`table` writes a sibling `meta/type/<object>.ts`, `schema`/`register` splices into the
+  existing `tables` map, `test` appends its group to `integration.watch.test`, and `playwright`
+  appends a `test.describe` block. Chose marker-detection over a flag because the marker is the same
+  signal that already decides hand-written vs generated: a file without it is never rewritten.
+  `mode: 'replace'` maps to the old regenerate-from-scratch behaviour and keeps the lossy-file
+  warning, so the warning is now _accurate_ rather than a permanent caveat.
+- **Merge is a per-descriptor `compose` hook, not a generic diff.** `files(ctx)` still answers "what
+  would this look like in an empty realm" (used by `get`), and `compose({host, root, context})` may
+  read disk to return a non-destructive result. Text merging lives in four narrow pure helpers in
+  `merge.ts` (`appendStringEntry`, `insertMapEntry`, `appendYamlBlock`, `appendDescribeBlock`), each
+  recognising one shape a template emits and returning `undefined` when it does not, so the caller
+  falls back to overwrite + warn instead of corrupting the file.
+- **`seed` is a per-entity file, so it is not a shared file.** The template writes
+  `meta/db/<subject><Object>Merge.yaml` — one file per entity — so it never needed merge support;
+  the original `SHARED_FILES` concern for seeds was unfounded.
+- **Generated test groups are registered, not merely described.** A group missing from
+  `integration.watch.test` silently never executes, and `discoverRealmTestMethods` only auto-fills
+  that list when a realm is loaded standalone (not as part of a suite, and never for the browser
+  side). So `test`/`server` and `test`/`browser` now edit `index.ts` / `browser-test.ts` as part of
+  generating the group; when that bootstrap is missing or hand-written, the result carries a
+  `messages` entry naming the entry to add by hand. Chose a new `notices` channel on `PrimitiveFile`
+  over failing the add, because the group file itself is still useful.
+- **The generated test bodies exercise the entity.** `assert.ok(true, 'placeholder')` made "covered
+  by its tests" meaningless, so the server and browser groups now add a row through the generated
+  handler and assert `find` returns it; the Playwright spec drives the generated model page through
+  the shared `browseModel` / `createAndEditModel` / `cleanupModel` helpers.
+- **The generated model spec had to become complete to be usable.** A model with only `cards`
+  renders no browse table, so the Playwright helpers could not drive it. It now carries `nameField`,
+  `schema.properties.<object>` with `filter`/`sort` and a `columns` widget,
+  `cards.browse`/`cards.edit` and a `browser` toolbar, mirroring the `blong-kopi` template. Its path
+  was also aligned to `<subject><Object>Model.ts` (lowercase subject, as the template writes it) so
+  regenerating replaces the scaffolded model instead of leaving two models claiming one entity.
+- **The E2E fixture is reproducible, not idempotent, and lives under `test/fixture/`.** Committed at
+  `core/blong-kukum/test/fixture/e2e-realm/` — the `fixture/` segment is tap's own convention for
+  "never run me", which at least stops it being discovered by tap's defaults. The suite generates
+  the same tree into `.kukum-test/regen` and asserts both the file set and the bytes match, which
+  locks the templates against drift without depending on `realm add` being re-runnable in place (it
+  is not — see `friction.md`).
+- **The fixture splits the two roles between two entities.** `widget` is pure template output and
+  stays untouched (the working baseline); the API's own output is a second entity `gadget`. Adding
+  `gadget` to the template's `widget` would have meant two tables claiming one entity and a model
+  overwriting the template's.
+- **The fixture's added set is deliberately small.** Only primitives the realm's three legs can
+  actually cover: table, registry entry, test seed, model, and one test per platform. Adding
+  `adapter`, `storybook` or `component` would produce artifacts no test in that realm could
+  exercise, quietly making the coverage assertion vacuous.
+- **A test seed also grants the entity's actions.** `seed`/`test` now composes the realm's
+  `accessAuthorizationMerge.yaml`, adding the entity's five actions to the `<realm>Manage`
+  capability. Without it the generated entity is scaffolded but _unusable_: every call is denied
+  through the gateway, which is exactly what the browser leg reported.
+- **`handWritten` only applies to code files.** The generated marker is a TypeScript sentinel, so
+  treating a `.yaml`/`.sql` artifact that lacks it as hand-written made seeds and procedures
+  permanently unrefreshable. Non-code artifacts are now always regenerable; composition into them is
+  still opt-in per descriptor (the RBAC seed), and reading uses a marker-free helper.
+- **The Playwright leg borrows Vite from `blong-browser`.** The fixture is not a Rush project, so it
+  has no `node_modules`: `blong`/`blong-watch`/`playwright` come from blong-kukum's tree and Vite
+  from blong-browser's, both only put on PATH for these runs. Adding `vite` to blong-kukum's own
+  devDependencies would be cleaner but needs a `rush update`.
+- **Baselines are refreshed by a script, never by the test.** `node --run kukum:fixture:update`
+  regenerates the fixture and runs `--update-snapshots`; the test only ever compares. The update
+  script carries the committed PNGs across the regeneration by hand, because deleting the tree would
+  otherwise take them with it.
+- **The fixture's generated files are gitignored; only the baselines are committed (reverses the
+  earlier decision).** `test/fixture/e2e-realm/**` is ignored except `test/e2e.play.ts-snapshots/`,
+  using the standard nested-negation idiom. `e2e.test.ts` therefore regenerates the fixture in place
+  on every run instead of comparing against a committed copy, and it is the committed
+  **screenshots** that lock the generators: a template change that alters the rendered page fails
+  until `node --run kukum:fixture:update` refreshes them. The previous "generate into a scratch dir
+  and compare byte-for-byte" assertion is gone — with the generated files uncommitted it would have
+  compared the generators against themselves and asserted nothing. What was lost is template-drift
+  detection for non-UI files; what was gained is a much smaller diff, no generated TypeScript in the
+  package's lint surface, and a drift check that only fires on changes a human can actually review.
+- **Process lifetime is config, not a `process.env.CI` check.** `runServer` now asks `platform.exit`
+  instead of evaluating `process.env.CI && !intents.includes('playwright')` in two places. The flag
+  is declared per intent in `load.ts`'s synthetic config: `integration` keeps
+  `Boolean(process.env.CI)` (so CI stays the single source for that intent),
+  `playwright: {exit: false}` retires the last hardcoded intent-name string, and `db`/`cli` are
+  `true`. Resolved onto `IRegistry.exit` right before `load()` returns, next to where
+  `api.configRuntime` is attached — the runner only ever holds the registry, so something had to
+  carry it across.
+- **A `false` from the framework intent layer is re-asserted after every source merges.** The
+  standalone-realm wrapper's convenience ports were defeating `cli`. Rather than pattern-match
+  intent names (the thing being removed), the resolved framework configs are retained and any
+  top-level `false` they declare is re-applied post-merge. Only `cli` sets top-level `false`s today,
+  so the rule has no effect on any existing intent — but it states the right invariant: an intent
+  that switches a component off is not overridable by a template's defaults.
+- **`cli` disables listeners and watching, not the load.** `gateway`/`rpcServer`/`apiGateway`/
+  `restFs`/`systemDebug`/`mcp`/`resolution` are `false`, and `watch: {enabled: false}` —
+  deliberately _not_ `watch: false`, because the load step that records handler folders and files
+  (the data behind `Registry.describe()`, and so behind `method.find`/`tree.find`) runs in
+  `Watch.start` regardless; only chokidar is gated by `enabled`. Dispatch stays in-process via
+  `remote: {canSkipSocket: true}`. Verified by running `blong cli` against a minimal suite: exit 0,
+  nothing bound, while a default run still opens the rpc server and gateway.
+
+- **The CI check stays an env read in `load.ts`, made browser-safe — the `ci` intent block was
+  rejected.** The browser bundle loads `load.ts` too, so `Boolean(process.env.CI)` threw
+  `ReferenceError: process is not defined` and broke the entire browser platform. The tempting fix
+  was to stop reading env and drive the flag from the `ci` intent (which `runServer.ts` already
+  injects when `CI` is set) via a `ci: {exit: true}` block — purely intent-driven, no `process` in
+  shared code. Rejected: intents are merged in command-line order, so a `ci` block setting `exit`
+  would override `playwright: {exit: false}` whenever the Playwright runner adds its intent _before_
+  `ci`, silently breaking Playwright in CI. The per-intent declarations plus the existing false-wins
+  reconciliation already express this correctly. Chose instead `isCI()` reading
+  `globalThis.process?.env?.['CI']` — a **function**, not a module constant, so the tests that set
+  `process.env.CI` at runtime still pass; a constant is captured at import time and would have
+  failed `exit.intent.test.ts` (9 tests).
+- **The generated tests filter by the created row's name rather than paging the table.** Four
+  options were weighed for the `find`-returns-nothing bug: raise `pageSize`, order by PK descending,
+  reset the fixture database each run, or filter by the unique name the test just created. Chose the
+  filter: it is the only one that stays correct no matter how the table grows, and it needs no DB
+  lifecycle change. `search` (ILIKE) was rejected as looser than `filterBy` (exact). The template
+  now returns the created name from the `add` step so the `find` step can filter on it — worth
+  knowing that `filterBy` is accepted over HTTP too, not just for in-process dispatch (the browser
+  leg passing is the proof).
+- **The fixture race was left as-is rather than fixed.** Re-verified that positional globs ignore
+  `--exclude` (`tap list` still lists the fixture test), which confirms the analysis already
+  recorded in `friction.md` and `decision.md`: the options that would fix it (dot-directory,
+  temp-dir swap, or a `blong-dev test` change honouring tap config) either do not fully close the
+  window or have repo-wide blast radius. Not re-opened without a deliberate decision to change
+  `blong-dev test`.
+- **Amendment to "`cli` is framework-level, so any realm or suite is drivable from a terminal".**
+  Verified false as written: `blong-login/orchestrator/login/token.ts` reads `gateway.config()` at
+  handler-creation time, and `cli` sets `gateway: false`, so any suite containing the auth realm
+  fails to load (`TypeError: … reading 'config'`; reproduced in `demo/handler-test-poc`). The
+  intent's real contract today is **"a realm-only suite"**, which is what Stage 4 needs
+  (`core/blong-kukum/cli.ts` = the kukum realm alone; `blong cli` there exits 0). Stage 4 is
+  unblocked. If `cli` should ever work on a full suite, fix `blong-login` to read the gateway lazily
+  rather than weakening `cli` — a config-only gateway would re-open "which components does `cli`
+  switch off", the question the `false`-wins rule exists to settle.
+- **The layer's `lib` object now carries `platform` and `registry` (framework change).**
+  `Registry._createHandlers` seeds `lib` with `error`/`assert`/`render`/`timing` +
+  `@feasibleone/blong-lib`, and that object is what `this` is inside a `library()` function. The
+  plan assumed `this` would be the port ("no framework change") — **measured and false**: the lib
+  proxy hands an _attached_ function back raw, and only binds `port` in its not-yet-attached
+  fallback path. A throwaway probe confirmed it (`this` keys were
+  `error, assert, render, timing, … yaml`; `this.platform` undefined). Rather than accept an
+  inconsistent `this` that works only for not-yet-attached libs, added `platform: this.#platform`
+  and `registry: this`, mirroring the port API which already exposed both. This is what lets a
+  library function reach the platform at all, which is what the user's "powerful modular CLI-s" goal
+  needs — a `library()` _factory_ is given only
+  `config`/`handler`/`errors`/`schema`/`gateway`/`apiSchema`. Blast radius: two additive keys on one
+  object; verified against the full `blong-gogo` suite and lint. Alternative rejected: passing the
+  platform as an explicit parameter through every binding, which would leak a runtime concern into
+  the operation signatures the plan keeps pure.
+- **kukum keeps BOTH pure `operations/*.ts` modules and thin `library()` bindings.**
+  Redundant-looking but deliberate: the pure modules (taking `host`/`registry` explicitly) are what
+  keep the existing `operations.test.ts`/`engine.test.ts` passing untouched, and the bindings are
+  what make the realm read like a normal Blong realm (handler → lib → operation). The bindings are
+  one line each and are tested by calling the factory with a stub api and the result with a fake
+  `this` — the only way to prove a binding is _thin_, since a value captured in the factory would
+  still pass an integration test.
+- **`cli` activates the handler-bearing layers (`error`, `adapter`, `orchestrator`, `server/api`).**
+  Without this a `cli` process loaded a realm with no handler layers — `WELL_KNOWN_LAYERS` bound
+  them to `integration` only — so there was nothing to dispatch to and no way to build a CLI on the
+  intent. `cli` still skips the listeners, the watcher and the test machinery; it just no longer
+  skips the realm. Fixing it in the layer map rather than by passing `['cli','integration']` to
+  `load` was deliberate: the false-wins reconciliation forces any top-level `false` from a framework
+  config, and `integration.exit` is `isCI()` — `false` outside CI — so the extra intent would have
+  silently cancelled `cli`'s `exit: true`. Follow-up: the two prose tables that mirror this map
+  (`_shared/conventions.md` → `[LAYER_DEFAULTS_TABLE]`, `docs/concepts/layer.md`) still show
+  `integration` only.
+- **A CLI dispatches by calling `port.findHandler(method)` itself, and guards on it.** `Remote` is
+  not reachable from the registry's public surface, but `findHandler` resolves the same entry
+  `Remote._findMethod` would. The guard must be `findHandler` returning a function: `handles()`
+  matches only the namespace _prefix_, so it answers `true` for `kukum.bogus.thing` and cannot
+  distinguish a real method. Calling the handler directly skips gateway validation and checkpoints,
+  which a CLI does not need (it constructs its own params, and kukum is `auth: false`).
+- **stdout belongs to the CLI result; the runtime's logs are configured down, not redirected.** pino
+  writes to fd 1 directly, so overriding `process.stdout.write` (the obvious trick) does not catch
+  framework logs — verified by trying it. Instead the `cli` path sets
+  `{log: {level: 'warn'}, apiSchema: {logLevel: 'warn'}}` on the suite and
+  `{cli: {logLevel: 'warn'}}` on the orchestrator, whose `default` block asks for `info`.
+  `--output=json` stays parseable, and real warnings still surface.
+
+## kukum: file-name rule for handler-group files (applied)
+
+Rule (from the user, described as the generic rule): the file name must match the API endpoint path
+minus the namespace. If one file handles more than one path it may use a generic word for the
+segment that differs, or skip that segment entirely. Double duty must be avoided.
+
+Applied in `core/blong-kukum/orchestrator/kukum/`:
+
+| Endpoint                                                  | File                                                     |
+| --------------------------------------------------------- | -------------------------------------------------------- |
+| `kukum.primitive.find`                                    | `primitiveFind.ts`                                       |
+| `kukum.activation.find` / `method.find` / `tree.find`     | `activationFind.ts` / `methodFind.ts` / `treeFind.ts`    |
+| `kukum.source.get` / `source.check`                       | `sourceGet.ts` / `sourceCheck.ts`                        |
+| `kukum.instruction.find`                                  | `instructionFind.ts`                                     |
+| `kukum.<id>.add/edit/find/get/check` (14 primitives each) | `add.ts` / `edit.ts` / `find.ts` / `get.ts` / `check.ts` |
+
+Why the per-primitive files skip the differing segment instead of using `primitive` as the generic
+word: `kukum.primitive.find` is a real endpoint, so `primitiveFind` is already the catalogue's file.
+Reusing it would be double duty. Skipping is the only collision-free option. Checked against the
+framework lib names (error, assert, render, timing, checkpoint, yaml, platform, registry, ...) — no
+collisions.
+
+Not documented anywhere general: `_shared/conventions.md` and the `blong-handler` skill do not state
+this rule. Left as a todo — changing shared framework docs affects other realms.
+
+## kukum: collapse of `operations/` into the `library()` functions
+
+Decision: the operations ARE the library functions. There is no separate `operations/` layer
+delegating into `orchestrator/kukum/`.
+
+- Shared plumbing (types, `descriptorFor` guard, `contextOf`, `baseResult`, `collectWarnings`,
+  `toResultFile`, `diagnoseFor`, `diagnose`, `methodName`, `describePrimitives`,
+  `REALM_TEMPLATE_ROOT`, `SHARED_FILES`, `KukumLibContext`) lives in the package-root
+  `operation.ts`.
+- It cannot live in `orchestrator/kukum/`: every `.ts` in a handler-group folder is loaded as a
+  handler, and a helpers module has nothing for the loader to classify.
+- Each of the 12 lib files reads `this.platform` / `this.registry` and holds the real logic, moved
+  verbatim from `operations/<name>.ts`.
+- The guards survive: `methodName` in `operation.ts`; "Unknown primitive" folded into
+  `descriptorFor`; "Unsupported predicate" becomes structural (each predicate is its own file, and
+  only registered predicates appear in the generated methods).
+- `libContext.ts` was deleted — its `KukumLibContext` type now lives in `operation.ts`.
+- Tests: `operations.test.ts`, `scaffold.test.ts` and `fixture.ts` keep their `operate(...)` call
+  sites and gain a small shim that builds the `library()` factory and calls it with the `this` the
+  framework seeds — one place expressing how the runtime drives a binding. `libraries.test.ts` still
+  asserts binding thinness.
+
+Verification: lint clean (tsc/cspell/eslint); 490/490, including `e2e.test.ts` (byte-identical
+fixture) and `index.test.ts` (real JSON-RPC for every method); CLI byte-identical to the
+pre-collapse baseline for `primitive find` and `instruction find --target=.` (`activation find`
+differs only by the intentional `cli: true` rows from stage 1).
+
+## Docs conventions for the kukum documentation
+
+Decisions taken while writing the kukum docs — reasonable, but unconfirmed, so flag if wrong:
+
+- The docs site links only WITHIN `docs/blong/docs/`. My first draft linked two files outside the
+  tree (the package README, the blong-handler skill). No other doc does that, and
+  `docusaurus.config.js` sets `onBrokenLinks: 'throw'`, so an escaping relative link would probably
+  fail the build. Both became plain code spans (`core/blong-kukum/README.md`,
+  `.github/skills/blong-handler/SKILL.md`).
+- Doc-to-doc links are relative siblings (`./x.md`, `../patterns/x.md`) — taken from the existing
+  docs, not the `../../../docs/...` form the blong-docs skill shows for links from
+  `.github/skills/`.
+- New docs need no sidebar work: `sidebars.js` is `{type: 'autogenerated', dirName: '.'}`.
+- NOT RUN: the full `docusaurus build` in `docs/blong`. Verified instead that every relative link
+  resolves on disk, that the new prose is MDX-safe (no raw `<` or `{` outside code fences), and that
+  cspell accepts the package README (`blong-dev lint` clean in blong-kukum). Run the build before
+  merging if CI gates on it.
+
+## Realm CLI plumbing moved into the framework
+
+Requested: "identify repeated cli-related boilerplate in blong-kukum and blong-cli and when
+feasible, move it to the framework". Outcome:
+
+MOVED — `core/blong-gogo/src/cli.ts` (new, exported as `@feasibleone/blong-gogo/cli.ts`) now owns
+what `bin/kukum.ts` had hand-rolled: `parseArgv`/`wantsHelp`, `resolveMethod` (incl. the `handles()`
+prefix vs `findHandler()` distinction), `isCliEntry`, and `runCli` — which does help/usage,
+`load(suite, name, name, ['cli'])`, start, dispatch, keep stdout for the result while forwarding
+everything else to stderr, `--output=json|text` with the TTY default, exit codes, and
+`registry.stop()` in a `finally`. `bin/kukum.ts` went from 273 lines to ~200, and almost all of the
+remainder is kukum's own usage text, argument-to-method mapping and result rendering.
+`bin/blong-cli.ts` (new demo) is ~90 lines.
+
+MOVED (smaller) — the `cli` intent block in `load.ts` now defaults `log: {level: 'warn'}` and
+`apiSchema: {logLevel: 'warn'}`, so a realm no longer has to remember them in its `cli.ts`. kukum's
+`cli.ts` config block was reduced to `cli: {}` accordingly.
+
+NOT MOVED — a component's own `logLevel`. It lives in the component's `activation` and the framework
+does not know component names, so it cannot default it. Every command-driven component still
+declares `cli: {logLevel: 'warn'}`; without it the dispatch events are written straight to fd 1 and
+land in the result. Documented in `docs/blong/docs/patterns/cli.md` rather than changed.
+
+Unchanged behaviour verified: kukum CLI output is byte-identical to the pre-extraction baseline for
+`primitive find` and `instruction find --target=.` (and for `activation find` apart from the
+intentional `cli: true` rows), with the same exit codes and the same single-line unknown-method
+message; kukum 490/490; blong-gogo 261 pass / 6 skip.
+
+## demo/blong-cli decisions
+
+- `rush.json`: the new project was APPENDED to the end of `projects`, not inserted next to the other
+  demo packages. The instructions warn that Playwright ports are derived from each package's index
+  in that array, so inserting would have shifted every later package's port.
+- The demo realm (`text`) is hand-written rather than scaffolded from `blong-kopi`. The realm skill
+  says to scaffold, but kopi produces a DB-backed CRUD realm (models, Playwright, a datastore),
+  which is the opposite of what a `cli` demo should be. Recorded here because it is a deliberate
+  departure.
+- The demo's realm folder needs its own `package.json` (the loader imports `./package.json` beside a
+  realm's `server.ts`) — this is why `demo/blong-eip/eip/package.json` exists.
+- `textInput` throws a plain `Error` for a missing input instead of an error-layer definition, and
+  the realm name is hardcoded in `bin/blong-cli.ts`. Both are deliberate minimalism in a demo; a
+  real command-driven realm should define the error (blong-error) and take the realm from config.
+- The demo has no `index.ts` or `server.ts`: a command has nothing to serve, and `cli.ts` is the
+  whole suite. This is a departure from the realm convention, and it is the point being
+  demonstrated.
+
+## Breaking the blong-lint / blong-dev workspace cycle
+
+pnpm 10.33.2 (the version rush.json pins) reports `WARN There are cyclic workspace dependencies` for
+`core/blong-lint` + `tools/blong-dev`: `blong-dev` depends on `blong-lint` (its `lint` command), and
+`blong-lint` had `blong-dev` as a _devDependency_ — only so its `ci-lint`/`ci-test` scripts could
+call `blong-dev lint` / `blong-dev test`.
+
+Direction of the fix: a library must not depend on the tool that consumes it. So the edge removed
+was `blong-lint → blong-dev`, by giving the package its own entry points:
+
+- `formatDiagnostic(diagnostic)` moved from `blong-dev/src/commands/lint.ts` into `blong-lint`'s
+  `index.ts`. It is a rendering of the `Diagnostic` type the package already owns, so that is its
+  home; both callers now import it instead of one of them copying it.
+- New `blong-lint/cli.ts` exports `lintCli(files, {cwd, binPaths})` — the presentation and exit code
+  that used to live in `blong-dev` (`lintCollect` itself was left untouched).
+- New `blong-lint/bin/lint.ts` calls `lintCli` on its own package root, so `ci-lint` is
+  `node ./bin/lint.ts`. It lints the folder it lives in, not the CWD, so it behaves the same however
+  it is invoked.
+- `blong-dev/src/commands/lint.ts` is now a one-line delegate:
+  `lintCli(fileArgs, {binPaths: [blongDevBin]})`. Behaviour is identical — it still prefers its own
+  bundled cspell/eslint/tsc, and `lintCollect` already searches `ownBin` first for everyone else.
+- `blong-lint`'s `ci-test` became the bare `tap` invocation that `blong-dev test` was running anyway
+  (same globs and flags), since `blong-dev test` adds only a PATH entry and a `.tap/coverage`
+  cleanup.
+
+Verified: `rush update` no longer emits the cyclic-dependency warning; `blong-lint` self-lint and
+`blong-dev lint` (run in blong-kukum) both report `✓ tsc / cspell / eslint: full package`;
+`tsc --noEmit` in blong-dev passes; `rush update` and `rush build` unaffected.
+
+Pre-existing, unchanged: `core/blong-lint` has no test files, so its `ci-test` exits 1 — the old
+`blong-dev test` exited 1 for the same reason (measured, not assumed). Left as-is rather than
+widened into a test-harness change; recorded in todo.md.
+
+Follow-up applied (requested): the `.tap/coverage` cleanup that `blong-dev test` performed is now in
+`blong-lint/bin/test.ts`, so `ci-test` is `node ./bin/test.ts` rather than a bare `tap` invocation.
+The globs, flags and `stdio: 'inherit'` behaviour are identical to `blong-dev test`'s; only the PATH
+augmentation it did is gone (tap resolves from this package's own `node_modules/.bin`). Verified by
+seeding a stale `.tap/coverage/junk.json` and confirming the run deletes it, and by re-running
+`ci-lint` (tsc/cspell/eslint clean) so the new bin file is itself linted. The `ci-test` exit code of
+1 — the package has no test files, and the old script behaved the same — remains open in todo.md.
+
+## Playwright failure after "fix: wood theme" (2026-09-12)
+
+Two independent causes made every `blong-kopi` Playwright test fail:
+
+1. `?inline` PrimeReact theme CSS was served as raw `text/css` (browser: "Failed to load module
+   script … MIME type text/css"), so no theme was applied.
+2. `.p-menubar-end` is a block box in PrimeReact, so the newly added `ThemeSwitcher` plus the
+   account menu stacked into two rows and grew the menubar from 49px to ~76px, shifting all page
+   content.
+
+**Decision:** fixed both causes in `blong-browser` instead of running
+`playwright --update-snapshots`.
+
+- `src/vite.ts` adds `primereact` to `server.fs.allow` (Vite's dev fs guard runs the allow-list
+  check on query-bearing requests, so a module-graph-only path is served raw rather than
+  transformed).
+- `src/components/Portal/Portal.css` makes `.p-menubar-end` a flex row.
+
+Rationale: the menubar growth is a genuine layout regression, not an intended design change —
+restoring the 49px height returns the diff to <1% (only the new switcher/avatar are added), so the
+committed baselines stay valid. Reconsider (update baselines) only if the taller menubar is desired.
+
+## Baseline refresh across all Playwright packages (2026-09-12, follow-up)
+
+User asked to refresh the screenshots across all packages (manual diff review).
+
+- `--update-snapshots` (Playwright default mode `changed`) is a no-op when the comparison passes —
+  it only rewrites failing snapshots. The theme switcher's footprint (~0.3%) is under
+  `maxDiffPixelRatio: 0.01`, so nothing was rewritten. A deliberate refresh needs
+  `--update-snapshots=all` (run via
+  `node_modules/.bin/blong-dev playwright --update-snapshots=all`).
+- Refreshed 198 baselines in 6 packages: access 62, marine 38, party 38, gateway 28, commander 19,
+  kopi 13. Verified afterwards with plain runs (commander 10, kopi 4, marine 14, access 21+3 flaky,
+  party 16, gateway 12 — all pass).
+- 91 of the 198 differ ONLY in the menubar (the new switcher). 107 differ elsewhere as well because
+  those baselines are older than the `fix: split core to folders` move (the move re-pathed them
+  without regenerating content), so they had accumulated drift under the 1% tolerance. Examples:
+    - marine habitat/species tables render **raw enum values** (`reef`, `shallow`) where the model
+      defines labels (`Coral Reef`, `Shallow Reef (0-30 m)`) — flagged for investigation, NOT caused
+      by the wood commit (no rendering code changed).
+    - kopi editor no longer shows the `$Object Details` panel header.
+- Environment fix: the local dev Redis DB 0 had 29 leftover test keys (`blong-test:*` from
+  `test/blong-int-adapter/redis`, `{app:*}` from `blong-gateway` meter tests). The commander explore
+  tree renders every key and is NOT filtered (only its table is), so commander failed until those
+  keys were removed. Both families are disposable test artifacts; deleted with a Lua `DEL` loop that
+  leaves all other keys untouched.
+- Pre-existing, unrelated: `blong-suite`'s Playwright run reports `Error: No tests found` because
+  `resolveRealmTestDir` calls `createRequire(import.meta.url)` from inside `blong-browser`, so
+  `@feasibleone/blong-marine` cannot be resolved from the suite. Marine's baselines therefore come
+  from the marine app run.
+- Side effect repaired: an earlier `npx vite build` in `core/blong-browser` emptied `dist/`, and the
+  current lib config emits `blong-browser.js`/`storybook.js` while `package.json` references
+  `dist/blong-browser.es.js`/`dist/storybook.es.js`. Re-created the `.es.js` entry shims from the
+  built entries. TODO: reconcile `vite.config.ts` `lib.fileName` with `package.json`.
+
+## ThemeSwitcher: segmented Light/Dark → single borderless icon button (blong-browser, 2026-09-12)
+
+- **Requested**: replace the segmented Light/Dark `SelectButton` with one borderless sun/moon icon
+  button. First pass removed the theme-family `Dropdown` too; user corrected — **the dropdown
+  stays**, only the dark/light control changes. (Supersedes nothing: the earlier "family-based theme
+  list" decision still holds.)
+- **Implied choice — icon semantics (target, not state)**: the icon shows the mode the button
+  switches _to_ — `pi pi-moon` while light is active, `pi pi-sun` while dark is active — with
+  `aria-label` / `tooltip` "Switch to dark mode" / "Switch to light mode" (translated via
+  `useText`). **Reconsider if** users expect the icon to depict the _current_ mode instead.
+- **Implied choice — keep the `paletteToggle` gate**: the icon renders only when the selected option
+  has BOTH variants, exactly as the old SelectButton did. So single-variant themes (vela, saga,
+  arya, …) and the dark-only Glass/Wood variants still show **no** toggle. A first-pass fallback
+  that jumped to the configured family's counterpart was dropped as out of scope once the dropdown
+  was restored.
+- **Widget**: `Button` with `text` + `rounded` + `severity="secondary"` (borderless), class
+  `blong-theme-switcher__mode`; CSS adds a 2.25rem square hit area and 1.1rem icon.
+- **Verified**: `ThemeSwitcher.test.tsx` 6/6 via `npx vitest run`.

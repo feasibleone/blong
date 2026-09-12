@@ -1,4 +1,4 @@
-/* ThemeSwitcher — theme + light/dark selector in the portal menubar */
+/* ThemeSwitcher — theme dropdown + dark/light mode toggle in the portal menubar */
 
 .blong-theme-switcher {
     display: flex;
@@ -16,17 +16,12 @@
     font-weight: 600;
 }
 
-.blong-theme-switcher__mode .p-button {
-    padding: 0.35rem 0.6rem;
+.blong-theme-switcher__mode.p-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
 }
 
-.blong-theme-switcher__mode .p-button-label {
-    font-size: 0.8rem;
-}
-
-.blong-theme-switcher__mode-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    white-space: nowrap;
+.blong-theme-switcher__mode.p-button .p-button-icon {
+    font-size: 1.1rem;
 }
