@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/feasibleone/blong/compare/blong-server-v1.2.1...blong-server-v1.2.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* small test/lint fixes ([0f52e7a](https://github.com/feasibleone/blong/commit/0f52e7a30fa479c1a91f95ba5d8bb1ae4706856c))
+
 ## [1.2.1](https://github.com/feasibleone/blong/compare/blong-server-v1.2.0...blong-server-v1.2.1) (2026-09-10)
 
 

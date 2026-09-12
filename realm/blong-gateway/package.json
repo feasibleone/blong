@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/blong-gateway",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "API Gateway realm — OAuth applications, metered bundles (rate/credit), and subscriptions",
     "type": "module",
     "exports": {

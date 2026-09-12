@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.2.2...blong-dev-v1.3.0) (2026-09-12)
+
+
+### Features
+
+* blong-kukum scaffolding as api ([abb1e0b](https://github.com/feasibleone/blong/commit/abb1e0b4836f25e4a04b035cbc3f2b4bbab94a9b))
+
+
+### Bug Fixes
+
+* cyclic dependency ([f59764b](https://github.com/feasibleone/blong/commit/f59764b3e54cb0a8a0fd6ea111c8479e65033e2f))
+
 ## [1.2.2](https://github.com/feasibleone/blong/compare/blong-dev-v1.2.1...blong-dev-v1.2.2) (2026-09-10)
 
 
