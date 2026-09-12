@@ -1,39 +1,39 @@
 {
   "schema": 1,
-  "commit": "590de548a5f919b2bb4e3ccffddbd9077dd95ebf",
-  "run": 538,
-  "updatedAt": "2026-09-10T19:09:21.719Z",
+  "commit": "c3722319e76776a8b528259471ddd7dddff40bbd",
+  "run": 550,
+  "updatedAt": "2026-09-12T19:03:52.466Z",
   "tests": {
-    "total": 578,
-    "passed": 578,
+    "total": 596,
+    "passed": 595,
     "failed": 0,
-    "flaky": 0
+    "flaky": 1
   },
   "coverage": {
     "lines": {
-      "hit": 20883,
-      "found": 30536
+      "hit": 20958,
+      "found": 31264
     }
   },
   "packages": {
     "blong-access": {
       "tests": {
-        "passed": 24,
+        "passed": 23,
         "failed": 0,
-        "flaky": 0,
+        "flaky": 1,
         "total": 24
       }
     },
     "blong-browser": {
       "tests": {
-        "passed": 484,
+        "passed": 502,
         "failed": 0,
         "flaky": 0,
-        "total": 484
+        "total": 502
       },
       "coverage": {
-        "linesHit": 2185,
-        "linesTotal": 4056
+        "linesHit": 2261,
+        "linesTotal": 4199
       }
     },
     "blong-commander": {
@@ -92,8 +92,8 @@
     },
     "blong-gogo": {
       "coverage": {
-        "linesHit": 12940,
-        "linesTotal": 19082
+        "linesHit": 12939,
+        "linesTotal": 19664
       }
     },
     "demo": {
@@ -105,11 +105,28 @@
     "suite": {
       "coverage": {
         "linesHit": 14,
-        "linesTotal": 250
+        "linesTotal": 253
       }
     }
   },
   "history": [
+    {
+      "commit": "c3722319e76776a8b528259471ddd7dddff40bbd",
+      "run": 550,
+      "date": "2026-09-12T19:03:52.466Z",
+      "tests": {
+        "total": 596,
+        "passed": 595,
+        "failed": 0,
+        "flaky": 1
+      },
+      "coverage": {
+        "lines": {
+          "hit": 20958,
+          "found": 31264
+        }
+      }
+    },
     {
       "commit": "590de548a5f919b2bb4e3ccffddbd9077dd95ebf",
       "run": 538,
