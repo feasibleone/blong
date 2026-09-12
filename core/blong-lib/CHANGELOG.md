@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.1.1...blong-lib-v1.2.0) (2026-09-12)
+
+
+### Features
+
+* blong-kukum scaffolding as api ([abb1e0b](https://github.com/feasibleone/blong/commit/abb1e0b4836f25e4a04b035cbc3f2b4bbab94a9b))
+
 ## [1.1.1](https://github.com/feasibleone/blong/compare/blong-lib-v1.1.0...blong-lib-v1.1.1) (2026-09-10)
 
 

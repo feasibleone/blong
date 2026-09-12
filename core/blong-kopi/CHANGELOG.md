@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.12.2...blong-kopi-v1.13.0) (2026-09-12)
+
+
+### Features
+
+* blong-kukum scaffolding as api ([abb1e0b](https://github.com/feasibleone/blong/commit/abb1e0b4836f25e4a04b035cbc3f2b4bbab94a9b))
+
+
+### Bug Fixes
+
+* update screenshots for theme switcher ([eb8754e](https://github.com/feasibleone/blong/commit/eb8754e39559d1815455cbae4110b07bf67ed7ae))
+
 ## [1.12.2](https://github.com/feasibleone/blong/compare/blong-kopi-v1.12.1...blong-kopi-v1.12.2) (2026-09-10)
 
 

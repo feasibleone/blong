@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/feasibleone/blong/compare/blong-commander-v1.0.1...blong-commander-v1.0.2) (2026-09-12)
+
+
+### Bug Fixes
+
+* update screenshots for theme switcher ([eb8754e](https://github.com/feasibleone/blong/commit/eb8754e39559d1815455cbae4110b07bf67ed7ae))
+
 ## [1.0.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.0.0...blong-commander-v1.0.1) (2026-09-10)
 
 

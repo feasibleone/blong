@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.16.4](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.3...blong-browser-v1.16.4) (2026-09-12)
+
+
+### Bug Fixes
+
+* broken playwright tests ([fe47379](https://github.com/feasibleone/blong/commit/fe473797ab125edfc05ea122d57c1fe9ba0e8cad))
+* wood theme ([09ed2df](https://github.com/feasibleone/blong/commit/09ed2df4fbf0ee5ca37416939fac41c264760f26))
+
 ## [1.16.3](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.2...blong-browser-v1.16.3) (2026-09-10)
 
 

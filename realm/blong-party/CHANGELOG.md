@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/feasibleone/blong/compare/blong-party-v1.4.2...blong-party-v1.4.3) (2026-09-12)
+
+
+### Bug Fixes
+
+* update screenshots for theme switcher ([eb8754e](https://github.com/feasibleone/blong/commit/eb8754e39559d1815455cbae4110b07bf67ed7ae))
+
 ## [1.4.2](https://github.com/feasibleone/blong/compare/blong-party-v1.4.1...blong-party-v1.4.2) (2026-09-10)
 
 

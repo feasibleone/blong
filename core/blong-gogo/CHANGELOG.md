@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.32.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.31.3...blong-gogo-v1.32.0) (2026-09-12)
+
+
+### Features
+
+* blong-kukum scaffolding as api ([abb1e0b](https://github.com/feasibleone/blong/commit/abb1e0b4836f25e4a04b035cbc3f2b4bbab94a9b))
+
+
+### Bug Fixes
+
+* small test fixes ([4adb7eb](https://github.com/feasibleone/blong/commit/4adb7eb1b899099fe71b05b96cd210af7d7ce51a))
+* small test/lint fixes ([0f52e7a](https://github.com/feasibleone/blong/commit/0f52e7a30fa479c1a91f95ba5d8bb1ae4706856c))
+
 ## [1.31.3](https://github.com/feasibleone/blong/compare/blong-gogo-v1.31.2...blong-gogo-v1.31.3) (2026-09-10)
 
 
