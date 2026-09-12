@@ -1,0 +1,27 @@
+/* spell-checker: disable */
+/* ==========================================================================
+   WOOD THEME — GENERATED TEXTURES (do not edit by hand)
+   Regenerate with:  npm run theme:wood-assets
+
+   Image textures synthesised from the `plans/theme/wood-card.png` design.
+   The two large ones are files under `./assets/` and are referenced with a
+   relative `url()`, which Vite rewrites for both Storybook dev and the
+   `base: '/s/'` suite build; the tiny ramps and the two SVGs stay inline as
+   data URIs. See the generator header for each asset's tileability / stretch
+   guarantees and the CSS-side geometry coupling.
+   ========================================================================== */
+.blong-app-wood,
+.blong-theme-wood {
+    /* Seamless walnut grain (grayscale, overlay-blended over the CSS base). */
+    --wood-grain: url("./assets/wood-grain.png");
+    /* 9-slice polished bevel frame (32px slices, 12px arc, transparent centre).
+       WebP lossless: see the generator header for why this one and not the grain. */
+    --wood-edge: url("./assets/wood-edge.webp");
+    /* Woven micro-mesh for carved input channels (SVG → crisp at any DPR). */
+    --wood-mesh: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHZpZXdCb3g9IjAgMCA4IDgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjMTIxMDExIi8+CjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjQiIGZpbGw9IiMyZDI5MjkiLz4KPHJlY3QgeD0iNCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iNCIgZmlsbD0iIzI2MjIyMyIvPgo8L3N2Zz4=");
+    /* Micarta dot lattice for the inner panel of the brass toolbar buttons. */
+    --wood-btn-dots: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHZpZXdCb3g9IjAgMCA4IDgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjMDAwMDAwIiBmaWxsLW9wYWNpdHk9IjAuMjIiLz4KPGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEuNSIgZmlsbD0iI2ZmZmZmZiIgZmlsbC1vcGFjaXR5PSIwLjA5Ii8+CjxjaXJjbGUgY3g9IjYiIGN5PSI2IiByPSIxLjUiIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wOSIvPgo8L3N2Zz4=");
+    /* Carved-channel ramps (uniform in X → stretch to any width). */
+    --wood-recess-top: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAIBAMAAADKNIhyAAAAGFBMVEUDAgIFBAMHBgUJBwYLCQgNCwoODAsPDQysjEetAAAACHRSTlP38uDHnms4D2LkWHcAAAAYSURBVAjXY2BgEGBQYDBgcGAIYEhgKAAACNABwU86rloAAAAASUVORK5CYII=");
+    --wood-recess-bottom: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAIBAMAAADKNIhyAAAAGFBMVEWMhHqCenCMhHqMhHqOhnyMhHqIgHaEfHKT4M4fAAAACHRSTlMAAA0kMCkaCqh3XrAAAAAYSURBVAjXY2BgUGAwYHBgCGBIYChgEAAAC3ABwYGxQBgAAAAASUVORK5CYII=");
+}

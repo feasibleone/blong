@@ -77,11 +77,20 @@ export { SocialLoginButton, type ISocialLoginButtonProps } from './components/So
 export { Text } from './components/Text/Text.js';
 export {
     Theme,
+    useTheme,
     type IThemeConfig,
+    type IThemeContextValue,
     type PaletteType,
     type ThemeType,
     type ThemeVariant
 } from './components/Theme/Theme.js';
+export { ThemeSwitcher, type IThemeSwitcherProps } from './components/ThemeSwitcher/ThemeSwitcher.js';
+export {
+    THEME_GROUPS,
+    THEME_OPTIONS,
+    type IPrimeThemeOption,
+    type IThemeGroup
+} from './components/Theme/themeRegistry.js';
 export { ThumbIndex } from './components/ThumbIndex/ThumbIndex.js';
 export { bgLocale } from './primereact/locales.js';
 

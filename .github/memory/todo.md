@@ -11,7 +11,6 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 - component diagram for a suite
 - https://github.com/tt-a1i/archify
 - https://github.com/trailhq/Graft
-- theme switcher
 - time bound debug tokens
 - match and mask
 - markdown lint
@@ -83,3 +82,84 @@ Potential unfinished, deferred or future tasks spotted during implementation.
   `Error loading ... probably a generic source code was put in a handler group folder`. Benign (it
   is imported directly by the CRUD test) and pre-dates the restructure, but it could be moved out of
   the layer to silence the warning.
+
+## Deferred — wood theme design-match (blong-browser, 2026-09-11 / updated 2026-09-12)
+
+- **Design-matched**: §W2 (cards), §W3 (inputs), §W8 (toolbar buttons **and** the in-card Links
+  `+ Add` / `Delete`, which the reference shows as the same key), §W5 (habitat checkboxes),
+  §W6 (Links datatable + toolbar) and §W7 (Form Inspector) — all measured against
+  `wood-card.png` / `wood-buttons-2.png` / `wood.png`. §W4 (bracket HUD) was **deleted** rather
+  than restyled; see `decision.md` §"Fifth pass".
+- **Deferred inside this work (not requested, chosen for scope):**
+  - The Habitat grid stays `repeat(4, 1fr)` sized by its container, so its column pitch (165.6 CSS
+    px in `editor--wood`) is wider than the reference's ~122 px. That is a *card width* difference
+    (reference cards ≈532 px, the story's ≈578–662), not a styling one — do not "fix" it by
+    switching to content-sized columns without re-measuring.
+  - `.blong-inspector__body` keeps a `max-height` + scroll (raised to 420px, thin warm scrollbar)
+    although the reference shows no scroll container at all. Removing it would make very large
+    JSON dumps push the plate arbitrarily tall.
+  - The inspector's wood margin is `0.7rem/0.8rem` (≈11.2 px) vs the reference's ≈11 px — fine, but
+    if the plate padding is ever changed, `:last-child`'s `flex: 1` means the change is invisible
+    except in that margin.
+  - Row/table hover + `p-highlight` colours are interpolated from the design's *static* pixels;
+    the reference has no hover state to measure.
+- **The hint caret is deliberately NOT a copy of the reference.** `wood.png` shows the notch as a
+  brass rim around an interior that continues the panel's texture; two attempts to build that (border
+  triangles, then a bell-shaped brass rim over a matching rust bell) stayed patchy and the rim never
+  quite matched the frame's width. **Product decision: the caret is a solid brass triangle** matching
+  the frame. Do not "restore" the rim + interior without asking — see `decision.md` §"Eighth pass".
+- **RESOLVED — theme texture delivery.** The user chose **(A)**: de-inline the two large textures,
+  WebP lossless for `wood-edge` only, grain stays PNG, tile stays 512². Implemented and verified in
+  all four environments (Storybook dev, suite build, `storybook build`, package lib build) — see
+  `decision.md` §"Investigation — emitting the theme textures as files / WebP". If a future pass adds
+  or resizes textures, re-check the format per asset rather than assuming WebP: lossless WebP is
+  *larger* on pure entropy (the grain), and lossy WebP seams a tiled texture.
+- **Typography is metrics-matched, not face-matched** (unchanged). The design's geometric sans is
+  neither bundled in the repo nor installed in the container; `document.fonts` shows only
+  Nunito Sans + primeicons load, and the browser falls through to a wider host face. `--wood-font`
+  is a preference list. A truly exact match needs a self-hosted `@font-face` — an architectural
+  decision (network dependency / font licensing) deliberately **not** taken.
+
+## Open issue — PrimeReact v10 theme/structural cascade ordering (affects ALL variants)
+
+- `primereact/resources/primereact.min.css` is now an **explicitly empty stub** ("has been deprecated…
+  included in the build as an empty file"), and the real structural CSS is injected by each
+  component inside **`@layer primereact`**. `themeRegistry` injects `theme.css` separately, and some
+  of its rules use *shorthands that reset geometry the structural sheet set* — the ActionHint caret
+  (`.p-overlaypanel:before { border: solid transparent }` wiping `border-width: 10px`) is the one
+  found so far.
+- **Worked around for the wood variant only** (`.blong-theme-wood .p-overlaypanel::before/::after`
+  restated unlayered with `!important`). The **glass** variant and every stock PrimeReact theme
+  still render a nub instead of a caret. The proper fix is either to inject `theme.css` into
+  `@layer primereact` *before* the structural sheet, or to raise the structural layer's priority —
+  worth doing centrally rather than per-variant. Audit other components for the same pattern
+  (any theme rule that sets a `border`/`margin`/`padding` shorthand over a structural rule).
+- Also worth noting: `p-overlaypanel::before/after` is the only caret in this app today, but
+  Tooltip/ConfirmPopup/etc. may have equivalents.
+- **Typography is metrics-matched, not face-matched.** The design uses a geometric sans that is
+  neither bundled in the repo nor installed in the container (only DejaVu is available, and
+  Storybook's `preview.tsx` asks for Roboto, which is also absent). `--wood-font` is a preference
+  list; a truly exact match needs the font to be self-hosted or loaded — an architectural decision
+  (network dependency / font-file licensing) that was deliberately **not** taken. If it is wanted,
+  add a `@font-face` for Poppins/Montserrat and keep the current metrics.
+- **Button state wiring is minimal.** `ActionButton` sets `blong-action-error` for a hard-coded
+  2000 ms (mirroring `ActionHint`'s auto-dismiss) rather than tracking the hint's actual lifecycle.
+  Fine today, but if the hint duration ever becomes configurable the two will drift.
+- **Fixed corner arcs.** The bevel art hard-codes a 12-unit corner arc (⇒ 6px CSS) and the inputs
+  use `border-radius: 4px`. Changing either radius in CSS **requires** regenerating
+  `wood-assets.css` with a matching `EDGE.radius` (arc ÷ 2 = CSS radius). Do not re-add a rim to
+  `makeEdge()` or the edge doubles up again.
+- **Grain tile is 512×512 at 5-bit, drawn at 256px** (whole generated sheet ≈49 KB gzip). It repeats
+  every 256 CSS px; not visible in the tested layouts, but a much larger card could show the repeat.
+  The payload is dominated by this asset — a 384 tile would cut ~45% but narrow the repeat to 192 px.
+- **The grain's macro tone lives entirely in CSS** (`background-color: #4e3124` + the 168°
+  gradient) because the tile's mean is pinned to 128. Re-tone by editing those two values; re-tuning
+  the *texture* means editing the amplitude block in `woodAssets.mjs` and re-checking the three
+  calibration numbers (tone / sdev / hf).
+- **The mesh, button dots and frame shading are approximations of the reference's sub-pixel detail**
+  (the frame is a single `border-box` gradient, so it cannot vary per side the way a real bullnose
+  does; the eye accepts it because the top/bottom picks up the bright stops).
+- `plans/theme/wood.md` (the original blueprint) is now historically inaccurate — it still
+  documents the gradient-only card + hex screws. Left untouched as a design-input record.
+- The soft blur applied to the grain uses `-virtual-pixel tile`; if the generator is ever switched
+  to a non-wrapping filter, re-verify the tile seams (view a 2×2 tiling).

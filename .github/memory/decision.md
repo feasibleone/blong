@@ -632,3 +632,587 @@
   refs), `.github/memory/*.md`, and the untracked (regenerated) Docusaurus `docs/blong/build/`.
 - **`rush.json` order frozen**: `projects` was rewritten in place, never reordered, because
   `blong-browser/src/playwright/config.ts` derives Playwright ports from each package's index.
+
+## blong-browser theme switcher (App menubar)
+
+- **Family-based theme list** (user-chosen): one dropdown entry per PrimeReact theme family (16
+  families = 32 folders) + 24 single-variant themes + the blong `glass`/`wood` variants = 42
+  entries. A sun/moon light/dark toggle appears only when the selected option has BOTH variants.
+- **Glass/Wood are standalone** (user-chosen): dark base, no light/dark toggle (their CSS is
+  dark-only). They layer over the config default folder (`PRIMEREACT_PALETTE_THEMES[type][palette]`).
+- **State lives in `appStore.theme`** (`{themeId?, palette?}` + `setTheme`), persisted to
+  `localStorage['blong.theme']` (read at store creation, guarded by `typeof localStorage`). The
+  `<Theme>` provider merges it over the `IThemeConfig` prop — an explicit selection outranks config.
+- **Config gate `IThemeConfig.switcher?: boolean`** (default true): `ThemeSwitcher` returns `null`
+  when false. Exposed through the new `useTheme()` context (`IThemeContextValue`).
+- **New `IThemeConfig.name?: string`** accepts a theme-option id (`lara-blue`, `glass`) OR a
+  PrimeReact folder (`lara-dark-blue`) and overrides the legacy `type`+`palette` mapping. `type`
+  stays font-size-only; the switcher changes only theme + palette.
+- **CSS swap via `?inline` + one `<style id="blong-prime-theme">`** (`themeRegistry.ts`
+  `THEME_LOADERS`). This FIXES a latent bug: side-effect dynamic imports are never re-injected, so
+  revisiting a theme kept losing to a later-loaded one. Exactly one theme is active now. Verified
+  `?inline` returns the full CSS (178,538 chars for vela-blue) with a throwaway Vite build.
+- **Menubar order**: `<ThemeSwitcher />` → `<LanguageSwitcher />` → `<AccountMenu />`. Storybook
+  `withDispatch` resets the theme selection per story so `parameters.theme` wins.
+- **cspell**: files containing theme names carry a file-local `/* spell-checker: disable */`
+  (`themeRegistry.ts`, `Theme.tsx`, `Theme.test.tsx`, `ThemeSwitcher.{test,stories}.tsx`) — no
+  global dictionary changes.
+- **Verified**: 36 targeted tests + full blong-browser suite 450 passed (the only failing suite is
+  the pre-existing `Editor.test.tsx` that cannot resolve `@feasibleone/marine-data`); `get_errors`
+  clean on all touched files.
+
+## Wood theme design-match: card plate + input channels (blong-browser, 2026-09-11)
+
+Design-matched `wood.css` §W2/§W3 to `plans/theme/wood-card.png` (the close-up of the Morphology
+card). The reference has **no corner screws**, so the old `::after` hex-screw layer was removed.
+
+### Second pass — the reference is a 2× (DPR-2) capture
+
+The first pass matched the *relative* styling but produced edges that were twice too thick, an
+invented bottom shadow on the inputs, and "low-res" textures. Root cause: **`wood-card.png` is
+rendered at 2× DPR**, so every measured pixel distance is 2 device px per CSS px. Measured geometry
+(image px → CSS px):
+
+| Feature | Design | CSS target |
+| --- | --- | --- |
+| Card corner radius | ~12 | **6** |
+| Card outer dark rim | 2–3 | ~1–1.5 |
+| Card top highlight | band ~10 total, peak at 4 | peak ~2 inside, gone by ~5 |
+| Input corner radius | ~6 | **3–4** (used 4) |
+| Input top occlusion | 6–7, near-black | ~3.5, near-black |
+| Input bottom | light glare band 4, **no shadow** | light glare peak ~2.5 up, 0 at floor |
+| Mesh cell / period | 4 / 8 | 2 / 4 |
+| Input height | 68 | 34 |
+
+- **Every texture is now authored at 2× and drawn at half size**, so it is 1:1 on a DPR-2 display:
+  grain 512px drawn at `background-size: 256px`, edge art 32px slices drawn into a **16 CSS-px**
+  border (`border-image-width: 16px`), ramps drawn at `100% 4px`.
+- **The mesh is SVG, not a raster tile.** A raster tile is necessarily crisp at one DPR only; an
+  inline SVG checkerboard (2 CSS-px squares, drawn at `background-size: 4px`) is vector-crisp at
+  any ratio. This is what fixed the "low-res" complaint.
+- **The wood grain is fine stranded fibre, not broad bands.** Measurement drove this: the design's
+  clean band is `rgb(77,48,35)` with **per-channel sdev ≈ 9.9**; the first pass rendered sdev ≈ 4.6
+  (too flat). Two heavily x-stretched fBm octaves (`fbm(u,v,3,170)` and `fbm(u,v,2,320)`) now carry
+  the texture and the amplitudes were roughly doubled, giving `rgb(72,45,33)` / sdev ≈ 8.8.
+- **Grain mean is pinned to 128** (generator base 133) so `overlay` is neutral on average and the
+  CSS walnut tone shows through unchanged — tone is controlled in CSS only, which is what let the
+  two layers be calibrated independently.
+- **Grain quantised to 6-bit** (`-depth 6`): 62 KB → 35 KB PNG with no visible banding (~1.3/255 per
+  step). Total generated CSS is now **55 KB raw / 41 KB gzip**.
+
+### Third pass — bevel thickness, fibre detail, brass buttons
+
+Three follow-ups: "card bevel is still too thick", "wood misses the tiny fibres", and matching the
+toolbar buttons to `plans/theme/wood-buttons.png`.
+
+- **"Too thick" was a doubled rim, not a too-wide highlight.** The per-pixel edge scan
+  (`wood-card.png` x=540, y=8..34) shows the design is: a **~0.75 CSS-px dark rim**, then a narrow
+  warm highlight peaking at **+1.5 CSS px** and back to the wood by **+5**. My art had its own
+  opaque rim stacked on the card's 1px CSS `border`, producing a ~2px near-black edge. Fix: **the
+  art no longer paints a rim at all** — the CSS `border` (recoloured `#2a1608` → `#1d1310`, the
+  design's actual rim rgb(29,19,16)) is the rim, and the art carries only the highlight. The
+  profile is now `wLight = smoothstep(1.2, 3.0, b) · (1 − smoothstep(3.0, 10.5, b)) · lit` with
+  `lit = max(0, −gy/gl)` (top-facing only — the design's left/right edges show a *shade*, no
+  highlight, so the old `nx` term was wrong).
+- **The "tiny fibres" are short, not long.** My first fibre octaves were stretched so far
+  (`fbm(u,v,3,170)`, `fbm(u,v,2,320)`) that they produced long continuous streaks; the design is a
+  **dense stipple of ~1–3 device-px-tall, ~10–50-px-long fibres**. Rebalanced to
+  `(12,170)`, `(24,340)`, `(44,480)` plus `(5,120)` for the long grain lines. Calibrated with two
+  measurements against a clean design swatch: **tone** (`rgb 77,48,35`) and **high-frequency
+  energy** (`sdev` of `image − blur(1px)` = 1.35). Final: tone `rgb(76,48,35)`, hf 1.25, sdev 9.5
+  vs the design's 9.9 — the hf metric was the one that actually correlated with "feels low-res".
+- **Grain quantised to 5-bit** (`-depth 5`): 59 KB → 44 KB; verified indistinguishable from 8-bit
+  at 2×. Total generated sheet: **66 KB raw / 49 KB gzip**.
+- **§W8 toolbar buttons rewritten** from the old flat steel switches to the design's brass keys.
+  Measured at 2×: frame 6 device px (3 CSS px), radius ≈9 (5 CSS px), height 78 (39 CSS px), brass
+  rgb(120,90,56)→rgb(219,183,135), panel rgb(35,32,29) with rgb(74,64,56) dots on a 4 CSS-px pitch,
+  label gold rgb(222,187,138), ~4 CSS-px drop shadow, title case (the old `text-transform:
+  uppercase` was wrong).
+  - The metal is a **`border-box` gradient behind `padding-box` inner layers** with a 3px
+    transparent border — the gradient spans the whole button, so the top/bottom *borders* pick up
+    the bright stops and the sides take the mid tones, giving the measured "bright top **and**
+    bottom, dimmer sides" tube look with no image.
+  - The panel dots are a second generated SVG (`--wood-btn-dots`, 8-unit tile drawn at 8px).
+  - The icon-only buttons were previously **unstyled** (the old selector excluded them, and they
+    render `p-disabled`); they now get the same frame plus a struck-back disabled state.
+- **Verified**: 46 files / 502 tests pass; `vite build` clean; generator byte-reproducible; card
+  bevel + input + buttons compared against the design at 1:1 and 3–4× zoom; toolbar checked in the
+  `editor--wood-toolbar` story.
+
+### Fourth pass — bevel falloff, button states, typography
+
+Follow-ups from `plans/theme/wood-buttons-2.png` (a new 2× capture showing the normal **and**
+error/active buttons plus the failure hint) plus "the card bevel is still too thick" and "fix the
+card, label and input fonts".
+
+- **The bevel peak was right; the *falloff* was wrong.** My art peaked at the design's +1.5 CSS px
+  but held near-peak out to ~4.5 px. Measured deltas from the design's scan
+  (`wood-card.png` x=540): +34 / +68 / +48 / +27 / 0 at **1.0 / 1.5 / 2.0 / 2.5 / 3.0 CSS px** —
+  a band only ~3 px wide. Fix: the fall ends at art 6.0 (was 10.5) with the peak alpha 0.59 → 0.52,
+  and the unlit-side shade was shortened (art 13 → 11) and weakened (0.42 → 0.34). Verified against
+  the design: +29 / +70 / +52 / +18. **Lesson: when a gradient "looks too thick", compare the
+  *decay profile*, not just the peak.**
+- **Buttons — the frame is a bullnose, not a flat bevel.** Per-pixel scan (device px, outer→inner):
+  top **107,162,116,133,125,73**, bottom **57,117,116,122,159,126** — so the brass peaks near the
+  *outer* edge on top and near the *inner* edge on the bottom, i.e. a rounded ring lit from above.
+  Normal peak ≈rgb(162,138,110); error/active ≈rgb(196,164,126). The earlier frame was far too
+  light (`#e2c396`, peak 226). Now: `#a58c6e → #7a6448 → #6d5940 → #7a6448 → #a58c6e`.
+- **Outset frame / inset body** now come from the shadow stack: `0 0 0 1px rgba(0,0,0,.5)` (outer
+  ring) + `0 3px 6px` (cast) + `inset 0 0 0 1px #150c05` (the seam) + `inset 0 2px 3px` and
+  `inset 0 0 6px` (the recessed panel).
+- **The dot panel is now a *translucent* SVG** (`#000` @0.22 field + `#fff` @0.09 dots) so one asset
+  tints for both states — the normal and error panels differ only by their base colour
+  (`#1f1f20` vs `#a04f32` ⇒ field rgb(25,25,26) vs rgb(125,62,39), matching the design). Pitch
+  reduced 4 → **3 CSS px** (drawn at `background-size: 6px`, the design's ≈6 device px at 2×).
+  `rgba()` is not reliable in SVG presentation attributes, so `fill` + `fill-opacity` is used.
+- **Error/active button state is now wired, not just styled.** `ActionButton` gained a `failed`
+  state set for **2000 ms** after a rejected call — deliberately matching `ActionHint`'s own
+  auto-dismiss — which adds `blong-action-error`; the theme also honours `.p-button-danger`. The
+  hint itself (`ActionHint` → PrimeReact `OverlayPanel`, mounted at the body portal) is styled to
+  the reference's brass frame + rust panel with the caret recoloured to match.
+- **Typography.** The design's face is a geometric sans (circular bowls, spurless `a`, short `r`
+  arm). **No font files exist in the repo and only DejaVu is installed in the container**, so
+  Storybook's `preview.tsx` request for Roboto silently falls back — meaning an exact match is not
+  achievable from CSS alone. Added `--wood-font`
+  (`'Poppins','Montserrat','Jost','Century Gothic','Segoe UI',…`; also declared on the
+  `blong-theme-wood` root marker so body-portal overlays resolve it) and matched the **metrics**
+  against measured cap heights: card title 14.5 px cap ⇒ `1.45rem`, field label 9 ⇒ `0.92rem`,
+  input text 10 ⇒ `1.02rem` + warm cream `#f2ddc4`, button text 11 ⇒ `1.1rem` @ weight 500.
+  Line 0.70 em cap ratio was assumed for the rem maths. Colours taken from the design: title
+  `#efd3b4`, label `#e9ceb5`, button gold `#dcb98a`, hint `#e0b085`.
+- **Verified**: 46 files / 502 tests pass; `vite build` clean; button normal/disabled/error + hint
+  compared against the reference in a 3× harness; card bevel + title/label/input compared at 2.4×;
+  error state confirmed live in `editor--wood-toolbar` (`.blong-action-error` + `.p-overlaypanel`).
+
+### Structural decisions (unchanged from the first pass)
+
+- **Synthesis over extraction for the wood grain** (user-approved wording "extract/synthesize"):
+  the design has no large clean wood patch (every wide area is interrupted by text/inputs), so the
+  grain is generated procedurally with **periodic** value-noise fBm (hash lattice that wraps at the
+  tile edge) → seamless by construction, then colour-matched to the sampled palette. Extracted
+  values drove the tuning; the pixels are synthesised.
+- **Tileable vs stretch-safe assets** (the two size-independence strategies):
+  - tileable both axes: `wood-grain` (512px grayscale, `overlay`-blended so CSS supplies the hue)
+    and `wood-mesh` (SVG, drawn at `4px`).
+  - 1-D, uniform along the other axis → stretched with `background-size: 100% <px>`: the two
+    `wood-recess-*` ramps.
+  - 9-slice, stretched with `border-image`: `wood-edge` (32px slices, 12-unit arc).
+- **Edges = alpha-channel image + CSS, not gradients alone.** The card bevel is a 9-slice RGBA
+  frame on `.p-card::after` (`border: 16px solid transparent; border-image-*`), drawn from an SDF so
+  the rim darkens and the warm facet follows the facet normal. Its **outer arc is transparent**,
+  which is what lets the card's own `border-radius: 6px` supply the rounding — `border-image` is
+  *not* clipped by `border-radius`, and a pseudo-element avoids the border shifting `.p-card`
+  layout. **Coupling**: art arc radius × 0.5 (the 2× draw scale) must equal the CSS `border-radius`;
+  `EDGE.radius = 12` ⇒ 6px.
+- **Input recess = alpha ramps + `border-radius` clipping.** Ramps are `no-repeat` pinned to
+  `top`/`bottom` so the occlusion thickness is constant at any input height; because background
+  layers *are* clipped by `border-radius`, the recess rounds correctly without corner art.
+- **Assets are inlined as base64 data URIs in a generated `wood-assets.css`**, imported before
+  `wood.css` and exposed as `--wood-*` custom properties. Emitted asset files were tried and
+  **reverted**: Storybook's Vite (rolldown) does not rewrite relative `url(...)` inside project CSS
+  here, so they 404 — see `friction.md`. Inline also keeps `var(--x, none)` fallbacks meaningful.
+  Regenerate with `npm run theme:wood-assets` (`scripts/woodAssets.mjs`); ImageMagick is used only
+  as a raw-pixels→PNG encoder (with `-virtual-pixel tile` so the softening blur keeps the grain
+  seamless).
+- **Canvas recoloured** `#1a1613` → `#16171c`: the reference backdrop is a cool charcoal steel, not
+  the old warm brown, so the walnut cards read as mounted on a cold chassis.
+- **Verified**: `theme:wood-assets` regenerated; 46 files / 502 tests pass; `vite build` clean
+  (419 KB CSS, 81 KB gzip); design compared side-by-side against the extracted swatches at 1:1
+  *and* at 3× zoom in an isolated harness (card bevel + input recess + mesh).
+
+## Fifth pass — Habitat checkboxes, Links datatable, Form Inspector (§W4–§W7)
+
+Three regions of `plans/theme/wood.png` (2752×1536, **2× DPR** ⇒ ÷2 for CSS px) were measured
+pixel-by-pixel rather than eyeballed, because two earlier passes had already been rejected for
+"too thick" / "too low-res" eyeball readings. Measurements are crop-relative device px; the
+`/tmp/wcmp/m2.mjs` helper (row/col run scans, ink bounding boxes, colour samples) was written ad
+hoc and is not committed.
+
+### Decisions
+
+- **§W4 was deleted, not restyled.** The reference shows the Links `+ Add` / `Delete` controls are
+  the *same* brass key as the header toolbars, so §W8's selector list became
+  `:is(.blong-toolbar-left, .blong-toolbar-right, .blong-design-toolbar, .p-card .p-toolbar)` and
+  §W4 is now a tombstone comment. This avoided a second, divergent button language.
+- **Habitat group stays transparent** (explicit user instruction) even though the reference paints
+  dark bands behind some columns — those read as a screenshot artifact of the app's own panel
+  fill, not a deliberate per-item highlight, so `.p-highlight` no longer tints the row.
+- **Checkbox is a brass *bezel*, not a brass *disc*.** Measured on the design: box **44 device =
+  22 CSS px**, frame **4 device = 2 CSS px**, radius 6 device = 3 CSS px, socket rgb(34,29,26).
+  The frame is *not* uniformly dark-topped: top rgb(171,145,112) `#ab9170`, flanks
+  rgb(117,95,71) `#77604a`, **bottom re-lit** rgb(141,121,88) `#8d7958`, plus a hard 1px dark line
+  under the floor. Selected keeps the dark socket and only lights the indicator (`#a68d63`);
+  the reference's second state is a **solid amber dot** (44→22 device px wide,
+  rgb(174,136,76) `#ae884c`) which PrimeReact has no class for, so it is painted on
+  `.p-checkbox-box.p-indeterminate .p-checkbox-icon` via `radial-gradient` with
+  `color: transparent`.
+- **Row pitch is 23 CSS px** (boxes 44 device tall, stacked 46 device apart) — a **1px** grid row
+  gap, not the 12px first guessed. `.p-multiselect-item` needed `min-height: 22px` or the 22px
+  socket overflowed the 20px line box and the pitch came out at 21.
+- **Table and rows are transparent** — sampled at x=300 the "row background" is wood
+  (rgb(50–63,30–43,23–34)). The header rule is a **groove**, not a line: rgb(17,8,1) over a
+  re-lit rgb(63,50,44) at the next device row, so it is `border-bottom: 1px solid #150c04` **plus**
+  `box-shadow: 0 1px 0 rgba(212,190,165,0.13)`. Row separators use the same shape, far fainter.
+- **Inspector = walnut plate + one continuous dark recess**, not the old brass faceplate. The
+  reference's panel runs all the way to the bottom rail with a uniform ~11px wood margin, and the
+  title is a *sibling* of the sections, so the plate became `display: flex; flex-direction: column`
+  and `:last-child` gets `flex: 1 1 auto` — that is what makes the recess reach the bottom instead
+  of stopping after the last section. Outer/inner rounding comes from
+  `.blong-property-editor__title + .blong-inspector__section` (6/6/0/0) and `:last-child` (0/0/6/6)
+  because there is no wrapper element to round. The plate reuses §W2's `--wood-edge` 9-slice on
+  `::after`; `src/design/index.css` does **not** use `::after` on these classes (checked).
+- **Type sizes were re-derived from ink bounding boxes, not from the earlier estimates**, and the
+  width method was found to be ~19% pessimistic (it assumes Poppins advances) so **only the
+  ascender/cap-height method was trusted**: habitat label 12 CSS-px ascender ⇒ `1.14rem`; datatable
+  header 12.5 ⇒ `1.14rem` (title case, *not* uppercase); datatable rows ⇒ `1.14rem`; inspector
+  title 9.5 cap ⇒ `0.95rem` uppercase; section toggle 9 asc ⇒ `0.88rem`; chevron ⇒ `0.7rem`;
+  empty-state italic ⇒ `0.82rem`; JSON 8.5 cap / 12.5 pitch ⇒ `0.85rem` @ `line-height: 1.28`.
+- **The fallback face is wider than the design's.** `document.fonts` confirms no Poppins is loaded
+  (only Nunito Sans + primeicons); the browser falls through to a host font (Century Gothic shape —
+  single-storey `a`) that measures 93 CSS px for "Shallow Reef" against the design's 83 at the same
+  ascender height. **Height was matched deliberately** so a machine that *does* have Poppins gets an
+  exact result; matching width instead would over-shrink everywhere else.
+
+### Verified
+
+- 46 files / 502 tests pass; `vite build` clean (434 KB CSS, 90 KB gzip).
+- Live geometry in `editor--wood`: checkbox 22×22, item 22 tall, **row pitch 23.0** (design 23),
+  toolbar button 84.1×34.0 vs the design's ≈85×35, inspector `:last-child` bottom 12.3px from the
+  plate's bottom edge (design ≈11).
+- Links card + inspector captured and compared against 1.75×/2.2× design crops.
+
+## Sixth pass — toolbar key sizing, hint caret, dropdown popup
+
+Three follow-up defects, all measured before touching CSS.
+
+### Decisions
+
+- **All toolbar keys are now a fixed 37 CSS px tall and the two icon keys are square.** Measured on
+  `wood.png`: the save/replay keys and Browse/Open/Error all span y 8..81 device px (74–75 ⇒ 37 CSS),
+  and the icon keys are square in the design. The live row was 33×39 for the icon keys vs 34 for the
+  labelled ones — not uniform, not square. `height: 37px` + `box-sizing: border-box` on the shared
+  `.p-button` rule, and `width: 37px` (+ inline-flex centring, `padding: 0`) on `.p-button-icon-only`.
+  Verified live: 37/37, 37/37, then 108.8/94.5/92.1/95.9 × **37**. The same 37 applies to the in-card
+  Links keys (design ≈36.5 there), so §W8's shared selector list stayed shared.
+- **The ActionHint caret was genuinely broken, and the cause was a cascade-order bug, not my CSS.**
+  PrimeReact v10 now ships `primereact.min.css` as an **explicitly empty stub** and moved the
+  structural CSS into **`@layer primereact`**, injected from the component. `theme.css` is injected
+  separately by `themeRegistry` and its rule
+  `.p-overlaypanel:before { border: solid transparent; border-color: …; border-bottom-color: … }`
+  contains **no `border-width`** — the shorthand resets it to `medium` (3px), and because the theme
+  sheet lands *later in the same layer* it beats the structural `.p-overlaypanel::before {
+  border-width: 10px; margin-left: -10px }`. Result: all four borders 3px → a ~2px square nub
+  instead of a triangle. **Fix**: restate the caret geometry in the wood theme unlayered with
+  `!important` (content/position/size/border-style/border-color/border-width + `bottom: 100%`), and
+  mirror it for `p-overlaypanel-flipped`.
+  Sized from the design: the notch is a **wide shallow tab — 32 × 11 CSS px** (device x 658..728,
+  y 78..100), not the default 20×10, with the frame's 3px brass rim on the two slopes. Outer
+  `border-width: 0 16px 11px 16px`, inner `0 13px 8px 13px` at `margin-left: -13px`, `::before`
+  brass `#c6a67f` behind `::after` rust `#a04f32`. `left: calc(var(--overlayArrowLeft, 0px) +
+  1.25rem)` is kept from the structural sheet so the caret still tracks the trigger; with the 10px
+  panel offset the apex lands exactly on the button's bottom edge (verified: button bottom 44.0,
+  panel top 54.0, caret height 10).
+- **The dropdown popup now speaks the theme's language.** It was a flat `rgba(20,15,11,0.97)` panel
+  with a 1px dull-brown border and a copper wash on the selected row — none of which appears
+  anywhere else in the variant. It is now a **carved charcoal recess** built from the same three
+  layers as §W3's inputs (`--wood-recess-top` / `--wood-recess-bottom` / `--wood-mesh`) inside the
+  **same 2px brass bezel as the §W5 checkbox socket** (`#77604a` flanks, `#ab9170` top, `#8d7958`
+  floor), with parchment rows and the plant's amber teak (not a flat copper wash) on the selected
+  row. It is scoped on `.blong-theme-wood` because the popup is a body portal, so it **cannot**
+  inherit the `.blong-app-wood .p-inputtext` rules — the dropdown's own filter field is therefore
+  re-declared inside the panel rule.
+
+### Verified
+
+- 46 files / 502 tests pass; `vite build` clean (**437.15 KB** CSS, 90.88 KB gzip).
+- Live: six toolbar keys all 37px tall, first two exactly 37×37; caret `::before` renders
+  `0 15.56px 10px` brass over `::after` `0 12.22px 7.78px` rust (the odd values are device-pixel
+  snapping at the reporter's `devicePixelRatio = 0.9`, not authored values — see `friction.md`);
+  caret and dropdown panel both captured through a magnifying harness and compared to the design.
+
+## Seventh pass — the caret, take two: it was geometry, not colour
+
+The first caret fix restored *a* caret but the user still saw a patch: the rim read as a thin
+outline against the frame, and the hint's frame line plus its inset seam ran straight across under
+the bump. Both turned out to be geometry, and both were only visible once the caret could actually
+be looked at at 16×.
+
+### Decisions
+
+- **The seam, not the colour.** An absolutely positioned child is measured against the panel's
+  **padding box**, so the bump's rust ended 3px short of the panel's outer edge and the frame's brass
+  band (`border-box` gradient) plus the panel's `inset 0 0 0 1px #3a1608` seam stayed painted across
+  the notch. The panel's seam is real and correct everywhere else — measured at rgb(38,9,0) at device
+  y110 — so it is not removed. Instead the rust silhouette is a bump **plus a 2.5px skirt** and its
+  base is anchored with `bottom: 100%` (= the panel's *inner* edge), while the brass silhouette is
+  anchored with `bottom: calc(100% + 3px)` (= its *outer* edge). The skirt is what swallows the band
+  and the seam; the brass base being 3px higher is what leaves 3px of band each side and makes the
+  rim read as the frame turning outward.
+- **The rim was thin because the slopes were not parallel.** Traced row by row on `wood.png`, the rim
+  is a constant 7 device px (3.5 CSS) *horizontally* on both slopes — which only holds if the rust
+  half-width is the brass half-width minus the rim at every height. The first attempt used
+  Béziers with an effective slope of ~1.55 against the rust's 1.0, so the gap closed up the flanks
+  and opened at the apex. Silhouettes are now built in one coordinate system and the rust is the
+  brass's curve scaled about the centre (x × 0.7, y × 0.7), so the two stay parallel by construction.
+  Shape: a **bell**, not a triangle — brass 20 × 10 with a long concave fillet into the frame line and
+  a broadly rounded apex, rust 14 × 9.5 with an apex 3.4px lower.
+- **The interior is no longer a separate colour patch.** The rust silhouette carries the panel's own
+  dot layer with `background-position: 0 100%`, anchored to its base so the mesh phase matches the
+  panel's rather than restarting at the notch, and only a gentle tone ramp on top — the first attempt's
+  ramp (0.44 → 0.19) made the whole bump sit in the dark end and read as a blob. Now 0.34 → 0.12.
+- **Verification approach, recorded because it took several wrong turns.** `document.styleSheets`
+  cannot see PrimeReact v10's styles (they live in `@layer primereact`), so the caret's geometry was
+  finally found with CDP `getMatchedStylesForNode`. `page.screenshot({clip})` proved unreliable for
+  this (the capture came back offset by ~13px/6px from the requested rect, so pixel maps contradicted
+  the DOM), so the working method is a **CSS harness**: clone the panel into
+  `.blong-theme-wood > .p-overlaypanel` at a known position with a real class chain, wrap it in
+  `transform: scale(6)`, and use the built-in screenshot tool on the wrapper. For a design comparison,
+  copy the reference PNG into the package so Storybook's dev server serves it, and set
+  `background-size: <device>×2` + `background-position: -<device x>×2 -<device y>×2` on a div — that
+  puts the 2×-DPR capture at exactly the same scale as a `scale(4)` harness. The temp PNG was removed.
+- The hint is auto-dismissed by a 2000 ms `setTimeout` in `Hint.tsx`; holding it open for a live look
+  is done by patching `window.setTimeout` in the page to ignore a 2000 ms delay (no code change).
+
+### Verified
+
+- 46 files / 502 tests pass; `vite build` clean (437.15 KB CSS, 90.88 KB gzip).
+- Caret and panel captured side by side with the reference at 4 screen px per CSS px, and the live
+  hint captured held open: the bump now reads as a speech-bubble notch with a uniform rim, no frame
+  line or seam crossing it, and an interior that continues the panel's texture.
+
+## Eighth pass — caret settled as SOLID brass (supersedes the two rim attempts)
+
+**Product decision (user): "make the caret solid and match the hint border."** After two passes
+building the caret as a brass *rim* around a rust interior — first with border triangles, then with a
+bell-shaped brass silhouette over a matching rust one — it still read as patchy, and the rim's width
+never quite matched the frame's. The instruction is to stop trying to reproduce the reference's
+interior and fill the caret with the frame's brass instead.
+
+### Decisions
+
+- **The rim approach was abandoned deliberately, not fixed a third time.** Reproducing the reference
+  exactly required the caret's interior to redraw the panel's mesh, its top occlusion and its
+  `inset 0 0 0 1px #3a1608` seam at a *different background origin* from the panel's own. However
+  carefully that is calibrated it leaves a visible join, and the rim's width is then a third thing to
+  keep in step with the frame. Solid brass deletes that entire problem class: there is no interior to
+  blend, so the frame line simply runs underneath and the caret merges with it.
+- **Construction.** A single `::before`, `clip-path: path('M0,10 L8.6,1.4 Q10,0.2 11.4,1.4 L20,10 Z')`
+  — 20 × 10 CSS px, i.e. the reference's notch **outline** (device x677..715, y85..105), now filled.
+  The base sits at `bottom: calc(100% + 2px)`, which is 2px above the panel's *padding box* top and
+  therefore **1px inside the 3px frame**, so the two overlap and no hairline can appear between them.
+  Gradient `#d3b183 → #c0a075 → #a98d66` matches the frame's top-of-border tone, so the eye reads one
+  cast shape. `::after` — which existed only for the inner silhouette — is switched off with
+  `content: none`. The flipped mirror uses the vertically reflected path.
+- Superseded reasoning, kept for context: the padding-box vs border-box anchoring problem described in
+  the seventh pass is still real, it just no longer matters — nothing is anchored to the inner edge.
+
+### Verified
+
+- 46 files / 502 tests pass; `vite build` clean (435.92 KB CSS, 90.57 KB gzip).
+- Live geometry: `::before` 20 × 10 at `bottom: 32.66px` (= the padding-box top + 2px), `::after`
+  `content: none`; harness capture at 6× and the live hint held open both show the triangle merging
+  into the frame with no seam.
+
+## Ninth pass — ConfirmPopup (Reset key's "discard changes?")
+
+The last unstyled surface in the wood variant. Reached from `editor--wood-toolbar` by editing a field
+(which enables the toolbar's two icon keys) and pressing the second one, `pi pi-replay` — the Reset
+key. `Editor.tsx` raises it with `confirmPopup({…})`, which renders a **`.p-confirm-popup`** at the
+body portal, so like the hint it is scoped on the `blong-theme-wood` root marker.
+
+### Decisions
+
+- **It is a sibling of the ActionHint, not a new language.** PrimeReact gives it the *same* caret
+  machinery — `.p-confirm-popup:before/after { bottom: 100%; left: calc(var(--overlayArrowLeft, 0) +
+  1.25rem) }` with `border-width: 10px/8px` in `@layer primereact`, which the theme's unlayered
+  `border: solid transparent` shorthand collapses to a nub exactly as it does for the hint. So it
+  reuses the hint's 3px brass frame, its outset ring + drop shadow, and the **solid brass caret** from
+  the eighth pass (with `::after` switched off).
+- **Only the panel differs**: charcoal `#1f1f20` + the dot texture rather than the hint's rust
+  `#a04f32`. Both are transient plates pinned to the button that raised them, but the hint reports a
+  *failure* while this is a neutral *question*, so they should not share a body colour. The warning
+  triangle is amber `#e0b085` rather than a red.
+- **The two answers are compact versions of the theme's key** (`height: 30px`, 2px brass frame via the
+  same `padding-box`/`border-box` double-gradient trick as §W8) rather than stock text buttons; `Yes`
+  gets the brighter brass already used for the engaged toggle and the selected dropdown row, so the
+  affirmative action is the one that reads as active. Needed `!important` on `background-image` to
+  beat PrimeReact's `.p-button-text`.
+- Sizing/typography follow §W3/§W7: message `1.02rem` in `--wood-font` on `#dcc8b6`, icon `1.4rem`,
+  content `0.7/0.95rem`, footer `0/0.95/0.8rem`, buttons right-aligned.
+
+### Verified
+
+- 46 files / 502 tests pass; `vite build` clean (**439.07 KB** CSS, 90.83 KB gzip).
+- Live: popup 486.9 × 83.1, border 2.22px (the 3px authored, snapped at the reporter's DPR 0.9),
+  radius 5px, `--wood-font` resolved, message `14.28px`; accept key 48.8 × 30, radius 4;
+  caret `::before` 20 × 10 with the solid path and `::after` `content: none`.
+- Captured live: brass frame + dotted panel, amber warning triangle, parchment message, two brass
+  keys with `Yes` brighter, and the solid caret pointing up at the Reset key.
+
+### Popup family, complete
+
+| Surface | Frame | Panel | Caret |
+| --- | --- | --- | --- |
+| `.p-overlaypanel` (ActionHint) | 3px brass `#c6a67f…` | rust `#a04f32` + dots | solid brass |
+| `.p-confirm-popup` | 3px brass `#c6a67f…` | charcoal `#1f1f20` + dots | solid brass |
+| `.p-dropdown-panel` | 2px brass bezel | charcoal recess + mesh | — |
+
+## Tenth pass — focus states (last unstyled surface)
+
+### Decisions
+
+- **The design does show a focused field, and it is not a glow.** `wood.png`'s `Type` dropdown is
+  focused: its thin dark edge widens into a ~3 CSS-px **brass bezel**, brightest along the top and
+  left and falling away to the right and floor. Sampled along device columns/rows — top
+  rgb(222,188,143), left rgb(194,160,112), right rgb(148,112,62), bottom rgb(166,132,84), with a dark
+  outer line rgb(38,12,0) and a dark inner lip. That is the same bezel language as the §W5 socket,
+  so the theme already had the vocabulary; the old rule (an `#b45309` orange border plus a `0 0 10px`
+  amber halo) was inherited from the pre-redesign palette and matched nothing else.
+- **Implemented as per-side border colours plus four directional `inset` shadows**, not a thicker
+  border: the 1px `border` supplies the bezel's outer pixel and the insets add the second, so the
+  field does not change size on focus (a wider border made the whole form jitter). The `inset 0 0 0
+  3px rgba(14,8,3,0.4)` reproduces the dark lip inside the bezel, and the two depth shadows are kept.
+- **The dropdown is one continuous channel.** The design shows no separate trigger panel and no
+  divider — the mesh runs to the frame — and both the chevron and the clear `×` are warm cream
+  (sampled rgb(220,200,175) and rgb(226,205,180)). They were still on the old palette's `#fcd34d`
+  amber with `background: rgba(0,0,0,0.25)` and a gold `border-left`, so the trigger is now
+  transparent/divider-less and both icons are `#dfcbb2`.
+- **Two PrimeReact focus mechanics worth knowing, both discovered the hard way:**
+  - `--focus-ring` looks like the knob for focus colour, and PrimeReact's *newer* themes consume it,
+    but the vendored `vela-blue` **hard-codes `#93cbf9`** in every rule, so setting the token alone
+    changes nothing. It is still declared (brass) for forward compatibility, but it is not the fix.
+  - §W8's keys and §W5's sockets set their own `!important` `box-shadow`, which **silently
+    overrode the theme's focus ring** — leaving those controls with *no* visible focus at all. This
+    was a regression introduced by the earlier passes, not a pre-existing one. Fixed by repainting
+    the ring with `outline` on `:focus-visible`, which nothing else in the file touches, instead of
+    joining the `!important` shadow war.
+- Also worth recording: `.p-dropdown`/`.p-inputtext` carry `transition: border-color 0.2s`, so a
+  `getComputedStyle` read taken immediately after adding a focus class returns the **pre-transition**
+  value. Two rounds of "the CSS isn't applying" were this, not the CSS.
+
+### Verified
+
+- 46 files / 502 tests pass; `vite build` clean (**439.65 KB** CSS, 90.95 KB gzip).
+- Focused input and focused dropdown both settle to border-top `rgb(201,168,120)`, left
+  `rgb(176,138,86)`, right `rgb(122,90,51)`, bottom `rgb(138,106,62)` with the dark outer ring
+  `rgba(38,12,0,0.9) 0 0 0 1px`; trigger and clear icons `rgb(223,203,178)`; trigger background
+  transparent and `border-left-width: 0`; checkbox `:focus-visible` outline falls back to
+  `rgba(201,168,120,0.85)`.
+- Captured at 4× with the focused input above the focused dropdown and an unfocused field below: the
+  brass bezel reads clearly against the unfocused dark edge.
+
+## blong-theme skill created from the wood-theme lessons (2026-09-12)
+
+Context: after the wood variant was accepted, the user asked for a skill so future themes are
+cheaper to produce ("basing the instructions on the lessons learned, the decisions and frictions
+during the wood theme creation").
+
+### Decisions
+
+- **Workspace-scoped, not personal** — this is team knowledge that must roam with the repo, so it
+  lives in `.github/skills/blong-theme/` and is registered in the `[SKILLS_DELEGATOR]` table in
+  `copilot-instructions.md` (plus a routing sentence in `blong-browser`'s description and body).
+- **Named `blong-theme`**, matching the `blong-<domain>` convention (`blong-i18n`, `blong-model`).
+  The subject is specifically *visual variant layers*, not PrimeReact theme families; the
+  description says so and routes components/pages to `blong-browser` and Storybook to
+  `storybook-v10-setup`.
+- **Four reference files rather than one long SKILL.md** (progressive loading): `design-match`
+  (measurement + verification harnesses + environment limits), `prime-react-cascade` (v10 layer
+  mechanics, focus, CDP), `textures` (tiling law, calibration, formats, delivery), `wood-theme`
+  (the worked example with the measured constants). SKILL.md is 171 lines and carries the
+  guardrails, procedure, variant contract and definition of done.
+- **No `scripts/` in the skill.** The measurement recipes live as commands inside the references
+  instead of as an untested helper script — shipping executable code that was never run would be
+  worse than the recipes it would replace.
+- **The wood caret decision is codified as binding** (guardrail 8: stop after two failed attempts
+  at a pixel-exact detail and get an explicit product decision; never "restore" such a decision).
+  This was the single most expensive lesson of the session and the likeliest to be undone by a
+  future agent trying to be helpful.
+- **Fixed the stale `wood.css` header while passing.** Its header still claimed inlining was
+  deliberate because Storybook does not rewrite relative `url()` — the exact claim disproved and
+  corrected in the generator header in the previous pass. Left alone, the two headers would have
+  contradicted each other.
+
+### Verified
+
+- Frontmatter valid: `name` matches the folder, `description` 737 chars, no colons in the value.
+- All four reference links resolve; `get_errors` clean on every skill file (the only diagnostic is
+  the repo-wide `[CRITICAL_GUARDRAILS]` shortcut-reference warning shared by 14 other skills).
+- Router table row aligned to the existing 102-char rows; `git check-ignore` confirms nothing in
+  `.github/skills/blong-theme/` is ignored, so it is committable.
+
+## Investigation — emitting the theme textures as files / WebP
+
+Requested as "put the assets into webp files … may need separate addressing for Storybook and the
+production build, where assets are served from `/s/`". Researched, **not yet implemented** — the
+measurements change the picture enough that the choice is the user's (see `todo.md`).
+
+**Finding 1 — the blocker that forced data URIs no longer exists.** The generator's header says
+Storybook's Vite (rolldown) does not rewrite relative `url()` in project CSS so emitted files 404.
+That is stale: probing with a real texture next to the stylesheet resolved `url("./__probe.png")` to
+`http://localhost:6006/src/components/Theme/__probe.png` — **HTTP 200, `image/png`**. Any future
+touch of `woodAssets.mjs` should correct that comment rather than repeat it.
+
+**Finding 2 — no Vite config change is needed, and the two environments do NOT need separate
+addressing.** A minimal build reproducing `defineBlongViteConfig`'s shape (`base: '/s/'`,
+`assetsInlineLimit: 0`, `cssCodeSplit`) emitted `assets/grain-CQ5NWcEa.png` and
+`assets/edge-Dh0T0AsO.webp` as **content-hashed files** and rewrote the stylesheet to
+`url(/s/assets/…)` — a **151-byte** CSS. That is exactly the prefix `static.ts` serves
+(`prefix: '/s'`, `maxAge: 1y`, `immutable`), so the suite's `base` already handles it. One relative
+`url()` works in Storybook dev *and* in the `/s/` production build.
+
+**Finding 3 — the package's own lib build INLINES assets.** Adding a 45 KB `url()` grew
+`dist/assets/blong-browser.css` from 439.65 KB to 501.39 KB (+61.7 KB ≈ base64 of 45.5 KB) and emitted
+no asset file — Vite library mode inlines. So `dist/` consumers keep today's behaviour: no
+regression, but no win either. (The suite resolves `blong-browser` from **source** via the
+`development` export condition, which is why the suite build does get files.)
+
+**Finding 4 — WebP only wins on one of the six assets.**
+
+| asset | today | WebP lossless | verdict |
+| --- | --- | --- | --- |
+| `wood-grain` 512² grey | PNG **44,104 B** | **45,488 B** | worse (+3%) |
+| `wood-edge` 96² RGBA | PNG **3,189 B** | **1,842 B** | **−42%** |
+| `wood-mesh` / `wood-btn-dots` | SVG 230 / 284 B | — | keep SVG (vector, crisp at any DPR) |
+| `wood-recess-top/bottom` 1×8 | PNG 137 B each | — | keep PNG (WebP header ≥ payload) |
+
+**Finding 5 — lossy WebP is not an option for the grain.** q80 → 27,184 B (−38%), but against the
+original: RMSE **3.10** (the texture's own sdev is ~9.9) and, decisively, the **wrap discontinuity
+rises 0.74 → 3.73** — above the mean horizontal neighbour delta (1.89), i.e. the codec turns the
+seamless tile into a visible seam. Seamless tiling was a hard requirement of the original brief.
+
+**Finding 6 — the real win is de-inlining, not the format.** 47.5 KB of images are base64'd into a
+**65 KB** stylesheet that every consumer must download and parse before the theme paints. Emitted
+files shrink that stylesheet to ~0.2 KB and give each texture its own cache entry under the
+`immutable` 1-year policy already configured on the static plugin.
+
+### Implemented — option (A), confirmed by the user
+
+Chosen: **de-inline the two large textures; WebP lossless for `wood-edge` only; grain stays PNG;
+tile stays 512².** Changed `scripts/woodAssets.mjs`:
+
+- the encoder helper `png()` became `encode()` (it now writes WebP too, by extension);
+- `grain` and `edge` are written to a **committed** `src/components/Theme/assets/` and referenced as
+  `url("./assets/wood-grain.png")` / `url("./assets/wood-edge.webp")` via a new `fileUri()` helper;
+- the two 1×8 ramps still go to scratch space in `$TMPDIR` and stay inline as data URIs, as do the
+  two SVGs — a few hundred bytes each, so inlining avoids four extra requests for no real saving;
+- the stale "Storybook does not rewrite relative `url()`" paragraph in the generator header was
+  replaced with the measured behaviour, and the generated stylesheet's own header updated to match.
+
+Result: `wood-assets.css` **65,448 B → 2,616 B**; `wood-edge` 3,189 → 1,842 B; the grain unchanged at
+44,104 B.
+
+**Verified in all four environments, with no config change in any of them:**
+
+| environment | grain | edge |
+| --- | --- | --- |
+| Storybook dev | file, `200 image/png`, 44,104 B | file, `200 image/webp`, 1,842 B |
+| suite build (`base:'/s/'`, `assetsInlineLimit: 0`) | `url(/s/assets/wood-grain-CQ5NWcEa.png)` | `url(/s/assets/wood-edge-Dh0T0AsO.webp)` |
+| `storybook build` | file, `url(./wood-grain-CQ5NWcEa.png)` | inlined (1.8 KB < its 4 KB default) |
+| package lib build | inlined | inlined — `dist/` consumers unchanged, CSS 439.65 → 437.85 kB |
+
+The content hashes were identical across two independent builds, so the output is deterministic.
+Note the suite's `assetsInlineLimit: 0` is what forces files there while Storybook's 4 KB default
+leaves the small edge inline — that is Vite doing the right thing per environment, not a
+configuration to align.
+

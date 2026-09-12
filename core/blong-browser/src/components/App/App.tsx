@@ -30,6 +30,7 @@ import {LoginPopup} from '../LoginPopup/LoginPopup.js';
 import {OAuthCallback} from '../OAuthCallback/OAuthCallback.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
+import {ThemeSwitcher} from '../ThemeSwitcher/ThemeSwitcher.js';
 import {bgLocale} from '../../primereact/locales.js';
 
 const DEFAULT_THEME: IThemeConfig = {
@@ -173,6 +174,7 @@ function AppShell({
             {...portalProps}
             menubarEnd={
                 <>
+                    <ThemeSwitcher />
                     <LanguageSwitcher />
                     <AccountMenu />
                 </>

@@ -8,15 +8,15 @@
  *  - Submit form before calling (when submit=true)
  *  - Split-button variant when menu items are provided
  */
-import {confirmDialog, SplitButton} from '../../primereact/index.js';
+import { confirmDialog, SplitButton } from '../../primereact/index.js';
 
-import {useQueryClient} from '@tanstack/react-query';
-import {useRef, useState} from 'react';
-import {useAction} from '../../hooks/useAction.js';
-import {usePermission} from '../../hooks/usePermission.js';
-import type {IToolbarButton} from '../../index.js';
-import {useAppStore} from '../../state/appStore.js';
-import {Button} from '../Button/Button.js';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { useAction } from '../../hooks/useAction.js';
+import { usePermission } from '../../hooks/usePermission.js';
+import type { IToolbarButton } from '../../index.js';
+import { useAppStore } from '../../state/appStore.js';
+import { Button } from '../Button/Button.js';
 
 export interface IActionButtonProps extends IToolbarButton {
     /** Ref to the form element to submit before calling */
@@ -49,6 +49,11 @@ export function ActionButton({
 }: IActionButtonProps) {
     const permitted = usePermission(permission);
     const [loading, setLoading] = useState(false);
+    /**
+     * Set for as long as the failure hint is on screen, so visual themes can
+     * style the button that errored (the wood variant paints it rust).
+     */
+    const [failed, setFailed] = useState(false);
     const queryClient = useQueryClient();
     const actionMethod = typeof actionRef === 'string' ? actionRef : actionRef?.method;
     const actionParamsOverride =
@@ -99,6 +104,8 @@ export function ActionButton({
             const e = err as {print?: string; message?: string};
             clearError(); // dismiss the global error dialog — we're showing it locally
             showHint(hintTargetRef.current, e.print ?? e.message ?? 'Error', true);
+            setFailed(true);
+            window.setTimeout(() => setFailed(false), 2000); // matches ActionHint's auto-dismiss
         } finally {
             setLoading(false);
             onBusyChange?.(false);
@@ -123,7 +130,7 @@ export function ActionButton({
         icon: loading ? 'pi pi-spinner pi-spin' : icon,
         disabled: isDisabled,
         onClick: handleClick,
-        className: `blong-action-btn ${className}`,
+        className: `blong-action-btn ${className}${failed ? ' blong-action-error' : ''}`,
     };
 
     if (menu && menu.length > 0) {

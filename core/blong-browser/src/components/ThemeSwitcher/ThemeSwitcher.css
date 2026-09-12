@@ -1,0 +1,32 @@
+/* ThemeSwitcher — theme + light/dark selector in the portal menubar */
+
+.blong-theme-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.blong-theme-switcher__select {
+    min-width: 9rem;
+    max-width: 14rem;
+}
+
+.blong-theme-switcher__select .p-dropdown-label {
+    font-weight: 600;
+}
+
+.blong-theme-switcher__mode .p-button {
+    padding: 0.35rem 0.6rem;
+}
+
+.blong-theme-switcher__mode .p-button-label {
+    font-size: 0.8rem;
+}
+
+.blong-theme-switcher__mode-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}

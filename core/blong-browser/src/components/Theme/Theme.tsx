@@ -1,3 +1,4 @@
+/* spell-checker: disable */
 /**
  * Theme — PrimeReact theming provider.
  *
@@ -13,12 +14,23 @@ import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 import 'primereact/resources/primereact.min.css';
 import './glass.css';
+import './wood-assets.css';
 import './wood.css';
 
 import { addLocale, locale } from '../../primereact/index.js';
 import { updateGlassReflections } from './glassReflection.js';
+import {
+    FALLBACK_THEME_OPTION,
+    loadThemeCss,
+    paletteOfFolder,
+    resolveThemeFolder,
+    themeOptionByFolder,
+    themeOptionById,
+    themeOptionByName,
+    type IPrimeThemeOption,
+} from './themeRegistry.js';
 
-import { type ReactNode, useEffect, useRef } from 'react';
+import { createContext, use, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { useAppStore } from '../../state/appStore.js';
 
 export type PaletteType = 'light' | 'dark';
@@ -67,6 +79,18 @@ export interface IThemeConfig {
     primary?: string;
     // Visual variant layered on top of the base palette theme. Defaults to 'standard'.
     variant?: ThemeVariant;
+    /**
+     * Explicit theme selection — either a theme-option id (`lara-blue`,
+     * `glass`) or a PrimeReact theme folder name (`lara-dark-blue`). When set
+     * it overrides the `type` + `palette` mapping below. The theme switcher
+     * writes its choice to the app store, which outranks this default.
+     */
+    name?: string;
+    /**
+     * Whether to render the theme switcher in the portal menubar.
+     * Defaults to `true` — set `false` to hide it for an app.
+     */
+    switcher?: boolean;
     /** Override the font size (px). Defaults to palette-based size. */
     fontSize?: number;
     /**
@@ -75,6 +99,42 @@ export interface IThemeConfig {
      * Only needed for locales not already bundled with PrimeReact.
      */
     languages?: Record<string, object>;
+}
+
+/**
+ * Effective theme state exposed to descendants (notably the theme switcher in
+ * the portal menubar). `selectTheme` / `selectPalette` persist the choice via
+ * `appStore.setTheme`.
+ */
+export interface IThemeContextValue {
+    /** Effective configuration (prop defaults merged with the user's choice). */
+    config: IThemeConfig;
+    /** Resolved theme-option id. */
+    optionId: string;
+    /** Resolved theme-option descriptor. */
+    option: IPrimeThemeOption;
+    /** Effective palette. */
+    palette: PaletteType;
+    /** True when the current theme offers both light and dark variants. */
+    paletteToggle: boolean;
+    /** Whether the theme switcher should render (`IThemeConfig.switcher`). */
+    switcher: boolean;
+    /** Select a theme option by id. */
+    selectTheme: (themeId: string) => void;
+    /** Select the light/dark palette for the current theme. */
+    selectPalette: (palette: PaletteType) => void;
+}
+
+const ThemeContext = createContext<IThemeContextValue | null>(null);
+
+/**
+ * Access the effective theme and the switcher setters from any descendant of
+ * `<Theme>` (e.g. the portal menubar's theme switcher).
+ */
+export function useTheme(): IThemeContextValue {
+    const context = use(ThemeContext);
+    if (!context) throw new Error('useTheme must be used within <Theme>');
+    return context;
 }
 
 interface IThemeProps {
@@ -100,7 +160,62 @@ export function Theme({theme, children}: IThemeProps) {
 
     const palette = theme.palette ?? 'dark';
     const type = theme.type ?? 'compact';
-    const variant = theme.variant ?? 'standard';
+    const selection = useAppStore(s => s.theme);
+    const setTheme = useAppStore(s => s.setTheme);
+
+    // Base theme from the config: the legacy type/palette mapping, optionally
+    // overridden by an explicit `name` (theme-option id or folder name).
+    const defaultFolder = PRIMEREACT_PALETTE_THEMES[type][palette];
+    const named = theme.name ? themeOptionByName(theme.name) : undefined;
+    const baseFolder =
+        named && !named.option.variant ? resolveThemeFolder(named.option, named.palette) : defaultFolder;
+    const basePalette = named?.palette ?? paletteOfFolder(defaultFolder) ?? palette;
+
+    // The option implied by the config — used until the user picks one. The
+    // `variant` prop keeps working for callers that only set glass/wood.
+    const configOption: IPrimeThemeOption =
+        named?.option ??
+        (theme.variant && theme.variant !== 'standard'
+            ? themeOptionById(theme.variant)
+            : undefined) ??
+        themeOptionByFolder(baseFolder) ??
+        FALLBACK_THEME_OPTION;
+
+    // The user's explicit choice (theme switcher) outranks the configured default.
+    const option =
+        (selection.themeId ? themeOptionById(selection.themeId) : undefined) ?? configOption;
+
+    const isBlongVariant = option.variant !== undefined;
+    const paletteToggle = Boolean(option.light && option.dark);
+    const preferredPalette = selection.palette ?? basePalette;
+    const activePalette: PaletteType = isBlongVariant
+        ? basePalette
+        : option.light && option.dark
+          ? preferredPalette
+          : option.dark
+            ? 'dark'
+            : 'light';
+    const variant: ThemeVariant = option.variant ?? 'standard';
+    const folder = isBlongVariant ? baseFolder : resolveThemeFolder(option, activePalette);
+
+    const selectTheme = useCallback(
+        (themeId: string) => {
+            const next = themeOptionById(themeId);
+            if (!next) return;
+            if (next.variant) {
+                setTheme({themeId});
+                return;
+            }
+            const nextPalette: PaletteType =
+                next.light && next.dark ? activePalette : next.dark ? 'dark' : 'light';
+            setTheme({themeId, palette: nextPalette});
+        },
+        [setTheme, activePalette],
+    );
+    const selectPalette = useCallback(
+        (nextPalette: PaletteType) => setTheme({themeId: option.id, palette: nextPalette}),
+        [setTheme, option.id],
+    );
 
     // Portal overlays (dropdowns, panels) mount OUTSIDE the `.blong-app-*`
     // wrapper, so expose a root marker class that the variant CSS can scope
@@ -153,37 +268,61 @@ export function Theme({theme, children}: IThemeProps) {
         if (theme.primary) {
             document.documentElement.style.setProperty('--p-primary-color', theme.primary);
         }
-        switch (PRIMEREACT_PALETTE_THEMES[type][palette] || 'vela-blue') {
-            case 'vela-blue':
-                import('primereact/resources/themes/vela-blue/theme.css');
-                break;
-            case 'saga-blue':
-                import('primereact/resources/themes/saga-blue/theme.css');
-                break;
-            case 'lara-light-blue':
-                import('primereact/resources/themes/lara-light-blue/theme.css');
-                break;
-            case 'lara-dark-blue':
-                import('primereact/resources/themes/lara-dark-blue/theme.css');
-                break;
-        }
-    }, [palette, theme.direction, theme.fontSize, theme.primary, type]);
+    }, [theme.direction, theme.fontSize, theme.primary, type]);
+
+    // Load the active PrimeReact theme into a single <style> element. Writing
+    // the CSS in place keeps exactly one theme active — a side-effect CSS import
+    // is only ever injected once, so revisiting a theme would otherwise keep
+    // losing to a later-loaded one.
+    useEffect(() => {
+        let cancelled = false;
+        loadThemeCss(folder)
+            .then(css => {
+                if (cancelled || !css || typeof document === 'undefined') return;
+                let element = document.getElementById('blong-prime-theme') as HTMLStyleElement | null;
+                if (!element) {
+                    element = document.createElement('style');
+                    element.id = 'blong-prime-theme';
+                    document.head.appendChild(element);
+                }
+                element.textContent = css;
+            })
+            .catch(() => {
+                // Keep the previously applied theme if a chunk fails to load.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [folder]);
+
+    const contextValue: IThemeContextValue = {
+        config: {...theme, palette: activePalette, variant},
+        optionId: option.id,
+        option,
+        palette: activePalette,
+        paletteToggle,
+        switcher: theme.switcher ?? true,
+        selectTheme,
+        selectPalette,
+    };
 
     return (
-        <div
-            ref={appRef}
-            className={[
-                'blong-app',
-                `blong-app-${palette}`,
-                `blong-app-${type}`,
-                variant !== 'standard' ? VARIANT_CSS_CLASS[variant] : '',
-                theme.direction === 'rtl' ? 'blong-app-rtl' : '',
-            ]
-                .filter(Boolean)
-                .join(' ')}
-            dir={theme.direction ?? 'ltr'}
-        >
-            {children}
-        </div>
+        <ThemeContext value={contextValue}>
+            <div
+                ref={appRef}
+                className={[
+                    'blong-app',
+                    `blong-app-${activePalette}`,
+                    `blong-app-${type}`,
+                    variant !== 'standard' ? VARIANT_CSS_CLASS[variant] : '',
+                    theme.direction === 'rtl' ? 'blong-app-rtl' : '',
+                ]
+                    .filter(Boolean)
+                    .join(' ')}
+                dir={theme.direction ?? 'ltr'}
+            >
+                {children}
+            </div>
+        </ThemeContext>
     );
 }

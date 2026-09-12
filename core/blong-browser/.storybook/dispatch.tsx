@@ -792,6 +792,9 @@ export function withDispatch(
         React.useEffect(() => {
             useAppStore.getState().clearError();
             useAppStore.getState().clearAllToasts();
+            // Reset the theme-switcher choice so each story's `parameters.theme`
+            // (and any persisted localStorage value) never leaks between stories.
+            useAppStore.getState().setTheme({});
             // Apply translations + PrimeReact locale for this story.
             if (effectiveLang && effectiveLang !== 'en') {
                 const dict = translations ?? (effectiveLang === 'bg' ? bgTranslations : {});

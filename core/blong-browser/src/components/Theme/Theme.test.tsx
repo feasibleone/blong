@@ -1,7 +1,25 @@
-import { describe, expect, it } from 'vitest';
+/* spell-checker: disable */
+import { beforeEach, describe, expect, it } from 'vitest';
+import { useAppStore } from '../../state/appStore.js';
 import { render, screen } from '../../test/render.js';
 
-import { PALETTE_FONT_SIZES, PRIMEREACT_PALETTE_THEMES, Theme } from './Theme.js';
+import {
+    PALETTE_FONT_SIZES,
+    PRIMEREACT_PALETTE_THEMES,
+    Theme,
+    useTheme,
+} from './Theme.js';
+
+/** Renders the effective `useTheme()` values so tests can assert resolution. */
+function ThemeProbe() {
+    const { optionId, palette, paletteToggle, switcher } = useTheme();
+    return <span data-testid="probe">{`${optionId}|${palette}|${paletteToggle}|${switcher}`}</span>;
+}
+
+beforeEach(() => {
+    localStorage.removeItem('blong.theme');
+    useAppStore.setState(s => ({ ...s, theme: {} }));
+});
 
 describe('Theme', () => {
     it('renders children', () => {
@@ -158,5 +176,57 @@ describe('Theme', () => {
         it('returns 14px for compact palettes', () => {
             expect(PALETTE_FONT_SIZES.compact).toBe(14);
         });
+    });
+});
+
+describe('Theme resolution (useTheme)', () => {
+    it('resolves the legacy type/palette mapping by default', () => {
+        render(
+            <Theme theme={{type: 'compact', palette: 'dark'}}>
+                <ThemeProbe />
+            </Theme>,
+        );
+        expect(screen.getByTestId('probe').textContent).toBe('vela-blue|dark|false|true');
+    });
+
+    it('resolves a light/dark family and exposes the palette toggle', () => {
+        render(
+            <Theme theme={{name: 'lara-blue'}}>
+                <ThemeProbe />
+            </Theme>,
+        );
+        expect(screen.getByTestId('probe').textContent).toBe('lara-blue|dark|true|true');
+    });
+
+    it('applies the explicit selection from the store', () => {
+        useAppStore.setState(s => ({...s, theme: {themeId: 'soho', palette: 'light'}}));
+        render(
+            <Theme theme={{type: 'compact', palette: 'dark'}}>
+                <ThemeProbe />
+            </Theme>,
+        );
+        expect(screen.getByTestId('probe').textContent).toBe('soho|light|true|true');
+        expect(
+            document.querySelector('.blong-app')?.classList.contains('blong-app-light'),
+        ).toBe(true);
+    });
+
+    it('keeps blong variants on the dark base with no palette toggle', () => {
+        render(
+            <Theme theme={{name: 'glass'}}>
+                <ThemeProbe />
+            </Theme>,
+        );
+        expect(screen.getByTestId('probe').textContent).toBe('glass|dark|false|true');
+        expect(document.querySelector('.blong-app-glass')).toBeInTheDocument();
+    });
+
+    it('exposes switcher:false through the context', () => {
+        render(
+            <Theme theme={{switcher: false}}>
+                <ThemeProbe />
+            </Theme>,
+        );
+        expect(screen.getByTestId('probe').textContent).toBe('vela-blue|dark|false|false');
     });
 });

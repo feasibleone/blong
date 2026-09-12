@@ -27,6 +27,49 @@ export interface IHint {
     error: boolean;
 }
 
+/**
+ * The user's explicit theme choice (set by the theme switcher). Undefined
+ * fields mean "not chosen" — the Theme component then derives them from the
+ * `IThemeConfig` prop. Persisted to `localStorage` so the choice survives a
+ * reload.
+ */
+export interface IThemeSelection {
+    /** Selected theme-option id (e.g. `lara-blue`, `glass`). */
+    themeId?: string;
+    /** Selected palette for themes that offer both light and dark variants. */
+    palette?: 'light' | 'dark';
+}
+
+const THEME_STORAGE_KEY = 'blong.theme';
+
+function readThemeSelection(): IThemeSelection {
+    if (typeof localStorage === 'undefined') return {};
+    try {
+        const raw = localStorage.getItem(THEME_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw) as {themeId?: unknown; palette?: unknown};
+        const selection: IThemeSelection = {};
+        if (typeof parsed.themeId === 'string') selection.themeId = parsed.themeId;
+        if (parsed.palette === 'light' || parsed.palette === 'dark') selection.palette = parsed.palette;
+        return selection;
+    } catch {
+        return {};
+    }
+}
+
+function writeThemeSelection(selection: IThemeSelection): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+        if (!selection.themeId && !selection.palette) {
+            localStorage.removeItem(THEME_STORAGE_KEY);
+        } else {
+            localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(selection));
+        }
+    } catch {
+        // Ignore storage failures (private mode, quota, …).
+    }
+}
+
 /** Complete app state */
 export interface IAppState {
     auth: IAuthState;
@@ -45,6 +88,8 @@ export interface IAppState {
     actions: ActionRegistry;
     error: IBlongError | null;
     hint: IHint | null;
+    /** Explicit theme choice made via the theme switcher (see IThemeSelection). */
+    theme: IThemeSelection;
     /**
      * When true, the login popup is shown — set when an operation hits an
      * expired/invalid session (401) and the client-side token renewal failed.
@@ -93,6 +138,10 @@ export interface IAppActions {
     showError: (error: IBlongError) => void;
     clearError: () => void;
 
+    // Theme
+    /** Replace the explicit theme selection (persisted to localStorage). */
+    setTheme: (selection: IThemeSelection) => void;
+
     // Login prompt
     setLoginPrompt: (visible: boolean) => void;
 
@@ -127,6 +176,7 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
     actions: {},
     error: null,
     hint: null,
+    theme: readThemeSelection(),
     loginPrompt: false,
 
     // Auth actions
@@ -260,6 +310,12 @@ export const useAppStore = create<IAppState & IAppActions>((set, get) => ({
         set({error});
     },
     clearError: () => set({error: null}),
+
+    // Theme
+    setTheme: selection => {
+        writeThemeSelection(selection);
+        set({theme: selection});
+    },
 
     // Login prompt
     setLoginPrompt: visible => set({loginPrompt: visible}),

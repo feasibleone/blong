@@ -1,6 +1,6 @@
 ---
 name: blong-browser
-description: Implement, extend, or debug the blong-browser React/TypeScript component library and portal framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For developing or improving the model system itself, use the blong-model-dev skill. For using the model to implement CRUD pages in a realm, use the blong-model skill.
+description: Implement, extend, or debug the blong-browser React/TypeScript component library and portal framework. blong-browser is a Blong realm that lives in `core/blong-browser/`. Use this skill whenever working on UI components, Editor/Form/Explorer/Report pages, widgets, portal navigation, schema-driven forms, action wiring, Storybook stories, or any blong-browser adapter/orchestrator code — even if the user just says "add a page", "fix the widget", or "show this in a tab". For multi-language support, translations, or i18n, use the blong-i18n skill. For developing or improving the model system itself, use the blong-model-dev skill. For using the model to implement CRUD pages in a realm, use the blong-model skill. For visual theme variants (glass/wood, design-matching, textures, PrimeReact overlay styling), use the blong-theme skill.
 ---
 
 # blong-browser Skill
@@ -9,6 +9,11 @@ description: Implement, extend, or debug the blong-browser React/TypeScript comp
 > `kukum component add --subject=<realm> --object=<page> --kind=component|actions|portal`
 > (`[KUKUM_API]` in `_shared/conventions.md`) — note the realm must also have a browser namespace
 > file (`browser/orchestrator/subject/init.ts`), which `kukum realm add` already emits.
+>
+> **Visual theme variants** (`glass`, `wood`, and any new material look) are their own discipline —
+> the layered CSS under `src/components/Theme/`, PrimeReact v10's `@layer` cascade, portal overlay
+> scoping, design-capture measurement and texture generation. Use the **blong-theme** skill for
+> those rather than working from this one.
 
 ## [CRITICAL_GUARDRAILS]
 

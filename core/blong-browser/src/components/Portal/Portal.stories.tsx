@@ -13,12 +13,14 @@
 import type {Meta, StoryObj} from '@storybook/react-vite';
 import type {within} from '@testing-library/react';
 import type {UserEvent} from '@testing-library/user-event';
-import {useEffect} from 'react';
+import {useEffect, type ReactNode} from 'react';
 import {useAppStore} from '../../state/appStore.js';
 import type {IPortalConfig, ITab} from '../../types/portal.js';
 import {Basic as EditorBasic} from '../Editor/Editor.stories.js';
 import {Explorer} from '../Explorer/Explorer.js';
 import {Default as ExplorerDefault} from '../Explorer/Explorer.stories.js';
+import {LanguageSwitcher} from '../LanguageSwitcher/LanguageSwitcher.js';
+import {ThemeSwitcher} from '../ThemeSwitcher/ThemeSwitcher.js';
 import {Portal} from './Portal.js';
 
 // ── Meta ───────────────────────────────────────────────────────────────────
@@ -40,7 +42,15 @@ type Story = Omit<StoryObj<typeof meta>, 'play'> & {
  * Seed the portal Zustand store with tabs (and optional menu config) and
  * clean up on unmount.  Wraps Portal so stories are self-contained.
  */
-function PortalSetup({tabs, portalConfig}: {tabs: ITab[]; portalConfig?: IPortalConfig}) {
+function PortalSetup({
+    tabs,
+    portalConfig,
+    menubarEnd,
+}: {
+    tabs: ITab[];
+    portalConfig?: IPortalConfig;
+    menubarEnd?: ReactNode;
+}) {
     useEffect(() => {
         // Reset first to avoid bleed-through from previous stories
         useAppStore.setState({portal: {tabs: [], activeTabId: null, portalConfig: null}});
@@ -52,7 +62,7 @@ function PortalSetup({tabs, portalConfig}: {tabs: ITab[]; portalConfig?: IPortal
         };
         // eslint-disable-next-line @eslint-react/exhaustive-deps -- run once on mount
     }, []);
-    return <Portal />;
+    return <Portal menubarEnd={menubarEnd} />;
 }
 
 // ── Simple page components used by multiple stories ───────────────────────
@@ -101,6 +111,35 @@ export const Basic: Story = {
             tabs={[
                 {id: 'page1', actionName: 'page1', params: {}, title: 'Page 1', component: PageOne},
                 {id: 'page2', actionName: 'page2', params: {}, title: 'Page 2', component: PageTwo},
+            ]}
+        />
+    ),
+};
+
+/**
+ * MenubarEnd — the portal menubar with the real App widgets on the right:
+ * the theme switcher (left) and the language switcher.
+ */
+export const MenubarEnd: Story = {
+    render: () => (
+        <PortalSetup
+            menubarEnd={
+                <>
+                    <ThemeSwitcher />
+                    <LanguageSwitcher />
+                </>
+            }
+            portalConfig={{
+                name: 'app',
+                title: 'App',
+                languages: [
+                    {value: 'en', label: 'English'},
+                    {value: 'bg', label: 'Български'},
+                ],
+                translations: {en: {}, bg: {}},
+            }}
+            tabs={[
+                {id: 'page1', actionName: 'page1', params: {}, title: 'Page 1', component: PageOne},
             ]}
         />
     ),

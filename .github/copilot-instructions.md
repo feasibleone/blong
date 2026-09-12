@@ -206,6 +206,7 @@ Suite             — top-level entry point, glues realms, defines deployment co
 | Developing the logging tooling             | **blong-log-dev**                                     |
 | Implementing blong-browser components      | **blong-browser**                                     |
 | Adding multi-language / i18n support       | **blong-i18n**                                        |
+| Adding or design-matching a theme variant  | **blong-theme**                                       |
 | Using the model for realm API, CRUD pages  | **blong-model**                                       |
 | Developing the model system internals      | **blong-model-dev**                                   |
 | Full-stack Playwright testing              | **blong-playwright**                                  |
