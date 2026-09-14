@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "commit": "c3722319e76776a8b528259471ddd7dddff40bbd",
-  "run": 550,
-  "updatedAt": "2026-09-12T19:03:52.466Z",
+  "commit": "86028e2b9326b421d3d109708ffc1cd18b38c2dd",
+  "run": 551,
+  "updatedAt": "2026-09-14T13:19:35.510Z",
   "tests": {
     "total": 596,
-    "passed": 595,
+    "passed": 596,
     "failed": 0,
-    "flaky": 1
+    "flaky": 0
   },
   "coverage": {
     "lines": {
@@ -18,9 +18,9 @@
   "packages": {
     "blong-access": {
       "tests": {
-        "passed": 23,
+        "passed": 24,
         "failed": 0,
-        "flaky": 1,
+        "flaky": 0,
         "total": 24
       }
     },
@@ -110,6 +110,23 @@
     }
   },
   "history": [
+    {
+      "commit": "86028e2b9326b421d3d109708ffc1cd18b38c2dd",
+      "run": 551,
+      "date": "2026-09-14T13:19:35.510Z",
+      "tests": {
+        "total": 596,
+        "passed": 596,
+        "failed": 0,
+        "flaky": 0
+      },
+      "coverage": {
+        "lines": {
+          "hit": 20958,
+          "found": 31264
+        }
+      }
+    },
     {
       "commit": "c3722319e76776a8b528259471ddd7dddff40bbd",
       "run": 550,
