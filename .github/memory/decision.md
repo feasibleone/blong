@@ -1694,3 +1694,86 @@ User asked to refresh the screenshots across all packages (manual diff review).
 - **Widget**: `Button` with `text` + `rounded` + `severity="secondary"` (borderless), class
   `blong-theme-switcher__mode`; CSS adds a 2.25rem square hit area and 1.1rem icon.
 - **Verified**: `ThemeSwitcher.test.tsx` 6/6 via `npx vitest run`.
+
+## semantic-log: leg identity is a library concept (core/semantic-log, 2026-09-14)
+
+The plan of record (owner request, five features, six grilling rounds) is
+`/memories/session/plan.md`. This block records only what the request did not settle — the choices
+taken while implementing it.
+
+- **Owner ruling, before implementation**: "about the leg ids: they should be native to
+  semantic-log, not bound only to the hop() function, as it is just a demo". The library therefore
+  owns the binder, the id's charset, the propagation convention and the requirement (R22), and
+  `hop()` is one consumer of it rather than its author.
+- **Implied choice — a leg is a SCOPE, not a parameter.** The plan had `hop()` taking a required
+  `{leg}` option. Implemented as `bindLeg(id, fn)` wrapping the call, because the caller's own
+  _request-describing_ records are emitted immediately before the hop; with the id bound only inside
+  `hop()` those records would carry no leg, and the cross-reference the feature exists for would be
+  missing exactly where a reader looks first. `hop()` still **throws** when no leg is bound, so an
+  id cannot be forgotten silently: what changed is where the id is declared, not whether one is
+  required. **Reconsider if** a call site needs a leg on the wire but not on its own records.
+- **Implied choice — `readIdentity()` joins the public surface.** The propagation contract is
+  enforced on the way out (`identityHeaders()`) and on the way in (a comma-joined duplicate header
+  is not an identity). Leaving the inbound half to each application meant one subtle rule
+  re-implemented per application, so it moved into the library and the demo now consumes it.
+- **Implied choice — `flow.leg`, merged at record assembly.** A leg is only meaningful as "which
+  edge of this execution this record belongs to", so the ambient context keeps the leg _beside_ the
+  flow and the logger joins the two when it assembles a record (`flowWithLeg`). The alternative —
+  replacing the flow object at bind time — would have detached `step`'s position from the enclosing
+  scope, because that object is shared by reference with every nested scope on purpose.
+- **Implied choice — the enforced charset is the mermaid-safe one.** Lowercase letters and digits
+  with `.`, `-`, `_`. One charset has to survive four consumers at once: an HTTP header value, a
+  source grep for the id -> file cross-reference, a diagram label needing no escaping, and the `;`
+  that silently breaks a generated sequence diagram.
+- **Verified**: 2303/2303 tap at 100% coverage (was 2258), `ci-lint` clean.
+- **Autonomous decision (owner away, instructed to proceed) — the both-ends discipline, option
+  (A).** A hop is **two observations** of one leg id, because a leg id names a call site and encodes
+  no endpoint (D8): the caller's record, emitted inside the leg scope, and the callee's receipt,
+  emitted under the inbound leg. Whoever decides how both ends get instrumented also decides what
+  the observed topology is worth, so the choice was put to the owner as (A) instrument both ends and
+  document the rule, (B) propagate the caller's service name as a fourth identity, or (C) infer the
+  caller from leg order. The owner was away and answered "work autonomously and make good
+  decisions": **(A) was taken**. The fixture now logs the request inside each leg and a receipt
+  under the inbound leg, which added nine protocol records (three receipts — hub `/parties`, hubA
+  `/parties`, the proxy — and six requests — `hub`->`fxp` quotes, `hub`->`payee` quotes and
+  transfers, `hubA`->`fxpA` quotes, `hubA`->`proxy` quotes and transfers). Rationale: the topology
+  stays a fact at both ends, the identity model stays as ruled — three headers, neutral ids — and a
+  hop nobody logged loses its edge _visibly_ instead of inventing one, which is the failure mode
+  `practices.md` is built around. **Reconsider if** the lighter contract is wanted for real
+  applications: (B) costs one more header and needs only one observation, (C) costs nothing but
+  makes the topology an inference that is wrong when hops interleave.
+
+## D18 amended: the union is not debounced (2026-09-14, semantic-log task)
+
+Ruling D18 said the per-kind union of observed calls is written on a debounce with a flush on close,
+"the window is a named option". Implemented, then removed, because the window buys nothing:
+
+- The unions live in the **same snapshot file** as the template registry, and R4 requires the
+  registry to be durable _before a batch is acknowledged_ — so the file is already written once per
+  accepted batch, and the union is in it. Debouncing the union half would mean writing the file
+  twice per batch, or writing the registry without its unions and then again with them.
+- What a debounce would add is a window in which observations are **not** on disk, for a service
+  whose whole point is that its shape survives a restart.
+
+`ServiceOptions.persistDebounceMs` is gone; the `onClose` flush is gone with it (there is never a
+pending write). **Reconsider if** the snapshot ever grows big enough that a per-batch write is a
+real cost — then the answer is a separate append-only surface for observations, not a timer.
+
+## Diagrams: one route, resolved by the id's shape (2026-09-14, semantic-log task)
+
+D13 named two routes, `GET /flows/:kind/diagram` and `GET /flows/:id/diagram`. Fastify cannot
+register one pattern twice, so they are one route, `GET /flows/:reference/diagram`, and the
+reference's shape decides which store is asked: a ULID is an execution (nothing else parses as one),
+anything else is a kind. The two 404s stay distinct and legible — `unknown flow kind` lists the
+kinds there are; `flow execution not retained` reports how many are held and how many were evicted.
+
+## A closed execution still accepts records (2026-09-14, semantic-log task)
+
+Superseded my own earlier rule ("a spent execution takes no further calls"). The generated artifact
+(`docs/observed-flows.md`) proved it wrong on the first real run: the payer's sink flushes before
+the hub's, so the payer's terminal `transfer complete` reached the service first and the hub's last
+four records were refused — losing the hub's own declaration of `hub.transfer.deliver`, an entire
+edge of the observed flow, plus three receipts. Arrival order between processes is not emission
+order. The terminal status is now recorded as `closed` (a fact about what the emitter reported) and
+never refuses an observation; redeliveries are still deduplicated by event id, and retention is
+still bounded by the cap.

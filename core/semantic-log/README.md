@@ -110,13 +110,14 @@ through the same store as any other record reference. All of them resolve on dem
 
 ## Resolving a reference
 
-The inspector reads exactly **one file** per lookup; it never enumerates the cache. Flags may appear
-before or after the reference.
+The inspector reads exactly **one file** per lookup; it never enumerates the cache to find a record.
+Flags may appear before or after the reference.
 
 ```bash
 node bin/semantic-log-inspect.ts --cache <dir> <reference|id>
 node bin/semantic-log-inspect.ts --cache <dir> --json <reference|id>            # machine-readable
 node bin/semantic-log-inspect.ts --cache <dir> --expect-retained <reference|id>
+node bin/semantic-log-inspect.ts diagram --cache <dir> <flow-id|flow-kind>     # what a run did
 ```
 
 | Flag                | Effect                                                                                     |
@@ -124,6 +125,18 @@ node bin/semantic-log-inspect.ts --cache <dir> --expect-retained <reference|id>
 | `--cache <dir>`     | the cache root; `~/.semantic-log/cache` when omitted                                       |
 | `--json`            | the machine-readable rendering instead of the readable one                                 |
 | `--expect-retained` | the caller states the reference was once live, so an absent entry is _pruned_, not unknown |
+
+### `diagram` — what a run did, offline
+
+`diagram` draws the observed shape of one execution (a ULID) or one flow kind, from the local store
+alone — no service, no network. It reads what the store has that the service never sees: the branch
+rationale and the **withheld categories** are in the records here and nowhere else, so they are
+drawn as `Note over <participant>:` lines above the call they belong to.
+
+This is the one verb that **enumerates** the store, because a picture of a run needs every record of
+it. That scan is not a second lookup path — `cache.get` still fetches each record, and nothing is
+written or pruned — and the module's own contract says so rather than leaving a reader to wonder why
+R21's "never enumerates" does not hold here.
 
 The reference's own kind chooses the store: `semantic-log://record/<id>` reads the record half and
 `semantic-log://payload/<id>` the payload half, while a bare id is read as a record. Exit codes say
@@ -144,6 +157,64 @@ that expectation explicitly. The CLI refuses a missing cache directory rather th
 typo in `--cache` would otherwise resolve every reference as unknown against a store it had just
 invented.
 
+## Naming a call: leg identity and propagation
+
+A **leg** is one call: an id the source declares, the receiver the caller expects, and the position
+the call holds in its execution. It is what turns a log line into an answer to "which call was
+this?", and it is a **library** concept — `bindLeg`, `bindInboundLeg`, `currentLeg` and
+`identityHeaders` are exported from the package, so an application uses them without adopting the
+demo fixture in `flow/`.
+
+```ts
+import {bindLeg, identityHeaders} from '@feasibleone/semantic-log';
+
+// The caller declares both ends before it calls: its own id, and the participant it expects.
+await bindLeg({id: 'payer.transfer.submit', to: 'hub'}, async () => {
+    logger.info('submitting transfer', {req: {operation: 'POST', target: '/transfers'}});
+    // Every record logged inside this scope now carries the leg. `legSeq` is assigned for you:
+    // the outermost call in an execution is `1`, and a call made while answering `2.2` is `2.2.1`.
+    return fetch(url, {headers: identityHeaders(request.headers)});
+});
+```
+
+The receiving side adopts what it was handed, so **both ends** of a call name the same leg:
+
+```ts
+const leg = legFrom(request); // validated: a malformed wire value reads as no leg, never a throw
+await participant.run(traceId, flowId, leg, async () => {
+    logger.info('transfer prepare started'); // carries the caller's leg id
+});
+```
+
+Two rules make the ids worth trusting:
+
+- **Both ends log.** The caller logs the request inside the leg it declared, and the receiver logs a
+  receipt under the leg it adopted. One end alone is still evidence — the caller's declaration is
+  what puts the attempt on the diagram — but the pair is what makes an edge _fact_.
+- **An id is one call site.** It is declared where the call is made, never in a manifest, and it
+  names the call rather than the attempt: a call site that logs five records about one call is one
+  call. Reusing an id for two different calls in one execution is reported as the reuse it is (two
+  arrows with the same label), not silently resolved.
+
+### The observed shape, published
+
+The service draws both diagrams itself (`GET /flows/:reference/diagram`) from what it **observed**,
+and the fixture's two schemes are published as generated blocks — diagram and table — in
+[`docs/observed-flows.md`](docs/observed-flows.md) and in the docs site's
+[flow page](../../docs/blong/docs/patterns/semantic-log-flows.md). Every arrow is labelled with the
+leg id and every row names the **file and line** that declares it, which is the cross-reference the
+ids exist for: a picture of a run that leads to the code that made it.
+
+Regenerate the artifact and the docs page's blocks (the prose around them is never touched):
+
+```bash
+SEMANTIC_LOG_UPDATE_DIAGRAMS=1 ./node_modules/.bin/tap test/flow/observedFlows.test.ts
+```
+
+Three checks keep that claim honest, and each was **observed failing** before it was trusted: every
+id a run observed is a literal in the code, every literal is observed by some run (or exempt with a
+stated reason), and one execution declares each call to exactly one receiver.
+
 ## The cluster service
 
 Optional. Without it everything above still works; with it, records are grouped, counted and
@@ -159,37 +230,73 @@ node bin/semantic-log-service.ts --port 9455 --host 127.0.0.1 \
 | ------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--port`            | `9455`      | listen port                                                                                                                                                                                                                                          |
 | `--host`            | `127.0.0.1` | bind address                                                                                                                                                                                                                                         |
-| `--persist <file>`  | —           | JSON snapshot of the **template registry**, restored on start and saved on every change                                                                                                                                                              |
+| `--persist <file>`  | —           | JSON snapshot of the **template registry and the calls observed per flow kind**, restored on start and saved with every accepted batch                                                                                                               |
 | `--embedding`       | `offline`   | `offline` (deterministic, no network, no model download — the default, and what CI uses), `local` (an in-process transformer model from an optional package, loaded lazily and downloaded on first use) or `remote` (any OpenAI-compatible endpoint) |
 | `--embedding-url`   | —           | endpoint for `--embedding remote`                                                                                                                                                                                                                    |
 | `--embedding-model` | —           | model name for `--embedding remote`                                                                                                                                                                                                                  |
 
-`local` needs its optional provider package installed, which the package does not declare; a load
-failure is reported as a named error rather than an opaque module-resolution crash, because "not
-installed" is an expected state for it. **Embedding vectors are not interchangeable across
-providers**: the default dimension is 64 for `offline`, 384 for `local` and 1536 for `remote`, and a
-centroid is only comparable with vectors from the provider that produced it — a deployment that
-changes provider starts a registry whose stored centroids it cannot compare against.
+`local` needs its optional provider package installed. It is declared as an **optional dependency**
+(`@huggingface/transformers`), so `rush update` installs it, and a machine without it is a supported
+state rather than a broken one: a load failure is reported as a named error instead of an opaque
+module-resolution crash. `SEMANTIC_LOG_EMBEDDING=local` asks for it without a flag, which is how a
+dev session is switched over while the shipped default stays deterministic — every ranking assertion
+in the test suite is written against the offline provider, because a ranking written against a
+downloaded model is an assertion about a machine. The real model is asserted where it is real:
+`SEMANTIC_LOG_LOCAL_MODEL=1 ./node_modules/.bin/tap test/local-model.test.ts`, which also proves the
+thing the hash provider cannot do (a paraphrase finding the record it means).
 
-**The registry is the only durable artifact.** The digest, causal lineage, incident store and
-flow-drift history are process-lifetime surfaces and are deliberately not persisted. A snapshot that
-cannot be read does not stop the service: it is moved aside to `<file>.corrupt` (kept, never
-deleted) and the service starts empty and says so, rather than refusing to serve telemetry over one
-bad cache file.
+**Embedding vectors are not interchangeable across providers**: the default dimension is 64 for
+`offline`, 384 for `local` and 1536 for `remote`, and a centroid is only comparable with vectors
+from the provider that produced it. A snapshot therefore records **which provider wrote it**, and a
+snapshot from another provider — or from an older version of the format — is moved aside rather than
+restored: the numbers would parse, and every answer would be nonsense.
 
-| Route                                                   | Returns                                                                         |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `POST /events`                                          | accepts a batch, `202`; the emitter never waits on it                           |
-| `GET /health`                                           | liveness                                                                        |
-| `GET /templates`                                        | the registry — refs, counts, first/last seen, alerts, intents                   |
-| `GET /templates/:ref`                                   | one entry; `404` when unknown                                                   |
-| `GET /templates/:ref?facet=ops\|diagnostic\|compliance` | a read-time projection; an unknown facet is a `400`                             |
-| `POST /templates/:ref/retire`                           | stamps `retiredAt` (retiring does not delete) and publishes the delta           |
-| `GET /records/:id`                                      | a retained exemplar, or `404`                                                   |
-| `GET /digest?since=<cursor>&limit=<n>`                  | change deltas — new/retired templates, anomalies, incidents, exemplar retention |
-| `GET /search?q=<text>&limit=<n>`                        | templates ranked by semantic similarity                                         |
-| `GET /diff?from=<t>&to=<t>`                             | templates added, removed and drifted in a window, plus the effective range      |
-| `GET /incidents`                                        | correlated anomalies with a ranked root cause                                   |
+**Two durable artifacts, not one.** The registry and the per-kind union of observed calls are
+persisted; the digest, causal lineage, incident store, flow-drift history and the per-execution flow
+ring are process-lifetime surfaces and deliberately are not. A snapshot the service cannot use does
+not stop it: it is moved aside and the service starts empty and says so, rather than refusing to
+serve telemetry over one bad file. The suffix names the reason, so the operator is not left to guess
+— `.corrupt` (unreadable), `.unsupported` (an older format) or `.provider` (another embedding
+provider).
+
+| Route                                                   | Returns                                                                                                        |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `POST /events`                                          | accepts a batch, `202`; the emitter never waits on it                                                          |
+| `GET /health`                                           | liveness                                                                                                       |
+| `GET /templates`                                        | the registry — refs, counts, first/last seen, alerts, intents                                                  |
+| `GET /templates/:ref`                                   | one entry; `404` when unknown                                                                                  |
+| `GET /templates/:ref?facet=ops\|diagnostic\|compliance` | a read-time projection; an unknown facet is a `400`                                                            |
+| `POST /templates/:ref/retire`                           | stamps `retiredAt` (retiring does not delete) and publishes the delta                                          |
+| `GET /records/:id`                                      | a retained exemplar, or `404`                                                                                  |
+| `GET /digest?since=<cursor>&limit=<n>`                  | change deltas — new/retired templates, anomalies, incidents, exemplar retention                                |
+| `GET /search?q=<text>&limit=<n>`                        | templates **and retained records** ranked by semantic similarity, each with a `kind`                           |
+| `GET /diff?from=<t>&to=<t>`                             | templates added, removed and drifted in a window, plus the effective range                                     |
+| `GET /incidents`                                        | correlated anomalies with a ranked root cause                                                                  |
+| `GET /flows`                                            | what was observed per flow kind, and the executions retained in detail                                         |
+| `GET /flows/:reference/diagram`                         | a mermaid sequence diagram — of a flow **kind** (its reference is not a ULID) or of one **execution** (a ULID) |
+
+### What is searchable, and what is kept
+
+Semantic search ranks two candidate sets, and they do not live in the same place:
+
+| Candidates                                                              | Vector                                                                                           | Kept where                                          |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| **templates** — one per distinct fingerprint                            | embedded from the structural signature, cached under the fingerprint                             | the registry: **persisted**, restored on start      |
+| **retained records** — at most `exemplarLimit` per template (default 5) | embedded from the record's own text (message, operation, service, signature) under `record:<id>` | the exemplar store: **process-lifetime**, in memory |
+
+A query is embedded once under `query:<text>` and both sets are merged on cosine similarity, each
+result carrying a `kind`. Two consequences follow, and both are deliberate:
+
+- **There is no historic database of records to search.** Records are retained as _evidence_, not as
+  a corpus: the emitter keeps a bounded local ring (`~/.semantic-log/cache`, R21), the service keeps
+  the first few records of each template in memory, and a restart brings back the registry and the
+  per-kind union of observed calls — not the records. So record-level search answers "which of the
+  occurrences I am currently holding looks like this", over a set bounded by templates ×
+  `exemplarLimit`, and a service that has just restarted will not find a record it observed
+  yesterday. Searching a _history_ means having a history: ship the records to storage you own and
+  index them there.
+- **The bound is the cost model.** An embedding per record would make the provider's work scale with
+  traffic, which is the one thing R3/SC3 forbids; the per-template bound is what keeps it finite.
 
 `GET /digest` returns its own cursor and the bound's state with every page, so a consumer never has
 to predict the cursor and can see that it fell behind rather than being silently truncated. The
@@ -225,6 +332,9 @@ this and nothing more:
                 "step": "transfer",
                 "index": 2,
                 "status": "running",
+                "leg": "payer.transfer.submit", // the call this record belongs to (R22)
+                "legTo": "hub", // the participant the caller declared — caller's records only
+                "legSeq": "3", // where the call sits in the execution: 2.2.1 is the first call made answering 2.2
             },
         },
     ],
@@ -235,6 +345,10 @@ Only `id`, `time`, `fingerprint` and `service` are required; everything else is 
 design, so an emitter that predates a field still ingests. `flow.kind` is what drift is observed
 under, so an emitter that omits it is ingested and simply never observed for drift. The service does
 no identity work: it keys the registry on the fingerprint the emitter computed.
+
+`flow.leg`, `flow.legTo` and `flow.legSeq` are the call the record belongs to. `leg` is an id the
+**source code declares**, `legTo` is the participant the caller expects to answer, and `legSeq` is
+the call's position in the execution. See below for the discipline that makes them worth carrying.
 
 ## Development
 

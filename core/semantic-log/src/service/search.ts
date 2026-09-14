@@ -50,8 +50,10 @@
  */
 
 import {cosine} from './centroid.ts';
+import type {EmbeddingCache} from './embedding.ts';
+import type {ExemplarStore} from './exemplars.ts';
 import type {FlowDrift, FlowDriftHistory} from './ingest.ts';
-import type {TemplateEntry, TemplateRegistry} from './registry.ts';
+import type {IngestEvent, TemplateEntry, TemplateRegistry} from './registry.ts';
 
 export interface SearchResult {
     ref: string;
@@ -59,8 +61,85 @@ export interface SearchResult {
     entry: TemplateEntry;
 }
 
+/**
+ * The key namespace a retained record's vector is stored under (D20).
+ *
+ * The fingerprint key would collapse every exemplar of one template onto the single
+ * vector that template has — they are the same template, so they share a signature — and
+ * a record-level search would then rank one arbitrary member of each group. The id is the
+ * record's, so its vector is the record's own.
+ */
+export const RECORD_KEY = 'record:';
+
+/** The key one retained record's vector is stored under. */
+export function recordKey(id: string): string {
+    return `${RECORD_KEY}${id}`;
+}
+
+/**
+ * The text a record is made searchable by.
+ *
+ * What a person would type to find it: the message first — the one human sentence a record
+ * carries — then the operation, the service and the structural signature, which is where
+ * the machine-readable half of its meaning lives. A record with none of them (every field
+ * absent from the wire) falls back to its fingerprint, which is what the template path
+ * does for the same reason: a vector of nothing is not a direction, and it would place
+ * the record in the ranking by accident.
+ */
+export function recordText(event: IngestEvent): string {
+    return (
+        [event.msg, event.operation, event.service, event.template]
+            .filter(part => typeof part === 'string' && part.length > 0)
+            .join(' ') || event.fingerprint
+    );
+}
+
+/** One retained record, as a search result. */
+export interface RecordResult {
+    id: string;
+    score: number;
+    event: IngestEvent;
+}
+
+/**
+ * Rank the retained records by similarity to a query vector, closest first.
+ *
+ * Only records whose vector is **already stored** can be ranked: one was embedded when it
+ * was retained (D20), and a record without a vector — an older retention from before this
+ * surface existed — is left out rather than embedded during the query, which would make a
+ * search cost one provider call per candidate (`embedding.ts`).
+ *
+ * The scan is over the retained exemplars, not over the embedding cache, because the
+ * answer has to carry the record itself: a vector with nothing to show for it is not a
+ * search result. The bound is therefore the retention bound — templates times the
+ * per-template limit — rather than anything traffic can grow.
+ */
+export function searchRecords(
+    exemplars: ExemplarStore,
+    cache: EmbeddingCache,
+    queryVector: readonly number[],
+    limit = 10,
+): RecordResult[] {
+    const ranked: RecordResult[] = [];
+    for (const {id, event} of exemplars.retained()) {
+        const vector = cache.vectorOf(recordKey(id));
+        if (vector === undefined) {
+            continue;
+        }
+        ranked.push({id, score: cosine(queryVector, vector), event});
+    }
+    // Ranked by score, ties settled by id: two records that are equally similar rank
+    // deterministically rather than by the order the store happens to hold them in.
+    ranked.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    return ranked.slice(0, limit);
+}
+
 /** Rank templates by similarity to a query vector, closest first. */
-export function searchTemplates(registry: TemplateRegistry, queryVector: readonly number[], limit = 10): SearchResult[] {
+export function searchTemplates(
+    registry: TemplateRegistry,
+    queryVector: readonly number[],
+    limit = 10,
+): SearchResult[] {
     const ranked: SearchResult[] = [];
     for (const entry of registry.list()) {
         // A template with no centroid (created before any embedding was
@@ -110,7 +189,11 @@ export interface TimeRange {
  * window", not "the flow surface is missing" — the history is a required
  * argument so the two cannot be confused.
  */
-export function deployDiff(registry: TemplateRegistry, range: TimeRange, driftHistory: FlowDriftHistory): DeployDiff {
+export function deployDiff(
+    registry: TemplateRegistry,
+    range: TimeRange,
+    driftHistory: FlowDriftHistory,
+): DeployDiff {
     const added: TemplateEntry[] = [];
     const removed: TemplateEntry[] = [];
     let unchanged = 0;
@@ -122,7 +205,9 @@ export function deployDiff(registry: TemplateRegistry, range: TimeRange, driftHi
         }
         if (
             entry.lastSeen < range.from ||
-            (entry.retiredAt !== undefined && entry.retiredAt >= range.from && entry.retiredAt <= range.to)
+            (entry.retiredAt !== undefined &&
+                entry.retiredAt >= range.from &&
+                entry.retiredAt <= range.to)
         ) {
             removed.push(entry);
             continue;

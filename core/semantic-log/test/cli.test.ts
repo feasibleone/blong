@@ -13,9 +13,9 @@ import {mkdtemp, rm, symlink, writeFile} from 'node:fs/promises';
 import {homedir, tmpdir} from 'node:os';
 import {join} from 'node:path';
 import t from 'tap';
+import {inspect, parseInspectArgs, toId} from '../bin/semantic-log-inspect.ts';
 import {openCache, type RecordCache} from '../src/cache.ts';
 import type {LogRecord} from '../src/record.ts';
-import {inspect, parseInspectArgs, toId} from '../bin/semantic-log-inspect.ts';
 
 const ID = '01J8Z9K2M9PQRSTVWXYZ0A1B2C';
 const OLDER_ID = '01J8Z9K2M9PQRSTVWXYZ0A1B2D';
@@ -100,36 +100,39 @@ t.test('an unknown reference exits 1 and says so', async t => {
     });
 });
 
-t.test('a pruned record is only distinguishable when the caller asserts it was retained', async t => {
-    // `older` really was retained and then pruned by the bound. The store keeps
-    // no trace of it, so no lookup can recover the fact: without an assertion
-    // the CLI must report the same thing it reports for an id that never existed
-    // (exit 1). `--expect-retained` is the caller stating what the store cannot
-    // know, and it is the only route to exit 2.
-    const older = record(OLDER_ID, 1);
-    const newer = record(NEWER_ID, 2);
-    await withCache(
-        async (dir, cache) => {
-            // The premise the test's name claims: both writes landed and the
-            // bound evicted one of them. `dropped` is what separates a prune
-            // from the second `put` having silently done nothing — in that case
-            // the single entry would fit the bound and `dropped` would be 0.
-            t.same(cache.stats(), {size: 1, dropped: 1}, 'older was retained and then pruned');
+t.test(
+    'a pruned record is only distinguishable when the caller asserts it was retained',
+    async t => {
+        // `older` really was retained and then pruned by the bound. The store keeps
+        // no trace of it, so no lookup can recover the fact: without an assertion
+        // the CLI must report the same thing it reports for an id that never existed
+        // (exit 1). `--expect-retained` is the caller stating what the store cannot
+        // know, and it is the only route to exit 2.
+        const older = record(OLDER_ID, 1);
+        const newer = record(NEWER_ID, 2);
+        await withCache(
+            async (dir, cache) => {
+                // The premise the test's name claims: both writes landed and the
+                // bound evicted one of them. `dropped` is what separates a prune
+                // from the second `put` having silently done nothing — in that case
+                // the single entry would fit the bound and `dropped` would be 0.
+                t.same(cache.stats(), {size: 1, dropped: 1}, 'older was retained and then pruned');
 
-            const {err, io} = sink();
-            t.equal(await inspect(['--cache', dir, OLDER_ID], io), 1);
-            t.match(err.join(''), /unknown reference/);
+                const {err, io} = sink();
+                t.equal(await inspect(['--cache', dir, OLDER_ID], io), 1);
+                t.match(err.join(''), /unknown reference/);
 
-            t.equal(await inspect(['--cache', dir, '--expect-retained', OLDER_ID], io), 2);
-            t.match(err.join(''), /not retained/);
+                t.equal(await inspect(['--cache', dir, '--expect-retained', OLDER_ID], io), 2);
+                t.match(err.join(''), /not retained/);
 
-            // The assertion does not change the answer for a record still held.
-            t.equal(await inspect(['--cache', dir, '--expect-retained', NEWER_ID], io), 0);
-        },
-        [older, newer],
-        1,
-    );
-});
+                // The assertion does not change the answer for a record still held.
+                t.equal(await inspect(['--cache', dir, '--expect-retained', NEWER_ID], io), 0);
+            },
+            [older, newer],
+            1,
+        );
+    },
+);
 
 t.test('a missing cache directory is a usage error, not a crash', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'semantic-log-cli-'));
@@ -257,7 +260,10 @@ t.test('a payload reference resolves through the payload half of the store', asy
 t.test('--json prints a payload compactly, not indented', async t => {
     await withPayloads(async dir => {
         const {out, io} = sink();
-        t.equal(await inspect(['--cache', dir, '--json', `semantic-log://payload/${PAYLOAD_ID}`], io), 0);
+        t.equal(
+            await inspect(['--cache', dir, '--json', `semantic-log://payload/${PAYLOAD_ID}`], io),
+            0,
+        );
         t.same(JSON.parse(out.join('')), PAYLOAD_VALUE, 'the value parses back unchanged');
         t.notMatch(out.join(''), /\n {2}"/, 'nothing is indented in the machine-readable mode');
     });
@@ -274,7 +280,11 @@ t.test('an unknown payload exits 1, and 2 when it was expected to be retained', 
             ['--cache', dir, '--expect-retained', `semantic-log://payload/${ABSENT_ID}`],
             expected.io,
         );
-        t.equal(code, 2, 'a payload the caller expects to be retained reports the same as a record');
+        t.equal(
+            code,
+            2,
+            'a payload the caller expects to be retained reports the same as a record',
+        );
         t.match(expected.err.join(''), /not retained/);
     });
 });
@@ -289,4 +299,230 @@ t.test('a scheme with no kind keeps the record kind', async t => {
         t.equal(code, 1, 'a reference with no kind resolves as an unknown record');
         t.match(err.join(''), /unknown reference/);
     });
+});
+
+// --- the diagram verb (R22/R23) ---------------------------------------------
+
+const FLOW = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+
+/** A record that belongs to one call, with what only the local store knows. */
+function callRecord(
+    id: string,
+    leg: string | undefined,
+    flow: {id?: string; kind?: string; to?: string; seq?: string; step?: string; service?: string},
+    extra: Partial<LogRecord> = {},
+): LogRecord {
+    return {
+        ...record(id),
+        // The emitter: `payer` by default, and `hub` for the *receipt* of a call the payer made.
+        service: flow.service ?? 'payer',
+        flow: {
+            id: flow.id ?? FLOW,
+            kind: flow.kind ?? 'transfer.single',
+            ...(leg === undefined ? {} : {leg}),
+            ...(flow.to === undefined ? {} : {legTo: flow.to}),
+            ...(flow.seq === undefined ? {} : {legSeq: flow.seq}),
+            ...(flow.step === undefined ? {} : {step: flow.step}),
+        },
+        ...extra,
+    };
+}
+
+t.test('the diagram verb draws one execution from the store alone (R23)', async t => {
+    // No service, no ledger, no network: what a developer has left after the run is the store, and
+    // it is enough to see the call the records were about — plus the two things the service can
+    // never see, the branch rationale and the withheld categories (R10/R11).
+    const records = [
+        callRecord(
+            ID,
+            'payer.quote.rates',
+            {to: 'hub', seq: '1', step: 'quote'},
+            {
+                decision: {
+                    discriminator: 'quote-acceptable',
+                    candidates: ['reject', 'accept'],
+                    chosen: 'accept',
+                    values: {},
+                },
+                fields: {withheld: [{time: 1, fields: {routing: {fxp: 'fxp-primary'}}}]},
+            },
+        ),
+        callRecord(OLDER_ID, 'payer.quote.rates', {seq: '1', step: 'quote', service: 'hub'}),
+        // A record of the flow that carries no call: it is a participant, not an arrow.
+        callRecord(NEWER_ID, undefined, {id: FLOW, service: 'hub'}),
+    ];
+    await withCache(async dir => {
+        const {out, io} = sink();
+        t.equal(await inspect(['diagram', '--cache', dir, FLOW], io), 0, 'the execution was drawn');
+        const drawn = out.join('');
+        t.match(
+            drawn,
+            /^%% [^\n]*\nsequenceDiagram\n/,
+            'as a mermaid sequence diagram, headed by what one store cannot know',
+        );
+        t.match(
+            drawn,
+            /Note over payer: decision: quote-acceptable → accept/,
+            'with the rationale the wire never carried',
+        );
+        t.match(
+            drawn,
+            /Note over payer: withheld: routing/,
+            'and the categories that were withheld',
+        );
+        t.match(drawn, /payer->>hub: payer\.quote\.rates/, 'one arrow for the call');
+        t.equal(
+            drawn.split('\n').filter(line => line.startsWith('    participant ')).length,
+            2,
+            'and both participants, the record without a call included',
+        );
+    }, records);
+});
+
+t.test('the diagram verb draws a kind, and refuses a reference nothing matches (R23)', async t => {
+    const records = [
+        callRecord(ID, 'payer.quote.rates', {to: 'hub', seq: '1'}),
+        callRecord(OLDER_ID, 'payer.quote.rates', {seq: '1', service: 'hub'}),
+    ];
+    await withCache(async dir => {
+        const {out, io} = sink();
+        t.equal(
+            await inspect(['diagram', '--cache', dir, 'transfer.single'], io),
+            0,
+            'the kind was drawn',
+        );
+        t.match(out.join(''), /payer->>hub: payer\.quote\.rates/);
+
+        const {err, io: missing} = sink();
+        t.equal(
+            await inspect(['diagram', '--cache', dir, 'transfer.inter'], missing),
+            1,
+            'an unobserved kind is exit 1',
+        );
+        t.match(err.join(''), /no records for kind transfer\.inter/);
+
+        const {err: unknownFlowError, io: unknownFlow} = sink();
+        t.equal(
+            await inspect(['diagram', '--cache', dir, '01ARZ3NDEKTSV4RRFFQ69G5FAZ'], unknownFlow),
+            1,
+        );
+        t.match(unknownFlowError.join(''), /no records for flow/);
+    }, records);
+});
+
+t.test('the diagram verb drops a leg the grammar rejects, exactly as the wire does', async t => {
+    // A hand-edited or older store must not be able to put a label into a diagram that the code
+    // could not have produced: the same rule the ingest applies to a peer's value.
+    const records = [
+        callRecord(ID, 'payer.quote.rates', {to: 'hub', seq: '1'}),
+        callRecord(OLDER_ID, 'payer.quote.rates', {seq: '1', service: 'hub'}),
+        callRecord(NEWER_ID, 'not a leg!', {to: 'hub', seq: '2'}),
+    ];
+    await withCache(async dir => {
+        const {out, io} = sink();
+        t.equal(await inspect(['diagram', '--cache', dir, FLOW], io), 0);
+        t.notMatch(out.join(''), /not a leg!/, 'the malformed id is not in the diagram');
+        t.match(out.join(''), /payer->>hub: payer\.quote\.rates/, 'while the call beside it is');
+    }, records);
+});
+
+t.test('the diagram verb prints a machine-readable envelope with --json', async t => {
+    const records = [
+        callRecord(ID, 'payer.quote.rates', {to: 'hub', seq: '1'}),
+        callRecord(OLDER_ID, 'payer.quote.rates', {seq: '1', service: 'hub'}),
+    ];
+    await withCache(async dir => {
+        const {out, io} = sink();
+        t.equal(await inspect(['diagram', '--cache', dir, '--json', FLOW], io), 0);
+        const body = JSON.parse(out.join('')) as {
+            id: string;
+            source: string;
+            observed: {legs: string[]};
+            diagram: string;
+        };
+        t.equal(body.id, FLOW, 'the envelope names what it drew');
+        t.same(body.observed.legs, ['payer.quote.rates'], 'and the calls it drew');
+        t.match(
+            body.diagram,
+            /^%% [^\n]*\nsequenceDiagram\n/,
+            'with the diagram and the one-store caveat',
+        );
+        t.equal(body.source, 'cache', 'and the envelope says which store it came from');
+    }, records);
+});
+
+t.test('the diagram verb takes a verb where a verb goes, and rejects the rest (usage)', t => {
+    t.same(parseInspectArgs(['diagram', 'transfer.single']).ok, true, 'the verb and its reference');
+    t.same(
+        (parseInspectArgs(['diagram', 'transfer.single']) as {args: {verb: string}}).args.verb,
+        'diagram',
+        'read as the diagram verb',
+    );
+    t.same(
+        (parseInspectArgs(['01J8Z9K2M9PQRSTVWXYZ0A1B2C']) as {args: {verb: string}}).args.verb,
+        'record',
+        'while a bare reference keeps the default verb',
+    );
+    t.match(
+        (parseInspectArgs(['diagram']) as {message: string}).message,
+        /a flow id or kind is required/,
+        'a verb with nothing to draw is a usage error',
+    );
+    t.match(
+        (parseInspectArgs(['diagram', 'one', 'two']) as {message: string}).message,
+        /unexpected argument two/,
+        'and two references is one too many',
+    );
+    t.end();
+});
+
+t.test('the diagram verb summarises withheld bags by category, without repeating one', async t => {
+    // A withheld bag is attached to whatever record escalates, and several bags can name the same
+    // category (the hub withholds `liquidity`, then `liquidity` and `settlement` on a refusal).
+    // The note is a label, so a category appears once — and it is drawn over the participant whose
+    // record carried the bag, because that is who withheld. A bag attached with no fields names
+    // nothing, which is not the same as naming an empty thing.
+    const records = [
+        callRecord(
+            ID,
+            'hub.transfer.deliver',
+            {to: 'payee', seq: '1'},
+            {
+                fields: {
+                    withheld: [
+                        {time: 1, fields: {liquidity: {reserved: 100}}},
+                        {
+                            time: 2,
+                            fields: {liquidity: {reserved: 100}, settlement: {attempted: 100}},
+                        },
+                        {time: 3},
+                    ],
+                },
+            },
+        ),
+        callRecord(OLDER_ID, 'hub.transfer.deliver', {seq: '1', service: 'payee'}),
+    ];
+    await withCache(async dir => {
+        const {out, io} = sink();
+        t.equal(await inspect(['diagram', '--cache', dir, FLOW], io), 0);
+        t.match(
+            out.join(''),
+            /Note over payer: withheld: liquidity, settlement/,
+            'each category once, in order',
+        );
+    }, records);
+});
+
+t.test('the diagram verb names a kind in its envelope too', async t => {
+    const records = [
+        callRecord(ID, 'payer.quote.rates', {to: 'hub', seq: '1'}),
+        callRecord(OLDER_ID, 'payer.quote.rates', {seq: '1', service: 'hub'}),
+    ];
+    await withCache(async dir => {
+        const {out, io} = sink();
+        t.equal(await inspect(['diagram', '--cache', dir, '--json', 'transfer.single'], io), 0);
+        const body = JSON.parse(out.join('')) as {kind?: string; id?: string};
+        t.equal(body.kind, 'transfer.single', 'a kind is named as a kind, not as an execution');
+        t.equal(body.id, undefined, 'and not as an id it does not have');
+    }, records);
 });

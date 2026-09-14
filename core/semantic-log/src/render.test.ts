@@ -1,6 +1,6 @@
 import t from 'tap';
-import {renderHuman, renderJson} from './render.ts';
-import type {LogRecord} from './record.ts';
+import type { LogRecord } from './record.ts';
+import { renderHuman, renderJson } from './render.ts';
 
 const base: LogRecord = {
     id: '01J8Z9K2M9PQRSTVWXYZ0A1B2C',
@@ -16,9 +16,12 @@ const base: LogRecord = {
 };
 
 t.test('a record with no optional detail renders as exactly one line', t => {
-    const line = renderHuman({...base, messageId: undefined, operation: undefined, refs: {record: base.id}}, {
-        color: false,
-    });
+    const line = renderHuman(
+        {...base, messageId: undefined, operation: undefined, refs: {record: base.id}},
+        {
+            color: false,
+        },
+    );
     t.equal(line.split('\n').length, 1, 'PRD R20 acceptance');
     t.end();
 });
@@ -27,7 +30,10 @@ t.test('the header carries the listed details in a greppable order', t => {
     const line = renderHuman(base, {color: false});
     // The date is asserted by shape, not by day: `base.time` is a fixed
     // timestamp used only to make the output deterministic.
-    t.match(line, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hub quote msg-7 quote\.create quote accepted/);
+    t.match(
+        line,
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hub quote msg-7 quote\.create quote accepted/,
+    );
     t.end();
 });
 
@@ -100,7 +106,11 @@ t.test('request and response render as labelled indented blocks, never a raw dum
     const line = renderHuman(
         {
             ...base,
-            req: {operation: 'POST', target: '/quotes', headers: {'content-type': 'application/json'}},
+            req: {
+                operation: 'POST',
+                target: '/quotes',
+                headers: {'content-type': 'application/json'},
+            },
             res: {status: 201, headers: {'x-trace': 'tr-1'}, elapsedMs: 42},
         },
         {color: false},
@@ -123,7 +133,16 @@ t.test('absent details are absent, not empty', t => {
 
 t.test('error type, message and stack render as a block', t => {
     const line = renderHuman(
-        {...base, level: 50, levelName: 'error', err: {type: 'Error', message: 'timeout', stack: 'Error: timeout\n    at f (/app/a.ts:1:2)'}},
+        {
+            ...base,
+            level: 50,
+            levelName: 'error',
+            err: {
+                type: 'Error',
+                message: 'timeout',
+                stack: 'Error: timeout\n    at f (/app/a.ts:1:2)',
+            },
+        },
         {color: false},
     );
     t.match(line, /\n\s+error {2}Error: timeout/);
@@ -133,11 +152,59 @@ t.test('error type, message and stack render as a block', t => {
 
 t.test('flow and intent render on the header line', t => {
     const line = renderHuman(
-        {...base, flow: {id: 'flow-1', kind: 'transfer.single', step: 'quote', index: 1, status: 'running'}, intent: {name: 'User_Checkout'}},
+        {
+            ...base,
+            flow: {
+                id: 'flow-1',
+                kind: 'transfer.single',
+                step: 'quote',
+                index: 1,
+                status: 'running',
+            },
+            intent: {name: 'User_Checkout'},
+        },
         {color: false},
     );
     t.match(line, /flow=flow-1\/quote#1/);
     t.match(line, /intent=User_Checkout/);
+    t.end();
+});
+
+t.test('a leg renders after the position it belongs to', t => {
+    const line = renderHuman(
+        {
+            ...base,
+            flow: {
+                id: 'flow-1',
+                kind: 'transfer.single',
+                step: 'quote',
+                index: 1,
+                status: 'running',
+                leg: 'payer.quote.rates',
+                legSeq: '1.2',
+            },
+        },
+        {color: false},
+    );
+    // `flow=<id>/<step>#<index>` is unchanged, so a reader parsing the position is
+    // unaffected by a record that also names the call it is part of, and the call's
+    // own position rides its token the way the flow's rides its own.
+    t.match(line, /flow=flow-1\/quote#1 leg=payer\.quote\.rates#1\.2/);
+    t.end();
+});
+
+t.test('a leg with no position renders without one', t => {
+    // An emitter that predates the counter, or a call observed from a receiver that
+    // was handed none, still renders the call it names.
+    const line = renderHuman(
+        {...base, flow: {id: 'flow-1', kind: 'transfer.single', leg: 'payer.quote.rates'}},
+        {color: false},
+    );
+    t.match(
+        line,
+        /leg=payer\.quote\.rates(?!\S)/,
+        'nothing is appended for a position that does not exist',
+    );
     t.end();
 });
 
@@ -153,7 +220,11 @@ t.test('json rendering carries the record verbatim', t => {
     t.equal(parsed.id, base.id);
     t.equal(parsed.msg, 'quote accepted');
     t.equal(parsed.refs.trace, 'tr-1');
-    t.equal(renderJson(base), JSON.stringify(base), 'an ordinary record is serialised byte-identically');
+    t.equal(
+        renderJson(base),
+        JSON.stringify(base),
+        'an ordinary record is serialised byte-identically',
+    );
     t.end();
 });
 
@@ -168,7 +239,11 @@ t.test('json rendering survives a circular reference and a BigInt in fields', t 
     const parsed = JSON.parse(text) as {id: string; fields: Record<string, unknown>};
     t.equal(parsed.id, base.id, 'the record is still emitted in full');
     t.equal((parsed.fields.circular as Record<string, unknown>).name, 'loop');
-    t.equal((parsed.fields.circular as Record<string, unknown>).self, '[Circular]', 'the cycle is marked');
+    t.equal(
+        (parsed.fields.circular as Record<string, unknown>).self,
+        '[Circular]',
+        'the cycle is marked',
+    );
     t.equal(parsed.fields.count, '9007199254740993', 'the BigInt keeps its exact value');
     t.same(parsed.fields.first, {name: 'reused'}, 'a shared value is not mistaken for a cycle');
     t.same(parsed.fields.second, {name: 'reused'});
@@ -179,8 +254,15 @@ t.test('json rendering survives a circular reference and a BigInt in fields', t 
 t.test('fields that cannot be serialised render without throwing', t => {
     const circular: Record<string, unknown> = {name: 'loop'};
     circular.self = circular;
-    const line = renderHuman({...base, fields: {circular, count: 9007199254740993n}}, {color: false});
-    t.match(line, /\n\s+circular: \[unserializable\]/, 'a circular reference is replaced by an explicit marker');
+    const line = renderHuman(
+        {...base, fields: {circular, count: 9007199254740993n}},
+        {color: false},
+    );
+    t.match(
+        line,
+        /\n\s+circular: \[unserializable\]/,
+        'a circular reference is replaced by an explicit marker',
+    );
     t.match(line, /\n\s+count: \[unserializable\]/, 'a BigInt is replaced by an explicit marker');
     t.end();
 });
@@ -207,7 +289,10 @@ t.test('an unknown level prints its raw value instead of a colour', t => {
 });
 
 t.test('a flow with no position yet renders its placeholders', t => {
-    const line = renderHuman({...base, flow: {id: 'flow-1', kind: 'transfer.single', status: 'running'}}, {color: false});
+    const line = renderHuman(
+        {...base, flow: {id: 'flow-1', kind: 'transfer.single', status: 'running'}},
+        {color: false},
+    );
     t.match(line, /flow=flow-1\/-#-1/, 'an unstarted step and an unset index are shown');
     t.end();
 });
@@ -249,10 +334,24 @@ t.test('a redaction-collapsed decision renders without joining a string', t => {
     // placeholder (`decision`, `**`) or only its candidate list
     // (`decision.candidates`). The renderer used to destructure the slot and
     // call `candidates.join`, throwing a `TypeError` out of the log call.
-    const whole = renderHuman({...base, decision: '[redacted]'} as unknown as LogRecord, {color: false});
-    t.match(whole, /\n\s+decision {2}\[redacted\]/, 'a wholly withheld rationale keeps its placeholder');
+    const whole = renderHuman({...base, decision: '[redacted]'} as unknown as LogRecord, {
+        color: false,
+    });
+    t.match(
+        whole,
+        /\n\s+decision {2}\[redacted\]/,
+        'a wholly withheld rationale keeps its placeholder',
+    );
     const candidates = renderHuman(
-        {...base, decision: {discriminator: 'route', chosen: 'fast', candidates: '[redacted]', values: {}}} as unknown as LogRecord,
+        {
+            ...base,
+            decision: {
+                discriminator: 'route',
+                chosen: 'fast',
+                candidates: '[redacted]',
+                values: {},
+            },
+        } as unknown as LogRecord,
         {color: false},
     );
     t.match(
@@ -272,7 +371,11 @@ t.test('a non-numeric timestamp renders an explicit marker, not a wrong date', t
         /^\[time withheld\] /,
         'a withheld timestamp is marked',
     );
-    t.match(renderHuman({...base, time: Number.NaN}, {color: false}), /^\[time withheld\] /, 'a non-finite timestamp is marked too');
+    t.match(
+        renderHuman({...base, time: Number.NaN}, {color: false}),
+        /^\[time withheld\] /,
+        'a non-finite timestamp is marked too',
+    );
     t.end();
 });
 
@@ -350,7 +453,11 @@ t.test('an escape sequence in an error message does not reach the rendered block
     // space before it, so the neutralised text reads `boom  [31mred` with two
     // spaces. The text is still reported — only the control character that could
     // move the cursor has gone; deleting the text is not what neutralising means.
-    t.match(line, /\n\s+error {2}Error: boom {2}\[31mred/, 'the message text is still reported, neutralised');
+    t.match(
+        line,
+        /\n\s+error {2}Error: boom {2}\[31mred/,
+        'the message text is still reported, neutralised',
+    );
     t.match(line, /\n\s+at f \(\/app\/a\.ts:1:2\)/, 'and so are the frames');
     t.end();
 });
@@ -366,13 +473,18 @@ t.test('a salvage payload keeps the level numeric and names it', t => {
             throw new Error('toJSON exploded');
         },
     };
-    const replaced = JSON.parse(renderJson({...base, level: '[redacted]' as unknown as number, fields: {hostile}})) as {
+    const replaced = JSON.parse(
+        renderJson({...base, level: '[redacted]' as unknown as number, fields: {hostile}}),
+    ) as {
         level: unknown;
         levelName: unknown;
     };
     t.equal(replaced.level, 30, 'a level that no longer resolves falls back to info');
     t.equal(replaced.levelName, 'info', 'and is named in levelName');
-    const numeric = JSON.parse(renderJson({...base, fields: {hostile}})) as {level: unknown; levelName: unknown};
+    const numeric = JSON.parse(renderJson({...base, fields: {hostile}})) as {
+        level: unknown;
+        levelName: unknown;
+    };
     t.equal(numeric.level, 30, 'a numeric level is carried as a number');
     t.equal(numeric.levelName, 'info', 'with its name alongside, as a normal record does');
     t.end();
@@ -404,7 +516,13 @@ t.test('an out-of-range timestamp renders a marker instead of throwing', t => {
 
 t.test('a message containing a newline stays on the single header line', t => {
     const line = renderHuman(
-        {...base, messageId: undefined, operation: undefined, refs: {record: base.id}, msg: 'first\nsecond'},
+        {
+            ...base,
+            messageId: undefined,
+            operation: undefined,
+            refs: {record: base.id},
+            msg: 'first\nsecond',
+        },
         {color: false},
     );
     t.equal(line.split('\n').length, 1, 'PRD R20: the header is one greppable line');

@@ -147,12 +147,18 @@
  * in the result and `onSkipped` is offered so the service can log it.
  */
 
+import {isUlid} from '../ulid.ts';
 import type {Anomaly, DetectorSuite} from './detectors.ts';
 import type {EmbeddingCache} from './embedding.ts';
 import type {ExemplarStore} from './exemplars.ts';
 import {hashEmbedding} from './provider.ts';
-import {type IngestEvent, type TemplateEntry, type TemplateRegistry, refFromFingerprint} from './registry.ts';
-import {isUlid} from '../ulid.ts';
+import {
+    type IngestEvent,
+    type TemplateEntry,
+    type TemplateRegistry,
+    refFromFingerprint,
+} from './registry.ts';
+import {recordKey, recordText} from './search.ts';
 
 export interface IngestDependencies {
     registry: TemplateRegistry;
@@ -617,7 +623,12 @@ export class FlowDriftHistory {
                 }
             }
             if (latest !== undefined) {
-                found.push({kind, lastDriftedAt: latest.at, lastDistance: latest.distance, count: entry.count});
+                found.push({
+                    kind,
+                    lastDriftedAt: latest.at,
+                    lastDistance: latest.distance,
+                    count: entry.count,
+                });
             }
         }
         found.sort((a, b) => a.lastDriftedAt - b.lastDriftedAt);
@@ -654,10 +665,10 @@ function isEvent(value: unknown): value is IngestEvent {
     const candidate = value as Partial<IngestEvent> | undefined;
     return Boolean(
         candidate &&
-            typeof candidate.id === 'string' &&
-            typeof candidate.fingerprint === 'string' &&
-            typeof candidate.service === 'string' &&
-            (candidate.flow === undefined || isFlow(candidate.flow)),
+        typeof candidate.id === 'string' &&
+        typeof candidate.fingerprint === 'string' &&
+        typeof candidate.service === 'string' &&
+        (candidate.flow === undefined || isFlow(candidate.flow)),
     );
 }
 
@@ -691,6 +702,16 @@ export function createIngest(
         // same vector comes back every time, which is exactly why a template
         // cannot drift and a flow can.
         const vector = await cache.vectorFor(event.fingerprint, signature);
+        // A retained record is embedded too, under its own id, so a *record* can be
+        // found by what it says rather than only by which template it belongs to (D20).
+        // Only when the store will keep it: embedding every occurrence would make the
+        // cost per record, which is the model R3/SC3 exists to prevent. The prediction
+        // can be optimistic inside one batch (the room is taken at commit, not here), and
+        // an over-eager vector is stored under an id nothing will be retained for —
+        // harmless, and bounded by the batch.
+        if (exemplars.hasRoom(ref)) {
+            await cache.vectorFor(recordKey(event.id), recordText(event));
+        }
 
         let drift: {ref: string; vector: number[]} | null = null;
         const {flow} = event;

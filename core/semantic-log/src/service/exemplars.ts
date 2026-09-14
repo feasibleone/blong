@@ -41,6 +41,21 @@ export class ExemplarStore {
     }
 
     /**
+     * Whether this template still has room for another exemplar, without taking one.
+     *
+     * Asked *before* an event is committed, so the work an exemplar costs can be done
+     * for the records that will be kept: embedding a record that the store then refuses
+     * would make the cost per occurrence rather than per retained exemplar (R3/SC3). The
+     * answer is a prediction, not a reservation — a batch of several sightings of one
+     * template can all be told there is room, and only the first few are kept — which is
+     * why the vector is stored under the record's own id: the ones that are refused
+     * leave a vector nothing can reach, rather than a hole in a kept record's search.
+     */
+    hasRoom(ref: string): boolean {
+        return (this.byRef.get(ref)?.length ?? 0) < this.options.limit;
+    }
+
+    /**
      * Retain `event` as an exemplar when its template still has room, reporting
      * whether it was kept. Full retention is first-come: once the template is
      * full, later occurrences are counted by the registry and nothing else.
@@ -59,6 +74,18 @@ export class ExemplarStore {
     /** The record ids retained for a template, oldest first. */
     get(ref: string): string[] {
         return [...(this.byRef.get(ref) ?? [])];
+    }
+
+    /**
+     * The retained records themselves, oldest first.
+     *
+     * The pairs are handed out together because they cannot come apart: the store keeps the
+     * id and the record under the same predicate (`offer`), so a caller that enumerated ids
+     * and then looked each one up would need a branch for a lookup that cannot fail — and a
+     * branch nothing can take is a guard that hides an invariant rather than testing it.
+     */
+    retained(): Array<{id: string; event: IngestEvent}> {
+        return [...this.byId.entries()].map(([id, event]) => ({id, event}));
     }
 
     /** The retained record, if it was kept as an exemplar. */

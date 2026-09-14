@@ -139,6 +139,7 @@ words:
   - hgetall
   - hincrby
   - hset
+  - huggingface
   - Hydrozoa
   - idempotently
   - Indo

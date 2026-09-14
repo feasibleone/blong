@@ -14,9 +14,12 @@
  */
 
 import t from 'tap';
+import {EmbeddingCache} from './embedding.ts';
+import {ExemplarStore} from './exemplars.ts';
 import {DRIFT_RING_LIMIT, FlowDriftHistory} from './ingest.ts';
+import {createProvider} from './provider.ts';
 import {TemplateRegistry} from './registry.ts';
-import {deployDiff, searchTemplates} from './search.ts';
+import {deployDiff, recordKey, recordText, searchRecords, searchTemplates} from './search.ts';
 
 /** A registry holding one template per item, each with the given vector. */
 function registryWith(entries: Array<{fp: string; vector: number[]}>): TemplateRegistry {
@@ -34,17 +37,99 @@ const A = [1, 0, 0];
 const B = [0, 1, 0];
 const C = [0, 0, 1];
 
+// --- record-level search (R24, D20/D21) -------------------------------------
+
+/** One event, shaped like the wire an emitter sends. */
+function event(
+    id: string,
+    fields: Record<string, unknown> = {},
+): Parameters<ExemplarStore['offer']>[1] {
+    return {id, time: 1, fingerprint: `fp-${id}`, service: 'hub', ...fields} as Parameters<
+        ExemplarStore['offer']
+    >[1];
+}
+
+t.test('a query is the text a person would search a record by (R24)', t => {
+    t.equal(
+        recordText(event('a', {msg: 'settlement committed', operation: 'transfer.complete'})),
+        'settlement committed transfer.complete hub',
+        'the message first, then the machine-readable half of what it means',
+    );
+    t.equal(
+        recordText(event('b', {msg: 'only a message'})),
+        'only a message hub',
+        'and the service it came from',
+    );
+    // Not even a service: a vector of nothing is not a direction, and it would place the
+    // record in the ranking by accident, so the record's own identity stands in.
+    t.equal(
+        recordText(event('c', {service: undefined})),
+        'fp-c',
+        'a record with nothing falls back to its identity',
+    );
+    t.end();
+});
+
+t.test("a record is ranked by its own vector, not its template's (D20)", t => {
+    // The fingerprint key would collapse every exemplar of one template onto the one
+    // vector that template has, and a record-level search would then rank an arbitrary
+    // member of each group. The key is the record's, so the vector is the record's own.
+    const store = new ExemplarStore({limit: 5});
+    store.offer('r1', event('a', {msg: 'north'}));
+    store.offer('r1', event('b', {msg: 'south'}));
+    const cache = new EmbeddingCache(createProvider({kind: 'offline', dimension: 16}));
+    void cache.vectorFor(recordKey('a'), 'north');
+    void cache.vectorFor(recordKey('b'), 'south');
+
+    t.same(
+        store.retained().map(held => held.id),
+        ['a', 'b'],
+        'the store hands out the id and the record together — they cannot come apart',
+    );
+    t.equal(
+        searchRecords(store, cache, [1, 0], 10).length,
+        0,
+        'and ranking is by the record key, which here holds nothing',
+    );
+    t.end();
+});
+
+t.test('a retained record with no stored vector is left out, not embedded on the spot', t => {
+    // Reachable whenever a store is handed records the cache never saw: a service restored
+    // from a snapshot has the registry but a cold cache. Embedding the candidate during the
+    // query would cost one provider call per candidate per query, which is the cost model
+    // R3 exists to prevent, so the record is simply not a result.
+    const store = new ExemplarStore({limit: 5});
+    store.offer('r1', event('a', {msg: 'north'}));
+    const cache = new EmbeddingCache(createProvider({kind: 'offline', dimension: 16}));
+    t.same(
+        searchRecords(store, cache, [1, 0], 10),
+        [],
+        'nothing to rank, and nothing embedded to find out',
+    );
+    t.equal(cache.calls(), 0, 'the provider was not consulted');
+    t.end();
+});
+
 /**
  * A registry whose templates carry controlled `firstSeen`/`lastSeen`/`retiredAt`
  * values, so a diff test can place each entry on either side of a window. Every
  * entry gets a vector so it is a candidate for nothing here — the diff never
  * ranks — which keeps the fixture honest about what the diff reads.
  */
-function diffRegistry(entries: Array<{fp: string; first: number; last?: number; retired?: number}>): TemplateRegistry {
+function diffRegistry(
+    entries: Array<{fp: string; first: number; last?: number; retired?: number}>,
+): TemplateRegistry {
     const registry = new TemplateRegistry();
     for (const item of entries) {
         const {entry} = registry.upsert(
-            {id: `id-${item.fp}`, time: item.first, fingerprint: item.fp, template: item.fp, service: 'hub'},
+            {
+                id: `id-${item.fp}`,
+                time: item.first,
+                fingerprint: item.fp,
+                template: item.fp,
+                service: 'hub',
+            },
             A,
         );
         if (item.last !== undefined) {
@@ -95,8 +180,17 @@ t.test('limit caps the ranked list', t => {
 
 t.test('a template with no vector is not ranked', t => {
     const registry = new TemplateRegistry();
-    registry.upsert({id: 'one', time: 0, fingerprint: 'aaaaaaaaaaaa', template: 'a', service: 'hub'});
-    registry.upsert({id: 'two', time: 0, fingerprint: 'bbbbbbbbbbbb', template: 'b', service: 'hub'}, B);
+    registry.upsert({
+        id: 'one',
+        time: 0,
+        fingerprint: 'aaaaaaaaaaaa',
+        template: 'a',
+        service: 'hub',
+    });
+    registry.upsert(
+        {id: 'two', time: 0, fingerprint: 'bbbbbbbbbbbb', template: 'b', service: 'hub'},
+        B,
+    );
 
     const results = searchTemplates(registry, A);
 
@@ -136,7 +230,11 @@ t.test('deploy diff reports templates added and removed, and counts the rest (PR
 
     const diff = deployDiff(registry, {from: 100, to: 200}, new FlowDriftHistory());
 
-    t.same(diff.added.map(entry => entry.ref), ['aaaaaaaaaaaa'], 'first seen inside the range');
+    t.same(
+        diff.added.map(entry => entry.ref),
+        ['aaaaaaaaaaaa'],
+        'first seen inside the range',
+    );
     t.same(
         diff.removed.map(entry => entry.ref),
         ['cccccccccccc', 'dddddddddddd'],
@@ -159,8 +257,16 @@ t.test('a retirement before the window is not a removal inside it (PRD R14, FIX 
 
     const diff = deployDiff(registry, {from: 100, to: 200}, new FlowDriftHistory());
 
-    t.same(diff.removed.map(entry => entry.ref), ['bbbbbbbbbbbb'], 'only a retirement inside the window is a removal');
-    t.equal(diff.unchanged, 1, 'the earlier retirement is unchanged for this window, not removed in it');
+    t.same(
+        diff.removed.map(entry => entry.ref),
+        ['bbbbbbbbbbbb'],
+        'only a retirement inside the window is a removal',
+    );
+    t.equal(
+        diff.unchanged,
+        1,
+        'the earlier retirement is unchanged for this window, not removed in it',
+    );
     t.end();
 });
 
@@ -172,7 +278,11 @@ t.test('a retirement is bounded inclusively at both ends of the window (PRD R14,
 
     const diff = deployDiff(registry, {from: 100, to: 200}, new FlowDriftHistory());
 
-    t.same(diff.removed.map(entry => entry.ref), ['aaaaaaaaaaaa', 'bbbbbbbbbbbb'], 'a retirement exactly at a bound is inside');
+    t.same(
+        diff.removed.map(entry => entry.ref),
+        ['aaaaaaaaaaaa', 'bbbbbbbbbbbb'],
+        'a retirement exactly at a bound is inside',
+    );
     t.end();
 });
 
@@ -180,8 +290,20 @@ t.test('a re-observed template leaves the removed bucket (FIX 3)', t => {
     const registry = new TemplateRegistry();
     // First seen before the window, last seen inside it, retired inside it: the
     // exact shape that reported a removal in this window.
-    registry.upsert({id: '01A', time: 10, fingerprint: 'aaaaaaaaaaaa', template: 'a', service: 'hub'});
-    registry.upsert({id: '01B', time: 150, fingerprint: 'aaaaaaaaaaaa', template: 'a', service: 'hub'});
+    registry.upsert({
+        id: '01A',
+        time: 10,
+        fingerprint: 'aaaaaaaaaaaa',
+        template: 'a',
+        service: 'hub',
+    });
+    registry.upsert({
+        id: '01B',
+        time: 150,
+        fingerprint: 'aaaaaaaaaaaa',
+        template: 'a',
+        service: 'hub',
+    });
     registry.retire('aaaaaaaaaaaa', 180);
 
     const window = {from: 100, to: 200};
@@ -193,9 +315,23 @@ t.test('a re-observed template leaves the removed bucket (FIX 3)', t => {
 
     // Seen again after the retirement: the template is back, so the earlier
     // removal does not stand in for it in this window or any later one.
-    registry.upsert({id: '01C', time: 400, fingerprint: 'aaaaaaaaaaaa', template: 'a', service: 'hub'});
-    t.same(deployDiff(registry, window, new FlowDriftHistory()).removed, [], 'no longer reported as removed');
-    t.same(deployDiff(registry, {from: 350, to: 450}, new FlowDriftHistory()).added, [], 'and not reported as added either');
+    registry.upsert({
+        id: '01C',
+        time: 400,
+        fingerprint: 'aaaaaaaaaaaa',
+        template: 'a',
+        service: 'hub',
+    });
+    t.same(
+        deployDiff(registry, window, new FlowDriftHistory()).removed,
+        [],
+        'no longer reported as removed',
+    );
+    t.same(
+        deployDiff(registry, {from: 350, to: 450}, new FlowDriftHistory()).added,
+        [],
+        'and not reported as added either',
+    );
     t.end();
 });
 
@@ -214,7 +350,11 @@ t.test('deploy diff reports the flow kinds that drifted inside the window (PRD R
         ['settle.single', 'transfer.single', 'batch.single'],
         'a drift exactly at either bound is inside the window; one outside it is not',
     );
-    t.equal(diff.drifted[1].lastDistance, 0.9, 'the distance measured at the drift travels with the kind');
+    t.equal(
+        diff.drifted[1].lastDistance,
+        0.9,
+        'the distance measured at the drift travels with the kind',
+    );
     t.equal(diff.drifted[1].count, 1, 'and so does the count');
     t.end();
 });
@@ -224,10 +364,18 @@ t.test('a flow kind keeps one history entry, whatever it drifted (PRD R14)', t =
 
     history.record('transfer.single', 100, 0.4);
     history.record('payment.batch', 100, 0.5);
-    t.equal(history.size(), 2, 'the history holds one entry per kind, so it is bounded by the kinds');
+    t.equal(
+        history.size(),
+        2,
+        'the history holds one entry per kind, so it is bounded by the kinds',
+    );
 
     history.record('transfer.single', 300, 0.95);
-    t.equal(history.size(), 2, 'a repeated drift updates its kind rather than adding a second entry');
+    t.equal(
+        history.size(),
+        2,
+        'a repeated drift updates its kind rather than adding a second entry',
+    );
 
     const transfer = history.inWindow(0, 400).find(drift => drift.kind === 'transfer.single');
     t.ok(transfer, 'the kind is still reported');
@@ -238,34 +386,49 @@ t.test('a flow kind keeps one history entry, whatever it drifted (PRD R14)', t =
     history.record('transfer.single', 200, 0.2);
     const after = history.inWindow(0, 400).find(drift => drift.kind === 'transfer.single');
     t.equal(after?.lastDriftedAt, 300, 'an out-of-order older drift does not wind the clock back');
-    t.equal(after?.lastDistance, 0.95, 'nor replace the distance measured at the latest in-window drift');
+    t.equal(
+        after?.lastDistance,
+        0.95,
+        'nor replace the distance measured at the latest in-window drift',
+    );
     t.equal(after?.count, 3, 'but it did happen, so it is still counted');
     t.end();
 });
 
-t.test('a kind that drifted inside the window and again after it is still reported (PRD R14)', t => {
-    const history = new FlowDriftHistory();
-    history.record('settle.single', 150, 0.9);
-    history.record('settle.single', 400, 0.5);
+t.test(
+    'a kind that drifted inside the window and again after it is still reported (PRD R14)',
+    t => {
+        const history = new FlowDriftHistory();
+        history.record('settle.single', 150, 0.9);
+        history.record('settle.single', 400, 0.5);
 
-    const inside = history.inWindow(100, 200);
-    t.same(
-        inside.map(drift => drift.kind),
-        ['settle.single'],
-        'the earlier drift is not hidden by a later one outside the window',
-    );
-    t.equal(inside[0].lastDriftedAt, 150, 'the entry reports the drift that is inside the window');
-    t.equal(inside[0].lastDistance, 0.9, 'with the distance measured then');
-    t.equal(inside[0].count, 2, 'while the count stays cumulative');
+        const inside = history.inWindow(100, 200);
+        t.same(
+            inside.map(drift => drift.kind),
+            ['settle.single'],
+            'the earlier drift is not hidden by a later one outside the window',
+        );
+        t.equal(
+            inside[0].lastDriftedAt,
+            150,
+            'the entry reports the drift that is inside the window',
+        );
+        t.equal(inside[0].lastDistance, 0.9, 'with the distance measured then');
+        t.equal(inside[0].count, 2, 'while the count stays cumulative');
 
-    t.same(
-        history.inWindow(300, 500).map(drift => drift.kind),
-        ['settle.single'],
-        'the later window sees the later drift',
-    );
-    t.same(history.inWindow(200, 300).map(drift => drift.kind), [], 'and neither drift leaks into a window between them');
-    t.end();
-});
+        t.same(
+            history.inWindow(300, 500).map(drift => drift.kind),
+            ['settle.single'],
+            'the later window sees the later drift',
+        );
+        t.same(
+            history.inWindow(200, 300).map(drift => drift.kind),
+            [],
+            'and neither drift leaks into a window between them',
+        );
+        t.end();
+    },
+);
 
 t.test('the drift ring is bounded per kind, and the count outlives it (PRD R14)', t => {
     const history = new FlowDriftHistory();
@@ -274,9 +437,17 @@ t.test('the drift ring is bounded per kind, and the count outlives it (PRD R14)'
     }
 
     t.equal(history.size(), 1, 'still one entry for the kind');
-    t.same(history.inWindow(0, 100).map(drift => drift.kind), [], 'a drift that fell out of the ring is not reported');
+    t.same(
+        history.inWindow(0, 100).map(drift => drift.kind),
+        [],
+        'a drift that fell out of the ring is not reported',
+    );
     const [retained] = history.inWindow(0, 200);
-    t.equal(retained.lastDriftedAt, 100 + DRIFT_RING_LIMIT + 1, 'the ring keeps the most recent drift');
+    t.equal(
+        retained.lastDriftedAt,
+        100 + DRIFT_RING_LIMIT + 1,
+        'the ring keeps the most recent drift',
+    );
     t.equal(retained.count, DRIFT_RING_LIMIT + 2, 'the count is cumulative, not the ring size');
     t.end();
 });

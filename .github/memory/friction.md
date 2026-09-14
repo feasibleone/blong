@@ -659,3 +659,35 @@ wrong note implied.
 - The menubar-height half of the failure was invisible in the screenshot diff (it looked like a
   global 1px shift). Measuring the pixel rows and, finally, the live DOM (`.p-menubar-end` computed
   `display: block`) was the only way to identify the stacked `menubarEnd` widgets.
+
+## semantic-log leg identity (2026-09-14)
+
+- **The editor's error view is not the gate.** An inline object spread (`{...maybeUndefined, leg}`)
+  type-checked clean in the editor and in `get_errors`, but `node --run ci-lint`'s `tsc` rejected it
+  (`TS2322`, the spread produces an optional-property object). The gate is the authority; a clean
+  editor at the moment of the edit means nothing. The fix was to make the merge total in a small
+  helper rather than to cast — and note that the _obvious_ total form
+  (`leg === undefined || flow === undefined ? flow : merged`) buys a branch whose outcome is
+  unreachable by construction, which the 100% coverage gate would then flag: write the guard so the
+  short-circuit order hides the impossible combination
+  (`if (flow === undefined || leg === undefined)`).
+- `tap` 21 in this repo rejects `--no-coverage` (`Unknown option`). For a fast subset run use
+  `--allow-incomplete-coverage --coverage-report=none` and ignore the resulting "incomplete" ERROR
+  lines, which are an artefact of running a subset rather than a real gap.
+- A test regex written from the rendered format was wrong by one character (`flow=<id>/#-1` instead
+  of `flow=<id>/-#-1`): the empty-step placeholder is `-`, so the token reads `-#-1`. Read the
+  failure diff before touching the source — the source was right.
+- semantic-log, the flow diagrams: **the unit tests passed while the end-to-end shape was wrong.**
+  Rendering the artifact from a real run immediately showed `payer.discovery.parties x2` (the
+  declared-pair flags were re-created by each declaring record, so a chatty call site counted as two
+  calls) and a missing `hub.transfer.deliver` edge (the closed-execution rule refused records that
+  were emitted before the terminal one but delivered after it). Two defects, both invisible to
+  fixtures that feed the ledger grouped per participant. Lesson: for anything that reads _arrival_
+  from several processes, the honest test drives the real processes.
+- Naming a system-wide behaviour is not the same as testing it: `setWriter(null)` looks like
+  "silence stdout" and is in fact the _process-wide silence sentinel_, which silences a
+  participant's service sink too (`logger.ts`). The artifact generator therefore installed a
+  discarding primary writer instead. A helper whose name reads as "do nothing" can do a great deal.
+- A test whose premise is wrong can pass: the debounce test asserted "nothing is written inside the
+  window" and failed because `/events` already writes the snapshot before acknowledging a batch —
+  which is exactly why the debounce should not have existed. The failing test was the finding.

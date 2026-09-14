@@ -8,6 +8,7 @@ import {ExemplarStore} from './exemplars.ts';
 import {createIngest, FlowDriftHistory, FlowShapes, flowVectorOf} from './ingest.ts';
 import {createProvider} from './provider.ts';
 import {TemplateRegistry} from './registry.ts';
+import {recordKey} from './search.ts';
 
 /** The wire batch the emitter posts, with the single event's fields overridable. */
 function batch(overrides: Record<string, unknown> = {}): object {
@@ -85,7 +86,13 @@ function step(
  * terminal status. Every step carries the same execution ULID; a later
  * execution of the same process carries a different one.
  */
-function flow(run: string, kind: string, names: string[], start: number, status = 'completed'): object[] {
+function flow(
+    run: string,
+    kind: string,
+    names: string[],
+    start: number,
+    status = 'completed',
+): object[] {
     return names.map((name, index) =>
         step(
             `${run}-${start + index}`,
@@ -109,13 +116,21 @@ function kindlessFlow(run: string, names: string[], start: number, status = 'com
 
 /** One completed step whose flow kind is present but not a string — the wire permits it. */
 function misTypedKindStep(id: string, name: string, time: number, run: string): object {
-    const event = step(id, name, time, run, 'transfer.single', 'completed') as {flow: Record<string, unknown>};
+    const event = step(id, name, time, run, 'transfer.single', 'completed') as {
+        flow: Record<string, unknown>;
+    };
     event.flow.kind = 42;
     return event;
 }
 
 /** A flow step with no `status` at all — the wire permits it, and it is in flight. */
-function stepWithoutStatus(id: string, name: string, time: number, run: string, kind: string): object {
+function stepWithoutStatus(
+    id: string,
+    name: string,
+    time: number,
+    run: string,
+    kind: string,
+): object {
     const event = step(id, name, time, run, kind) as {flow: Record<string, unknown>};
     delete event.flow.status;
     return event;
@@ -169,7 +184,9 @@ t.test('a repeated template counts instead of creating a template', async t => {
     t.teardown(() => app.close());
     await app.inject({method: 'POST', url: '/events', payload: batch()});
     await app.inject({method: 'POST', url: '/events', payload: batch({id: '01B', time: 2000})});
-    const templates = (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{count: number}>;
+    const templates = (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{
+        count: number;
+    }>;
     t.equal(templates.length, 1);
     t.equal(templates[0].count, 2);
 });
@@ -186,46 +203,90 @@ t.test('a template exposes its identity without touching records (PRD R4 accepta
     t.match(entry.signature, /MSG: timeout/);
 });
 
-t.test('exemplars are retained in full for the first N events, then counted only (PRD R13)', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, exemplarLimit: 2});
-    t.teardown(() => app.close());
-    for (let i = 0; i < 5; i++) {
-        await app.inject({
-            method: 'POST',
-            url: '/events',
-            payload: batch({id: `01${i}`, time: 1000 + i, msg: `msg ${i}`}),
-        });
-    }
-    const entry = (await app.inject({method: 'GET', url: '/templates/ffff0000ffff'})).json() as {
-        count: number;
-        exemplars: string[];
-    };
-    t.equal(entry.count, 5);
-    t.equal(entry.exemplars.length, 2, 'bounded independently of volume');
-    const record = await app.inject({method: 'GET', url: `/records/${entry.exemplars[0]}`});
-    t.equal(record.statusCode, 200);
-    t.match((record.json() as {msg: string}).msg, /msg 0/);
-    const pruned = await app.inject({method: 'GET', url: '/records/014'});
-    t.equal(pruned.statusCode, 404, 'a non-exemplar is not retrievable');
-});
+t.test(
+    'exemplars are retained in full for the first N events, then counted only (PRD R13)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, exemplarLimit: 2});
+        t.teardown(() => app.close());
+        for (let i = 0; i < 5; i++) {
+            await app.inject({
+                method: 'POST',
+                url: '/events',
+                payload: batch({id: `01${i}`, time: 1000 + i, msg: `msg ${i}`}),
+            });
+        }
+        const entry = (
+            await app.inject({method: 'GET', url: '/templates/ffff0000ffff'})
+        ).json() as {
+            count: number;
+            exemplars: string[];
+        };
+        t.equal(entry.count, 5);
+        t.equal(entry.exemplars.length, 2, 'bounded independently of volume');
+        const record = await app.inject({method: 'GET', url: `/records/${entry.exemplars[0]}`});
+        t.equal(record.statusCode, 200);
+        t.match((record.json() as {msg: string}).msg, /msg 0/);
+        const pruned = await app.inject({method: 'GET', url: '/records/014'});
+        t.equal(pruned.statusCode, 404, 'a non-exemplar is not retrievable');
+    },
+);
 
-t.test('the embedding provider is called once per distinct template across a batch (PRD R3)', async t => {
-    const provider = createProvider({kind: 'offline', dimension: 16});
-    let calls = 0;
-    const cache = new EmbeddingCache({
-        dimension: provider.dimension,
-        embed: async (text: string) => {
-            calls++;
-            return provider.embed(text);
-        },
-    });
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache});
-    t.teardown(() => app.close());
-    for (let i = 0; i < 10; i++) {
-        await app.inject({method: 'POST', url: '/events', payload: batch({id: `01${i}`, time: 1000 + i})});
-    }
-    t.equal(calls, 1, 'ten events, one distinct template, one embedding (SC3)');
-});
+t.test(
+    'the embedding provider is called once per distinct template across a batch (PRD R3)',
+    async t => {
+        const provider = createProvider({kind: 'offline', dimension: 16});
+        let calls = 0;
+        const cache = new EmbeddingCache({
+            dimension: provider.dimension,
+            embed: async (text: string) => {
+                calls++;
+                return provider.embed(text);
+            },
+        });
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache});
+        t.teardown(() => app.close());
+        for (let i = 0; i < 10; i++) {
+            await app.inject({
+                method: 'POST',
+                url: '/events',
+                payload: batch({id: `01${i}`, time: 1000 + i}),
+            });
+        }
+        // Ten events, one template: one embedding for the template, however many times it is
+        // seen (SC3) — and one for each of the five records the store keeps, because a record
+        // is searchable by what it says (D20). Seven would be the cost of embedding a record
+        // per event, which is the model R3 exists to prevent.
+        t.equal(calls, 6, 'one for the template, five for the retained exemplars');
+        t.equal(cache.size(), 6, 'and the cache holds exactly those six vectors');
+    },
+);
+
+t.test(
+    'a record is embedded when it is retained, and not when it is only counted (D20)',
+    async t => {
+        // The bound is what keeps the cost model honest: embedding every occurrence would make
+        // the provider's work scale with traffic, which is the one thing R3/SC3 forbids. A
+        // record the store keeps is searchable by what it says; one it only counted leaves no
+        // vector behind.
+        const provider = createProvider({kind: 'offline', dimension: 16});
+        const cache = new EmbeddingCache(provider);
+        const app = createApp({
+            embedding: {kind: 'offline', dimension: 16},
+            cache,
+            exemplarLimit: 1,
+        });
+        t.teardown(() => app.close());
+        await app.inject({method: 'POST', url: '/events', payload: batch({id: '01KEPT'})});
+        await app.inject({method: 'POST', url: '/events', payload: batch({id: '01COUNTED'})});
+
+        t.ok(cache.vectorOf(recordKey('01KEPT')) !== undefined, 'the retained record has a vector');
+        t.equal(
+            cache.vectorOf(recordKey('01COUNTED')),
+            undefined,
+            'the counted-only record has none',
+        );
+    },
+);
 
 t.test('the embedding signature falls back from template to msg to fingerprint', async t => {
     const provider = createProvider({kind: 'offline', dimension: 16});
@@ -240,15 +301,28 @@ t.test('the embedding signature falls back from template to msg to fingerprint',
     const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache});
     t.teardown(() => app.close());
 
-    const withMsg = {id: 's-1', time: 1, fingerprint: fingerprint('aaa'), msg: 'only a message', service: 'hub'};
+    const withMsg = {
+        id: 's-1',
+        time: 1,
+        fingerprint: fingerprint('aaa'),
+        msg: 'only a message',
+        service: 'hub',
+    };
     const bare = {id: 's-2', time: 2, fingerprint: fingerprint('bbb'), service: 'hub'};
-    const response = await app.inject({method: 'POST', url: '/events', payload: {events: [withMsg, bare]}});
+    const response = await app.inject({
+        method: 'POST',
+        url: '/events',
+        payload: {events: [withMsg, bare]},
+    });
     t.equal(response.statusCode, 202);
     // The signature is what the provider is asked to embed, so recording the
-    // text is the derivation itself, not a proxy for it.
+    // text is the derivation itself, not a proxy for it. Each event contributes two
+    // texts: its template's signature, and — because both are retained — the record's
+    // own text, which is built from the message, the operation, the service and the
+    // signature (D20).
     t.same(
         embedded,
-        ['only a message', fingerprint('bbb')],
+        ['only a message', 'only a message hub', fingerprint('bbb'), 'hub'],
         'a missing template falls back to the msg, and a record with neither falls back to its fingerprint',
     );
 });
@@ -313,12 +387,21 @@ t.test('an injected registry is ingested into and served (the persistence seam)'
 t.test('a flow vector is its shape: same path, same vector; a different path, a distant one', t => {
     const abc = flowVectorOf([REF.a, REF.b, REF.c], 16);
     t.equal(abc.length, 16, 'the vector has the width the caller asked for');
-    t.ok(distance(abc, flowVectorOf([REF.a, REF.b, REF.c], 16)) < 1e-9, 'the same path encodes identically');
+    t.ok(
+        distance(abc, flowVectorOf([REF.a, REF.b, REF.c], 16)) < 1e-9,
+        'the same path encodes identically',
+    );
     // The margins the pipeline tests below rely on, stated where they come
     // from: a hash encoding of two different shapes is not guaranteed to be
     // distant, and these two are far apart at the drift epsilon in use (0.25).
-    t.ok(distance(abc, flowVectorOf([REF.a, REF.c, REF.b], 16)) > 0.25, 'a reordered path is a different shape');
-    t.ok(distance(abc, flowVectorOf([REF.a, REF.b], 16)) > 0.25, 'a path that lost a step is a different shape');
+    t.ok(
+        distance(abc, flowVectorOf([REF.a, REF.c, REF.b], 16)) > 0.25,
+        'a reordered path is a different shape',
+    );
+    t.ok(
+        distance(abc, flowVectorOf([REF.a, REF.b], 16)) > 0.25,
+        'a path that lost a step is a different shape',
+    );
     t.end();
 });
 
@@ -352,7 +435,10 @@ t.test('a flow that returns to a reordered shape drifts, keyed by the kind (PRD 
     const entry = (await app.inject({method: 'GET', url: `/templates/${REF.a}`})).json() as {
         alerts: Record<string, unknown>;
     };
-    t.notOk('driftAt' in entry.alerts, 'drift is not a template property — there is no field that could hold it');
+    t.notOk(
+        'driftAt' in entry.alerts,
+        'drift is not a template property — there is no field that could hold it',
+    );
 });
 
 t.test('a flow that lost a step drifts too (PRD R6c)', async t => {
@@ -368,7 +454,11 @@ t.test('a flow that lost a step drifts too (PRD R6c)', async t => {
         url: '/events',
         payload: {events: flow(execution(2), 'transfer.single', ['aaa', 'bbb'], 2000)},
     });
-    t.equal((shortened.json() as {anomalies: number}).anomalies, 1, 'a shorter path is a different shape');
+    t.equal(
+        (shortened.json() as {anomalies: number}).anomalies,
+        1,
+        'a shorter path is a different shape',
+    );
 });
 
 t.test('a flow that fails still reports its shape (a terminal status ends the flow)', async t => {
@@ -382,47 +472,58 @@ t.test('a flow that fails still reports its shape (a terminal status ends the fl
     const failed = await app.inject({
         method: 'POST',
         url: '/events',
-        payload: {events: flow(execution(2), 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000, 'failed')},
-    });
-    t.equal((failed.json() as {anomalies: number}).anomalies, 1, 'a failed flow is a completed shape');
-});
-
-t.test('drift is observed when the flow completes, not while it is in flight (PRD R6c)', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}});
-    t.teardown(() => app.close());
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
-    });
-
-    const midFlight = await app.inject({
-        method: 'POST',
-        url: '/events',
         payload: {
-            events: [
-                step('p-1', 'aaa', 2000, execution(2), 'transfer.single'),
-                step('p-2', 'bbb', 2001, execution(2), 'transfer.single'),
-            ],
+            events: flow(execution(2), 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000, 'failed'),
         },
     });
     t.equal(
-        (midFlight.json() as {anomalies: number}).anomalies,
-        0,
-        'a prefix is not a shape, so nothing was compared while the flow was in flight',
-    );
-
-    const completed = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: [step('p-3', 'ccc', 2002, execution(2), 'transfer.single', 'completed')]},
-    });
-    t.equal(
-        (completed.json() as {anomalies: number}).anomalies,
-        0,
-        'the same completed shape does not drift',
+        (failed.json() as {anomalies: number}).anomalies,
+        1,
+        'a failed flow is a completed shape',
     );
 });
+
+t.test(
+    'drift is observed when the flow completes, not while it is in flight (PRD R6c)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}});
+        t.teardown(() => app.close());
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
+        });
+
+        const midFlight = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    step('p-1', 'aaa', 2000, execution(2), 'transfer.single'),
+                    step('p-2', 'bbb', 2001, execution(2), 'transfer.single'),
+                ],
+            },
+        });
+        t.equal(
+            (midFlight.json() as {anomalies: number}).anomalies,
+            0,
+            'a prefix is not a shape, so nothing was compared while the flow was in flight',
+        );
+
+        const completed = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [step('p-3', 'ccc', 2002, execution(2), 'transfer.single', 'completed')],
+            },
+        });
+        t.equal(
+            (completed.json() as {anomalies: number}).anomalies,
+            0,
+            'the same completed shape does not drift',
+        );
+    },
+);
 
 t.test('two processes with different shapes keep independent baselines', async t => {
     const app = createApp({embedding: {kind: 'offline', dimension: 16}});
@@ -453,28 +554,50 @@ t.test('the drift baseline lives under the flow kind, and no template is a drift
     });
     const exemplars = new ExemplarStore({limit: 2});
     const seen: Anomaly[] = [];
-    const ingest = createIngest({registry, cache, detectors, exemplars, onAnomaly: anomaly => seen.push(anomaly)});
+    const ingest = createIngest({
+        registry,
+        cache,
+        detectors,
+        exemplars,
+        onAnomaly: anomaly => seen.push(anomaly),
+    });
 
     await ingest({events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)});
     await ingest({events: flow(execution(2), 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000)});
 
     const drift = seen.filter(anomaly => anomaly.kind === 'drift');
     t.equal(drift.length, 1, 'the second completed shape moved away from the first');
-    t.equal(drift[0].ref, 'transfer.single', 'the anomaly names the process, which is what drifted');
+    t.equal(
+        drift[0].ref,
+        'transfer.single',
+        'the anomaly names the process, which is what drifted',
+    );
     t.ok((drift[0].magnitude ?? 0) > 0.25, `and carries the distance (${drift[0].magnitude})`);
     t.ok(detectors.centroidOf('transfer.single'), 'the process has a drifting centroid');
     t.equal(detectors.centroidOf(execution(1)), undefined, 'an execution ULID is not a drift key');
     t.equal(detectors.centroidOf(REF.a), undefined, 'no template carries a drift baseline');
 
-    t.equal(exemplars.totalRetained(), 6, 'three templates, two occurrences each, all retained under the limit');
+    t.equal(
+        exemplars.totalRetained(),
+        6,
+        'three templates, two occurrences each, all retained under the limit',
+    );
     t.same(
         exemplars.get(REF.a),
         [`${execution(1)}-1000`, `${execution(2)}-2000`],
         'the store reads back the ids retained for a template, oldest first',
     );
     t.equal(exemplars.recordOf(`${execution(1)}-1000`)?.id, `${execution(1)}-1000`);
-    t.equal(exemplars.recordOf('never-retained'), undefined, 'a record that was not kept is not retrievable');
-    t.same(exemplars.get('no-such-template'), [], 'a template that was never seen has retained nothing');
+    t.equal(
+        exemplars.recordOf('never-retained'),
+        undefined,
+        'a record that was not kept is not retrievable',
+    );
+    t.same(
+        exemplars.get('no-such-template'),
+        [],
+        'a template that was never seen has retained nothing',
+    );
     t.equal(registry.size(), 3);
 });
 
@@ -485,88 +608,133 @@ t.test('a rate-shift is stamped on the template it belongs to (PRD R6b)', async 
     // baseline is its own completed windows, so it has to exist before a surge
     // can be recognised at all.
     for (let window = 0; window < 5; window++) {
-        await app.inject({method: 'POST', url: '/events', payload: batch({id: `w${window}`, time: window * 60_000})});
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: batch({id: `w${window}`, time: window * 60_000}),
+        });
     }
-    const baseline = await app.inject({method: 'POST', url: '/events', payload: batch({id: 'q1', time: 300_000})});
-    t.equal((baseline.json() as {anomalies: number}).anomalies, 0, 'the sixth window opens at the baseline rate');
+    const baseline = await app.inject({
+        method: 'POST',
+        url: '/events',
+        payload: batch({id: 'q1', time: 300_000}),
+    });
+    t.equal(
+        (baseline.json() as {anomalies: number}).anomalies,
+        0,
+        'the sixth window opens at the baseline rate',
+    );
 
-    const surge = await app.inject({method: 'POST', url: '/events', payload: batch({id: 'q2', time: 300_001})});
-    t.equal((surge.json() as {anomalies: number}).anomalies, 1, 'a second occurrence in the window is a surge');
+    const surge = await app.inject({
+        method: 'POST',
+        url: '/events',
+        payload: batch({id: 'q2', time: 300_001}),
+    });
+    t.equal(
+        (surge.json() as {anomalies: number}).anomalies,
+        1,
+        'a second occurrence in the window is a surge',
+    );
     const entry = (await app.inject({method: 'GET', url: '/templates/ffff0000ffff'})).json() as {
         alerts: {rateShiftAt?: number};
     };
-    t.equal(entry.alerts.rateShiftAt, 300_001, 'and the alert is stamped on the template it belongs to');
-});
-
-t.test('an anomaly is dispatched by kind, and an unrecordable or unknown one is ignored', async t => {
-    const registry = new TemplateRegistry();
-    const cache = new EmbeddingCache(createProvider({kind: 'offline', dimension: 16}));
-    const exemplars = new ExemplarStore({limit: 2});
-    const history = new FlowDriftHistory();
-
-    // A drift without a measured distance: the real suite always measures one, so
-    // this pins the guard that keeps `undefined` out of `lastDistance`.
-    const scripted: Anomaly[][] = [
-        [{kind: 'drift', ref: 'transfer.single', time: 1000}],
-        // A kind the union does not contain today: it must be ignored, not stamped
-        // as a rate-shift, so a future member must be given an explicit home.
-        [{kind: 'future-kind' as Anomaly['kind'], ref: 'transfer.single', time: 2000}],
-    ];
-    let call = 0;
-    const detectors = {
-        observe: () => {
-            const found = scripted[call] ?? [];
-            call++;
-            return found;
-        },
-    } as unknown as DetectorSuite;
-    const ingest = createIngest({registry, cache, detectors, exemplars, driftHistory: history});
-
-    await ingest(batch());
-    t.equal(history.size(), 0, 'a drift with no measured distance is not recorded at all');
-    t.same(history.inWindow(0, 9999), [], 'and it appears in no window');
-
-    await ingest(batch({id: '01B', time: 2000}));
     t.equal(
-        registry.get('ffff0000ffff')?.alerts.rateShiftAt,
-        undefined,
-        'an unknown anomaly kind is not mistaken for a rate-shift',
+        entry.alerts.rateShiftAt,
+        300_001,
+        'and the alert is stamped on the template it belongs to',
     );
-    t.equal(history.size(), 0, 'and it is not recorded as a drift either');
 });
 
-t.test('an event that cannot be embedded is skipped and counted, not fatal to the batch', async t => {
-    const provider = createProvider({kind: 'offline', dimension: 16});
-    const cache = new EmbeddingCache({
-        dimension: provider.dimension,
-        embed: async (text: string) => {
-            if (text.includes('boom')) {
-                throw new Error('provider unavailable');
-            }
-            return provider.embed(text);
-        },
-    });
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache});
-    t.teardown(() => app.close());
+t.test(
+    'an anomaly is dispatched by kind, and an unrecordable or unknown one is ignored',
+    async t => {
+        const registry = new TemplateRegistry();
+        const cache = new EmbeddingCache(createProvider({kind: 'offline', dimension: 16}));
+        const exemplars = new ExemplarStore({limit: 2});
+        const history = new FlowDriftHistory();
 
-    const response = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {
-            events: [
-                {...step('s-1', 'aaa', 1000, 'flow-9', 'transfer.single'), template: '[LEVEL: INFO] [SERVICE: hub] [MSG: aaa]'},
-                {...step('s-2', 'bbb', 1001, 'flow-9', 'transfer.single'), template: '[LEVEL: ERROR] [SERVICE: hub] [MSG: boom]'},
-                {...step('s-3', 'ccc', 1002, 'flow-9', 'transfer.single'), template: '[LEVEL: INFO] [SERVICE: hub] [MSG: ccc]'},
-            ],
-        },
-    });
-    t.equal(response.statusCode, 202, 'one unusable event does not 500 the batch');
-    t.same(response.json(), {accepted: 2, templates: 2, anomalies: 2, skipped: 1});
-    const refs = ((await app.inject({method: 'GET', url: '/templates'})).json() as Array<{ref: string}>)
-        .map(entry => entry.ref)
-        .sort();
-    t.same(refs, [REF.a, REF.c], 'the skipped event is not registered, and the events after it are');
-});
+        // A drift without a measured distance: the real suite always measures one, so
+        // this pins the guard that keeps `undefined` out of `lastDistance`.
+        const scripted: Anomaly[][] = [
+            [{kind: 'drift', ref: 'transfer.single', time: 1000}],
+            // A kind the union does not contain today: it must be ignored, not stamped
+            // as a rate-shift, so a future member must be given an explicit home.
+            [{kind: 'future-kind' as Anomaly['kind'], ref: 'transfer.single', time: 2000}],
+        ];
+        let call = 0;
+        const detectors = {
+            observe: () => {
+                const found = scripted[call] ?? [];
+                call++;
+                return found;
+            },
+        } as unknown as DetectorSuite;
+        const ingest = createIngest({registry, cache, detectors, exemplars, driftHistory: history});
+
+        await ingest(batch());
+        t.equal(history.size(), 0, 'a drift with no measured distance is not recorded at all');
+        t.same(history.inWindow(0, 9999), [], 'and it appears in no window');
+
+        await ingest(batch({id: '01B', time: 2000}));
+        t.equal(
+            registry.get('ffff0000ffff')?.alerts.rateShiftAt,
+            undefined,
+            'an unknown anomaly kind is not mistaken for a rate-shift',
+        );
+        t.equal(history.size(), 0, 'and it is not recorded as a drift either');
+    },
+);
+
+t.test(
+    'an event that cannot be embedded is skipped and counted, not fatal to the batch',
+    async t => {
+        const provider = createProvider({kind: 'offline', dimension: 16});
+        const cache = new EmbeddingCache({
+            dimension: provider.dimension,
+            embed: async (text: string) => {
+                if (text.includes('boom')) {
+                    throw new Error('provider unavailable');
+                }
+                return provider.embed(text);
+            },
+        });
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache});
+        t.teardown(() => app.close());
+
+        const response = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    {
+                        ...step('s-1', 'aaa', 1000, 'flow-9', 'transfer.single'),
+                        template: '[LEVEL: INFO] [SERVICE: hub] [MSG: aaa]',
+                    },
+                    {
+                        ...step('s-2', 'bbb', 1001, 'flow-9', 'transfer.single'),
+                        template: '[LEVEL: ERROR] [SERVICE: hub] [MSG: boom]',
+                    },
+                    {
+                        ...step('s-3', 'ccc', 1002, 'flow-9', 'transfer.single'),
+                        template: '[LEVEL: INFO] [SERVICE: hub] [MSG: ccc]',
+                    },
+                ],
+            },
+        });
+        t.equal(response.statusCode, 202, 'one unusable event does not 500 the batch');
+        t.same(response.json(), {accepted: 2, templates: 2, anomalies: 2, skipped: 1});
+        const refs = (
+            (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{ref: string}>
+        )
+            .map(entry => entry.ref)
+            .sort();
+        t.same(
+            refs,
+            [REF.a, REF.c],
+            'the skipped event is not registered, and the events after it are',
+        );
+    },
+);
 
 // --- Bounded retention and ordered shapes (review findings 1 and 2) ----------
 
@@ -600,165 +768,204 @@ t.test('a flow shape is ordered by flow position, not by arrival order', async t
     );
 });
 
-t.test('a terminal that settles before an earlier step cannot let the straggler seed a shape', async t => {
-    const provider = createProvider({kind: 'offline', dimension: 16});
-    let release = (): void => {};
-    const gate = new Promise<void>(resolve => {
-        release = resolve;
-    });
-    const cache = new EmbeddingCache({
-        dimension: provider.dimension,
-        embed: async (text: string) => {
-            if (text.includes('late')) {
-                await gate;
-            }
-            return provider.embed(text);
-        },
-    });
-    const shapes = new RecordingShapes(8, 8);
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache, shapes});
-    t.teardown(() => app.close());
+t.test(
+    'a terminal that settles before an earlier step cannot let the straggler seed a shape',
+    async t => {
+        const provider = createProvider({kind: 'offline', dimension: 16});
+        let release = (): void => {};
+        const gate = new Promise<void>(resolve => {
+            release = resolve;
+        });
+        const cache = new EmbeddingCache({
+            dimension: provider.dimension,
+            embed: async (text: string) => {
+                if (text.includes('late')) {
+                    await gate;
+                }
+                return provider.embed(text);
+            },
+        });
+        const shapes = new RecordingShapes(8, 8);
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache, shapes});
+        t.teardown(() => app.close());
 
-    // A whole execution completes, leaving a baseline shape under its kind. A
-    // retransmitted step of *that same execution* — held inside the provider so
-    // it lands after the terminal — names a spent ULID, so it must be dropped,
-    // not used to seed a second shape under the process.
-    const terminal = app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
-    });
-    const late = app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: [step('race-late', 'late', 1001, execution(1), 'transfer.single')]},
-    });
+        // A whole execution completes, leaving a baseline shape under its kind. A
+        // retransmitted step of *that same execution* — held inside the provider so
+        // it lands after the terminal — names a spent ULID, so it must be dropped,
+        // not used to seed a second shape under the process.
+        const terminal = app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
+        });
+        const late = app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: [step('race-late', 'late', 1001, execution(1), 'transfer.single')]},
+        });
 
-    await terminal;
-    t.equal(shapes.pending(), 0, 'the terminal closed the execution');
-    release();
-    await late;
-    t.equal(shapes.pending(), 0, 'the late step did not reopen the execution');
-    t.equal(shapes.stragglers(), 1, 'the straggler was dropped explicitly, not silently');
-    t.same(shapes.completed, [[REF.a, REF.b, REF.c]], 'and seeded no second shape');
-});
+        await terminal;
+        t.equal(shapes.pending(), 0, 'the terminal closed the execution');
+        release();
+        await late;
+        t.equal(shapes.pending(), 0, 'the late step did not reopen the execution');
+        t.equal(shapes.stragglers(), 1, 'the straggler was dropped explicitly, not silently');
+        t.same(shapes.completed, [[REF.a, REF.b, REF.c]], 'and seeded no second shape');
+    },
+);
 
-t.test('a straggler cannot join the next execution even after its first step has arrived', async t => {
-    const provider = createProvider({kind: 'offline', dimension: 16});
-    let release = (): void => {};
-    const gate = new Promise<void>(resolve => {
-        release = resolve;
-    });
-    const cache = new EmbeddingCache({
-        dimension: provider.dimension,
-        embed: async (text: string) => {
-            if (text.includes('drifted')) {
-                await gate;
-            }
-            return provider.embed(text);
-        },
-    });
-    const shapes = new RecordingShapes(8, 8);
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache, shapes});
-    t.teardown(() => app.close());
+t.test(
+    'a straggler cannot join the next execution even after its first step has arrived',
+    async t => {
+        const provider = createProvider({kind: 'offline', dimension: 16});
+        let release = (): void => {};
+        const gate = new Promise<void>(resolve => {
+            release = resolve;
+        });
+        const cache = new EmbeddingCache({
+            dimension: provider.dimension,
+            embed: async (text: string) => {
+                if (text.includes('drifted')) {
+                    await gate;
+                }
+                return provider.embed(text);
+            },
+        });
+        const shapes = new RecordingShapes(8, 8);
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, cache, shapes});
+        t.teardown(() => app.close());
 
-    // The first execution leaves a gap at position 1: its middle step never
-    // arrived by the time the terminal did, so its shape is aaa -> ccc.
-    const first = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {
-            events: [
-                positioned('gap-1', 'aaa', 1000, execution(1), 'transfer.single', 0),
-                positioned('gap-2', 'ccc', 1002, execution(1), 'transfer.single', 2, 'completed'),
+        // The first execution leaves a gap at position 1: its middle step never
+        // arrived by the time the terminal did, so its shape is aaa -> ccc.
+        const first = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    positioned('gap-1', 'aaa', 1000, execution(1), 'transfer.single', 0),
+                    positioned(
+                        'gap-2',
+                        'ccc',
+                        1002,
+                        execution(1),
+                        'transfer.single',
+                        2,
+                        'completed',
+                    ),
+                ],
+            },
+        });
+        t.equal(first.statusCode, 202);
+
+        // The next execution of the same process begins: a different ULID, so it is
+        // tracked independently of the spent one. The delayed middle step of the
+        // spent execution is parked inside the provider, so it lands only after the
+        // new execution's first step.
+        const late = app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    positioned('gap-late', 'drifted', 1001, execution(1), 'transfer.single', 1),
+                ],
+            },
+        });
+        const nextFirst = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [positioned('gap-3', 'aaa', 2000, execution(2), 'transfer.single', 0)],
+            },
+        });
+        t.equal(
+            nextFirst.statusCode,
+            202,
+            'the next execution began while the delayed step was still in flight',
+        );
+        t.equal(shapes.stragglers(), 0, 'the delayed step had not landed yet');
+
+        release();
+        await late;
+        t.equal(
+            shapes.stragglers(),
+            1,
+            'the delayed step was recognised as a straggler of the spent execution',
+        );
+
+        // The next execution completes with its own shape; the straggler is in
+        // neither shape, because it names the spent execution and is dropped rather
+        // than folded into the execution that followed it.
+        const nextDone = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    positioned('gap-4', 'bbb', 2001, execution(2), 'transfer.single', 1),
+                    positioned(
+                        'gap-5',
+                        'ccc',
+                        2002,
+                        execution(2),
+                        'transfer.single',
+                        2,
+                        'completed',
+                    ),
+                ],
+            },
+        });
+        t.equal(nextDone.statusCode, 202);
+        t.same(
+            shapes.completed,
+            [
+                [REF.a, REF.c],
+                [REF.a, REF.b, REF.c],
             ],
-        },
-    });
-    t.equal(first.statusCode, 202);
+            'the straggler joined neither the gap it belonged to nor the execution that followed it',
+        );
+        t.equal(shapes.pending(), 0);
+    },
+);
 
-    // The next execution of the same process begins: a different ULID, so it is
-    // tracked independently of the spent one. The delayed middle step of the
-    // spent execution is parked inside the provider, so it lands only after the
-    // new execution's first step.
-    const late = app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: [positioned('gap-late', 'drifted', 1001, execution(1), 'transfer.single', 1)]},
-    });
-    const nextFirst = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: [positioned('gap-3', 'aaa', 2000, execution(2), 'transfer.single', 0)]},
-    });
-    t.equal(nextFirst.statusCode, 202, 'the next execution began while the delayed step was still in flight');
-    t.equal(shapes.stragglers(), 0, 'the delayed step had not landed yet');
+t.test(
+    'an execution that collides with the previous one still drifts (the ULID is the discriminator)',
+    async t => {
+        const shapes = new RecordingShapes(8, 8);
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, shapes});
+        t.teardown(() => app.close());
 
-    release();
-    await late;
-    t.equal(shapes.stragglers(), 1, 'the delayed step was recognised as a straggler of the spent execution');
+        // The first execution: aaa -> bbb -> ccc.
+        const first = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
+        });
+        t.equal(first.statusCode, 202);
+        t.equal((first.json() as {anomalies: number}).anomalies, 3, 'three novel templates');
 
-    // The next execution completes with its own shape; the straggler is in
-    // neither shape, because it names the spent execution and is dropped rather
-    // than folded into the execution that followed it.
-    const nextDone = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {
-            events: [
-                positioned('gap-4', 'bbb', 2001, execution(2), 'transfer.single', 1),
-                positioned('gap-5', 'ccc', 2002, execution(2), 'transfer.single', 2, 'completed'),
+        // The next execution of the same process starts at exactly the previous
+        // execution's last event time — a collision time cannot resolve — and takes
+        // a shorter path, so the drift can only fire if its shape is observed.
+        const second = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(2), 'transfer.single', ['aaa', 'bbb'], 1000)},
+        });
+        t.equal(second.statusCode, 202);
+        t.equal(
+            (second.json() as {anomalies: number}).anomalies,
+            1,
+            'the colliding execution completed, and its shortened shape drifted',
+        );
+        t.same(
+            shapes.completed,
+            [
+                [REF.a, REF.b, REF.c],
+                [REF.a, REF.b],
             ],
-        },
-    });
-    t.equal(nextDone.statusCode, 202);
-    t.same(
-        shapes.completed,
-        [
-            [REF.a, REF.c],
-            [REF.a, REF.b, REF.c],
-        ],
-        'the straggler joined neither the gap it belonged to nor the execution that followed it',
-    );
-    t.equal(shapes.pending(), 0);
-});
-
-t.test('an execution that collides with the previous one still drifts (the ULID is the discriminator)', async t => {
-    const shapes = new RecordingShapes(8, 8);
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, shapes});
-    t.teardown(() => app.close());
-
-    // The first execution: aaa -> bbb -> ccc.
-    const first = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
-    });
-    t.equal(first.statusCode, 202);
-    t.equal((first.json() as {anomalies: number}).anomalies, 3, 'three novel templates');
-
-    // The next execution of the same process starts at exactly the previous
-    // execution's last event time — a collision time cannot resolve — and takes
-    // a shorter path, so the drift can only fire if its shape is observed.
-    const second = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(2), 'transfer.single', ['aaa', 'bbb'], 1000)},
-    });
-    t.equal(second.statusCode, 202);
-    t.equal(
-        (second.json() as {anomalies: number}).anomalies,
-        1,
-        'the colliding execution completed, and its shortened shape drifted',
-    );
-    t.same(
-        shapes.completed,
-        [
-            [REF.a, REF.b, REF.c],
-            [REF.a, REF.b],
-        ],
-        'the colliding execution produced its own shape rather than being dropped',
-    );
-});
+            'the colliding execution produced its own shape rather than being dropped',
+        );
+    },
+);
 
 t.test('a duplicate of a completed execution fabricates no shape and raises no drift', async t => {
     const shapes = new RecordingShapes(8, 8);
@@ -800,48 +1007,51 @@ t.test('a duplicate of a completed execution fabricates no shape and raises no d
     t.equal(shapes.stragglers(), 4, 'every retransmitted step was counted as a straggler');
 });
 
-t.test('a flow identity that is not a ULID is counted as an unknown execution, not thrown', async t => {
-    const shapes = new RecordingShapes(8, 8);
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, shapes});
-    t.teardown(() => app.close());
+t.test(
+    'a flow identity that is not a ULID is counted as an unknown execution, not thrown',
+    async t => {
+        const shapes = new RecordingShapes(8, 8);
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, shapes});
+        t.teardown(() => app.close());
 
-    // An emitter that predates the ULID ruling, or a peer sending nonsense,
-    // names no execution this service can place. The identity arrived on the
-    // wire, so it is reported by being counted, not thrown (D3): the templates
-    // still register and are still novel — only the flow is not observed.
-    const first = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow('flow-legacy', 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
-    });
-    t.equal(first.statusCode, 202, 'a non-ULID identity does not break ingestion');
-    t.same(
-        first.json(),
-        {accepted: 3, templates: 3, anomalies: 3, skipped: 0},
-        'the templates are still registered and novel — only the flow is not observed',
-    );
-    t.equal(shapes.stragglers(), 3, 'each step named no execution and was counted');
-    t.same(shapes.completed, [], 'no shape was taken from an unplaceable identity');
-    t.equal(shapes.size(), 0, 'and no state was retained');
+        // An emitter that predates the ULID ruling, or a peer sending nonsense,
+        // names no execution this service can place. The identity arrived on the
+        // wire, so it is reported by being counted, not thrown (D3): the templates
+        // still register and are still novel — only the flow is not observed.
+        const first = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow('flow-legacy', 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
+        });
+        t.equal(first.statusCode, 202, 'a non-ULID identity does not break ingestion');
+        t.same(
+            first.json(),
+            {accepted: 3, templates: 3, anomalies: 3, skipped: 0},
+            'the templates are still registered and novel — only the flow is not observed',
+        );
+        t.equal(shapes.stragglers(), 3, 'each step named no execution and was counted');
+        t.same(shapes.completed, [], 'no shape was taken from an unplaceable identity');
+        t.equal(shapes.size(), 0, 'and no state was retained');
 
-    const second = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow('flow-legacy', 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000)},
-    });
-    t.same(
-        second.json(),
-        {accepted: 3, templates: 3, anomalies: 0, skipped: 0},
-        'a reordered unplaceable execution is not compared, because nothing about it was observed',
-    );
-    t.same(shapes.completed, [], 'still no shape');
-    t.equal(shapes.pending(), 0, 'and nothing in flight');
-    t.equal(
-        shapes.kindless(),
-        0,
-        'an identity that names no execution is a straggler, not a kindless flow',
-    );
-});
+        const second = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow('flow-legacy', 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000)},
+        });
+        t.same(
+            second.json(),
+            {accepted: 3, templates: 3, anomalies: 0, skipped: 0},
+            'a reordered unplaceable execution is not compared, because nothing about it was observed',
+        );
+        t.same(shapes.completed, [], 'still no shape');
+        t.equal(shapes.pending(), 0, 'and nothing in flight');
+        t.equal(
+            shapes.kindless(),
+            0,
+            'an identity that names no execution is a straggler, not a kindless flow',
+        );
+    },
+);
 
 t.test('a flow that never terminates cannot grow its retained shape without limit', t => {
     const shapes = new FlowShapes(4, 3);
@@ -856,25 +1066,32 @@ t.test('a flow that never terminates cannot grow its retained shape without limi
     t.equal(shapes.pending(), 1, 'the execution is still retained');
     t.equal(shapes.truncations(), 7, 'the oldest steps were dropped rather than accumulated');
     const shape = shapes.append(run, {ref: 'r10', index: 10, time: 10}, true);
-    t.same(shape, ['r8', 'r9', 'r10'], 'the observed shape is the most recent steps, in position order');
+    t.same(
+        shape,
+        ['r8', 'r9', 'r10'],
+        'the observed shape is the most recent steps, in position order',
+    );
     t.end();
 });
 
-t.test('the retained execution count is bounded, and an active execution is not the eviction victim', t => {
-    const shapes = new FlowShapes(2, 8);
-    const long = execution(1);
-    const short = execution(2);
-    shapes.append(long, {ref: 'a', index: 0, time: 0}, false);
-    shapes.append(short, {ref: 'b', index: 0, time: 0}, false);
-    shapes.append(long, {ref: 'c', index: 1, time: 1}, false);
-    t.equal(shapes.size(), 2, 're-touching an existing execution does not grow the map');
-    shapes.append(execution(3), {ref: 'd', index: 0, time: 0}, false);
-    t.equal(shapes.size(), 2, 'a new execution is admitted only by evicting one');
-    t.ok(shapes.open(long), 'the execution still being emitted to keeps its accumulated shape');
-    t.notOk(shapes.open(short), 'the least recently seen execution is the one dropped');
-    t.equal(shapes.evictions(), 1);
-    t.end();
-});
+t.test(
+    'the retained execution count is bounded, and an active execution is not the eviction victim',
+    t => {
+        const shapes = new FlowShapes(2, 8);
+        const long = execution(1);
+        const short = execution(2);
+        shapes.append(long, {ref: 'a', index: 0, time: 0}, false);
+        shapes.append(short, {ref: 'b', index: 0, time: 0}, false);
+        shapes.append(long, {ref: 'c', index: 1, time: 1}, false);
+        t.equal(shapes.size(), 2, 're-touching an existing execution does not grow the map');
+        shapes.append(execution(3), {ref: 'd', index: 0, time: 0}, false);
+        t.equal(shapes.size(), 2, 'a new execution is admitted only by evicting one');
+        t.ok(shapes.open(long), 'the execution still being emitted to keeps its accumulated shape');
+        t.notOk(shapes.open(short), 'the least recently seen execution is the one dropped');
+        t.equal(shapes.evictions(), 1);
+        t.end();
+    },
+);
 
 t.test('a kindless note counts an attributed execution, but not an identity that names none', t => {
     const shapes = new FlowShapes(4, 8);
@@ -998,7 +1215,9 @@ t.test('two open executions are tracked independently through the route', async 
     const predecessor = await app.inject({
         method: 'POST',
         url: '/events',
-        payload: {events: [positioned('orphan-1', 'aaa', 1000, execution(1), 'transfer.single', 0)]},
+        payload: {
+            events: [positioned('orphan-1', 'aaa', 1000, execution(1), 'transfer.single', 0)],
+        },
     });
     t.equal(predecessor.statusCode, 202);
 
@@ -1021,22 +1240,40 @@ t.test('two open executions are tracked independently through the route', async 
     await app.inject({
         method: 'POST',
         url: '/events',
-        payload: {events: [positioned('orphan-4', 'aaa', 1001, execution(1), 'transfer.single', 1)]},
+        payload: {
+            events: [positioned('orphan-4', 'aaa', 1001, execution(1), 'transfer.single', 1)],
+        },
     });
     t.equal(shapes.stragglers(), 0, 'the late step has an owner and is not a straggler');
 
     const done = await app.inject({
         method: 'POST',
         url: '/events',
-        payload: {events: [positioned('orphan-5', 'ddd', 2002, execution(2), 'transfer.single', 2, 'completed')]},
+        payload: {
+            events: [
+                positioned(
+                    'orphan-5',
+                    'ddd',
+                    2002,
+                    execution(2),
+                    'transfer.single',
+                    2,
+                    'completed',
+                ),
+            ],
+        },
     });
     t.equal(done.statusCode, 202);
     t.same(
         shapes.completed,
         [[REF.b, REF.c, REF.d]],
-        'execution 2 took its own shape, without execution 1\'s late step',
+        "execution 2 took its own shape, without execution 1's late step",
     );
-    t.equal(shapes.open(execution(1)), true, 'execution 1 is still in flight with the step it owned');
+    t.equal(
+        shapes.open(execution(1)),
+        true,
+        'execution 1 is still in flight with the step it owned',
+    );
 });
 
 t.test('a flow with no kind still closes but is not observed for drift', async t => {
@@ -1120,7 +1357,11 @@ t.test('a record with no flow leaves no flow state', async t => {
     t.equal(response.statusCode, 202);
     t.equal(shapes.size(), 0, 'a record with no flow participates in nothing');
     t.equal(shapes.stragglers(), 0, 'and is not mistaken for a step without a home');
-    t.equal(shapes.kindless(), 0, 'and a record with no flow is not a kindless flow — that is normal');
+    t.equal(
+        shapes.kindless(),
+        0,
+        'and a record with no flow is not a kindless flow — that is normal',
+    );
 });
 
 t.test('a redelivered step does not repeat in the shape or raise drift (PRD R6c)', async t => {
@@ -1155,8 +1396,16 @@ t.test('a redelivered step does not repeat in the shape or raise drift (PRD R6c)
             ],
         },
     });
-    t.same(shapes.completed, [[REF.a, REF.b, REF.c]], 'the shape holds aaa once, in position order');
-    t.equal(shapes.stragglers(), 0, 'a redelivery of a step the execution holds is not a straggler');
+    t.same(
+        shapes.completed,
+        [[REF.a, REF.b, REF.c]],
+        'the shape holds aaa once, in position order',
+    );
+    t.equal(
+        shapes.stragglers(),
+        0,
+        'a redelivery of a step the execution holds is not a straggler',
+    );
     t.equal(shapes.pending(), 0, 'and the execution is still closed by its terminal');
 });
 
@@ -1168,7 +1417,9 @@ t.test('a stream of never-terminating flows stays within the retention bound', a
         const response = await app.inject({
             method: 'POST',
             url: '/events',
-            payload: {events: [step(`nf-${i}`, `nf${i}`, 1000 + i, execution(i), 'transfer.single')]},
+            payload: {
+                events: [step(`nf-${i}`, `nf${i}`, 1000 + i, execution(i), 'transfer.single')],
+            },
         });
         t.equal(response.statusCode, 202);
     }
@@ -1176,21 +1427,28 @@ t.test('a stream of never-terminating flows stays within the retention bound', a
     t.equal(shapes.evictions(), 9, 'the least recently seen executions were dropped');
 });
 
-t.test('the retention bounds are configurable, and a short cap does not break ingestion', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}, flowLimit: 2, flowStepLimit: 2});
-    t.teardown(() => app.close());
-    const response = await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
-    });
-    t.equal(response.statusCode, 202);
-    t.same(
-        response.json(),
-        {accepted: 3, templates: 3, anomalies: 3, skipped: 0},
-        'a three-step flow still ingests under a two-step retention cap',
-    );
-});
+t.test(
+    'the retention bounds are configurable, and a short cap does not break ingestion',
+    async t => {
+        const app = createApp({
+            embedding: {kind: 'offline', dimension: 16},
+            flowLimit: 2,
+            flowStepLimit: 2,
+        });
+        t.teardown(() => app.close());
+        const response = await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
+        });
+        t.equal(response.statusCode, 202);
+        t.same(
+            response.json(),
+            {accepted: 3, templates: 3, anomalies: 3, skipped: 0},
+            'a three-step flow still ingests under a two-step retention cap',
+        );
+    },
+);
 
 t.test('a status this version does not treat as terminal leaves the flow in flight', async t => {
     const shapes = new FlowShapes(8, 8);
@@ -1213,12 +1471,18 @@ t.test('a status this version does not treat as terminal leaves the flow in flig
         },
     });
     t.equal(probe.statusCode, 202);
-    t.equal(shapes.pending(), 1, 'neither an absent status nor a declared non-terminal one ends the execution');
+    t.equal(
+        shapes.pending(),
+        1,
+        'neither an absent status nor a declared non-terminal one ends the execution',
+    );
 
     await app.inject({
         method: 'POST',
         url: '/events',
-        payload: {events: [step('st-3', 'aaa', 2002, execution(2), 'transfer.single', 'completed')]},
+        payload: {
+            events: [step('st-3', 'aaa', 2002, execution(2), 'transfer.single', 'completed')],
+        },
     });
     t.equal(shapes.pending(), 0, 'a terminal status ends it');
     t.notOk(shapes.open(execution(2)), 'and the terminated execution is retained only as spent');
@@ -1247,7 +1511,9 @@ t.test('a failure after registration is a service defect, not a skipped event', 
     });
 
     await t.rejects(
-        ingest({events: [{id: '01A', time: 1000, fingerprint: fingerprint('fff'), service: 'hub'}]}),
+        ingest({
+            events: [{id: '01A', time: 1000, fingerprint: fingerprint('fff'), service: 'hub'}],
+        }),
         /digest unavailable/,
         'the callback failure surfaces instead of being absorbed as a skip',
     );
@@ -1275,7 +1541,9 @@ t.test('a throwing novelty callback cannot cost the event its exemplar either', 
     });
 
     await t.rejects(
-        ingest({events: [{id: '01B', time: 1000, fingerprint: fingerprint('fff'), service: 'hub'}]}),
+        ingest({
+            events: [{id: '01B', time: 1000, fingerprint: fingerprint('fff'), service: 'hub'}],
+        }),
         /digest unavailable/,
         'the callback failure surfaces instead of being absorbed as a skip',
     );
@@ -1300,33 +1568,59 @@ t.test('the digest reports what changed, not the records themselves (PRD R8)', a
         ['template-added', 'anomaly', 'exemplar-retained'],
         'a template event yields exactly three deltas',
     );
-    const empty = (await app.inject({method: 'GET', url: `/digest?since=${body.cursor}`})).json() as {entries: unknown[]};
+    const empty = (
+        await app.inject({method: 'GET', url: `/digest?since=${body.cursor}`})
+    ).json() as {entries: unknown[]};
     t.equal(empty.entries.length, 0, 'polling from the cursor returns nothing new');
 });
 
-t.test('a digest poll reads from the start when it cannot read the cursor, and pages on request', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}});
-    t.teardown(() => app.close());
-    await app.inject({method: 'POST', url: '/events', payload: batch()});
-    const rubbish = (await app.inject({method: 'GET', url: '/digest?since=not-a-number'})).json() as {
-        stats: {retained: number};
-        entries: Array<{kind: string}>;
-    };
-    t.equal(rubbish.entries.length, 3, 'an unreadable cursor reads from the beginning rather than failing the poll');
-    t.equal(rubbish.stats.retained, 3, 'the state of the bound travels with every page');
-    const paged = (await app.inject({method: 'GET', url: '/digest?limit=1'})).json() as {entries: Array<{kind: string}>};
-    t.same(paged.entries.map(entry => entry.kind), ['template-added'], 'a query limit caps the entries returned');
-    const fresh = (await app.inject({method: 'GET', url: '/digest'})).json() as {cursor: number; entries: unknown[]};
-    t.equal(fresh.cursor, 3, 'the cursor is echoed so a consumer need not predict it');
-    t.equal(fresh.entries.length, 3, 'and with no query at all the whole window is returned');
-});
+t.test(
+    'a digest poll reads from the start when it cannot read the cursor, and pages on request',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}});
+        t.teardown(() => app.close());
+        await app.inject({method: 'POST', url: '/events', payload: batch()});
+        const rubbish = (
+            await app.inject({method: 'GET', url: '/digest?since=not-a-number'})
+        ).json() as {
+            stats: {retained: number};
+            entries: Array<{kind: string}>;
+        };
+        t.equal(
+            rubbish.entries.length,
+            3,
+            'an unreadable cursor reads from the beginning rather than failing the poll',
+        );
+        t.equal(rubbish.stats.retained, 3, 'the state of the bound travels with every page');
+        const paged = (await app.inject({method: 'GET', url: '/digest?limit=1'})).json() as {
+            entries: Array<{kind: string}>;
+        };
+        t.same(
+            paged.entries.map(entry => entry.kind),
+            ['template-added'],
+            'a query limit caps the entries returned',
+        );
+        const fresh = (await app.inject({method: 'GET', url: '/digest'})).json() as {
+            cursor: number;
+            entries: unknown[];
+        };
+        t.equal(fresh.cursor, 3, 'the cursor is echoed so a consumer need not predict it');
+        t.equal(fresh.entries.length, 3, 'and with no query at all the whole window is returned');
+    },
+);
 
 t.test('an unreadable limit is ignored, not turned into a silently empty page', async t => {
     const app = createApp({embedding: {kind: 'offline', dimension: 16}});
     t.teardown(() => app.close());
     await app.inject({method: 'POST', url: '/events', payload: batch()});
-    const body = (await app.inject({method: 'GET', url: '/digest?limit=not-a-number'})).json() as {entries: unknown[]};
-    t.equal(body.entries.length, 3, 'the rubbish limit is dropped, so the whole window is returned');
+    const body = (await app.inject({method: 'GET', url: '/digest?limit=not-a-number'})).json() as {
+        entries: unknown[];
+    };
+    t.equal(
+        body.entries.length,
+        3,
+        'the rubbish limit is dropped, so the whole window is returned',
+    );
 });
 
 t.test('a repeated template is a count, not a second delta (PRD R8)', async t => {
@@ -1370,9 +1664,15 @@ t.test('the digest names a drift anomaly by its flow kind, not by a template ref
     const body = (await app.inject({method: 'GET', url: '/digest'})).json() as {
         entries: Array<{kind: string; data: {anomalyRef?: string; templateRef?: string}}>;
     };
-    const drift = body.entries.find(entry => entry.kind === 'anomaly' && entry.data.anomalyRef === 'transfer.single');
+    const drift = body.entries.find(
+        entry => entry.kind === 'anomaly' && entry.data.anomalyRef === 'transfer.single',
+    );
     t.ok(drift, 'the drift delta is published');
-    t.equal(drift?.data.templateRef, REF.b, 'and names the triggering template separately, as a template ref');
+    t.equal(
+        drift?.data.templateRef,
+        REF.b,
+        'and names the triggering template separately, as a template ref',
+    );
 });
 
 t.test('the digest carries an exemplar pointer only when the record was kept', async t => {
@@ -1390,22 +1690,41 @@ t.test('the digest carries an exemplar pointer only when the record was kept', a
     );
 });
 
-// --- Template-level search (PRD R14) ----------------------------------------
+// --- Template and record search (PRD R14, R24) ------------------------------
 
-t.test('search finds a template without scanning records (PRD R14)', async t => {
+t.test('search returns templates and retained records, each with its kind (R24)', async t => {
     const app = createApp({embedding: {kind: 'offline', dimension: 16}});
     t.teardown(() => app.close());
     await app.inject({method: 'POST', url: '/events', payload: batch()});
 
     const query = encodeURIComponent('[LEVEL: ERROR] [SERVICE: hub] [MSG: timeout]');
     const results = (await app.inject({method: 'GET', url: `/search?q=${query}`})).json() as Array<{
-        ref: string;
+        kind: string;
+        ref?: string;
+        record?: string;
         score: number;
+        service: string;
+        msg?: string;
     }>;
 
-    t.equal(results.length, 1, 'the registry, not the records, is the candidate set');
-    t.equal(results[0].ref, 'ffff0000ffff');
-    t.equal(results[0].score, 1, 'the query is the template, so the match is exact');
+    // One list, two candidate sets: the template the query *is*, and the record it was
+    // retained from. Two endpoints would make a caller merge them by hand (D21).
+    t.same(
+        results.map(result => result.kind),
+        ['template', 'record'],
+        'both kinds are returned, and the discriminator says which is which',
+    );
+    const template = results.find(result => result.kind === 'template');
+    t.equal(template?.ref, 'ffff0000ffff', 'the template, by its ref');
+    t.equal(template?.score, 1, 'the query is the template signature, so the match is exact');
+    const record = results.find(result => result.kind === 'record');
+    t.equal(record?.record, '01A', 'the record, by its id');
+    t.equal(record?.service, 'hub', 'carrying what a reader needs to recognise it');
+    t.equal(record?.msg, 'timeout');
+    t.ok(
+        (results[0]?.score ?? 0) >= (results[1]?.score ?? 0),
+        'and the two halves are merged on the score',
+    );
 });
 
 t.test('a search with no query is empty, not an error', async t => {
@@ -1423,27 +1742,84 @@ t.test('the search limit caps the response', async t => {
     const app = createApp({embedding: {kind: 'offline', dimension: 16}});
     t.teardown(() => app.close());
     await app.inject({method: 'POST', url: '/events', payload: batch()});
-    await app.inject({method: 'POST', url: '/events', payload: batch({id: '01B', fingerprint: 'eeee0000eeee0000eeee0000eeee0000'})});
+    await app.inject({
+        method: 'POST',
+        url: '/events',
+        payload: batch({id: '01B', fingerprint: 'eeee0000eeee0000eeee0000eeee0000'}),
+    });
 
     const query = encodeURIComponent('[LEVEL: ERROR] [SERVICE: hub] [MSG: timeout]');
-    const results = (await app.inject({method: 'GET', url: `/search?q=${query}&limit=1`})).json() as Array<{
-        ref: string;
+    const results = (
+        await app.inject({method: 'GET', url: `/search?q=${query}&limit=1`})
+    ).json() as Array<{
+        kind: string;
     }>;
 
     t.equal(results.length, 1, 'the cap is taken from the query string');
+    // Four candidates exist here (two templates, two retained records) and the cap is what
+    // cuts them, not the candidate set.
+    const all = (await app.inject({method: 'GET', url: `/search?q=${query}`})).json() as unknown[];
+    t.equal(all.length, 4, 'and it is a cap on a longer ranking, not the whole of it');
 });
 
-t.test('an unreadable search limit falls back to the default, not to no matches (PRD R14)', async t => {
+t.test(
+    'an unreadable search limit falls back to the default, not to no matches (PRD R14)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}, exemplarLimit: 1});
+        t.teardown(() => app.close());
+        await app.inject({method: 'POST', url: '/events', payload: batch()});
+
+        const query = encodeURIComponent('[LEVEL: ERROR] [SERVICE: hub] [MSG: timeout]');
+        const rubbish = (
+            await app.inject({method: 'GET', url: `/search?q=${query}&limit=abc`})
+        ).json() as Array<{ref?: string}>;
+        t.equal(
+            rubbish.length,
+            2,
+            'a non-numeric limit is dropped rather than slicing the answer to nothing',
+        );
+
+        const blank = (
+            await app.inject({method: 'GET', url: `/search?q=${query}&limit=`})
+        ).json() as Array<{ref?: string}>;
+        t.equal(blank.length, 2, 'a blank limit is treated as absent, so the default applies');
+    },
+);
+
+t.test('a record with no template field is still a search result (R24)', async t => {
+    // The signature is what a reader browses by, and an emitter that sends none is not
+    // excluded from search for it: the record is ranked by its own text, and the result says
+    // `null` where the signature would be rather than inventing one.
     const app = createApp({embedding: {kind: 'offline', dimension: 16}});
     t.teardown(() => app.close());
-    await app.inject({method: 'POST', url: '/events', payload: batch()});
+    await app.inject({
+        method: 'POST',
+        url: '/events',
+        payload: {
+            events: [
+                {
+                    id: '01NT',
+                    time: 1,
+                    fingerprint: fingerprint('nnn'),
+                    service: 'hub',
+                    msg: 'no signature here',
+                },
+            ],
+        },
+    });
 
-    const query = encodeURIComponent('[LEVEL: ERROR] [SERVICE: hub] [MSG: timeout]');
-    const rubbish = (await app.inject({method: 'GET', url: `/search?q=${query}&limit=abc`})).json() as Array<{ref: string}>;
-    t.equal(rubbish.length, 1, 'a non-numeric limit is dropped rather than slicing the answer to nothing');
-
-    const blank = (await app.inject({method: 'GET', url: `/search?q=${query}&limit=`})).json() as Array<{ref: string}>;
-    t.equal(blank.length, 1, 'a blank limit is treated as absent, so the default applies');
+    const query = encodeURIComponent('no signature here hub');
+    const results = (await app.inject({method: 'GET', url: `/search?q=${query}`})).json() as Array<{
+        kind: string;
+        signature: string | null;
+    }>;
+    const record = results.find(result => result.kind === 'record');
+    t.equal(record?.signature, null, 'the record is ranked, and reports no signature');
+    t.equal(
+        typeof results.find(result => result.kind === 'template')?.signature,
+        'string',
+        'as a template always has one',
+    );
 });
 
 // --- Deploy diff (PRD R14) --------------------------------------------------
@@ -1459,7 +1835,11 @@ t.test('diff reports what appeared in a window (PRD R14 acceptance)', async t =>
     };
 
     t.same(body.range, {from: 0, to: 2000}, 'the effective window is echoed back');
-    t.equal(body.added.length, 1, 'PRD R14: "what is new since the last release?" without a query or a rule');
+    t.equal(
+        body.added.length,
+        1,
+        'PRD R14: "what is new since the last release?" without a query or a rule',
+    );
     t.equal(body.added[0].ref, 'ffff0000ffff');
 });
 
@@ -1485,22 +1865,42 @@ t.test('the diff reports a flow kind that drifted inside the window (PRD R14)', 
     const inside = (await app.inject({method: 'GET', url: '/diff?from=0&to=3000'})).json() as {
         drifted: Array<{kind: string; lastDriftedAt: number; lastDistance: number; count: number}>;
     };
-    t.equal(inside.drifted.length, 1, 'the bucket is not empty: the ingest really recorded the drift');
-    t.equal(inside.drifted[0].kind, 'transfer.single', 'the key is the flow kind, not a template ref');
-    t.equal(inside.drifted[0].lastDriftedAt, 2002, 'timed by the flow observation that moved the shape');
+    t.equal(
+        inside.drifted.length,
+        1,
+        'the bucket is not empty: the ingest really recorded the drift',
+    );
+    t.equal(
+        inside.drifted[0].kind,
+        'transfer.single',
+        'the key is the flow kind, not a template ref',
+    );
+    t.equal(
+        inside.drifted[0].lastDriftedAt,
+        2002,
+        'timed by the flow observation that moved the shape',
+    );
     t.ok(inside.drifted[0].lastDistance > 0.25, 'and carries the distance the detector measured');
     t.equal(inside.drifted[0].count, 1, 'once, for the one execution that moved');
 
-    const before = (await app.inject({method: 'GET', url: '/diff?from=0&to=2001'})).json() as {drifted: unknown[]};
+    const before = (await app.inject({method: 'GET', url: '/diff?from=0&to=2001'})).json() as {
+        drifted: unknown[];
+    };
     t.same(before.drifted, [], 'a window ending before the drift does not report it');
 
-    const after = (await app.inject({method: 'GET', url: '/diff?from=2003&to=3000'})).json() as {drifted: unknown[]};
+    const after = (await app.inject({method: 'GET', url: '/diff?from=2003&to=3000'})).json() as {
+        drifted: unknown[];
+    };
     t.same(after.drifted, [], 'and neither does one starting after it');
 
     const boundary = (await app.inject({method: 'GET', url: '/diff?from=2002&to=2002'})).json() as {
         drifted: Array<{kind: string}>;
     };
-    t.same(boundary.drifted.map(drift => drift.kind), ['transfer.single'], 'a drift exactly at both bounds is inside');
+    t.same(
+        boundary.drifted.map(drift => drift.kind),
+        ['transfer.single'],
+        'a drift exactly at both bounds is inside',
+    );
 });
 
 t.test('the ingest writes the drift history the caller injected (PRD R14)', async t => {
@@ -1519,23 +1919,36 @@ t.test('the ingest writes the drift history the caller injected (PRD R14)', asyn
     });
 
     t.equal(driftHistory.size(), 1, 'one entry for the one kind, however often it drifted');
-    t.equal(driftHistory.inWindow(0, 3000)[0].kind, 'transfer.single', 'and it is this instance the ingest wrote');
+    t.equal(
+        driftHistory.inWindow(0, 3000)[0].kind,
+        'transfer.single',
+        'and it is this instance the ingest wrote',
+    );
 });
 
-t.test('an unreadable diff bound falls back rather than returning an all-empty answer (PRD R14)', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}});
-    t.teardown(() => app.close());
-    await app.inject({method: 'POST', url: '/events', payload: batch()});
+t.test(
+    'an unreadable diff bound falls back rather than returning an all-empty answer (PRD R14)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}});
+        t.teardown(() => app.close());
+        await app.inject({method: 'POST', url: '/events', payload: batch()});
 
-    const body = (await app.inject({method: 'GET', url: '/diff?from=not-a-number&to=also-not'})).json() as {
-        range: {from: number; to: number};
-        added: Array<{ref: string}>;
-    };
+        const body = (
+            await app.inject({method: 'GET', url: '/diff?from=not-a-number&to=also-not'})
+        ).json() as {
+            range: {from: number; to: number};
+            added: Array<{ref: string}>;
+        };
 
-    t.equal(body.range.from, 0, 'an unreadable `from` reads from the beginning');
-    t.ok(body.range.to >= 1000, 'an unreadable `to` reaches the present');
-    t.equal(body.added.length, 1, 'the fallback reports what a silently empty diff would have hidden');
-});
+        t.equal(body.range.from, 0, 'an unreadable `from` reads from the beginning');
+        t.ok(body.range.to >= 1000, 'an unreadable `to` reaches the present');
+        t.equal(
+            body.added.length,
+            1,
+            'the fallback reports what a silently empty diff would have hidden',
+        );
+    },
+);
 
 t.test('a blank diff bound is treated as absent, not as zero (PRD R14)', async t => {
     const app = createApp({embedding: {kind: 'offline', dimension: 16}});
@@ -1548,7 +1961,10 @@ t.test('a blank diff bound is treated as absent, not as zero (PRD R14)', async t
     };
 
     t.equal(body.range.from, 0, 'the numeric bound is kept');
-    t.ok(body.range.to >= 1000, 'a blank `to` reaches the present rather than collapsing the window to zero');
+    t.ok(
+        body.range.to >= 1000,
+        'a blank `to` reaches the present rather than collapsing the window to zero',
+    );
     t.equal(body.added.length, 1, 'the batch just ingested is still inside the window');
 });
 
@@ -1559,44 +1975,61 @@ t.test('a facet is a projection, and an unknown facet is rejected (PRD R16)', as
     t.teardown(() => app.close());
     await app.inject({method: 'POST', url: '/events', payload: batch()});
 
-    const ops = (await app.inject({method: 'GET', url: '/templates/ffff0000ffff?facet=ops'})).json() as Record<
-        string,
-        unknown
-    >;
+    const ops = (
+        await app.inject({method: 'GET', url: '/templates/ffff0000ffff?facet=ops'})
+    ).json() as Record<string, unknown>;
     t.equal(ops.count, 1);
     t.notOk('fingerprint' in ops, 'the operator view is a projection, not the raw entry');
 
     const bad = await app.inject({method: 'GET', url: '/templates/ffff0000ffff?facet=finance'});
-    t.equal(bad.statusCode, 400, 'an unknown facet is refused, not silently answered with the raw entry');
+    t.equal(
+        bad.statusCode,
+        400,
+        'an unknown facet is refused, not silently answered with the raw entry',
+    );
     t.same((bad.json() as {facets: string[]}).facets, ['ops', 'diagnostic', 'compliance']);
 });
 
-t.test('the diagnostic facet reports the template a retained flow drift is attributed to (PRD R16)', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 16}});
-    t.teardown(() => app.close());
-    // Two executions of one process with different shapes. The second's terminal
-    // step is `bbb`, so the drift anomaly is attributed to REF.b's template; the
-    // first execution also raised *novelty* anomalies naming these templates,
-    // which must not read as drift.
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
-    });
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: flow(execution(2), 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000)},
-    });
+t.test(
+    'the diagnostic facet reports the template a retained flow drift is attributed to (PRD R16)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 16}});
+        t.teardown(() => app.close());
+        // Two executions of one process with different shapes. The second's terminal
+        // step is `bbb`, so the drift anomaly is attributed to REF.b's template; the
+        // first execution also raised *novelty* anomalies naming these templates,
+        // which must not read as drift.
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(1), 'transfer.single', ['aaa', 'bbb', 'ccc'], 1000)},
+        });
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {events: flow(execution(2), 'transfer.single', ['aaa', 'ccc', 'bbb'], 2000)},
+        });
 
-    const implicated = (await app.inject({method: 'GET', url: `/templates/${REF.b}?facet=diagnostic`})).json() as {
-        drifted: boolean;
-    };
-    t.equal(implicated.drifted, true, 'the template whose step triggered the drift is reported as implicated');
+        const implicated = (
+            await app.inject({method: 'GET', url: `/templates/${REF.b}?facet=diagnostic`})
+        ).json() as {
+            drifted: boolean;
+        };
+        t.equal(
+            implicated.drifted,
+            true,
+            'the template whose step triggered the drift is reported as implicated',
+        );
 
-    const bystander = (await app.inject({method: 'GET', url: `/templates/${REF.a}?facet=diagnostic`})).json() as {
-        drifted: boolean;
-    };
-    t.equal(bystander.drifted, false, 'a template a novelty anomaly names is not thereby implicated in a drift');
-});
-
+        const bystander = (
+            await app.inject({method: 'GET', url: `/templates/${REF.a}?facet=diagnostic`})
+        ).json() as {
+            drifted: boolean;
+        };
+        t.equal(
+            bystander.drifted,
+            false,
+            'a template a novelty anomaly names is not thereby implicated in a drift',
+        );
+    },
+);

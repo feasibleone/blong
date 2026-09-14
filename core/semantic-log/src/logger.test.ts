@@ -4,12 +4,12 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import t from 'tap';
 import {openCache, type RecordStore} from './cache.ts';
+import {bindInboundLeg, bindLeg, bindTrace, step, withFlow, withIntent} from './context.ts';
 import {captureProcessFailures, createLogger} from './logger.ts';
 import type {ErrorDetail, LogRecord} from './record.ts';
 import {PAYLOAD_THRESHOLD} from './refs.ts';
 import {packageVersion} from './version.ts';
 import {getWriter, setWriter, stdoutWriter, type Writer} from './writer.ts';
-import {bindTrace, withFlow, withIntent, step} from './context.ts';
 
 function capture(): {lines: string[]; writer: Writer} {
     const lines: string[] = [];
@@ -67,10 +67,17 @@ t.test('base fields are always present', t => {
 t.test('the version reaches the header and json mode, and a service can override it', t => {
     const human = capture();
     createLogger({service: 'hub', writer: human.writer}).info('x');
-    t.ok(human.lines[0].includes(`version=${packageVersion} `), 'the default is the package version');
+    t.ok(
+        human.lines[0].includes(`version=${packageVersion} `),
+        'the default is the package version',
+    );
     const json = capture();
     createLogger({service: 'hub', writer: json.writer, format: 'json', version: '9.9.9'}).info('x');
-    t.equal((JSON.parse(json.lines[0]) as {version: string}).version, '9.9.9', 'json carries the override');
+    t.equal(
+        (JSON.parse(json.lines[0]) as {version: string}).version,
+        '9.9.9',
+        'json carries the override',
+    );
     t.end();
 });
 
@@ -111,14 +118,15 @@ t.test('silencing is a writer swap, not a branch in the logger', t => {
     // own output is unaffected — only the silence is under observation.
     const originalWrite = process.stdout.write;
     const written: string[] = [];
-    process.stdout.write = ((chunk: string | Uint8Array, encoding?: unknown, callback?: unknown): boolean => {
+    process.stdout.write = ((
+        chunk: string | Uint8Array,
+        encoding?: unknown,
+        callback?: unknown,
+    ): boolean => {
         written.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString());
-        return (originalWrite as unknown as (c: unknown, e?: unknown, cb?: unknown) => boolean).call(
-            process.stdout,
-            chunk,
-            encoding,
-            callback,
-        );
+        return (
+            originalWrite as unknown as (c: unknown, e?: unknown, cb?: unknown) => boolean
+        ).call(process.stdout, chunk, encoding, callback);
     }) as typeof process.stdout.write;
     try {
         // No explicit `writer` option, so the logger must consult the global
@@ -149,6 +157,62 @@ t.test('ambient flow and intent reach the record', async t => {
     t.end();
 });
 
+t.test('a declared leg rides the record flow and renders with it', async t => {
+    const {lines, writer} = capture();
+    const logger = createLogger({service: 'payer', writer});
+    await withFlow({id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'transfer.single'}, async () => {
+        await bindLeg({id: 'payer.discovery.parties', to: 'hub'}, async () =>
+            logger.info('looking up payee'),
+        );
+    });
+    // The position is whatever it is — no step was taken in this scope, so the leg
+    // follows `-#-1` exactly as `flow=<id>/<step>#<index>` always has — and the call's
+    // own position rides the leg token, so two lines can be ordered by reading them.
+    t.match(lines[0], /flow=01ARZ3NDEKTSV4RRFFQ69G5FAV\/-#-1 leg=payer\.discovery\.parties#1/);
+    t.end();
+});
+
+t.test('the record names the receiver the caller expected (PRD R22)', async t => {
+    // This is what keeps an *attempt* on the record: a receiver that never answers is
+    // then a fact about the deployment rather than an edge nothing can draw.
+    const lines: string[] = [];
+    const logger = createLogger({
+        service: 'hub',
+        format: 'json',
+        writer: {write: line => void lines.push(line)},
+    });
+    await withFlow({id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'transfer.single'}, async () => {
+        await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () =>
+            logger.info('fx rate requested'),
+        );
+    });
+    const record = JSON.parse(lines[0] ?? '{}') as {flow?: Record<string, unknown>};
+    t.equal(record.flow?.leg, 'hub.quote.fx');
+    t.equal(record.flow?.legTo, 'fxp', 'the declared receiver is on the record');
+    t.equal(record.flow?.legSeq, '1', 'and so is the position the caller assigned');
+    t.end();
+});
+
+t.test('a call adopted without a position renders without one (PRD R22)', async t => {
+    // An emitter that sent no position — or a receiver handed none — still names the
+    // call: the id is the declaration's and the position is the counter's, and a record
+    // with one and not the other is complete.
+    const {lines, writer} = capture();
+    const logger = createLogger({service: 'hub', writer});
+    await withFlow({id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', kind: 'transfer.single'}, async () => {
+        await bindInboundLeg({id: 'payer.quote.rates'}, async () =>
+            logger.info('quote request received'),
+        );
+    });
+    t.match(lines[0], /leg=payer\.quote\.rates(?!\S)/, 'the call is named');
+    t.notMatch(
+        lines[0],
+        /leg=payer\.quote\.rates#/,
+        'and nothing is appended for a position it does not have',
+    );
+    t.end();
+});
+
 t.test('fatal exits through the injected exit function', t => {
     const {lines, writer} = capture();
     let exited: number | undefined;
@@ -165,7 +229,12 @@ t.test('a fatal record is on disk the moment fatal returns, with no flush (PRD R
     const cache = await openCache({dir, limit: 10});
     const {lines, writer} = capture();
     const exited: number[] = [];
-    const logger = createLogger({service: 'hub', writer, cache, exit: code => void exited.push(code)});
+    const logger = createLogger({
+        service: 'hub',
+        writer,
+        cache,
+        exit: code => void exited.push(code),
+    });
     logger.fatal('unrecoverable');
     // Read the backing files synchronously, with no `await` in between: a queued
     // asynchronous write would still be pending here, because the event loop has
@@ -173,7 +242,9 @@ t.test('a fatal record is on disk the moment fatal returns, with no flush (PRD R
     // to be looked up survive the `exit` that follows.
     const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
     t.ok(id, 'the rendered line carries the id');
-    const stored = JSON.parse(readFileSync(join(dir, 'records', `${id}.json`), 'utf8')) as LogRecord;
+    const stored = JSON.parse(
+        readFileSync(join(dir, 'records', `${id}.json`), 'utf8'),
+    ) as LogRecord;
     t.equal(stored.msg, 'unrecoverable', 'the fatal record is retained before exit');
     t.equal(stored.levelName, 'fatal');
     t.equal(stored.refs.record, id, 'the retained copy names itself');
@@ -197,12 +268,18 @@ t.test('captureProcessFailures records fatal failures and unregisters handlers',
     // silently assumes the test process has no other listeners.
     const before = process.listeners('unhandledRejection');
     const off = captureProcessFailures(logger);
-    const joined = process.listeners('unhandledRejection').filter(listener => !before.includes(listener));
+    const joined = process
+        .listeners('unhandledRejection')
+        .filter(listener => !before.includes(listener));
     t.equal(joined.length, 1, 'the hooks join the process-wide rejection channel');
     try {
         process.emit('unhandledRejection', new Error('dropped'), Promise.resolve());
         t.match(lines.join('\n'), /unhandledRejection/);
-        t.match(lines.join('\n'), /\bfatal\b/, 'a process-level failure is recorded at fatal level');
+        t.match(
+            lines.join('\n'),
+            /\bfatal\b/,
+            'a process-level failure is recorded at fatal level',
+        );
         t.equal(exited.length, 1, 'a process-level failure goes through the injected exit');
         t.equal(exited[0], 1);
     } finally {
@@ -221,7 +298,10 @@ t.test('captureProcessFailures records fatal failures and unregisters handlers',
     // off the default path and proves the event really was emitted, while any
     // listener the disposer failed to release stays attached and would record.
     const afterOff = process.listeners('unhandledRejection');
-    t.notOk(afterOff.some(listener => joined.includes(listener)), 'the disposer released the hooks');
+    t.notOk(
+        afterOff.some(listener => joined.includes(listener)),
+        'the disposer released the hooks',
+    );
     t.equal(afterOff.length, before.length, 'and left the channel as it found it');
     const seen: unknown[] = [];
     const decoy = (reason: unknown): void => void seen.push(reason);
@@ -258,104 +338,139 @@ t.test('every emitted record lands in the local cache', async t => {
     await cache.close();
 });
 
-t.test('a field past the payload threshold renders as a reference and is retained (PRD R19/R20)', async t => {
-    const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
-    t.teardown(() => rm(dir, {recursive: true, force: true}));
-    const cache = await openCache({dir, limit: 10});
-    const {lines, writer} = capture();
-    const logger = createLogger({service: 'hub', writer, cache, payloads: cache});
+t.test(
+    'a field past the payload threshold renders as a reference and is retained (PRD R19/R20)',
+    async t => {
+        const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
+        t.teardown(() => rm(dir, {recursive: true, force: true}));
+        const cache = await openCache({dir, limit: 10});
+        const {lines, writer} = capture();
+        const logger = createLogger({service: 'hub', writer, cache, payloads: cache});
 
-    // The threshold is a length in rendered characters and it is the same
-    // constant on both sides of the mechanism: exactly at it a value is
-    // retained and its reference rendered; one character below it the value
-    // stays inline. Asserting both sides is what pins *where* the line is
-    // drawn — a threshold tested on one side only could be off by any amount.
-    const atThreshold = 'A'.repeat(PAYLOAD_THRESHOLD);
-    const belowThreshold = 'B'.repeat(PAYLOAD_THRESHOLD - 1);
-    logger.info('configuration', {large: atThreshold, small: belowThreshold});
-    await logger.flush();
+        // The threshold is a length in rendered characters and it is the same
+        // constant on both sides of the mechanism: exactly at it a value is
+        // retained and its reference rendered; one character below it the value
+        // stays inline. Asserting both sides is what pins *where* the line is
+        // drawn — a threshold tested on one side only could be off by any amount.
+        const atThreshold = 'A'.repeat(PAYLOAD_THRESHOLD);
+        const belowThreshold = 'B'.repeat(PAYLOAD_THRESHOLD - 1);
+        logger.info('configuration', {large: atThreshold, small: belowThreshold});
+        await logger.flush();
 
-    const line = lines[0];
-    const reference = /^ {2}large: (semantic-log:\/\/payload\/[0-9A-HJKMNP-TV-Z]+)$/m.exec(line)?.[1] ?? '';
-    t.ok(reference, 'the large field renders as a payload reference, not inlined');
-    t.notMatch(line, /A{1024}/, 'the large value itself is not in the line');
-    t.match(line, `  small: ${belowThreshold}`, 'a field below the threshold is still inlined');
+        const line = lines[0];
+        const reference =
+            /^ {2}large: (semantic-log:\/\/payload\/[0-9A-HJKMNP-TV-Z]+)$/m.exec(line)?.[1] ?? '';
+        t.ok(reference, 'the large field renders as a payload reference, not inlined');
+        t.notMatch(line, /A{1024}/, 'the large value itself is not in the line');
+        t.match(line, `  small: ${belowThreshold}`, 'a field below the threshold is still inlined');
 
-    const id = reference.slice('semantic-log://payload/'.length);
-    t.equal(await cache.getPayload(id), atThreshold, 'the retained payload is the value the line dropped');
-    t.same(cache.payloadStats(), {size: 1, dropped: 0}, 'exactly one payload was retained');
+        const id = reference.slice('semantic-log://payload/'.length);
+        t.equal(
+            await cache.getPayload(id),
+            atThreshold,
+            'the retained payload is the value the line dropped',
+        );
+        t.same(cache.payloadStats(), {size: 1, dropped: 0}, 'exactly one payload was retained');
 
-    // The record stays complete: the value is still in `fields` and the record
-    // names its payload, so nothing had to be fetched back to render it and
-    // JSON mode carries it verbatim.
-    const recordId = /r=semantic-log:\/\/record\/([0-9A-HJKMNP-TV-Z]+)/.exec(line)?.[1] ?? '';
-    const stored = await cache.get(recordId);
-    t.equal(stored?.fields?.large, atThreshold, 'the value stays in the retained record');
-    t.equal(stored?.refs.payloads?.large, id, 'the retained record names the payload it indexes');
+        // The record stays complete: the value is still in `fields` and the record
+        // names its payload, so nothing had to be fetched back to render it and
+        // JSON mode carries it verbatim.
+        const recordId = /r=semantic-log:\/\/record\/([0-9A-HJKMNP-TV-Z]+)/.exec(line)?.[1] ?? '';
+        const stored = await cache.get(recordId);
+        t.equal(stored?.fields?.large, atThreshold, 'the value stays in the retained record');
+        t.equal(
+            stored?.refs.payloads?.large,
+            id,
+            'the retained record names the payload it indexes',
+        );
 
-    const machine = capture();
-    const jsonLogger = createLogger({service: 'hub', writer: machine.writer, format: 'json', payloads: cache});
-    const carried = 'C'.repeat(PAYLOAD_THRESHOLD);
-    jsonLogger.info('configuration', {large: carried});
-    await jsonLogger.flush();
-    t.equal(
-        (JSON.parse(machine.lines[0]) as {fields: {large: string}}).fields.large,
-        carried,
-        'json mode carries the value verbatim, with no lookup needed',
-    );
+        const machine = capture();
+        const jsonLogger = createLogger({
+            service: 'hub',
+            writer: machine.writer,
+            format: 'json',
+            payloads: cache,
+        });
+        const carried = 'C'.repeat(PAYLOAD_THRESHOLD);
+        jsonLogger.info('configuration', {large: carried});
+        await jsonLogger.flush();
+        t.equal(
+            (JSON.parse(machine.lines[0]) as {fields: {large: string}}).fields.large,
+            carried,
+            'json mode carries the value verbatim, with no lookup needed',
+        );
 
-    // Retention and rendering are one decision: with a store configured a
-    // record that carries no large field mints no reference and retains
-    // nothing, rather than pointing at a payload that was never written.
-    const small = capture();
-    const smallLogger = createLogger({service: 'hub', writer: small.writer, payloads: cache});
-    smallLogger.info('small', {status: 'ok'});
-    await smallLogger.flush();
-    t.notMatch(small.lines[0], /semantic-log:\/\/payload\//, 'no reference is minted for a small record');
-    t.same(cache.payloadStats(), {size: 2, dropped: 0}, 'and no payload was retained for it');
-    await cache.close();
-});
+        // Retention and rendering are one decision: with a store configured a
+        // record that carries no large field mints no reference and retains
+        // nothing, rather than pointing at a payload that was never written.
+        const small = capture();
+        const smallLogger = createLogger({service: 'hub', writer: small.writer, payloads: cache});
+        smallLogger.info('small', {status: 'ok'});
+        await smallLogger.flush();
+        t.notMatch(
+            small.lines[0],
+            /semantic-log:\/\/payload\//,
+            'no reference is minted for a small record',
+        );
+        t.same(cache.payloadStats(), {size: 2, dropped: 0}, 'and no payload was retained for it');
+        await cache.close();
+    },
+);
 
-t.test('a message-only record is handled by a payload-aware logger and mints nothing (PRD R19)', async t => {
-    const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
-    t.teardown(() => rm(dir, {recursive: true, force: true}));
-    const cache = await openCache({dir, limit: 10});
-    const {lines, writer} = capture();
-    // The closest thing the public API has to a field-less record: no caller
-    // fields at all, so the payload sweep has nothing of the caller's to walk.
-    // It is still a real case — a payload-aware logger is configured to retain
-    // payloads and a caller logs a plain message — and the base `pid`/`hostname`
-    // fields are far below the threshold, so nothing may be minted or retained.
-    const logger = createLogger({service: 'hub', writer, cache, payloads: cache});
+t.test(
+    'a message-only record is handled by a payload-aware logger and mints nothing (PRD R19)',
+    async t => {
+        const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
+        t.teardown(() => rm(dir, {recursive: true, force: true}));
+        const cache = await openCache({dir, limit: 10});
+        const {lines, writer} = capture();
+        // The closest thing the public API has to a field-less record: no caller
+        // fields at all, so the payload sweep has nothing of the caller's to walk.
+        // It is still a real case — a payload-aware logger is configured to retain
+        // payloads and a caller logs a plain message — and the base `pid`/`hostname`
+        // fields are far below the threshold, so nothing may be minted or retained.
+        const logger = createLogger({service: 'hub', writer, cache, payloads: cache});
 
-    logger.info('no caller fields');
-    await logger.flush();
+        logger.info('no caller fields');
+        await logger.flush();
 
-    t.equal(lines.length, 1, 'the record still renders');
-    t.notMatch(lines[0], /semantic-log:\/\/payload\//, 'no payload reference is minted for a message-only record');
-    t.same(cache.payloadStats(), {size: 0, dropped: 0}, 'and nothing was retained');
-    await cache.close();
-});
+        t.equal(lines.length, 1, 'the record still renders');
+        t.notMatch(
+            lines[0],
+            /semantic-log:\/\/payload\//,
+            'no payload reference is minted for a message-only record',
+        );
+        t.same(cache.payloadStats(), {size: 0, dropped: 0}, 'and nothing was retained');
+        await cache.close();
+    },
+);
 
-t.test('a value that will not serialise again is not retained (PRD R19 threshold guard)', async t => {
-    const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
-    t.teardown(() => rm(dir, {recursive: true, force: true}));
-    const cache = await openCache({dir, limit: 10});
-    const {lines, writer} = capture();
-    const logger = createLogger({service: 'hub', writer, cache, payloads: cache});
-    // The logger measures a value with `renderField` and then serialises it a
-    // second time to retain it. A `toJSON` that answers once with a long
-    // document and then nothing makes the two reads disagree; the guard must
-    // skip the field rather than index a payload whose serialisation is
-    // `undefined` — that write would fail and leave a dead reference behind.
-    let reads = 0;
-    const fickle = {toJSON: () => (++reads === 1 ? 'D'.repeat(PAYLOAD_THRESHOLD) : undefined)};
-    logger.info('unstable', {fickle});
-    await logger.flush();
-    t.notMatch(lines[0], /semantic-log:\/\/payload\//, 'no reference is minted for a value that will not serialise again');
-    t.same(cache.payloadStats(), {size: 0, dropped: 0}, 'nothing was retained for it');
-    await cache.close();
-});
+t.test(
+    'a value that will not serialise again is not retained (PRD R19 threshold guard)',
+    async t => {
+        const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
+        t.teardown(() => rm(dir, {recursive: true, force: true}));
+        const cache = await openCache({dir, limit: 10});
+        const {lines, writer} = capture();
+        const logger = createLogger({service: 'hub', writer, cache, payloads: cache});
+        // The logger measures a value with `renderField` and then serialises it a
+        // second time to retain it. A `toJSON` that answers once with a long
+        // document and then nothing makes the two reads disagree; the guard must
+        // skip the field rather than index a payload whose serialisation is
+        // `undefined` — that write would fail and leave a dead reference behind.
+        let reads = 0;
+        const fickle = {toJSON: () => (++reads === 1 ? 'D'.repeat(PAYLOAD_THRESHOLD) : undefined)};
+        logger.info('unstable', {fickle});
+        await logger.flush();
+        t.notMatch(
+            lines[0],
+            /semantic-log:\/\/payload\//,
+            'no reference is minted for a value that will not serialise again',
+        );
+        t.same(cache.payloadStats(), {size: 0, dropped: 0}, 'nothing was retained for it');
+        await cache.close();
+    },
+);
 
 t.test('a fatal record retains its payload synchronously, before exit (PRD R19/R21)', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
@@ -369,14 +484,21 @@ t.test('a fatal record retains its payload synchronously, before exit (PRD R19/R
     // landed the payload before `emit` returned, exactly as `putSync` lands the
     // record. Reading the files directly, with no `await` in between, is what
     // distinguishes a synchronous write from one still queued on the event loop.
-    const id = /^ {2}configuration: semantic-log:\/\/payload\/([0-9A-HJKMNP-TV-Z]+)$/m.exec(lines[0])?.[1] ?? '';
+    const id =
+        /^ {2}configuration: semantic-log:\/\/payload\/([0-9A-HJKMNP-TV-Z]+)$/m.exec(
+            lines[0],
+        )?.[1] ?? '';
     t.ok(id, 'the rendered line names the payload');
     t.equal(
         JSON.parse(readFileSync(join(dir, 'payloads', `${id}.json`), 'utf8')),
         large,
         'the payload is on disk the moment fatal returns',
     );
-    t.match(readFileSync(join(dir, 'payloads.jsonl'), 'utf8'), new RegExp(id), 'the payload index line landed too');
+    t.match(
+        readFileSync(join(dir, 'payloads.jsonl'), 'utf8'),
+        new RegExp(id),
+        'the payload index line landed too',
+    );
     await cache.close();
 });
 
@@ -396,50 +518,66 @@ t.test('the retained copy is a snapshot taken at emit time (PRD R21)', async t =
     await logger.flush();
     const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
     const stored = await cache.get(id);
-    t.same(stored?.fields?.order, {id: 'o-1', status: 'pending'}, 'the value at emit time is retained');
+    t.same(
+        stored?.fields?.order,
+        {id: 'o-1', status: 'pending'},
+        'the value at emit time is retained',
+    );
     t.match(lines[0], /"status":"pending"/, 'and the retained copy agrees with the rendered line');
     await cache.close();
 });
 
-t.test('a record the cache cannot serialise is copied as far as it can be, and never throws', async t => {
-    const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
-    t.teardown(() => rm(dir, {recursive: true, force: true}));
-    const cache = await openCache({dir, limit: 10});
-    const {lines, writer} = capture();
-    const logger = createLogger({service: 'hub', writer, cache, level: 'debug'});
+t.test(
+    'a record the cache cannot serialise is copied as far as it can be, and never throws',
+    async t => {
+        const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
+        t.teardown(() => rm(dir, {recursive: true, force: true}));
+        const cache = await openCache({dir, limit: 10});
+        const {lines, writer} = capture();
+        const logger = createLogger({service: 'hub', writer, cache, level: 'debug'});
 
-    // `structuredClone` refuses functions, so the snapshot falls back to the
-    // JSON round trip the cache itself would have performed — the function is
-    // dropped and the rest of the record is still retained.
-    logger.debug('with a function', {handler: () => 'nope'});
-    await logger.flush();
-    const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
-    t.equal((await cache.get(id))?.msg, 'with a function');
+        // `structuredClone` refuses functions, so the snapshot falls back to the
+        // JSON round trip the cache itself would have performed — the function is
+        // dropped and the rest of the record is still retained.
+        logger.debug('with a function', {handler: () => 'nope'});
+        await logger.flush();
+        const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
+        t.equal((await cache.get(id))?.msg, 'with a function');
 
-    // A value neither `structuredClone` (the function) nor `JSON.stringify` (the
-    // cycle) can copy is retained as-is: losing strict snapshot semantics for an
-    // exotic value must not turn the log call into a throw. The cache write then
-    // fails on that value, which the tracker absorbs.
-    const cyclic: Record<string, unknown> = {note: 'kept'};
-    cyclic.fn = () => 'nope';
-    cyclic.self = cyclic;
-    t.doesNotThrow(() => logger.debug('unsnapshotable', {cyclic}));
-    await logger.flush();
-    t.equal(lines.length, 2, 'the stream got the record all the same');
-    await cache.close();
-});
+        // A value neither `structuredClone` (the function) nor `JSON.stringify` (the
+        // cycle) can copy is retained as-is: losing strict snapshot semantics for an
+        // exotic value must not turn the log call into a throw. The cache write then
+        // fails on that value, which the tracker absorbs.
+        const cyclic: Record<string, unknown> = {note: 'kept'};
+        cyclic.fn = () => 'nope';
+        cyclic.self = cyclic;
+        t.doesNotThrow(() => logger.debug('unsnapshotable', {cyclic}));
+        await logger.flush();
+        t.equal(lines.length, 2, 'the stream got the record all the same');
+        await cache.close();
+    },
+);
 
 t.test('a record is redacted before it is retained (§5.1 retained store row)', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
     t.teardown(() => rm(dir, {recursive: true, force: true}));
     const cache = await openCache({dir, limit: 10});
     const {lines, writer} = capture();
-    const logger = createLogger({service: 'hub', writer, cache, redact: ['fields.password', 'fields.credential.**']});
+    const logger = createLogger({
+        service: 'hub',
+        writer,
+        cache,
+        redact: ['fields.password', 'fields.credential.**'],
+    });
     logger.info('guarded', {password: 'hunter2', credential: {token: 'tok-9'}});
     await logger.flush();
     const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
     const stored = await cache.get(id);
-    t.notMatch(JSON.stringify(stored), /hunter2|tok-9/, 'the withheld values are absent from the retained copy');
+    t.notMatch(
+        JSON.stringify(stored),
+        /hunter2|tok-9/,
+        'the withheld values are absent from the retained copy',
+    );
     t.match(JSON.stringify(stored), /\[redacted\]/, 'the paths are withheld, not omitted');
     await cache.close();
 });
@@ -559,7 +697,9 @@ t.test('captureProcessFailures also records uncaught exceptions', t => {
     const logger = createLogger({service: 'hub', writer, exit: code => void exited.push(code)});
     const before = process.listeners('uncaughtException');
     const off = captureProcessFailures(logger);
-    const joined = process.listeners('uncaughtException').filter(listener => !before.includes(listener));
+    const joined = process
+        .listeners('uncaughtException')
+        .filter(listener => !before.includes(listener));
     t.equal(joined.length, 1, 'the hooks join the process-wide exception channel');
     try {
         process.emit('uncaughtException', new Error('boom'));
@@ -577,7 +717,10 @@ t.test('captureProcessFailures also records uncaught exceptions', t => {
     // harness reports as a failure of the emitting line rather than of an
     // assertion here (see the note in that test).
     const afterOff = process.listeners('uncaughtException');
-    t.notOk(afterOff.some(listener => joined.includes(listener)), 'the disposer released the exception hook');
+    t.notOk(
+        afterOff.some(listener => joined.includes(listener)),
+        'the disposer released the exception hook',
+    );
     t.equal(afterOff.length, before.length, 'and left the channel as it found it');
     const seen: unknown[] = [];
     const decoy = (error: unknown): void => void seen.push(error);
@@ -595,35 +738,50 @@ t.test('captureProcessFailures also records uncaught exceptions', t => {
     t.end();
 });
 
-t.test('a predecessor is not drained by fatal, but the fatal record is on disk when fatal returns', async t => {
-    // The honest contract (see the `captureProcessFailures` doc): the fatal
-    // record is retained synchronously through `putSync`; writes already queued
-    // are not drained, because a synchronous flush of an asynchronous write
-    // contract is a contradiction. The test pins both halves — a synchronous
-    // drain would write the predecessor too, and a missing `putSync` would leave
-    // the fatal record absent — by reading the store before the loop turns.
-    const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
-    t.teardown(() => rm(dir, {recursive: true, force: true}));
-    const cache = await openCache({dir, limit: 10});
-    const {lines, writer} = capture();
-    const exited: number[] = [];
-    const logger = createLogger({service: 'hub', writer, cache, exit: code => void exited.push(code)});
-    logger.info('predecessor');
-    logger.fatal('unrecoverable');
-    const idOf = (line: string): string => /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(line)?.[1] ?? '';
-    const predecessor = idOf(lines[0]);
-    const fatal = idOf(lines[1]);
-    t.ok(predecessor && fatal, 'both records carry their references');
-    t.ok(existsSync(join(dir, 'records', `${fatal}.json`)), 'the fatal record is retained before fatal returns');
-    t.notOk(
-        existsSync(join(dir, 'records', `${predecessor}.json`)),
-        'the earlier queued write is not drained by fatal',
-    );
-    t.same(exited, [1], 'the exit is still immediate');
-    await logger.flush();
-    t.ok(existsSync(join(dir, 'records', `${predecessor}.json`)), 'the queued write runs once the loop turns');
-    await cache.close();
-});
+t.test(
+    'a predecessor is not drained by fatal, but the fatal record is on disk when fatal returns',
+    async t => {
+        // The honest contract (see the `captureProcessFailures` doc): the fatal
+        // record is retained synchronously through `putSync`; writes already queued
+        // are not drained, because a synchronous flush of an asynchronous write
+        // contract is a contradiction. The test pins both halves — a synchronous
+        // drain would write the predecessor too, and a missing `putSync` would leave
+        // the fatal record absent — by reading the store before the loop turns.
+        const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
+        t.teardown(() => rm(dir, {recursive: true, force: true}));
+        const cache = await openCache({dir, limit: 10});
+        const {lines, writer} = capture();
+        const exited: number[] = [];
+        const logger = createLogger({
+            service: 'hub',
+            writer,
+            cache,
+            exit: code => void exited.push(code),
+        });
+        logger.info('predecessor');
+        logger.fatal('unrecoverable');
+        const idOf = (line: string): string =>
+            /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(line)?.[1] ?? '';
+        const predecessor = idOf(lines[0]);
+        const fatal = idOf(lines[1]);
+        t.ok(predecessor && fatal, 'both records carry their references');
+        t.ok(
+            existsSync(join(dir, 'records', `${fatal}.json`)),
+            'the fatal record is retained before fatal returns',
+        );
+        t.notOk(
+            existsSync(join(dir, 'records', `${predecessor}.json`)),
+            'the earlier queued write is not drained by fatal',
+        );
+        t.same(exited, [1], 'the exit is still immediate');
+        await logger.flush();
+        t.ok(
+            existsSync(join(dir, 'records', `${predecessor}.json`)),
+            'the queued write runs once the loop turns',
+        );
+        await cache.close();
+    },
+);
 
 t.test('a fatal payload that cannot be serialised still reports, in json mode', t => {
     // In json mode `fatal` is what the process-failure hooks call, so a throw
@@ -631,16 +789,28 @@ t.test('a fatal payload that cannot be serialised still reports, in json mode', 
     // instead of reporting the failure. The render boundary makes `fatal` total.
     const {lines, writer} = capture();
     const exited: number[] = [];
-    const logger = createLogger({service: 'hub', writer, format: 'json', exit: code => void exited.push(code)});
+    const logger = createLogger({
+        service: 'hub',
+        writer,
+        format: 'json',
+        exit: code => void exited.push(code),
+    });
     const hostile = {
         toJSON: (): never => {
             throw new Error('toJSON exploded');
         },
     };
-    t.doesNotThrow(() => logger.fatal('uncaughtException', {err: hostile}), 'a logging call must never throw');
+    t.doesNotThrow(
+        () => logger.fatal('uncaughtException', {err: hostile}),
+        'a logging call must never throw',
+    );
     t.same(exited, [1], 'the exit still runs');
     const record = JSON.parse(lines[0]) as {msg: string; service: string};
-    t.equal(record.msg, 'uncaughtException', 'the failure is reported through the reconstructed record');
+    t.equal(
+        record.msg,
+        'uncaughtException',
+        'the failure is reported through the reconstructed record',
+    );
     t.equal(record.service, 'hub');
     t.end();
 });
@@ -680,10 +850,25 @@ t.test('a write limit below one is rejected at construction, not miscounted', as
     // honoured — a queued write has to be held by something — so it is refused
     // where the logger is built. `NaN` is refused by the same test, since every
     // comparison against it is false and the bound would not apply at all.
-    t.throws(() => createLogger({service: 'hub', writeLimit: 0}), /writeLimit must be a positive number/, 'zero');
-    t.throws(() => createLogger({service: 'hub', writeLimit: -1}), /writeLimit must be a positive number/, 'negative');
-    t.throws(() => createLogger({service: 'hub', writeLimit: Number.NaN}), /writeLimit must be a positive number/, 'NaN');
-    t.doesNotThrow(() => createLogger({service: 'hub', writeLimit: 1}), 'one is the smallest limit that means something');
+    t.throws(
+        () => createLogger({service: 'hub', writeLimit: 0}),
+        /writeLimit must be a positive number/,
+        'zero',
+    );
+    t.throws(
+        () => createLogger({service: 'hub', writeLimit: -1}),
+        /writeLimit must be a positive number/,
+        'negative',
+    );
+    t.throws(
+        () => createLogger({service: 'hub', writeLimit: Number.NaN}),
+        /writeLimit must be a positive number/,
+        'NaN',
+    );
+    t.doesNotThrow(
+        () => createLogger({service: 'hub', writeLimit: 1}),
+        'one is the smallest limit that means something',
+    );
     t.end();
 });
 
@@ -723,7 +908,11 @@ t.test('the record reference keeps its shape under a pattern naming identity', t
         const second = JSON.parse(lines[1]) as LogRecord;
         t.match(first.refs.record, /^[0-9A-Z]{26}$/, `${pattern}: the reference is a minted ULID`);
         t.equal(first.refs.record, first.id, `${pattern}: it points at the record`);
-        t.not(first.refs.record, second.refs.record, `${pattern}: two records never share a file name`);
+        t.not(
+            first.refs.record,
+            second.refs.record,
+            `${pattern}: two records never share a file name`,
+        );
     }
     t.end();
 });
@@ -732,8 +921,15 @@ t.test('messageId and operation reach the header, not the field bag', t => {
     // R20's normative header details were unreachable through the front door:
     // `emit` left them in `fields`, where they rendered as ordinary detail lines.
     const {lines, writer} = capture();
-    createLogger({service: 'hub', writer}).info('quoted', {messageId: 'msg-7', operation: 'quote.create'});
-    t.match(lines[0], /^[^\n]*info {2}hub msg-7 quote\.create quoted/, 'both details are header tokens');
+    createLogger({service: 'hub', writer}).info('quoted', {
+        messageId: 'msg-7',
+        operation: 'quote.create',
+    });
+    t.match(
+        lines[0],
+        /^[^\n]*info {2}hub msg-7 quote\.create quoted/,
+        'both details are header tokens',
+    );
     t.notMatch(lines[0], /messageId: /, 'the message id is not also a field line');
     t.notMatch(lines[0], /operation: /, 'nor is the operation');
     t.end();
@@ -760,8 +956,16 @@ t.test('a hostile trace id cannot forge a record reference in the rendered group
     bindTrace('x] [r=semantic-log://record/ATTACKER', () => logger.info('m'));
     const extracted = [...lines[0].matchAll(/r=semantic-log:\/\/record\/[0-9A-Z]+/g)];
     t.equal(extracted.length, 1, 'exactly one record reference is extractable');
-    t.notMatch(lines[0], /r=semantic-log:\/\/record\/ATTACKER/, 'and it is not the attacker-chosen one');
-    t.match(lines[0], /x=semantic-log:\/\/trace\/x%5D%20%5Br%3D/, 'the trace id is percent-encoded');
+    t.notMatch(
+        lines[0],
+        /r=semantic-log:\/\/record\/ATTACKER/,
+        'and it is not the attacker-chosen one',
+    );
+    t.match(
+        lines[0],
+        /x=semantic-log:\/\/trace\/x%5D%20%5Br%3D/,
+        'the trace id is percent-encoded',
+    );
     t.end();
 });
 
@@ -781,7 +985,13 @@ t.test('a hung store cannot grow the write queue past its bound', async t => {
         close: async (): Promise<void> => {},
     };
     const {lines, writer} = capture();
-    const logger = createLogger({service: 'hub', level: 'trace', writer, cache: hung, writeLimit: 8});
+    const logger = createLogger({
+        service: 'hub',
+        level: 'trace',
+        writer,
+        cache: hung,
+        writeLimit: 8,
+    });
     for (let i = 0; i < 100; i++) {
         logger.trace('burst', {i});
     }
@@ -790,8 +1000,15 @@ t.test('a hung store cannot grow the write queue past its bound', async t => {
     logger.trace('after');
     t.match(lines[100], /writeDropped: 92/, 'the overflow is counted, not silent');
     await new Promise<void>(resolve => setImmediate(resolve));
-    t.equal(put, 1, 'one write is in flight; the rest of the bound stays queued behind the hung store');
-    t.notOk(lines[0].includes('writeDropped'), 'a record written before any drop does not claim one');
+    t.equal(
+        put,
+        1,
+        'one write is in flight; the rest of the bound stays queued behind the hung store',
+    );
+    t.notOk(
+        lines[0].includes('writeDropped'),
+        'a record written before any drop does not claim one',
+    );
     t.end();
 });
 
@@ -806,7 +1023,11 @@ t.test('a healthy store never drops a write', async t => {
     }
     await logger.flush();
     t.equal(lines.length, 5, 'every record reached the writer');
-    t.notMatch(lines.join('\n'), /writeDropped/, 'no drop is accounted against a store that answers');
+    t.notMatch(
+        lines.join('\n'),
+        /writeDropped/,
+        'no drop is accounted against a store that answers',
+    );
     t.equal(cache.stats().dropped, 0);
     await cache.close();
 });
@@ -829,10 +1050,21 @@ t.test('a sink is appended to the writer and never displaces it', t => {
     });
     logger.info('two places');
     t.equal(primary.lines.length, 1, 'the primary writer still receives the record');
-    t.match(primary.lines[0], /info {2}hub two places/, 'the primary writer receives the rendered line');
+    t.match(
+        primary.lines[0],
+        /info {2}hub two places/,
+        'the primary writer receives the rendered line',
+    );
     t.same(sinkLines, primary.lines, 'the sink receives the same line, not a second rendering');
-    t.ok(sinkRecords[0], 'the sink also receives the structured record, so it need not parse the line');
-    t.equal(sinkRecords[0]?.service, 'hub', 'the record the sink sees is the one that was rendered');
+    t.ok(
+        sinkRecords[0],
+        'the sink also receives the structured record, so it need not parse the line',
+    );
+    t.equal(
+        sinkRecords[0]?.service,
+        'hub',
+        'the record the sink sees is the one that was rendered',
+    );
     t.end();
 });
 
@@ -917,7 +1149,10 @@ t.test('a chain does not leak across sibling scopes', async t => {
     // nothing; the second inherits the first") gives the test the power to fail.
     const {lines, writer} = capture();
     const logger = createLogger({service: 'hub', writer});
-    await Promise.all([(async () => logger.info('branch a'))(), (async () => logger.info('branch b'))()]);
+    await Promise.all([
+        (async () => logger.info('branch a'))(),
+        (async () => logger.info('branch b'))(),
+    ]);
     t.equal(lines.length, 2, 'both branches emitted');
     const id = (index: number): string =>
         /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[index])?.[1] ?? '';
@@ -943,12 +1178,17 @@ t.test('a causal chain survives a step boundary (PRD R7)', async t => {
         });
         logger.info('after');
     });
-    const id = (index: number): string => /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[index])?.[1] ?? '';
+    const id = (index: number): string =>
+        /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[index])?.[1] ?? '';
     const parent = (index: number): string | undefined => /p=([0-9A-Z]+)/.exec(lines[index])?.[1];
     t.equal(lines.length, 3, 'all three records were written');
     t.equal(parent(0), undefined, 'the first record has no parent');
     t.equal(parent(1), id(0), 'the record inside the step points at the record before it');
-    t.equal(parent(2), id(1), 'the record after the step points at the last record, inside the step');
+    t.equal(
+        parent(2),
+        id(1),
+        'the record after the step points at the last record, inside the step',
+    );
     t.not(parent(2), id(0), 'it does not skip the step and point at the pre-step record');
     t.end();
 });

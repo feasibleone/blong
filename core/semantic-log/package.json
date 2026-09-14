@@ -8,9 +8,9 @@
         ".": "./index.ts"
     },
     "bin": {
+        "semantic-log-flow": "./flow/run.ts",
         "semantic-log-inspect": "./bin/semantic-log-inspect.ts",
-        "semantic-log-service": "./bin/semantic-log-service.ts",
-        "semantic-log-flow": "./flow/run.ts"
+        "semantic-log-service": "./bin/semantic-log-service.ts"
     },
     "scripts": {
         "build": "true",
@@ -26,5 +26,8 @@
         "@feasibleone/blong-dev": "workspace:*",
         "@types/node": "^24",
         "tap": "^21.6.3"
+    },
+    "optionalDependencies": {
+        "@huggingface/transformers": "^4"
     }
 }

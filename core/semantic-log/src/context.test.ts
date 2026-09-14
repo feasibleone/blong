@@ -1,9 +1,15 @@
 import t from 'tap';
-import type {AmbientContext} from '../index.ts';
+import type { AmbientContext } from '../index.ts';
 import {
+    bindInboundLeg,
+    bindLeg,
     bindTrace,
     currentContext,
+    currentLeg,
     currentTrace,
+    isLegId,
+    isLegSeq,
+    isServiceName,
     lastRecordId,
     recordDecision,
     rememberRecord,
@@ -27,6 +33,9 @@ const OTHER_FLOW_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAW';
  * outlives one run, which is what makes it the drift key rather than the ULID.
  */
 const FLOW_KIND = 'transfer.single';
+
+/** A leg id in the enforced shape (PRD R22): lowercase, dot-separated. */
+const LEG = 'payer.discovery.parties';
 
 t.test('intent is visible for the whole enclosed scope', async t => {
     t.equal(currentContext().intent, undefined, 'no ambient intent by default');
@@ -112,7 +121,11 @@ t.test('withFlow rejects an identity that is not a ULID (caller misuse throws)',
             t.fail(`${label} was not rejected`);
         } catch (error) {
             t.type(error, TypeError, `${label} throws a TypeError`);
-            t.match((error as TypeError).message, /flow id must be a ULID/, `${label} says what was wrong`);
+            t.match(
+                (error as TypeError).message,
+                /flow id must be a ULID/,
+                `${label} says what was wrong`,
+            );
         }
     }
     // The failure names the offending value, so the caller is not left guessing.
@@ -144,7 +157,11 @@ t.test('withFlow rejects an absent or empty kind (caller misuse throws)', t => {
             t.fail(`${label} kind was not rejected`);
         } catch (error) {
             t.type(error, TypeError, `${label} kind throws a TypeError`);
-            t.match((error as TypeError).message, /flow kind must be a non-empty string/, `${label} says what was wrong`);
+            t.match(
+                (error as TypeError).message,
+                /flow kind must be a non-empty string/,
+                `${label} says what was wrong`,
+            );
         }
     }
     // The failure names the offending value, so the caller is not left guessing.
@@ -191,19 +208,35 @@ t.test('a taken rationale is cleared for every scope that shares its box', async
     // that is what makes consumption one-shot globally rather than per scope.
     recordDecision({discriminator: 'branch', candidates: ['a'], chosen: 'a', values: {}});
     await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
-        t.equal(takeDecision()?.discriminator, 'branch', 'the nested scope takes the inherited rationale');
+        t.equal(
+            takeDecision()?.discriminator,
+            'branch',
+            'the nested scope takes the inherited rationale',
+        );
         t.equal(takeDecision(), undefined, 'and it is gone within that scope');
     });
-    t.equal(currentContext().pendingDecision?.decision, undefined, 'the enclosing scope sees it gone too');
+    t.equal(
+        currentContext().pendingDecision?.decision,
+        undefined,
+        'the enclosing scope sees it gone too',
+    );
     t.equal(takeDecision(), undefined, 'so the enclosing scope has nothing left to attach');
 });
 
 t.test('a rationale recorded in a nested scope does not leak outward', async t => {
     await withIntent({name: 'Nested'}, async () => {
         recordDecision({discriminator: 'inner', candidates: ['b'], chosen: 'b', values: {}});
-        t.equal(currentContext().pendingDecision?.decision?.discriminator, 'inner', 'it is pending inside the scope');
+        t.equal(
+            currentContext().pendingDecision?.decision?.discriminator,
+            'inner',
+            'it is pending inside the scope',
+        );
     });
-    t.equal(currentContext().pendingDecision, undefined, 'the nested box is dropped with its scope');
+    t.equal(
+        currentContext().pendingDecision,
+        undefined,
+        'the nested box is dropped with its scope',
+    );
     t.equal(takeDecision(), undefined, 'nothing survives to explain an unrelated outer record');
 });
 
@@ -234,4 +267,173 @@ t.test('the last emitted record id is ambient and scoped', async t => {
         t.equal(lastRecordId(), '01B', 'the nested scope sees and updates the memory');
     });
     t.equal(lastRecordId(), '01B', 'the enclosing scope sees the nested update');
+});
+
+t.test('a declared leg is visible for the whole call, and only there', async t => {
+    await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
+        t.equal(currentLeg(), undefined, 'a record emitted outside any call has no leg');
+        await bindLeg({id: LEG, to: 'hub'}, async () => {
+            t.same(
+                currentLeg(),
+                {id: LEG, to: 'hub', seq: '1'},
+                'the declaration is the ambient leg',
+            );
+            t.equal(currentContext().flow?.id, FLOW_ID, 'the flow stays bound inside the call');
+            await Promise.resolve();
+            t.equal(currentLeg()?.id, LEG, 'survives an await');
+        });
+        t.equal(
+            currentLeg(),
+            undefined,
+            'the call is over: a record emitted now is not part of it',
+        );
+    });
+    t.equal(currentLeg(), undefined, 'and nothing survives the flow either');
+});
+
+t.test('calls are numbered by a counter in the enclosing scope (PRD R22)', async t => {
+    // A *path*, not a number: the receiver numbers its own calls as children of the
+    // position it was handed, so two services that each made a first call cannot
+    // claim the same slot and the order needs no coordinator and no clock.
+    await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
+        await bindLeg({id: 'payer.discovery.parties', to: 'hub'}, async () => {
+            t.equal(currentLeg()?.seq, '1', 'the first call in the execution');
+            await bindLeg({id: 'hub.discovery.payee', to: 'payee'}, async () => {
+                t.equal(
+                    currentLeg()?.seq,
+                    '1.1',
+                    'a call made while answering one belongs under it',
+                );
+                await bindLeg({id: 'payee.quote.sign', to: 'hub'}, async () => {
+                    t.equal(currentLeg()?.seq, '1.1.1', 'and nesting keeps going deeper');
+                });
+                t.equal(currentLeg()?.seq, '1.1', 'without disturbing the enclosing position');
+            });
+            await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () => {
+                t.equal(
+                    currentLeg()?.seq,
+                    '1.2',
+                    'a sibling takes the next number, not the same one',
+                );
+            });
+        });
+        await bindLeg({id: 'payer.quote.rates', to: 'hub'}, async () => {
+            t.equal(currentLeg()?.seq, '2', 'and the enclosing counter starts a new branch');
+        });
+    });
+});
+
+t.test('adopting an inbound leg names the same call, without claiming the declaration', async t => {
+    // The receiving end adopts the id and the position so its records pair with the
+    // caller's and are ordered with them — but not `to`, which is the caller's
+    // statement about where the call was aimed. It declares its *own* calls instead.
+    await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
+        await bindInboundLeg({id: 'payer.quote.rates', seq: '2'}, async () => {
+            t.same(currentLeg(), {id: 'payer.quote.rates', to: undefined, seq: '2'});
+            await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () => {
+                t.equal(
+                    currentLeg()?.seq,
+                    '2.1',
+                    'its own calls are numbered under the adopted position',
+                );
+            });
+        });
+        await bindInboundLeg({id: 'payer.discovery.parties'}, async () => {
+            t.equal(
+                currentLeg()?.seq,
+                undefined,
+                'an emitter that sent no position still names its call',
+            );
+        });
+    });
+});
+
+t.test('a leg is scoped, not positional: it does not disturb the flow position', async t => {
+    // `step` mutates the flow object every scope shares by reference, which is
+    // deliberate — a stalled flow reports its last known step. A leg must not do
+    // the same: it replaces the *store*, not the flow object, so binding one
+    // neither moves the position nor hides a step taken inside it.
+    await withFlow({id: FLOW_ID, kind: FLOW_KIND}, async () => {
+        await bindLeg({id: LEG, to: 'hub'}, async () => {
+            await step('quote', async () => undefined);
+            t.equal(currentLeg()?.id, LEG, 'still inside the call after a step');
+        });
+        t.equal(
+            currentContext().flow?.step,
+            'quote',
+            'the step taken inside the call is visible outside it',
+        );
+        t.equal(
+            currentContext().flow?.leg,
+            undefined,
+            'the leg never joins the shared flow object',
+        );
+    });
+});
+
+t.test('a declaration is refused unless it names a call and a receiver', t => {
+    // A leg belongs to a flow's call, so one bound outside a flow has nothing to be
+    // attributed to — inventing a flow to hold it would put a lie in the data, the
+    // same reason `step` throws. The id and the receiver are validated for the same
+    // class of reason: a malformed one would otherwise reach an HTTP header, a source
+    // grep and a generated diagram before anyone noticed, and a call whose receiver
+    // was guessed would misreport every leg it labelled.
+    t.throws(
+        () => bindLeg({id: LEG, to: 'hub'}, () => undefined),
+        /was bound outside a flow/,
+        'a leg outside a flow throws',
+    );
+    const rejected: Array<[string, unknown]> = [
+        ['absent', undefined],
+        ['empty', ''],
+        ['a slash', 'payer/hop'],
+        ['a space', 'payer discovery'],
+        ['a leading separator', '.payer'],
+        ['a semicolon, which would break a generated diagram', 'payer;hop'],
+        ['a number', 42],
+    ];
+    for (const [label, id] of rejected) {
+        try {
+            bindLeg({id: id as string, to: 'hub'}, () => undefined);
+            t.fail(`${label} was not rejected`);
+        } catch (error) {
+            t.type(error, TypeError, `${label} throws a TypeError`);
+            t.match((error as TypeError).message, /leg id must be/, `${label} says what was wrong`);
+        }
+    }
+    // The failure names the offending value, so the caller is not left guessing.
+    t.throws(
+        () => bindLeg({id: 'payer/hop', to: 'hub'}, () => undefined),
+        /"payer\/hop"/,
+        'the id is quoted back',
+    );
+    t.throws(
+        () => bindLeg({id: LEG, to: 'hub bus'}, () => undefined),
+        /must name the participant it calls/,
+        'a receiver that is not a name is caller misuse too',
+    );
+    // Case is not folded: a leg is usually named after the participant that makes
+    // the call, and participant names are written in code (`hubA`, not `huba`).
+    t.equal(isLegId('hubA.quote.proxy'), true, 'an uppercase participant name is a lawful leg id');
+    t.equal(isServiceName('hubA'), true, 'and a lawful receiver');
+    t.equal(isServiceName(42), false, 'a receiver that is not a string is not a name');
+    t.equal(isLegSeq('1.2.10'), true, 'a path of counters is a position');
+    t.equal(isLegSeq('1.'), false, 'and nothing else is');
+    t.throws(
+        () =>
+            withFlow({id: FLOW_ID, kind: FLOW_KIND}, () =>
+                bindInboundLeg({id: LEG, seq: 'x'}, () => undefined),
+            ),
+        /malformed position/,
+        'an adopted position is validated where it is bound',
+    );
+    t.throws(
+        () =>
+            withFlow({id: FLOW_ID, kind: FLOW_KIND}, () =>
+                bindInboundLeg({id: 'payer/hop'}, () => undefined),
+            ),
+        /leg id must be/,
+        'and so is an adopted id',
+    );
+    t.end();
 });

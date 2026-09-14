@@ -11,7 +11,8 @@
  * (R13), the change stream (R8), template search and the deploy diff (R14), the
  * correlated incidents (R15) and retiring a template
  * (`POST /templates/:ref/retire`, the writer behind R8's retired-template
- * delta). Ingest acknowledges
+ * delta), the flows observed and their sequence diagrams (`GET /flows`,
+ * `GET /flows/:reference/diagram`, R22/R23). Ingest acknowledges
  * with 202 and tells the emitter nothing else — the emitter must not wait on the
  * service (R18) — while anomalies and incidents travel on the digest (R8)
  * instead of in the response. Only a payload that is not a batch of events fails
@@ -26,32 +27,43 @@
  * empty, loudly (see `onReady` below and `.github/memory/decision.md`, Task 12).
  */
 
-import {rename} from 'node:fs/promises';
 import Fastify, {type FastifyInstance} from 'fastify';
+import {rename} from 'node:fs/promises';
+import {isUlid} from '../ulid.ts';
 import {DetectorSuite, type Anomaly} from './detectors.ts';
+import {modelOfExecution, modelOfUnion, renderSequence} from './diagram.ts';
 import {DigestLog} from './digest.ts';
 import {EmbeddingCache} from './embedding.ts';
 import {ExemplarStore} from './exemplars.ts';
 import {FACETS, isFacet, project, type FacetAnomaly} from './facets.ts';
+import {FlowLedger} from './flowLedger.ts';
 import {IncidentStore} from './incidents.ts';
-import {FlowDriftHistory, FlowShapes, createIngest, type IngestResult} from './ingest.ts';
+import {createIngest, FlowDriftHistory, FlowShapes, type IngestResult} from './ingest.ts';
 import {LineageIndex} from './lineage.ts';
-import {loadSnapshot, saveSnapshot} from './persistence.ts';
-import {createProvider, type EmbeddingConfig} from './provider.ts';
+import {loadSnapshot, saveSnapshot, SnapshotError, type Snapshot} from './persistence.ts';
+import {createProvider, providerIdentity, type EmbeddingConfig} from './provider.ts';
 import {TemplateRegistry, type TemplateEntry} from './registry.ts';
-import {deployDiff, searchTemplates} from './search.ts';
+import {deployDiff, searchRecords, searchTemplates} from './search.ts';
 
 export interface ServiceOptions {
     /** Embedding provider selection (PRD R5). */
     embedding?: EmbeddingConfig;
     /**
-     * Path to the JSON snapshot of the **template registry** — the one durable
-     * artifact this service has (PRD R4). The digest, causal lineage, incident
-     * store and flow-drift history are process-lifetime surfaces and are
-     * deliberately *not* persisted (see `.github/memory/decision.md`, Task 12).
-     * Omitted, the service is entirely in-memory and loses all of its state on
-     * restart. An unreadable snapshot is moved aside (`.corrupt`) and the
-     * service starts with an empty registry rather than refusing to serve.
+     * Path to the JSON snapshot: the **template registry** and the per-kind union of
+     * observed calls — the artifacts a restart cannot re-derive (PRD R4, D17). The
+     * digest, causal lineage, incident store, flow-drift history and the per-execution
+     * flow ring are process-lifetime surfaces and are deliberately *not* persisted (see
+     * `.github/memory/decision.md`, Task 12). Omitted, the service is entirely in-memory
+     * and loses all of its state on restart. A snapshot this service cannot use — written
+     * by another version or another embedding provider, or unreadable — is moved aside
+     * under a suffix naming the reason, and the service starts empty rather than refusing
+     * to serve.
+     *
+     * D18 ruled that union writes are debounced. They are not, and the reason is the file:
+     * the unions share the snapshot the registry is written to, and R4 requires the registry
+     * to be durable before a batch is acknowledged — so a save per accepted batch is already
+     * the design, and a debounce would only add a window in which observations are not on
+     * disk. See `.github/memory/decision.md`.
      */
     persistTo?: string;
     /** Enable request logging. Off by default so tests stay quiet. */
@@ -66,6 +78,8 @@ export interface ServiceOptions {
     flowLimit?: number;
     /** Maximum steps retained per in-flight execution (PRD R6c). */
     flowStepLimit?: number;
+    /** Injected so a caller can observe or seed the flow observations the diagrams are drawn from (R22/R23). */
+    flowLedger?: FlowLedger;
     /** Injected so a caller can observe the retention bound. */
     shapes?: FlowShapes;
     /** Injected so a caller can observe or share the per-flow-kind drift history (PRD R14). */
@@ -129,11 +143,14 @@ function readNumber(value: string | undefined, fallback: number): number {
 export function createApp(options: ServiceOptions = {}): FastifyInstance {
     const app = Fastify({logger: options.logger ?? false});
     const registry = options.registry ?? new TemplateRegistry();
-    const cache = options.cache ?? new EmbeddingCache(createProvider(options.embedding ?? {kind: 'offline', dimension: 64}));
+    const cache =
+        options.cache ??
+        new EmbeddingCache(createProvider(options.embedding ?? {kind: 'offline', dimension: 64}));
     const detectors = options.detectors ?? new DetectorSuite(DETECTORS);
     const exemplars = new ExemplarStore({limit: options.exemplarLimit ?? 5});
     const digest = new DigestLog({limit: 1000});
     const flowDrift = options.driftHistory ?? new FlowDriftHistory();
+    const ledger = options.flowLedger ?? new FlowLedger();
     const lineage = options.lineage ?? new LineageIndex();
     const incidents = options.incidents ?? new IncidentStore(options.incidentBufferLimit);
     const incidentWindowMs = options.incidentWindowMs ?? DEFAULT_INCIDENT_WINDOW_MS;
@@ -159,43 +176,64 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
             // `IngestDependencies.onAccepted`); correlation is then correct even
             // when a concurrent batch's anomalies are drained by another request.
             lineage.add(event);
+            // The flow observation is fed from the same seam, so one accepted event
+            // produces exactly one lineage node and one ledger observation, in the
+            // same order — which is what lets both ends of a call be seen by one
+            // reader, in one order (PRD R22). The batch that carried it is then saved
+            // by the route below, on the same guarantee the registry has (R4).
+            ledger.observe(event);
         },
         onTemplateAdded: entry => {
-            digest.publish('template-added', {ref: entry.ref, service: entry.service, signature: entry.signature});
+            digest.publish('template-added', {
+                ref: entry.ref,
+                service: entry.service,
+                signature: entry.signature,
+            });
         },
         onExemplar: (entry, id) => {
             digest.publish('exemplar-retained', {ref: entry.ref, record: id});
         },
         onSkipped: (error, event) => {
-            app.log.warn({err: error, eventId: event.id}, 'semantic-log: skipped an event that could not be ingested');
+            app.log.warn(
+                {err: error, eventId: event.id},
+                'semantic-log: skipped an event that could not be ingested',
+            );
         },
     });
 
-    // Persistence (PRD R4). The snapshot holds the template registry — this
-    // service's durable artifact — and nothing else (see `persistence.ts`).
+    // Persistence (PRD R4, D17-D19). The snapshot holds the template registry and the
+    // per-kind union of observed calls; the provider identity travels with it, because
+    // vectors are only comparable within one provider at one width (see `persistence.ts`).
     const snapshotPath = options.persistTo;
+    // The identity of the provider this service embeds with. Read from the configuration
+    // that built the cache rather than from the cache, so the label and the vectors come
+    // from one decision (`embedding` defaults to the offline provider, as `cache` does).
+    const provider = providerIdentity(options.embedding ?? {kind: 'offline', dimension: 64});
     if (snapshotPath) {
         // Restore before the first request: `onReady` is awaited by both
         // `listen` and `inject`, so a service handed a snapshot is never asked a
         // question before it has read it.
         //
-        // A snapshot that cannot be read does **not** fail the service — a
+        // A snapshot this service cannot use does **not** fail the service — a
         // deliberate deviation from the brief, ruled 2026-09-13 (see
-        // `.github/memory/decision.md`, Task 12). A telemetry service that
-        // refuses to serve because one cache file is truncated is worse than one
-        // that starts fresh and says so, so the unreadable file is **moved
-        // aside**, never deleted (the evidence is kept), and the registry starts
-        // empty. Both the quarantine and the empty start are logged; a silent
-        // empty start is the failure mode this replaces.
+        // `.github/memory/decision.md`, Task 12). A telemetry service that refuses to
+        // serve because one cache file is truncated is worse than one that starts fresh
+        // and says so, so the file is **moved aside**, never deleted (the evidence is
+        // kept), and the service starts empty. The suffix names *why*: an older version
+        // and another provider wrote files that are not broken, and calling them
+        // `.corrupt` would be a lie the operator then has to disprove. Both the
+        // quarantine and the empty start are logged; a silent empty start is the failure
+        // mode this replaces.
         app.addHook('onReady', async () => {
-            let entries: TemplateEntry[];
+            let restored: Snapshot | undefined;
             try {
-                entries = await loadSnapshot(snapshotPath);
+                restored = await loadSnapshot(snapshotPath, provider);
             } catch (error) {
-                const quarantined = `${snapshotPath}.corrupt`;
+                const fault = error instanceof SnapshotError ? error.fault : 'corrupt';
+                const quarantined = `${snapshotPath}.${fault}`;
                 app.log.warn(
                     {err: error, snapshotPath, quarantined},
-                    'semantic-log: the registry snapshot could not be read; moving it aside and starting with an empty registry',
+                    'semantic-log: the snapshot could not be used; moving it aside and starting empty',
                 );
                 try {
                     await rename(snapshotPath, quarantined);
@@ -204,29 +242,43 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
                     // not writable). Booting still wins: refusing to start over a
                     // file we cannot move is the outcome this rule forbids. The
                     // failure is reported rather than swallowed, and it is
-                    // escalated to `error` because the unreadable file will be
-                    // overwritten by the next save — the evidence is then gone.
+                    // escalated to `error` because the file will be overwritten by
+                    // the next save — the evidence is then gone.
                     app.log.error(
                         {err: moveError, snapshotPath, quarantined},
-                        'semantic-log: the unreadable snapshot could not be moved aside; it will be overwritten by the next save',
+                        'semantic-log: the snapshot could not be moved aside; it will be overwritten by the next save',
                     );
                 }
                 return;
             }
-            if (entries.length) {
-                registry.replaceAll(entries);
+            if (restored === undefined) {
+                return;
             }
+            registry.replaceAll(restored.entries);
+            // The observed calls survive the restart too, and like the registry they are
+            // restored *whole*: `restore` replaces the unions, so a snapshot is the state
+            // the service had, not an addition to whatever it observed since booting.
+            ledger.restore(restored.kinds);
         });
     }
+
+    /** Write the snapshot as it stands now: the registry, the unions, the identity. */
+    const writeSnapshot = (): Promise<void> =>
+        snapshotPath === undefined
+            ? Promise.resolve()
+            : saveSnapshot(snapshotPath, {
+                  provider,
+                  entries: registry.list(),
+                  kinds: ledger.unions(),
+              });
+
     // One save per *change*, not per response: only the routes that mutate the
     // registry call this. Saving from the handler rather than from `onResponse`
     // is deliberate — `onResponse` is not awaited by `inject`, so a save there is
     // fire-and-forget and cannot be asserted through the routes; here it is part
     // of the request, and a failure is reported to the caller as a 500. A
     // missing path makes this a no-op, so the mutation routes need no branch.
-    const persist: () => Promise<void> = snapshotPath
-        ? () => saveSnapshot(snapshotPath, registry.list())
-        : () => Promise.resolve();
+    const persist: () => Promise<void> = writeSnapshot;
 
     app.get('/health', async () => ({status: 'ok'}));
 
@@ -348,11 +400,75 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
         return record;
     });
 
-    // Template-level semantic search (R14). A request without `q` is an empty
-    // result rather than an error: the route is a filter, and "search for
-    // nothing" is not a malformed request. The query text is embedded through
-    // the same cache as a template, under a `query:`-prefixed key, so a repeated
-    // query costs nothing and can never collide with a fingerprint.
+    // What has been observed, per flow kind and per execution (R22/R23). Two reads of
+    // one index: the unions are what the kind-level diagram is drawn from, and the
+    // summaries are what a caller picks an execution out of. The summaries carry no
+    // per-record detail — a thousand executions' observations would be a response no
+    // one asked for — so a caller asks for the one execution it wants next.
+    app.get('/flows', async () => ({
+        unions: ledger.unions(),
+        executions: ledger.executions(),
+        evictions: ledger.evictions(),
+        truncations: ledger.truncations(),
+    }));
+
+    /**
+     * The sequence diagram of one flow kind, or of one execution.
+     *
+     * One route rather than two, because Fastify cannot register the same pattern with
+     * two parameter names — and the id's shape is a sound discriminator either way: a
+     * flow id is the caller-minted ULID (`isUlid`) and a kind is a dotted lowercase
+     * name, so no reference can be both. What the shape decides is which store is
+     * asked, and the two failures stay legible: an execution that was never retained
+     * (evicted, or never observed) is not a kind nobody has heard of, and telling a
+     * caller the wrong one sends it looking in the wrong place.
+     */
+    app.get('/flows/:reference/diagram', async (request, reply) => {
+        const {reference} = request.params as {reference: string};
+        if (isUlid(reference)) {
+            const execution = ledger.executionOf(reference);
+            if (execution === undefined) {
+                return reply.code(404).send({
+                    error: 'flow execution not retained',
+                    retained: ledger.size(),
+                    evictions: ledger.evictions(),
+                });
+            }
+            return {
+                id: execution.id,
+                kind: execution.kind,
+                closed: execution.closed,
+                observed: {
+                    services: execution.services,
+                    refs: execution.refs,
+                    legs: execution.legs,
+                },
+                diagram: renderSequence(modelOfExecution(execution)),
+            };
+        }
+        const union = ledger.unionOf(reference);
+        if (union === undefined) {
+            return reply.code(404).send({error: 'unknown flow kind', kinds: ledger.kinds()});
+        }
+        return {
+            kind: union.kind,
+            observed: {
+                executions: union.executions,
+                services: union.services,
+                legs: union.legs,
+            },
+            diagram: renderSequence(modelOfUnion(union)),
+        };
+    });
+
+    // Semantic search (R14, R24). Templates AND retained records are ranked, in one list
+    // with a `kind` discriminator: a caller asking "where does this show up" wants both
+    // "which template is this like" and "which occurrence looked like this", and two
+    // endpoints would make it ask twice and merge by hand. A request without `q` is an
+    // empty result rather than an error: the route is a filter, and "search for nothing"
+    // is not a malformed request. The query text is embedded through the same cache as a
+    // template, under a `query:`-prefixed key, so a repeated query costs nothing and can
+    // never collide with a fingerprint.
     app.get('/search', async request => {
         const {q, limit} = request.query as {q?: string; limit?: string};
         if (!q) {
@@ -362,13 +478,30 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
         // The same finite-bound rule as `/diff`: `Number('abc')` is `NaN`, and
         // `slice(0, NaN)` is `[]`, so a malformed limit would read as "no
         // matches" rather than falling back to the default.
-        return searchTemplates(registry, vector, readNumber(limit, 10)).map(result => ({
+        const cap = readNumber(limit, 10);
+        const templates = searchTemplates(registry, vector, cap).map(result => ({
+            kind: 'template' as const,
             ref: result.ref,
             score: Number(result.score.toFixed(6)),
             service: result.entry.service,
             signature: result.entry.signature,
             count: result.entry.count,
         }));
+        const records = searchRecords(exemplars, cache, vector, cap).map(result => ({
+            kind: 'record' as const,
+            record: result.id,
+            score: Number(result.score.toFixed(6)),
+            service: result.event.service,
+            signature: result.event.template ?? null,
+            msg: result.event.msg ?? null,
+            time: result.event.time,
+        }));
+        // Merged on the score. Ties need no tie-break of their own: each half arrives
+        // already totally ordered (templates by score and ref, records by score and id),
+        // and `sort` is stable, so a tie keeps the order the halves were concatenated in
+        // — templates first, then records. That is deterministic, and it is the same
+        // answer every time rather than whatever order the two lists happened to build.
+        return [...templates, ...records].sort((a, b) => b.score - a.score).slice(0, cap);
     });
 
     // The deploy diff (R14): "what is new since the last release?" answered

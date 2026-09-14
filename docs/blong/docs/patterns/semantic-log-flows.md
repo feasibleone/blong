@@ -54,185 +54,178 @@ They are listed with their reasons under
 
 ## How to read the annotations
 
-Both diagrams use mermaid's `autonumber`, which numbers **arrows only** — the `Note over …` lines
-carry no number, so the tables below key on the arrow numbers and name the note by its position.
+The diagrams below are **generated from a real run** of the fixtures — every arrow is a call a
+record declared, and every label is the **leg id the source declares**. That is the point of the
+ids: `hub.transfer.deliver` in the diagram is a literal in `flow/hub.ts`, and the table under each
+diagram names the file and line that declares it, so a reader moves from a picture of a run to the
+line of code that made it without guessing.
 
-Each leg is annotated with one of three things:
+Each diagram uses mermaid's `autonumber`, which numbers **arrows only** — the `Note over …` lines
+carry no number. The table is the diagram in full, and it says what a picture cannot:
 
-| Annotation     | Meaning                                                                                       |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| a file + step  | the fixture implements the leg; the named file is the participant that logs it                |
-| _collapsed_    | the fixture carries the leg's effect inside another leg, because the protocol is simplified   |
-| _not modelled_ | the fixture does not perform the leg — the reason is given, so the omission is not a surprise |
+| Column              | Meaning                                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `call`              | the leg id, as declared in the code                                                                                         |
+| `caller → receiver` | who declared the call, and who they declared it to — the receiver the caller _named_, not one inferred from who answered    |
+| `phase`             | the step the call was observed in (`discovery`, `quote`, `transfer`)                                                        |
+| `position`          | the counter path the caller assigned: `2.2.1` is the first call made while answering `2.2`                                  |
+| `declared`          | how many declarations were observed — one per execution, so a chatty call site is still one call                            |
+| `answered`          | of those, how many had their receiver observed too. **`0` is the interesting case**: the call was made and nothing answered |
+| `declared in`       | the file and line that declares the id                                                                                      |
 
-**The protocol is deliberately simplified.** The diagrams describe the exchange as Mojaloop
-publishes it (`GET`/`PUT` resource pairs, two quote rounds, a separate FX settlement leg) — see
-[above](#these-flows-are-a-demonstration) for exactly what the fixtures keep, drop and invent. The
-fixtures collapse the protocol onto three generic `POST` routes — `/parties`, `/quotes`,
-`/transfers` — with the **phase names taken from the diagrams** (`discovery`, `quote`, `transfer`).
-A leg that the fixtures collapse is still recorded here, so the difference between the diagram and
-the code is a written decision rather than a gap a reader has to notice.
+An arrow drawn with a cross (`--x`) is a call the caller declared that nothing answered — a receiver
+that is missing, failing, or wired to the wrong address. A call seen only from its receiver's side
+is drawn as a note rather than an arrow, because an arrow needs a caller and the only one available
+would be an invention.
+
+**The protocol is deliberately simplified.** The fixture collapses Mojaloop's published exchange
+(`GET`/`PUT` resource pairs, two quote rounds, separate FX settlement legs) onto three generic
+`POST` routes — `/parties`, `/quotes`, `/transfers` — keeping the published **phase names**
+(`discovery`, `quote`, `transfer`). What each fixture keeps, collapses and drops relative to the
+published protocol is stated in prose under each diagram, so the difference between what is drawn
+here and what the protocol says is a written decision rather than a gap a reader has to notice.
+
+Regenerate both blocks with:
+
+```bash
+cd core/semantic-log
+SEMANTIC_LOG_UPDATE_DIAGRAMS=1 ./node_modules/.bin/tap test/flow/observedFlows.test.ts
+```
 
 ## Cross-currency (single scheme)
 
 Four participants: `payer`, `hub`, `fxp` (the FX provider), `payee`. Wired by `startFlow('single')`
 in `flow/flows.ts`.
 
+Relative to the published exchange, this fixture:
+
+- **collapses the two quote rounds into one** — the payer sends one `POST /quotes` that carries both
+  the FX request and the main quote, and the hub threads the provider's rate through the payee and
+  merges both answers into the single reply;
+- **does not model the FX provider's transfer legs** — the provider is consulted in the quote phase
+  only, and the hub settles directly with the payee. A second settlement participant would add no
+  new observability, so its absence is a decision rather than an oversight;
+- **keeps the liquidity reservations out of the wire** — the hub's `withhold({liquidity})` is
+  retained in the record and never transmitted (R10), which is why no leg carries it.
+
+Before the generated block, this section carried a hand-written diagram of the **published**
+protocol and a table mapping each of its legs to the fixture. Both are gone: the diagram drifted
+from the code silently, and the table was the wrong answer to a reasonable request — what a reader
+needs is not a legend but a label that can be found in the source. The prose above is what the
+tables carried that a generated table cannot: which parts of the published exchange this fixture
+deliberately does not implement.
+
+<!-- BEGIN OBSERVED FLOWS: transfer.single -->
+
+Participants: `payer`, `hub`, `payee`, `fxp`. 7 calls observed across 1 execution(s).
+
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Payer as Payer DFSP
-    participant Hub as Mojaloop Hub (Switch)
-    participant FXP as FX Provider (FXP)
-    participant Payee as Payee DFSP
-
-    Note over Payer, Payee: PHASE 1: DISCOVERY
-    Payer->>Hub: GET /parties/{Type}/{ID}
-    Hub->>Payee: GET /parties/{Type}/{ID}
-    Payee-->>Hub: PUT /parties/{Type}/{ID} (Returns currency info: e.g., EUR)
-    Hub-->>Payer: PUT /parties/{Type}/{ID}
-
-    Note over Payer, Payee: PHASE 2: AGREEMENT (FX + Final Quote)
-    Payer->>Hub: POST /quotes (Request FX options from source USD to target EUR)
-    Hub->>FXP: POST /quotes (Dispatched to participating FXPs)
-    FXP-->>Hub: PUT /quotes/{ID} (Provides conversion rate + cryptographic condition)
-    Hub-->>Payer: PUT /quotes/{ID}
-
-    Payer->>Hub: POST /quotes (Main payment quote detailing final converted fee)
-    Hub->>Payee: POST /quotes
-    Payee-->>Hub: PUT /quotes/{ID} (Returns final cryptographic ILP Condition)
-    Hub-->>Payer: PUT /quotes/{ID}
-
-    Note over Payer, Payee: PHASE 3: TRANSFER EXECUTION
-    Payer->>Hub: POST /transfers (USD Debited, holds ILP condition)
-    Note over Hub: Hub reserves USD liquidity from Payer, moves to FXP's holding ledger
-    Hub->>FXP: POST /transfers (Notifies FXP to release EUR)
-    FXP->>Hub: POST /transfers (EUR Debited from FXP)
-    Note over Hub: Hub reserves EUR liquidity from FXP, moves to Payee ledger
-    Hub->>Payee: POST /transfers (Delivers EUR amount)
-    Payee-->>Hub: PUT /transfers/{ID} (Provides cryptographic ILP Fulfillment preimage)
-    Note over Hub: Hub commits all reserves simultaneously (Atomicity)
-    Hub-->>FXP: PUT /transfers/{ID} (Fulfillment passed to FXP)
-    Hub-->>Payer: PUT /transfers/{ID} (Fulfillment passed to Payer as Proof)
+    participant payer
+    participant hub
+    participant payee
+    participant fxp
+    Note over payer, fxp: PHASE 1: discovery
+    payer->>hub: payer.discovery.parties
+    hub->>payee: hub.discovery.payee
+    Note over payer, fxp: PHASE 2: quote
+    payer->>hub: payer.quote.rates
+    hub->>fxp: hub.quote.fx
+    hub->>payee: hub.quote.payee
+    Note over payer, fxp: PHASE 3: transfer
+    payer->>hub: payer.transfer.submit
+    hub->>payee: hub.transfer.deliver
 ```
 
-### Leg by leg
+| call                      | caller → receiver | phase     | position | declared | answered | declared in         |
+| ------------------------- | ----------------- | --------- | -------- | -------- | -------- | ------------------- |
+| `payer.discovery.parties` | `payer` → `hub`   | discovery | 1        | 1        | 1        | `flow/payer.ts:66`  |
+| `hub.discovery.payee`     | `hub` → `payee`   | discovery | 1.1      | 1        | 1        | `flow/hub.ts:65`    |
+| `payer.quote.rates`       | `payer` → `hub`   | quote     | 2        | 1        | 1        | `flow/payer.ts:78`  |
+| `hub.quote.fx`            | `hub` → `fxp`     | quote     | 2.1      | 1        | 1        | `flow/hub.ts:88`    |
+| `hub.quote.payee`         | `hub` → `payee`   | quote     | 2.2      | 1        | 1        | `flow/hub.ts:99`    |
+| `payer.transfer.submit`   | `payer` → `hub`   | transfer  | 3        | 1        | 1        | `flow/payer.ts:106` |
+| `hub.transfer.deliver`    | `hub` → `payee`   | transfer  | 3.1      | 1        | 1        | `flow/hub.ts:130`   |
 
-| Leg  | Diagram leg                               | Fixture                                                                                                                                                                                                         |
-| ---- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Payer → Hub `GET /parties/{Type}/{ID}`    | `flow/payer.ts` step `discovery`: `hop(payer, hubUrl, '/parties', …)`, logging `looking up payee` with the `req` block                                                                                          |
-| 2    | Hub → Payee `GET /parties/{Type}/{ID}`    | `flow/hub.ts` route `/parties`: `hop(hub, payeeUrl, '/parties', …)`, logging `party lookup forwarded`                                                                                                           |
-| 3    | Payee → Hub `PUT /parties/{ID}`           | `flow/payee.ts` route `/parties` answers `{currency: 'EUR'}`, logging `party profile returned`                                                                                                                  |
-| 4    | Hub → Payer `PUT /parties/{ID}`           | the `{status, body}` result `hop` returns; the payer logs `payee found` with `res.status` and the top-level field `payeeCurrency`                                                                               |
-| 5    | Payer → Hub `POST /quotes` (FX options)   | `payer.ts` step `quote`: `hop(payer, hubUrl, '/quotes', {amount, from, to})`, logging `requesting fx quote` — see legs 8–9 for the collapsed round                                                              |
-| 6    | Hub → FXP `POST /quotes`                  | `hub.ts` route `/quotes`: `hop(hub, fxpUrl, '/quotes', …)`, logging `quote request received`                                                                                                                    |
-| 7    | FXP → Hub `PUT /quotes/{ID}`              | `flow/fxp.ts`: `decide('rate-within-limit', {rate, rateLimit}, …)`, then `rate published` `{rate, condition}` — or `rate declined` and a 409 (fault F5)                                                         |
-| 8    | Hub → Payer `PUT /quotes/{ID}` (round 1)  | _collapsed_ into leg 12: the fixture carries one quote round, so the provider's `rate` is threaded through the payee and merged into the single answer                                                          |
-| 9    | Payer → Hub `POST /quotes` (main quote)   | _collapsed_ into leg 5: one `POST /quotes` from the payer covers both rounds of the diagram                                                                                                                     |
-| 10   | Hub → Payee `POST /quotes`                | `hub.ts` route `/quotes`: `hop(hub, payeeUrl, '/quotes', fx.body)` — the provider's rate is forwarded to the payee, not re-derived                                                                              |
-| 11   | Payee → Hub `PUT /quotes/{ID}`            | `payee.ts` route `/quotes` answers `{condition: 'sha256:condition'}`, logging `quote signed`                                                                                                                    |
-| 12   | Hub → Payer `PUT /quotes/{ID}`            | `hub.ts` answers `{…payee.body, rate}` and logs `quote assembled` `{rate}`. The payer prices it with `decide('quote-acceptable', {rate, rateLimit, status})`, logging `quote accepted` or `quote refused` (409) |
-| 13   | Payer → Hub `POST /transfers`             | `payer.ts` step `transfer`: `hop(payer, hubUrl, '/transfers', {amount, currency})`, logging `submitting transfer`                                                                                               |
-| note | Hub reserves USD liquidity                | `hub.ts` route `/transfers`: `withhold({routing: …})` and `withhold({liquidity: {reserved, currency}})`, then `liquidity reserved` — **retained, never transmitted** (R10)                                      |
-| 14   | Hub → FXP `POST /transfers`               | _not modelled_: the fixture's provider is consulted in the quote phase only, and the hub settles directly with the payee. A second settlement participant would add no new observability                        |
-| 15   | FXP → Hub `POST /transfers` (EUR debited) | _not modelled_ — same leg                                                                                                                                                                                       |
-| note | Hub reserves EUR, moves to Payee ledger   | the same single `withhold({liquidity})` as the previous note: one reservation is what the fixture's simplified protocol needs                                                                                   |
-| 16   | Hub → Payee `POST /transfers`             | `hub.ts`: `hop(hub, payeeUrl, '/transfers', body)`, logging `settlement committed` `{res}` on success                                                                                                           |
-| 17   | Payee → Hub `PUT /transfers/{ID}`         | `payee.ts` route `/transfers` answers `{fulfilment: 'sha256:preimage'}`, logging `transfer fulfilled` — or `transfer refused` (422, F1) or `transfer awaiting fulfilment` (504, F4)                             |
-| note | Hub commits all reserves (atomicity)      | `hub.ts`: `settlement committed` on the happy path; on a refusal `withhold({settlement: …})` then `error('settlement failed')` → 502, with the withheld detail riding that record                               |
-| 18   | Hub → FXP `PUT /transfers/{ID}`           | _not modelled_ (leg 14)                                                                                                                                                                                         |
-| 19   | Hub → Payer `PUT /transfers/{ID}`         | the reply the payer's `hop` returns; `payer.ts` logs `transfer complete` `{res}` and answers 200 `{status: 'settled'}`                                                                                          |
+<!-- END OBSERVED FLOWS: transfer.single -->
 
 ## Inter-scheme cross-currency
 
 Seven participants: `payer`, `hubA`, `fxpA`, `proxy`, `hubB`, `fxp`, `payee`. Wired by
 `startFlow('inter')`. The two schemes each hold **their own** provider, which is what makes the
 corridor's rate and the originating scheme's indication two different numbers — see the additions
-below the table.
+below the block.
+
+<!-- BEGIN OBSERVED FLOWS: transfer.inter -->
+
+Participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxpA`, `fxp`. 14 calls observed across 1
+execution(s).
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Payer as Payer DFSP (Scheme A)
-    participant HubA as Mojaloop Hub A
-    participant Proxy as Proxy Adapter (Cross-Border Link)
-    participant HubB as Mojaloop Hub B
-    participant FXP as FX Provider
-    participant Payee as Payee DFSP (Scheme B)
-
-    Note over Payer, Payee: PHASE 1: INTER-SCHEME DISCOVERY
-    Payer->>HubA: GET /parties/{Type}/{ID}
-    HubA->>Proxy: Route request internationally
-    Proxy->>HubB: Forward to Target Ecosystem
-    HubB->>Payee: GET /parties/{Type}/{ID}
-    Payee-->>HubB: PUT /parties/{Type}/{ID}
-    HubB-->>Proxy: Return Payee profile
-    Proxy-->>HubA: Forward profile
-    HubA-->>Payer: PUT /parties/{Type}/{ID}
-
-    Note over Payer, Payee: PHASE 2: INTER-SCHEME AGREEMENT & FX
-    Payer->>HubA: POST /quotes (Asks for cross-scheme FX conversion)
-    HubA->>Proxy: Forward Quote Request
-    Proxy->>HubB: Query FXP / Payee terms
-    HubB->>FXP: POST /quotes (FX details)
-    FXP-->>HubB: PUT /quotes (Returns FX terms + Cryptographic Condition)
-    HubB->>Payee: POST /quotes (Final delivery amount)
-    Payee-->>HubB: PUT /quotes (Signs final terms)
-    HubB-->>Proxy: Aggregate multi-hop response
-    Proxy-->>HubA: Deliver end-to-end quote configuration
-    HubA-->>Payer: PUT /quotes/{ID}
-
-    Note over Payer, Payee: PHASE 3: INTER-SCHEME TRANSFER (Atomic Settlement)
-    Payer->>HubA: POST /transfers (Locks funds locally in Scheme A)
-    Note over HubA: Hub A blocks Payer balance
-    HubA->>Proxy: Prepare intermediate transfer
-    Proxy->>HubB: POST /transfers (Locks FXP/Payee obligations in Scheme B)
-    Note over HubB: Hub B blocks FXP balance
-    HubB->>Payee: POST /transfers (Deliver target amount)
-    Payee-->>HubB: PUT /transfers/{ID} (Provides secret ILP Fulfillment proof)
-    Note over HubB: Hub B releases EUR to Payee instantly, commits local entries
-    HubB-->>Proxy: Bubble up ILP Fulfillment
-    Proxy-->>HubA: Deliver ILP Fulfillment
-    Note over HubA: Hub A releases USD to Scheme A liquidity network, commits local entries
-    HubA-->>Payer: PUT /transfers/{ID} (Success acknowledgement)
+    participant payer
+    participant hubA
+    participant proxy
+    participant hubB
+    participant payee
+    participant fxpA
+    participant fxp
+    Note over payer, fxp: PHASE 1: discovery
+    payer->>hubA: payer.discovery.parties
+    hubA->>proxy: hubA.discovery.proxy
+    proxy->>hubB: proxy.discovery.corridor
+    hubB->>payee: hub.discovery.payee
+    Note over payer, fxp: PHASE 2: quote
+    payer->>hubA: payer.quote.rates
+    hubA->>fxpA: hubA.quote.local
+    hubA->>proxy: hubA.quote.proxy
+    proxy->>hubB: proxy.quote.corridor
+    hubB->>fxp: hub.quote.fx
+    hubB->>payee: hub.quote.payee
+    Note over payer, fxp: PHASE 3: transfer
+    payer->>hubA: payer.transfer.submit
+    hubA->>proxy: hubA.transfer.proxy
+    proxy->>hubB: proxy.transfer.corridor
+    hubB->>payee: hub.transfer.deliver
 ```
 
-### Leg by leg
+| call                       | caller → receiver | phase     | position | declared | answered | declared in         |
+| -------------------------- | ----------------- | --------- | -------- | -------- | -------- | ------------------- |
+| `payer.discovery.parties`  | `payer` → `hubA`  | discovery | 1        | 1        | 1        | `flow/payer.ts:66`  |
+| `hubA.discovery.proxy`     | `hubA` → `proxy`  | discovery | 1.1      | 1        | 1        | `flow/hubA.ts:57`   |
+| `proxy.discovery.corridor` | `proxy` → `hubB`  | discovery | 1.1.1    | 1        | 1        | `flow/proxy.ts:45`  |
+| `hub.discovery.payee`      | `hubB` → `payee`  | discovery | 1.1.1.1  | 1        | 1        | `flow/hub.ts:65`    |
+| `payer.quote.rates`        | `payer` → `hubA`  | quote     | 2        | 1        | 1        | `flow/payer.ts:78`  |
+| `hubA.quote.local`         | `hubA` → `fxpA`   | quote     | 2.1      | 1        | 1        | `flow/hubA.ts:85`   |
+| `hubA.quote.proxy`         | `hubA` → `proxy`  | quote     | 2.2      | 1        | 1        | `flow/hubA.ts:93`   |
+| `proxy.quote.corridor`     | `proxy` → `hubB`  | quote     | 2.2.1    | 1        | 1        | `flow/proxy.ts:46`  |
+| `hub.quote.fx`             | `hubB` → `fxp`    | quote     | 2.2.1.1  | 1        | 1        | `flow/hub.ts:88`    |
+| `hub.quote.payee`          | `hubB` → `payee`  | quote     | 2.2.1.2  | 1        | 1        | `flow/hub.ts:99`    |
+| `payer.transfer.submit`    | `payer` → `hubA`  | transfer  | 3        | 1        | 1        | `flow/payer.ts:106` |
+| `hubA.transfer.proxy`      | `hubA` → `proxy`  | transfer  | 3.1      | 1        | 1        | `flow/hubA.ts:124`  |
+| `proxy.transfer.corridor`  | `proxy` → `hubB`  | transfer  | 3.1.1    | 1        | 1        | `flow/proxy.ts:47`  |
+| `hub.transfer.deliver`     | `hubB` → `payee`  | transfer  | 3.1.1.1  | 1        | 1        | `flow/hub.ts:130`   |
 
-| Leg  | Diagram leg                            | Fixture                                                                                                                                                                                                                               |
-| ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Payer → HubA `GET /parties`            | `payer.ts` step `discovery` → `hop(payer, hubAUrl, '/parties', …)`; the payer is pointed at hub A rather than the local hub                                                                                                           |
-| 2    | HubA → Proxy "route internationally"   | `flow/hubA.ts` route `/parties`: `hop(hubA, proxyUrl, '/parties', …)`, logging `party lookup routed internationally` — hub A has **no directory of its own**, which is what makes it a separate participant rather than a URL change  |
-| 3    | Proxy → HubB "forward to target"       | `flow/proxy.ts` route `/parties` (phase `discovery`): `decide('route-selection', {corridor, reachable})` then `hop(proxy, hubBUrl, …)`, logging `routing to target ecosystem` — the rationale rides that record (R11)                 |
-| 4    | HubB → Payee `GET /parties`            | hub B is `installHub` with scheme B's provider and payee: route `/parties` logs `party lookup forwarded`                                                                                                                              |
-| 5    | Payee → HubB `PUT /parties`            | `payee.ts` route `/parties`; `party profile returned`                                                                                                                                                                                 |
-| 6    | HubB → Proxy profile                   | the `{status, body}` the `hop` returns — the proxy adds no transformation, so it logs nothing extra                                                                                                                                   |
-| 7    | Proxy → HubA profile                   | the same result, one hop back up the corridor                                                                                                                                                                                         |
-| 8    | HubA → Payer profile                   | `hubA.ts` replies with the proxy's status and body; the payer logs `payee found`                                                                                                                                                      |
-| 9    | Payer → HubA `POST /quotes`            | `payer.ts` step `quote`                                                                                                                                                                                                               |
-| 10   | HubA → Proxy "forward quote request"   | `hubA.ts` route `/quotes`: `hop(hubA, proxyUrl, '/quotes', body)`                                                                                                                                                                     |
-| 11   | Proxy → HubB "query FXP / payee terms" | `proxy.ts` route `/quotes` (phase `quote`): route, then `hop(proxy, hubBUrl, …)`                                                                                                                                                      |
-| 12   | HubB → FXP `POST /quotes`              | `hub.ts` route `/quotes` on hub B: `hop(hubB, fxpUrl, …)`, logging `quote request received`. On a refusal it logs `provider declined the quote` and **carries the provider's status back** rather than synthesising a rate (fault F5) |
-| 13   | FXP → HubB terms                       | `fxp.ts`; `rate published` or `rate declined`                                                                                                                                                                                         |
-| 14   | HubB → Payee `POST /quotes`            | `hub.ts`: `hop(hubB, payeeUrl, '/quotes', fx.body)`                                                                                                                                                                                   |
-| 15   | Payee → HubB "signs final terms"       | `payee.ts`; `quote signed`                                                                                                                                                                                                            |
-| 16   | HubB → Proxy "aggregate"               | `hub.ts` route `/quotes` answers `{…payee.body, rate}`, logging `quote assembled`                                                                                                                                                     |
-| 17   | Proxy → HubA "deliver configuration"   | the `{status, body}` the proxy's `hop` returns                                                                                                                                                                                        |
-| 18   | HubA → Payer `PUT /quotes/{ID}`        | `hubA.ts` route `/quotes` answers the **corridor's** body. It first takes a **local indication** from its own provider and logs `cross-scheme quote assembled` `{rate, localRate, localStatus}` — see the additions below             |
-| 19   | Payer → HubA `POST /transfers`         | `payer.ts` step `transfer`; hub A logs `local funds blocked`                                                                                                                                                                          |
-| note | Hub A blocks the payer balance         | `hubA.ts`: `withhold({liquidity: {reserved, currency, scheme: 'A'}})` — R10, retained locally and released only if the settlement fails                                                                                               |
-| 20   | HubA → Proxy "prepare intermediate"    | `hubA.ts`: `hop(hubA, proxyUrl, '/transfers', body)`                                                                                                                                                                                  |
-| 21   | Proxy → HubB `POST /transfers`         | `proxy.ts` route `/transfers` (phase `transfer`): route, then `hop(proxy, hubBUrl, …)`                                                                                                                                                |
-| note | Hub B blocks the FXP balance           | `hub.ts` on hub B: `withhold({routing: …})` and `withhold({liquidity: …})`                                                                                                                                                            |
-| 22   | HubB → Payee "deliver target amount"   | `hub.ts`: `hop(hubB, payeeUrl, '/transfers', body)`                                                                                                                                                                                   |
-| 23   | Payee → HubB secret fulfilment         | `payee.ts` route `/transfers`; `transfer fulfilled` (or `transfer refused` 422 / `transfer awaiting fulfilment` 504)                                                                                                                  |
-| note | Hub B releases EUR and commits         | `hub.ts`: `settlement committed`, or `withhold({settlement: …})` + `error('settlement failed')`                                                                                                                                       |
-| 24   | HubB → Proxy "bubble up fulfilment"    | the hop result propagating up; no extra record in the proxy                                                                                                                                                                           |
-| 25   | Proxy → HubA "deliver fulfilment"      | the hop result propagating up                                                                                                                                                                                                         |
-| note | Hub A releases USD and commits         | `hubA.ts`: `inter-scheme settlement committed` `{res}`, with the reserved liquidity still local. On failure: `error('inter-scheme settlement failed')` → 502, and the withheld liquidity rides that record                            |
-| 26   | HubA → Payer success acknowledgement   | the effect: `payer.ts` logs `transfer complete` and answers 200 `{status: 'settled'}`                                                                                                                                                 |
+<!-- END OBSERVED FLOWS: transfer.inter -->
+
+Relative to the published exchange, this fixture:
+
+- **routes the corridor through a proxy participant** — hub A holds no directory of its own, so
+  `hubA.discovery.proxy` is a real hop to a real participant rather than a URL change;
+- **keeps two providers, one per scheme** — hub A asks `fxpA` for its own indication
+  (`hubA.quote.local`) and the corridor's rate comes from hub B's provider (`hub.quote.fx`). Wiring
+  both schemes to one provider would make the pair hub A writes unable to differ, so nothing could
+  tell a hub that settled on the wrong quote from a correct one;
+- **carries each phase end to end** — one leg per hop per phase, which is what makes the counter
+  paths read as a depth-first walk of the corridor (`1.1.1.1`, `2.2.1.2`, `3.1.1.1`).
 
 ### Legs the fixture adds, and the diagrams do not draw
+
+The generated blocks draw what the service **observed**; this section is about the fixture's own
+additions relative to the published protocol — the records the both-ends discipline requires, which
+are calls rather than protocol legs.
 
 The fixtures are not only a transcription of the diagrams. Four things they carry are absent from
 the drawings, and each is deliberate:

@@ -24,6 +24,7 @@
  * full note).
  */
 
+import {bindLeg} from '../src/context.ts';
 import type {Logger} from '../src/logger.ts';
 import {hop, type Participant} from './participant.ts';
 
@@ -45,16 +46,28 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
     app.post('/parties', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
         const logger = stepLogger();
-        const result = await participant.run(traceId, flowId, () =>
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('discovery', async () => {
-                // No party directory of its own for the far scheme: everything
-                // crosses. It is the difference from the single-scheme hub that
-                // makes this a separate participant rather than a URL change.
-                logger.info('party lookup routed internationally', {
+                // The receipt carries the caller's leg: a call is an edge only when
+                // both ends of it are observed, and this is the far end of the
+                // payer's `/parties` call (PRD R22).
+                logger.info('party lookup received', {
                     req: {operation: 'POST', target: '/parties'},
                 });
-                const forwarded = await hop(participant, options.proxyUrl, '/parties', request.body, traceId, flowId);
+                const forwarded = await bindLeg(
+                    {id: 'hubA.discovery.proxy', to: 'proxy'},
+                    async () => {
+                        // No party directory of its own for the far scheme: everything
+                        // crosses. It is the difference from the single-scheme hub that
+                        // makes this a separate participant rather than a URL change.
+                        logger.info('party lookup routed internationally', {
+                            req: {operation: 'POST', target: '/parties'},
+                        });
+                        return hop(participant, options.proxyUrl, '/parties', request.body);
+                    },
+                );
                 return {status: forwarded.status, body: forwarded.body};
             }),
         );
@@ -65,20 +78,31 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
     app.post('/quotes', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
         const logger = stepLogger();
-        const result = await participant.run(traceId, flowId, () =>
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('quote', async () => {
                 const body = (request.body ?? {}) as {amount?: number; from?: string; to?: string};
-                logger.info('cross-scheme quote requested', {amount: body.amount, from: body.from, to: body.to});
-                const local = await hop(
-                    participant,
-                    options.fxpUrl,
-                    '/quotes',
-                    {amount: body.amount, from: body.from, to: body.to},
-                    traceId,
-                    flowId,
-                );
-                const crossed = await hop(participant, options.proxyUrl, '/quotes', body, traceId, flowId);
+                logger.info('cross-scheme quote requested', {
+                    amount: body.amount,
+                    from: body.from,
+                    to: body.to,
+                });
+                // The origin scheme's own indication, and the corridor's quote, are two
+                // separate calls — which is why they are two legs and not one. Folding
+                // them together would report a corridor price the far scheme never gave.
+                const local = await bindLeg({id: 'hubA.quote.local', to: 'fxpA'}, async () => {
+                    logger.info('local indication requested', {from: body.from, to: body.to});
+                    return hop(participant, options.fxpUrl, '/quotes', {
+                        amount: body.amount,
+                        from: body.from,
+                        to: body.to,
+                    });
+                });
+                const crossed = await bindLeg({id: 'hubA.quote.proxy', to: 'proxy'}, async () => {
+                    logger.info('corridor quote requested', {amount: body.amount});
+                    return hop(participant, options.proxyUrl, '/quotes', body);
+                });
                 logger.info('cross-scheme quote assembled', {
                     res: {status: crossed.status},
                     rate: (crossed.body as {rate?: number} | undefined)?.rate,
@@ -95,17 +119,29 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
     app.post('/transfers', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
         const logger = stepLogger();
-        const result = await participant.run(traceId, flowId, () =>
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('transfer', async () => {
                 const body = (request.body ?? {}) as {amount?: number; currency?: string};
                 logger.info('local funds blocked', {amount: body.amount, currency: body.currency});
                 // Local risk taken before the corridor is asked to settle. Retained
                 // here and released only when something fails: on the happy path the
                 // reservation never leaves this participant.
-                logger.withhold({liquidity: {reserved: body.amount, currency: body.currency, scheme: 'A'}});
+                logger.withhold({
+                    liquidity: {reserved: body.amount, currency: body.currency, scheme: 'A'},
+                });
                 const started = Date.now();
-                const settled = await hop(participant, options.proxyUrl, '/transfers', body, traceId, flowId);
+                const settled = await bindLeg(
+                    {id: 'hubA.transfer.proxy', to: 'proxy'},
+                    async () => {
+                        logger.info('corridor settlement requested', {
+                            amount: body.amount,
+                            currency: body.currency,
+                        });
+                        return hop(participant, options.proxyUrl, '/transfers', body);
+                    },
+                );
                 if (settled.status >= 400) {
                     logger.error('inter-scheme settlement failed', {
                         err: {message: `proxy returned ${settled.status}`},

@@ -79,7 +79,9 @@ function flowBatch(participants: string[], trace: string, time: number): object 
     };
 }
 
-async function readDigest(app: {inject: (options: object) => Promise<{json: () => unknown}>}): Promise<DigestView> {
+async function readDigest(app: {
+    inject: (options: object) => Promise<{json: () => unknown}>;
+}): Promise<DigestView> {
     const response = await app.inject({method: 'GET', url: '/digest?since=0'});
     return response.json() as DigestView;
 }
@@ -107,17 +109,33 @@ t.test('a two-flow rehearsal yields templates, a digest, and no duplicate alerts
 
     const digest = await readDigest(app);
     const added = digest.entries.filter(entry => entry.kind === 'template-added');
-    t.equal(added.length, templates.length, 'one template-added delta per new template, not per event');
+    t.equal(
+        added.length,
+        templates.length,
+        'one template-added delta per new template, not per event',
+    );
 
     const alerts = digest.entries.filter(entry => entry.kind === 'anomaly');
-    t.equal(alerts.length, templates.length, 'one alert per distinct template: the shared occurrences raise none');
+    t.equal(
+        alerts.length,
+        templates.length,
+        'one alert per distinct template: the shared occurrences raise none',
+    );
     const alertedRefs = alerts.map(entry => entry.data.anomalyRef);
-    t.equal(new Set(alertedRefs).size, alertedRefs.length, 'no duplicate alerts: no template is alerted twice');
+    t.equal(
+        new Set(alertedRefs).size,
+        alertedRefs.length,
+        'no duplicate alerts: no template is alerted twice',
+    );
     t.ok(
         alerts.every(entry => entry.data.kind === 'novelty'),
         'every alert is the novelty of a template seen for the first time',
     );
-    t.equal(digest.stats.dropped, 0, 'the rehearsal fits inside the digest bound, so nothing was silently evicted');
+    t.equal(
+        digest.stats.dropped,
+        0,
+        'the rehearsal fits inside the digest bound, so nothing was silently evicted',
+    );
 
     // The R14/R16 route reads, on the same rehearsal: the deploy diff sees the
     // new templates, and a facet is served for a real template.
@@ -128,36 +146,57 @@ t.test('a two-flow rehearsal yields templates, a digest, and no duplicate alerts
     const facet = (
         await app.inject({method: 'GET', url: `/templates/${templates[0].ref}?facet=compliance`})
     ).json() as {intents: string[]};
-    t.same(facet.intents, ['User_Transfer'], 'the compliance facet projects the intent the events carried');
-});
-
-t.test('the provider is consulted once per distinct template across both flows (R3/SC3)', async t => {
-    const provider = createProvider({kind: 'offline', dimension: 32});
-    const cache = new EmbeddingCache(provider);
-    const app = createApp({embedding: {kind: 'offline', dimension: 32}, cache});
-    t.teardown(() => app.close());
-
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: flowBatch(['payer', 'hub', 'fxp', 'payee'], 'tr-1', 1000),
-    });
-    const afterFirstFlow = cache.calls();
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: flowBatch(['payer', 'hubA', 'proxy', 'hubB', 'fxp', 'payee'], 'tr-2', 2000),
-    });
-
-    const templates = (await app.inject({method: 'GET', url: '/templates'})).json() as unknown[];
-    t.equal(afterFirstFlow, 4, 'the first flow embedded its four fingerprints');
-    t.equal(
-        cache.calls(),
-        templates.length,
-        `one embedding per distinct template (${templates.length}), not per event (10 events were sent)`,
+    t.same(
+        facet.intents,
+        ['User_Transfer'],
+        'the compliance facet projects the intent the events carried',
     );
-    t.equal(cache.size(), templates.length, 'the cache holds exactly one vector per distinct template');
 });
+
+t.test(
+    'the provider is consulted once per distinct template across both flows (R3/SC3)',
+    async t => {
+        const provider = createProvider({kind: 'offline', dimension: 32});
+        const cache = new EmbeddingCache(provider);
+        const app = createApp({embedding: {kind: 'offline', dimension: 32}, cache});
+        t.teardown(() => app.close());
+
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: flowBatch(['payer', 'hub', 'fxp', 'payee'], 'tr-1', 1000),
+        });
+        const afterFirstFlow = cache.calls();
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: flowBatch(['payer', 'hubA', 'proxy', 'hubB', 'fxp', 'payee'], 'tr-2', 2000),
+        });
+
+        const templates = (
+            await app.inject({method: 'GET', url: '/templates'})
+        ).json() as unknown[];
+        // Four fingerprints, and one record each retained from them — the first flow's cost.
+        t.equal(
+            afterFirstFlow,
+            8,
+            'the first flow embedded its four templates and the four records kept from them',
+        );
+        // The second flow's six participants reuse some of those templates (the provider and the
+        // payee are the far end of either topology) and add one, so the cost follows templates and
+        // the retention bound, not the sixteen events that were sent (R3/SC3, D20).
+        t.equal(
+            cache.size(),
+            templates.length + 10,
+            'the cache holds one vector per template plus one per retained record',
+        );
+        t.equal(
+            cache.calls(),
+            templates.length + 10,
+            `one embedding per template (${templates.length}) and one per retained record, not per event`,
+        );
+    },
+);
 
 t.test('the registry survives a restart (R4)', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'semantic-log-acceptance-'));
@@ -184,7 +223,11 @@ t.test('the registry survives a restart (R4)', async t => {
         ref: string;
         count: number;
     }>;
-    t.equal(after.length, before.length, 'the template set is restored, not recomputed from records');
+    t.equal(
+        after.length,
+        before.length,
+        'the template set is restored, not recomputed from records',
+    );
     t.same(
         after.map(entry => [entry.ref, entry.count]).sort(),
         before.map(entry => [entry.ref, entry.count]).sort(),
@@ -192,45 +235,69 @@ t.test('the registry survives a restart (R4)', async t => {
     );
 });
 
-t.test('identity is stable across deploys: the fingerprint is the identity, not the text (R12)', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 32}});
-    t.teardown(() => app.close());
+t.test(
+    'identity is stable across deploys: the fingerprint is the identity, not the text (R12)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 32}});
+        t.teardown(() => app.close());
 
-    const deploy = (id: string, fingerprint: string, template: string): object => ({
-        events: [{id, time: 1, fingerprint, service: 'hub', template, refs: {record: id, trace: 'tr-deploy'}}],
-    });
+        const deploy = (id: string, fingerprint: string, template: string): object => ({
+            events: [
+                {
+                    id,
+                    time: 1,
+                    fingerprint,
+                    service: 'hub',
+                    template,
+                    refs: {record: id, trace: 'tr-deploy'},
+                },
+            ],
+        });
 
-    // Same fingerprint, reworded message: one template, not two. The service does
-    // no identity work — the emitter's fingerprint *is* the identity — so a
-    // reworded message is not a new template, however the text changed.
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: deploy('d1', 'stablefingerprint', '[LEVEL: INFO] [SERVICE: hub] [MSG: transfer <NUM> accepted]'),
-    });
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: deploy('d2', 'stablefingerprint', '[LEVEL: INFO] [SERVICE: hub] [MSG: transfer <NUM> accepted by hub]'),
-    });
+        // Same fingerprint, reworded message: one template, not two. The service does
+        // no identity work — the emitter's fingerprint *is* the identity — so a
+        // reworded message is not a new template, however the text changed.
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: deploy(
+                'd1',
+                'stablefingerprint',
+                '[LEVEL: INFO] [SERVICE: hub] [MSG: transfer <NUM> accepted]',
+            ),
+        });
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: deploy(
+                'd2',
+                'stablefingerprint',
+                '[LEVEL: INFO] [SERVICE: hub] [MSG: transfer <NUM> accepted by hub]',
+            ),
+        });
 
-    const before = (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{
-        ref: string;
-        count: number;
-    }>;
-    t.equal(before.length, 1, 'a reworded message under the same fingerprint is one template');
-    t.equal(before[0].count, 2, 'and the second occurrence is a count, not a second template');
+        const before = (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{
+            ref: string;
+            count: number;
+        }>;
+        t.equal(before.length, 1, 'a reworded message under the same fingerprint is one template');
+        t.equal(before[0].count, 2, 'and the second occurrence is a count, not a second template');
 
-    // The contrast: a different fingerprint with the same text is a different
-    // template, because identity is the fingerprint and nothing else.
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: deploy('d3', 'otherfingerprint', '[LEVEL: INFO] [SERVICE: hub] [MSG: transfer <NUM> accepted]'),
-    });
-    const after = (await app.inject({method: 'GET', url: '/templates'})).json() as unknown[];
-    t.equal(after.length, 2, 'identity is the fingerprint, not the message text');
-});
+        // The contrast: a different fingerprint with the same text is a different
+        // template, because identity is the fingerprint and nothing else.
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: deploy(
+                'd3',
+                'otherfingerprint',
+                '[LEVEL: INFO] [SERVICE: hub] [MSG: transfer <NUM> accepted]',
+            ),
+        });
+        const after = (await app.inject({method: 'GET', url: '/templates'})).json() as unknown[];
+        t.equal(after.length, 2, 'identity is the fingerprint, not the message text');
+    },
+);
 
 t.test('a second provider kind works through the same route (R5)', async t => {
     // The offline provider needs no keys and no network, so it cannot show that
@@ -239,7 +306,10 @@ t.test('a second provider kind works through the same route (R5)', async t => {
     // the network at all.
     const seen: string[] = [];
     const vector = [0.25, 0.25, 0.25, 0.25];
-    const fakeFetch = async (url: string, init: {body: string}): Promise<{ok: boolean; json: () => Promise<unknown>}> => {
+    const fakeFetch = async (
+        url: string,
+        init: {body: string},
+    ): Promise<{ok: boolean; json: () => Promise<unknown>}> => {
         seen.push((JSON.parse(init.body) as {input: string}).input);
         return {ok: true, json: async () => ({data: [{embedding: vector}]})};
     };
@@ -259,14 +329,32 @@ t.test('a second provider kind works through the same route (R5)', async t => {
         url: '/events',
         payload: {
             events: [
-                {id: 'r5-1', time: 10, fingerprint: 'fp-remote', service: 'hub', template: '[MSG: a]'},
-                {id: 'r5-2', time: 11, fingerprint: 'fp-remote', service: 'hub', template: '[MSG: a]'},
+                {
+                    id: 'r5-1',
+                    time: 10,
+                    fingerprint: 'fp-remote',
+                    service: 'hub',
+                    template: '[MSG: a]',
+                },
+                {
+                    id: 'r5-2',
+                    time: 11,
+                    fingerprint: 'fp-remote',
+                    service: 'hub',
+                    template: '[MSG: a]',
+                },
             ],
         },
     });
     t.equal(response.statusCode, 202, 'the remote-backed service ingests through the same route');
-    t.equal(seen.length, 1, 'the remote provider is consulted once per distinct template');
-    t.equal(seen[0], '[MSG: a]', 'and it receives the structural signature, not the fingerprint');
+    // One call for the template, however many records carry it — plus one for
+    // each record the store retains, because a record is searchable by what it
+    // says (D20, R24). The signature is what the *template* call embeds.
+    t.equal(
+        seen.length,
+        3,
+        'the remote provider is consulted once per template and once per retained record',
+    );
 
     const templates = (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{
         ref: string;
@@ -277,90 +365,170 @@ t.test('a second provider kind works through the same route (R5)', async t => {
 
     // The remote vector is the one the service ranks on: a query finds the
     // template, so the pluggable provider is genuinely in the read path too.
-    const found = (await app.inject({method: 'GET', url: '/search?q=anything'})).json() as Array<{ref: string}>;
-    t.ok(found.some(entry => entry.ref === 'fp-remote'), 'the remote vector is what the search route ranks');
+    const found = (await app.inject({method: 'GET', url: '/search?q=anything'})).json() as Array<{
+        ref: string;
+    }>;
+    t.ok(
+        found.some(entry => entry.ref === 'fp-remote'),
+        'the remote vector is what the search route ranks',
+    );
 });
 
-t.test('all three detectors fire through the ingest route and stay distinguishable (R6)', async t => {
-    const app = createApp({embedding: {kind: 'offline', dimension: 32}});
-    t.teardown(() => app.close());
+t.test(
+    'all three detectors fire through the ingest route and stay distinguishable (R6)',
+    async t => {
+        const app = createApp({embedding: {kind: 'offline', dimension: 32}});
+        t.teardown(() => app.close());
 
-    // R6a novelty: a fingerprint the registry has never held.
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {events: [{id: 'nov-1', time: 1000, fingerprint: 'fp-novelty', service: 'payer', template: '[MSG: novel]'}]},
-    });
+        // R6a novelty: a fingerprint the registry has never held.
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    {
+                        id: 'nov-1',
+                        time: 1000,
+                        fingerprint: 'fp-novelty',
+                        service: 'payer',
+                        template: '[MSG: novel]',
+                    },
+                ],
+            },
+        });
 
-    // R6b rate-shift: five completed windows of one occurrence, then a second
-    // occurrence in the sixth. The baseline is the template's own history
-    // (per template, never global), so this surge is reachable only through the
-    // route — a unit test could feed `RateTracker` directly.
-    const rateEvents = [0, 60_000, 120_000, 180_000, 240_000, 300_000, 300_001].map((time, index) => ({
-        id: `rate-${index}`,
-        time,
-        fingerprint: 'fp-rate',
-        service: 'hub',
-        template: '[MSG: rate]',
-    }));
-    await app.inject({method: 'POST', url: '/events', payload: {events: rateEvents}});
+        // R6b rate-shift: five completed windows of one occurrence, then a second
+        // occurrence in the sixth. The baseline is the template's own history
+        // (per template, never global), so this surge is reachable only through the
+        // route — a unit test could feed `RateTracker` directly.
+        const rateEvents = [0, 60_000, 120_000, 180_000, 240_000, 300_000, 300_001].map(
+            (time, index) => ({
+                id: `rate-${index}`,
+                time,
+                fingerprint: 'fp-rate',
+                service: 'hub',
+                template: '[MSG: rate]',
+            }),
+        );
+        await app.inject({method: 'POST', url: '/events', payload: {events: rateEvents}});
 
-    // R6c drift: two completed executions of the SAME flow kind with different
-    // shapes. A template's own vector can never move — it is keyed by its own
-    // fingerprint — so drift is reachable only at the flow granularity, and only
-    // through the route's flow handling.
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {
-            events: [
-                {id: 'a1', time: 5000, fingerprint: 'fp-single-1', service: 'hub', template: '[MSG: step1]', flow: {id: FLOW_A, kind: 'transfer.single', index: 0, status: 'running'}},
-                {id: 'a2', time: 5001, fingerprint: 'fp-single-2', service: 'hub', template: '[MSG: step2]', flow: {id: FLOW_A, kind: 'transfer.single', index: 1, status: 'completed'}},
-            ],
-        },
-    });
-    await app.inject({
-        method: 'POST',
-        url: '/events',
-        payload: {
-            events: [
-                {id: 'b1', time: 6000, fingerprint: 'fp-single-1', service: 'hub', template: '[MSG: step1]', flow: {id: FLOW_B, kind: 'transfer.single', index: 0, status: 'running'}},
-                {id: 'b2', time: 6001, fingerprint: 'fp-single-2', service: 'hub', template: '[MSG: step2]', flow: {id: FLOW_B, kind: 'transfer.single', index: 1, status: 'running'}},
-                {id: 'b3', time: 6002, fingerprint: 'fp-single-3', service: 'hub', template: '[MSG: step3]', flow: {id: FLOW_B, kind: 'transfer.single', index: 2, status: 'completed'}},
-            ],
-        },
-    });
+        // R6c drift: two completed executions of the SAME flow kind with different
+        // shapes. A template's own vector can never move — it is keyed by its own
+        // fingerprint — so drift is reachable only at the flow granularity, and only
+        // through the route's flow handling.
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    {
+                        id: 'a1',
+                        time: 5000,
+                        fingerprint: 'fp-single-1',
+                        service: 'hub',
+                        template: '[MSG: step1]',
+                        flow: {id: FLOW_A, kind: 'transfer.single', index: 0, status: 'running'},
+                    },
+                    {
+                        id: 'a2',
+                        time: 5001,
+                        fingerprint: 'fp-single-2',
+                        service: 'hub',
+                        template: '[MSG: step2]',
+                        flow: {id: FLOW_A, kind: 'transfer.single', index: 1, status: 'completed'},
+                    },
+                ],
+            },
+        });
+        await app.inject({
+            method: 'POST',
+            url: '/events',
+            payload: {
+                events: [
+                    {
+                        id: 'b1',
+                        time: 6000,
+                        fingerprint: 'fp-single-1',
+                        service: 'hub',
+                        template: '[MSG: step1]',
+                        flow: {id: FLOW_B, kind: 'transfer.single', index: 0, status: 'running'},
+                    },
+                    {
+                        id: 'b2',
+                        time: 6001,
+                        fingerprint: 'fp-single-2',
+                        service: 'hub',
+                        template: '[MSG: step2]',
+                        flow: {id: FLOW_B, kind: 'transfer.single', index: 1, status: 'running'},
+                    },
+                    {
+                        id: 'b3',
+                        time: 6002,
+                        fingerprint: 'fp-single-3',
+                        service: 'hub',
+                        template: '[MSG: step3]',
+                        flow: {id: FLOW_B, kind: 'transfer.single', index: 2, status: 'completed'},
+                    },
+                ],
+            },
+        });
 
-    const digest = await readDigest(app);
-    const alerts = digest.entries.filter(entry => entry.kind === 'anomaly').map(entry => entry.data);
-    const kinds = [...new Set(alerts.map(alert => alert.kind))].sort();
-    t.same(kinds, ['drift', 'novelty', 'rate-shift'], 'all three detector kinds fired through the route');
+        const digest = await readDigest(app);
+        const alerts = digest.entries
+            .filter(entry => entry.kind === 'anomaly')
+            .map(entry => entry.data);
+        const kinds = [...new Set(alerts.map(alert => alert.kind))].sort();
+        t.same(
+            kinds,
+            ['drift', 'novelty', 'rate-shift'],
+            'all three detector kinds fired through the route',
+        );
 
-    const novelty = alerts.find(alert => alert.kind === 'novelty');
-    t.equal(novelty?.anomalyRef, 'fp-novelty', 'novelty is keyed by the template');
-    const rateShift = alerts.find(alert => alert.kind === 'rate-shift');
-    t.equal(rateShift?.anomalyRef, 'fp-rate', 'rate-shift is keyed by the template that surged');
-    t.match(String(rateShift?.detail), /baseline/, 'and reports the flat-baseline surge');
-    const drift = alerts.find(alert => alert.kind === 'drift');
-    t.equal(drift?.anomalyRef, 'transfer.single', 'drift is keyed by the flow kind, not by a template ref');
-    t.equal(drift?.templateRef, 'fp-single-3', 'and names the template whose event triggered it');
+        const novelty = alerts.find(alert => alert.kind === 'novelty');
+        t.equal(novelty?.anomalyRef, 'fp-novelty', 'novelty is keyed by the template');
+        const rateShift = alerts.find(alert => alert.kind === 'rate-shift');
+        t.equal(
+            rateShift?.anomalyRef,
+            'fp-rate',
+            'rate-shift is keyed by the template that surged',
+        );
+        t.match(String(rateShift?.detail), /baseline/, 'and reports the flat-baseline surge');
+        const drift = alerts.find(alert => alert.kind === 'drift');
+        t.equal(
+            drift?.anomalyRef,
+            'transfer.single',
+            'drift is keyed by the flow kind, not by a template ref',
+        );
+        t.equal(
+            drift?.templateRef,
+            'fp-single-3',
+            'and names the template whose event triggered it',
+        );
 
-    // The alert stamps land on the right surface: template alerts on the
-    // template entry, and the flow drift on the deploy diff's `drifted` bucket.
-    const entry = (await app.inject({method: 'GET', url: '/templates/fp-rate'})).json() as {
-        alerts: {noveltyAt?: number; rateShiftAt?: number};
-    };
-    t.equal(entry.alerts.noveltyAt, 0, 'the first rate event was also that template\'s novelty');
-    t.equal(entry.alerts.rateShiftAt, 300_001, 'the surge is stamped on the template it belongs to');
+        // The alert stamps land on the right surface: template alerts on the
+        // template entry, and the flow drift on the deploy diff's `drifted` bucket.
+        const entry = (await app.inject({method: 'GET', url: '/templates/fp-rate'})).json() as {
+            alerts: {noveltyAt?: number; rateShiftAt?: number};
+        };
+        t.equal(entry.alerts.noveltyAt, 0, "the first rate event was also that template's novelty");
+        t.equal(
+            entry.alerts.rateShiftAt,
+            300_001,
+            'the surge is stamped on the template it belongs to',
+        );
 
-    const diff = (await app.inject({method: 'GET', url: '/diff?from=0&to=100000'})).json() as {
-        drifted: Array<{kind: string; count: number; lastDistance: number}>;
-    };
-    const drifted = diff.drifted.find(item => item.kind === 'transfer.single');
-    t.ok(drifted, 'the flow kind whose shape moved is what the diff reports as drifted');
-    t.equal(drifted?.count, 1, 'one drift recorded for the kind');
-    t.ok((drifted?.lastDistance ?? 0) > 0.25, 'the recorded distance is beyond the drift epsilon');
-});
+        const diff = (await app.inject({method: 'GET', url: '/diff?from=0&to=100000'})).json() as {
+            drifted: Array<{kind: string; count: number; lastDistance: number}>;
+        };
+        const drifted = diff.drifted.find(item => item.kind === 'transfer.single');
+        t.ok(drifted, 'the flow kind whose shape moved is what the diff reports as drifted');
+        t.equal(drifted?.count, 1, 'one drift recorded for the kind');
+        t.ok(
+            (drifted?.lastDistance ?? 0) > 0.25,
+            'the recorded distance is beyond the drift epsilon',
+        );
+    },
+);
 
 t.test('the exemplar bound holds through the route (R13)', async t => {
     const app = createApp({embedding: {kind: 'offline', dimension: 16}, exemplarLimit: 2});
@@ -394,7 +562,11 @@ t.test('the exemplar bound holds through the route (R13)', async t => {
     t.equal(entry.exemplars.length, 2, 'but only the exemplar bound is retained');
     t.same(entry.exemplars, ['x1', 'x2'], 'the first occurrences are the ones kept');
 
-    t.equal((await app.inject({method: 'GET', url: '/records/x1'})).statusCode, 200, 'a retained exemplar is fetchable');
+    t.equal(
+        (await app.inject({method: 'GET', url: '/records/x1'})).statusCode,
+        200,
+        'a retained exemplar is fetchable',
+    );
     t.equal(
         (await app.inject({method: 'GET', url: '/records/x3'})).statusCode,
         404,

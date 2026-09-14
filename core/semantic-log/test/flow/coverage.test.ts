@@ -35,7 +35,9 @@ type Demonstration = string;
  * participant's own cache, not against objects a test built.
  */
 const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
-    R1: ['src/fingerprint.test.ts::two executions differing only in variable values share a fingerprint'],
+    R1: [
+        'src/fingerprint.test.ts::two executions differing only in variable values share a fingerprint',
+    ],
     R2: ['src/stack.test.ts::line and column numbers never affect the result'],
     R3: [
         'src/fingerprint.test.ts::serialization is a deterministic prefixed string',
@@ -45,7 +47,11 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
         'src/service/registry.test.ts::the registry is the durable artifact: it answers without records (PRD R4)',
         'src/service/persistence.test.ts',
     ],
-    R5: ['src/service/provider.test.ts::the offline provider needs no configuration and no network'],
+    R5: [
+        'src/service/provider.test.ts::the offline provider needs no configuration and no network',
+        'src/service/provider.test.ts::the environment opts a dev session into the real model, and defaults to offline (D24)',
+        'test/local-model.test.ts::the real model is the one the documentation names (R25)',
+    ],
     R6: [
         'src/service/detectors.test.ts::a steady rate produces nothing, a surge produces rate-shift (PRD R6b)',
         'test/flow/faults.test.ts::F2: a retry burst is one template at a rate-shift, not 41 new templates (PRD R6b, R12)',
@@ -60,6 +66,11 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
     R9: [
         'test/flow/faults.test.ts::F4: a stalled payee is attributed to the payee and its wait is recorded',
         'test/flow/participant.test.ts::phase steps the bound flow and refuses to step outside one',
+        // The *partial* verdict this requirement carried is closed by the flow ledger: a
+        // record is indexed by its execution id, so one run's chain is a lookup rather than
+        // a scan, and the routes expose it (see `flowLedger.ts` and `.github/memory/decision.md`).
+        'src/service/flowLedger.test.ts::the executions are published most recently observed first',
+        'src/service/app.test.ts::the flows route lists what was observed, per kind and per execution (R23)',
     ],
     R10: [
         'test/flow/faults.test.ts::F1: a refused transfer is attributed to the payee and the hub releases what it withheld',
@@ -69,11 +80,18 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
         'test/flow/faults.test.ts::F5: a declined rate stops the chain at the provider and nothing settles',
         'test/flow/happy.test.ts::the inter-scheme flow crosses the proxy in one execution and one trace (PRD R9, R11)',
     ],
-    R12: ['test/flow/faults.test.ts::F2: a retry burst is one template at a rate-shift, not 41 new templates (PRD R6b, R12)'],
-    R13: ['src/service/ingest.test.ts::exemplars are retained in full for the first N events, then counted only (PRD R13)'],
+    R12: [
+        'test/flow/faults.test.ts::F2: a retry burst is one template at a rate-shift, not 41 new templates (PRD R6b, R12)',
+    ],
+    R13: [
+        'src/service/ingest.test.ts::exemplars are retained in full for the first N events, then counted only (PRD R13)',
+    ],
     R14: [
         'src/service/search.test.ts::search ranks templates by similarity to the query vector (PRD R14)',
         'src/service/search.test.ts::deploy diff reports templates added and removed, and counts the rest (PRD R14)',
+        // The search surface covers retained records as well as templates (R24 below), which is
+        // the amendment this row carries: "what is like this" is now askable of an occurrence.
+        'src/service/ingest.test.ts::search returns templates and retained records, each with its kind (R24)',
     ],
     R15: [
         'src/service/incidents.test.ts::anomalies across services on one trace become ONE incident (PRD R15)',
@@ -91,6 +109,32 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
     ],
     R20: ['src/render.test.ts::the header carries the listed details in a greppable order'],
     R21: ['test/spawn.test.ts::a linked invocation resolves a record whose writer has exited'],
+    // R22-R25 are the leg-identity task's requirements. They are listed here rather than left to
+    // a follow-up because a requirement with no demonstration in this register is exactly what
+    // the register exists to catch — and each of these four was disputed at least once (the ids
+    // were nearly a demo-only concept, and the local provider was nearly CI-only), which is what
+    // makes the *pair* of demonstrations the point: the library unit test and the real run.
+    R22: [
+        'src/context.test.ts::calls are numbered by a counter in the enclosing scope (PRD R22)',
+        'src/propagation.test.ts::only the identities that are bound are propagated, in one header',
+        'test/flow/participant.test.ts::a hop carries every identity, in one header (PRD R22)',
+        'src/service/flowLedger.test.ts::a declared call is an edge even when nothing answers (PRD R22)',
+    ],
+    R23: [
+        'src/service/diagram.test.ts::a rendered diagram is a sequence diagram of what was observed',
+        'src/service/app.test.ts::the kind diagram is the union of the calls observed under it (R23)',
+        'test/flow/observedFlows.test.ts::the published flow shapes are what a run observes (PRD R23)',
+    ],
+    R24: [
+        // Cited as a prefix of the test name: the file escapes the apostrophe in `template's`,
+        // and this check matches a literal substring, so the citation stops before it.
+        'src/service/search.test.ts::a record is ranked by its own vector, not its template',
+        'src/service/ingest.test.ts::search returns templates and retained records, each with its kind (R24)',
+    ],
+    R25: [
+        'src/service/provider.test.ts::the offline provider hashes text, so it cannot answer a paraphrase (R5, R25)',
+        'test/local-model.test.ts::a paraphrase ranks the record it means first, which the hash provider cannot do (R24/R25)',
+    ],
 };
 
 /**
@@ -100,10 +144,14 @@ const COVERAGE: Readonly<Record<string, readonly Demonstration[]>> = {
  * comparison and comparing a numeric ordering against a lexicographic one fails for
  * reasons that have nothing to do with coverage.
  */
-const REQUIREMENTS = Array.from({length: 21}, (_, index) => `R${index + 1}`).sort();
+const REQUIREMENTS = Array.from({length: 25}, (_, index) => `R${index + 1}`).sort();
 
-t.test('every v1 requirement is mapped to at least one demonstration', t => {
-    t.same(Object.keys(COVERAGE).sort(), REQUIREMENTS, 'R1–R21 are all accounted for, and nothing else is');
+t.test('every requirement is mapped to at least one demonstration', t => {
+    t.same(
+        Object.keys(COVERAGE).sort(),
+        REQUIREMENTS,
+        'R1–R25 are all accounted for, and nothing else is',
+    );
     for (const requirement of REQUIREMENTS) {
         const demonstrations = COVERAGE[requirement] ?? [];
         t.ok(demonstrations.length > 0, `${requirement} has a demonstration`);
@@ -127,10 +175,12 @@ t.test('every demonstration exists, and the named test is in the file it names',
     for (const requirement of REQUIREMENTS) {
         for (const demonstration of COVERAGE[requirement] ?? []) {
             const [file, test] = demonstration.split('::');
-            const source = await readFile(new URL(`../../${file}`, import.meta.url), 'utf8').catch(error => {
-                t.fail(`${requirement} -> ${file}: ${String(error)}`);
-                return undefined;
-            });
+            const source = await readFile(new URL(`../../${file}`, import.meta.url), 'utf8').catch(
+                error => {
+                    t.fail(`${requirement} -> ${file}: ${String(error)}`);
+                    return undefined;
+                },
+            );
             if (source === undefined || test === undefined) {
                 continue;
             }

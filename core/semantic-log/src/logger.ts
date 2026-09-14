@@ -12,8 +12,8 @@ import type {PayloadStore, RecordStore} from './cache.ts';
 import {currentContext, lastRecordId, rememberRecord, takeDecision} from './context.ts';
 import {withIdentity} from './fingerprint.ts';
 import type {LevelName} from './level.ts';
-import {enabled, LEVELS, levelName, levelValue} from './level.ts';
-import type {ErrorDetail, LogRecord, RequestDetail, ResponseDetail} from './record.ts';
+import {enabled, levelName, LEVELS, levelValue} from './level.ts';
+import type {ErrorDetail, FlowState, LogRecord, RequestDetail, ResponseDetail} from './record.ts';
 import {redactRecord, redactWithheldBag} from './redact.ts';
 import {mintPayloadRef, mintRecordRef, PAYLOAD_THRESHOLD} from './refs.ts';
 import {renderField, renderHuman, renderJson} from './render.ts';
@@ -160,7 +160,9 @@ const DEFAULT_WRITE_LIMIT = 1000;
 
 function createWriteTracker(limit: number): WriteTracker {
     if (!(limit >= 1)) {
-        throw new RangeError(`writeLimit must be a positive number of writes, received ${String(limit)}`);
+        throw new RangeError(
+            `writeLimit must be a positive number of writes, received ${String(limit)}`,
+        );
     }
     const queue: Array<() => Promise<void>> = [];
     let dropped = 0;
@@ -245,6 +247,38 @@ function toErrorDetail(value: unknown): ErrorDetail | undefined {
     return undefined;
 }
 
+/**
+ * The record's flow state with the bound leg merged in (PRD R22).
+ *
+ * The leg is kept beside the flow in the ambient context because the flow object
+ * is shared by reference with every nested scope — that is what makes a step's
+ * position persist outward — so they are joined into one object only here, where a
+ * record is assembled. On the wire, in the cache and in the registry, a record's
+ * flow state is therefore still a single object.
+ *
+ * Total by construction: with no flow there is nothing to attribute a leg to (a leg
+ * cannot be bound outside one), and with no leg the flow is returned unchanged, so
+ * neither case can fabricate a flow-shaped object out of a leg. The declared
+ * receiver and the position are attached only when they exist: an adopting callee
+ * has no receiver of its own to report, and a record outside any call has neither.
+ */
+function flowWithLeg(
+    flow: FlowState | undefined,
+    leg: string | undefined,
+    to: string | undefined,
+    seq: string | undefined,
+): FlowState | undefined {
+    if (flow === undefined || leg === undefined) {
+        return flow;
+    }
+    return {
+        ...flow,
+        leg,
+        ...(to === undefined ? {} : {legTo: to}),
+        ...(seq === undefined ? {} : {legSeq: seq}),
+    };
+}
+
 function create(
     options: LoggerOptions,
     bindings: Record<string, unknown>,
@@ -286,7 +320,9 @@ function create(
         }
         return composed;
     };
-    const withheld = createRingBuffer<{time: number; fields: Record<string, unknown>}>(options.withholdLimit ?? 500);
+    const withheld = createRingBuffer<{time: number; fields: Record<string, unknown>}>(
+        options.withholdLimit ?? 500,
+    );
 
     const emit = (name: LevelName, msg: string, fields: Record<string, unknown> = {}): void => {
         if (!enabled(name, level)) {
@@ -324,6 +360,9 @@ function create(
         // the same bypass that was closed for the withheld bag. Taking it also
         // consumes it, so it lands on exactly one record (PRD R11).
         const decision = takeDecision();
+        // The bound leg (PRD R22) rides *inside* `flow`, so a record's flow state
+        // is one object on the wire, in the cache and in the registry.
+        const flow = flowWithLeg(context.flow, context.leg, context.legTo, context.legSeq);
         const assembled: LogRecord = {
             id: mintRecordRef(),
             time: now(),
@@ -342,7 +381,7 @@ function create(
             err: toErrorDetail(err),
             req: req as RequestDetail | undefined,
             res: res as ResponseDetail | undefined,
-            flow: context.flow,
+            flow,
             intent: context.intent,
             // Only when a rationale was actually taken. An always-present
             // `decision: undefined` entry is still visible to `redactRecord`
@@ -516,7 +555,8 @@ function create(
         // position it will occupy once escalated (`fields.withheld[].fields`)
         // and the record root its own keys stand for, so the buffer never holds
         // a value the same patterns would have withheld from a record.
-        withhold: fields => withheld.push({time: now(), fields: redactWithheldBag(fields, options.redact ?? [])}),
+        withhold: fields =>
+            withheld.push({time: now(), fields: redactWithheldBag(fields, options.redact ?? [])}),
         escalate: reason => {
             // The escalation record is `info`, so a level threshold above it
             // would filter the release away. Keep the detail buffered in that
@@ -540,7 +580,12 @@ function create(
 /** Create the logging front door. */
 export function createLogger(options: LoggerOptions): Logger {
     const level = options.level ?? 'info';
-    return create(options, options.bindings ?? {}, levelValue(level), createWriteTracker(options.writeLimit ?? DEFAULT_WRITE_LIMIT));
+    return create(
+        options,
+        options.bindings ?? {},
+        levelValue(level),
+        createWriteTracker(options.writeLimit ?? DEFAULT_WRITE_LIMIT),
+    );
 }
 
 /**
@@ -566,7 +611,8 @@ export function createLogger(options: LoggerOptions): Logger {
  */
 export function captureProcessFailures(logger: Logger): () => void {
     const onException = (error: Error): void => logger.fatal('uncaughtException', {err: error});
-    const onRejection = (reason: unknown): void => logger.fatal('unhandledRejection', {err: reason});
+    const onRejection = (reason: unknown): void =>
+        logger.fatal('unhandledRejection', {err: reason});
     process.on('uncaughtException', onException);
     process.on('unhandledRejection', onRejection);
     return () => {

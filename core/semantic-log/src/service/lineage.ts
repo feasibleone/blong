@@ -50,7 +50,7 @@
  * itself and a dangling parent ends the walk at the last node that is present.
  */
 
-import type {IngestEvent} from './registry.ts';
+import {legOf, type IngestEvent} from './registry.ts';
 
 /** The trace key a record is grouped under when it carries no usable trace id. */
 const UNTRACED = 'untraced';
@@ -77,6 +77,17 @@ export interface LineageNode {
     operation?: string;
     fingerprint: string;
     intent?: string;
+    /**
+     * The call this record belongs to, when it named one (PRD R22). The trace is
+     * the correlation view and the flow is the shape view; the leg is what makes one
+     * record pair with the other end of the same hop, and its position is what orders
+     * the two ends without a clock.
+     */
+    leg?: string;
+    /** The participant the caller expected to answer that call. */
+    legTo?: string;
+    /** The call's position in the execution. */
+    legSeq?: string;
 }
 
 /**
@@ -174,7 +185,10 @@ export class LineageIndex {
      * a cap that stores nothing (`enforceLimit` also needs a positive bound).
      * The defaults are documented on the constants above.
      */
-    constructor(traceLimit: number = DEFAULT_TRACE_LIMIT, recordLimit: number = DEFAULT_RECORD_LIMIT) {
+    constructor(
+        traceLimit: number = DEFAULT_TRACE_LIMIT,
+        recordLimit: number = DEFAULT_RECORD_LIMIT,
+    ) {
         this.traceLimit = Math.max(1, traceLimit);
         this.recordLimit = Math.max(1, recordLimit);
     }
@@ -218,6 +232,7 @@ export class LineageIndex {
      * as well as for the arrays.
      */
     add(event: IngestEvent): LineageNode {
+        const leg = legOf(event);
         const node: LineageNode = {
             id: event.id,
             trace: traceKeyOf(event),
@@ -227,6 +242,9 @@ export class LineageIndex {
             operation: event.operation,
             fingerprint: event.fingerprint,
             intent: event.intent?.name,
+            leg: leg?.id,
+            legTo: leg?.to,
+            legSeq: leg?.seq,
         };
         const previous = this.nodes.get(node.id);
         if (previous) {
@@ -254,7 +272,9 @@ export class LineageIndex {
         // the records arrived: two records can share a millisecond, and a
         // comparator that returned 0 for them would leave the order to sort's
         // implementation rather than to the data.
-        bucket.records.sort((a, b) => a.node.time - b.node.time || a.node.id.localeCompare(b.node.id));
+        bucket.records.sort(
+            (a, b) => a.node.time - b.node.time || a.node.id.localeCompare(b.node.id),
+        );
         bucket.touched = seq;
         this.byTrace.set(node.trace, bucket);
         // Drop the least recently `add`ed record, not the smallest-time one. A

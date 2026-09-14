@@ -31,7 +31,12 @@ export interface TransformersModule {
     pipeline: (
         task: string,
         model: string,
-    ) => Promise<(input: string, options: {pooling: string; normalize: boolean}) => Promise<{data: Float32Array}>>;
+    ) => Promise<
+        (
+            input: string,
+            options: {pooling: string; normalize: boolean},
+        ) => Promise<{data: Float32Array}>
+    >;
 }
 
 export interface EmbeddingConfig {
@@ -86,9 +91,15 @@ class OfflineProvider implements EmbeddingProvider {
 
 class RemoteProvider implements EmbeddingProvider {
     readonly dimension: number;
-    private readonly config: Required<Pick<EmbeddingConfig, 'url' | 'model'>> & {apiKey?: string; fetch: typeof fetch};
+    private readonly config: Required<Pick<EmbeddingConfig, 'url' | 'model'>> & {
+        apiKey?: string;
+        fetch: typeof fetch;
+    };
     constructor(
-        config: Required<Pick<EmbeddingConfig, 'url' | 'model'>> & {apiKey?: string; fetch: typeof fetch},
+        config: Required<Pick<EmbeddingConfig, 'url' | 'model'>> & {
+            apiKey?: string;
+            fetch: typeof fetch;
+        },
         dimension: number,
     ) {
         this.config = config;
@@ -119,10 +130,70 @@ class RemoteProvider implements EmbeddingProvider {
 const LOCAL_PACKAGE = '@huggingface/transformers';
 
 /** The ONNX model the local provider downloads on first use — the network is reached through the dependency. */
-const LOCAL_MODEL = 'Xenova/all-MiniLM-L6-v2';
+export const LOCAL_MODEL = 'Xenova/all-MiniLM-L6-v2';
 
-/** The shipped loader: a real dynamic import, so the optional package is not required to install. */
-async function loadTransformers(): Promise<TransformersModule> {
+/**
+ * The model the offline provider is, named for the identity below.
+ *
+ * It has no model in any machine-learning sense — it is a seeded hash — and saying so
+ * is the point: a snapshot written under it must not be restored as if its vectors came
+ * from a real embedding space, because they cannot answer a natural-language query.
+ */
+export const OFFLINE_MODEL = 'sha256-hash';
+
+/**
+ * Which provider a set of vectors came from (D26).
+ *
+ * A vector is only comparable with a vector from the same provider at the same width:
+ * the same text embedded by `sha256-hash` and by `all-MiniLM-L6-v2` share no geometry at
+ * all, and two widths of one provider do not even share a dimension. So the identity
+ * travels with the vectors, and a snapshot written under one must not be restored under
+ * another — the numbers would still add up and every answer would be nonsense.
+ */
+export interface ProviderIdentity {
+    kind: 'offline' | 'local' | 'remote';
+    model: string;
+    dimension: number;
+}
+
+/**
+ * The identity of the provider a configuration selects.
+ *
+ * The dimension defaults live here rather than in `createProvider`, so the identity a
+ * snapshot is written under and the provider that actually embeds cannot disagree about
+ * how wide the vectors are.
+ *
+ * A remote configuration with no `model` yields `''` here and is rejected by
+ * `createProvider`: the identity exists to be written into a snapshot, and a
+ * configuration that cannot build a provider never reaches one.
+ */
+export function providerIdentity(config: EmbeddingConfig): ProviderIdentity {
+    if (config.kind === 'offline') {
+        return {kind: 'offline', model: OFFLINE_MODEL, dimension: config.dimension ?? 64};
+    }
+    if (config.kind === 'local') {
+        return {kind: 'local', model: LOCAL_MODEL, dimension: config.dimension ?? LOCAL_DIMENSION};
+    }
+    if (config.kind === 'remote') {
+        return {kind: 'remote', model: config.model ?? '', dimension: config.dimension ?? 1536};
+    }
+    // The union stops literal callers, but `kind` can arrive from untyped
+    // (JSON-sourced) configuration, and an unknown value must fail here rather than
+    // falling through to a provider the caller did not ask for.
+    throw new Error(`embedding: unknown kind '${String((config as {kind: unknown}).kind)}'`);
+}
+
+/**
+ * The shipped loader: a real dynamic import, so the optional package is not required to
+ * install.
+ *
+ * Exported because it is the one thing a capability probe has to exercise directly: calling
+ * it imports the package — which is cheap, and downloads nothing — while calling `embed`
+ * would fetch and compile the model. A probe that has to go through `embed` to reach the
+ * loader either performs network I/O in CI or leaves the loader uncovered, and neither is
+ * an acceptable answer to "is the optional dependency usable here?".
+ */
+export async function loadTransformers(): Promise<TransformersModule> {
     const moduleName = LOCAL_PACKAGE;
     return (await import(moduleName)) as TransformersModule;
 }
@@ -178,17 +249,49 @@ class LocalProviderAdapter implements EmbeddingProvider {
 }
 
 /**
+ * The output width of the local model, and the model itself (R5).
+ *
+ * Exported because a test that runs the real model has to assert the numbers the
+ * documentation promises rather than whatever the model happens to return.
+ */
+export const LOCAL_DIMENSION = 384;
+
+/**
+ * The embedding a process environment asks for (D24).
+ *
+ * The shipped default stays `offline`, in CI and in production: it is deterministic, needs
+ * no model download and no network, and every test that asserts a *ranking* is written
+ * against something that cannot change under it. A developer who wants real vectors asks
+ * for them explicitly — `SEMANTIC_LOG_EMBEDDING=local` — and the same variable is honoured
+ * by the service and by the flow runner, so one setting makes a local session real.
+ *
+ * `remote` is deliberately *not* reachable from here: it needs a url, a model and usually a
+ * key, and a process that reads three variables to build an endpoint is a configuration file
+ * wearing an environment variable's clothes.
+ */
+export function embeddingFromEnv(env: NodeJS.ProcessEnv = process.env): EmbeddingConfig {
+    const kind = env.SEMANTIC_LOG_EMBEDDING;
+    if (kind === undefined || kind === '' || kind === 'offline') {
+        return {kind: 'offline'};
+    }
+    if (kind === 'local') {
+        return {kind: 'local'};
+    }
+    throw new Error(`SEMANTIC_LOG_EMBEDDING: unknown kind '${kind}' (use 'offline' or 'local')`);
+}
+
+/**
  * Build the configured provider. Throws early on an unusable configuration —
- * including a `kind` that is not one of the three. The union stops literal
- * callers, but `kind` can arrive from untyped (JSON-sourced) configuration, and
- * an unknown value must fail here rather than silently selecting the local
- * provider.
+ * including a `kind` that is not one of the three, and a remote endpoint with no
+ * url or model. The dimension is taken from the same identity the snapshot records,
+ * so the vectors and the label they are stored under cannot disagree.
  */
 export function createProvider(config: EmbeddingConfig): EmbeddingProvider {
-    if (config.kind === 'offline') {
-        return new OfflineProvider(config.dimension ?? 64);
+    const identity = providerIdentity(config);
+    if (identity.kind === 'offline') {
+        return new OfflineProvider(identity.dimension);
     }
-    if (config.kind === 'remote') {
+    if (identity.kind === 'remote') {
         if (!config.url || !config.model) {
             throw new Error('createProvider: remote embedding requires url and model');
         }
@@ -199,14 +302,11 @@ export function createProvider(config: EmbeddingConfig): EmbeddingProvider {
                 apiKey: config.apiKey,
                 fetch: config.fetch ?? globalThis.fetch,
             },
-            config.dimension ?? 1536,
+            identity.dimension,
         );
     }
-    if (config.kind === 'local') {
-        return new LocalProviderAdapter(config.dimension ?? 384, config.loadTransformers ?? loadTransformers);
-    }
-    // Without this branch an unrecognised kind would fall through to the local
-    // provider and fail later with a misleading "@huggingface/transformers is
-    // missing" error rather than naming the offending value.
-    throw new Error(`createProvider: unknown embedding kind '${String((config as {kind: unknown}).kind)}'`);
+    return new LocalProviderAdapter(
+        identity.dimension,
+        config.loadTransformers ?? loadTransformers,
+    );
 }

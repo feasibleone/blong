@@ -1,8 +1,8 @@
 import t from 'tap';
 import {withIdentity} from '../fingerprint.ts';
 import {REF_LENGTH} from '../refs.ts';
-import {refFromFingerprint, TemplateRegistry} from './registry.ts';
 import type {IngestEvent} from './registry.ts';
+import {legOf, refFromFingerprint, TemplateRegistry} from './registry.ts';
 
 const event = {
     id: '01A',
@@ -136,37 +136,68 @@ t.test('a centroid is kept per template and replaced only when one is supplied',
     t.end();
 });
 
-t.test('the stored centroid is a copy, so a later mutation of the caller array cannot reach the registry', t => {
-    const registry = new TemplateRegistry();
+t.test(
+    'the stored centroid is a copy, so a later mutation of the caller array cannot reach the registry',
+    t => {
+        const registry = new TemplateRegistry();
 
-    // New-entry path: the caller keeps the array and mutates it after handing it over.
-    const fresh = [1, 0];
-    const created = registry.upsert(ingest({id: '01A', time: 1000}), fresh);
-    fresh[0] = 99;
-    t.same(created.entry.centroid, [1, 0], 'the new-entry path stores a copy, not the array it was handed');
-    t.same(registry.get('abcdef012345')?.centroid, [1, 0], 'a later read still sees the original values');
+        // New-entry path: the caller keeps the array and mutates it after handing it over.
+        const fresh = [1, 0];
+        const created = registry.upsert(ingest({id: '01A', time: 1000}), fresh);
+        fresh[0] = 99;
+        t.same(
+            created.entry.centroid,
+            [1, 0],
+            'the new-entry path stores a copy, not the array it was handed',
+        );
+        t.same(
+            registry.get('abcdef012345')?.centroid,
+            [1, 0],
+            'a later read still sees the original values',
+        );
 
-    // Existing-entry path: same handover on an entry that already exists.
-    const replacement = [0, 1];
-    const updated = registry.upsert(ingest({id: '01B', time: 2000}), replacement);
-    replacement[1] = 99;
-    t.same(updated.entry.centroid, [0, 1], 'the existing-entry path stores a copy, not the array it was handed');
-    t.same(registry.get('abcdef012345')?.centroid, [0, 1], 'a later read still sees the original values');
-    t.end();
-});
+        // Existing-entry path: same handover on an entry that already exists.
+        const replacement = [0, 1];
+        const updated = registry.upsert(ingest({id: '01B', time: 2000}), replacement);
+        replacement[1] = 99;
+        t.same(
+            updated.entry.centroid,
+            [0, 1],
+            'the existing-entry path stores a copy, not the array it was handed',
+        );
+        t.same(
+            registry.get('abcdef012345')?.centroid,
+            [0, 1],
+            'a later read still sees the original values',
+        );
+        t.end();
+    },
+);
 
 t.test('intent names accumulate for a template, without duplicates', t => {
     const registry = new TemplateRegistry();
-    const plain = registry.upsert(ingest({id: '01A', time: 1000, fingerprint: 'aaaa0000000000000000000000000000'})).entry;
+    const plain = registry.upsert(
+        ingest({id: '01A', time: 1000, fingerprint: 'aaaa0000000000000000000000000000'}),
+    ).entry;
     t.same(plain.intents, [], 'no intent is an empty list');
 
     const withIntent = registry.upsert(
-        ingest({id: '01B', time: 2000, fingerprint: 'bbbb0000000000000000000000000000', intent: {name: 'User_Transfer'}}),
+        ingest({
+            id: '01B',
+            time: 2000,
+            fingerprint: 'bbbb0000000000000000000000000000',
+            intent: {name: 'User_Transfer'},
+        }),
     ).entry;
     t.same(withIntent.intents, ['User_Transfer'], 'an intent on a brand-new template is recorded');
 
     registry.upsert(
-        ingest({id: '01C', time: 3000, fingerprint: 'bbbb0000000000000000000000000000', intent: {name: 'User_Transfer'}}),
+        ingest({
+            id: '01C',
+            time: 3000,
+            fingerprint: 'bbbb0000000000000000000000000000',
+            intent: {name: 'User_Transfer'},
+        }),
     );
     t.same(withIntent.intents, ['User_Transfer'], 'the same intent seen again is not listed twice');
     t.equal(withIntent.count, 2, 'the intent did not create a second entry');
@@ -234,9 +265,61 @@ t.test('replaceAll swaps the registry contents wholesale (persistence loader)', 
     registry.replaceAll([loaded]);
     t.equal(registry.size(), 1);
     t.equal(registry.get('ffffffffffff'), loaded, 'the loaded entry is kept as-is');
-    t.equal(registry.get('abcdef012345'), undefined, 'entries absent from the snapshot are dropped');
+    t.equal(
+        registry.get('abcdef012345'),
+        undefined,
+        'entries absent from the snapshot are dropped',
+    );
 
     registry.replaceAll([]);
     t.equal(registry.size(), 0);
+    t.end();
+});
+
+t.test('a call is read off the wire only when it is one (PRD R22)', t => {
+    // Every consumer of the wire format needs the same verdict, and the rule is not
+    // obvious: a leg arriving from another process is treated exactly as an absent one
+    // when the grammar rejects it, so an unbalanced peer cannot put a value into an
+    // observed shape that the shape cannot carry.
+    const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    t.same(
+        legOf(
+            ingest({
+                id: 'a',
+                time: 1,
+                flow: {id, leg: 'payer.quote.rates', legTo: 'hub', legSeq: '1.2'},
+            }),
+        ),
+        {id: 'payer.quote.rates', to: 'hub', seq: '1.2'},
+        'the call, the receiver its caller declared, and its position',
+    );
+    t.same(
+        legOf(ingest({id: 'b', time: 2, flow: {id}})),
+        undefined,
+        'a flow that names no call names no call',
+    );
+    t.same(legOf(ingest({id: 'c', time: 3})), undefined, 'and neither does an event with no flow');
+    t.same(legOf(ingest({id: 'd', time: 4, flow: {id, leg: ''}})), undefined, 'blank');
+    t.same(
+        legOf(ingest({id: 'e', time: 5, flow: {id, leg: 'payer;hop'}})),
+        undefined,
+        'a separator a diagram cannot carry',
+    );
+    t.same(
+        legOf(ingest({id: 'f', time: 6, flow: {id, leg: 42 as unknown as string}})),
+        undefined,
+        'not a string',
+    );
+    t.same(
+        legOf(
+            ingest({
+                id: 'g',
+                time: 7,
+                flow: {id, leg: 'payer.quote.rates', legTo: 'hub bus', legSeq: 'x'},
+            }),
+        ),
+        {id: 'payer.quote.rates', to: undefined, seq: undefined},
+        'an unlawful receiver or position is dropped, and the call still lands',
+    );
     t.end();
 });

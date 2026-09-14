@@ -6,6 +6,7 @@
  * Registry entries — not records — are the durable artifact.
  */
 
+import {isLegId, isLegSeq, isServiceName, type LegIdentity} from '../context.ts';
 import {REF_LENGTH} from '../refs.ts';
 
 export interface IngestEvent {
@@ -55,8 +56,55 @@ export interface IngestEvent {
      * whole flow is: an emitter that does not send one still ingests, and its
      * flow is simply not observed for drift (D3: an unexpected identity arriving
      * on the wire is reported, never thrown).
+     *
+     * `leg`, `legTo` and `legSeq` are the call the record belongs to (PRD R22):
+     * its stable id, the participant the caller expected to answer, and its
+     * position in the execution. `legTo` is present on the caller's own records
+     * only, and it is what keeps an **attempt** on the record when nothing answers —
+     * the receiver may be missing, failing or wired to the wrong address, and the
+     * edge is then a fact about the deployment rather than a line that cannot be
+     * drawn.
      */
-    flow?: {id: string; kind?: string; step?: string; index?: number; status?: string};
+    flow?: {
+        id: string;
+        kind?: string;
+        step?: string;
+        index?: number;
+        status?: string;
+        leg?: string;
+        legTo?: string;
+        legSeq?: string;
+    };
+}
+
+/**
+ * The call an event belongs to, or `undefined` when it names none (PRD R22).
+ *
+ * Read here, beside the event type, because every consumer of the wire format needs
+ * the *same* verdict — the flow shape, the lineage node and the flow ledger — and
+ * the rule is not obvious: every field arrived from another process, so one the
+ * grammar rejects is treated exactly as an absent one. An unbalanced peer must not
+ * be able to put a value into an observed shape that the shape cannot carry, and it
+ * must not turn ingestion into a 500 either (D3: caller misuse throws, a wire
+ * surprise is reported, never thrown).
+ *
+ * No counter accompanies an unusable leg, unlike an unusable flow `kind`: a kind is
+ * the drift key, so losing one leaves R6c *inert* and the loss has to be visible. A
+ * leg is an attribution, and losing one costs that call its edge — which the union
+ * reports by simply not having it.
+ */
+export function legOf(event: IngestEvent): LegIdentity | undefined {
+    const leg = event.flow?.leg;
+    if (typeof leg !== 'string' || !isLegId(leg)) {
+        return undefined;
+    }
+    const to = event.flow?.legTo;
+    const seq = event.flow?.legSeq;
+    return {
+        id: leg,
+        to: typeof to === 'string' && isServiceName(to) ? to : undefined,
+        seq: typeof seq === 'string' && isLegSeq(seq) ? seq : undefined,
+    };
 }
 
 export interface TemplateEntry {

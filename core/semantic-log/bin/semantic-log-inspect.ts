@@ -3,8 +3,12 @@
  * Resolve one reference from the retained local store (PRD R19, R21).
  *
  * Lookup is a single file read — the CLI never enumerates the cache to find a
- * record, which is R21's acceptance criterion. Exit codes are part of the
- * contract because §8 q11 asks that a reference whose record is no longer
+ * record, which is R21's acceptance criterion. The one exception is the `diagram`
+ * verb, which draws a whole execution and therefore needs every record of it:
+ * that scan is a picture rather than a lookup path (`cache.get` is still how one
+ * record is fetched), it writes and prunes nothing, and it is documented on
+ * `InspectVerb` rather than left for a reader to notice. Exit codes are part of
+ * the contract because §8 q11 asks that a reference whose record is no longer
  * retained be reported distinctly from one that never resolved.
  *
  * The store itself cannot tell those two apart: `get` and `getPayload` answer
@@ -29,9 +33,17 @@ import {realpathSync, statSync, type Stats} from 'node:fs';
 import {homedir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {openCache, type RecordCache} from '../src/cache.ts';
+import {cacheRecordIds, openCache, type RecordCache} from '../src/cache.ts';
+import {isLegId} from '../src/context.ts';
+import type {LogRecord} from '../src/record.ts';
 import {REF_SCHEME} from '../src/refs.ts';
 import {renderHuman, renderJson} from '../src/render.ts';
+import {
+    modelOfObservations,
+    renderSequence,
+    type DiagramObservation,
+} from '../src/service/diagram.ts';
+import {isUlid} from '../src/ulid.ts';
 
 /** The destinations the CLI writes to, injected so a test never exits a process. */
 export interface InspectIo {
@@ -39,9 +51,22 @@ export interface InspectIo {
     err: (text: string) => void;
 }
 
+/**
+ * The verbs this CLI knows. A bare reference is the default verb (`record`).
+ *
+ * `diagram` is the one verb that **enumerates** the store, and the reason the contract above says
+ * "a lookup never enumerates": drawing what a run did needs every record of that run, and the
+ * store's only enumeration is `cacheRecordIds`. It stays a read — nothing here writes, prunes or
+ * repairs — and `cache.get` is still how one record is fetched, so the enumeration is a scan of
+ * ids rather than a second lookup path. See `.github/memory/decision.md`.
+ */
+export type InspectVerb = 'record' | 'diagram';
+
 /** The options `parseInspectArgs` resolves from a command line. */
 export interface InspectArgs {
-    /** The reference or bare id to resolve, exactly as given. */
+    /** Which question this invocation asks. */
+    verb: InspectVerb;
+    /** The reference, flow id or flow kind to resolve, exactly as given. */
     reference: string;
     /** The cache root; `~/.semantic-log/cache` when `--cache` is not given. */
     dir: string;
@@ -61,7 +86,10 @@ const URI_PREFIX = `${REF_SCHEME}://`;
 
 const USAGE =
     'usage: semantic-log-inspect [--cache <dir>] [--json] [--expect-retained] <reference|id>\n' +
-    '  --expect-retained  the reference was retained, so an absent record is reported as pruned (exit 2) rather than unknown (exit 1)\n';
+    '       semantic-log-inspect diagram [--cache <dir>] [--json] <flow-id|flow-kind>\n' +
+    '  --expect-retained  the reference was retained, so an absent record is reported as pruned (exit 2) rather than unknown (exit 1)\n' +
+    '  diagram            render the observed shape of one execution (a ULID) or one flow kind, with the\n' +
+    '                     decisions and withheld detail only the local store has (exit 1 when nothing matches)\n';
 
 /** Strip a `semantic-log://<kind>/` prefix if present, leaving a bare id. */
 export function toId(reference: string): string {
@@ -103,7 +131,13 @@ function renderPayload(payload: unknown, json: boolean): string {
 
 /** Resolve `argv` into options, or the usage message that rejects it. */
 export function parseInspectArgs(argv: string[]): InspectParse {
-    const args: InspectArgs = {reference: '', dir: DEFAULT_CACHE, json: false, expectRetained: false};
+    const args: InspectArgs = {
+        verb: 'record',
+        reference: '',
+        dir: DEFAULT_CACHE,
+        json: false,
+        expectRetained: false,
+    };
     for (let index = 0; index < argv.length; index++) {
         const arg = argv[index];
         if (arg === '--cache') {
@@ -111,7 +145,10 @@ export function parseInspectArgs(argv: string[]): InspectParse {
             // back to the default store, which would resolve the reference
             // against a different cache than the caller asked for.
             if (index + 1 === argv.length) {
-                return {ok: false, message: `semantic-log-inspect: --cache needs a directory\n${USAGE}`};
+                return {
+                    ok: false,
+                    message: `semantic-log-inspect: --cache needs a directory\n${USAGE}`,
+                };
             }
             args.dir = argv[++index];
         } else if (arg === '--json') {
@@ -120,12 +157,26 @@ export function parseInspectArgs(argv: string[]): InspectParse {
             args.expectRetained = true;
         } else if (arg.startsWith('--')) {
             return {ok: false, message: `semantic-log-inspect: unknown option ${arg}\n${USAGE}`};
-        } else {
+        } else if (args.reference === '' && arg === 'diagram') {
+            // Only in the first position: a record whose id is the word `diagram` is not a thing,
+            // but a *reference* in the second position is, so the verb is read where a verb goes.
+            args.verb = 'diagram';
+        } else if (args.reference === '') {
             args.reference = arg;
+        } else {
+            // Two references is a mistake worth naming: the second would otherwise be read as a
+            // flag that does not exist, or silently dropped.
+            return {
+                ok: false,
+                message: `semantic-log-inspect: unexpected argument ${arg}\n${USAGE}`,
+            };
         }
     }
     if (!args.reference) {
-        return {ok: false, message: `semantic-log-inspect: a reference or id is required\n${USAGE}`};
+        return {
+            ok: false,
+            message: `semantic-log-inspect: ${args.verb === 'diagram' ? 'a flow id or kind' : 'a reference or id'} is required\n${USAGE}`,
+        };
     }
     return {ok: true, args};
 }
@@ -141,7 +192,7 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
         io.err(parsed.message);
         return 3;
     }
-    const {reference, dir, json, expectRetained} = parsed.args;
+    const {verb, reference, dir, json, expectRetained} = parsed.args;
 
     const cacheDir = resolve(dir);
     // An absent store is refused rather than created: `openCache` would make the
@@ -161,7 +212,9 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
     try {
         storeStat = statSync(cacheDir, {throwIfNoEntry: false});
     } catch (error) {
-        io.err(`semantic-log-inspect: cannot inspect cache path ${cacheDir}: ${(error as Error).message}\n`);
+        io.err(
+            `semantic-log-inspect: cannot inspect cache path ${cacheDir}: ${(error as Error).message}\n`,
+        );
         return 3;
     }
     if (!storeStat) {
@@ -183,10 +236,21 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
     try {
         cache = await openCache({dir: cacheDir, limit: Number.MAX_SAFE_INTEGER});
     } catch (error) {
-        io.err(`semantic-log-inspect: cannot open cache at ${cacheDir}: ${(error as Error).message}\n`);
+        io.err(
+            `semantic-log-inspect: cannot open cache at ${cacheDir}: ${(error as Error).message}\n`,
+        );
         return 3;
     }
     const id = toId(reference);
+    if (verb === 'diagram') {
+        // The diagram is drawn from the store the caller named and nothing else: no service, no
+        // ledger, no network. What that buys is the detail the service never sees — the branch
+        // rationale and the withheld bags — which is exactly what an operator reaching for the
+        // local store instead of the service is looking for.
+        const code = await renderFlowDiagram(cache, cacheDir, reference, json, io);
+        await cache.close();
+        return code;
+    }
     if (refKind(reference) === 'payload') {
         // A payload reference resolves through the payload half of the same
         // store (`getPayload`), with the same exit-code contract as a record:
@@ -220,6 +284,151 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
 
     io.out(`${json ? renderJson(record) : renderHuman(record, {color: false})}\n`);
     return 0;
+}
+
+/**
+ * What a diagram drawn from one store cannot know, said in the diagram's own syntax.
+ *
+ * A participant's cache holds that participant's records and no others, so a call it made whose
+ * receipt was logged by the receiver shows as `--x … (no receipt)` here while the service — which
+ * sees both ends — draws it as an answered arrow. Both are honest about their evidence, and a reader
+ * who does not know which store they are looking at would read the first as a failure. A mermaid
+ * comment is rendered by no diagram, so the caveat costs nothing in the picture and is there in the
+ * text.
+ */
+const ONE_STORE =
+    '%% Drawn from one participant\u2019s store: a call answered by another participant shows no receipt here.';
+
+/**
+ * Draw one execution's — or one flow kind's — observed shape from the local store.
+ *
+ * The reference's shape decides which, as it does over HTTP: a ULID is an execution the emitter
+ * minted, and anything else is a kind. Records that carry no call are still evidence of a
+ * participant (the entry records between hops belong to the flow), which is why the participants
+ * come from every matching record rather than from the calls alone.
+ *
+ * Exit codes follow the CLI's own contract: `0` drew something, `1` nothing matches, `3` the
+ * invocation or the store was unusable. There is no `2` here — that code means "the caller
+ * asserted this was retained and it is gone", and this verb is asking a different question
+ * ("what is in this store?") whose answer cannot be contradicted by the caller.
+ */
+async function renderFlowDiagram(
+    cache: RecordCache,
+    dir: string,
+    reference: string,
+    json: boolean,
+    io: InspectIo,
+): Promise<number> {
+    const records = await readAll(cache, dir);
+    const flowId = toId(reference);
+    const byExecution = isUlid(flowId);
+    const matching = records.filter(record =>
+        byExecution ? record.flow?.id === flowId : record.flow?.kind === flowId,
+    );
+    if (matching.length === 0) {
+        io.err(
+            `semantic-log-inspect: no records for ${byExecution ? 'flow' : 'kind'} ${flowId} at ${dir}\n`,
+        );
+        return 1;
+    }
+    const observations = matching.flatMap(annotatedObservations);
+    const model = modelOfObservations(
+        observations,
+        matching.map(record => record.service),
+    );
+    if (json) {
+        io.out(
+            `${JSON.stringify(
+                {
+                    [byExecution ? 'id' : 'kind']: flowId,
+                    source: 'cache',
+                    observed: {
+                        services: model.services,
+                        legs: [...new Set(observations.map(observation => observation.leg))],
+                    },
+                    diagram: `${ONE_STORE}\n${renderSequence(model)}`,
+                },
+                null,
+                2,
+            )}\n`,
+        );
+        return 0;
+    }
+    io.out(`${ONE_STORE}\n${renderSequence(model)}`);
+    return 0;
+}
+
+/** Every record the store holds, by the store's only enumeration (the `diagram` verb). */
+async function readAll(cache: RecordCache, dir: string): Promise<LogRecord[]> {
+    const records: LogRecord[] = [];
+    for (const id of await cacheRecordIds(dir)) {
+        const record = await cache.get(id);
+        if (record !== undefined) {
+            records.push(record);
+        }
+    }
+    return records;
+}
+
+/**
+ * The observation one record carries, with what only the local store knows.
+ *
+ * A record with no call contributes nothing to the diagram — an id the library's grammar rejects is
+ * dropped exactly as it is on the wire, so a hand-edited store cannot put a label in a diagram that
+ * the code could not have produced. The notes are the difference between this diagram and the
+ * service's: the branch rationale and the withheld categories are never transmitted (R10/R11), so
+ * they exist only here.
+ */
+function annotatedObservations(record: LogRecord): DiagramObservation[] {
+    const leg = record.flow?.leg;
+    if (typeof leg !== 'string' || !isLegId(leg)) {
+        return [];
+    }
+    const notes: string[] = [];
+    if (record.decision !== undefined) {
+        notes.push(`decision: ${record.decision.discriminator} → ${record.decision.chosen}`);
+    }
+    const withheld = withheldCategories(record);
+    if (withheld.length > 0) {
+        notes.push(`withheld: ${withheld.join(', ')}`);
+    }
+    return [
+        {
+            leg,
+            service: record.service,
+            to: record.flow?.legTo,
+            seq: record.flow?.legSeq,
+            step: record.flow?.step,
+            index: record.flow?.index,
+            time: record.time,
+            ref: record.id,
+            notes,
+        },
+    ];
+}
+
+/**
+ * The categories a record's withheld detail names, in the order they were withheld.
+ *
+ * A withheld bag is a list of `{time, fields}` entries (an escalation attaches every bag the logger
+ * still holds), and the *keys* are the categories: `routing`, `liquidity`, `settlement`. The values
+ * are deliberately not read out — a note is a label, and printing what was withheld is what the
+ * escalation itself does.
+ */
+function withheldCategories(record: LogRecord): string[] {
+    const withheld = record.fields?.withheld;
+    if (!Array.isArray(withheld)) {
+        return [];
+    }
+    const categories: string[] = [];
+    for (const entry of withheld) {
+        for (const key of Object.keys((entry as {fields?: Record<string, unknown>}).fields ?? {})) {
+            if (!categories.includes(key)) {
+                categories.push(key);
+            }
+        }
+    }
+    return categories;
 }
 
 // The entry point runs only when this file is the program itself. The

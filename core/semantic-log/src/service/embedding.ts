@@ -75,6 +75,23 @@ export class EmbeddingCache {
         return this.providerCalls;
     }
 
+    /**
+     * The vector already stored under a key, without embedding anything.
+     *
+     * For ranking over things that were embedded when they arrived — a retained
+     * exemplar's vector is stored once, at ingest (D20) — and never as a way to avoid a
+     * computation: nothing is computed here, so a key that was never embedded answers
+     * `undefined` and is left out of the ranking rather than embedded on the spot. A
+     * search that embedded its candidates would cost one provider call per candidate per
+     * query, which is the cost model R3 exists to prevent.
+     *
+     * Copy-on-read, like `vectorFor`: the caller owns what it is handed.
+     */
+    vectorOf(key: string): number[] | undefined {
+        const stored = this.vectors.get(key);
+        return stored === undefined ? undefined : [...stored];
+    }
+
     /** Estimated cache size, in stored vectors. */
     size(): number {
         return this.vectors.size;

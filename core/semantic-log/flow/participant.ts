@@ -7,15 +7,25 @@
  * lets the fixtures double as documentation of how to use the library (PRD
  * R17/R20).
  *
- * Two identities travel between participants, and they answer different
- * questions (PRD R9, ruled 2026-09-13):
+ * Three identities travel between participants — the **trace**, the flow
+ * **execution id** and the **leg** — and they ride one header, described in
+ * `src/propagation.ts` (PRD R9/R22, ruled 2026-09-13 and 2026-09-14):
  *
- * - the **trace** (`TRACE_HEADER`) is causal correlation. One trace may span more
- *   than one flow, so a value minted here is only a fallback for a participant
- *   that received none — the entry point.
- * - the **flow execution id** (`FLOW_HEADER`) is a ULID naming exactly one
- *   execution of a flow, minted by the caller at the entry point and propagated
- *   unchanged. It is *not* the trace id.
+ * - the trace is causal correlation. One trace may span more than one flow, so a
+ *   value minted here is only a fallback for a participant that received none —
+ *   the entry point.
+ * - the flow execution id is a ULID naming exactly one execution of a flow,
+ *   minted by the caller at the entry point and propagated unchanged. It is *not*
+ *   the trace id.
+ * - the leg names the one call a hop makes, and carries the participant the caller
+ *   expected to answer plus the call's position in the execution, so the records at
+ *   both ends name one call and are ordered together.
+ *
+ * All of it is the **library's** contract rather than this fixture's: the header,
+ * the field names, `identityHeaders()` and `readIdentities()` live in
+ * `src/propagation.ts`, and this file consumes them. A fixture is one caller of the
+ * mechanism, never its owner — which is why the propagation rule is not written
+ * here.
  *
  * The flow **kind** (which recurring process this is, e.g. `transfer.single`) is
  * a deployment property, not a request one, so it is configured once per
@@ -32,20 +42,23 @@
 import Fastify, {type FastifyInstance} from 'fastify';
 import {ulid} from 'ulidx';
 import {openCache, type RecordCache} from '../src/cache.ts';
-import {bindTrace, step, withFlow, withIntent} from '../src/context.ts';
+import {
+    bindInboundLeg,
+    bindTrace,
+    currentLeg,
+    isLegId,
+    isLegSeq,
+    isServiceName,
+    step,
+    withFlow,
+    withIntent,
+    type LegIdentity,
+} from '../src/context.ts';
 import type {LevelName} from '../src/level.ts';
 import {createLogger, type Logger} from '../src/logger.ts';
+import {identityHeaders, readIdentities} from '../src/propagation.ts';
 import {createServiceWriter} from '../src/service/transport.ts';
-
-/** Header carrying the causal trace id between participants. */
-export const TRACE_HEADER = 'x-semantic-trace';
-
-/**
- * Header carrying the flow **execution** id — a caller-minted ULID — between
- * participants. Kept apart from {@link TRACE_HEADER} because a trace may span
- * more than one flow and the flow id names one execution (PRD R9).
- */
-export const FLOW_HEADER = 'x-semantic-flow';
+import {isUlid} from '../src/ulid.ts';
 
 /** The business intent a participant acts under (PRD R7). */
 export interface ParticipantIntent {
@@ -102,46 +115,68 @@ export interface Participant {
     traceFrom(request: {headers: Record<string, unknown>}): string;
     /** Read the flow execution id from a request, or mint a ULID at the entry point. */
     flowFrom(request: {headers: Record<string, unknown>}): string;
-    /** Run `fn` with the trace, the flow execution and (optionally) the intent bound. */
-    run<T>(traceId: string, flowId: string, fn: () => T): T;
+    /**
+     * The leg the inbound request arrived with, or `undefined` when it carries none
+     * or carries one that is not lawful (PRD R22). Nothing is minted: a caller that
+     * declared no leg for this call is simply not cross-referenced, and inventing an
+     * id here would name a call site that does not exist — the same lie as a
+     * fabricated flow id.
+     */
+    legFrom(request: {headers: Record<string, unknown>}): LegIdentity | undefined;
+    /** Run `fn` with the trace, the flow execution, the inbound leg and (optionally) the intent bound. */
+    run<T>(traceId: string, flowId: string, leg: LegIdentity | undefined, fn: () => T): T;
     /** Run one named protocol step under the bound flow. */
     phase<T>(name: string, fn: () => Promise<T> | T): Promise<T>;
 }
 
+// The inbound half of the propagation contract lives in the library: a request's
+// identities are read with `readIdentities()`, which owns the rule that a value
+// naming a field twice is what a duplicated header line produces and is therefore
+// not an identity. It is there rather than here because every application that
+// receives these identities has to apply the same rule, and one tested
+// implementation beats one per application.
+
 /**
- * A propagated identity header, or `undefined` when the request carries none.
+ * What a request carries: the fields that are lawful, and nothing else.
  *
- * An identity is a **single token**. Anything else is not one, so the caller falls
- * back or mints rather than carrying a value the sender did not choose:
- *
- * - **absent** — no header at all;
- * - **blank** — `''`, which the sender chose as little as leaving it out;
- * - **repeated** — which does **not** arrive as an array. Node's HTTP parser joins
- *   duplicate header lines into one comma-separated string before any handler sees
- *   them, so the array this once guarded against is unreachable from a real
- *   request. A joined value is not an identity and is *worse* than absent: carried
- *   into `refs.trace` it is a corrupt trace that still looks like one, and carried
- *   as a flow id it is rejected by `withFlow` as malformed, turning a caller's
- *   duplicate header into a 500. Rejecting the joined form is what makes the rule
- *   real.
+ * Each field is validated for the thing it claims to be, and a value that is not
+ * that thing is read as **absent** rather than throwing: an identity arriving on
+ * the wire is another process's value, and an unbalanced peer must not be able to
+ * turn a bad field into a 500 (D3, `docs/decisions.md`). A flow id that is not a
+ * ULID is treated exactly as an absent one, so the entry-point rule applies and a
+ * fresh ULID is minted — the loss is visible as a stray execution in the observed
+ * shape rather than as a broken request.
  */
-function identityHeader(request: {headers: Record<string, unknown>}, name: string): string | undefined {
-    const value = request.headers[name];
-    if (typeof value !== 'string' || value.length === 0) {
-        return undefined;
-    }
-    // A comma is how the parser joins repeated header lines, and no identity this
-    // runtime mints or documents contains one — so a comma means the sender sent
-    // more than one, or sent something that is not a token. Same rule as the
-    // ingest's unusable-kind counter and `LineageIndex`'s trace key.
-    return value.includes(',') ? undefined : value;
+function identitiesOf(request: {headers: Record<string, unknown>}): {
+    trace?: string;
+    flow?: string;
+    leg?: LegIdentity;
+} {
+    const identities = readIdentities(request.headers);
+    const {leg, to, seq} = identities;
+    return {
+        trace: identities.trace,
+        flow:
+            identities.flow !== undefined && isUlid(identities.flow) ? identities.flow : undefined,
+        leg:
+            leg !== undefined && isLegId(leg)
+                ? {
+                      id: leg,
+                      to: to !== undefined && isServiceName(to) ? to : undefined,
+                      seq: seq !== undefined && isLegSeq(seq) ? seq : undefined,
+                  }
+                : undefined,
+    };
 }
 
 let traceCounter = 0;
 
 export async function createParticipant(options: ParticipantOptions): Promise<Participant> {
     const cache = await openCache({dir: options.cacheDir, limit: 5000});
-    const sink = options.serviceUrl === undefined ? undefined : createServiceWriter({url: options.serviceUrl});
+    const sink =
+        options.serviceUrl === undefined
+            ? undefined
+            : createServiceWriter({url: options.serviceUrl});
     const logger = createLogger({
         service: options.name,
         level: options.level ?? 'info',
@@ -182,17 +217,44 @@ export async function createParticipant(options: ParticipantOptions): Promise<Pa
             await cache.close();
         },
         traceFrom(request): string {
-            return identityHeader(request, TRACE_HEADER) ?? `tr-${++traceCounter}`;
+            return identitiesOf(request).trace ?? `tr-${++traceCounter}`;
         },
         flowFrom(request): string {
-            return identityHeader(request, FLOW_HEADER) ?? ulid();
+            return identitiesOf(request).flow ?? ulid();
         },
-        run<T>(traceId: string, flowId: string, fn: () => T): T {
+        legFrom(request): LegIdentity | undefined {
+            return identitiesOf(request).leg;
+        },
+        run<T>(traceId: string, flowId: string, leg: LegIdentity | undefined, fn: () => T): T {
             // A transfer IS a multi-step flow (PRD R9), so declare one per request.
             // The flow id is NOT the trace id (amended 2026-09-13): the caller mints a
             // ULID naming one execution and propagates it separately, so a trace may
             // span several flows. The kind is the deployment's stable process name.
-            const body = (): T => bindTrace(traceId, () => withFlow({id: flowId, kind: options.kind}, fn));
+            //
+            // The inbound leg (PRD R22) is adopted *inside* the flow, because a leg is
+            // a flow's call: an absent one is not an error — the caller simply
+            // declared none — while `hop` below refuses to make the next call without
+            // a declaration.
+            if (leg?.to !== undefined && leg.to !== options.name) {
+                // The caller declared who it expected to answer, and this is not that
+                // participant: a routing defect, and the declaration on the record is
+                // what makes it visible. Recorded rather than thrown — the peer that
+                // reached the wrong service must still be answered — and deliberately
+                // at `warn` on the *shared* logger: an `error` record escalates withheld
+                // detail (R10), and a shared logger would then release one execution's
+                // detail onto another's record (see the note in `hub.ts`).
+                logger.warn('leg declared for another participant', {
+                    leg: leg.id,
+                    declared: leg.to,
+                    service: options.name,
+                });
+            }
+            const body = (): T =>
+                bindTrace(traceId, () =>
+                    withFlow({id: flowId, kind: options.kind}, () =>
+                        leg === undefined ? fn() : bindInboundLeg({id: leg.id, seq: leg.seq}, fn),
+                    ),
+                );
             return options.intent ? withIntent(options.intent, body) : body();
         },
         phase<T>(name: string, fn: () => Promise<T> | T): Promise<T> {
@@ -207,28 +269,40 @@ export interface HopResult {
 }
 
 /**
- * Call a downstream participant, carrying both identities.
+ * Call a downstream participant, carrying every identity bound in this scope.
  *
  * `from` is the calling participant. It is not read here today — a participant
  * file owns its own protocol logging — but it is part of the call shape so a
  * per-participant hop (rate limiting, outbound logging) can be added without
  * rewriting every call site.
+ *
+ * The leg is **required**, and is taken from the ambient scope rather than passed
+ * in (PRD R22): the caller declares it with `bindLeg`, so its own
+ * request-describing records carry the same id as the callee's receipt. That
+ * declaration also names the participant the caller expects to answer, which is
+ * what puts an *attempt* on the record even when nothing answers — the receiver may
+ * be missing, failing or wired to the wrong address, and the edge is still known.
+ * A hop with no declaration is refused here rather than recorded as an anonymous
+ * call that nothing can pair.
+ *
+ * The header comes from the library's `identityHeaders()`, which *is* the
+ * propagation contract: this fixture consumes the decision about where an identity
+ * is written, it does not make it (`src/propagation.ts`).
  */
 export async function hop(
     from: Participant,
     targetUrl: string,
     path: string,
     body: unknown,
-    traceId: string,
-    flowId: string,
 ): Promise<HopResult> {
+    if (currentLeg()?.to === undefined) {
+        throw new TypeError(
+            `hop to ${targetUrl}${path} must declare the participant it calls; use bindLeg({id, to}, …)`,
+        );
+    }
     const response = await fetch(`${targetUrl}${path}`, {
         method: 'POST',
-        headers: {
-            'content-type': 'application/json',
-            [TRACE_HEADER]: traceId,
-            [FLOW_HEADER]: flowId,
-        },
+        headers: {'content-type': 'application/json', ...identityHeaders()},
         body: JSON.stringify(body),
     });
     return {status: response.status, body: await response.json().catch(() => undefined)};

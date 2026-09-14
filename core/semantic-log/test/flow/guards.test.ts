@@ -31,20 +31,20 @@
  * so nothing here is satisfied by a branch having been entered.
  */
 
-import {createServer} from 'node:http';
 import {mkdtemp, readdir, readFile, rm} from 'node:fs/promises';
+import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
 import t from 'tap';
 
-import type {LogRecord} from '../../src/record.ts';
-import {getWriter, setWriter} from '../../src/writer.ts';
 import {installHub} from '../../flow/hub.ts';
 import {installHubA} from '../../flow/hubA.ts';
-import {installPayer} from '../../flow/payer.ts';
 import {createParticipant, type Participant} from '../../flow/participant.ts';
+import {installPayer} from '../../flow/payer.ts';
 import {installProxy} from '../../flow/proxy.ts';
+import type {LogRecord} from '../../src/record.ts';
+import {getWriter, setWriter} from '../../src/writer.ts';
 
 /**
  * The participants log to stdout by default; silence the destination so these
@@ -82,7 +82,9 @@ function released(record: LogRecord): Record<string, unknown>[] {
 }
 
 /** The `settlement` detail a failure record released, or undefined when it released none. */
-function releasedSettlement(record: LogRecord): {attempted?: number; payeeResponse?: string} | undefined {
+function releasedSettlement(
+    record: LogRecord,
+): {attempted?: number; payeeResponse?: string} | undefined {
     const found = released(record).find(fields => fields.settlement !== undefined);
     return found?.settlement as {attempted?: number; payeeResponse?: string} | undefined;
 }
@@ -128,7 +130,9 @@ async function stub(answers: Record<string, StubAnswer>): Promise<Stub> {
             seen.set(path, [...(seen.get(path) ?? []), sent]);
 
             const answer = answers[path] ?? {status: 404, body: '{"error":"no such route"}'};
-            response.writeHead(answer.status, {'content-type': answer.contentType ?? 'application/json'});
+            response.writeHead(answer.status, {
+                'content-type': answer.contentType ?? 'application/json',
+            });
             response.end(answer.body);
         });
     });
@@ -196,7 +200,11 @@ async function deploy(
  * content type at all** — not an empty object — which is the caller state the
  * participants' `request.body ?? {}` guards exist for.
  */
-async function post(url: string, path: string, body?: unknown): Promise<{status: number; body: unknown}> {
+async function post(
+    url: string,
+    path: string,
+    body?: unknown,
+): Promise<{status: number; body: unknown}> {
     const response = await fetch(`${url}${path}`, {
         method: 'POST',
         headers: body === undefined ? {} : {'content-type': 'application/json'},
@@ -212,15 +220,25 @@ t.test('a caller that sends no body gets the payer defaults, and they reach the 
         '/transfers': {status: 200, body: '{"fulfilment":"sha256:preimage"}'},
     });
     try {
-        const payer = await deploy('payer', participant => installPayer(participant, {hubUrl: downstream.url}));
+        const payer = await deploy('payer', participant =>
+            installPayer(participant, {hubUrl: downstream.url, hubName: 'downstream'}),
+        );
         try {
             const result = await post(payer.url, '/transfer');
-            t.equal(result.status, 200, 'a caller that sent nothing is served, not answered with a 500');
+            t.equal(
+                result.status,
+                200,
+                'a caller that sent nothing is served, not answered with a 500',
+            );
             t.same(result.body, {status: 'settled'}, 'and the transfer settles on the defaults');
 
             // The hop payload is the observable consequence of each default: it is
             // what the payer actually put on the wire, recorded by the peer.
-            t.same(downstream.received('/parties'), [{target: 'msisdn-1'}], 'the discovery hop asks for a party');
+            t.same(
+                downstream.received('/parties'),
+                [{target: 'msisdn-1'}],
+                'the discovery hop asks for a party',
+            );
             t.same(
                 downstream.received('/quotes'),
                 [{amount: 100, from: 'USD', to: 'EUR'}],
@@ -233,8 +251,16 @@ t.test('a caller that sends no body gets the payer defaults, and they reach the 
             );
 
             const records = await payer.records();
-            t.equal(find(records, 'payer', 'looking up payee')?.fields?.amount, 100, 'the record names that amount');
-            t.equal(find(records, 'payer', 'requesting fx quote')?.fields?.from, 'USD', 'and that currency');
+            t.equal(
+                find(records, 'payer', 'looking up payee')?.fields?.amount,
+                100,
+                'the record names that amount',
+            );
+            t.equal(
+                find(records, 'payer', 'requesting fx quote')?.fields?.from,
+                'USD',
+                'and that currency',
+            );
         } finally {
             await payer.close();
         }
@@ -243,89 +269,107 @@ t.test('a caller that sends no body gets the payer defaults, and they reach the 
     }
 });
 
-t.test('a body-less request to the hub is answered: the quote assembles and the transfer settles', async t => {
-    const downstream = await stub({
-        '/quotes': {status: 200, body: '{"rate":1.1,"condition":"sha256:condition"}'},
-        '/transfers': {status: 200, body: '{"fulfilment":"sha256:preimage"}'},
-    });
-    try {
-        const hub = await deploy('hub', participant =>
-            installHub(participant, {fxpUrl: downstream.url, payeeUrl: downstream.url}),
-        );
+t.test(
+    'a body-less request to the hub is answered: the quote assembles and the transfer settles',
+    async t => {
+        const downstream = await stub({
+            '/quotes': {status: 200, body: '{"rate":1.1,"condition":"sha256:condition"}'},
+            '/transfers': {status: 200, body: '{"fulfilment":"sha256:preimage"}'},
+        });
         try {
-            const quote = await post(hub.url, '/quotes');
-            t.equal(quote.status, 200, 'a quote request with no body is served, not answered with a 500');
-            t.same(quote.body, {rate: 1.1, condition: 'sha256:condition'}, 'and it still assembles the quote');
+            const hub = await deploy('hub', participant =>
+                installHub(participant, {fxpUrl: downstream.url, payeeUrl: downstream.url}),
+            );
+            try {
+                const quote = await post(hub.url, '/quotes');
+                t.equal(
+                    quote.status,
+                    200,
+                    'a quote request with no body is served, not answered with a 500',
+                );
+                t.same(
+                    quote.body,
+                    {rate: 1.1, condition: 'sha256:condition'},
+                    'and it still assembles the quote',
+                );
 
-            const transfer = await post(hub.url, '/transfers');
-            t.equal(transfer.status, 200, 'a transfer with no body is served too');
-            t.same(transfer.body, {status: 'settled'}, 'and it settles');
+                const transfer = await post(hub.url, '/transfers');
+                t.equal(transfer.status, 200, 'a transfer with no body is served too');
+                t.same(transfer.body, {status: 'settled'}, 'and it settles');
 
-            const records = await hub.records();
-            // `find` returns `undefined` when no such record exists, so asserting only on
-            // `?.fields?.amount` would pass just as readily if the call site had been
-            // deleted. The record existing is asserted first for exactly that reason.
-            const received = find(records, 'hub', 'quote request received');
-            t.ok(received, 'the hub recorded the quote request it forwarded');
-            t.equal(
-                received?.fields?.amount,
-                undefined,
-                'the quote record names no amount: the caller supplied none, and nothing was invented',
-            );
-            // And the wire, which is what the guard actually protects: an absent body has
-            // to reach the provider as an empty object rather than as `undefined`, which
-            // is sent as no body at all.
-            t.same(
-                downstream.received('/quotes')[0],
-                {},
-                'the provider received a collapsed empty body, not an absent one',
-            );
-            t.equal(
-                find(records, 'hub', 'provider declined the quote'),
-                undefined,
-                'no provider was asked to decline: an absent body is not a refusal',
-            );
+                const records = await hub.records();
+                // `find` returns `undefined` when no such record exists, so asserting only on
+                // `?.fields?.amount` would pass just as readily if the call site had been
+                // deleted. The record existing is asserted first for exactly that reason.
+                const received = find(records, 'hub', 'quote request received');
+                t.ok(received, 'the hub recorded the quote request it forwarded');
+                t.equal(
+                    received?.fields?.amount,
+                    undefined,
+                    'the quote record names no amount: the caller supplied none, and nothing was invented',
+                );
+                // And the wire, which is what the guard actually protects: an absent body has
+                // to reach the provider as an empty object rather than as `undefined`, which
+                // is sent as no body at all.
+                t.same(
+                    downstream.received('/quotes')[0],
+                    {},
+                    'the provider received a collapsed empty body, not an absent one',
+                );
+                t.equal(
+                    find(records, 'hub', 'provider declined the quote'),
+                    undefined,
+                    'no provider was asked to decline: an absent body is not a refusal',
+                );
+            } finally {
+                await hub.close();
+            }
         } finally {
-            await hub.close();
+            await downstream.close();
         }
-    } finally {
-        await downstream.close();
-    }
-});
+    },
+);
 
-t.test('a provider that reports success without a rate still yields a quote the payer can price', async t => {
-    // What a third-party FXP can answer with: a success that names a condition
-    // but no rate. The hub's own provider never does — which is why no run of
-    // the shipped topology reaches this guard.
-    const downstream = await stub({
-        '/quotes': {status: 200, body: '{"condition":"sha256:condition"}'},
-    });
-    try {
-        const hub = await deploy('hub', participant =>
-            installHub(participant, {fxpUrl: downstream.url, payeeUrl: downstream.url}),
-        );
+t.test(
+    'a provider that reports success without a rate still yields a quote the payer can price',
+    async t => {
+        // What a third-party FXP can answer with: a success that names a condition
+        // but no rate. The hub's own provider never does — which is why no run of
+        // the shipped topology reaches this guard.
+        const downstream = await stub({
+            '/quotes': {status: 200, body: '{"condition":"sha256:condition"}'},
+        });
         try {
-            const quote = await post(hub.url, '/quotes', {amount: 100, from: 'USD', to: 'EUR'});
-            t.equal(quote.status, 200, 'the provider said success, so the hub answers with a quote');
-            t.same(
-                quote.body,
-                {rate: 1, condition: 'sha256:condition'},
-                'and the quote carries a numeric rate rather than an absent one the payer would misread',
+            const hub = await deploy('hub', participant =>
+                installHub(participant, {fxpUrl: downstream.url, payeeUrl: downstream.url}),
             );
+            try {
+                const quote = await post(hub.url, '/quotes', {amount: 100, from: 'USD', to: 'EUR'});
+                t.equal(
+                    quote.status,
+                    200,
+                    'the provider said success, so the hub answers with a quote',
+                );
+                t.same(
+                    quote.body,
+                    {rate: 1, condition: 'sha256:condition'},
+                    'and the quote carries a numeric rate rather than an absent one the payer would misread',
+                );
 
-            const records = await hub.records();
-            t.equal(
-                find(records, 'hub', 'quote assembled')?.fields?.rate,
-                1,
-                'the rate it published is the rate it recorded',
-            );
+                const records = await hub.records();
+                t.equal(
+                    find(records, 'hub', 'quote assembled')?.fields?.rate,
+                    1,
+                    'the rate it published is the rate it recorded',
+                );
+            } finally {
+                await hub.close();
+            }
         } finally {
-            await hub.close();
+            await downstream.close();
         }
-    } finally {
-        await downstream.close();
-    }
-});
+    },
+);
 
 t.test('a payee that refuses without naming a reason is still attributed to the payee', async t => {
     // A refusal that is a status with no reason in it, as a proxy or a bare
@@ -339,11 +383,23 @@ t.test('a payee that refuses without naming a reason is still attributed to the 
         );
         try {
             const result = await post(hub.url, '/transfers', {amount: 100, currency: 'USD'});
-            t.equal(result.status, 502, "the hub reports the payee's refusal as a failure of the settlement");
-            t.same(result.body, {reason: 'unknown'}, 'and hands the payer a reason, not an empty one');
+            t.equal(
+                result.status,
+                502,
+                "the hub reports the payee's refusal as a failure of the settlement",
+            );
+            t.same(
+                result.body,
+                {reason: 'unknown'},
+                'and hands the payer a reason, not an empty one',
+            );
 
             const failed = find(await hub.records(), 'hub', 'settlement failed');
-            t.equal(failed?.res?.status, 422, "the payee's own status reaches the hub rather than a hub timeout");
+            t.equal(
+                failed?.res?.status,
+                422,
+                "the payee's own status reaches the hub rather than a hub timeout",
+            );
             t.equal(
                 failed?.err?.message,
                 'payee refused: unknown',
@@ -367,11 +423,23 @@ t.test('a proxy deployed with no receiving link holds, and records why (PRD R11)
     // proxy no corridor. `startFlow` always wires the link it was asked for, so no
     // run of the inter-scheme flow can enter it — which is exactly why the guard
     // is exercised here instead of left as an `if` nothing reaches.
-    const proxy = await deploy('proxy', participant => installProxy(participant, {hubBUrl: ''}), 'transfer.inter');
+    const proxy = await deploy(
+        'proxy',
+        participant => installProxy(participant, {hubBUrl: ''}),
+        'transfer.inter',
+    );
     try {
         const held = await post(proxy.url, '/transfers', {amount: 100});
-        t.equal(held.status, 503, 'the hold is answered as a failure, not as a 200 carrying the envelope');
-        t.same(held.body, {reason: 'no route to target ecosystem'}, 'and the caller is told which failure it is');
+        t.equal(
+            held.status,
+            503,
+            'the hold is answered as a failure, not as a 200 carrying the envelope',
+        );
+        t.same(
+            held.body,
+            {reason: 'no route to target ecosystem'},
+            'and the caller is told which failure it is',
+        );
 
         const records = await proxy.records();
         const refused = find(records, 'proxy', 'no route to the target ecosystem');
@@ -380,9 +448,17 @@ t.test('a proxy deployed with no receiving link holds, and records why (PRD R11)
         // R11: the reason lives in the record, and the alternative that was
         // considered is as much part of it as the branch taken — a rationale naming
         // only the outcome could not be replayed without reading this file.
-        t.equal(refused?.decision?.discriminator, 'route-selection', 'the record names the discriminator consulted');
+        t.equal(
+            refused?.decision?.discriminator,
+            'route-selection',
+            'the record names the discriminator consulted',
+        );
         t.equal(refused?.decision?.chosen, 'hold', 'and the branch it took');
-        t.same(refused?.decision?.candidates, ['hubB', 'hold'], 'and both routes considered, the reaching one included');
+        t.same(
+            refused?.decision?.candidates,
+            ['hubB', 'hold'],
+            'and both routes considered, the reaching one included',
+        );
     } finally {
         await proxy.close();
     }
@@ -399,12 +475,21 @@ t.test('a body-less request to the inter-scheme hub is answered, not a 500', asy
         // deployment decision, so it is exactly what the guard is deployed against.
         const hubA = await deploy(
             'hubA',
-            participant => installHubA(participant, {proxyUrl: downstream.url, fxpUrl: downstream.url}),
+            participant =>
+                installHubA(participant, {proxyUrl: downstream.url, fxpUrl: downstream.url}),
             'transfer.inter',
         );
         try {
-            t.equal((await post(hubA.url, '/parties')).status, 200, 'a party lookup with no body is served');
-            t.equal((await post(hubA.url, '/quotes')).status, 200, 'a quote with no body is served');
+            t.equal(
+                (await post(hubA.url, '/parties')).status,
+                200,
+                'a party lookup with no body is served',
+            );
+            t.equal(
+                (await post(hubA.url, '/quotes')).status,
+                200,
+                'a quote with no body is served',
+            );
             t.equal((await post(hubA.url, '/transfers')).status, 200, 'and so is a transfer');
 
             // The consequence, not the fact of the call: the corridor still received a
@@ -427,56 +512,64 @@ t.test('a body-less request to the inter-scheme hub is answered, not a 500', asy
     }
 });
 
-t.test('withheld detail belongs to the execution that withheld it, not to the next failure (PRD R10)', async t => {
-    // Two requests through one participant, in an order no flow produces: a
-    // settlement that *succeeds* — leaving the hub's routing detail and liquidity
-    // reservation in its withheld bag — and then a quote whose provider declines,
-    // which is the next `error` that hub emits.
-    //
-    // This is the only shape in which the bag's scope is observable. If it belonged
-    // to the participant rather than to the request, that unrelated quote failure
-    // would publish the earlier settlement's routing and liquidity under a trace and
-    // a flow id that never reserved anything — the detail R10 exists to hold back,
-    // released somewhere it does not belong.
-    const downstream = await stub({
-        '/quotes': {status: 409, body: '{"reason":"rate above provider limit"}'},
-        '/transfers': {status: 200, body: '{"fulfilment":"sha256:preimage"}'},
-    });
-    try {
-        const hub = await deploy('hub', participant =>
-            installHub(participant, {fxpUrl: downstream.url, payeeUrl: downstream.url}),
-        );
+t.test(
+    'withheld detail belongs to the execution that withheld it, not to the next failure (PRD R10)',
+    async t => {
+        // Two requests through one participant, in an order no flow produces: a
+        // settlement that *succeeds* — leaving the hub's routing detail and liquidity
+        // reservation in its withheld bag — and then a quote whose provider declines,
+        // which is the next `error` that hub emits.
+        //
+        // This is the only shape in which the bag's scope is observable. If it belonged
+        // to the participant rather than to the request, that unrelated quote failure
+        // would publish the earlier settlement's routing and liquidity under a trace and
+        // a flow id that never reserved anything — the detail R10 exists to hold back,
+        // released somewhere it does not belong.
+        const downstream = await stub({
+            '/quotes': {status: 409, body: '{"reason":"rate above provider limit"}'},
+            '/transfers': {status: 200, body: '{"fulfilment":"sha256:preimage"}'},
+        });
         try {
-            const settled = await post(hub.url, '/transfers', {amount: 100, currency: 'USD'});
-            t.equal(settled.status, 200, 'a settlement succeeds, so nothing is released yet');
-
-            const quote = await post(hub.url, '/quotes', {amount: 100, from: 'USD', to: 'EUR'});
-            t.equal(quote.status, 409, 'and a later quote is declined by the provider');
-
-            const records = await hub.records();
-            const refused = find(records, 'hub', 'provider declined the quote');
-            t.ok(refused, 'the hub recorded the declined quote');
-            t.same(
-                refused === undefined ? undefined : released(refused),
-                [],
-                "and released none of the earlier settlement's detail: the bag is the request's, not the participant's",
+            const hub = await deploy('hub', participant =>
+                installHub(participant, {fxpUrl: downstream.url, payeeUrl: downstream.url}),
             );
+            try {
+                const settled = await post(hub.url, '/transfers', {amount: 100, currency: 'USD'});
+                t.equal(settled.status, 200, 'a settlement succeeds, so nothing is released yet');
 
-            // The control, so the assertion above cannot pass because nothing is ever
-            // released: a failure in the *same* step does release that step's detail.
-            downstream.answer('/transfers', {status: 422, body: '{"reason":"account blocked"}'});
-            const failed = await post(hub.url, '/transfers', {amount: 100, currency: 'USD'});
-            t.equal(failed.status, 502, 'a settlement that fails is reported as a failure');
-            const aftermath = await hub.records();
-            const failure = find(aftermath, 'hub', 'settlement failed');
-            t.ok(
-                failure === undefined ? undefined : released(failure).some(entry => entry.liquidity !== undefined),
-                "and that execution's own liquidity reservation is released with it",
-            );
+                const quote = await post(hub.url, '/quotes', {amount: 100, from: 'USD', to: 'EUR'});
+                t.equal(quote.status, 409, 'and a later quote is declined by the provider');
+
+                const records = await hub.records();
+                const refused = find(records, 'hub', 'provider declined the quote');
+                t.ok(refused, 'the hub recorded the declined quote');
+                t.same(
+                    refused === undefined ? undefined : released(refused),
+                    [],
+                    "and released none of the earlier settlement's detail: the bag is the request's, not the participant's",
+                );
+
+                // The control, so the assertion above cannot pass because nothing is ever
+                // released: a failure in the *same* step does release that step's detail.
+                downstream.answer('/transfers', {
+                    status: 422,
+                    body: '{"reason":"account blocked"}',
+                });
+                const failed = await post(hub.url, '/transfers', {amount: 100, currency: 'USD'});
+                t.equal(failed.status, 502, 'a settlement that fails is reported as a failure');
+                const aftermath = await hub.records();
+                const failure = find(aftermath, 'hub', 'settlement failed');
+                t.ok(
+                    failure === undefined
+                        ? undefined
+                        : released(failure).some(entry => entry.liquidity !== undefined),
+                    "and that execution's own liquidity reservation is released with it",
+                );
+            } finally {
+                await hub.close();
+            }
         } finally {
-            await hub.close();
+            await downstream.close();
         }
-    } finally {
-        await downstream.close();
-    }
-});
+    },
+);

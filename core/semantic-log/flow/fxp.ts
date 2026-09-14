@@ -28,13 +28,15 @@ export function installFxp(participant: Participant, options: FxpOptions = {}): 
     participant.app.post('/quotes', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
-        const result = await participant.run(traceId, flowId, () =>
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('quote', async () => {
                 const accepted = decide('rate-within-limit', {rate, rateLimit}, [
                     {
                         name: 'decline',
                         when: values =>
-                            options.declineAll === true || (values.rate as number) > (values.rateLimit as number),
+                            options.declineAll === true ||
+                            (values.rate as number) > (values.rateLimit as number),
                         run: () => false,
                     },
                     {name: 'accept', when: () => true, run: () => true},

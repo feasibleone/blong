@@ -19,6 +19,7 @@
  * participant (see `payer.ts` for the full note).
  */
 
+import {bindLeg} from '../src/context.ts';
 import {decide} from '../src/decide.ts';
 import {hop, type Participant} from './participant.ts';
 
@@ -41,23 +42,35 @@ export interface ProxyOptions {
  * own — so the pairing is written out, not computed from the URL.
  */
 const ROUTES = [
-    {path: '/parties', phase: 'discovery'},
-    {path: '/quotes', phase: 'quote'},
-    {path: '/transfers', phase: 'transfer'},
+    {path: '/parties', phase: 'discovery', leg: 'proxy.discovery.corridor'},
+    {path: '/quotes', phase: 'quote', leg: 'proxy.quote.corridor'},
+    {path: '/transfers', phase: 'transfer', leg: 'proxy.transfer.corridor'},
 ] as const;
 
 export function installProxy(participant: Participant, options: ProxyOptions): void {
     const {logger, app} = participant;
     const reachable = options.hubBUrl.length > 0;
 
-    for (const {path, phase} of ROUTES) {
+    for (const {path, phase, leg} of ROUTES) {
         app.post(path, async (request, reply) => {
             const traceId = participant.traceFrom(request);
             const flowId = participant.flowFrom(request);
-            const result = await participant.run(traceId, flowId, () =>
+            const inbound = participant.legFrom(request);
+            const result = await participant.run(traceId, flowId, inbound, () =>
                 participant.phase(phase, async () => {
+                    // The receipt belongs to the *caller's* leg — this is the far end of
+                    // the scheme's call. It comes before the routing decision so that the
+                    // rationale that decision records still attaches to the record that
+                    // reports the routing, which is the record it explains (PRD R11/R22).
+                    logger.info('corridor request received', {
+                        req: {operation: 'POST', target: path},
+                    });
                     const route = decide('route-selection', {corridor: TARGET, reachable}, [
-                        {name: TARGET, when: values => values.reachable === true, run: () => options.hubBUrl},
+                        {
+                            name: TARGET,
+                            when: values => values.reachable === true,
+                            run: () => options.hubBUrl,
+                        },
                         {name: 'hold', when: () => true, run: () => undefined},
                     ]);
                     if (!route) {
@@ -66,11 +79,13 @@ export function installProxy(participant: Participant, options: ProxyOptions): v
                         });
                         return {status: 503, body: {reason: 'no route to target ecosystem'}};
                     }
-                    logger.info('routing to target ecosystem', {
-                        req: {operation: 'POST', target: path},
-                        corridor: TARGET,
+                    const forwarded = await bindLeg({id: leg, to: TARGET}, async () => {
+                        logger.info('routing to target ecosystem', {
+                            req: {operation: 'POST', target: path},
+                            corridor: TARGET,
+                        });
+                        return hop(participant, route, path, request.body);
                     });
-                    const forwarded = await hop(participant, route, path, request.body, traceId, flowId);
                     return {status: forwarded.status, body: forwarded.body};
                 }),
             );

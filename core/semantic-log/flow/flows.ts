@@ -46,9 +46,9 @@ import type {LevelName} from '../src/level.ts';
 import {installFxp} from './fxp.ts';
 import {installHub} from './hub.ts';
 import {installHubA} from './hubA.ts';
+import {createParticipant, type Participant} from './participant.ts';
 import {installPayee} from './payee.ts';
 import {installPayer} from './payer.ts';
-import {createParticipant, type Participant} from './participant.ts';
 import {installProxy} from './proxy.ts';
 
 export type FlowKind = 'single' | 'inter';
@@ -108,7 +108,11 @@ export interface FlowHandle {
     payerUrl: string;
     participants: Participant[];
     /** Run the whole transfer; returns the payer's response. */
-    run(body?: {amount?: number; currency?: string; target?: string}): Promise<{status: number; body: unknown}>;
+    run(body?: {
+        amount?: number;
+        currency?: string;
+        target?: string;
+    }): Promise<{status: number; body: unknown}>;
     close(): Promise<void>;
 }
 
@@ -135,7 +139,10 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
             port: 0,
             cacheDir: join(cacheRoot, name),
             level: options.level ?? 'info',
-            intent: role === 'payer' ? {name: 'User_Transfer', actor: 'demo', tenant: 'acme'} : undefined,
+            intent:
+                role === 'payer'
+                    ? {name: 'User_Transfer', actor: 'demo', tenant: 'acme'}
+                    : undefined,
             serviceUrl: options.serviceUrl,
         });
         participants.push(created);
@@ -155,13 +162,16 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
     let payerUrl = '';
     if (kind === 'single') {
         const hub = await participant('hub', 'hub');
-        installPayee(payee, {blockTransfers: faults.blockTransfers, stallTransfers: faults.stallTransfers});
+        installPayee(payee, {
+            blockTransfers: faults.blockTransfers,
+            stallTransfers: faults.stallTransfers,
+        });
         installFxp(fxp, {declineAll: faults.declineRate});
         const fxpUrl = await start(fxp);
         const payeeUrl = await start(payee);
         installHub(hub, {fxpUrl, payeeUrl, rewordLiquidity: faults.rewordLiquidity});
         const hubUrl = await start(hub);
-        installPayer(payer, {hubUrl});
+        installPayer(payer, {hubUrl, hubName: 'hub'});
         payerUrl = await start(payer);
     } else {
         // Downstream-first, and each participant installed before it starts
@@ -177,7 +187,10 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
         // and the originating scheme's indication two different numbers — the only
         // reason hub A records both.
         const fxpA = await participant('fxpA', 'fxpA');
-        installPayee(payee, {blockTransfers: faults.blockTransfers, stallTransfers: faults.stallTransfers});
+        installPayee(payee, {
+            blockTransfers: faults.blockTransfers,
+            stallTransfers: faults.stallTransfers,
+        });
         installFxp(fxp, {declineAll: faults.declineRate});
         installFxp(fxpA, {rate: ORIGINATING_RATE, declineAll: faults.declineRate});
         const fxpUrl = await start(fxp);
@@ -192,7 +205,7 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
         // indication and has no direct route to the payee: it crosses.
         installHubA(hubA, {proxyUrl, fxpUrl: fxpAUrl});
         const hubAUrl = await start(hubA);
-        installPayer(payer, {hubUrl: hubAUrl});
+        installPayer(payer, {hubUrl: hubAUrl, hubName: 'hubA'});
         payerUrl = await start(payer);
     }
 
@@ -209,7 +222,10 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
                     headers: {'content-type': 'application/json'},
                     body: JSON.stringify(body),
                 });
-                last = {status: response.status, body: await response.json().catch(() => undefined)};
+                last = {
+                    status: response.status,
+                    body: await response.json().catch(() => undefined),
+                };
             }
             return last;
         },

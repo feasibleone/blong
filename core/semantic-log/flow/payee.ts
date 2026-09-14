@@ -31,7 +31,8 @@ export function installPayee(participant: Participant, options: PayeeOptions = {
     app.post('/parties', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
-        const result = await participant.run(traceId, flowId, () =>
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('discovery', async () => {
                 logger.info('party profile returned', {currency: 'EUR'});
                 return {status: 200, body: {currency: 'EUR'}};
@@ -44,7 +45,8 @@ export function installPayee(participant: Participant, options: PayeeOptions = {
     app.post('/quotes', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
-        const result = await participant.run(traceId, flowId, () =>
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('quote', async () => {
                 logger.info('quote signed', {condition: 'sha256:condition'});
                 return {status: 200, body: {condition: 'sha256:condition'}};
@@ -57,7 +59,8 @@ export function installPayee(participant: Participant, options: PayeeOptions = {
     app.post('/transfers', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
-        const result = await participant.run(traceId, flowId, () =>
+        const leg = participant.legFrom(request);
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('transfer', async () => {
                 if (options.stallTransfers) {
                     logger.warn('transfer awaiting fulfilment', {waitedMs: options.stallMs ?? 50});

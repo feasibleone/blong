@@ -5,6 +5,7 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 ## List of incomplete tasks
 
 - agents struggle with coverage, create a tool/skill for tap
+- add screenshots and diagrams to the docs
 - agents frequently cause bash error `event not found` when they run `grep` with a pattern
   containing `!` (e.g. `!route`) Example:
 
@@ -340,3 +341,65 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 - (blong-lint) `ci-test` exits 1 because the package has no test files (pre-existing; the old
   `blong-dev test` did the same). Either add tests or drop the script and let rush's
   `ignoreMissingScript: true` skip it.
+
+- (semantic-log) **Deferred by ruling: the leg sequence as the drift shape.** Drift currently
+  compares the ordered sequence of **template refs** of an execution (`FlowShapes` ->
+  `flowVectorOf`). The sequence of **legs** is the more honest notion of "the flow's shape" — a
+  reword cannot disturb it — but switching the input changes R6c's observable behaviour and would
+  leave fault F3 ("hub rewords a message") with nothing to demonstrate, since a reword does not move
+  the leg sequence. Owner chose "compute both": the leg sequence and its vector are retained and
+  exposed, while drift keeps consuming the ref sequence. Decide whether a leg-shape anomaly should
+  be added, and re-found R6c's demonstration if it is.
+
+- (semantic-log) **Remaining work in the leg/flow-diagram plan** (plan of record:
+  `/memories/session/plan.md`, rulings: `.github/memory/decision.md`). Landed so far: `flow.leg` on
+  the record model and rendered header; `bindLeg`/`currentLeg`/`isLegId`; `src/propagation.ts`
+  (`TRACE_HEADER`, `FLOW_HEADER`, `LEG_HEADER`, `identityHeaders()`, `readIdentity()`); the fixtures
+  import that contract instead of owning it; `hop()` requires a leg and propagates the ambient
+  identities; the participant adopts the inbound leg and filters malformed wire values; `legOf`
+  reads the wire value once for the service; the lineage node carries the leg; the fixture satisfies
+  the both-ends discipline (nine added protocol records); `src/service/flowLedger.ts` retains one
+  execution's ordered legs and the per-kind union and is fed from the `onAccepted` seam. Still to
+  do: **Phase 2** — the mermaid diagram renderer, the three routes (`GET /flows`,
+  `/flows/:kind/diagram`, `/flows/:id/diagram` with the JSON envelope and 404s), snapshot v2
+  (`{version, provider, entries, kinds}` with every v1 file quarantined and debounced union saves),
+  the inspector's `diagram` verb with the local-cache fallback, and the generated docs artifact with
+  its parity test; **Phase 3** — exemplar embedding under a `record:` key namespace, the
+  heterogeneous `/search`, `@huggingface/transformers` as an optional dependency with
+  `SEMANTIC_LOG_EMBEDDING=local`, the capability probe replacing the absence assertion, the
+  env-gated real-model test, and the inspector's `index`/`search` verbs over `vectors.jsonl`;
+  **Phase 4** — the R22–R25 register rows with the R5/R9/R14 amendments, the three honesty checks
+  (with the fault-only exemption list), and the docs (flows page regenerated, README event contract
+  and routes, package `docs/`, and the both-ends instrumentation rule written down).
+
+- (semantic-log) **Decision needed: what an unorderable leg pair is worth.** The ledger derives a
+  leg's caller as the end whose record was **emitted first**, because a leg id names a call site and
+  encodes no endpoint (D8) and the caller's record precedes the call while the callee's follows it.
+  That works until the two records share a millisecond, which is ordinary on a fast path: measured
+  on the inter-scheme fixture, **7 of 14 legs tie** (`LegEnd.tied` counts them, and the pair is then
+  resolved by arrival order alone — i.e. by which service's sink flushed first). The tie is reported
+  rather than hidden, so no arrow is silently wrong, but a tie-broken arrow is still a coin flip.
+  Three ways out, none free: **(A)** accept it and let the diagram mark tied directions (what ships
+  now); **(B)** make the pair sound by having the emitter carry a monotonic stamp it can compare
+  across two processes (an identity or wire change, and the clocks are still two clocks); **(C)**
+  revisit D8 and let the id name its caller (`payer>hub/parties`), which needs one observation
+  instead of two and makes the tie disappear — at the cost of duplicating in the id what the call
+  site already says. Worth deciding before the diagram renderer is written, since (B)/(C) change
+  what it draws.
+
+## semantic-log leg identity / diagrams / search (2026-09-14) — deferred items
+
+- **The inspector's `index` and `search` verbs** (D22/D27's offline half). Semantic search is built
+  and tested through `GET /search` (templates + retained records, with the real-model test proving a
+  paraphrase finds the record it means); what is missing is the `<dir>/vectors.jsonl` sidecar, its
+  staleness rule and the "nothing indexed" exit code. Recorded in
+  `core/semantic-log/docs/open-items.md` with the reasoning.
+- **A legs-as-drift-shape anomaly.** The per-execution call sequence is retained and published but
+  is not a detector input: reworded messages already fire drift (fault F3), so a second series would
+  need its own founding case (a call added/removed/reordered with the templates unchanged). Recorded
+  in `core/semantic-log/docs/open-items.md`.
+- **`release-please-config.json` gained `"core/semantic-log": {}`** during this session, most likely
+  from `rush update` syncing the release config. Not part of the task and not reverted — flagged so
+  whoever commits can decide.
+- **`docs/blong` build**: one pre-existing broken anchor, `../concepts/adapter#database`, from
+  `patterns/handler` — unrelated to this work and left alone.

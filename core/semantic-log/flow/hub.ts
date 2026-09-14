@@ -23,6 +23,7 @@
  * execution's record, under that execution's trace and flow id.
  */
 
+import {bindLeg} from '../src/context.ts';
 import type {Logger} from '../src/logger.ts';
 import {hop, type Participant} from './participant.ts';
 
@@ -49,11 +50,29 @@ export function installHub(participant: Participant, options: HubOptions): void 
     app.post('/parties', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
+        // The leg the caller declared for this call. Binding it for the whole
+        // request is what makes the two ends of one hop name the same call: the
+        // receipt below carries the caller's id, and everything the hub does for
+        // that call carries it until the hub makes a call of its own (PRD R22).
+        const leg = participant.legFrom(request);
         const logger = stepLogger();
-        const result = await participant.run(traceId, flowId, () =>
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('discovery', async () => {
-                logger.info('party lookup forwarded', {req: {operation: 'POST', target: '/parties'}});
-                const forwarded = await hop(participant, options.payeeUrl, '/parties', request.body, traceId, flowId);
+                // Every route logs a receipt, and this is the one that carries the
+                // *inbound* leg — without it the payer's leg would be observed at one
+                // end only, and a call with one end is not an edge.
+                logger.info('party lookup received', {
+                    req: {operation: 'POST', target: '/parties'},
+                });
+                const forwarded = await bindLeg(
+                    {id: 'hub.discovery.payee', to: 'payee'},
+                    async () => {
+                        logger.info('party lookup forwarded', {
+                            req: {operation: 'POST', target: '/parties'},
+                        });
+                        return hop(participant, options.payeeUrl, '/parties', request.body);
+                    },
+                );
                 return {status: forwarded.status, body: forwarded.body};
             }),
         );
@@ -64,12 +83,23 @@ export function installHub(participant: Participant, options: HubOptions): void 
     app.post('/quotes', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
         const logger = stepLogger();
-        const result = await participant.run(traceId, flowId, () =>
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('quote', async () => {
                 const body = (request.body ?? {}) as {amount?: number; from?: string; to?: string};
-                logger.info('quote request received', {amount: body.amount, from: body.from, to: body.to});
-                const fx = await hop(participant, options.fxpUrl, '/quotes', body, traceId, flowId);
+                logger.info('quote request received', {
+                    amount: body.amount,
+                    from: body.from,
+                    to: body.to,
+                });
+                // Each hop logs the request inside its own leg and the receipt outside it,
+                // which is the instrumentation rule the observed topology rests on: a call
+                // is an edge only when both ends name it (PRD R22).
+                const fx = await bindLeg({id: 'hub.quote.fx', to: 'fxp'}, async () => {
+                    logger.info('fx rate requested', {from: body.from, to: body.to});
+                    return hop(participant, options.fxpUrl, '/quotes', body);
+                });
                 if (fx.status >= 400) {
                     logger.error('provider declined the quote', {
                         err: {message: `fxp returned ${fx.status}`},
@@ -77,7 +107,10 @@ export function installHub(participant: Participant, options: HubOptions): void 
                     });
                     return {status: fx.status, body: fx.body};
                 }
-                const payee = await hop(participant, options.payeeUrl, '/quotes', fx.body, traceId, flowId);
+                const payee = await bindLeg({id: 'hub.quote.payee', to: 'payee'}, async () => {
+                    logger.info('payee quote requested', {amount: body.amount});
+                    return hop(participant, options.payeeUrl, '/quotes', fx.body);
+                });
                 const rate = (fx.body as {rate?: number} | undefined)?.rate ?? 1;
                 logger.info('quote assembled', {rate});
                 return {status: 200, body: {...(payee.body as object), rate}};
@@ -90,22 +123,31 @@ export function installHub(participant: Participant, options: HubOptions): void 
     app.post('/transfers', async (request, reply) => {
         const traceId = participant.traceFrom(request);
         const flowId = participant.flowFrom(request);
+        const leg = participant.legFrom(request);
         const logger = stepLogger();
-        const result = await participant.run(traceId, flowId, () =>
+        const result = await participant.run(traceId, flowId, leg, () =>
             participant.phase('transfer', async () => {
                 const body = (request.body ?? {}) as {amount?: number; currency?: string};
                 logger.info('transfer prepare started', {amount: body.amount});
 
-                // Detail a real hub holds but does not transmit.
+                // Detail a real hub holds but does not transmit. It rides the caller's
+                // leg, because it is detail *about that call* that the caller never saw.
                 logger.withhold({routing: {fxp: 'fxp-primary', decidedBy: 'rate'}});
                 logger.withhold({liquidity: {reserved: body.amount, currency: body.currency}});
 
                 logger.info(liquidityMessage(), {amount: body.amount, currency: body.currency});
 
                 const started = Date.now();
-                const payee = await hop(participant, options.payeeUrl, '/transfers', body, traceId, flowId);
+                const payee = await bindLeg({id: 'hub.transfer.deliver', to: 'payee'}, async () => {
+                    logger.info('settlement delivery requested', {
+                        amount: body.amount,
+                        currency: body.currency,
+                    });
+                    return hop(participant, options.payeeUrl, '/transfers', body);
+                });
                 if (payee.status >= 400) {
-                    const reason = (payee.body as {reason?: string} | undefined)?.reason ?? 'unknown';
+                    const reason =
+                        (payee.body as {reason?: string} | undefined)?.reason ?? 'unknown';
                     logger.withhold({settlement: {attempted: body.amount, payeeResponse: reason}});
                     logger.error('settlement failed', {
                         err: {message: `payee refused: ${reason}`},
@@ -113,7 +155,9 @@ export function installHub(participant: Participant, options: HubOptions): void 
                     });
                     return {status: 502, body: {reason}};
                 }
-                logger.info('settlement committed', {res: {status: payee.status, elapsedMs: Date.now() - started}});
+                logger.info('settlement committed', {
+                    res: {status: payee.status, elapsedMs: Date.now() - started},
+                });
                 return {status: 200, body: {status: 'settled'}};
             }),
         );

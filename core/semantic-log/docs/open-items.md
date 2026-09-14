@@ -25,18 +25,13 @@ should be reported as _no baseline yet_ rather than silence. Not fixed here: cha
 window semantics is a design decision, not a defect repair. (The tests demonstrate rate-shift by
 passing a tuned `DetectorSuite` to `createApp`, which is why the option exists.)
 
-**R9's flow-id retrieval.** Records carry a flow _position_, but nothing indexes records **by** flow
-id, and `FlowState` carries no completed-step sequence — so reconstructing one execution's chain
-means scanning records and grouping them. The package's own coverage claim for R9 is marked
-_partial_ for this reason. Decide whether to accept it or add a surface: an index in the emitter
-keyed by flow id, or a retrieval route beside the service's lineage index.
-
-**The `local` embedding provider's dependency.** `@huggingface/transformers` is declared nowhere —
-not in `package.json`, not in the lockfile — and the missing-package path is a tested, named error.
-But a test asserts the package is **absent** against the shipped loader, so the day someone adds the
-dependency that test either fails or silently starts downloading a model in CI. Whoever decides must
-revisit that test. Either declare it an optional dependency (and accept the install) or keep the
-explicit-failure contract and say in the README that `local` is unavailable until it is added.
+**A leg sequence as a drift shape.** Drift compares the _template-ref_ sequence of an execution
+(`FlowShapes`), and the calls an execution made are now a second observed sequence — retained per
+execution by the flow ledger and published with the union. A reworded message already fires drift
+(that is fault F3's whole job), so keying drift on legs as well would have to be founded on a
+different case: a call **added, removed or reordered** while the templates stay the same. Decide
+whether that is worth a second series and what it would report; until then the leg sequence is data
+(the diagrams read it) rather than a detector input.
 
 ## Known limitations
 
@@ -115,3 +110,15 @@ causation that does not exist — strictly worse than an absent link for a consu
 - **The intermittent `tap` SIGSEGV flake is recorded in the repository ledger**
   (`.github/memory/todo.md`), because it affects every tap package, not only this one. Its signature
   is a test count _lower than the suite's_ — re-run before investigating.
+
+## Deferred deliberately
+
+**The inspector's `index` and `search` verbs.** D22/D27 planned `index --cache <dir>` writing a
+`<dir>/vectors.jsonl` sidecar and `search --query <text> [--service|--cache]` reading it, so a
+developer could rank their own records without a running service. Semantic search itself is built
+and tested — `GET /search` ranks templates **and** retained records, and the real-model test proves
+a paraphrase finds the record it means — so this is the _offline_ half of that requirement, not the
+requirement. What is missing is the sidecar: its format, its staleness rule (a record written after
+the index must be reported rather than silently missing) and the exit codes for "nothing indexed".
+Deferred because it is a second storage surface with its own lifecycle, and the service route
+already answers the question the feature exists to answer.

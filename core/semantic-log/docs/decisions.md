@@ -1,4 +1,4 @@
-<!-- cspell:ignore dereferenceability EACCES EADDRINUSE ELOOP errno Interledger kindless normativity ONNX unpushed -->
+<!-- cspell:ignore dereferenceability EACCES EADDRINUSE ELOOP errno Interledger kindless normativity ONNX Redeliveries unpushed -->
 
 # semantic-log — decisions
 
@@ -201,3 +201,74 @@ user-facing open questions are in the **docs site**: `docs/blong/docs/rationale/
 The parity matrix's durable form is the self-checking audit `test/parity.test.ts`, and the
 requirement→demonstration mapping is `test/flow/coverage.test.ts` — deliberately not restated here,
 because a second copy would rot.
+
+## Calls, diagrams and search: the leg-identity decisions
+
+**A leg is a library concept, not a fixture concept.** `bindLeg`, `bindInboundLeg`, `currentLeg`,
+`isLegId`, `isLegSeq`, `isServiceName`, `identityHeaders` and `readIdentities` are exported from the
+package, and the propagation contract lives in `src/propagation.ts` — the fixture **imports** it.
+Rejected: the original shape, in which `hop()` owned the header names and the ids were arguments to
+a function in `flow/`. A convention an application can only use by adopting a demo is a demo.
+
+**The leg sits inside `flow`, not beside it.** It is a position within one execution (like `step`
+and `index`), so it is meaningless outside a flow and belongs in the same wire object. Rejected: a
+top-level dimension, and `refs` — a ref is locally minted and CLI-resolvable, and a declared leg is
+neither.
+
+**The id's grammar is enforced, its taxonomy is not.** `[A-Za-z0-9]`-led, with `.`, `-`, `_` inside
+(case preserved: `hubA.quote.proxy` names the participant the source names). A violation **throws**
+where the caller declares it — caller misuse fails fast — while a value arriving on the wire is read
+as _absent_, because a peer must not be able to 500 a batch (D3's split). The naming convention
+(`<participant>.<phase>.<object>`) is documented and not enforced: a taxonomy rule would reject ids
+that are fine and cannot check the thing that matters, which the honesty checks do instead.
+
+**The caller declares the receiver.** `legTo` is on the caller's records and nowhere else. That is
+what keeps an **attempt** on the record when nothing answers: a receiver that is missing, failing or
+wired to the wrong address still appears, and its silence costs only the `answered` count. Rejected:
+pairing the two ends by arrival order (a coin flip between processes — measured, 7 of 14 legs tied
+at a millisecond), and pairing by time (same problem, plus a shared clock nobody has).
+
+**Order is a counter path, not a clock.** A receiver numbers its own calls as children of the
+position it was handed, so `1.1.1` is the first call made while answering `1.1` and the paths form a
+depth-first walk of the execution — which is what a sequence diagram is drawn in. No coordinator is
+involved and no timestamp is drawn anywhere, which is also why the generated artifact can be
+compared byte for byte.
+
+**A finished execution still accepts records.** Superseded an earlier rule of this package's own
+making ("a spent execution takes no further calls"). The generated artifact proved it wrong on its
+first real run: the payer's sink flushes before the hub's, so the payer's terminal
+`transfer complete` arrived first and the hub's last four records were refused — losing the hub's
+declaration of `hub.transfer.deliver`, a whole edge of the observed flow. Arrival order between
+processes is not emission order; the terminal status is recorded as `closed` and never refuses an
+observation. Redeliveries are still deduplicated by event id, and retention is still bounded by the
+cap.
+
+**Diagrams are drawn from observations, and published as a generated artifact.** The diagrams and
+tables in the docs page are generated from a real run of the fixtures (`docs/observed-flows.md`,
+regenerated with `SEMANTIC_LOG_UPDATE_DIAGRAMS=1`) and compared verbatim by a test — including the
+blocks embedded in the docs page, which the same run rewrites between markers. Rejected: keeping
+hand-written diagrams (they drift silently — the "Leg by leg" tables were the wrong answer to a
+reasonable request: what a reader needs is not a legend but a label that can be found in the
+source), and drawing from a manifest (an artefact maintained by hand, which is the same failure with
+a different file name).
+
+**Every label is sanitised on the way into mermaid.** Each string arrives from a process this one
+does not control; `;` is a statement separator there (the defect shipped once) and a service name
+carrying `->>` would otherwise become an arrow. Participant names are folded to `[A-Za-z0-9_.-]` and
+two names that collapse to one are numbered apart rather than merged — the renderer is total, so a
+model it is handed can never produce an undeclared participant or a second statement.
+
+**A snapshot records which provider wrote it.** Vectors are only comparable within one provider at
+one width, so `version: 2` carries `{kind, model, dimension}` plus the per-kind union of observed
+calls (the one diagram surface a restart cannot re-derive). A mismatch is quarantined like any other
+unusable snapshot, under a suffix naming the reason: `.corrupt`, `.unsupported` (an older format) or
+`.provider` — calling the last two `corrupt` would be a lie the operator then has to disprove.
+Rejected: restoring and hoping (the numbers parse and every answer is nonsense).
+
+**Records are embedded when they are retained, not when they arrive.** The vector is keyed by the
+record's own id under a `record:` namespace — the fingerprint key would collapse every exemplar of a
+template onto the one vector that template has — and only for records the store will keep, so the
+cost stays per template times the retention bound rather than per event. A record whose vector is
+missing is left out of a search rather than embedded during the query: the alternative costs one
+provider call per candidate per query. Rejected: embedding every record (cost scales with traffic,
+the one thing R3 exists to prevent).

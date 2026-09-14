@@ -112,7 +112,7 @@ participant into. Each exists to make a requirement reachable:
 
 ## Requirement → demonstration
 
-The register is a test, not a table: `test/flow/coverage.test.ts` maps R1–R21 to the tests that
+The register is a test, not a table: `test/flow/coverage.test.ts` maps R1–R25 to the tests that
 demonstrate each and then **checks the mapping** — the named file must exist and must contain the
 named test, so a demonstration that was deleted or renamed fails the suite instead of being
 believed.

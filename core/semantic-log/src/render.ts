@@ -130,7 +130,19 @@ function header(record: LogRecord, options: RenderOptions): string {
     if (record.operation) parts.push(sanitise(record.operation));
     if (record.flow) {
         const index = record.flow.index ?? -1;
-        parts.push(`flow=${sanitise(record.flow.id)}/${sanitise(record.flow.step ?? '-')}#${index}`);
+        parts.push(
+            `flow=${sanitise(record.flow.id)}/${sanitise(record.flow.step ?? '-')}#${index}`,
+        );
+        // The leg (PRD R22) follows the position it belongs to, as a token of its
+        // own: `flow=<id>/<step>#<index>` stays exactly what it was, so a reader or a
+        // test parsing the position is unaffected by a record that also names the
+        // call it is part of. Its position in the execution rides the same token
+        // (`leg=<id>#<seq>`), the way the flow's position rides the flow token, so
+        // two lines of one execution can be ordered by reading them.
+        if (record.flow.leg) {
+            const seq = record.flow.legSeq === undefined ? '' : `#${sanitise(record.flow.legSeq)}`;
+            parts.push(`leg=${sanitise(record.flow.leg)}${seq}`);
+        }
     }
     if (record.intent) parts.push(`intent=${sanitise(record.intent.name)}`);
     parts.push(sanitise(record.msg));
@@ -152,7 +164,9 @@ function blockLine(label: string, text: string): string {
 
 function keyValues(prefix: string, values: Record<string, string> | undefined): string[] {
     if (!values) return [];
-    return Object.entries(values).map(([key, value]) => `${prefix}${sanitise(key)}: ${sanitise(value)}`);
+    return Object.entries(values).map(
+        ([key, value]) => `${prefix}${sanitise(key)}: ${sanitise(value)}`,
+    );
 }
 
 /** Values that have no meaningful text form in a log line. */
@@ -234,7 +248,10 @@ function guardedRead<T>(source: () => T, fallback: T): T {
  * anything that does not resolve to a finite number is reported as `info`.
  */
 function salvageLevel(value: unknown): number {
-    const resolved: unknown = guardedRead(() => levelValue(value as LevelName | number), LEVELS.info);
+    const resolved: unknown = guardedRead(
+        () => levelValue(value as LevelName | number),
+        LEVELS.info,
+    );
     return typeof resolved === 'number' && Number.isFinite(resolved) ? resolved : LEVELS.info;
 }
 
@@ -290,7 +307,10 @@ function salvageHuman(record: LogRecord): string {
  */
 export function renderHuman(record: LogRecord, options: RenderOptions = {}): string {
     try {
-        const resolved: RenderOptions = {color: options.color ?? false, formatTime: options.formatTime};
+        const resolved: RenderOptions = {
+            color: options.color ?? false,
+            formatTime: options.formatTime,
+        };
         const lines = [header(record, resolved)];
 
         if (record.req) {
@@ -299,23 +319,34 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
             lines.push(...keyValues('    ', record.req.headers));
         }
         if (record.res) {
-            const elapsed = record.res.elapsedMs === undefined ? '' : ` (${record.res.elapsedMs}ms)`;
+            const elapsed =
+                record.res.elapsedMs === undefined ? '' : ` (${record.res.elapsedMs}ms)`;
             lines.push(blockLine('response', `${record.res.status}${elapsed}`));
             lines.push(...keyValues('    ', record.res.headers));
         }
         if (record.err) {
-            lines.push(blockLine('error', sanitise([record.err.type, record.err.message].filter(Boolean).join(': '))));
+            lines.push(
+                blockLine(
+                    'error',
+                    sanitise([record.err.type, record.err.message].filter(Boolean).join(': ')),
+                ),
+            );
             if (record.err.stack) {
                 // A stack routinely embeds the message, so an escape sequence in
                 // a failure reaches this block through the frames as well as
                 // through the message line above. Sanitising each frame is what
                 // makes the C0 guarantee true of the whole rendered form.
-                lines.push(...record.err.stack.split('\n').map(frame => `    ${sanitise(frame.trim())}`));
+                lines.push(
+                    ...record.err.stack.split('\n').map(frame => `    ${sanitise(frame.trim())}`),
+                );
             }
         }
         if (record.decision) {
             const decision: unknown = record.decision;
-            const detail = typeof decision === 'object' ? decisionDetail(decision as Decision) : renderField(decision);
+            const detail =
+                typeof decision === 'object'
+                    ? decisionDetail(decision as Decision)
+                    : renderField(decision);
             lines.push(blockLine('decision', sanitise(detail)));
         }
         if (record.fields) {
@@ -343,7 +374,9 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
                 // store configured, has no retained payload, and a reference to a
                 // payload nothing holds is a dead link — worse than a long line.
                 const rendered =
-                    payload !== undefined && text.length >= PAYLOAD_THRESHOLD ? refUri('payload', payload) : sanitise(text);
+                    payload !== undefined && text.length >= PAYLOAD_THRESHOLD
+                        ? refUri('payload', payload)
+                        : sanitise(text);
                 lines.push(`  ${sanitise(key)}: ${rendered}`);
             }
         }
