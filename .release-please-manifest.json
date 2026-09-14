@@ -1,7 +1,7 @@
 {
     "core/blong": "1.26.0",
     "realm/blong-login": "1.10.1",
-    "docs/blong": "1.21.0",
+    "docs/blong": "1.22.0",
     "realm/blong-test": "1.9.1",
     "ext/rest-fs": "1.4.2",
     "core/blong-gogo": "1.32.0",
