@@ -887,6 +887,25 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  ../../core/semantic-log:
+    dependencies:
+      fastify:
+        specifier: ^5.12.3
+        version: 5.12.3
+      ulidx:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@feasibleone/blong-dev':
+        specifier: workspace:*
+        version: link:../../tools/blong-dev
+      '@types/node':
+        specifier: ^24
+        version: 24.12.0
+      tap:
+        specifier: ^21.6.3
+        version: 21.7.1(@swc/core@1.15.21)(@types/node@24.12.0)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.3)
+
   ../../demo/blong-cli:
     dependencies:
       '@feasibleone/blong':

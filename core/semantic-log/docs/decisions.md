@@ -1,0 +1,203 @@
+<!-- cspell:ignore dereferenceability EACCES EADDRINUSE ELOOP errno Interledger kindless normativity ONNX unpushed -->
+
+# semantic-log — decisions
+
+Why this package's code is shaped the way it is: the decisions that are not visible in the code, the
+reason for each, and the alternative that was rejected. Read this before "fixing" something that
+looks odd — most oddities here are deliberate and were argued.
+
+The implementation plans that produced this package were deleted once their content moved into the
+**docs site** (`docs/blong/docs/{concepts,patterns,rationale}/semantic-log*.md`) and into this
+folder. `Plan N Task M` below means "the Mth task of the Nth plan for this package"; task numbers
+are history, not documents. Live gaps are in [open-items.md](./open-items.md); how to change this
+package without repeating our mistakes is in [practices.md](./practices.md).
+
+## Identity: what a template is, and when it is computed
+
+**Identity is a hash of the masked structural form, never an embedding.** Two runs of one code path
+must share one identifier however much their values differ, and the identifier must survive a
+redeploy of unchanged code. Rejected: embedding-based identity — non-deterministic, and it would
+make a log line's identity depend on a model.
+
+**Redaction runs _before_ identity is minted.** The alternative (the obvious order — redact at the
+output) leaves the secret in `template`, in `refs.template` and in `fingerprint`, because all three
+are derived from `msg`/`err.message`; and a _hash_ of a withheld value is itself a leak (offline
+dictionary attack, cross-record correlation). Deriving the whole identity family from what is
+actually retained closes it by construction. Consequence to remember: two messages differing only in
+a redacted segment now share a fingerprint.
+
+**`mask` drops the trailing word boundary on numbers** (`\b\d+`, not `\b\d+\b`). `\b` needs a
+non-word character after the digits, so the "obvious" pattern can never mask the `5000` in `5000ms`
+— a quantity glued to its unit stayed in the identity. The leading boundary is kept, so `sha256` is
+untouched.
+
+**Record ids are minted with `monotonicFactory()`.** `ulidx`'s default `ulid()` is _not_ monotonic:
+back-to-back calls in one millisecond produced 97 ordering failures in 200 pairs, which made the id
+ordering assertion flaky rather than wrong. Monotonicity is what makes a reference usable as a sort
+key and a cursor.
+
+## Flow identity: two parts, three rules
+
+A flow identity has **two** parts because it answers two different questions (owner ruling,
+2026-09-13):
+
+- **`flow.id`** — a caller-minted **ULID for one execution**. _Which run_ this is. Validated on
+  `withFlow`: absent or malformed is caller misuse and **throws**.
+- **`flow.kind`** — a caller-supplied **stable name for the flow as a process** (`transfer.single`).
+  _Which recurring process_ it is, and **the key drift is observed under**. Required, for the same
+  reason: a flow with no stable name has no drift key.
+
+**The three rules around them.**
+
+1. **The execution ULID is not the trace id.** A trace may span more than one flow, so `flow.id` and
+   `refs.trace` are distinct values that relate without being equal. (An earlier draft reused the
+   trace id as the flow id; it was wrong and is corrected everywhere.)
+2. **Caller misuse throws; a surprise arriving on the wire is reported, never thrown.** The split is
+   by _origin_: a local programming error should fail fast, but an unbalanced peer must not be able
+   to break ingestion by sending an absent, malformed or inconsistent flow identity. The ingest
+   counts it.
+3. **Drift is a property of a flow, not of a template.** A template's embedding is keyed by the very
+   fingerprint that identifies it, so its vector is _constant by construction_ and per-template
+   drift can never fire. A flow's shape legitimately moves, so the drift key must outlive one
+   execution — which is what `flow.kind` is for.
+
+**Rejected:** a per-step `attempt` counter (it existed only to tell one run of a named flow from the
+next, which the ULID answers by construction — the field was deleted, not fixed); deriving the drift
+key from the entry template (a flow whose first step changes would silently leave drift); re-scoping
+drift away entirely. Also rejected: tolerating a malformed flow id locally.
+
+## Retention: every bound is explicit, and no loss is silent
+
+**The registry is the only durable artifact**; digest, lineage, incidents and flow-drift history are
+process-lifetime by design, and the service says so rather than being silently partial. A snapshot
+that cannot be read does **not** stop the service: it is moved aside as `.corrupt` (kept, never
+deleted) and the registry starts empty and loudly. A telemetry service that refuses to boot because
+one cache file is truncated is worse than one that starts fresh and says so. Writes are atomic
+(`rename` from a unique temp file) and serialised, so a slow save cannot land after a newer one.
+
+**Retirement is a deliberate write, not a TTL.** `POST /templates/:ref/retire` stamps `retiredAt`
+and publishes the digest delta; retiring does not delete, re-retiring is idempotent, and a later
+`upsert` clears `retiredAt` (a template seen again is back). A `lastSeen` sweep was rejected:
+retention is an explicit decision, not wall-clock expiry.
+
+**Every bound counts what it drops:** `writeLimit` (queued cache writes), `withholdLimit` (ring
+buffer), `sendLimit` (queued service sends), the digest's and incident buffer's 1000 entries,
+`flowLimit` and its step cap, and the lineage index's `traceLimit`/`recordLimit`. Each surfaces its
+loss (`writeDropped`, `withheldDropped`, `dropped()`, `evictions()`, `truncations()`, `skipped`) — a
+bound that loses data silently is the failure class this package exists to prevent.
+
+**The lineage index drops the _oldest_ record per trace, and that is load-bearing.** An anomaly is
+raised while observing the event just ingested, so its record is the newest of its trace; dropping
+the newest would discard the very record correlation needs and split one incident into two.
+Consequence, pinned by a test: eviction truncates a chain, so `rootOf(child)` names the closest
+_surviving_ ancestor rather than the true origin — degraded attribution, never a wrong one.
+
+## Progressive disclosure: hold detail, release it on failure
+
+`withhold(fields)` buffers on the **logger**; `error`/`fatal` releases the whole bag onto that
+record, and `escalate()` releases it deliberately. Two consequences are deliberate:
+
+- **The bag is redacted when it is withheld**, under both the presentation position
+  (`fields.<name>`) and the record-root position, so the buffer never holds a value the same
+  patterns would have withheld from a record. The first implementation redacted only the
+  presentation position, which meant `withhold({err})` with `redact: ['err.message']` withheld
+  _nothing_ and Task 10 would have persisted the plaintext.
+- **`escalate()` keeps the detail buffered when `info` is filtered** by the level threshold, rather
+  than draining it into a record that is never written. A later `error`/`fatal` still releases it.
+
+**Because the bag lives on the logger, a long-lived participant must withhold on a request-scoped
+`logger.child({})`.** Otherwise one execution's routing and liquidity detail rides _another_
+execution's failure, under that execution's trace and flow id. The flows do this deliberately, and a
+two-request test pins it. There is no per-request bag in the library, and that is the documented
+semantic: a child gives you one.
+
+## Detectors, correlation and the diff
+
+**Three anomalies, reported separately** — novelty (a fingerprint never seen), rate-shift (a known
+template at an anomalous rate against its own baseline) and drift (a known flow whose shape moved).
+One similarity threshold conflates three causes that demand three different operator responses.
+
+**`diagnostic.drifted` means "this template was the trigger of a drift observation".** It is derived
+at read time from the retained anomalies (`kind === 'drift' && templateRef === entry.ref`), never
+stored per template. Rejected: dropping the field, or a stored `alerts.driftAt` marker — a template
+cannot drift, so a stored marker would be a mechanism that can never fire.
+
+**The deploy diff's `drifted` bucket reads a bounded per-flow-kind drift history**, written when the
+detector reports drift, and the history is a **required** argument of `deployDiff`. Rejected:
+reading the bounded digest, which would silently under-report a release-window diff, and making the
+argument optional (which reproduces the always-empty bucket the ruling was about).
+
+**Incidents accumulate across batches and publish only what changed.** A cross-service incident is
+by definition assembled from anomalies arriving in different batches, so batch-only correlation
+could never produce one in production; and republishing every retained incident on every ingest
+would be a delta storm in the stream the digest exists to keep readable.
+
+**An unreadable numeric bound falls back, and the effective range is echoed.** Bare `Number(...)`
+makes a rubbish `from`/`to` compare false, so the diff answers "nothing changed" — a silently wrong
+answer rather than a visible fallback. Same rule as the digest's cursor.
+
+## The service surface and the wire contract
+
+**The ingest is absent-tolerant and the emitter never waits on it.** `POST /events` takes
+`{events: […]}` and answers `202`; only a payload that is not a batch is a `400`; an individual
+event that cannot be ingested is counted in `skipped` and logged. Anomalies and incidents travel on
+the digest, not in the response, because the emitter must not depend on the service.
+
+**Offline is a first-class mode.** Readable output, references and the local cache need no service;
+the service sink is a **second** destination appended after the primary writer, never a replacement,
+and a `null` primary writer silences the sinks too. The fan-out isolates a failing destination; the
+sink is drained separately from the write tracker, so a caller shutting down must flush both.
+
+**The public contract uses generic vocabulary.** No framework-specific property name, URI scheme or
+tool name appears in the requirements — the library is standalone, so the spec cannot be written in
+one consumer's dialect.
+
+**The inspector refuses a missing cache directory rather than creating it.** `openCache` would
+`mkdir` it, so a typo in `--cache` would resolve every reference as unknown against a store it had
+just invented. Exit codes are part of the contract (0 resolved, 1 unknown, 2 not retained, 3 usage),
+and the store genuinely cannot distinguish pruned from never-existed — so that distinction is
+asserted by `--expect-retained`, not guessed from an id's shape or age.
+
+## Rendering and references
+
+**One greppable header line, detail indented beneath it, never a raw object dump.** Detail labels
+use _two_ spaces of padding, which the acceptance regexes required; the header is sanitised of
+control characters so no field value can forge a line or inject a terminal escape.
+
+**References are minted locally at emit time** — `r` (record), `t` (template), `x` (trace) and `p`
+(the causal parent, rendered as a bare id) — so an offline process still produces usable ones. Ids
+are percent-encoded before rendering, because a trace id is untrusted text and, left raw, an id
+could close the reference group and forge a second reference.
+
+**A payload reference is minted only when something retains the payload.** A reference to a payload
+nothing holds is a dead link — worse than the long line it replaces — so the decision to retain and
+the decision to render a reference are taken together, and the value itself stays in `fields` (this
+is an _inline_ payload reference, not a claim check). OSC 8 hyperlinks are available but
+deliberately unused in the default rendering, which must stay escape-free.
+
+## Package shape and dependencies
+
+**No build step: Node strips types.** That makes the _runtime_ the authority, not `tsc` or `tap` —
+which is why `test/strip-types.test.ts` loads the package root and every shipping module in a
+bare-node child. Rejected: checking a curated list of modules (the list omitted the offender, a
+parameter property written across two lines).
+
+**The embedding provider is pluggable, and the three providers are not interchangeable.** Offline
+(deterministic, no network — the default, and what CI uses), local (an optional, **undeclared**
+package that downloads a model on first use) and remote (any OpenAI-compatible endpoint). A vector
+is only comparable with vectors from the provider that produced it, so changing provider starts a
+registry whose stored centroids it cannot compare against. Selecting `local` without the package
+installed fails with a named, actionable error rather than an opaque module-resolution crash.
+
+**The two flows are demonstration fixtures, not an implementation of Mojaloop.** They are loosely
+based on its published FX and inter-scheme features, and they simplify the protocol deliberately so
+a run produces realistic multi-service traffic to watch and assert against. The differences are
+tabulated in the docs-site flow walkthrough.
+
+## Where the requirements live
+
+The v1 requirements (R1–R21), the capability-parity matrix's trade-offs, the vocabulary and the
+user-facing open questions are in the **docs site**: `docs/blong/docs/rationale/semantic-log.md`.
+The parity matrix's durable form is the self-checking audit `test/parity.test.ts`, and the
+requirement→demonstration mapping is `test/flow/coverage.test.ts` — deliberately not restated here,
+because a second copy would rot.

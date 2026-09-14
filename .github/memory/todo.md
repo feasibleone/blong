@@ -4,6 +4,23 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 
 ## List of incomplete tasks
 
+- agents struggle with coverage, create a tool/skill for tap
+- agents frequently cause bash error `event not found` when they run `grep` with a pattern
+  containing `!` (e.g. `!route`) Example:
+
+    ```bash
+    cd /home/kalin/work/blong/blong/core/semantic-log && echo "=== hubA.ts ===";
+    grep -n "localRate\|localStatus\|crossed\|withhold\|settled.status\|const local" flow/hubA.ts;
+    echo "=== proxy.ts ===";
+    grep -n "reachable\|decide\|route\|if (!route" flow/proxy.ts;
+    echo "=== flows.ts ===";
+    grep -n "basePort\|level: options.level\|retries\|participants.push\|kind === 'single'" flow/flows.ts;
+    echo "=== hub.ts ===";
+    grep -n "?? 1\|?? 'unknown'\|withhold" flow/hub.ts;
+    echo "=== payer.ts ===";
+    grep -n "?? 1\|rateLimit =\|quote.body" flow/payer.ts
+    ```
+
 - sort metrics.json
 - lib unit tests - allow easy testing of library() functions
 - skills as tools

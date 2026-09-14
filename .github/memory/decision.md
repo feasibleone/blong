@@ -988,10 +988,8 @@ be looked at at 16×.
 **Product decision (user): "make the caret solid and match the hint border."** After two passes
 building the caret as a brass _rim_ around a rust interior — first with border triangles, then with
 a bell-shaped brass silhouette over a matching rust one — it still read as patchy, and the rim's
-width never quite matched the frame's. The instruction is to stop trying to reproduce the
-reference's interior and fill the caret with the frame's brass instead.
-
-### Decisions
+width never quite matched the frame. The instruction is to stop trying to reproduce the reference's
+interior and fill the caret with the frame's brass instead.
 
 - **The rim approach was abandoned deliberately, not fixed a third time.** Reproducing the reference
   exactly required the caret's interior to redraw the panel's mesh, its top occlusion and its
@@ -1561,8 +1559,8 @@ land in the result. Documented in `docs/blong/docs/patterns/cli.md` rather than 
 
 Unchanged behaviour verified: kukum CLI output is byte-identical to the pre-extraction baseline for
 `primitive find` and `instruction find --target=.` (and for `activation find` apart from the
-intentional `cli: true` rows), with the same exit codes and the same single-line unknown-method
-message; kukum 490/490; blong-gogo 261 pass / 6 skip.
+intentional `cli: true` rows from stage 1), with the same exit codes and the same single-line
+unknown-method message; kukum 490/490; blong-gogo 261 pass / 6 skip.
 
 ## demo/blong-cli decisions
 
@@ -1633,7 +1631,7 @@ Two independent causes made every `blong-kopi` Playwright test fail:
    account menu stacked into two rows and grew the menubar from 49px to ~76px, shifting all page
    content.
 
-**Decision:** fixed both causes in `blong-browser` instead of running
+**Decision**: fixed both causes in `blong-browser` instead of running
 `playwright --update-snapshots`.
 
 - `src/vite.ts` adds `primereact` to `server.fs.allow` (Vite's dev fs guard runs the allow-list

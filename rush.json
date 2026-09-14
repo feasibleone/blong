@@ -697,6 +697,12 @@
             "projectFolder": "demo/blong-cli",
             "reviewCategory": "core",
             "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/semantic-log",
+            "projectFolder": "core/semantic-log",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }
