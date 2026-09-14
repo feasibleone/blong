@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.21.0...blong-docs-v1.22.0) (2026-09-14)
+
+
+### Features
+
+* semantic-log ([77d1705](https://github.com/feasibleone/blong/commit/77d1705667269b161521b93a19f7ff1bad764dde))
+
 ## [1.21.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.20.2...blong-docs-v1.21.0) (2026-09-12)
 
 
