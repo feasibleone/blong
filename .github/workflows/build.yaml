@@ -4,9 +4,10 @@ run-name: Build => ${{ github.event.pull_request.title }}
 on:
   pull_request:
     branches: [main]
-    # The CI run commits the rebuilt metrics/history baseline back onto the pull
-    # request branch. Those commits must not start another run; the commit-metrics
-    # action carries the same guard for callers that do not add this filter.
+    # A pull request whose only changes are the rebuilt metrics/history baseline
+    # skips CI entirely. The CI run itself commits those files back onto the pull
+    # request branch; that commit carries `[skip ci]`, because a `paths-ignore`
+    # filter cannot help once the branch also holds code changes.
     paths-ignore:
       - .github/metrics.json
       - .github/history.jsonl

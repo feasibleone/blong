@@ -11,7 +11,7 @@ import {join} from 'node:path';
 import stripJsonComments from 'strip-json-comments';
 
 import {readJson} from './jsonFile.ts';
-import {REPORT_DIR} from './reportPaths.ts';
+import {PUBLISH_DIR, REPORT_DIR} from './reportPaths.ts';
 import {isProblem, type IReport, type ITestEntry, type TestStatus} from './reportTypes.ts';
 
 export interface IRushProject {
@@ -42,11 +42,27 @@ export function packageReportDir(root: string, projectFolder: string): string {
     return join(root, projectFolder, REPORT_DIR);
 }
 
+/**
+ * Packages whose report directory holds a publishable report.
+ *
+ * A package only writes `publish/` when its runner produced a standalone report
+ * (the Playwright leg does), which is exactly the set the workflow's publish
+ * matrix is built from — so the report can link each package's published report
+ * without waiting for the upload and publish jobs.
+ */
+export function collectPublishable(root: string, reports: readonly IReport[]): string[] {
+    return reports
+        .filter(report => existsSync(join(root, report.path, REPORT_DIR, PUBLISH_DIR)))
+        .map(report => report.package);
+}
+
 /** Read every package report present in the workspace, ordered by package path. */
 export function collectReports(root: string): IReport[] {
     const reports: IReport[] = [];
     for (const project of readRushProjects(root)) {
-        const parsed = readJson<IReport>(join(packageReportDir(root, project.projectFolder), 'report.json'));
+        const parsed = readJson<IReport>(
+            join(packageReportDir(root, project.projectFolder), 'report.json'),
+        );
         if (parsed && parsed.schema === 1) reports.push(parsed);
     }
     return reports.sort((left, right) => left.path.localeCompare(right.path));

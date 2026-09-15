@@ -17,6 +17,7 @@ import {
     buildTapReport,
     buildVitestReport,
     collectFailures,
+    collectPublishable,
     collectReports,
     parseLcov,
     parseTapJson,
@@ -307,13 +308,20 @@ test('aggregate summary and failures keep failed tests before flaky ones', async
     }
 });
 
-test('renderCiReport lists packages, failed suites and the machine readable link', async t => {
+test('renderCiReport merges metrics, coverage, deltas and links into one table', async t => {
     const dir = mkdtempSync(join(tmpdir(), 'blong-ci-report-'));
     try {
         createFixtureWorkspace(dir);
         const reports = collectReports(dir);
         const failures = collectFailures(reports);
         const coverage = parseLcov(readFileSync(join(dir, 'coverage', 'lcov.info'), 'utf8'));
+        // What the workflow's publish matrix would be built from: a package with
+        // a `publish/` payload, which is what the Report column links to.
+        t.same(
+            collectPublishable(dir, reports),
+            ['fake-fail'],
+            'only the Playwright package is publishable',
+        );
         const baseline: IMetrics = {
             schema: 1,
             commit: '',
@@ -321,7 +329,12 @@ test('renderCiReport lists packages, failed suites and the machine readable link
             updatedAt: '',
             tests: {total: 20, passed: 20, failed: 0, flaky: 0},
             coverage: {lines: {hit: 100, found: 300}},
-            packages: {'fake-pass': {tests: {passed: 10, failed: 0, flaky: 0, total: 10}}},
+            packages: {
+                'fake-pass': {
+                    tests: {passed: 10, failed: 0, flaky: 0, total: 10},
+                    coverage: {linesHit: 70, linesTotal: 100},
+                },
+            },
         };
 
         const markdown = renderCiReport({
@@ -331,7 +344,14 @@ test('renderCiReport lists packages, failed suites and the machine readable link
             baseline,
             run: 551,
             totalPackages: 4,
-            failuresUrl: 'https://example.test/blong-ci/failures/Build/551/',
+            links: {
+                base: 'https://example.test/blong-ci',
+                workflow: 'Build',
+                run: 551,
+                packages: ['fake-fail'],
+                coverage: true,
+                failures: true,
+            },
         });
 
         t.match(markdown, /^## CI Summary/, 'headline');
@@ -339,23 +359,58 @@ test('renderCiReport lists packages, failed suites and the machine readable link
         t.match(markdown, /1 package\(s\) produced no test report/, 'missing package warning');
         t.match(
             markdown,
-            /vs last merged main: tests 25 \(\+5\), coverage 43\.3% \(\+10\.0pp\)/,
-            'deltas',
+            /vs last merged main: tests 25 \(\+5\), coverage 44\.3% \(\+11\.0pp\)/,
+            'aggregate deltas',
         );
         t.match(
             markdown,
-            /\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| 12 \| \+2 \|/,
-            'passing package row with delta',
+            /\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| 12 \| \+2 \| 80% \(\+10\.0pp\) \| — \|/,
+            'row carries the per-package test delta, coverage delta and no report link',
         );
-        t.match(markdown, /\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| 10 \| — \|/, 'failing package row');
+        t.match(
+            markdown,
+            /\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| 10 \| — \| 25% \| \[report\]\(https:\/\/example\.test\/blong-ci\/fake-fail\/Build\/551\/\) \|/,
+            'failing row links its published report',
+        );
+        t.match(
+            markdown,
+            /\| fake-silent \| — \| — \| — \| — \| — \| — \| 50% \| — \|/,
+            'a package with coverage but no report still gets a row',
+        );
         t.match(markdown, /### Failed suites \(3 test\(s\)\)/, 'failed suites section');
         t.match(markdown, /logs in as the seeded user/, 'failing test listed');
         t.match(
             markdown,
-            /Machine readable failure report\*\*: https:\/\/example\.test\/blong-ci\/failures\/Build\/551\/failures\.json/,
-            'agent entry point',
+            /📊 \[Coverage report\]\(https:\/\/example\.test\/blong-ci\/coverage\/Build\/551\/\)/,
+            'aggregate coverage link',
         );
-        t.match(markdown, /### Coverage/, 'coverage section');
+        t.match(
+            markdown,
+            /🤖 Failure report: \[this run\]\(https:\/\/example\.test\/blong-ci\/failures\/Build\/551\/failures\.json\) · \[latest\]\(https:\/\/example\.test\/blong-ci\/failures\/Build\/latest\/failures\.json\)/,
+            'agent entry points for this run and the stable alias',
+        );
+        t.notMatch(markdown, /### Coverage/, 'coverage is a column, not a second table');
+        t.notMatch(markdown, /Published reports/, 'links are not repeated in a separate table');
+        t.end();
+    } finally {
+        rmSync(dir, {recursive: true, force: true});
+    }
+});
+
+test('renderCiReport drops the link columns when publishing is not configured', async t => {
+    const dir = mkdtempSync(join(tmpdir(), 'blong-ci-report-'));
+    try {
+        createFixtureWorkspace(dir);
+        const markdown = renderCiReport({
+            reports: collectReports(dir),
+            failures: [],
+            coverage: parseLcov(readFileSync(join(dir, 'coverage', 'lcov.info'), 'utf8')),
+            run: 1,
+        });
+
+        t.notMatch(markdown, /\| Report \|/, 'no report column without a base URL');
+        t.notMatch(markdown, /Failure report/, 'no failure-report line without a bundle');
+        t.match(markdown, /\| Coverage \|/, 'coverage stays where it is useful');
         t.end();
     } finally {
         rmSync(dir, {recursive: true, force: true});

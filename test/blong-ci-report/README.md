@@ -3,9 +3,16 @@
 Verifies the CI test-report pipeline locally, so a change to the report contract, the aggregation,
 the rendered comment or the published failures bundle can be checked without pushing a pull request.
 
-It is a normal Rush package: `ci-test` runs its own tap suite (63 assertions covering the
-conversions, the aggregation, the markdown and the base-branch rebuild rules) and `ci-report`
-implements the hook the CI workflow calls.
+It is a normal Rush package: `ci-test` runs its own tap suite (covering the conversions, the
+aggregation, the markdown and the base-branch rebuild rules) and `ci-report` implements the hook the
+CI workflow calls.
+
+`ci-report` renders **one** document, `ci-report.md`, which is both the action run summary and the
+sticky pull-request comment — so it carries everything a reader needs in one table: per-package test
+counts, coverage, deltas and a link to the package's published report. The links are derived from
+`CI_REPORTS_BASE` (resolved by the workflow from the reports repository's Pages URL) plus the
+workflow slug and run number, which is what allows the report to be complete before anything is
+published.
 
 ## What the pipeline looks like in CI
 
@@ -49,10 +56,12 @@ npx --yes serve dev/ci-report-fixture/out
 ```
 
 `fixtureWorkspace.ts` builds a fake monorepo (a passing tap package, a failing Playwright package
-with real Allure results and a trace, a flaky package, a package with no report, plus an lcov file)
-and `report:local` runs the real `blong-dev ci-report` against it. The printed paths mirror exactly
-what CI produces, including the rebuilt `.github/metrics.json` / `.github/history.jsonl` and the
-published failures bundle layout (`index.html`, `failures.json`, `failures.md`, `traces/`).
+with real Allure results and a trace, a flaky package, a package with no report, a package with
+coverage but no report, plus an lcov file) and `report:local` runs the real `blong-dev ci-report`
+against it, with `CI_REPORTS_BASE`/`GITHUB_WORKFLOW`/`GITHUB_RUN_NUMBER` set so the rendered report
+matches a CI one. The printed paths mirror exactly what CI produces, including the rebuilt
+`.github/metrics.json` / `.github/history.jsonl` and the published failures bundle layout
+(`index.html`, `failures.json`, `failures.md`, `traces/`).
 
 ## Notes for changing the pipeline
 
@@ -63,3 +72,7 @@ published failures bundle layout (`index.html`, `failures.json`, `failures.md`, 
   one pull request accumulate data.
 - The failures bundle must keep `failures.json` self-sufficient: an agent is expected to read it
   instead of the CI log or the Allure HTML.
+- Do not add a second rendering step in the workflow. The report is complete when `ci-report`
+  finishes, which is what keeps the action summary and the pull-request comment identical; the
+  published URLs are _predicted_ there (base URL + workflow slug + run number) rather than collected
+  from the publish jobs.

@@ -22,7 +22,10 @@ const FIXTURE_PACKAGES: IFixturePackage[] = [
     {
         folder: 'core/fake-pass',
         runner: 'tap',
-        tests: Array.from({length: 12}, (_, index) => ({name: `passes case ${index + 1}`, status: 'passed' as const})),
+        tests: Array.from({length: 12}, (_, index) => ({
+            name: `passes case ${index + 1}`,
+            status: 'passed' as const,
+        })),
     },
     {
         folder: 'realm/fake-fail',
@@ -87,7 +90,8 @@ function buildReport(pkg: IFixturePackage): IReport {
                       {
                           name: `${name}.test`,
                           file: `${pkg.folder}/test.ts`,
-                          status: counts.failed > 0 ? 'failed' : counts.flaky > 0 ? 'flaky' : 'passed',
+                          status:
+                              counts.failed > 0 ? 'failed' : counts.flaky > 0 ? 'flaky' : 'passed',
                           counts,
                           tests,
                       },
@@ -105,7 +109,13 @@ function allureResult(uuid: string, name: string, status: string, withTrace: boo
         name,
         fullName: `blong-access > login > ${name}`,
         status,
-        statusDetails: status === 'failed' ? {message: `expected 200 but received 500 for "${name}"`, trace: 'at login (login.play.ts:42:7)'} : {},
+        statusDetails:
+            status === 'failed'
+                ? {
+                      message: `expected 200 but received 500 for "${name}"`,
+                      trace: 'at login (login.play.ts:42:7)',
+                  }
+                : {},
         stage: 'finished',
         start: 1,
         stop: 2,
@@ -113,7 +123,9 @@ function allureResult(uuid: string, name: string, status: string, withTrace: boo
             {name: 'suite', value: 'blong-access'},
             {name: 'subSuite', value: 'login'},
         ],
-        attachments: withTrace ? [{name: 'trace', source: TRACE_FILE, type: 'application/vnd.allure.playwright-trace'}] : [],
+        attachments: withTrace
+            ? [{name: 'trace', source: TRACE_FILE, type: 'application/vnd.allure.playwright-trace'}]
+            : [],
         steps: [],
     };
 }
@@ -155,7 +167,10 @@ export function createFixtureWorkspace(root: string): IFixtureWorkspace {
     const failDir = join(root, 'realm/fake-fail');
     const resultsDir = join(failDir, 'allure-results');
     mkdirSync(resultsDir, {recursive: true});
-    writeFileSync(join(resultsDir, 'container.json'), JSON.stringify({uuid: 'container-1', name: 'login fixtures', children: []}));
+    writeFileSync(
+        join(resultsDir, 'container.json'),
+        JSON.stringify({uuid: 'container-1', name: 'login fixtures', children: []}),
+    );
     writeFileSync(
         join(resultsDir, 'fail-1-result.json'),
         JSON.stringify(allureResult('fail-1', 'logs in as the seeded user', 'failed', true)),
@@ -180,6 +195,8 @@ export function createFixtureWorkspace(root: string): IFixtureWorkspace {
     );
 
     // Aggregated coverage, as `rush ci-coverage` would leave it at the repo root.
+    // `fake-silent` has coverage but no report of its own, which is what a package
+    // whose runner does not write the `.ci-report/` contract looks like.
     const coverageDir = join(root, 'coverage');
     mkdirSync(coverageDir, {recursive: true});
     writeFileSync(
@@ -191,12 +208,17 @@ export function createFixtureWorkspace(root: string): IFixtureWorkspace {
             'SF:realm/fake-fail/src/login.ts',
             'LF:200',
             'LH:50',
+            'SF:tools/fake-silent/src/quiet.ts',
+            'LF:50',
+            'LH:25',
             '',
         ].join('\n'),
     );
 
     return {
         root,
-        packages: FIXTURE_PACKAGES.filter(pkg => pkg.tests.length > 0).map(pkg => pkg.folder.split('/')[1]!),
+        packages: FIXTURE_PACKAGES.filter(pkg => pkg.tests.length > 0).map(
+            pkg => pkg.folder.split('/')[1]!,
+        ),
     };
 }

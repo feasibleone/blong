@@ -7,7 +7,9 @@
  * Creates a fake monorepo under `dev/ci-report-fixture/` (gitignored) and runs
  * the real `blong-dev ci-report` against it, so the aggregated report, the
  * failures bundle and the rebuilt metrics/history files can be inspected before
- * pushing a workflow change.
+ * pushing a workflow change. The published-report links are rendered against
+ * `CI_REPORTS_BASE` (an example URL by default) so the local report matches the
+ * one CI produces.
  *
  * A genuinely failing run of this package's own tap suite is the other half of
  * the harness:
@@ -15,9 +17,9 @@
  *   CI_REPORT_FORCE_FAIL=1 npm run ci-test && npm run ci-report
  */
 
+import {spawnSync} from 'node:child_process';
 import {existsSync, rmSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {spawnSync} from 'node:child_process';
 
 import {repoRoot} from '@feasibleone/blong-dev';
 
@@ -44,7 +46,12 @@ writeFileSync(
             updatedAt: '2026-01-01T00:00:00.000Z',
             tests: {total: 20, passed: 20, failed: 0, flaky: 0},
             coverage: {lines: {hit: 100, found: 300}},
-            packages: {'fake-pass': {tests: {passed: 10, failed: 0, flaky: 0, total: 10}}},
+            packages: {
+                'fake-pass': {
+                    tests: {passed: 10, failed: 0, flaky: 0, total: 10},
+                    coverage: {linesHit: 70, linesTotal: 100},
+                },
+            },
         },
         null,
         2,
@@ -56,7 +63,18 @@ console.log(`fixture workspace: ${fixtureRoot} (${packages.length} package(s) wi
 const result = spawnSync(
     process.execPath,
     [blongDevBin, 'ci-report', '--out', outDir, '--baseline', baseline],
-    {cwd: join(fixtureRoot, 'realm', 'fake-fail'), stdio: 'inherit'},
+    {
+        cwd: join(fixtureRoot, 'realm', 'fake-fail'),
+        stdio: 'inherit',
+        env: {
+            ...process.env,
+            // The workflow resolves these before rendering; standing in for them
+            // here keeps the local report identical to the CI one, links included.
+            CI_REPORTS_BASE: process.env['CI_REPORTS_BASE'] ?? 'https://example.test/blong-ci',
+            GITHUB_WORKFLOW: process.env['GITHUB_WORKFLOW'] ?? 'Build',
+            GITHUB_RUN_NUMBER: process.env['GITHUB_RUN_NUMBER'] ?? '551',
+        },
+    },
 );
 if (result.status !== 0) process.exit(result.status ?? 1);
 
@@ -76,4 +94,3 @@ if (existsSync(publish)) {
 }
 console.log('');
 console.log(`Preview with:  npx --yes serve ${outDir}`);
-
