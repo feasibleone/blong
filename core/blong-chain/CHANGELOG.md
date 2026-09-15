@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/feasibleone/blong/compare/blong-chain-v1.8.2...blong-chain-v1.9.0) (2026-09-15)
+
+
+### Features
+
+* **blong-dev:** keep frictions, todos and decisions as verified memory files ([4ca7a3b](https://github.com/feasibleone/blong/commit/4ca7a3be1f8919e0dc121974d3d5ad713883c456))
+* improve CI reports ([93276a2](https://github.com/feasibleone/blong/commit/93276a2745d038da49ae1d521259c3d85654d6cc))
+
 ## [1.8.2](https://github.com/feasibleone/blong/compare/blong-chain-v1.8.1...blong-chain-v1.8.2) (2026-09-10)
 
 
