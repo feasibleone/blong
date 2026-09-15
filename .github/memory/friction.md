@@ -9,6 +9,18 @@ _None currently._
 
 ## List of resolved frictions
 
+Resolved by the "parity audit wrapped-title fix" pass (2026-09-15):
+
+- **A substring audit of test titles breaks when prettier wraps the `t.test(` call.** The §5.1
+  parity audit (`core/semantic-log/test/parity.test.ts`) proves a named test exists by searching the
+  source for `t.test('<title>'`. One title ("a predecessor is not drained by fatal, …") is long
+  enough that prettier moved it onto the line after `t.test(`, so the audit failed even though the
+  test was present. The lesson generalises: **never resolve a name against raw source text — allow
+  for formatting.** The fix matches with `t\.test\(\s*'<escaped title>'` (the title itself is a
+  string literal and is never wrapped, so only the gap after the paren needs widening). Verified
+  both ways: the real file passes, and a copy with the title mutated fails exactly the two rows that
+  reference it.
+
 Resolved by the "blong-theme skill" pass (2026-09-12):
 
 - **The workspace markdown validator mis-resolves two link forms, producing false errors that look

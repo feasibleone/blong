@@ -125,13 +125,13 @@ const MATRIX: Readonly<Record<string, Row>> = {
         unmet:
             'R19 names the record and the inline-payload reference as the baseline kinds and asks both to ' +
             'resolve through the CLI *and* the HTTP API (Plan 2 Task 14). The kind now exists, `refUri` ' +
-            "builds a dereferenceable `semantic-log://payload/<id>` uri, and the CLI resolves it with the " +
+            'builds a dereferenceable `semantic-log://payload/<id>` uri, and the CLI resolves it with the ' +
             'same exit-code contract as a record (0 resolved / 1 unknown / 2 not retained / 3 usage), ' +
             'cited above. What is missing is the HTTP half: the service holds records, templates and ' +
-            'exemplars but **no payload store** — a payload lives in the emitter\'s local cache, and the ' +
+            "exemplars but **no payload store** — a payload lives in the emitter's local cache, and the " +
             'service transport sends `IngestEvent`s that carry no payload body. Serving a payload over ' +
             'HTTP therefore needs a decision the plan does not make (ship payload bodies to the service, ' +
-            'or re-scope R19\'s acceptance to the CLI). Recorded in `.github/memory/todo.md` rather than ' +
+            "or re-scope R19's acceptance to the CLI). Recorded in `.github/memory/todo.md` rather than " +
             'invented here.',
     },
     'Redaction and path censorship': {
@@ -191,7 +191,7 @@ const MATRIX: Readonly<Record<string, Row>> = {
         covered: [
             CONSEQUENCE +
                 'silencing and capture are kept through the writer seam (`setWriter(null)` / a ' +
-                'capturing writer); assertion is the consumer\'s own test framework — there is ' +
+                "capturing writer); assertion is the consumer's own test framework — there is " +
                 'deliberately no built-in assertion helper (settled 2026-09-13 — Kept overstated ' +
                 'the third verb)',
             'src/writer.test.ts::installing a writer replaces the destination, and null silences',
@@ -232,7 +232,7 @@ const MATRIX: Readonly<Record<string, Row>> = {
         covered: [
             CONSEQUENCE +
                 'non-blocking is kept — writes are queued in-process, bounded (`writeLimit`), and ' +
-                'never awaited on the caller\'s stack; there is no worker-thread transport, and a ' +
+                "never awaited on the caller's stack; there is no worker-thread transport, and a " +
                 'stalled store costs bounded memory with an observable `writeDropped` count ' +
                 '(settled 2026-09-13 — Kept overstated the transport)',
             'src/logger.test.ts::a failing cache write is absorbed, and the next record still lands',
@@ -305,7 +305,10 @@ const MATRIX: Readonly<Record<string, Row>> = {
     },
     'Browser-side logging': {
         verdict: 'dropped',
-        covered: [CONSEQUENCE + 'out of scope: this is a service-side emitter, with one Node entry point and no browser build'],
+        covered: [
+            CONSEQUENCE +
+                'out of scope: this is a service-side emitter, with one Node entry point and no browser build',
+        ],
     },
 };
 
@@ -315,7 +318,10 @@ t.test('every matrix row is accounted for', t => {
     const counts: Record<string, number> = {};
     for (const [row, entry] of rows) {
         counts[entry.verdict] = (counts[entry.verdict] ?? 0) + 1;
-        t.ok(entry.covered.length > 0, `row "${row}" (${entry.verdict}) states its coverage or consequence`);
+        t.ok(
+            entry.covered.length > 0,
+            `row "${row}" (${entry.verdict}) states its coverage or consequence`,
+        );
         if (entry.verdict === 'kept' || entry.verdict === 'kept-extended') {
             t.ok(
                 entry.covered.every(reference => reference.includes('::')),
@@ -332,6 +338,15 @@ t.test('every matrix row is accounted for', t => {
     t.end();
 });
 
+/**
+ * Does `source` declare a `t.test` titled exactly `title`? The gap after the
+ * opening paren is allowed to contain whitespace because prettier breaks the
+ * call when a title is long enough to exceed the print width — the title
+ * itself is a single string literal and is never wrapped.
+ */
+const namesTest = (source: string, title: string): boolean =>
+    new RegExp(`t\\.test\\(\\s*'${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`).test(source);
+
 t.test('no row claims a coverage path that does not exist', async t => {
     const sources = new Map<string, string>();
     for (const [, entry] of Object.entries(MATRIX)) {
@@ -347,7 +362,7 @@ t.test('no row claims a coverage path that does not exist', async t => {
             }
             // Resolved against the file's text, not trusted: a renamed or moved
             // test makes this fail, which is the point of an audit.
-            t.ok(source.includes(`t.test('${title.join('::')}'`), `${covered} names a test that exists`);
+            t.ok(namesTest(source, title.join('::')), `${covered} names a test that exists`);
         }
     }
 });
@@ -365,10 +380,18 @@ t.test('the rows whose parity is not yet met are listed', t => {
 });
 
 t.test('the dropped browser row is not contradicted by a browser entry point', async t => {
-    const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
+    const manifest = JSON.parse(
+        await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    ) as {
         exports?: Record<string, unknown>;
     };
     t.same(Object.keys(manifest.exports ?? {}), ['.'], 'the package exports one Node entry point');
-    await t.rejects(stat(new URL('../browser.ts', import.meta.url)), 'no browser entry point exists');
-    await t.rejects(stat(new URL('../browser.js', import.meta.url)), 'no browser entry point exists');
+    await t.rejects(
+        stat(new URL('../browser.ts', import.meta.url)),
+        'no browser entry point exists',
+    );
+    await t.rejects(
+        stat(new URL('../browser.js', import.meta.url)),
+        'no browser entry point exists',
+    );
 });
