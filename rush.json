@@ -703,6 +703,12 @@
             "projectFolder": "core/semantic-log",
             "reviewCategory": "core",
             "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-ci-report",
+            "projectFolder": "test/blong-ci-report",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

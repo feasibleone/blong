@@ -1,0 +1,24 @@
+{
+    "name": "@feasibleone/blong-ci-report",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Verifies the blong CI test-report pipeline locally",
+    "type": "module",
+    "scripts": {
+        "build": "true",
+        "ci-lint": "blong-dev lint",
+        "ci-test": "blong-dev test --jobs=1",
+        "ci-report": "blong-dev ci-report",
+        "report:local": "node local.ts"
+    },
+    "devDependencies": {
+        "@feasibleone/blong-dev": "workspace:*",
+        "@rushstack/heft": "^1.2.6",
+        "@rushstack/heft-lint-plugin": "^1.2.6",
+        "@rushstack/heft-typescript-plugin": "^1.3.1",
+        "@swc/core": "^1.7.14",
+        "@types/node": "^24",
+        "tap": "^21.6.3",
+        "typescript": "^6.0.3"
+    }
+}

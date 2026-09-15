@@ -70,6 +70,19 @@ npm run test:examples
 npm run test:all
 ```
 
+### Running through the monorepo runner
+
+`blong-dev test` defaults to `*.test.ts` **and** `**/*.test.ts` when it is not
+given a glob, so in this package it also picks up `examples/*.test.ts` — the
+files that fail on purpose. Always pass the glob explicitly:
+
+```bash
+blong-dev test '*.test.ts'   # what `npm run ci-test` runs
+```
+
+Without it you get the deliberate example failures mixed into the suite, which
+looks like a regression in the package itself.
+
 ## CI/CD Integration
 
 ### Package.json Scripts

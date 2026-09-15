@@ -6,10 +6,26 @@ import {
     readFileSync,
     renameSync,
     rmSync,
-    writeFileSync,
 } from 'node:fs';
-import {basename, join} from 'node:path';
+import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+
+import {historyFile, readHistory, sliceForPackage, writeSlice} from '../report/history.ts';
+import {
+    PUBLISH_DIR,
+    REPORT_DIR,
+    packageName,
+    packageRelPath,
+    repoRoot,
+} from '../report/reportPaths.ts';
+import {
+    countTests,
+    statusOf,
+    type IReport,
+    type ISuiteEntry,
+    type TestStatus,
+} from '../report/reportTypes.ts';
+import {writeReport} from '../report/reportWrite.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 
 const blongDevBin = fileURLToPath(new URL('../../node_modules/.bin', import.meta.url));
@@ -21,8 +37,15 @@ const PATH_SEP = process.platform === 'win32' ? ';' : ':';
  * Resolves the Playwright CLI from the package's own node_modules first,
  * then falls back to blong-dev's bundled binary.
  *
- * After tests complete, if `allure-results/` exists, automatically
- * generates a single-file Allure HTML report at `allure-report/`.
+ * After tests complete, if `allure-results/` exists, automatically generates a
+ * single-file Allure HTML report plus the `.ci-report/` contract:
+ *
+ * - `.ci-report/publish/index.html` — the report published to the reports
+ *   repository (with `traces/` next to it)
+ * - `.ci-report/report.json` and `.ci-report/summary.md` — the machine and human
+ *   readable contract consumed by `blong-dev ci-report`
+ * - `.ci-report/history.jsonl` — this package's Allure trend history, seeded
+ *   from the committed `.github/history.jsonl` and appended to by Allure
  *
  * When `--coverage` is passed (stripped from Playwright args):
  * - Sets NODE_V8_COVERAGE to collect server-side V8 coverage from web server processes
@@ -80,12 +103,16 @@ export async function playwright(args: string[]): Promise<void> {
 
     const exitCode = await run('playwright', ['test', ...pwArgs]);
 
-    // Generate single-file Allure report from results if present
+    // Generate the single-file Allure report published for this package, plus
+    // the `.ci-report/` contract consumed by `blong-dev ci-report`.
     if (existsSync(resultsDir)) {
+        const publishDir = join(cwd, REPORT_DIR, PUBLISH_DIR);
+        const tracesDir = join(publishDir, 'traces');
+        rmSync(publishDir, {recursive: true, force: true});
+        mkdirSync(publishDir, {recursive: true});
+
         // Move trace zips out before generating the single-file report to avoid
         // embedding them (they're too large and can't be opened via trace.playwright.dev when inlined).
-        const reportDir = join(cwd, 'allure-report');
-        const tracesDir = join(reportDir, 'traces');
         const traceFiles = readdirSync(resultsDir).filter(f => f.endsWith('-attachment.zip'));
         if (traceFiles.length > 0) {
             mkdirSync(tracesDir, {recursive: true});
@@ -94,13 +121,33 @@ export async function playwright(args: string[]): Promise<void> {
             }
         }
 
-        console.log('Generating Allure report from allure-results/ ...');
-        await run('allure', ['awesome', '--single-file', '-o', 'allure-report', 'allure-results']);
+        // Allure trend history: give it this package's slice of the committed
+        // history file; Allure appends the current run to that slice, which
+        // `blong-dev ci-report` later folds back into `.github/history.jsonl`.
+        // CI hands us the base-branch copy so repeated runs of one pull request
+        // never stack on top of each other.
+        const baseHistory = process.env['CI_BASE_HISTORY'];
+        const historyPath = writeSlice(
+            cwd,
+            sliceForPackage(
+                readHistory(baseHistory || historyFile(repoRoot(cwd))),
+                packageName(cwd),
+            ),
+        );
 
-        // Generate summary.md (for $GITHUB_STEP_SUMMARY) and index.html (for GitHub Pages)
+        console.log('Generating Allure report from allure-results/ ...');
+        await run('allure', [
+            'awesome',
+            '--single-file',
+            '--history-path',
+            historyPath,
+            '-o',
+            join(REPORT_DIR, PUBLISH_DIR),
+            'allure-results',
+        ]);
+
         const parsed = parseResults(resultsDir, traceFiles);
-        writeSummary(reportDir, parsed, basename(cwd));
-        writeIndexHtml(reportDir, parsed, basename(cwd));
+        writeReport(toReport(parsed, cwd), cwd);
     }
 
     // ── Coverage collection ──────────────────────────────────────────────────
@@ -208,143 +255,59 @@ function parseResults(resultsDir: string, traceFiles: string[]): TestResult[] {
     return results;
 }
 
-function writeSummary(reportDir: string, results: TestResult[], pkg: string): void {
-    const passed = results.filter(r => r.status === 'passed').length;
-    const failed = results.filter(r => r.status === 'failed' || r.status === 'broken').length;
-    const flaky = results.filter(r => r.status === 'flaky').length;
-    const statusIcon = failed > 0 ? '❌' : flaky > 0 ? '⚠️' : '✅';
-    const hasTraces = results.some(r => r.trace);
-
-    const counts = [`${passed} passed`, `${failed} failed`];
-    if (flaky > 0) counts.push(`${flaky} flaky`);
-
-    const lines: string[] = [
-        `### ${statusIcon} ${pkg} — ${counts.join(', ')} (${results.length} total)`,
-        '',
-    ];
-
-    const problems = results.filter(
-        r => r.status === 'failed' || r.status === 'broken' || r.status === 'flaky',
-    );
-    if (problems.length > 0) {
-        lines.push('| Status | Suite | Test | Trace |', '| --- | --- | --- | --- |');
-        for (const r of problems) {
-            const icon = r.status === 'flaky' ? '🟡' : '🔴';
-            const traceLink = r.trace ? `\`traces/${r.trace}\`` : '—';
-            lines.push(`| ${icon} ${r.status} | ${r.suite} | ${r.name} | ${traceLink} |`);
+/**
+ * Convert parsed Allure results into the `.ci-report/` contract.
+ *
+ * The Allure `suite › subSuite` label becomes the suite, and each test keeps
+ * its trace name so the failures bundle can link straight at it.
+ */
+function toReport(results: TestResult[], cwd: string): IReport {
+    const suites: ISuiteEntry[] = [];
+    for (const result of results) {
+        const name = result.suite || '(unknown suite)';
+        let suite = suites.find(candidate => candidate.name === name);
+        if (!suite) {
+            suite = {name, status: 'unknown', counts: countTests([]), tests: []};
+            suites.push(suite);
         }
-        lines.push('');
-        if (hasTraces) {
-            lines.push(
-                '> **Traces**: Download the `playwright-traces` artifact and open `.zip` files at ' +
-                    '[trace.playwright.dev](https://trace.playwright.dev/)',
-                '',
-            );
-        }
+        suite.tests.push({
+            name: result.name,
+            status: toStatus(result.status),
+            ...(result.trace
+                ? {trace: result.trace, attachments: [{name: 'trace', file: `traces/${result.trace}`}]}
+                : {}),
+        });
+    }
+    for (const suite of suites) {
+        suite.counts = countTests(suite.tests);
+        suite.status = statusOf(suite.counts);
     }
 
-    lines.push(
-        `<details><summary>All tests</summary>`,
-        '',
-        '| Status | Suite | Test |',
-        '| --- | --- | --- |',
-    );
-    for (const r of results) {
-        const icon =
-            r.status === 'passed'
-                ? '🟢'
-                : r.status === 'failed' || r.status === 'broken'
-                  ? '🔴'
-                  : '🟡';
-        lines.push(`| ${icon} | ${r.suite} | ${r.name} |`);
+    const counts = countTests(suites.flatMap(suite => suite.tests));
+    return {
+        schema: 1,
+        package: packageName(cwd),
+        path: packageRelPath(cwd),
+        runner: 'playwright',
+        status: statusOf(counts),
+        counts,
+        generatedAt: new Date().toISOString(),
+        suites,
+    };
+}
+
+function toStatus(status: string): TestStatus {
+    switch (status) {
+        case 'passed':
+        case 'failed':
+        case 'broken':
+        case 'flaky':
+        case 'skipped':
+        case 'todo':
+            return status;
+        default:
+            return 'unknown';
     }
-    lines.push('', '</details>', '', '');
-
-    writeFileSync(join(reportDir, 'summary.md'), lines.join('\n'));
 }
 
-function writeIndexHtml(reportDir: string, results: TestResult[], pkg: string): void {
-    const passed = results.filter(r => r.status === 'passed').length;
-    const failed = results.filter(r => r.status === 'failed' || r.status === 'broken').length;
-    const flaky = results.filter(r => r.status === 'flaky').length;
-    const statusIcon = failed > 0 ? '❌' : flaky > 0 ? '⚠️' : '✅';
 
-    const counts = [`${passed} passed`, `${failed} failed`];
-    if (flaky > 0) counts.push(`${flaky} flaky`);
-
-    const testRows = results
-        .map(r => {
-            const icon =
-                r.status === 'passed'
-                    ? '🟢'
-                    : r.status === 'flaky'
-                      ? '🟡'
-                      : r.status === 'failed' || r.status === 'broken'
-                        ? '🔴'
-                        : '⚪';
-            const traceCell = r.trace
-                ? `<a class="trace-link" data-trace="traces/${r.trace}">Open Trace</a>`
-                : '';
-            return `<tr class="${r.status}"><td>${icon}</td><td>${esc(r.suite)}</td><td>${esc(r.name)}</td><td>${traceCell}</td></tr>`;
-        })
-        .join('\n          ');
-
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>${esc(pkg)} — Playwright Report</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
-    h1 { font-size: 1.5rem; }
-    a { color: #0969da; }
-    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-    th, td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid #d0d7de; }
-    th { background: #f6f8fa; font-weight: 600; }
-    tr.failed, tr.broken { background: #fff0f0; }
-    tr.flaky { background: #fff8e1; }
-    .report-link { display: inline-block; margin: 1rem 0; padding: 0.5rem 1rem; background: #0969da; color: #fff; text-decoration: none; border-radius: 6px; }
-    .report-link:hover { background: #0550ae; }
-    .trace-link { cursor: pointer; text-decoration: underline; }
-    @media (prefers-color-scheme: dark) {
-      th { background: #161b22; }
-      tr.failed, tr.broken { background: #3d1f1f; }
-      tr.flaky { background: #3d3520; }
-      a { color: #58a6ff; }
-      .report-link { background: #1f6feb; }
-      .report-link:hover { background: #388bfd; }
-    }
-  </style>
-</head>
-<body>
-  <h1>${statusIcon} ${esc(pkg)} — ${counts.join(', ')} (${results.length} total)</h1>
-  <a class="report-link" href="awesome/index.html">Open Allure Report</a>
-  <table>
-    <thead><tr><th></th><th>Suite</th><th>Test</th><th>Trace</th></tr></thead>
-    <tbody>
-      ${testRows}
-    </tbody>
-  </table>
-  <script>
-    document.querySelectorAll('.trace-link').forEach(el => {
-      el.addEventListener('click', () => {
-        const base = location.href.replace(/\\/index\\.html$/, '').replace(/\\/$/, '');
-        const traceUrl = base + '/' + el.dataset.trace;
-        window.open('https://trace.playwright.dev/?trace=' + encodeURIComponent(traceUrl));
-      });
-    });
-  </script>
-</body>
-</html>`;
-
-    writeFileSync(join(reportDir, 'index.html'), html);
-}
-
-function esc(s: string): string {
-    return s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}

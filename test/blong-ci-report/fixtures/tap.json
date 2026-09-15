@@ -1,0 +1,70 @@
+{
+    "name": "TAP Tests",
+    "level": 0,
+    "plan": {"start": 1, "end": 2},
+    "tests": 8,
+    "failures": 1,
+    "assertions": 5,
+    "skipped": 0,
+    "suites": [
+        {
+            "name": "src/example.test.ts",
+            "level": 1,
+            "ok": false,
+            "id": 1,
+            "time": 512.4,
+            "fullname": "src/example.test.ts",
+            "plan": {"start": 1, "end": 2},
+            "tests": 8,
+            "failures": 1,
+            "assertions": 5,
+            "skipped": 0,
+            "suites": [
+                {
+                    "name": "adds numbers",
+                    "level": 2,
+                    "ok": false,
+                    "id": 1,
+                    "time": 12.2,
+                    "fullname": "src/example.test.ts > adds numbers",
+                    "plan": {"start": 1, "end": 2},
+                    "tests": 2,
+                    "failures": 1,
+                    "assertions": 2,
+                    "skipped": 0,
+                    "cases": [
+                        {"ok": true, "name": "adds 1 and 1", "id": 1, "fullname": "src/example.test.ts > adds numbers > adds 1 and 1"},
+                        {
+                            "ok": false,
+                            "name": "adds 2 and 2",
+                            "id": 2,
+                            "fullname": "src/example.test.ts > adds numbers > adds 2 and 2",
+                            "diag": {
+                                "compare": "===",
+                                "at": {"fileName": "src/example.test.ts", "lineNumber": 14, "columnNumber": 9},
+                                "stack": "adds numbers (src/example.test.ts:14:9)",
+                                "diff": "--- expected\n+++ actual\n@@ -1,1 +1,1 @@\n-4\n+5\n"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "subtracts numbers",
+                    "level": 2,
+                    "ok": true,
+                    "id": 2,
+                    "time": 4.1,
+                    "fullname": "src/example.test.ts > subtracts numbers",
+                    "plan": {"start": 1, "end": 1},
+                    "tests": 1,
+                    "failures": 0,
+                    "assertions": 1,
+                    "skipped": 0,
+                    "cases": [
+                        {"ok": true, "name": "subtracts 3 from 5", "id": 1, "fullname": "src/example.test.ts > subtracts numbers > subtracts 3 from 5"}
+                    ]
+                }
+            ]
+        }
+    ]
+}

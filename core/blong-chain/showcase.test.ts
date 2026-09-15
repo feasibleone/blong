@@ -20,6 +20,13 @@ import assert from 'node:assert/strict';
 import tap from 'tap';
 import {TestExecutor, type ITestContext, type StepArray, type StepFunction} from './index.js';
 
+/**
+ * Node's timers may fire marginally before their nominal delay, so a step that
+ * awaits `setTimeout(resolve, 50)` regularly completes in 49.x ms. Assertions
+ * that a recorded duration covers a `setTimeout` need a little slack.
+ */
+const TIMER_SLACK_MS = 5;
+
 // ============================================================================
 // Test 1: Core Features Showcase
 // Demonstrates: Thenable patterns, parallel execution, dependencies, progress tracking
@@ -220,8 +227,11 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         assert.equal(fetchUserStep.status, 'completed', 'Step should be completed');
         assert.ok(fetchUserStep.startTime, 'Should have start time');
         assert.ok(fetchUserStep.endTime, 'Should have end time');
-        assert.ok(fetchUserStep.duration, 'Should have duration');
-        assert.ok(fetchUserStep.duration >= 50, 'Duration should be at least 50ms');
+        assert.equal(typeof fetchUserStep.duration, 'number', 'Should have a duration');
+        assert.ok(
+            fetchUserStep.duration! >= 50 - TIMER_SLACK_MS,
+            `Duration should cover the 50ms fetch (got ${fetchUserStep.duration}ms)`,
+        );
 
         // Verify source location capture
         assert.ok(fetchUserStep.sourceLocation, 'Should capture source location');
@@ -296,8 +306,14 @@ tap.test('Feature Showcase: Core Parallel Execution & Dependency Tracking', asyn
         const fetchUserLatency = latency.steps.get('fetchUserData');
         assert.ok(fetchUserLatency, 'Should have latency for fetchUserData');
         assert.ok(fetchUserLatency.queueTime >= 0, 'Should track queue time');
-        assert.ok(fetchUserLatency.executionTime >= 50, 'Should track execution time');
-        assert.ok(fetchUserLatency.totalTime >= 50, 'Should track total time');
+        assert.ok(
+            fetchUserLatency.executionTime >= 50 - TIMER_SLACK_MS,
+            `Should track execution time (got ${fetchUserLatency.executionTime}ms)`,
+        );
+        assert.ok(
+            fetchUserLatency.totalTime >= 50 - TIMER_SLACK_MS,
+            `Should track total time (got ${fetchUserLatency.totalTime}ms)`,
+        );
 
         // Verify critical path calculation
         assert.ok(Array.isArray(latency.criticalPath), 'Should calculate critical path');

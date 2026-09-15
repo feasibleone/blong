@@ -46,6 +46,15 @@
         },
         {
             "commandKind": "bulk",
+            "name": "ci-report",
+            "summary": "Build the aggregated CI test report, failures bundle and metrics",
+            "allowWarningsInSuccessfulBuild": true,
+            "ignoreMissingScript": true,
+            "ignoreDependencyOrder": true,
+            "enableParallelism": false
+        },
+        {
+            "commandKind": "bulk",
             "name": "ci-audit",
             "summary": "Run audit",
             "ignoreDependencyOrder": true,

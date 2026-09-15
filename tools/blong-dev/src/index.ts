@@ -1,7 +1,20 @@
 // Public API for programmatic usage of blong-dev
+export {ciReport} from './commands/ciReport.ts';
 export {lint} from './commands/lint.ts';
 export {lintStaged} from './commands/lintStaged.ts';
 export {log} from './commands/log.ts';
 export {proxy} from './commands/proxy.ts';
+export {report} from './commands/report.ts';
 export {sql} from './commands/sql.ts';
 export {trace} from './commands/trace.ts';
+export * from './report/aggregate.ts';
+export * from './report/coverage.ts';
+export * from './report/failuresBundle.ts';
+export * from './report/history.ts';
+export * from './report/metrics.ts';
+export * from './report/reportPaths.ts';
+export * from './report/reportTypes.ts';
+export {renderCiReport} from './report/renderReport.ts';
+export {renderSummaryMarkdown, writeReport} from './report/reportWrite.ts';
+export {buildTapReport, parseTapJson, renderTapConsole} from './report/tapReport.ts';
+export {VITEST_JSON, buildVitestReport, readVitestJson} from './report/vitestReport.ts';

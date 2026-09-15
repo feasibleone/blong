@@ -124,3 +124,8 @@ sandbox
 allure-results
 allure-report
 vitest-report
+.ci-report
+report-data
+ci-failures
+/metrics.json
+/ci-report.md

@@ -14,6 +14,12 @@ switch (command) {
     case 'test':
         await (await import('./commands/test.ts')).test(args);
         break;
+    case 'report':
+        await (await import('./commands/report.ts')).report(args);
+        break;
+    case 'ci-report':
+        await (await import('./commands/ciReport.ts')).ciReport(args);
+        break;
     case 'playwright':
         await (await import('./commands/playwright.ts')).playwright(args);
         break;

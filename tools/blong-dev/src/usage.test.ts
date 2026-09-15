@@ -10,7 +10,17 @@ import {test} from 'tap';
 import {USAGE_LINES, writeUnknownCommand, writeUsage} from './usage.ts';
 
 test('USAGE_LINES lists every subcommand including sql', async t => {
-    for (const sub of ['lint', 'test', 'playwright', 'proxy', 'trace', 'log', 'sql']) {
+    for (const sub of [
+        'lint',
+        'test',
+        'playwright',
+        'proxy',
+        'trace',
+        'log',
+        'sql',
+        'report',
+        'ci-report',
+    ]) {
         t.ok(
             USAGE_LINES.some(line => line.includes(`blong-dev ${sub}`)),
             `lists blong-dev ${sub}`,

@@ -28,6 +28,31 @@ Potential unfinished, deferred or future tasks spotted during implementation.
 - flow diagram for method calls
 - component diagram for a suite
 - https://github.com/tt-a1i/archify
+- CI report: `test/blong-ci-report` is registered as the 45th project in `rush.json` (CI ports
+  9045/9145). Nothing uses Playwright there yet, so the ports are only reserved — reorder `projects`
+  only with that in mind.
+- CI report: `wanples` and `release-cd` call `rush.yaml` but define no `ci-test` command (they use
+  `ci-unit`), so their `Run Tests` step fails and they produce no report rows. They need a `ci-test`
+  script (and a `ci-report` script to get the aggregate) to adopt the `.ci-report/` contract.
+- CI report: `core/blong-chain`'s `ci-test` still masks its tap failures with `;` before
+  `./test-examples-ci.sh`. Its duration assertions were flaky — Node timers can fire ~1ms early, so
+  `duration >= 50` for a 50ms sleep failed about once in 60 runs. Fixed with a documented
+  `TIMER_SLACK_MS` (verified over 16 consecutive runs, six of them under CPU load); whether the step
+  should fail the job is still open.
+- CI report: a bare `blong-dev test` in `core/blong-chain` also picks up `examples/*.test.ts`, which
+  fail by design; `ci-test` passes the glob explicitly and `TESTING.md` now warns about it. Consider
+  making the runner's default skip `examples/`, or leave it as documentation.
+- CI report: `realm/blong-access` has a genuinely flaky Playwright test (`user.play.ts › Access User ›
+  cleanup access user`, failing roughly once per run and passing on retry). The new report surfaces it
+  as ⚠️ flaky with its trace, so it is no longer invisible — decide whether to fix the test or accept
+  the flake.
+- CI report: `ci-report history` writes its rebuilt files where `--out` points, which is the
+  repository root in CI. The first CI run should confirm `commit-metrics` produces exactly one
+  commit per run.
+- CI report: `update-metrics.yaml` is now unused by blong (kept as a reusable workflow for other
+  repositories). Delete it if nothing adopts it.
+- CI report: JUnit XML emission was deliberately dropped with the EnricoMi step. Reviving per-test
+  check-run annotations means new work, not a restore.
 - https://github.com/trailhq/Graft
 - time bound debug tokens
 - match and mask

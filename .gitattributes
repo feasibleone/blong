@@ -22,3 +22,9 @@ yarn.lock                    merge=binary
 
 # Mark generated code as auto generated
 **/generated/**/*.ts linguist-generated=true
+
+# Allure run history: one JSON record per line, one line appended per CI run.
+# Concurrent pull requests touch different lines, so a union merge keeps both
+# instead of conflicting. Readers de-duplicate by run uuid, and `rush ci-report`
+# rebuilds the file as "base branch + this run" on every run.
+.github/history.jsonl        merge=union

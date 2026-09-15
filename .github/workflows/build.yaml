@@ -4,11 +4,18 @@ run-name: Build => ${{ github.event.pull_request.title }}
 on:
   pull_request:
     branches: [main]
+    # The CI run commits the rebuilt metrics/history baseline back onto the pull
+    # request branch. Those commits must not start another run; the commit-metrics
+    # action carries the same guard for callers that do not add this filter.
+    paths-ignore:
+      - .github/metrics.json
+      - .github/history.jsonl
 
 jobs:
   build:
     permissions:
-      contents: read
+      # commit-metrics pushes the baseline files to the pull request branch.
+      contents: write
       packages: write
       security-events: write
       pull-requests: write

@@ -1,0 +1,56 @@
+{
+    "numTotalTestSuites": 2,
+    "numPassedTests": 2,
+    "numFailedTests": 1,
+    "numPendingTests": 1,
+    "numTodoTests": 0,
+    "numTotalTests": 4,
+    "testResults": [
+        {
+            "name": "/repo/core/fake-component/src/render/render.test.tsx",
+            "status": "failed",
+            "message": "",
+            "assertionResults": [
+                {
+                    "ancestorTitles": ["Widget"],
+                    "title": "renders without crashing",
+                    "fullName": "Widget renders without crashing",
+                    "status": "passed",
+                    "duration": 12,
+                    "failureMessages": [],
+                    "location": {"line": 10}
+                },
+                {
+                    "ancestorTitles": ["Widget"],
+                    "title": "applies the theme",
+                    "fullName": "Widget applies the theme",
+                    "status": "failed",
+                    "duration": 21,
+                    "failureMessages": ["expected 'dark' to be 'light'"],
+                    "location": {"line": 22}
+                }
+            ]
+        },
+        {
+            "name": "/repo/core/fake-component/src/state/state.test.tsx",
+            "status": "passed",
+            "message": "",
+            "assertionResults": [
+                {
+                    "ancestorTitles": ["store"],
+                    "title": "starts empty",
+                    "status": "passed",
+                    "duration": 3,
+                    "failureMessages": []
+                },
+                {
+                    "ancestorTitles": ["store"],
+                    "title": "loads data (skipped for now)",
+                    "status": "pending",
+                    "duration": 0,
+                    "failureMessages": []
+                }
+            ]
+        }
+    ]
+}

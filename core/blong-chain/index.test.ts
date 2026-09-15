@@ -20,6 +20,15 @@ import {
     type StepArray,
 } from './index.js';
 
+/**
+ * Node's timers may fire marginally before their nominal delay, so a step that
+ * awaits `setTimeout(resolve, 50)` regularly completes in 49.x ms (measured at
+ * about 1 run in 60). Any assertion that a recorded duration *covers* a
+ * `setTimeout` therefore needs a little slack; the recorded values are integer
+ * milliseconds, so load can only push them up, never down.
+ */
+const TIMER_SLACK_MS = 5;
+
 tap.test('TestExecutor - Thenable Proxy Patterns', async t => {
     t.test('Pattern 1: await context.propertyName', async () => {
         const executor = new TestExecutor({concurrency: 10});
@@ -368,7 +377,15 @@ tap.test('TestExecutor - Progress Tracking', async t => {
         assert.equal(stepProgress.status, 'completed');
         assert.ok(stepProgress.startTime);
         assert.ok(stepProgress.endTime);
-        assert.ok(stepProgress.duration && stepProgress.duration >= 50);
+        assert.equal(typeof stepProgress.duration, 'number', 'duration is recorded');
+        assert.ok(
+            stepProgress.duration! >= 50 - TIMER_SLACK_MS,
+            `duration should cover the step's 50ms sleep, got ${stepProgress.duration}ms`,
+        );
+        assert.ok(
+            stepProgress.duration! >= stepProgress.endTime! - stepProgress.startTime!,
+            'total duration includes the execution time',
+        );
     });
 
     t.test('emits real-time progress events', async () => {
@@ -490,7 +507,10 @@ tap.test('TestExecutor - Latency Metrics', async t => {
         const stepLatency = latency.steps.get('slowStep');
 
         assert.ok(stepLatency);
-        assert.ok(stepLatency.executionTime >= 90); // Should be ~100ms, allow some tolerance
+        assert.ok(
+            stepLatency.executionTime >= 100 - TIMER_SLACK_MS,
+            `executionTime should cover the step's 100ms sleep, got ${stepLatency.executionTime}ms`,
+        );
         assert.ok(stepLatency.totalTime >= stepLatency.executionTime);
         assert.equal(stepLatency.waitTime, 0); // No dependencies, no wait time
     });
@@ -525,7 +545,10 @@ tap.test('TestExecutor - Latency Metrics', async t => {
         // TODO: Implement sophisticated wait time tracking
         // For now, waitTime is always 0 - step2 accesses step1 which completes before step2 runs
         assert.equal(step2Latency.waitTime, 0, 'waitTime tracking not yet sophisticated');
-        assert.ok(step2Latency.executionTime >= 30, 'step2 should have ~30ms execution time');
+        assert.ok(
+            step2Latency.executionTime >= 30 - TIMER_SLACK_MS,
+            `step2 execution time should cover its 30ms sleep, got ${step2Latency.executionTime}ms`,
+        );
 
         const step3Latency = latency.steps.get('step3');
         assert.ok(step3Latency);

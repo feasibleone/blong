@@ -10,6 +10,8 @@ export const USAGE_LINES: readonly string[] = [
     '  blong-dev lint [files...]    Run tsc + cspell + eslint in current package',
     '  blong-dev lint-staged        Lint git staged files across all affected packages',
     '  blong-dev test               Run tap tests in current package',
+    '  blong-dev report vitest      Convert coverage/vitest.json into .ci-report/ (--input <file>)',
+    '  blong-dev ci-report          Aggregate .ci-report/ into the CI report, failures bundle and metrics',
     '  blong-dev playwright [args]  Run Playwright tests in current package',
     '  blong-dev proxy [opts]       MLE proxy for curl (--port/--target/--username/--password)',
     '  blong-dev trace <trace.zip>  Print a human-readable Playwright trace timeline',

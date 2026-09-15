@@ -1777,3 +1777,60 @@ edge of the observed flow, plus three receipts. Arrival order between processes 
 order. The terminal status is now recorded as `closed` (a fact about what the emitter reported) and
 never refuses an observation; redeliveries are still deduplicated by event id, and retention is
 still bounded by the cap.
+
+## CI report: one contract, one renderer, main-anchored history (2026-09-15, ci-report task)
+
+The old pipeline reported only the packages that feed the coverage report (Playwright suites and
+`blong-browser`), because each runner wrote a differently shaped `summary.md` that the workflow
+scraped with a regex; tap-only packages were invisible and the `Run Tests` step streamed every
+project's full output.
+
+**D1. `<pkg>/.ci-report/` is the only contract.** `report.json` (machine readable) plus `summary.md`
+(derived), written by `blong-dev test` (tap, via tap's built-in `json` reporter),
+`blong-dev playwright` (Allure results) and `blong-dev report vitest`. Nothing outside the
+repository parses runner output any more, so a consumer only has to read one JSON shape.
+**Reconsider if** a runner appears whose results cannot be expressed as suites and tests.
+
+**D2. Rendering moved into blong** (`blong-dev ci-report`) and `render-ci` was deleted rather than
+left as a second renderer. The workflow fetches the base-branch baseline, calls the repo's
+`rush ci-report` hook and publishes what it produced. The workflow still owns the _surfaces_ (action
+summary, sticky PR comment, published URLs) because those only exist after publishing. **Reconsider
+if** another repository wants the report without blong's tooling — then the renderer has to come
+back as a shared action.
+
+**D3. History and metrics are rebuilt, never appended.** `.github/metrics.json` and
+`.github/history.jsonl` are written as "base branch + exactly this run", so repeated runs of one
+pull request are idempotent and every run renders its trends against `main`. `commit-metrics` pushes
+them onto the PR head with the workflow token (whose pushes do not re-trigger workflows), guards on
+fork PRs and on a `chore(metrics)` head commit, and never fails the job. Merging the PR carries the
+entry to `main`; blong's post-merge `update-metrics` job was removed. A union merge on the JSONL
+tolerates concurrent PRs — records are keyed by run id and de-duplicated on read, and the Allure
+slice passed to `allure awesome` is stripped of our `package` tag so Allure sees its native format.
+
+**D4. The failures bundle answers on a stable URL.** One `deploy-report` entry (`tool=failures`)
+publishes `index.html`, `failures.json`, `failures.md` and `traces/` for the failing tests only —
+real Allure results for Playwright, synthesised ones for tap/vitest so one report covers every
+failure — plus a `latest/` alias that the `report` job removes again on the next green run.
+`failures.json` is deliberately self-sufficient: an agent is pointed at it instead of reading logs
+or the Allure HTML.
+
+**D5. Deleted because nothing consumed them**: the gist history sync, the `check-report`/EnricoMi
+JUnit step (`ci-test` never produced `junit.xml`), `--verbose` on `Run Tests` (replaced by a
+`ci-test-verbose` input), the `run-id` input of `deploy-report`, and the legacy
+`allure-report`/`vitest-report` globs. **Kept as placeholders**, as requested: `reports-repository`,
+the docker `changes`/`build` jobs, and the `audit` / `deprecation` jobs — which is why blong's
+`command-line.json` still declares `ci-audit` and `ci-deprecation`.
+
+**D6. Allure's history file appends one record per run** (`AllureLocalHistory` opens the path in `r+`
+and appends; it never rewrites existing lines). That is what makes the seed-then-append trick work:
+the runner writes the *base-branch* slice into `<pkg>/.ci-report/history.jsonl` before calling
+`allure awesome`, so the file ends up holding "main's runs + this run", and `ci-report` can then
+replace that package's lines wholesale without double-counting. Each record carries every test result
+of its run (tens of kilobytes), so the committed file is bounded to `DEFAULT_HISTORY_LIMIT` (20) runs
+per package — trend charts only look at recent runs, and everyone's checkout pays for the file.
+
+**D7. Timer assertions carry slack** (`TIMER_SLACK_MS` in `core/blong-chain`'s tests). A step that
+awaits `setTimeout(resolve, 50)` completes in 49.x ms about once in 60 runs, because Node's timers can
+fire marginally before their nominal delay — measured over 400 iterations, `duration` was 49 in 7 of
+them. Asserting `duration >= 50` was therefore a real flake, not a slow machine; those assertions now
+subtract 5ms from the nominal delay and print the observed value.
