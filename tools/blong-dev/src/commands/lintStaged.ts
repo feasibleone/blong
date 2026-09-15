@@ -61,9 +61,16 @@ export async function lintStaged(): Promise<void> {
 
     if (staged.length === 0) return; // nothing staged
 
+    // Memory files are checked by their own gate (structure, wrapping, index and
+    // spelling). They belong to no Rush project at the root, and running the
+    // package linter over them would only cover half of what they must satisfy.
+    const isMemoryFile = (file: string) => /(?:^|\/)\.github\/memory\/[^/]+\.md$/.test(file);
+    const memoryFiles = staged.filter(isMemoryFile);
+    const stagedSources = staged.filter(file => !isMemoryFile(file));
+
     // Group staged files by their owning Rush project using longest-prefix match
     const byProject = new Map<string, string[]>();
-    for (const file of staged) {
+    for (const file of stagedSources) {
         const owner = rushConfig.projects
             .filter(p => file.startsWith(p.projectFolder + '/'))
             .sort((a, b) => b.projectFolder.length - a.projectFolder.length)[0];
@@ -75,13 +82,30 @@ export async function lintStaged(): Promise<void> {
         }
     }
 
-    if (byProject.size === 0) return; // staged files outside any known package
+    if (byProject.size === 0 && memoryFiles.length === 0) return; // nothing we can check
 
     // Path to this blong-dev CLI binary (resolved from the compiled file's
     // real location so it works correctly even when invoked via symlink).
     const blongDevCli = fileURLToPath(new URL('../../bin/blong-dev.ts', import.meta.url));
 
     let failed = false;
+
+    if (memoryFiles.length > 0) {
+        process.stderr.write(`\nblong-dev lint-staged: memory (${memoryFiles.length} file(s))\n`);
+        const code = await runTool(
+            process.execPath,
+            [blongDevCli, 'memory', 'check', ...memoryFiles],
+            {
+                cwd: repoRoot,
+                env: process.env,
+            },
+        );
+        if (code !== 0) {
+            process.stderr.write(`blong-dev lint-staged: FAILED memory (exit ${code})\n`);
+            failed = true;
+        }
+    }
+
     for (const [projectFolder, files] of byProject) {
         process.stderr.write(`\nblong-dev lint-staged: ${projectFolder} (${files.join(', ')})\n`);
         const pkgDir = join(repoRoot, projectFolder);

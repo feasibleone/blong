@@ -107,6 +107,7 @@ test-results.*xml
 # User #
 todo.md
 !.github/memory/todo.md
+!**/.github/memory/*.md
 .node_repl_history
 .tern*
 .blong_*

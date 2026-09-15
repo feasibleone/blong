@@ -35,6 +35,9 @@ switch (command) {
     case 'sql':
         await (await import('./commands/sql.ts')).sql(args);
         break;
+    case 'memory':
+        await (await import('./commands/memory.ts')).memory(args);
+        break;
     case '--help':
     case '-h':
     case 'help':

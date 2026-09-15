@@ -15,7 +15,7 @@ import {fileURLToPath} from 'node:url';
  * no second, drifting implementation of "what lint means" in the monorepo.
  */
 
-export type LintTool = 'tsc' | 'cspell' | 'eslint';
+export type LintTool = 'tsc' | 'cspell' | 'eslint' | 'markdown';
 
 export interface Diagnostic {
     /** Which tool produced the diagnostic. */
@@ -64,6 +64,10 @@ export interface LintResult {
 const TS_EXT = /\.[cm]?tsx?$/i;
 const SPELL_EXT = /\.([cm]?tsx?|md)$/i;
 const LINT_EXT = /\.[cm]?[jt]sx?$/i;
+const MD_EXT = /\.md$/i;
+
+/** The binary is not named after the tool, so a name can be linted by a package. */
+const TOOL_BIN: Partial<Record<LintTool, string>> = {markdown: 'markdownlint-cli2'};
 const PATH_SEP = process.platform === 'win32' ? ';' : ':';
 const DEFAULT_TIMEOUT = 180_000;
 
@@ -89,7 +93,8 @@ function* walkUpBin(startDir: string): Generator<string> {
 }
 
 function resolveBin(tool: LintTool, cwd: string, extra: string[]): string | undefined {
-    const exe = process.platform === 'win32' ? `${tool}.cmd` : tool;
+    const name = TOOL_BIN[tool] ?? tool;
+    const exe = process.platform === 'win32' ? `${name}.cmd` : name;
     for (const dir of [...extra, ownBin, ...walkUpBin(cwd)]) {
         const candidate = join(dir, exe);
         if (existsSync(candidate)) return candidate;
@@ -298,8 +303,53 @@ function parseEslint(stdout: string): Diagnostic[] {
     return diagnostics;
 }
 
+interface MarkdownlintIssue {
+    file: string;
+    line: number;
+    column?: number;
+    severity: 'error' | 'warning';
+    rule: string;
+    message: string;
+}
+
 /**
- * Run tsc / cspell / eslint over `cwd` and return structured diagnostics.
+ * `path:line:col error MD013/line-length message` — markdownlint's default
+ * (non-JSON) reporter, one issue per line.
+ */
+const MARKDOWNLINT_LINE =
+    /^(?<file>\S+?):(?<line>\d+)(?::(?<column>\d+))?\s+(?<severity>error|warning)\s+(?<rule>MD\d+\/[\w-]+)\s+(?<message>.+)$/;
+
+/** Parse markdownlint-cli2 output. */
+function parseMarkdownlint(text: string): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    for (const raw of text.split('\n')) {
+        const match = MARKDOWNLINT_LINE.exec(raw.trim());
+        if (!match?.groups) continue;
+        const issue: MarkdownlintIssue = {
+            file: match.groups['file'] ?? '',
+            line: Number(match.groups['line'] ?? 0),
+            column:
+                match.groups['column'] === undefined ? undefined : Number(match.groups['column']),
+            severity: (match.groups['severity'] as 'error' | 'warning') ?? 'error',
+            rule: match.groups['rule'] ?? '',
+            message: match.groups['message'] ?? '',
+        };
+        diagnostics.push({
+            tool: 'markdown',
+            file: issue.file,
+            line: issue.line,
+            column: issue.column,
+            severity: issue.severity,
+            rule: issue.rule,
+            message: issue.message,
+        });
+    }
+    return diagnostics;
+}
+
+/**
+ * Run tsc / cspell / eslint / markdownlint over `cwd` and return structured
+ * diagnostics.
  *
  * Never calls `process.exit` — callers decide what to do with {@link LintResult.exitCode}.
  * Tools that cannot be resolved are skipped rather than failing the run.
@@ -311,13 +361,14 @@ export async function lintCollect(
     const scope = options.scope ?? (options.files?.length ? 'changed' : 'package');
     const staged = scope === 'changed';
     const files = options.files ?? [];
-    const enabled = new Set<LintTool>(options.tools ?? ['tsc', 'cspell', 'eslint']);
+    const enabled = new Set<LintTool>(options.tools ?? ['tsc', 'cspell', 'eslint', 'markdown']);
     const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT;
     const binPaths = options.binPaths ?? [];
 
     const tsFiles = files.filter(file => TS_EXT.test(file));
     const spellFiles = files.filter(file => SPELL_EXT.test(file));
     const lintFiles = files.filter(file => LINT_EXT.test(file));
+    const markdownFiles = files.filter(file => MD_EXT.test(file));
 
     const env: NodeJS.ProcessEnv = {
         ...process.env,
@@ -371,6 +422,23 @@ export async function lintCollect(
             ]);
             if (result) diagnostics.push(...parseEslint(result.stdout));
         }
+    }
+
+    // ── markdown ─────────────────────────────────────────────────────────────
+    // Only for the files the caller named: markdownlint reports the whole file
+    // and a package can carry thousands of pre-existing markdown files (the docs
+    // site does), so a package-wide run would drown the diagnostics the caller
+    // asked about.
+    if (enabled.has('markdown') && staged && markdownFiles.length > 0) {
+        // markdownlint resolves its config from the working directory, which is the
+        // package being linted — so the repository's config has to be named, exactly
+        // as cspell's is above.
+        const config = findUp(cwd, '.markdownlint.jsonc') ?? findUp(cwd, '.markdownlint.json');
+        const args = ['--no-globs'];
+        if (config) args.push('--config', config);
+        args.push(...markdownFiles);
+        const result = await failure('markdown', args);
+        if (result) diagnostics.push(...parseMarkdownlint(result.stdout + '\n' + result.stderr));
     }
 
     return {diagnostics, exitCode, ran};

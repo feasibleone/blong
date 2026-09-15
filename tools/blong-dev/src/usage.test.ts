@@ -20,6 +20,7 @@ test('USAGE_LINES lists every subcommand including sql', async t => {
         'sql',
         'report',
         'ci-report',
+        'memory',
     ]) {
         t.ok(
             USAGE_LINES.some(line => line.includes(`blong-dev ${sub}`)),

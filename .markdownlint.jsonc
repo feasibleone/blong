@@ -1,0 +1,18 @@
+{
+    // This repository formats markdown with prettier — printWidth 100 and
+    // proseWrap "always" (.prettierrc) — so the linter has to agree with what
+    // prettier produces, or every wrapped paragraph is reported forever.
+    "MD013": {
+        "line_length": 100,
+        "code_blocks": false,
+        "tables": false,
+    },
+    // The user's own todo items (the `## Manual` section of the root todo) are
+    // kept exactly as written, and they contain bare URLs.
+    "MD034": false,
+    // The generated index and the entry headings are all the same level; a
+    // duplicate title in one file is a real problem, so MD024 stays on.
+    "MD046": {
+        "style": "fenced",
+    },
+}

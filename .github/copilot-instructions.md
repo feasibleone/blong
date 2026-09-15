@@ -6,8 +6,21 @@ pointers to skills and details. Full detail lives in skills: invoke them via the
 
 ## [CRITICAL_OBSERVABILITY]
 
-When creating a plan or a todo list, always include a **Track Critical Observability** section for
-each todo item.
+Memory is kept in markdown files that agents write **through `blong-dev memory`**, never by hand —
+the command owns the ids, the section an entry belongs in, the 100-column wrapping and the generated
+index, and `check` (pre-commit hook and CI) fails on anything it would have to fix.
+
+- **Cross-cutting entries** → `.github/memory/{friction,todo,decision}.md`.
+- **Anything specific to one package** → `<package>/.github/memory/`, with
+  `--area <category>/<pkg>`. Choose the package you are working in: if the entry only makes sense
+  there, it belongs there. Reserved root areas are `cross-cutting`, `ci`, `docs` and `skills`.
+
+Read them the cheap way: every file opens with a generated index (one line per entry), so its first
+~40 lines, or `blong-dev memory list --kind friction --area core/blong-browser --json`, show
+everything already recorded. Never read a whole file to find one entry —
+`blong-dev memory show <id>` prints exactly one, and `blong-dev memory audit` finds dangling
+references. The `## Manual` section of the root `todo.md` is the user's own list: agents never add
+to it, edit it or tidy it up.
 
 - **Output todo metrics explicitly**. Emit the marker **immediately after the switch/pivot**, before
   during reasoning and right before starting the next task from the list. Emit at least once per
@@ -26,19 +39,36 @@ each todo item.
     - Tools: [Comma-separated list of tools used and how many times each]
     ```
 
-- **Record frictions.** If a task needed unexpected effort or failed, append a short note to
-  `.github/memory/friction.md` (also: long investigations, hard decisions, lots of source read).
+- **Record frictions** —
+  `blong-dev memory add friction --title "<short title>" --area <area> --body "<what cost the effort, and the lesson>"`
+  whenever a task needed unexpected effort or failed (also: long investigations, hard decisions,
+  lots of source read).
 
-- **Track automatic decisions explicitly**. Whenever you hesitated about what the user requested or
-  you implied and made a choice, you MUST output this in `.github/memory/decision.md`. If this is a
-  critical decision that is likely to take a lot of effort to reconsider, you MUST stop and point
-  the user to this file and state the decision needed. Make sure that you do not allow the Autopilot
-  mode to interfere and answer questions instead of the user. If you receive a response that the
-  user is away, you MUST stop and claim that you cannot complete the task.
+- **Track automatic decisions explicitly** —
+  `blong-dev memory add decision --title "<what was decided>" --area <area> --body "<the reasoning the code does not show>"`
+  whenever you hesitated about what the user requested or you implied and made a choice. If this is
+  a critical decision that is likely to take a lot of effort to reconsider, you MUST stop and point
+  the user to that entry and state the decision needed. Make sure that you do not allow the
+  Autopilot mode to interfere and answer questions instead of the user. If you receive a response
+  that the user is away, you MUST stop and claim that you cannot complete the task.
 
-- **Track missing, deferred or incomplete features explicitly** in `.github/memory/todo.md`. Update
-  it with any tasks that you are deferring or leaving incomplete because it was not explicitly
-  requested or for any other reason.
+- **Track missing, deferred or incomplete features explicitly** —
+  `blong-dev memory add todo --title "<the work left>" --area <area> --body "<why it is deferred>"`
+  — for any task you are deferring or leaving incomplete because it was not explicitly requested or
+  for any other reason.
+
+- **Close what you finish.** `blong-dev memory close <id>` when a friction is fixed, a todo is done
+  (removed) or a decision is superseded (`--by <id>` / `--reason <text>`), with `--note` for the
+  sentence explaining the outcome. End the work with `blong-dev memory check`.
+
+- **Lint markdown as well as code.** `blong-dev lint --files <paths>` runs cspell, eslint, tsc **and
+  markdownlint** (`.markdownlint.jsonc`: 100 columns, to match prettier). Markdown formatting
+  problems are otherwise only visible in the editor, so name the files explicitly when you change
+  markdown. `memory check` additionally enforces the memory format's own rules.
+
+- **Correct an entry through the CLI.**
+  `blong-dev memory edit <id> [--title] [--body|--body-file] [--status]` — never hand-edit a memory
+  file, and never re-import a batch that is already written (it duplicates).
 
 ## [CRITICAL_GUARDRAILS]
 

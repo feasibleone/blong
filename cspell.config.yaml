@@ -11,7 +11,6 @@ words:
   - amodio
   - Amphiprion
   - analyzed
-  - Analyzed
   - Analyzes
   - Anders
   - Anthoathecata
@@ -24,54 +23,28 @@ words:
   - approle
   - APTRA
   - arqc
-  - Arqc
-  - ARQC
+  - arya
   - ARYZ
   - autodocs
   - autonumber
   - azooxanthellate
+  - behavior
   - behaviour
   - binhex
   - Bislama
   - bitsyntax
-  - Български
-  - Активен
-  - език
-  - запазен
-  - Имейл
-  - Неактивен
-  - Нова
-  - новата
-  - Няма
-  - Отписване
-  - Паролата
-  - Паролите
-  - парола
-  - Потвърди
-  - Предпочитан
-  - присвоени
-  - Профил
-  - Профилът
-  - роли
-  - Роли
-  - Смяна
-  - смяна
-  - сменена
-  - Собствено
-  - съвпадат
-  - Текуща
-  - Фамилия
   - blong
+  - bullnose
+  - Béziers
   - cacache
-  - Cacache
   - capath
   - centered
   - cervicornis
   - cfg
+  - chdir
   - Chelonia
   - cirratum
   - cleanup
-  - Cleanup
   - Clownfish
   - clusterrole
   - clusterrolebinding
@@ -79,7 +52,6 @@ words:
   - clusterroles
   - codegen
   - commitish
-  - Commitish
   - configmap
   - confirmdialog
   - confirmpopup
@@ -97,22 +69,22 @@ words:
   - Dendrophylliidae
   - destructures
   - detritivore
-  - Detritivore
   - devrc
   - dfsp
-  - DFSP
   - DFSPs
   - dialog
   - Diebold
   - dismissable
+  - Dockerfiles
   - dont
   - drpp
   - dukpt
+  - EACCES
   - ECDH
   - EEST
   - elkhorn
-  - Elkhorn
   - endregion
+  - ENOENT
   - ERRORRELEASEJOBTRIGGER
   - errorreleasjobtrigger
   - ESOCKETTIMEDOUT
@@ -120,9 +92,9 @@ words:
   - fastify
   - Faviidae
   - feasibleone
+  - Fiber
   - franca
   - fspiop
-  - FSPIOP
   - Fulfillment
   - FULLTEXT
   - Fungiidae
@@ -131,17 +103,22 @@ words:
   - gogo
   - googleusercontent
   - Gorgoniidae
+  - grayscale
   - greppable
   - hdel
   - Hejlsberg
   - hepatus
+  - heredocs
   - hget
   - hgetall
   - hincrby
+  - honored
+  - honoring
   - hset
   - huggingface
   - Hydrozoa
   - idempotently
+  - ILIKE
   - Indo
   - infitx
   - ingressclass
@@ -154,26 +131,27 @@ words:
   - ioredis
   - ivac
   - jobtriger
+  - Jost
   - jwks
+  - kalin
   - kalinkrustev
+  - keepalive
   - keyblock
   - knex
   - kopi
   - kubeconfig
   - kukum
   - kustomization
-  - modelcontextprotocol
-  - onsessioninitialized
+  - labeled
   - lightgreen
+  - linted
   - Liquibase
   - LONGTEXT
   - Mandarinfish
   - mdns
   - mediumint
-  - MEDIUMINT
   - MEDIUMTEXT
   - mesophotic
-  - Mesophotic
   - meterprobe
   - Milleporidae
   - Millis
@@ -182,22 +160,27 @@ words:
   - mlek
   - mlsk
   - mocktime
+  - mockup
+  - modelcontextprotocol
   - mojaloop
-  - Mojaloop
+  - mongosh
+  - mousedown
   - MPVV
   - MSISDN
   - mtid
   - mydas
+  - mysqladmin
   - nematocysts
   - networkpolicies
   - nosniff
   - npmjs
   - nscfg
   - ntlm
-  - Ntlm
+  - Nunito
   - ocellaris
   - oidc
   - onprem
+  - onsessioninitialized
   - OpenAPIV2
   - OpenAPIV3_1
   - overlaypanel
@@ -205,6 +188,7 @@ words:
   - paperclip
   - Paracanthurus
   - parentspanid
+  - pathed
   - payeefsp
   - payerfsp
   - payshield
@@ -217,6 +201,8 @@ words:
   - pino
   - pkce
   - pnpmfile
+  - Poppins
+  - Pred
   - primefaces
   - primeflex
   - primeicons
@@ -232,37 +218,42 @@ words:
   - rdkafka
   - realmname
   - realmnameitemlistactive
+  - redeliveries
   - Redis
   - Redux
   - refetches
   - reflow
   - regen
+  - regenerable
   - releasejobtrigger
   - releasjobtrigger
   - reorderable
   - replicaset
   - replicasets
+  - repro
+  - repros
   - resequencer
-  - Resequencer
   - restfs
+  - rgba
+  - RMSE
   - Rndi
   - rolebinding
   - rolebindings
   - romeovs
   - roundtrip
-  - Roundtrip
   - rushstack
   - sasl
   - savepoint
   - Scleractinia
+  - sdev
   - seagrass
-  - Seagrass
+  - Segoe
   - selectbutton
   - SEPA
   - serialisable
   - Siderastreidae
+  - SIGALRM
   - singularize
-  - Singularize
   - SMPP
   - softwaregroup
   - spanid
@@ -270,21 +261,20 @@ words:
   - sqlitemadd
   - sqlitemlistactive
   - staghorn
-  - Staghorn
   - statefulset
   - statefulsets
   - statelessly
   - storageclass
   - surgeonfish
-  - Surgeonfish
   - svar
   - Synchiropus
   - tabmenu
   - tabmenuitem
   - tabview
   - tapjs
+  - testrealm
+  - Tileable
   - tinyint
-  - TINYINT
   - TINYTEXT
   - toggleable
   - topo
@@ -296,8 +286,16 @@ words:
   - typebox
   - ulidx
   - unannounce
+  - uncleanly
+  - unconfigured
+  - ungated
   - ungroup
   - unixtime
+  - unlayered
+  - unorderable
+  - unparseable
+  - unref'd
+  - unrefreshable
   - unrole
   - unstate
   - Upserted
@@ -306,9 +304,12 @@ words:
   - varbinary
   - VARCHAR
   - vars
+  - vendored
   - vitest
   - volitans
   - Voxer
+  - wanples
+  - wcmp
   - webcamera
   - WHATWG
   - worldtimeapi
@@ -317,30 +318,55 @@ words:
   - ZCMK
   - zoomin
   - Zustand
+  - Активен
   - биология
+  - Български
   - Видове
   - График
   - Група
   - Данни
   - динамичен
+  - език
   - задължително
+  - запазен
   - Запази
+  - Имейл
   - морска
+  - Неактивен
+  - Нова
+  - новата
+  - Няма
   - Описание
   - Организация
   - Отказ
   - открити
+  - Отписване
+  - парола
+  - Паролата
+  - Паролите
   - Портал
+  - Потвърди
   - Потребител
   - Права
+  - Предпочитан
+  - присвоени
   - Продукт
+  - Профил
+  - Профилът
   - резултати
+  - роли
   - Роля
+  - сменена
   - Сметка
+  - Смяна
+  - Собствено
   - Справки
   - статичен
+  - съвпадат
   - Табло
+  - Текуща
   - тест
+  - Фамилия
 ignorePaths:
   - package-lock.json
   - node_modules

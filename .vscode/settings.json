@@ -39,6 +39,7 @@
         "**/temp/**": true
     },
     "workbench.sideBar.location": "right",
+
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit"
     },
