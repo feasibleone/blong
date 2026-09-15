@@ -33,8 +33,8 @@ active (26)
 - `D-167` · ci — Hidden report folders need include-hidden-files on upload-artifact
 - `D-169` · cross-cutting — The legacy theme frictions are dropped as already covered by the theme
   refs
-- `D-170` · ci — One report is rendered once and posted to both places
 - `D-171` · ci — The metrics commit carries skip ci
+- `D-170` · ci — One report is rendered once and posted to both places
 
 <!-- /memory:index -->
 
@@ -369,18 +369,6 @@ border snapping. Only one sub-detail had no home anywhere, Vite's ?direct query 
 page.setContent() harness able to load raw theme CSS, so that alone was migrated. Reconsider if the
 theme skill references are ever retired.
 
-### D-170 — One report is rendered once and posted to both places
-
-> _2026-09-15 · ci · active_
-
-The CI report is rendered once, by `blong-dev ci-report`: it is appended to the run summary and
-posted verbatim as the sticky pull-request comment, so both show the same document. The workflow no
-longer assembles a comment (the published-reports table and the separate failure-link lines are
-gone); the report derives every published URL instead - `CI_REPORTS_BASE` plus the workflow slug and
-run number - which is what lets it be complete before the publish jobs run. One table now carries
-result, test counts, test delta, coverage with its own delta and the report link, so the separate
-coverage table was dropped.
-
 ### D-171 — The metrics commit carries skip ci
 
 > _2026-09-15 · ci · active_
@@ -392,5 +380,20 @@ run had already validated. `paths-ignore` cannot suppress that, because it only 
 files are the pull requests only changes. Trade-off recorded where it bites: a skipped workflow
 leaves its checks pending, which is safe only while the branch requires no status checks (blong
 `main` is unprotected).
+
+### D-170 — One report is rendered once and posted to both places
+
+> _2026-09-15 · ci · active_
+
+The CI report is rendered once, by `blong-dev ci-report`: it is written to `ci-report.md` and, in
+addition, appended to the run summary, so the run summary and the sticky pull-request comment are
+the same bytes. The workflow no longer assembles a comment (the published-reports table and the
+separate failure-link lines are gone); the report derives every published URL instead -
+`CI_REPORTS_BASE` plus the workflow slug and run number - which is what lets it be complete before
+the publish jobs run. One table now carries result, test counts, test delta, coverage with its own
+delta and the report link, so the separate coverage table was dropped. `ci-report.md` is written
+unconditionally, never as an alternative to the step summary: it is the artifact the comment is
+posted from, and writing it only when no step summary existed left CI with a summary and no
+artifact, hence no comment.
 
 ## Superseded

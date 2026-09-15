@@ -1,9 +1,9 @@
 /**
- * Writes the two files every runner contributes to the CI report:
- * `report.json` (machine readable) and `summary.md` (human readable).
+ * Writes the files the CI report is built from: `report.json` and `summary.md`
+ * per package, and the aggregated `ci-report.md`.
  */
 
-import {writeFileSync} from 'node:fs';
+import {appendFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
 import {reportDir} from './reportPaths.ts';
@@ -30,6 +30,31 @@ function problemRow(test: ITestEntry): string {
     const location = test.file ? `${test.file}${test.line ? `:${test.line}` : ''}` : '—';
     const trace = test.trace ? `\`traces/${test.trace}\`` : '—';
     return `| ${icon} ${test.status} | ${test.name} | ${location} | ${trace} |`;
+}
+
+/**
+ * Write the aggregated report as `<outDir>/ci-report.md` and, in a CI run, append
+ * the same text to the job's step summary.
+ *
+ * The file is written *unconditionally*, including when a step summary exists.
+ * It is the artifact the workflow downloads to post the pull-request comment, so
+ * treating the step summary as an alternative destination silently produced a run
+ * with a summary and no artifact — and therefore no comment at all. Both readers
+ * get the same bytes, which is what keeps the two views identical.
+ *
+ * `stepSummary` is only a parameter so the behaviour can be tested; callers use
+ * the environment, which is where GitHub puts the path.
+ */
+export function writeCiReport(
+    markdown: string,
+    outDir: string,
+    stepSummary: string | undefined = process.env['GITHUB_STEP_SUMMARY'],
+): string {
+    const file = join(outDir, 'ci-report.md');
+    const body = markdown.endsWith('\n') ? markdown : `${markdown}\n`;
+    writeFileSync(file, body);
+    if (stepSummary) appendFileSync(stepSummary, body);
+    return file;
 }
 
 /**

@@ -24,6 +24,6 @@ export * from './report/metrics.ts';
 export {renderCiReport} from './report/renderReport.ts';
 export * from './report/reportPaths.ts';
 export * from './report/reportTypes.ts';
-export {renderSummaryMarkdown, writeReport} from './report/reportWrite.ts';
+export {renderSummaryMarkdown, writeCiReport, writeReport} from './report/reportWrite.ts';
 export {buildTapReport, parseTapJson, renderTapConsole} from './report/tapReport.ts';
 export {buildVitestReport, readVitestJson, VITEST_JSON} from './report/vitestReport.ts';

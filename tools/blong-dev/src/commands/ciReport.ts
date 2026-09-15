@@ -17,7 +17,7 @@
  *   GITHUB_SHA / GITHUB_RUN_NUMBER / GITHUB_RUN_ID / GITHUB_REPOSITORY / GITHUB_WORKFLOW
  */
 
-import {appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, rmSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 
 import {
@@ -40,6 +40,7 @@ import {
 import {buildMetricsSnapshot, readMetrics, rebuildMetrics} from '../report/metrics.ts';
 import {renderCiReport, type IReportLinks} from '../report/renderReport.ts';
 import {REPORT_DIR, repoRoot} from '../report/reportPaths.ts';
+import {writeCiReport} from '../report/reportWrite.ts';
 import {runTool, type RunOptions} from '../utils/runTool.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
@@ -63,16 +64,20 @@ function envNumber(name: string): number | undefined {
     return Number.isFinite(value) ? value : undefined;
 }
 
-/** Append the report to the job summary so the action run page shows it. */
-function appendToStepSummary(markdown: string, outDir: string): void {
-    const target = process.env['GITHUB_STEP_SUMMARY'];
-    if (target) {
-        appendFileSync(target, markdown + '\n');
-        return;
+/**
+ * Write the report and, in a CI run, append it to the job's step summary.
+ *
+ * `ci-report.md` is always written: the workflow uploads it as the `ci-report`
+ * artifact and posts it as the pull-request comment, so it must not depend on the
+ * run having no step summary.
+ */
+function writeReportFile(markdown: string, outDir: string): void {
+    const file = writeCiReport(markdown, outDir);
+    if (!process.env['GITHUB_STEP_SUMMARY']) {
+        // Local runs get the same console view so `dev/ci-report/` mirrors CI.
+        process.stdout.write(markdown + '\n');
     }
-    // Local runs get the same file so `dev/ci-report/` mirrors the CI output.
-    process.stdout.write(markdown + '\n');
-    writeFileSync(join(outDir, 'ci-report.md'), markdown + '\n');
+    process.stdout.write(`# report: ${file}\n`);
 }
 
 /** History slices produced by the runners, keyed by package folder name. */
@@ -175,8 +180,7 @@ export async function ciReport(args: string[]): Promise<void> {
         links,
         totalPackages: projects.length,
     });
-    appendToStepSummary(markdown, outDir);
-
+    writeReportFile(markdown, outDir);
     // 5. Rebuild the committed baseline + history as "base branch + this run".
     if (baseline || baseHistoryFile) {
         const gitDir = join(outDir, '.github');

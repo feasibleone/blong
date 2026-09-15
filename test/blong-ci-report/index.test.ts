@@ -7,7 +7,7 @@
  * `npm run report:local`.
  */
 
-import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
@@ -26,6 +26,7 @@ import {
     rebuildMetrics,
     renderCiReport,
     sliceForPackage,
+    writeCiReport,
     writeReport,
     type IMetrics,
     type IReport,
@@ -421,6 +422,40 @@ test('renderCiReport copes with a run that produced no reports', async t => {
     const markdown = renderCiReport({reports: [], failures: []});
     t.match(markdown, /No package produced a `\.ci-report\/` report/, 'explains the empty run');
     t.end();
+});
+
+test('writeCiReport writes the artifact even when a step summary is set', async t => {
+    // The CI shape: `GITHUB_STEP_SUMMARY` is set, and the workflow still has to
+    // find `ci-report.md` to upload and post. Writing only the summary is what
+    // silently produced a run with no comment at all.
+    const dir = mkdtempSync(join(tmpdir(), 'blong-ci-report-summary-'));
+    try {
+        const summary = join(dir, 'run-summary.md');
+        const file = writeCiReport('## CI Summary\n\nbody', dir, summary);
+
+        t.equal(file, join(dir, 'ci-report.md'), 'returns the artifact path');
+        t.equal(
+            readFileSync(join(dir, 'ci-report.md'), 'utf8'),
+            '## CI Summary\n\nbody\n',
+            'the artifact exists next to the step summary',
+        );
+        t.equal(
+            readFileSync(summary, 'utf8'),
+            '## CI Summary\n\nbody\n',
+            'the run summary gets the same bytes',
+        );
+
+        const localDir = join(dir, 'local');
+        mkdirSync(localDir);
+        t.equal(
+            readFileSync(writeCiReport('inline', localDir, ''), 'utf8'),
+            'inline\n',
+            'written without a step summary as well',
+        );
+        t.end();
+    } finally {
+        rmSync(dir, {recursive: true, force: true});
+    }
 });
 
 test('writeReport emits both contract files', async t => {
