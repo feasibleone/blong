@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.23.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.22.0...blong-docs-v1.23.0) (2026-09-15)
+
+
+### Features
+
+* **blong-dev:** keep frictions, todos and decisions as verified memory files ([4ca7a3b](https://github.com/feasibleone/blong/commit/4ca7a3be1f8919e0dc121974d3d5ad713883c456))
+* semantic-log sequence diagrams ([1f78354](https://github.com/feasibleone/blong/commit/1f78354d79cf9235e9dab401d49f476b995b7c3c))
+
+
+### Bug Fixes
+
+* diagrams ([34d98de](https://github.com/feasibleone/blong/commit/34d98def1b8fba01fd343a963ec473f97b67a343))
+
 ## [1.22.0](https://github.com/feasibleone/blong/compare/blong-docs-v1.21.0...blong-docs-v1.22.0) (2026-09-14)
 
 

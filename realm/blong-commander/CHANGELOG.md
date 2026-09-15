@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.0.2...blong-commander-v1.1.0) (2026-09-15)
+
+
+### Features
+
+* **blong-dev:** keep frictions, todos and decisions as verified memory files ([4ca7a3b](https://github.com/feasibleone/blong/commit/4ca7a3be1f8919e0dc121974d3d5ad713883c456))
+
 ## [1.0.2](https://github.com/feasibleone/blong/compare/blong-commander-v1.0.1...blong-commander-v1.0.2) (2026-09-12)
 
 

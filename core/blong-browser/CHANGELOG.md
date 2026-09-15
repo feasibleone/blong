@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.17.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.4...blong-browser-v1.17.0) (2026-09-15)
+
+
+### Features
+
+* **blong-dev:** keep frictions, todos and decisions as verified memory files ([4ca7a3b](https://github.com/feasibleone/blong/commit/4ca7a3be1f8919e0dc121974d3d5ad713883c456))
+* improve CI reports ([93276a2](https://github.com/feasibleone/blong/commit/93276a2745d038da49ae1d521259c3d85654d6cc))
+
 ## [1.16.4](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.3...blong-browser-v1.16.4) (2026-09-12)
 
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.3.0...blong-dev-v1.4.0) (2026-09-15)
+
+
+### Features
+
+* **blong-dev:** keep frictions, todos and decisions as verified memory files ([4ca7a3b](https://github.com/feasibleone/blong/commit/4ca7a3be1f8919e0dc121974d3d5ad713883c456))
+* improve CI reports ([93276a2](https://github.com/feasibleone/blong/commit/93276a2745d038da49ae1d521259c3d85654d6cc))
+
+
+### Bug Fixes
+
+* align report and comment ([e780a58](https://github.com/feasibleone/blong/commit/e780a581a7825894a1bc10e2d3c920bb8d183219))
+* align report and comment ([bec1de0](https://github.com/feasibleone/blong/commit/bec1de0e72fad81a760dd07c7cf818daaa7e19e2))
+* improve CI reports ([5715c44](https://github.com/feasibleone/blong/commit/5715c442cc71facad52a4ade22274768e600c43d))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-dev-v1.2.2...blong-dev-v1.3.0) (2026-09-12)
 
 

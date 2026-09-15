@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.2.0...blong-lib-v1.3.0) (2026-09-15)
+
+
+### Features
+
+* **blong-dev:** keep frictions, todos and decisions as verified memory files ([4ca7a3b](https://github.com/feasibleone/blong/commit/4ca7a3be1f8919e0dc121974d3d5ad713883c456))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-lib-v1.1.1...blong-lib-v1.2.0) (2026-09-12)
 
 
