@@ -116,7 +116,6 @@ tables carried that a generated table cannot: which parts of the published excha
 deliberately does not implement.
 
 <!-- BEGIN OBSERVED FLOWS: transfer.single -->
-
 Participants: `payer`, `hub`, `payee`, `fxp`. 7 calls observed across 1 execution(s).
 
 ```mermaid
@@ -138,16 +137,15 @@ sequenceDiagram
     hub->>payee: hub.transfer.deliver
 ```
 
-| call                      | caller → receiver | phase     | position | declared | answered | declared in         |
-| ------------------------- | ----------------- | --------- | -------- | -------- | -------- | ------------------- |
-| `payer.discovery.parties` | `payer` → `hub`   | discovery | 1        | 1        | 1        | `flow/payer.ts:66`  |
-| `hub.discovery.payee`     | `hub` → `payee`   | discovery | 1.1      | 1        | 1        | `flow/hub.ts:65`    |
-| `payer.quote.rates`       | `payer` → `hub`   | quote     | 2        | 1        | 1        | `flow/payer.ts:78`  |
-| `hub.quote.fx`            | `hub` → `fxp`     | quote     | 2.1      | 1        | 1        | `flow/hub.ts:88`    |
-| `hub.quote.payee`         | `hub` → `payee`   | quote     | 2.2      | 1        | 1        | `flow/hub.ts:99`    |
-| `payer.transfer.submit`   | `payer` → `hub`   | transfer  | 3        | 1        | 1        | `flow/payer.ts:106` |
-| `hub.transfer.deliver`    | `hub` → `payee`   | transfer  | 3.1      | 1        | 1        | `flow/hub.ts:130`   |
-
+| call | caller → receiver | phase | position | declared | answered | declared in |
+| ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
+| `payer.discovery.parties` | `payer` → `hub` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
+| `hub.discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:68` |
+| `payer.quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
+| `hub.quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:99` |
+| `hub.quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:110` |
+| `payer.transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
+| `hub.transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:141` |
 <!-- END OBSERVED FLOWS: transfer.single -->
 
 ## Inter-scheme cross-currency
@@ -158,9 +156,7 @@ corridor's rate and the originating scheme's indication two different numbers �
 below the block.
 
 <!-- BEGIN OBSERVED FLOWS: transfer.inter -->
-
-Participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxpA`, `fxp`. 14 calls observed across 1
-execution(s).
+Participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxpA`, `fxp`. 14 calls observed across 1 execution(s).
 
 ```mermaid
 sequenceDiagram
@@ -191,23 +187,22 @@ sequenceDiagram
     hubB->>payee: hub.transfer.deliver
 ```
 
-| call                       | caller → receiver | phase     | position | declared | answered | declared in         |
-| -------------------------- | ----------------- | --------- | -------- | -------- | -------- | ------------------- |
-| `payer.discovery.parties`  | `payer` → `hubA`  | discovery | 1        | 1        | 1        | `flow/payer.ts:66`  |
-| `hubA.discovery.proxy`     | `hubA` → `proxy`  | discovery | 1.1      | 1        | 1        | `flow/hubA.ts:57`   |
-| `proxy.discovery.corridor` | `proxy` → `hubB`  | discovery | 1.1.1    | 1        | 1        | `flow/proxy.ts:45`  |
-| `hub.discovery.payee`      | `hubB` → `payee`  | discovery | 1.1.1.1  | 1        | 1        | `flow/hub.ts:65`    |
-| `payer.quote.rates`        | `payer` → `hubA`  | quote     | 2        | 1        | 1        | `flow/payer.ts:78`  |
-| `hubA.quote.local`         | `hubA` → `fxpA`   | quote     | 2.1      | 1        | 1        | `flow/hubA.ts:85`   |
-| `hubA.quote.proxy`         | `hubA` → `proxy`  | quote     | 2.2      | 1        | 1        | `flow/hubA.ts:93`   |
-| `proxy.quote.corridor`     | `proxy` → `hubB`  | quote     | 2.2.1    | 1        | 1        | `flow/proxy.ts:46`  |
-| `hub.quote.fx`             | `hubB` → `fxp`    | quote     | 2.2.1.1  | 1        | 1        | `flow/hub.ts:88`    |
-| `hub.quote.payee`          | `hubB` → `payee`  | quote     | 2.2.1.2  | 1        | 1        | `flow/hub.ts:99`    |
-| `payer.transfer.submit`    | `payer` → `hubA`  | transfer  | 3        | 1        | 1        | `flow/payer.ts:106` |
-| `hubA.transfer.proxy`      | `hubA` → `proxy`  | transfer  | 3.1      | 1        | 1        | `flow/hubA.ts:124`  |
-| `proxy.transfer.corridor`  | `proxy` → `hubB`  | transfer  | 3.1.1    | 1        | 1        | `flow/proxy.ts:47`  |
-| `hub.transfer.deliver`     | `hubB` → `payee`  | transfer  | 3.1.1.1  | 1        | 1        | `flow/hub.ts:130`   |
-
+| call | caller → receiver | phase | position | declared | answered | declared in |
+| ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
+| `payer.discovery.parties` | `payer` → `hubA` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
+| `hubA.discovery.proxy` | `hubA` → `proxy` | discovery | 1.1 | 1 | 1 | `flow/hubA.ts:60` |
+| `proxy.discovery.corridor` | `proxy` → `hubB` | discovery | 1.1.1 | 1 | 1 | `flow/proxy.ts:45` |
+| `hub.discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:68` |
+| `payer.quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
+| `hubA.quote.local` | `hubA` → `fxpA` | quote | 2.1 | 1 | 1 | `flow/hubA.ts:94` |
+| `hubA.quote.proxy` | `hubA` → `proxy` | quote | 2.2 | 1 | 1 | `flow/hubA.ts:102` |
+| `proxy.quote.corridor` | `proxy` → `hubB` | quote | 2.2.1 | 1 | 1 | `flow/proxy.ts:46` |
+| `hub.quote.fx` | `hubB` → `fxp` | quote | 2.2.1.1 | 1 | 1 | `flow/hub.ts:99` |
+| `hub.quote.payee` | `hubB` → `payee` | quote | 2.2.1.2 | 1 | 1 | `flow/hub.ts:110` |
+| `payer.transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
+| `hubA.transfer.proxy` | `hubA` → `proxy` | transfer | 3.1 | 1 | 1 | `flow/hubA.ts:136` |
+| `proxy.transfer.corridor` | `proxy` → `hubB` | transfer | 3.1.1 | 1 | 1 | `flow/proxy.ts:47` |
+| `hub.transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:141` |
 <!-- END OBSERVED FLOWS: transfer.inter -->
 
 Relative to the published exchange, this fixture:
