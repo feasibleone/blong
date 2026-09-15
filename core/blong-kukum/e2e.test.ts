@@ -78,6 +78,31 @@ t.setTimeout(900_000);
 const read = (path: string): string => readFileSync(join(FIXTURE, path), 'utf8');
 const has = (path: string): boolean => existsSync(join(FIXTURE, path));
 
+/**
+ * The fixture's own test report, as the runner left it in `.ci-report/`.
+ *
+ * Since the runner prints one summary line per package instead of the whole TAP
+ * stream, "did this test run?" is answered from the structured report rather
+ * than by scraping the console. A leaf subtest that met no assertions (all the
+ * runtime's realm tests) is still a test there, and its status separates a test
+ * that ran from one that was skipped.
+ */
+function fixtureReport(): {runner: string; passed: string[]; failed: number} {
+    const report = JSON.parse(read('.ci-report/report.json')) as {
+        runner: string;
+        counts: {failed: number};
+        suites: Array<{tests: Array<{name: string; status: string}>}>;
+    };
+    return {
+        runner: report.runner,
+        failed: report.counts.failed,
+        passed: report.suites
+            .flatMap(suite => suite.tests)
+            .filter(entry => entry.status === 'passed')
+            .map(entry => entry.name),
+    };
+}
+
 function runFixture(
     args: string[],
     env: Record<string, string> = {},
@@ -145,12 +170,20 @@ t.test(
         }
 
         t.equal(status, 0, 'the realm suite exits 0');
-        t.notOk(/^not ok/m.test(output), 'no tap failures');
+        t.notOk(/^not ok/m.test(output), 'no tap failures in the console output');
 
-        // The added entity must be *executed*, not merely present in the tree.
-        t.match(output, /\bok \d+ - addGadget\b/, 'the added server test ran: add');
-        t.match(output, /\bok \d+ - findGadget\b/, 'the added server test ran: find');
-        t.match(output, /\bok \d+ - e2e flow browser\b/, 'the added browser group ran');
+        // The added entity must be *executed*, not merely present in the tree:
+        // the report the tap leg just wrote has to name it as a passing test.
+        // The fixture's own summary line is folded into the compared text, so a
+        // failure shows what the run actually reported (test count and all).
+        const {runner, passed, failed} = fixtureReport();
+        const summary = /# e2e-realm: [^\n]*/.exec(output)?.[0] ?? '(no summary line)';
+        t.equal(runner, 'tap', 'the tap leg wrote the report, not a later runner');
+        t.equal(failed, 0, 'the report records no failing test');
+        const names = [summary, ...passed].join('\n');
+        t.match(names, /(^| › )addGadget$/m, 'the added server test ran: add');
+        t.match(names, /(^| › )findGadget$/m, 'the added server test ran: find');
+        t.match(names, /e2e flow browser › addGadget$/m, 'the added browser group ran');
     },
 );
 

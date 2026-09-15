@@ -13,6 +13,7 @@ import {join} from 'node:path';
 
 import {
     buildAggregateSummary,
+    buildMetricsSnapshot,
     buildTapReport,
     buildVitestReport,
     collectFailures,
@@ -39,16 +40,30 @@ function readFixture<T>(name: string): T {
 }
 
 test('buildTapReport converts tap json into the report contract', async t => {
-    const report = buildTapReport(parseTapJson(readFileSync(join(fixtures, 'tap.json'), 'utf8')), 'example', 'core/example', 123);
+    const report = buildTapReport(
+        parseTapJson(readFileSync(join(fixtures, 'tap.json'), 'utf8')),
+        'example',
+        'core/example',
+        1,
+        123,
+    );
 
-    t.same(report.counts, {total: 3, passed: 2, failed: 1, flaky: 0, skipped: 0, todo: 0}, 'counts');
+    t.same(
+        report.counts,
+        {total: 3, passed: 2, failed: 1, flaky: 0, skipped: 0, todo: 0},
+        'counts',
+    );
     t.equal(report.status, 'failed', 'package status');
     t.equal(report.runner, 'tap', 'runner');
     t.equal(report.suites.length, 1, 'one suite per test file');
     t.equal(report.suites[0]?.file, 'src/example.test.ts', 'suite file');
 
     const failure = report.suites[0]?.tests.find(entry => entry.status === 'failed');
-    t.equal(failure?.name, 'adds numbers › adds 2 and 2', 'suite name is not repeated in the test name');
+    t.equal(
+        failure?.name,
+        'adds numbers › adds 2 and 2',
+        'suite name is not repeated in the test name',
+    );
     t.equal(failure?.file, 'src/example.test.ts', 'failure file comes from diag.at');
     t.equal(failure?.line, 14, 'failure line comes from diag.at');
     t.match(failure?.message ?? '', /-4\n\+5/, 'failure message keeps the diff');
@@ -56,11 +71,136 @@ test('buildTapReport converts tap json into the report contract', async t => {
     t.end();
 });
 
-test('buildTapReport never reports green when tap counted failures', async t => {
-    const report = buildTapReport({failures: 2, suites: []}, 'example', 'core/example');
+test('buildTapReport counts a subtest with no assertions as a test', async t => {
+    // How the blong runtime nests realm tests: a subtest that runs and makes no
+    // assertions of its own, so tap records an empty plan (with `skipAll`) while
+    // its TAP reporter still prints `ok N - <name>`. Counted as "not a test"
+    // these silently disappear from the report — which is how every realm suite
+    // ended up reporting zero tests.
+    const report = buildTapReport(
+        {
+            failures: 0,
+            skipped: 2,
+            tests: 3,
+            suites: [
+                {
+                    name: 'index.test.ts',
+                    ok: true,
+                    suites: [
+                        {
+                            name: 'e2e flow',
+                            ok: true,
+                            plan: {start: 1, end: 2},
+                            suites: [
+                                {
+                                    name: 'addGadget',
+                                    ok: true,
+                                    time: 4.7,
+                                    plan: {start: 1, end: 0, skipAll: true},
+                                },
+                                {
+                                    name: 'findGadget',
+                                    ok: true,
+                                    time: 0.7,
+                                    plan: {start: 1, end: 0, skipAll: true},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+        'example',
+        'core/example',
+        0,
+    );
+
+    t.same(
+        report.counts,
+        {total: 2, passed: 2, failed: 0, flaky: 0, skipped: 0, todo: 0},
+        'both subtests are tests',
+    );
+    t.equal(report.status, 'passed', 'an empty plan is not a skip');
+    t.same(
+        report.suites[0]?.tests.map(entry => entry.name),
+        ['e2e flow › addGadget', 'e2e flow › findGadget'],
+        'a leaf subtest is named after its group path',
+    );
+    t.end();
+});
+
+test('buildTapReport honours an explicit skip or todo on a subtest', async t => {
+    const report = buildTapReport(
+        {
+            failures: 0,
+            suites: [
+                {
+                    name: 'index.test.ts',
+                    ok: true,
+                    suites: [
+                        {name: 'skipped group', ok: true, skip: true},
+                        {name: 'todo group', ok: true, todo: 'not yet'},
+                        {name: 'ran fine', ok: true},
+                    ],
+                },
+            ],
+        },
+        'example',
+        'core/example',
+        0,
+    );
+
+    t.same(
+        report.counts,
+        {total: 3, passed: 1, failed: 0, flaky: 0, skipped: 1, todo: 1},
+        'skip and todo are kept apart',
+    );
+    t.end();
+});
+
+test('buildTapReport stays green when tap only counted skips as failures', async t => {
+    // tap's JSON `failures` counts skipped tests: two skips report `failures: 2`
+    // with `skipped: 2` and the process still exits 0. Reading that counter as
+    // "a failure the report lost" turned a green suite (core/semantic-log) red.
+    const report = buildTapReport(
+        {
+            failures: 2,
+            skipped: 2,
+            suites: [
+                {
+                    name: 'src/local-model.test.ts',
+                    ok: true,
+                    cases: [
+                        {
+                            ok: true,
+                            name: 'the real model is the one the docs name',
+                            skip: 'needs the model',
+                        },
+                        {ok: true, name: 'a paraphrase ranks first', skip: 'needs the model'},
+                    ],
+                },
+            ],
+        },
+        'example',
+        'core/example',
+        0,
+    );
+
+    t.same(
+        report.counts,
+        {total: 2, passed: 0, failed: 0, flaky: 0, skipped: 2, todo: 0},
+        'skips are skips',
+    );
+    t.equal(report.status, 'passed', 'exit code 0 is the verdict');
+    t.end();
+});
+
+test('buildTapReport never reports green when tap failed without naming a test', async t => {
+    const report = buildTapReport({failures: 0, suites: []}, 'example', 'core/example', 3);
     t.equal(report.counts.failed, 1, 'a synthetic failure is recorded');
     t.equal(report.status, 'failed', 'status is failed');
     t.match(report.suites[0]?.name ?? '', /unparsed/, 'flagged as unparsed');
+    t.match(report.suites[0]?.tests[0]?.name ?? '', /exited with code 3/, 'names the exit code');
     t.end();
 });
 
@@ -74,12 +214,17 @@ test('buildTapReport names a crashed test file after the file itself', async t =
                 {
                     name: 'examples/error-demo.test.ts',
                     ok: false,
-                    diag: {stdio: 'pipe', exitCode: 1, at: {fileName: 'examples/error-demo.test.ts'}},
+                    diag: {
+                        stdio: 'pipe',
+                        exitCode: 1,
+                        at: {fileName: 'examples/error-demo.test.ts'},
+                    },
                 },
             ],
         },
         'example',
         'core/example',
+        1,
     );
 
     const [failure] = report.suites[0]!.tests;
@@ -91,7 +236,7 @@ test('buildTapReport names a crashed test file after the file itself', async t =
 });
 
 test('parseTapJson tolerates surrounding noise', async t => {
-    t.equal(parseTapJson('') , null, 'empty output yields null');
+    t.equal(parseTapJson(''), null, 'empty output yields null');
     t.equal(parseTapJson('not json at all'), null, 'garbage yields null');
     const wrapped = parseTapJson('# warning\n{"failures":0,"suites":[]}\n# trailing');
     t.equal(wrapped?.failures, 0, 'json surrounded by comments is still parsed');
@@ -192,8 +337,16 @@ test('renderCiReport lists packages, failed suites and the machine readable link
         t.match(markdown, /^## CI Summary/, 'headline');
         t.match(markdown, /22 passed, 2 failed, 1 flaky \(25 total\)/, 'totals line');
         t.match(markdown, /1 package\(s\) produced no test report/, 'missing package warning');
-        t.match(markdown, /vs last merged main: tests 25 \(\+5\), coverage 43\.3% \(\+10\.0pp\)/, 'deltas');
-        t.match(markdown, /\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| 12 \| \+2 \|/, 'passing package row with delta');
+        t.match(
+            markdown,
+            /vs last merged main: tests 25 \(\+5\), coverage 43\.3% \(\+10\.0pp\)/,
+            'deltas',
+        );
+        t.match(
+            markdown,
+            /\| fake-pass \| ✅ \| 12 \| 0 \| 0 \| 12 \| \+2 \|/,
+            'passing package row with delta',
+        );
         t.match(markdown, /\| fake-fail \| ❌ \| 8 \| 2 \| 0 \| 10 \| — \|/, 'failing package row');
         t.match(markdown, /### Failed suites \(3 test\(s\)\)/, 'failed suites section');
         t.match(markdown, /logs in as the seeded user/, 'failing test listed');
@@ -234,7 +387,13 @@ test('writeReport emits both contract files', async t => {
                     counts: {total: 2, passed: 1, failed: 1, flaky: 0, skipped: 0, todo: 0},
                     tests: [
                         {name: 'works', status: 'passed'},
-                        {name: 'breaks', status: 'failed', message: 'boom', file: 'a.test.ts', line: 7},
+                        {
+                            name: 'breaks',
+                            status: 'failed',
+                            message: 'boom',
+                            file: 'a.test.ts',
+                            line: 7,
+                        },
                     ],
                 },
             ],
@@ -244,7 +403,9 @@ test('writeReport emits both contract files', async t => {
         const summary = readFileSync(join(dir, '.ci-report', 'summary.md'), 'utf8');
         t.match(summary, /^### ❌ fake — 1 passed, 1 failed \(2 total\)/, 'heading contract');
         t.match(summary, /\| 🔴 failed \| breaks/, 'failure row');
-        const roundTrip = JSON.parse(readFileSync(join(dir, '.ci-report', 'report.json'), 'utf8')) as IReport;
+        const roundTrip = JSON.parse(
+            readFileSync(join(dir, '.ci-report', 'report.json'), 'utf8'),
+        ) as IReport;
         t.equal(roundTrip.counts.failed, 1, 'report.json round-trips');
         t.end();
     } finally {
@@ -262,16 +423,39 @@ test('rebuildMetrics always describes the base branch plus this run', async t =>
         coverage: {lines: {hit: 1, found: 2}},
         packages: {},
     };
-    const base: IMetrics = {...snapshot, run: 99, history: [{commit: 'old', run: 99, date: '', tests: snapshot.tests, coverage: snapshot.coverage}]};
+    const base: IMetrics = {
+        ...snapshot,
+        run: 99,
+        history: [
+            {commit: 'old', run: 99, date: '', tests: snapshot.tests, coverage: snapshot.coverage},
+        ],
+    };
 
     const first = rebuildMetrics(base, snapshot, 5);
     const second = rebuildMetrics(base, snapshot, 5);
-    t.same(first.history?.map(entry => entry.run), [100, 99], 'this run first, then the base branch');
+    t.same(
+        first.history?.map(entry => entry.run),
+        [100, 99],
+        'this run first, then the base branch',
+    );
     t.same(second.history, first.history, 'repeated runs are idempotent');
-    t.equal(rebuildMetrics({...base, history: [first.history![0]!]}, snapshot, 5).history?.length, 1, 'the same run is not duplicated');
+    t.equal(
+        rebuildMetrics({...base, history: [first.history![0]!]}, snapshot, 5).history?.length,
+        1,
+        'the same run is not duplicated',
+    );
 
     const trimmed = rebuildMetrics(
-        {...base, history: Array.from({length: 8}, (_, index) => ({commit: '', run: index, date: '', tests: snapshot.tests, coverage: snapshot.coverage}))},
+        {
+            ...base,
+            history: Array.from({length: 8}, (_, index) => ({
+                commit: '',
+                run: index,
+                date: '',
+                tests: snapshot.tests,
+                coverage: snapshot.coverage,
+            })),
+        },
         snapshot,
         3,
     );
@@ -287,13 +471,78 @@ test('rebuildHistory replaces one package slice and tags it', async t => {
     const slices = new Map([['fake-fail', [{name: 'fresh result'}]]]);
 
     const rebuilt = rebuildHistory(base, {slices});
-    const records = rebuilt.trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>);
+    const records = rebuilt
+        .trim()
+        .split('\n')
+        .map(line => JSON.parse(line) as Record<string, unknown>);
 
     t.equal(records.length, 2, 'other packages survive, the rebuilt slice replaces the old one');
-    t.match(records[0]?.name as string, /other package result/, 'unrelated record preserved');
-    t.same(records[1], {name: 'fresh result', package: 'fake-fail'}, 'new record is tagged');
+    t.same(records[0], {name: 'fresh result', package: 'fake-fail'}, 'new record is tagged');
+    t.match(records[1]?.name as string, /other package result/, 'unrelated record preserved');
     t.same(rebuildHistory(base, {slices}), rebuilt, 'idempotent');
     t.equal(rebuildHistory([], {slices: new Map()}), '', 'no records yields no file');
+    t.end();
+});
+
+test('rebuildHistory orders records by package tag', async t => {
+    // The file is committed and merged by tag, so the line order must not depend
+    // on the order the packages happened to be collected in: an added or moved
+    // package would otherwise rewrite unrelated lines.
+    const slices = new Map([
+        ['zulu', [{name: 'z1'}, {name: 'z2'}]],
+        ['alpha', [{name: 'a1'}]],
+    ]);
+    const records = rebuildHistory([], {slices})
+        .trim()
+        .split('\n')
+        .map(line => JSON.parse(line) as Record<string, unknown>);
+
+    t.same(
+        records.map(record => record['package']),
+        ['alpha', 'zulu', 'zulu'],
+        'packages sorted by tag',
+    );
+    t.same(
+        records.map(record => record['name']),
+        ['a1', 'z1', 'z2'],
+        "a package's own runs keep their order",
+    );
+    t.end();
+});
+
+test('buildMetricsSnapshot orders packages by name', async t => {
+    const report = (pkg: string, path: string): IReport => ({
+        schema: 1,
+        package: pkg,
+        path,
+        runner: 'tap',
+        status: 'passed',
+        counts: {total: 1, passed: 1, failed: 0, flaky: 0, skipped: 0, todo: 0},
+        generatedAt: '2026-01-01T00:00:00.000Z',
+        suites: [],
+    });
+
+    // Collected in folder order, which is neither name order nor stable when a
+    // package moves between category folders.
+    const snapshot = buildMetricsSnapshot(
+        [report('zulu', 'demo/zulu'), report('alpha', 'core/alpha'), report('mike', 'realm/mike')],
+        null,
+        {now: '2026-01-01T00:00:00.000Z'},
+    );
+
+    t.same(
+        Object.keys(snapshot.packages),
+        ['alpha', 'mike', 'zulu'],
+        'keys sorted by package name',
+    );
+    t.same(
+        Object.keys(
+            buildMetricsSnapshot([report('zulu', 'demo/zulu'), report('alpha', 'a/alpha')], null)
+                .packages,
+        ),
+        ['alpha', 'zulu'],
+        'a package moving folder does not move its key',
+    );
     t.end();
 });
 

@@ -67,6 +67,12 @@ interface ITapSuite {
     time?: number;
     failures?: number;
     assertions?: number;
+    /** Present on every suite; `skipAll` marks an *empty plan*, not a skipped test. */
+    plan?: {start?: number; end?: number; skipAll?: boolean};
+    /** Counts the suite's own skipped children, `skipAll` ones included. */
+    skipped?: number;
+    skip?: unknown;
+    todo?: unknown;
     diag?: ITapDiagnostics;
     suites?: ITapSuite[];
     cases?: ITapCase[];
@@ -75,8 +81,11 @@ interface ITapSuite {
 /** The subset of tap's `--reporter=json` output this module relies on. */
 export interface ITapJsonReport {
     name?: string;
+    tests?: number;
     failures?: number;
     assertions?: number;
+    /** Counts skipped tests — and `failures` counts them too, see the note below. */
+    skipped?: number;
     suites?: ITapSuite[];
 }
 
@@ -119,21 +128,36 @@ function statusOfCase(entry: ITapCase): TestStatus {
     return entry.ok === false ? 'failed' : 'passed';
 }
 
+/** Status of a subtest that emitted no assertions of its own. */
+function statusOfSuite(suite: ITapSuite): TestStatus {
+    if (suite.todo) return 'todo';
+    if (suite.skip) return 'skipped';
+    return suite.ok === false ? 'failed' : 'passed';
+}
+
 /**
  * Flatten one tap suite subtree into leaf test entries.
  *
  * Returns the number of failing leaves found, so a suite that failed without a
  * failing assertion (crash, timeout, plan mismatch) can be reported as well.
  */
-function collectSuite(suite: ITapSuite, groups: string[], out: ITestEntry[], includeName = true): number {
+function collectSuite(
+    suite: ITapSuite,
+    groups: string[],
+    out: ITestEntry[],
+    includeName = true,
+): number {
     const suiteName = suite.name ?? '';
     const name = includeName ? suiteName : '';
     const childGroups = name ? [...groups, name] : groups;
     let failures = 0;
 
-    for (const child of suite.suites ?? []) failures += collectSuite(child, childGroups, out);
+    const children = suite.suites ?? [];
+    const cases = suite.cases ?? [];
 
-    for (const entry of suite.cases ?? []) {
+    for (const child of children) failures += collectSuite(child, childGroups, out);
+
+    for (const entry of cases) {
         const status = statusOfCase(entry);
         if (status === 'failed') failures += 1;
         out.push({
@@ -145,11 +169,34 @@ function collectSuite(suite: ITapSuite, groups: string[], out: ITestEntry[], inc
         });
     }
 
-    if (suite.ok === false && failures === 0) {
+    // A subtest with nothing underneath it is a test in its own right. The blong
+    // runtime nests its handler tests exactly this way and asserts nothing
+    // inside them, so tap records an *empty plan* — `plan.skipAll` with
+    // `ok: true`, which its own TAP reporter still prints as `ok N - <name>` and
+    // which really did execute (the JSON even carries its duration). Treating
+    // that as "not a test" silently dropped every realm test from the report;
+    // treating it as skipped would report thousands of tests as skipped that
+    // tap itself calls `ok`. Only an explicit `skip`/`todo` marker means the
+    // test never ran.
+    const isLeaf = children.length === 0 && cases.length === 0;
+    if (includeName && isLeaf) {
+        const status = statusOfSuite(suite);
+        if (status === 'failed') failures += 1;
+        out.push({
+            name: childGroups.join(' › ') || suiteName || '(suite)',
+            status,
+            ...locationOf(suite.diag),
+            message:
+                status === 'failed' ? (failureMessage(suite.diag) ?? 'suite failed') : undefined,
+            stack: suite.diag?.stack,
+        });
+    } else if (suite.ok === false && failures === 0) {
+        // A test file that died before emitting anything, or a group that failed
+        // without any failing child (plan mismatch, coverage gate). A file-level
+        // suite has no group path of its own, so it falls back to its name (the
+        // test file), which is what the report shows.
         failures += 1;
         out.push({
-            // A file-level suite has no group path of its own, so it falls back
-            // to its name (the test file), which is what the report shows.
             name: childGroups.join(' › ') || suiteName || '(suite)',
             status: 'failed',
             ...locationOf(suite.diag),
@@ -161,11 +208,19 @@ function collectSuite(suite: ITapSuite, groups: string[], out: ITestEntry[], inc
     return failures;
 }
 
-/** Build the `IReport` for a completed tap run. */
+/**
+ * Build the `IReport` for a completed tap run.
+ *
+ * `exitCode` is tap's own verdict and the only trustworthy failure signal: the
+ * `failures` field of its JSON report counts skipped tests as failures (a file
+ * with two skips reports `failures: 2`, `skipped: 2` and still exits 0), so it
+ * cannot be used to detect a failure the report failed to describe.
+ */
 export function buildTapReport(
     tap: ITapJsonReport | null,
     pkg: string,
     path: string,
+    exitCode: number,
     durationMs?: number,
 ): IReport {
     const suites: ISuiteEntry[] = [];
@@ -183,10 +238,14 @@ export function buildTapReport(
         });
     }
 
-    // Defensive: never report a green run when tap itself counted failures.
-    if (!suites.some(suite => suite.counts.failed > 0) && (tap?.failures ?? 0) > 0) {
+    // Defensive: a failing run that names no failing test (an aborted file, a
+    // subprocess tap never saw) must not be reported as green.
+    if (exitCode !== 0 && !suites.some(suite => suite.counts.failed > 0)) {
         const tests: ITestEntry[] = [
-            {name: `tap reported ${tap?.failures} failure(s) absent from its JSON report`, status: 'failed'},
+            {
+                name: `tap exited with code ${exitCode} without reporting a failing test`,
+                status: 'failed',
+            },
         ];
         suites.push({name: '(unparsed)', status: 'failed', counts: countTests(tests), tests});
     }
@@ -233,7 +292,9 @@ export function renderTapConsole(report: IReport): string {
             `${report.counts.skipped > 0 ? `, ${report.counts.skipped} skipped` : ''} ` +
             `(${report.counts.total} total)`,
     );
-    lines.push(`# raw report: ${reportPath('.', 'tap.json')}, structured: ${reportPath('.', 'report.json')}`);
+    lines.push(
+        `# raw report: ${reportPath('.', 'tap.json')}, structured: ${reportPath('.', 'report.json')}`,
+    );
     return lines.join('\n');
 }
 
@@ -243,15 +304,39 @@ export function hasCustomReporter(args: readonly string[]): boolean {
 }
 
 /**
+ * Environment for the child tap process, with inherited tap configuration
+ * removed when this run is itself nested inside another tap process.
+ *
+ * tap exports its resolved configuration into every process it spawns —
+ * `TAP_REPORTER`, `TAP_JOBS`, `TAP_CWD`, `TAP_INCLUDE`, and the child markers
+ * `TAP_CHILD_ID`/`TAP_JOB_ID` among them. A suite that runs another package's
+ * tests (blong-kukum's end-to-end suite runs the fixture realm exactly like
+ * this) therefore hands its own configuration to the nested run: the nested tap
+ * sees the child markers, concludes it is a child of the outer run, **ignores
+ * the reporter it was asked for** and prints plain TAP, and `TAP_CWD`/`TAP_INCLUDE`
+ * point at the calling package rather than at the package being tested. Dropping
+ * the inherited configuration makes a nested run behave like a standalone one,
+ * which is what its caller asked for: a report for the package it ran in.
+ */
+function childEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+    const nested = Boolean(env['TAP'] ?? env['TAP_CHILD_ID'] ?? env['TAP_JOB_ID']);
+    if (!nested) return env;
+    return Object.fromEntries(
+        Object.entries(env).filter(([name]) => name !== 'TAP' && !name.startsWith('TAP_')),
+    );
+}
+
+/**
  * Run tap in the current package.
  *
  * Returns the tap exit code. When `args` selects a custom reporter the child
  * inherits stdio and no report is produced.
  */
 export async function runTap(args: string[], cwd: string, env: NodeJS.ProcessEnv): Promise<number> {
+    const spawnEnv = childEnv(env);
     if (hasCustomReporter(args)) {
         return new Promise((resolve, reject) => {
-            const child = spawn('tap', args, {stdio: 'inherit', cwd, env});
+            const child = spawn('tap', args, {stdio: 'inherit', cwd, env: spawnEnv});
             child.on('error', reject);
             child.on('close', code => resolve(code ?? 0));
         });
@@ -264,7 +349,7 @@ export async function runTap(args: string[], cwd: string, env: NodeJS.ProcessEnv
     const exitCode = await new Promise<number>((resolve, reject) => {
         const child = spawn('tap', ['--reporter=json', ...args], {
             cwd,
-            env,
+            env: spawnEnv,
             stdio: ['inherit', 'pipe', 'pipe'],
         });
         child.stdout.setEncoding('utf8');
@@ -285,15 +370,17 @@ export async function runTap(args: string[], cwd: string, env: NodeJS.ProcessEnv
     writeFileSync(reportPath(cwd, 'tap.json', true), stdout);
     if (stderr.trim() !== '') writeFileSync(reportPath(cwd, 'tap-stderr.txt'), stderr);
 
+    const parsed = parseTapJson(stdout);
     const report = buildTapReport(
-        parseTapJson(stdout),
+        parsed,
         packageName(cwd),
         packageRelPath(cwd),
+        exitCode,
         Date.now() - started,
     );
     writeReport(report, cwd);
 
-    if (report.counts.total === 0 && exitCode !== 0) {
+    if (parsed === null) {
         // tap never produced a report (crash, compile error, kill): show the tail
         // so the CI log stays diagnosable, then point at the artifact.
         const tail = [stdout, stderr]
@@ -301,7 +388,9 @@ export async function runTap(args: string[], cwd: string, env: NodeJS.ProcessEnv
             .map(text => text.split('\n').slice(-MAX_FALLBACK_LINES).join('\n').trimEnd())
             .join('\n');
         if (tail) process.stdout.write(tail + '\n');
-        process.stdout.write(`# tap produced no report that could be parsed; raw output: ${reportPath('.', 'tap.json')}\n`);
+        process.stdout.write(
+            `# tap produced no report that could be parsed; raw output: ${reportPath('.', 'tap.json')}\n`,
+        );
     } else {
         process.stdout.write(renderTapConsole(report) + '\n');
     }

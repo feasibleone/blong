@@ -1821,16 +1821,66 @@ JUnit step (`ci-test` never produced `junit.xml`), `--verbose` on `Run Tests` (r
 the docker `changes`/`build` jobs, and the `audit` / `deprecation` jobs — which is why blong's
 `command-line.json` still declares `ci-audit` and `ci-deprecation`.
 
-**D6. Allure's history file appends one record per run** (`AllureLocalHistory` opens the path in `r+`
-and appends; it never rewrites existing lines). That is what makes the seed-then-append trick work:
-the runner writes the *base-branch* slice into `<pkg>/.ci-report/history.jsonl` before calling
+**D6. Allure's history file appends one record per run** (`AllureLocalHistory` opens the path in
+`r+` and appends; it never rewrites existing lines). That is what makes the seed-then-append trick
+work: the runner writes the _base-branch_ slice into `<pkg>/.ci-report/history.jsonl` before calling
 `allure awesome`, so the file ends up holding "main's runs + this run", and `ci-report` can then
-replace that package's lines wholesale without double-counting. Each record carries every test result
-of its run (tens of kilobytes), so the committed file is bounded to `DEFAULT_HISTORY_LIMIT` (20) runs
-per package — trend charts only look at recent runs, and everyone's checkout pays for the file.
+replace that package's lines wholesale without double-counting. Each record carries every test
+result of its run (tens of kilobytes), so the committed file is bounded to `DEFAULT_HISTORY_LIMIT`
+(20) runs per package — trend charts only look at recent runs, and everyone's checkout pays for the
+file.
 
 **D7. Timer assertions carry slack** (`TIMER_SLACK_MS` in `core/blong-chain`'s tests). A step that
-awaits `setTimeout(resolve, 50)` completes in 49.x ms about once in 60 runs, because Node's timers can
-fire marginally before their nominal delay — measured over 400 iterations, `duration` was 49 in 7 of
-them. Asserting `duration >= 50` was therefore a real flake, not a slow machine; those assertions now
-subtract 5ms from the nominal delay and print the observed value.
+awaits `setTimeout(resolve, 50)` completes in 49.x ms about once in 60 runs, because Node's timers
+can fire marginally before their nominal delay — measured over 400 iterations, `duration` was 49 in
+7 of them. Asserting `duration >= 50` was therefore a real flake, not a slow machine; those
+assertions now subtract 5ms from the nominal delay and print the observed value.
+
+**D8. The tap report trusts the exit code, not tap's `failures` counter.** tap's JSON `failures`
+field counts _skipped_ tests: `core/semantic-log` reports `failures: 2, skipped: 2` with zero
+failing cases and still exits 0 (reproduced on a two-skip file). The old "never report green when
+tap counted failures" guard therefore turned a green suite red in CI. A synthetic failure is now
+recorded only when tap exits non-zero _and_ names no failing test, and the fallback dump (raw tail +
+"no report that could be parsed") triggers only when the JSON is unparseable.
+
+**D9. Childless subtests are tests.** The blong runtime nests its realm tests (`addGadget`) as
+subtests that contain no assertions, so tap records an empty plan (`plan.skipAll` with `ok: true`)
+while its TAP reporter still prints `ok N - addGadget` and the JSON carries the subtest's duration.
+Treating those as "not a test" silently dropped **every realm test** from the report — the fixture
+realm reported `0 total` for 11 tests that had run. They count as tests now; status stays `passed`
+because only an explicit `skip`/`todo` marker means a test did not run (tap's own `skipped` counter
+calls them skipped, which would have reported thousands of passing realm tests as skipped).
+
+**D10. A nested tap run gets a sanitised environment.** tap exports its resolved config into the
+processes it spawns (`TAP_REPORTER`, `TAP_JOBS`, `TAP_CWD`, `TAP_INCLUDE`, and the child markers
+`TAP_CHILD_ID`/`TAP_JOB_ID`). `blong-kukum`'s end-to-end suite runs the fixture realm from inside
+its own tap process, so the nested tap saw those markers, decided it was a child of the outer run,
+**and ignored `--reporter=json` entirely** — it printed plain TAP, no report was written, and
+`TAP_CWD`/`TAP_INCLUDE` pointed at the calling package. `runTap` now drops every `TAP`/`TAP_*`
+variable when it detects it is itself nested, so a nested run behaves like a standalone one. This is
+why the kukum e2e assertions moved from scraping `ok N - <name>` out of the console to reading the
+fixture's structured `.ci-report/report.json`.
+
+**D11. `metrics.json` and `history.jsonl` are sorted by package key.** Both are committed and
+reviewed as diffs, so the order must not depend on collection order (rush folder order) — otherwise
+adding, removing or moving one package rewrites unrelated lines. `buildMetricsSnapshot` re-inserts
+the package map in name order and `rebuildHistory` sorts its records by tag (stable, so a package's
+own runs keep their order). Existing baselines keep working: the schema is unchanged.
+
+**D12. `commit-metrics` commits on a fresh clone of the branch tip.** Committing in the CI checkout
+and pushing it means pushing a stale merge commit of the whole repository, which races with whatever
+advanced the branch during a long test run — and on a `release-please--*` branch that is routine
+(the bot pushes whenever main moves), so "push rejected, rebasing once" was the expected outcome.
+The action now clones the branch tip (depth 1) seconds before pushing, copies the two files, and
+pushes a fast-forward whose only new content is those files; the retry path re-fetches the tip,
+resets and replays once, and reports a `::notice::` rather than a warning. Verified against a local
+bare repo whose branch moved after the checkout: one commit, only the two baseline files, unrelated
+commit preserved.
+
+**D13. `upload-artifact` needs `include-hidden-files: true`.** `.ci-report` and `.playwright` are
+hidden folders, and upload-artifact drops "any file beginning with `.` or files within folders
+beginning with `.`" unless that input is set. Every report therefore reached `publish-report` as
+"report source not found" — the local `List reports` step saw the directories on the _tests_ runner,
+but the artifact carried only `ci-failures` and `coverage/lcov-report` (the two non-hidden paths),
+which is why the failures bundle published while seven package reports did not. `download-artifact`
+has no hidden-file filter, so extraction was never the problem.

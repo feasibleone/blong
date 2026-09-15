@@ -81,7 +81,10 @@ export function sliceForPackage(records: readonly HistoryRecord[], pkg: string):
 /** Write this package's slice, ready for `allure awesome --history-path`. */
 export function writeSlice(cwd: string, records: readonly HistoryRecord[]): string {
     const file = reportPath(cwd, HISTORY_SLICE, true);
-    writeFileSync(file, records.map(record => JSON.stringify(record)).join('\n') + (records.length ? '\n' : ''));
+    writeFileSync(
+        file,
+        records.map(record => JSON.stringify(record)).join('\n') + (records.length ? '\n' : ''),
+    );
     return file;
 }
 
@@ -114,6 +117,13 @@ export function rebuildHistory(
     }
 
     const all = [...kept, ...rebuilt];
+    // One line per record. Sorting by package tag — the tag the `.gitattributes`
+    // merge driver unions on — keeps the file stable when a package is added or
+    // moved, so the committed diff shows only the records that actually changed.
+    // Sort is stable, so a package's own records keep their run order.
+    const tagOf = (record: HistoryRecord) =>
+        typeof record[HISTORY_TAG] === 'string' ? (record[HISTORY_TAG] as string) : '';
+    all.sort((left, right) => tagOf(left).localeCompare(tagOf(right)));
     return all.length > 0 ? all.map(record => JSON.stringify(record)).join('\n') + '\n' : '';
 }
 

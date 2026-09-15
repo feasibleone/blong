@@ -703,3 +703,26 @@ wrong note implied.
 - A test whose premise is wrong can pass: the debounce test asserted "nothing is written inside the
   window" and failed because `/events` already writes the snapshot before acknowledging a batch —
   which is exactly why the debounce should not have existed. The failing test was the finding.
+
+## CI report round 2: the nested tap run (2026-09-15)
+
+- The CI failures looked like three unrelated problems (a kukum e2e assertion, a semantic-log suite
+  "failure", a flaky realm test) and were four independent causes: a regex assertion reading console
+  text the runner no longer prints, tap's `failures` counter counting skips, a hidden-folder artifact
+  upload, and tap's own configuration leaking into a nested run.
+- Cost most of the round: **a nested `tap` process ignores `--reporter=json`**. `blong-kukum`'s e2e
+  suite runs the fixture realm from inside its own tap process, so the nested tap inherited
+  `TAP_CHILD_ID`/`TAP_JOB_ID`, concluded it was a child of the outer run and printed plain TAP. The
+  symptom was maximally misleading: `blong-dev test` exited 0, printed no summary line, and wrote a
+  report with zero tests — which reads like a *reporting* bug, so I kept re-testing the reporter.
+  Three hypotheses died first (spawnSync vs shell, stale "first run after regeneration" state, a stale
+  Playwright report overwriting the tap one) because each was plausible and none was checked against
+  the raw child output.
+- What actually found it: capture the child's own stdout (`blong-dev test` writes its unparsed stream
+  verbatim to `.ci-report/tap.json`) and dump `process.env` from inside a tap process. The env dump
+  named the cause in one line. Lesson: dump the raw artifact and the environment before forming a
+  fourth hypothesis about the code under test.
+- `mimic.mjs` (spawn the fixture run exactly as the e2e does, from a plain node script) passed while
+  the e2e failed, which is what proves the difference is the *context* (inside tap), not the command.
+  Reproducing more cheaply — a throwaway tap file that spawns and dumps — is worth writing before the
+  third run of a 3-minute suite.

@@ -22,7 +22,6 @@ Potential unfinished, deferred or future tasks spotted during implementation.
     grep -n "?? 1\|rateLimit =\|quote.body" flow/payer.ts
     ```
 
-- sort metrics.json
 - lib unit tests - allow easy testing of library() functions
 - skills as tools
 - flow diagram for method calls
@@ -51,6 +50,10 @@ Potential unfinished, deferred or future tasks spotted during implementation.
   commit per run.
 - CI report: `update-metrics.yaml` is now unused by blong (kept as a reusable workflow for other
   repositories). Delete it if nothing adopts it.
+- CI report: a missing `report-src` only produces a `::warning:: report source not found` in
+  `deploy-report`, so a regression in the `reports` artifact upload (`include-hidden-files: true` is
+  what keeps `.ci-report` in it) degrades quietly. Consider failing the publish job instead, once the
+  hidden-file fix has proven itself in CI.
 - CI report: JUnit XML emission was deliberately dropped with the EnricoMi step. Reviving per-test
   check-run annotations means new work, not a restore.
 - https://github.com/trailhq/Graft

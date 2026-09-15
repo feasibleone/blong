@@ -54,6 +54,21 @@ export interface IMetricsEnv {
     now?: string;
 }
 
+/**
+ * Re-insert the per-package metrics in package-name order.
+ *
+ * Two runs of the same set of packages must produce the same file, or every
+ * added, removed or moved package rewrites unrelated lines and the committed
+ * diff becomes hard to review. Ordering by name (rather than by the order the
+ * reports happened to be collected in, which is the folder order in rush.json)
+ * survives a package moving between category folders.
+ */
+function sortPackages(packages: Record<string, IPackageMetrics>): Record<string, IPackageMetrics> {
+    const sorted: Record<string, IPackageMetrics> = {};
+    for (const name of Object.keys(packages).sort()) sorted[name] = packages[name]!;
+    return sorted;
+}
+
 /** Build this run's snapshot from the collected package reports. */
 export function buildMetricsSnapshot(
     reports: readonly IReport[],
@@ -81,7 +96,10 @@ export function buildMetricsSnapshot(
 
     for (const [pkg, lines] of coverage?.packages ?? []) {
         if (lines.found === 0) continue;
-        packages[pkg] = {...packages[pkg], coverage: {linesHit: lines.hit, linesTotal: lines.found}};
+        packages[pkg] = {
+            ...packages[pkg],
+            coverage: {linesHit: lines.hit, linesTotal: lines.found},
+        };
     }
 
     return {
@@ -91,7 +109,7 @@ export function buildMetricsSnapshot(
         updatedAt: env.now ?? new Date().toISOString(),
         tests: totals,
         coverage: {lines: {hit: coverage?.lines.hit ?? 0, found: coverage?.lines.found ?? 0}},
-        packages,
+        packages: sortPackages(packages),
     };
 }
 
