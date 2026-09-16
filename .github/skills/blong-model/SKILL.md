@@ -11,8 +11,8 @@ description:
 # blong-model Skill
 
 > **Scaffold, don't transcribe.** Generate the spec with
-> `kukum model add --subject=<realm> --object=<entity> --kind=model|fixture`
-> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result.
+> `kukum model add --subject=<realm> --object=<entity> --kind=model|fixture` (`[KUKUM_API]` in
+> `_shared/conventions.md`) and edit the result.
 
 ## [CRITICAL_GUARDRAILS]
 
@@ -286,14 +286,14 @@ fields you want to change — the rest come from the server.
 
 ### Field property overrides
 
-| Property   | Type            | Effect                                    |
-| ---------- | --------------- | ----------------------------------------- |
-| `title`    | string          | Label in form and column header           |
-| `filter`   | boolean         | Include in browse filter bar              |
-| `sort`     | boolean         | Make column sortable                      |
-| `required` | boolean         | Client-side required validation on save   |
-| `default`  | any             | Initial value for new entity create forms |
-| `widget`   | IWidgetOverride | Widget type and configuration (see below) |
+| Property   | Type            | Effect                                                            |
+| ---------- | --------------- | ----------------------------------------------------------------- |
+| `title`    | string          | Label in form and column header                                   |
+| `filter`   | boolean         | Add a filter input to the column (browse _and_ form/pivot tables) |
+| `sort`     | boolean         | Make column sortable                                              |
+| `required` | boolean         | Client-side required validation on save                           |
+| `default`  | any             | Initial value for new entity create forms                         |
+| `widget`   | IWidgetOverride | Widget type and configuration (see below)                         |
 
 ### Common widget configurations
 
@@ -323,6 +323,107 @@ fields you want to change — the rest come from the server.
 // Editable sub-table (vector-array)
 {widget: {type: 'table', widgets: ['itemCode', 'quantity', 'price']}}
 ```
+
+### Pivot grids (row × column details)
+
+A `table` widget whose rows come from a **named dropdown** instead of the record is a _pivot grid_.
+The dropdown supplies the row list (and the row label through `join`), the record detail supplies
+the values, and a custom `add`/`edit` handler persists the submitted rows.
+
+```typescript
+capability: {
+    items: {
+        properties: {
+            capabilityId: {},
+            capabilityName: {title: 'Capability', readOnly: true},
+            granted: {title: 'Granted', type: 'boolean'},
+        },
+    },
+    widget: {
+        type: 'table',
+        pivot: {
+            dropdown: 'access.capability',
+            join: {value: 'capabilityId', label: 'capabilityName'},
+            // Value of a freshly added row (any item field).
+            defaults: {granted: true},
+        },
+        columns: ['capabilityName', 'granted'],
+    },
+}
+```
+
+Key points:
+
+- `pivot.dropdown` names a key of the dropdown list (see the Dropdown Reference Convention below).
+  `pivot.join` maps the row's key/label fields onto the dropdown's `value`/`label`, so the editor
+  shows names while the payload carries ids. `pivot.examples` seeds static rows for Storybook or
+  tests.
+- A row can carry **more than one value column**, which is how a matrix is built: one row per
+  labelled item and one column per setting. Cell widgets are the ordinary field overrides —
+  `type: 'boolean'` for a checkbox, or a `select` with `options` for a tri-state cell (blank = "no
+  setting", plus e.g. `allow` / `deny`). A cell may also be a `dropdown`, resolved from the same
+  dropdown list as the row source.
+- `filter: true` on a column adds a **filter input under its header** (see _Column filters_ below).
+  It is what keeps a pivot usable once the row source grows — the ACL matrix lists every role, user
+  and organization in the graph, so an administrator filters it down to the scope they are after,
+  and a screenshot test can pin the one row it means to show.
+- Read handlers must return the detail array in exactly the pivot's shape (row key + the value
+  columns); write handlers receive the whole edited array and reconcile it with the stored state.
+  See the ACL matrix in `realm/blong-access/meta/model/accessRoleModel.ts` (+ `accessModel.ts`
+  `aclMatrixRows` / `syncAclMatrix`) for the worked example: rows are scopes, columns are the CRUD
+  verbs, cells are `allow` / `deny` / blank, and saving syncs `access_acl` rows.
+
+**A pivot matches its rows by the `join` fields**, so a read handler must produce the joined label
+in _exactly_ the same form as the dropdown option label — otherwise no row matches, and the stored
+data renders as a row of empty cells. The ACL matrix shares one `resourceLabel()` helper between the
+dropdown list and `aclMatrixRows` for that reason.
+
+### Column filters
+
+`filter: true` on a field property renders an `InputText` under the column header with `data-testid`
+`${tableId}-filter-${field}`, in **both** modes:
+
+- **Browse / list tables** (`listAction`) — the committed value is sent to the server with the query
+  (`filterBy`), so paging and the record total are filtered too.
+- **Form and pivot tables** — the rows are filtered client-side with a case-insensitive `contains`
+  on the cell's text. This is display-only: the form value keeps **every** row, so hiding a row can
+  never drop data on save.
+
+```typescript
+// The ACL matrix is filtered down to one scope by the operator (and by tests)
+targetName: {title: 'Scope', readOnly: true, filter: true},
+```
+
+### Cycle cells (click to advance the state)
+
+A value column can be edited by **clicking the cell**, which advances it to the next state — no
+row-edit mode, no edit button. Declare it on the field:
+
+```typescript
+// Named preset for the boolean cases
+{granted: {title: 'Granted', widget: {type: 'cycle', cycle: 'tri-state'}}}
+
+// Custom states (the ACL matrix: allow / deny / blank)
+{get: {title: 'Get', widget: {
+    type: 'cycle',
+    states: [
+        {value: 'allow', icon: 'pi pi-check text-green-500', label: 'Allow'},
+        {value: 'deny', icon: 'pi pi-times text-red-500', label: 'Deny'},
+        {value: null, label: 'Not set'},
+    ],
+}}}
+```
+
+- Presets: `tri-state` (check, cross, empty), `check-empty`, `check-cross`. With `states` you define
+  the set yourself; the `null` state renders blank.
+- Order matters: a click on an unset cell goes to the **first** state, then advances through the
+  list and wraps back to it. The `label` is the cell's accessible name (its `title`), which is also
+  what tests match on.
+- The value is committed to the form straight away, so the form goes dirty the moment a cell is
+  clicked — and a pivot whose editable columns are **all** cycle cells drops the row-edit column
+  entirely (`cycleOnly`).
+- The pivot `defaults` are the usual way to fix a column that should not be clicked at all (the ACL
+  matrix fixes the entity that way and marks it `readOnly`, leaving only the verb columns to cycle).
 
 ---
 

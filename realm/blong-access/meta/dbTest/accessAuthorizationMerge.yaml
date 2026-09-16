@@ -39,6 +39,7 @@ capability:
     accessCapabilityFind,accessCapabilityGet,accessCapabilityAdd,accessCapabilityEdit,accessCapabilityRemove,
     accessActionFind,accessPolicyFind,accessFlowFind,accessAccessFind,
     accessSessionFind,accessSessionClose,accessAuditFind,
+    accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclRemove,accessAclList,
     accessDropdownList,subject.object.schema
   # The well-known `accessLogin` action — grants the right to establish/renew
   # a session. Every role that may log in must grant it (the gate is always on).

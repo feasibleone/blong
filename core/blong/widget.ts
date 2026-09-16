@@ -64,7 +64,18 @@ export type WidgetType =
     | 'label'
     | 'link'
     | 'component'
+    | 'cycle'
     | 'custom';
+
+/** One state of a `cycle` cell (see `IWidgetConfig.cycle`). */
+export interface ICycleCellState {
+    /** Value held in this state — `null` is the empty state. */
+    value: unknown;
+    /** PrimeIcons class rendered in the cell. */
+    icon?: string;
+    /** Accessible name; the cell exposes it as its `title`. */
+    label?: string;
+}
 
 /** Base widget configuration (stored in schema x-widget) */
 export interface IWidgetConfig {
@@ -97,6 +108,16 @@ export interface IWidgetConfig {
     columns?: string[] | Record<string, IFieldConfig>;
     /** Pivot config for static or dynamic pivots */
     pivot?: IPivotConfig;
+    /**
+     * Cycle-cell mode for a value column: the cell shows the current state and
+     * each click advances to the next one, so the column needs no row-edit mode.
+     * Named presets cover the boolean cases — `tri-state` (check, cross, empty),
+     * `check-empty` and `check-cross`; `states` defines a custom set (e.g. the
+     * ACL matrix's allow / deny / blank).
+     */
+    cycle?: 'tri-state' | 'check-empty' | 'check-cross';
+    /** Explicit states of a `cycle` cell, overriding the `cycle` preset. */
+    states?: ICycleCellState[];
     /** Field names to hide in table (used as implicit keys) */
     hidden?: string[];
     /** Selection mode for table widget */
@@ -200,12 +221,19 @@ export interface IPivotConfig {
     examples?: Record<string, unknown>[];
     /** Dynamic pivot: field name of the dropdown whose options feed the rows */
     dropdown?: string;
-    /** Key mapping from examples/options to data array */
-    join: {
-        example?: string;
-        option?: string;
-        item: string;
-    };
+    /**
+     * Key mapping from the pivot row to the data row, e.g.
+     * `{value: 'capabilityId', label: 'capabilityName'}`.  The mapped columns are
+     * the row identity and are therefore not editable.
+     */
+    join?: Record<string, string>;
+    /**
+     * Values seeded into the non-join fields of a pivot row that has no stored
+     * data yet (e.g. a tri-state column that should start as `inherit`).  Stored
+     * data wins over the default; a row the user never edits is still not
+     * submitted.
+     */
+    defaults?: Record<string, unknown>;
 }
 
 /** Object entry in a card's widget list — renders the named array field as a table, showing only the specified columns */

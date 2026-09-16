@@ -1,0 +1,43 @@
+# Organizational hierarchy for the record-level ACL tests (`test.acl.flow`).
+#
+# The `9-` prefix orders this after the plain party/access seeds it depends on
+# (files are dispatched by basename) and the remaining segment names the handler:
+# `partyHierarchyMerge` → `party.hierarchy.merge`.
+organizations:
+  - Global Bank Corp
+  # A second organization the Admin role has no scope on — records in it must
+  # stay invisible and un-actionable (the "out of scope" case).
+  - FinServe Solutions Ltd
+units:
+  - name: Head Office
+    unitType: branch
+    organization: Global Bank Corp
+  - name: Retail Branch
+    unitType: branch
+    organization: Global Bank Corp
+    parentUnit: Head Office
+  - name: Corporate Branch
+    unitType: branch
+    organization: Global Bank Corp
+    parentUnit: Head Office
+  - name: FinServe Branch
+    unitType: branch
+    organization: FinServe Solutions Ltd
+persons:
+  - name: John Doe
+    firstName: John
+    lastName: Doe
+    unit: Retail Branch
+  - name: Jane Smith
+    firstName: Jane
+    lastName: Smith
+    unit: Corporate Branch
+  - name: Carlos Garcia
+    firstName: Carlos
+    lastName: Garcia
+    unit: Head Office
+  # Out of scope: the unit belongs to an organization Admin has no grant on.
+  - name: Alice Brown
+    firstName: Alice
+    lastName: Brown
+    unit: FinServe Branch

@@ -44,6 +44,20 @@ export default adapter<{
         seed?: boolean;
         dbTest?: boolean;
         dropColumns?: boolean;
+        /**
+         * Record-level (ACL) rules shared by every table declaring an `acl`
+         * spec — the ACL table name and the graph predicates / `core.path` path
+         * types used to resolve the caller's principals and a record's scopes.
+         * Defaults live in `core/blong-gogo/src/adapter/server/acl.ts`.
+         */
+        acl?: {
+            table?: string;
+            actionTable?: string;
+            rolePathType?: string;
+            scopePathType?: string;
+            unitPredicate?: string;
+            scopePredicate?: string;
+        };
     };
 }>(() => ({
     extends: 'adapter.knex',

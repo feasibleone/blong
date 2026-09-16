@@ -20,8 +20,144 @@ type TripleMerge = (
     $meta: IMeta,
 ) => Promise<{success: boolean}> | {success: boolean};
 
+/** The verdict of the adapter's record-level ACL evaluation. */
+export type AclCheckVerdict = {
+    /** `false` when the entity does not opt into the ACL (or the action is not RBAC-managed). */
+    guarded: boolean;
+    allowed: boolean;
+    /** The guarded entity (`subject.object`) the action belongs to. */
+    entity?: string;
+    /** The method's predicate (`get` / `edit` / `remove` / `add` / `find` / …). */
+    predicate?: string;
+    /** The resolved action resource — reused by `access.session.verify`. */
+    actionId?: Buffer;
+};
+
+/**
+ * The adapter's record-level ACL surface, reached through the port from a realm
+ * handler (`this as unknown as AclHost`) — the runtime package is not a library
+ * dependency of a realm, so this is the only way to reuse the SQL the generic
+ * CRUD already applies.  See `core/blong-gogo/src/adapter/server/acl.ts`.
+ */
+export type AclHost = {
+    aclCheck(
+        params: {
+            entity?: string;
+            method?: string;
+            recordId?: string;
+            scopeIds?: string[];
+            actorId?: string;
+        },
+        $meta?: IMeta,
+    ): Promise<AclCheckVerdict>;
+    /** Raw predicate + bindings for filtering a list — apply with `whereRaw`. */
+    aclFilter(
+        params: {entity: string; method?: string; actorId?: string},
+        $meta?: IMeta,
+    ): Promise<{sql: string; bindings: unknown[]} | undefined>;
+};
+
+/**
+ * Join the display names of an ACL row's principal, action and target, so the
+ * exceptions page and the effective panel are readable without a lookup per
+ * row.  `joinResourceNames` covers the two resource id columns; the action name
+ * needs its own lookup because `access_action`'s PK is the resource itself.
+ */
+export async function attachAclNames<T extends Record<string, unknown>>(
+    qb: KnexQb,
+    rows: T[],
+): Promise<Array<T & {principalName?: string; actionName?: string; targetName?: string}>> {
+    if (!rows.length) return rows;
+    const withPrincipal = await joinResourceNames(qb, rows, 'principalId', 'principalName');
+    const withTarget = await joinResourceNames(qb, withPrincipal, 'targetId', 'targetName');
+    const actionIds = [
+        ...new Set(
+            withTarget
+                .map(row => row.actionId)
+                .filter((id): id is string => typeof id === 'string'),
+        ),
+    ];
+    if (!actionIds.length) return withTarget;
+    const actions = (await qb('access_action as at')
+        .join('core_resource as r', 'r.resourceId', 'at.actionId')
+        .whereIn(
+            'at.actionId',
+            actionIds.map(id => Buffer.from(binHex(id) as string, 'hex')),
+        )
+        .select('at.actionId', 'r.resourceName as actionName')) as Array<{
+        actionId: Buffer;
+        actionName: string;
+    }>;
+    const byId = new Map(actions.map(a => [bufToBase64(a.actionId), a.actionName]));
+    return withTarget.map(row => ({
+        ...row,
+        actionName: byId.get(String(row.actionId)),
+    }));
+}
+
+/**
+ * Options for a dropdown listing graph resources of the given types, labelled
+ * `<short type>: <resource name>` so an administrator can tell the kinds apart.
+ */
+/**
+ * How a graph resource is labelled in the ACL dropdowns and in the ACL matrix:
+ * `<short type>: <resource name>`, so an administrator can tell the kinds apart.
+ */
+export function resourceLabel(typeAlias: string, resourceName: string): string {
+    const shortOf = new Map(
+        Object.entries(SHORT_TYPE_ALIASES).map(([short, full]) => [full, short]),
+    );
+    return `${shortOf.get(typeAlias) ?? typeAlias}: ${resourceName}`;
+}
+
+export async function resourceOptions(
+    qb: KnexQb,
+    typeAliases: string[],
+): Promise<Array<{value: string; label: string}>> {
+    const rows = (await qb('core_resource as r')
+        .join('core_type as t', 't.typeId', 'r.typeId')
+        .whereIn('t.typeAlias', typeAliases)
+        .select('r.resourceId', 'r.resourceName', 't.typeAlias')) as Array<{
+        resourceId: Buffer;
+        resourceName: string;
+        typeAlias: string;
+    }>;
+    return rows
+        .map(row => ({
+            value: bufToBase64(row.resourceId) ?? '',
+            label: resourceLabel(row.typeAlias, row.resourceName),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 /** The standard CRUD predicates a capability can grant in the action pivot grid. */
 export const STANDARD_CRUD_PREDICATES = ['find', 'get', 'add', 'edit', 'remove'] as const;
+
+/**
+ * Highest usable role bit.  `access_role.roleBit` is the bit *position* of the
+ * role in a minted token's `per` permission mask (`access.permission.list` packs
+ * it into a 1024-bit mask), so the whole space has to stay inside it.
+ */
+export const ROLE_BIT_MAX = 1023;
+
+/** Result of the shared `access.role.ensure` helper (see `accessRoleEnsure.ts`). */
+export type EnsuredRole = {role: {roleId: string; roleName: string; roleBit: number}};
+
+/**
+ * Short type names used by ACL declarations, seeds and UI dropdowns, mapped to
+ * the full `core_type.typeAlias` of the entity they refer to.
+ */
+export const SHORT_TYPE_ALIASES: Record<string, string> = {
+    user: 'access.user',
+    role: 'access.role',
+    capability: 'access.capability',
+    action: 'access.action',
+    unit: 'party.unit',
+    organization: 'party.organization',
+    person: 'party.person',
+    /** The wildcard target: an ACL rule anchored on it matches every record. */
+    all: 'access.any',
+};
 
 /**
  * Normalise a `binary(16)` value (Buffer or base64 string) to a hex string.
@@ -385,5 +521,277 @@ export async function syncCredentials(
         if (!submittedIds.has(id)) {
             await qb('access_credential').where('credentialId', id).del();
         }
+    }
+}
+
+/**
+ * The verbs the ACL matrix exposes as tri-state columns. A cell is `''` (no
+ * rule — the entity/verb is governed by RBAC alone), `allow` or `deny`.
+ */
+export const ACL_MATRIX_PREDICATES = STANDARD_CRUD_PREDICATES;
+
+/** One row of the ACL matrix: a (target scope, entity) pair with verb cells. */
+export type AclMatrixRow = {
+    /** Target scope resource id (base64, as the wire round-trips it). */
+    targetId?: string;
+    /** Target scope display name (read-only, joined by `aclMatrixRows`). */
+    targetName?: string;
+    /** `accessUser`, `partyPerson`, … — the entity whose actions are restricted. */
+    entityName?: string;
+    [verb: string]: unknown;
+};
+
+/** The `(entity, verb) → effect` rules an ACL matrix row asks for. */
+type DesiredAclRule = {actionHex: string; targetHex: string; effect: string};
+
+/** Dependencies the ACL matrix sync needs from the calling handler. */
+export type AclMatrixDeps = {
+    /**
+     * The bound `db/coreResourceEnsure` port handler.  Deliberately loose:
+     * the port is generic in its result (`<T>(params, $meta) => Promise<T>`),
+     * which is not assignable to a concrete function type — the params of a
+     * narrower handler are contravariant, and the result widens to `unknown`.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    coreResourceEnsure: (params: any, $meta: IMeta) => Promise<any>;
+    /** Mints the `aclId` of a new rule (a ULID, as the column requires). */
+    newAclId: () => Buffer;
+};
+
+/** `actionHex|targetHex` — the identity of a scope-level ACL rule. */
+function aclRuleKey(actionHex: string, targetHex: string): string {
+    return `${actionHex}|${targetHex}`;
+}
+
+/**
+ * Split an action resource name into its entity + CRUD predicate, accepting both
+ * the runtime's camelCase form (`partyPersonEdit`) and the dotted form the seeds
+ * register (`party.person.edit`) — the ACL matches action names with the dots
+ * ignored, so the matrix must read them the same way.
+ */
+export function aclActionParts(
+    actionName: string,
+): {entity: string; predicate: string} | undefined {
+    const segments = actionName.split('.');
+    if (segments.length > 1) {
+        const predicate = segments[segments.length - 1];
+        if (!(STANDARD_CRUD_PREDICATES as readonly string[]).includes(predicate)) {
+            return undefined;
+        }
+        const entity = segments
+            .slice(0, -1)
+            .map((part, index) => (index === 0 ? part : part[0].toUpperCase() + part.slice(1)))
+            .join('');
+        return {entity, predicate};
+    }
+    return crudActionParts(actionName);
+}
+
+/**
+ * The `access_action` resource id (hex) of one entity + CRUD verb, matched the
+ * way the *runtime* matches it — the dots of `party.person.edit` are ignored, so
+ * that action and `partyPersonEdit` are the same action.  An action the seeds
+ * already registered is reused; one that does not exist yet is created.
+ *
+ * Matching instead of creating is essential: two rows with the same
+ * dot-stripped name would make the runtime's pattern lookup pick either one, and
+ * a rule pointing at the other would silently not apply.
+ */
+export async function aclActionResourceId(
+    qb: KnexQb,
+    coreResourceEnsure: AclMatrixDeps['coreResourceEnsure'],
+    entityName: string,
+    predicate: string,
+    $meta: IMeta,
+): Promise<string> {
+    const actionName = crudActionName(entityName, predicate);
+    const existing = (await qb('access_action as at')
+        .join('core_resource as r', 'r.resourceId', 'at.actionId')
+        .whereRaw("LOWER(REPLACE(r.resourceName, '.', '')) = ?", [
+            actionName.replaceAll('.', '').toLowerCase(),
+        ])
+        .first('at.actionId as actionId')) as {actionId: Buffer} | undefined;
+    const existingHex = binHex(existing?.actionId);
+    if (existingHex) return existingHex;
+    const {resourceId} = await coreResourceEnsure(
+        {
+            name: actionName,
+            typeAlias: 'access.action',
+            table: 'access_action',
+            extraColumns: {description: `${actionName} action`},
+            keyName: 'actionId',
+        },
+        $meta,
+    );
+    const hex = binHex(resourceId);
+    if (!hex) throw new Error(`Could not resolve action resource id for ${actionName}`);
+    return hex;
+}
+
+/**
+ * Read a principal's scope-level `access_acl` rules as ACL matrix rows: one row
+ * per `(target scope, entity)` pair with a tri-state cell per CRUD verb, derived
+ * from the action name (`accessUserFind` → entity `accessUser`, verb `find`).
+ *
+ * Only `targetKind: 'scope'` rules are returned — they are the ones the matrix
+ * writes; `record` rules stay in the ACL Rules page, where the exact record is
+ * chosen.
+ *
+ * The scope name is formatted exactly like the `access.aclTarget` dropdown's
+ * option label ({@link resourceLabel}) — that label is the pivot's row identity,
+ * so a bare `core_resource.resourceName` would never match its option and the
+ * stored rules would render as an empty row.
+ */
+export async function aclMatrixRows(
+    qb: KnexQb,
+    principalId: Buffer | string,
+): Promise<AclMatrixRow[]> {
+    const hex = binHex(principalId);
+    if (!hex) return [];
+    const rows = (await qb('access_acl as ab')
+        .join('core_resource as ar', 'ar.resourceId', 'ab.actionId')
+        .where('ab.principalId', Buffer.from(hex, 'hex'))
+        .where('ab.targetKind', 'scope')
+        .where('ab.isActive', 1)
+        .select(
+            'ab.targetId as targetId',
+            'ab.effect as effect',
+            'ar.resourceName as actionName',
+        )) as Array<{targetId: Buffer; effect: string; actionName: string}>;
+    if (!rows.length) return [];
+    const byKey = new Map<string, AclMatrixRow>();
+    for (const row of rows) {
+        const targetId = bufToBase64(row.targetId);
+        const parts = aclActionParts(String(row.actionName));
+        if (!targetId || !parts) continue;
+        const key = `${targetId}|${parts.entity}`;
+        let entry = byKey.get(key);
+        if (!entry) {
+            entry = {targetId, entityName: parts.entity};
+            for (const p of ACL_MATRIX_PREDICATES) entry[p] = '';
+            byKey.set(key, entry);
+        }
+        entry[parts.predicate] = row.effect === 'deny' ? 'deny' : 'allow';
+    }
+    const items = [...byKey.values()];
+    const targetRows = (await qb('core_resource as r')
+        .join('core_type as t', 't.typeId', 'r.typeId')
+        .whereIn(
+            'r.resourceId',
+            items.map(item => Buffer.from(item.targetId as string, 'base64')),
+        )
+        .select(
+            'r.resourceId as resourceId',
+            'r.resourceName as resourceName',
+            't.typeAlias as typeAlias',
+        )) as Array<{
+        resourceId: Buffer;
+        resourceName: string;
+        typeAlias: string;
+    }>;
+    const labelOf = new Map(
+        targetRows.map(row => [
+            bufToBase64(row.resourceId) ?? '',
+            resourceLabel(row.typeAlias, row.resourceName),
+        ]),
+    );
+    const named = items.map(item => ({...item, targetName: labelOf.get(item.targetId ?? '')}));
+    return named
+        .filter(item => item.targetName !== undefined)
+        .sort(
+            (a, b) =>
+                String(a.targetName ?? '').localeCompare(String(b.targetName ?? '')) ||
+                String(a.entityName ?? '').localeCompare(String(b.entityName ?? '')),
+        );
+}
+
+/**
+ * Bring a principal's scope-level `access_acl` rules in line with the submitted
+ * ACL matrix.
+ *
+ * Each `allow`/`deny` cell ensures the `access` + `Entity` + capitalised verb
+ * action resource (`partyPersonEdit`, …) and asks for the rule
+ * `(principal, action, target scope, effect)`. An empty cell asks for the rule
+ * to be gone, which is how an implicit grant is narrowed back and how an
+ * explicitly forbidden record is released. Rules of other principals and
+ * `record`-kind rules are never touched.
+ */
+export async function syncAclMatrix(
+    qb: KnexQb,
+    deps: AclMatrixDeps,
+    principalId: Buffer | string,
+    matrix: AclMatrixRow[],
+    $meta: IMeta,
+): Promise<void> {
+    const principalHex = binHex(principalId);
+    if (!principalHex) return;
+    const principalBuf = Buffer.from(principalHex, 'hex');
+    const desired = new Map<string, DesiredAclRule>();
+    for (const row of matrix) {
+        const targetHex = binHex(row.targetId);
+        const entityName =
+            typeof row.entityName === 'string' && row.entityName ? row.entityName : undefined;
+        if (!targetHex || !entityName) continue;
+        for (const p of ACL_MATRIX_PREDICATES) {
+            const value = row[p];
+            if (value !== 'allow' && value !== 'deny') continue;
+            const actionHex = await aclActionResourceId(
+                qb,
+                deps.coreResourceEnsure,
+                entityName,
+                p,
+                $meta,
+            );
+            desired.set(aclRuleKey(actionHex, targetHex), {
+                actionHex,
+                targetHex,
+                effect: value,
+            });
+        }
+    }
+    const existing = (await qb('access_acl')
+        .where('principalId', principalBuf)
+        .where('targetKind', 'scope')
+        .select('actionId as actionId', 'targetId as targetId', 'effect as effect')) as Array<{
+        actionId: Buffer;
+        targetId: Buffer;
+        effect: string;
+    }>;
+    const existingEffects = new Map<string, string>();
+    for (const row of existing) {
+        const key = aclRuleKey(binHex(row.actionId) ?? '', binHex(row.targetId) ?? '');
+        existingEffects.set(key, String(row.effect));
+        if (desired.has(key)) continue;
+        await qb('access_acl')
+            .where('principalId', principalBuf)
+            .where('targetKind', 'scope')
+            .where('actionId', row.actionId)
+            .where('targetId', row.targetId)
+            .del();
+    }
+    for (const [key, rule] of desired) {
+        const present = existingEffects.get(key);
+        if (present === rule.effect) continue;
+        if (present !== undefined) {
+            await qb('access_acl')
+                .where('principalId', principalBuf)
+                .where('targetKind', 'scope')
+                .where('actionId', Buffer.from(rule.actionHex, 'hex'))
+                .where('targetId', Buffer.from(rule.targetHex, 'hex'))
+                .update({effect: rule.effect, isActive: 1});
+            continue;
+        }
+        await qb('access_acl')
+            .insert({
+                aclId: deps.newAclId(),
+                principalId: principalBuf,
+                actionId: Buffer.from(rule.actionHex, 'hex'),
+                targetId: Buffer.from(rule.targetHex, 'hex'),
+                targetKind: 'scope',
+                effect: rule.effect,
+                isActive: 1,
+            })
+            .onConflict()
+            .ignore();
     }
 }

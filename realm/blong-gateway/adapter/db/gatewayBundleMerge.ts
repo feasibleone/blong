@@ -20,6 +20,7 @@ type KnexQb = any;
 export default handler(
     ({
         handler: {
+            'db/accessRoleEnsure': accessRoleEnsure,
             'db/coreResourceEnsure': coreResourceEnsure,
             'db/coreTripleMerge': coreTripleMerge,
         },
@@ -97,17 +98,8 @@ export default handler(
             // 2. Roles + their capabilities
             if (params.role) {
                 for (const [roleName, capabilityList] of Object.entries(params.role)) {
-                    const {resourceId: roleId} = await coreResourceEnsure<{resourceId: string}>(
-                        {
-                            name: roleName,
-                            typeAlias: 'access.role',
-                            table: 'access_role',
-                            extraColumns: {
-                                roleBit: await nextRoleBit(qb),
-                                description: `${roleName} role`,
-                            },
-                            keyName: 'roleId',
-                        },
+                    const {role: ensuredRole} = await accessRoleEnsure<{role: {roleId: string}}>(
+                        {role: {roleName}},
                         $meta,
                     );
                     for (const capabilityName of splitNames(capabilityList)) {
@@ -124,7 +116,7 @@ export default handler(
                             $meta,
                         );
                         triples.push({
-                            subjectId: roleId,
+                            subjectId: ensuredRole.roleId,
                             predicateName: 'hasCapability',
                             objectId: capabilityId,
                         });
@@ -170,18 +162,21 @@ export default handler(
                         });
                     }
 
-                    // 2. Role (the bundle) + hasCapability edges
-                    const roleBit = bundleDef.roleBit ?? (await nextRoleBit(qb));
-                    const {resourceId: roleId} = await coreResourceEnsure<{resourceId: string}>(
+                    // 2. Role (the bundle) + hasCapability edges.  A declared bit
+                    // is honoured; otherwise the framework allocates one.
+                    const {role: bundleRole} = await accessRoleEnsure<{role: {roleId: string}}>(
                         {
-                            name: bundleName,
-                            typeAlias: 'access.role',
-                            table: 'access_role',
-                            extraColumns: {roleBit, description: `${bundleName} bundle role`},
-                            keyName: 'roleId',
+                            role: {
+                                roleName: bundleName,
+                                description: `${bundleName} bundle role`,
+                                ...(bundleDef.roleBit === undefined || bundleDef.roleBit === null
+                                    ? {}
+                                    : {roleBit: bundleDef.roleBit}),
+                            },
                         },
                         $meta,
                     );
+                    const roleId = bundleRole.roleId;
                     const {resourceId: capabilityId} = await coreResourceEnsure<{
                         resourceId: string;
                     }>(
@@ -227,11 +222,3 @@ export default handler(
             return {success: true};
         },
 );
-
-/** Allocate the next free roleBit (1..1023). */
-async function nextRoleBit(qb: KnexQb): Promise<number> {
-    const row = await qb('access_role').max('roleBit as maxBit').first();
-    const next = (Number(row?.maxBit) ?? 0) + 1;
-    if (next > 1023) throw new Error('Role bit space exhausted');
-    return next;
-}

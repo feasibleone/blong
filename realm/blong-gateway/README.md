@@ -128,7 +128,7 @@ Mid-month credit adjustments go through `gateway.credit.adjust` (a thin wrapper 
 | Handler | Wire method | Purpose |
 | ------- | ----------- | ------- |
 | `gatewayApplicationRegister` | `gateway.application.register` | register an OAuth app + `clientSecret` credential (rotates prior active credential) |
-| `gatewayBundleAdd` | `gateway.bundle.add` | create a bundle: ensure a fresh `access.role` (unique name + next roleBit) and insert the bundle row (bundleId = roleId) |
+| `gatewayBundleAdd` | `gateway.bundle.add` | create a bundle: ensure a fresh `access.role` (unique name + allocated roleBit) and insert the bundle row (bundleId = roleId) |
 | `gatewaySubscriptionMerge` | `gateway.subscription.merge` | upsert subscriptions (unique app+bundle) + `hasRole` edge + `access_pathRefresh` |
 | `gatewayMeterCheck` | `gateway.meter.check` | per-request metering decision (called by the ApiGateway plugin) |
 | `gatewayCreditAdjust` | `gateway.credit.adjust` | mid-month credit balance adjustment |
@@ -190,9 +190,11 @@ target).
   without it): for a **production** namespace list it in `orchestrator/subject/init.ts` (like
   `gateway`); for a **dev-only** namespace give it its own `orchestrator/<ns>.dev/init.ts` dispatch
   orchestrator (like `vision`/`customer`/`meterprobe`) so it never exists outside `dev`.
-- **New bundle**: seed via `gatewayBundleMerge.yaml` (name + roleBit + capabilities/actions +
-  rate/credit limits) or call `gateway.bundle.add`; roleBits must not collide with the access
-  realm's seeded roles (0–4) — use 100+.
+- **New bundle**: seed via `gatewayBundleMerge.yaml` (name + capabilities/actions + rate/credit
+  limits) or call `gateway.bundle.add`.  The wrapped role's bit is allocated by
+  `access.role.ensure`, so nothing has to be coordinated across realms; a seed may still declare one
+  (the metered fixtures keep 100+), and a clash is refused (`role.bitTaken`) rather than silently
+  skipped — which used to leave a role resource with no role row.
 - **New application / subscription**: `gateway.application.register` + `gateway.subscription.merge`
   (or the management UI).
 

@@ -1,0 +1,7 @@
+# The ACL grants and denials for the record-level ACL tests live in
+# `accessAuthorizationMerge.yaml`: that file creates the `Admin` role it needs
+# and runs after `9-partyHierarchyMerge.yaml`, whereas a file named `99-...`
+# sorts before it (seeds are dispatched by basename).
+#
+# Kept as an empty seed so the dispatch target stays valid.
+{}

@@ -1,5 +1,6 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
+import {type EnsuredRole} from './accessModel.ts';
 import * as account from './account.ts';
 import {type PasswordParams} from './password.ts';
 
@@ -17,6 +18,7 @@ export default handler(
     ({
         errors,
         handler: {
+            'db/accessRoleEnsure': accessRoleEnsure,
             'db/coreResourceEnsure': coreResourceEnsure,
             'db/coreTripleMerge': coreTripleMerge,
         },
@@ -106,20 +108,14 @@ export default handler(
             if (params.roles) {
                 const roleNames = account.splitNames(params.roles);
                 for (const roleName of roleNames) {
-                    const {resourceId: roleId} = await coreResourceEnsure<{resourceId: string}>(
-                        {
-                            name: roleName,
-                            typeAlias: 'access.role',
-                            table: 'access_role',
-                            extraColumns: {roleBit: 0, description: `${roleName} role`},
-                            keyName: 'roleId',
-                        },
-                        $meta,
-                    );
+                    // Roles are never created here with a hardcoded bit any more:
+                    // `access.role.ensure` allocates one when the role is new and
+                    // returns the existing role — with its own bit — otherwise.
+                    const {role} = await accessRoleEnsure<EnsuredRole>({role: {roleName}}, $meta);
                     triples.push({
                         subjectId: userId,
                         predicateName: 'hasRole',
-                        objectId: roleId,
+                        objectId: role.roleId,
                     });
                 }
             }

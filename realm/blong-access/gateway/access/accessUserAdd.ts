@@ -46,6 +46,34 @@ export default validation(
                                 ),
                             ),
                         ),
+                        // The scope × CRUD ACL matrix of the "Record Access" tab.
+                        matrix: type.Optional(
+                            type.Array(
+                                type.Object(
+                                    {
+                                        targetId: type.Optional(type.String()),
+                                        targetName: type.Optional(type.String()),
+                                        entityName: type.Optional(type.String()),
+                                        find: type.Optional(
+                                            type.Union([type.String(), type.Null()]),
+                                        ),
+                                        get: type.Optional(
+                                            type.Union([type.String(), type.Null()]),
+                                        ),
+                                        add: type.Optional(
+                                            type.Union([type.String(), type.Null()]),
+                                        ),
+                                        edit: type.Optional(
+                                            type.Union([type.String(), type.Null()]),
+                                        ),
+                                        remove: type.Optional(
+                                            type.Union([type.String(), type.Null()]),
+                                        ),
+                                    },
+                                    {additionalProperties: true},
+                                ),
+                            ),
+                        ),
                     },
                     {additionalProperties: true},
                 ),

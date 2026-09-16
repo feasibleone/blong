@@ -11,13 +11,13 @@ type KnexQb = any;
  * The `credential` rows are joined manually: `access_credential.userId` is a
  * FK to `core.resource.resourceId` (not `access.user.userId`), so the generic
  * master-detail does not attach them. The granted roles come from the
- * `hasRole` graph edges (`core_triple`).
+ * `hasRole` graph edges (`core_triple`), and `effective` carries the user's
+ * effective ACL (explicit rules plus the units/roles they are inherited
+ * through) for the read-only Access tab. `matrix` carries the same rules as the
+ * editable scope × CRUD grid (see `syncAclMatrix`).
  */
-export default handler(() => ({
-    async accessUserGet(
-        params: {userId?: string},
-        $meta: IMeta,
-    ): Promise<Record<string, unknown>> {
+export default handler(({handler: {accessAclList}}) => ({
+    async accessUserGet(params: {userId?: string}, $meta: IMeta): Promise<Record<string, unknown>> {
         const qb: KnexQb = this.config?.context?.queryBuilder;
         if (!qb) throw new Error('Database not available');
         const result = (await super.exec(params, $meta)) as Record<string, unknown>;
@@ -41,6 +41,13 @@ export default handler(() => ({
                 'roleId',
                 'roleName',
             );
+            result.effective = (
+                await accessAclList<{items: Array<Record<string, unknown>>}>(
+                    {principalType: 'user', principalId: model.bufToBase64(user.userId)},
+                    $meta,
+                )
+            ).items;
+            result.matrix = await model.aclMatrixRows(qb, hex);
         }
         return result;
     },

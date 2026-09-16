@@ -39,6 +39,8 @@ import {BLONG_ELEMENT_TIMEOUT, type Portal} from '../playwright.js';
 interface ITestFn {
     (title: string, fn: (args: {portal: Portal}) => Promise<void>): void;
     describe: (title: string, fn: () => void) => void;
+    /** In-body skip: `test.skip(condition, description)` aborts the running test. */
+    skip: (condition?: boolean, description?: string) => void;
 }
 
 export interface IFieldValue {
@@ -51,7 +53,9 @@ export interface IFieldValue {
         | 'date'
         | 'datetime'
         | 'checkbox'
-        | 'text';
+        | 'text'
+        /** Click-to-cycle cell (`widget.type: 'cycle'`) — `value` is the cell's state label. */
+        | 'cycle';
     /** Value to set. */
     value: string | number | boolean;
 }
@@ -87,12 +91,39 @@ export interface ICreateAndEditModelOptions {
      *     }},
      *     // Pivot detail (rows come from a dropdown, no Add button):
      *     {object: 'role', pivot: true, fields: {granted: true}},
+     *     // A tab whose label differs from the detail object name, narrowed to
+     *     // one row so the capture does not depend on the rest of the table:
+     *     {object: 'matrix', tab: 'Record Access', pivot: true,
+     *      filters: {targetName: '(all records)'}, fields: {
+     *         find: {widget: 'cycle', value: 'Allow'},
+     *     }},
      * ]
      * ```
      */
     details?: Array<{
         /** Detail entity name, e.g. 'line' — matches `IModelSpec.details[].object`. */
         object: string;
+        /**
+         * Tab-menu label, when the model declares a custom one in
+         * `layouts.edit.items` (e.g. the ACL detail `matrix` is labelled
+         * "Record Access").  Defaults to the capitalised `object`.
+         */
+        tab?: string;
+        /**
+         * Which captures to take of this tab — each defaults to `true`.  Set one
+         * to `false` to skip that screenshot (e.g. a read-only tab whose empty
+         * state adds nothing).
+         */
+        screenshots?: {
+            /** Create test: the tab as it opens, before anything is added. */
+            empty?: boolean;
+            /** Create test: the tab after its rows were added or toggled. */
+            filled?: boolean;
+            /** Edit test: the tab with the loaded record's rows. */
+            open?: boolean;
+            /** Edit test: the tab after `editFields` were applied to a row. */
+            editDirty?: boolean;
+        };
         /**
          * Pivot-table detail (the model widget declares `widget.pivot`): the
          * rows come from a named dropdown (there is no Add button) and
@@ -116,6 +147,15 @@ export interface ICreateAndEditModelOptions {
          * change is persisted by the final form save of the edit test.
          */
         editFields?: FieldMap;
+        /**
+         * Column filters to type before capturing this tab (column name → text,
+         * matched case-insensitively on the cell's text).  Use it to pin a table
+         * whose row set is not deterministic — e.g. the ACL matrix lists every
+         * role and user in the graph, so a capture without a filter drifts with
+         * whatever else the run created.  The column must declare `filter: true`
+         * in the model, which renders the input as `${object}-filter-${column}`.
+         */
+        filters?: FieldMap;
     }>;
     /**
      * Optional browse-search text to filter by before opening a row in the
@@ -130,6 +170,19 @@ export interface ICreateAndEditModelOptions {
      * non-text field (e.g. a date) to a distinct value.
      */
     editInCreate?: boolean;
+    /**
+     * Skip the create test (it is reported as skipped) and keep only the edit
+     * test, which then edits a *seeded* record found via `search`.  Use it for an
+     * entity whose records cannot be created through the UI — e.g. one whose
+     * record-level guard refuses the caller's own new record.
+     */
+    skipCreate?: boolean;
+    /**
+     * Prefix for every baseline name, defaulting to `\`${subject}-${object}\``.
+     * Set it when a second spec drives the same entity (e.g. one covering only a
+     * detail tab), so the two do not compete for the same screenshot files.
+     */
+    baselinePrefix?: string;
 }
 
 /**
@@ -254,13 +307,12 @@ function capital(s: string): string {
     return s.replace(/^(\$*)([a-z])/, (_m, pre: string, c: string) => pre + c.toUpperCase());
 }
 
-/** Switch the editor to a master-detail tab (TabMenu item) by its label. */
-async function switchToDetailTab(page: Page, object: string): Promise<void> {
-    await page
-        .locator('.p-tabmenu-nav .p-tabmenuitem')
-        .filter({hasText: capital(object)})
-        .first()
-        .click();
+/**
+ * Switch the editor to a master-detail tab (TabMenu item) by its label — the
+ * detail's `tab` when given, otherwise the capitalised object name.
+ */
+async function switchToDetailTab(page: Page, label: string): Promise<void> {
+    await page.locator('.p-tabmenu-nav .p-tabmenuitem').filter({hasText: label}).first().click();
 }
 
 /**
@@ -287,6 +339,32 @@ async function setCellValue(
     const widget = spec.widget ?? (typeof value === 'boolean' ? 'checkbox' : 'text');
 
     switch (widget) {
+        case 'cycle': {
+            // Click-to-cycle cell: the cell's `title` names the current state, so
+            // click until it shows the wanted one (bounded by the state count).
+            const cell = page.getByTestId(cellId);
+            const wanted = String(value);
+            for (let attempt = 0; attempt < 4; attempt++) {
+                if (((await cell.getAttribute('title')) ?? '') === wanted) break;
+                await cell.click();
+            }
+            break;
+        }
+        case 'dropdown': {
+            // trigger (the widget carries the cell id), and the options render in
+            // an overlay appended to the body.  Some widgets wrap an inner
+            // `.p-dropdown`, so fall back to it when the wrapper is not clickable.
+            const cell = page.getByTestId(cellId);
+            const inner = cell.locator('.p-dropdown');
+            await ((await inner.count()) ? inner.first() : cell.first()).click();
+            const option = page
+                .locator('.p-dropdown-item')
+                .filter({hasText: String(value)})
+                .first();
+            await option.waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+            await option.click();
+            break;
+        }
         case 'checkbox': {
             // PrimeReact Checkbox renders a hidden `<input id={cellId}>` that
             // overlays (and intercepts pointer events on) the `.p-checkbox-box`,
@@ -340,17 +418,45 @@ async function editDetailRow(
     const row = page.locator('.p-datatable-tbody tr:visible').nth(rowIndex);
     if (!alreadyEditing) {
         // The row-editor column's edit button (PrimeReact RowEditor — accessible
-        // name "Edit Row" in the current version).
-        await row.getByRole('button', {name: /edit/i}).first().click();
+        // name "Edit Row" in the current version).  A toggle-only pivot (every
+        // editable column is a `cycle` cell) has no row editor at all, so its
+        // cells are set directly and nothing needs committing.
+        const editButton = row.getByRole('button', {name: /edit/i}).first();
+        if (await editButton.count()) await editButton.click();
     }
     for (const [field, raw] of Object.entries(fields)) {
         await setCellValue(page, object, rowIndex, field, raw);
     }
-    await page.locator('.p-row-editor-save:visible').last().click();
-    await page
-        .locator('.p-row-editor-save:visible')
-        .last()
-        .waitFor({state: 'hidden', timeout: BLONG_ELEMENT_TIMEOUT});
+    const save = page.locator('.p-row-editor-save:visible');
+    if (await save.count()) {
+        await save.last().click();
+        await page
+            .locator('.p-row-editor-save:visible')
+            .last()
+            .waitFor({state: 'hidden', timeout: BLONG_ELEMENT_TIMEOUT});
+    }
+}
+
+/**
+ * Apply a detail table's column filters (column name → text) so the visible
+ * rows — and therefore the capture — are the ones the spec means to show.
+ *
+ * The filter input is rendered by `TableWidget` for every column whose model
+ * property declares `filter: true`, with `data-testid` `${object}-filter-${column}`.
+ * Filtering only affects rendering (the form value keeps every row), and the
+ * input commits after a short debounce, hence the settle wait.
+ */
+async function applyDetailFilters(page: Page, object: string, filters?: FieldMap): Promise<void> {
+    if (!filters) return;
+    for (const [field, raw] of Object.entries(filters)) {
+        const spec: IFieldValue =
+            typeof raw === 'object' && raw !== null ? (raw as IFieldValue) : {value: raw};
+        const input = page.getByTestId(`${object}-filter-${field}`);
+        await input.waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+        await input.fill(String(spec.value));
+    }
+    // `TableWidget` debounces the filter by 350 ms before it re-renders the rows.
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -409,10 +515,25 @@ export function createAndEditModel(
     expect: Expect,
     options: ICreateAndEditModelOptions,
 ): void {
-    const {subject, object, fields, editFields, search, details, editInCreate = true} = options;
+    const {
+        subject,
+        object,
+        fields,
+        editFields,
+        search,
+        details,
+        editInCreate = true,
+        skipCreate = false,
+        baselinePrefix,
+    } = options;
     const browseMethod = `${subject}.${object}.browse`;
+    const base = baselinePrefix ?? `${subject}-${object}`;
 
     test(`create ${subject} ${object}`, async ({portal}) => {
+        // An entity whose guard refuses the caller's own new record cannot be
+        // created through the UI — report the create test as skipped instead of
+        // failing, and cover the entity through the edit test (see `skipCreate`).
+        if (skipCreate) test.skip(true, 'create is not supported for this entity');
         await portal.menuClick(browseMethod);
         await portal.waitForTableData();
 
@@ -430,18 +551,19 @@ export function createAndEditModel(
         }
 
         await portal.waitForFormLoad();
-        await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-empty.png`);
+        await expect(portal.page).toHaveScreenshot(`${base}-new-empty.png`);
 
         // Fill form fields
         await fillFields(portal.page, fields);
-        await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-filled.png`);
+        await expect(portal.page).toHaveScreenshot(`${base}-new-filled.png`);
 
         // Master-detail: switch to each detail tab, add + fill rows (pivot rows
         // are toggled in place — there is no Add button), screenshot the empty
         // and filled tabs so the detail tables are visually covered.
         if (details && details.length > 0) {
             for (const detail of details) {
-                await switchToDetailTab(portal.page, detail.object);
+                await switchToDetailTab(portal.page, detail.tab ?? capital(detail.object));
+                await applyDetailFilters(portal.page, detail.object, detail.filters);
                 if (detail.pivot) {
                     // Pivot rows come from the dropdown — wait for a real row in
                     // the visible tab panel (`:visible` excludes hidden siblings).
@@ -464,9 +586,11 @@ export function createAndEditModel(
                         .first()
                         .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
                 }
-                await expect(portal.page).toHaveScreenshot(
-                    `${subject}-${object}-tab-${detail.object}-empty.png`,
-                );
+                if (detail.screenshots?.empty !== false) {
+                    await expect(portal.page).toHaveScreenshot(
+                        `${base}-tab-${detail.object}-empty.png`,
+                    );
+                }
                 if (detail.fields && (detail.pivot || detail.allowAdd !== false)) {
                     await fillDetailRows(
                         portal.page,
@@ -476,15 +600,17 @@ export function createAndEditModel(
                         detail.pivot,
                     );
                 }
-                await expect(portal.page).toHaveScreenshot(
-                    `${subject}-${object}-tab-${detail.object}-filled.png`,
-                );
+                if (detail.screenshots?.filled !== false) {
+                    await expect(portal.page).toHaveScreenshot(
+                        `${base}-tab-${detail.object}-filled.png`,
+                    );
+                }
             }
         }
 
         // Save
         await portal.save();
-        await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-saved.png`);
+        await expect(portal.page).toHaveScreenshot(`${base}-new-saved.png`);
 
         // After a successful create the editor switches to edit mode but keeps
         // the last-visited detail tab active (master-detail layout), which hides
@@ -496,10 +622,10 @@ export function createAndEditModel(
         // Edit the same record in the same tab — verifies edit does not create a duplicate
         if (editInCreate && editFields && Object.keys(editFields).length > 0) {
             await fillFields(portal.page, editFields);
-            await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-edit-dirty.png`);
+            await expect(portal.page).toHaveScreenshot(`${base}-new-edit-dirty.png`);
 
             await portal.save();
-            await expect(portal.page).toHaveScreenshot(`${subject}-${object}-new-edit-saved.png`);
+            await expect(portal.page).toHaveScreenshot(`${base}-new-edit-saved.png`);
         }
     });
 
@@ -528,7 +654,7 @@ export function createAndEditModel(
             await portal.waitForFormLoad();
             // Wait for the API response to populate form inputs
             await portal.waitForFormData();
-            await expect(portal.page).toHaveScreenshot(`${subject}-${object}-open.png`);
+            await expect(portal.page).toHaveScreenshot(`${base}-open.png`);
 
             // Master-detail: screenshot each detail tab showing the loaded rows,
             // operate on the first detail that declares editFields (proving that
@@ -536,29 +662,42 @@ export function createAndEditModel(
             // before the edit dirty cycle.
             if (details && details.length > 0) {
                 for (const detail of details) {
-                    await switchToDetailTab(portal.page, detail.object);
+                    await switchToDetailTab(portal.page, detail.tab ?? capital(detail.object));
+                    await applyDetailFilters(portal.page, detail.object, detail.filters);
                     await portal.page
                         .locator('.p-datatable-tbody:visible')
                         .first()
                         .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
-                    await expect(portal.page).toHaveScreenshot(
-                        `${subject}-${object}-tab-${detail.object}-open.png`,
-                    );
+                    if (detail.screenshots?.open !== false) {
+                        await expect(portal.page).toHaveScreenshot(
+                            `${base}-tab-${detail.object}-open.png`,
+                        );
+                    }
                 }
                 const detailToEdit = details.find(
                     d => d.editFields && Object.keys(d.editFields).length > 0,
                 );
                 if (detailToEdit?.editFields) {
-                    await switchToDetailTab(portal.page, detailToEdit.object);
+                    await switchToDetailTab(
+                        portal.page,
+                        detailToEdit.tab ?? capital(detailToEdit.object),
+                    );
+                    await applyDetailFilters(
+                        portal.page,
+                        detailToEdit.object,
+                        detailToEdit.filters,
+                    );
                     await editDetailRow(
                         portal.page,
                         detailToEdit.object,
                         0,
                         detailToEdit.editFields,
                     );
-                    await expect(portal.page).toHaveScreenshot(
-                        `${subject}-${object}-tab-${detailToEdit.object}-edit-dirty.png`,
-                    );
+                    if (detailToEdit.screenshots?.editDirty !== false) {
+                        await expect(portal.page).toHaveScreenshot(
+                            `${base}-tab-${detailToEdit.object}-edit-dirty.png`,
+                        );
+                    }
                 }
                 // Back to the master tab (first TabMenu item).
                 await portal.page.locator('.p-tabmenu-nav .p-tabmenuitem').first().click();
@@ -582,11 +721,11 @@ export function createAndEditModel(
 
             // Fill the actual editFields (different from suffixed → form dirty)
             await fillFields(portal.page, editFields);
-            await expect(portal.page).toHaveScreenshot(`${subject}-${object}-edit-dirty.png`);
+            await expect(portal.page).toHaveScreenshot(`${base}-edit-dirty.png`);
 
             // Save
             await portal.save();
-            await expect(portal.page).toHaveScreenshot(`${subject}-${object}-edit-saved.png`);
+            await expect(portal.page).toHaveScreenshot(`${base}-edit-saved.png`);
         });
     }
 }

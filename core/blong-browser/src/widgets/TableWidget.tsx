@@ -18,6 +18,7 @@ import {
 } from '../primereact/index.js';
 
 import type {
+    ICycleCellState,
     IDropdownOption,
     IEnrichedFieldSchema,
     IWidgetProps,
@@ -39,6 +40,7 @@ const KEY = '__key';
 
 function resolveWidgetType(schema: IEnrichedFieldSchema): string {
     if (schema.widget?.type) return schema.widget.type;
+    if (schema.widget?.cycle || schema.widget?.states) return 'cycle';
     if (schema.action) return 'action';
     if (schema.type === 'boolean') return 'boolean';
     if (schema.type === 'number') return 'number';
@@ -46,6 +48,62 @@ function resolveWidgetType(schema: IEnrichedFieldSchema): string {
     if (schema.format === 'date-time') return 'dateTime';
     if (schema.format === 'date') return 'date';
     return 'input';
+}
+
+/**
+ * Named state sets for a `cycle` cell — the boolean cases a pivot toggles.
+ * Clicking the cell advances to the next state, so the column needs no
+ * row-edit mode.  The empty state renders as a blank cell and is named
+ * `Not set` (also the cell's `title`, which tests read).
+ */
+const CYCLE_PRESETS: Record<string, ICycleCellState[]> = {
+    // check → cross → empty
+    'tri-state': [
+        {value: true, icon: 'pi pi-check text-green-500', label: 'Yes'},
+        {value: false, icon: 'pi pi-times text-red-500', label: 'No'},
+        {value: null, label: 'Not set'},
+    ],
+    // check → empty
+    'check-empty': [
+        {value: true, icon: 'pi pi-check text-green-500', label: 'Yes'},
+        {value: null, label: 'Not set'},
+    ],
+    // check → cross (a value is always set)
+    'check-cross': [
+        {value: true, icon: 'pi pi-check text-green-500', label: 'Yes'},
+        {value: false, icon: 'pi pi-times text-red-500', label: 'No'},
+    ],
+};
+
+function resolveCycleStates(schema: IEnrichedFieldSchema): ICycleCellState[] {
+    const cfg = schema.widget as {cycle?: string; states?: ICycleCellState[]} | undefined;
+    if (cfg?.states?.length) return cfg.states;
+    if (cfg?.cycle && CYCLE_PRESETS[cfg.cycle]) return CYCLE_PRESETS[cfg.cycle];
+    return CYCLE_PRESETS['tri-state'];
+}
+
+function isCycleCell(schema: IEnrichedFieldSchema): boolean {
+    return schema.widget?.type === 'cycle' || !!schema.widget?.cycle || !!schema.widget?.states;
+}
+
+/** Cycle values compare loosely, so `true`/`1` and `null`/`undefined` are one state. */
+function sameCycleValue(a: unknown, b: unknown): boolean {
+    if (a == null || b == null) return (a ?? null) === (b ?? null);
+    if (typeof a === 'boolean' || typeof b === 'boolean') return Boolean(a) === Boolean(b);
+    return a === b;
+}
+
+function currentCycleState(
+    states: ICycleCellState[],
+    value: unknown,
+): ICycleCellState | undefined {
+    return states.find(s => sameCycleValue(s.value, value));
+}
+
+/** An unset cell advances to the first state of the cycle. */
+function nextCycleState(states: ICycleCellState[], value: unknown): ICycleCellState {
+    const index = states.findIndex(s => sameCycleValue(s.value, value));
+    return states[(index + 1) % states.length];
 }
 
 function getColumnOptions(
@@ -133,6 +191,7 @@ function renderBody(
     options: DropdownOption[],
     keyFieldName: string,
     fieldSchema: IEnrichedFieldSchema,
+    onCycle?: (value: unknown) => void,
 ): React.ReactNode {
     const value = rowData[field];
 
@@ -151,6 +210,26 @@ function renderBody(
                 />
             );
 
+        case 'cycle': {
+            // Click-to-cycle cell: no row-edit mode, so each click commits the next
+            // state straight into the form value.  `title` names the current
+            // state, which is also what the Playwright helper matches on.
+            const states = resolveCycleStates(fieldSchema);
+            const state = currentCycleState(states, value);
+            return (
+                <span
+                    data-testid={cellId}
+                    className="blong-cycle cursor-pointer"
+                    title={state?.label ?? 'Not set'}
+                    onClick={event => {
+                        event.stopPropagation();
+                        onCycle?.(nextCycleState(states, value).value);
+                    }}
+                >
+                    {state?.icon ? <i className={state.icon} /> : <span>&nbsp;</span>}
+                </span>
+            );
+        }
         case 'password':
             return <span data-testid={cellId}>{value ? '*'.repeat(10) : ''}</span>;
         case 'dropdown': {
@@ -761,7 +840,7 @@ export function TableWidget({
     // of rows derived from `examples` (static) or a named `dropdown` (dynamic).
     // The `join` map describes how pivot row fields map to actual data row fields.
     const pivotCfg = schema.widget?.pivot as
-        | {examples?: Row[]; dropdown?: string; join?: Record<string, string>}
+        | {examples?: Row[]; dropdown?: string; join?: Record<string, string>; defaults?: Row}
         | undefined;
     const pivotBaseRows: Row[] | undefined = pivotCfg
         ? (pivotCfg.examples ??
@@ -778,9 +857,12 @@ export function TableWidget({
                   const found = rows.find(r =>
                       joinEntries.every(([pivotKey, rowKey]) => pivotRow[pivotKey] === r[rowKey]),
                   );
-                  if (found) return {...found, [KEY]: `pivot-${i}`};
+                  // `defaults` seeds the non-join fields of a slot with no stored
+                  // data (e.g. a tri-state cell starting as `inherit`).  Stored
+                  // data wins over the default.
+                  if (found) return {...pivotCfg!.defaults, ...found, [KEY]: `pivot-${i}`};
                   // Build an empty row seeded with the join field values
-                  const seeded: Row = {[KEY]: `pivot-${i}`};
+                  const seeded: Row = {...pivotCfg!.defaults, [KEY]: `pivot-${i}`};
                   for (const [pivotKey, rowKey] of joinEntries) {
                       seeded[rowKey] = pivotRow[pivotKey];
                   }
@@ -805,6 +887,30 @@ export function TableWidget({
         [isListMode, parentFieldName, masterMapping, parentSelection, baseRows],
     );
 
+    // ── Column filters ─────────────────────────────────────────────────────
+    // One filter input per `filter: true` column, in both modes: a list table
+    // sends the values to the server as `filterBy`, a form/pivot table filters
+    // its rows here.  The form case is display-only — it never touches the form
+    // value, so hiding a row cannot drop data on save.
+    const filterFields = useMemo(
+        () => cols.filter(c => c.filter).map(c => c.field),
+        [cols],
+    );
+    const displayRows = useMemo(() => {
+        if (isListMode || filterFields.length === 0) return filteredRows;
+        const active = filterFields
+            .map(field => [field, committedFilters[field] ?? ''] as const)
+            .filter(([, text]) => text !== '');
+        if (active.length === 0) return filteredRows;
+        return filteredRows.filter(row =>
+            active.every(([field, text]) =>
+                String(row[field] ?? '')
+                    .toLocaleLowerCase()
+                    .includes(text.toLocaleLowerCase()),
+            ),
+        );
+    }, [isListMode, filteredRows, filterFields, committedFilters]);
+
     const [editingRows, setEditingRows] = useState<Record<string, boolean>>({});
     const [pendingEdit, setPendingEdit] = useState<Record<string, boolean> | null>(null);
     const [selected, setSelected] = useState<Row[]>([]);
@@ -813,6 +919,12 @@ export function TableWidget({
     const allowAdd = schema.widget?.actions?.allowAdd !== false && !pivotBaseRows;
     const allowDelete = schema.widget?.actions?.allowDelete !== false && !pivotBaseRows;
     const editable = !readOnly && allowEdit;
+    // A pivot whose editable columns are all `cycle` cells is toggle-only: each
+    // click commits a value, so the rows need no edit button at all.
+    const cycleOnly =
+        cols.some(c => isCycleCell(c.fieldSchema)) &&
+        cols.every(c => isCycleCell(c.fieldSchema) || c.fieldSchema.readOnly === true);
+    const needsRowEditor = !isListMode && editable && !cycleOnly;
     const interactionDisabled = disabled || readOnly;
     const isSingleSelect = schema.widget?.selectionMode === 'single';
     const widgetLabel = schema.widget?.label;
@@ -885,23 +997,38 @@ export function TableWidget({
         [],
     );
 
-    const onRowEditComplete = useCallback(
-        (e: {newData: Row}) => {
-            const {[KEY]: rowKey, ...rowData} = e.newData;
+    /**
+     * Write one row back into the form value.  For a pivot table the row may not
+     * exist in the value yet (its slot comes from the dropdown), so the merge is
+     * keyed on the pivot's `join` fields — the same rule the row editor uses.
+     */
+    const mergeRow = useCallback(
+        (rowData: Row): Row[] => {
+            const {[KEY]: rowKey, ...rest} = rowData;
             if (pivotCfg) {
                 const joinEntries = Object.entries(pivotCfg.join ?? {});
-                const isMatch = (r: Row) =>
-                    joinEntries.every(([, jk]) => r[jk] === (rowData as Row)[jk]);
+                const isMatch = (r: Row) => joinEntries.every(([, jk]) => r[jk] === rest[jk]);
                 const updated = rows.some(isMatch)
-                    ? rows.map(r => (isMatch(r) ? {...r, ...rowData} : r))
-                    : [...rows, rowData as Row];
-                onChange(updated.map(({[KEY]: _k, ...r}) => r));
-                return;
+                    ? rows.map(r => (isMatch(r) ? {...r, ...rest} : r))
+                    : [...rows, rest];
+                return updated.map(({[KEY]: _k, ...r}) => r);
             }
-            const updated = rows.map(r => (r[KEY] === rowKey ? {...rowData, [KEY]: rowKey} : r));
-            onChange(updated.map(({[KEY]: _k, ...r}) => r));
+            const updated = rows.map(r => (r[KEY] === rowKey ? {...rest, [KEY]: rowKey} : r));
+            return updated.map(({[KEY]: _k, ...r}) => r);
         },
-        [rows, onChange, pivotCfg],
+        [rows, pivotCfg],
+    );
+
+    const onRowEditComplete = useCallback(
+        (e: {newData: Row}) => onChange(mergeRow(e.newData)),
+        [mergeRow, onChange],
+    );
+
+    /** Commit one cycle-cell value straight into the form value. */
+    const commitCell = useCallback(
+        (rowData: Row, field: string, nextValue: unknown) =>
+            onChange(mergeRow({...rowData, [field]: nextValue})),
+        [mergeRow, onChange],
     );
 
     const addRow = useCallback(
@@ -1065,7 +1192,6 @@ export function TableWidget({
 
     // listAction mode: compute dataKey and active row key
     const dataKeyField = isListMode ? keyFieldName : KEY;
-    const hasFilter = cols.some(c => c.filter);
 
     return (
         <div
@@ -1082,7 +1208,7 @@ export function TableWidget({
                 />
             )}
             <DataTable
-                value={filteredRows}
+                value={displayRows}
                 editMode={!isListMode && editable ? 'row' : undefined}
                 editingRows={!isListMode && editable ? editingRows : undefined}
                 onRowEditChange={!isListMode && editable ? onRowEditChange : undefined}
@@ -1117,7 +1243,6 @@ export function TableWidget({
                           }
                         : undefined
                 }
-                filterDisplay={hasFilter && !isListMode ? 'row' : undefined}
             >
                 {!isSingleSelect && (editable || isListMode) && !pivotBaseRows && (
                     <Column
@@ -1138,7 +1263,7 @@ export function TableWidget({
                             key={field}
                             field={field}
                             header={
-                                isListMode && filter ? (
+                                filter ? (
                                     <div
                                         style={{
                                             display: 'flex',
@@ -1156,13 +1281,13 @@ export function TableWidget({
                                             className="p-inputtext-sm"
                                             style={{width: '100%', fontSize: '0.8125rem'}}
                                             onClick={e => e.stopPropagation()}
+                                            data-testid={`${tableId}-filter-${field}`}
                                         />
                                     </div>
                                 ) : (
                                     <Text>{header}</Text>
                                 )
                             }
-                            filter={filter && !isListMode}
                             sortable={sortable || isListMode}
                             alignHeader={isNumeric ? 'right' : undefined}
                             bodyClassName={isNumeric ? 'text-right' : undefined}
@@ -1191,6 +1316,7 @@ export function TableWidget({
                                     options,
                                     keyFieldName,
                                     fieldSchema,
+                                    nextValue => commitCell(rowData, field, nextValue),
                                 );
                             }}
                             editor={
@@ -1217,12 +1343,7 @@ export function TableWidget({
                         />
                     );
                 })}
-                {!isListMode && editable && (
-                    <Column
-                        rowEditor
-                        style={{width: '7rem', textAlign: 'center'}}
-                    />
-                )}
+                {needsRowEditor && <Column rowEditor style={{width: '7rem', textAlign: 'center'}} />}
             </DataTable>
             {isListMode && listTotal > 0 && (
                 <div

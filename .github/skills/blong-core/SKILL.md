@@ -1,6 +1,17 @@
 ---
 name: blong-core
-description: Covers the three foundational Blong realms — blong-core (generic resource/type/triple graph), blong-party (persons, organizations, units, contacts, addresses, identifiers), and blong-access (RBAC; users, credentials, roles, capabilities, actions, policies, flows). Explains how and when to extend or utilize these realms; adding a resource-based entity, a new party type or sub-entity, a new role/capability/action/user, wiring authentication and authorization (JWT + permissionMap + gateway authorize), querying the resource graph via core.triple / core.path, storing hierarchies and relationships, and seeding reference data. Use this skill whenever the user wants to work with parties, RBAC/roles/permissions, users/authentication/authorization, the resource graph, org hierarchies, linking/relating entities, or any feature that should be built on top of core/party/access — even if they just say "add a role", "store a person", "add users", "link these two entities", "set up login", or "add an org unit".
+description:
+    Covers the three foundational Blong realms — blong-core (generic resource/type/triple graph),
+    blong-party (persons, organizations, units, contacts, addresses, identifiers), and blong-access
+    (RBAC; users, credentials, roles, capabilities, actions, policies, flows). Explains how and when
+    to extend or utilize these realms; adding a resource-based entity, a new party type or
+    sub-entity, a new role/capability/action/user, wiring authentication and authorization (JWT +
+    permissionMap + gateway authorize), querying the resource graph via core.triple / core.path,
+    storing hierarchies and relationships, and seeding reference data. Use this skill whenever the
+    user wants to work with parties, RBAC/roles/permissions, users/authentication/authorization, the
+    resource graph, org hierarchies, linking/relating entities, or any feature that should be built
+    on top of core/party/access — even if they just say "add a role", "store a person", "add users",
+    "link these two entities", "set up login", or "add an org unit".
 ---
 
 # blong-core — Resource graph, Party & Access realms
@@ -13,17 +24,21 @@ description: Covers the three foundational Blong realms — blong-core (generic 
 
 ## [CRITICAL_GUARDRAILS]
 
-- **Don't invent handlers like `resourceResourceAdd`** — CRUD is auto-provided; define schema + seeds only.
-- **Use `type.uuid()` for resource PKs** — `increment`/`ulid` PKs don't get auto `core_resource` creation.
+- **Don't invent handlers like `resourceResourceAdd`** — CRUD is auto-provided; define schema +
+  seeds only.
+- **Use `type.uuid()` for resource PKs** — `increment`/`ulid` PKs don't get auto `core_resource`
+  creation.
 - **Seed the type alias before instances** (`0-`-prefixed alias file sorts first).
 - **Every `resourceType` seed row needs a `name`** — it's the merge/dedup key → `resourceName`.
-- **Resource relationships often live in `core.triple`, not FK columns** — mixing breaks materialized-path queries.
-- **Refresh `core.path` after RBAC graph edits** (`CALL access_pathRefresh()`) or effective queries go stale.
+- **Resource relationships often live in `core.triple`, not FK columns** — mixing breaks
+  materialized-path queries.
+- **Refresh `core.path` after RBAC graph edits** (`CALL access_pathRefresh()`) or effective queries
+  go stale.
 - **Reference entities by name** in seeds/custom merges, never raw DB IDs.
 
-Canonical framework rules + archetype:
-`.github/skills/_shared/conventions.md` → `[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`.
-Siblings: **blong-schema** (tables/seeds), **blong-model** (browser models).
+Canonical framework rules + archetype: `.github/skills/_shared/conventions.md` →
+`[CRITICAL_GUARDRAILS]`, `[ARCHETYPE: SCHEMA_TABLE]`. Siblings: **blong-schema** (tables/seeds),
+**blong-model** (browser models).
 
 ## Overview
 
@@ -57,7 +72,8 @@ graph LR
 
 **The core idea:** every _named_ entity in party/access is also a `core.resource` row — its PK is a
 FK to `core.resource.resourceId` and its readable name is `resourceName`; relationships are
-`core.triple` edges, not join tables. One uniform query surface for RBAC, hierarchies, and relations.
+`core.triple` edges, not join tables. One uniform query surface for RBAC, hierarchies, and
+relations.
 
 ---
 
@@ -284,13 +300,13 @@ This is deliberate: because access's RBAC traversal already understands `belongs
 | ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `access.user`       | `userId` → core.resource       | emailAddress, isActive                                                                                                                     |
 | `access.credential` | `credentialId` (increment)     | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
-| `access.role`       | `roleId` → core.resource       | roleBit (0–1023, unique), description                                                                                                      |
+| `access.role`       | `roleId` → core.resource       | roleBit (0–1023, unique; **allocated**, never reused), description                                                                         |
 | `access.capability` | `capabilityId` → core.resource | groups actions into a "what"                                                                                                               |
 | `access.action`     | `actionId` → core.resource     | description; name (in resourceName) is the semantic triple                                                                                 |
 | `access.policy`     | `policyId` → core.resource     | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; `password` policy is seeded)          |
 | `access.flow`       | `flowId` → core.resource       | MFA step definitions, e.g. `["password","totp"]` (**schema-only**)                                                                         |
 | `access.access`     | `accessId` → core.resource     | time/IP/geo rule config (**schema-only**)                                                                                                  |
-| `access.session`    | `sessionId` (uid, standalone)  | active sessions (created on login, refreshed on renewal)                                                                                  |
+| `access.session`    | `sessionId` (uid, standalone)  | active sessions (created on login, refreshed on renewal)                                                                                   |
 | `access.audit`      | `auditId` (ulid)               | append-only auth event log (**schema-only**)                                                                                               |
 
 ### The RBAC model
@@ -316,7 +332,51 @@ Two SQL views + one stored procedure materialize reachability into `core.path`:
   `access.effectiveAction`).
 
 Authorization queries read the **materialized** `core_path` (a single indexed lookup on `originId` +
-`pathType`), never recursive traversal.
+`pathType`), never recursive traversal.### Record-level ACL
+
+RBAC decides the verb; the ACL narrows **which records**. A table opts in from its `meta/db/db.ts`:
+
+```ts
+'party.person': {
+    resource: {nameColumn: 'lastName'},
+    acl: {mode: 'scoped', scopes: ['belongsTo'], addScope: {predicate: 'belongsTo'}},
+},
+```
+
+`access_acl` holds one rule per row — `(principalId, actionId, targetId, targetKind, effect)` —
+where the principal is a user, role, unit or capability, the target is a record or a scope, and
+`effect` is `allow` / `deny` (**a deny always wins**). Two halves make the effective ACL: a
+`<principal> --hasScope--> <scope>` edge is the _implicit_ organizational grant — it covers every
+action the principal holds and the records of descendant scopes too, through the
+`access.effectiveScope` path that `access_pathRefresh` rebuilds — and `access_acl` rows are the
+_explicit_ rules, which is also how an implicitly enabled record is forbidden. A record that
+participates in no scope falls back to RBAC alone. The effective ACL is evaluated in SQL at query
+time, so a change takes effect immediately (nothing is materialized).
+
+Enforcement is declarative for the generic CRUD — `get` → 404 `acl.notFound` (existence is not
+leaked), `edit`/`remove` → 403 `acl.denied`, `find` filtered before paging, `add` checked against
+`addScope` → `acl.scopeDenied`, dropdown lists filtered — and reachable from handlers through the
+port (`await this.aclCheck({recordId}, $meta)`) or `access.acl.assert`. Critical writes call
+`access.session.verify({action, record}, $meta)`: it re-validates the action against the live
+permission paths and refuses a missing record with `acl.notPermitted` (`reason: 'recordRequired'`)
+rather than passing silently. Manage the rules in the **ACL Rules** page (`access.acl`) and read the
+combined result in the role/user **Access** tab (`access.acl.list`).
+
+A guarded table declares its scope shape: `scopes` lists the predicates that lead **from the
+record** to a scope (`belongsTo`), or `selfScope: true` is used when the hierarchy points **at** the
+record — `party.organization`, which its units belong to. A self-scoped record is admitted only by a
+grant naming it (or a parent organization) and has no RBAC fallback, so an organization no grant
+covers is invisible.
+
+A rule whose target is the **wildcard sentinel** (`access.any`, written as `target: '*'` in a
+`access.authorization.merge` seed) matches every record — `targetKind: 'all'` — which is how the
+admin role is granted every record of a guarded table out of the box.
+
+**Removing a guarded record releases its rules first.** `access_acl` keeps foreign keys to
+`core_resource` on `principalId` / `actionId` / `targetId`, so the generic `remove` deletes the rows
+that name the record before deleting it. Without that, a delete would fail _after_ the entity row
+was gone, leaving a resource-only ghost — and because `core.resource.ensure` matches a record by
+name and then skips the entity insert, that entity could never be created again under that name.
 
 ### The auth flow (how login + authorization work)
 
@@ -328,7 +388,10 @@ Authorization queries read the **materialized** `core_path` (a single indexed lo
    `{"function":"hash","algorithm":"pbkdf2","iterations":100000,"keyLength":64,"digest":"sha512"}`
    (falling back to the `config.password` defaults declared in the realm's `server.ts` when not
    stored) — then reads effective role bits + action names from `core_path`.
-3. Role bits are packed into a base64 `permissionMap` bitmask (roleBit 0–1023 → bit position).
+3. Role bits are packed into a base64 `permissionMap` bitmask (roleBit 0–1023 → bit position). A bit
+   is **allocated** when the role is created (`MAX(roleBit) + 1`, never reused) and never changes,
+   because the mask in an already-minted token is resolved against the current mapping: a moved bit
+   would silently re-grant that token's permissions to a different role.
 4. `loginTokenCreate` signs a JWT carrying `per: permissionMap` (and `sub` = actorId), creates the
    DB session, and sets the restore cookie.
 5. The gateway's `authorize` hook (`access.authorization.list`) decodes `per` from the token, maps
@@ -365,9 +428,9 @@ The login response also returns `permissions` (the resolved action names) for cl
 > `permissionMap` matching (the `accessAuthorizationList` handler returns methodIds with dots
 > stripped). Dotted forms (`invoice.invoice.add`) are explicit special cases and discouraged.
 > Matching is dot- and case-insensitive (`invoice.invoice.add`, `invoiceInvoiceAdd`, and
-> `INVOICEINVOICEADD` all resolve to the same methodId), so both styles grant the same permission.
-> A dotted name is only required when the action refers to a **non-handler dotted resource** —
-> e.g. `subject.object.schema` (a schema/type resource) or third-party dotted names like
+> `INVOICEINVOICEADD` all resolve to the same methodId), so both styles grant the same permission. A
+> dotted name is only required when the action refers to a **non-handler dotted resource** — e.g.
+> `subject.object.schema` (a schema/type resource) or third-party dotted names like
 > `vision.compute`. For handler-backed RPC methods always use the non-dotted handler name.
 
 - **New action**: seed a row with `resourceType: access.action` + `name` (the NON-dotted handler
@@ -375,9 +438,13 @@ The login response also returns `permissions` (the resolved action names) for cl
   `validation` wrapper if it should be a public RPC method. Protect it by granting a capability via
   `hasAction`.
 - **New capability**: seed with `resourceType: access.capability` + `name`; link it to its actions.
-- **New role**: seed with `resourceType: access.role` + `name` + a free `roleBit` (0–1023); link
-  capabilities via `hasCapability`. After any graph change, run `CALL access_pathRefresh()` (the
-  `accessAuthorizationMerge` handler does this for you).
+- **New role**: seed with `resourceType: access.role` + `name` and **no bit** — `access.role.merge`
+  (and every other creation path, via `access.role.ensure`) allocates `MAX(roleBit) + 1`, which is
+  never reused: a bit is the role's position in a token's `per` mask, so it is assigned once and
+  never moves. An explicitly declared bit is honoured or refused (`role.bitTaken`), and an edit that
+  changes one is refused (`role.bitImmutable`). Link capabilities via `hasCapability`. After any
+  graph change, run `CALL access_pathRefresh()` (the `accessAuthorizationMerge` handler does this
+  for you).
 - **New user**: seed or call `access.authorization.merge` with
   `{user: {name: ..., password: ..., roles: ...}}` — it creates the credential and the `hasRole`
   edges. The credential's hashing params resolve as **policy → `config.password` → built-in
@@ -411,9 +478,9 @@ The login response also returns `permissions` (the resolved action names) for cl
   See `adapter/db/oidc.ts` and the mock in `sim/google/mockServer.ts`.
 - **New policy/flow** (password rules, MFA steps): policies can now dictate credential params;
   flow/access tables exist as schema — wire handlers to consume them.
-- **Sessions / refresh / audit**: DB-backed sessions (`access.session.*`), redeemable refresh
-  tokens (`login.token.refresh`), the restore cookie (`login.token.restore`) and the access-check
-  audit (`access.audit.record`) are all wired — see **Sessions, refresh tokens & audit** below.
+- **Sessions / refresh / audit**: DB-backed sessions (`access.session.*`), redeemable refresh tokens
+  (`login.token.refresh`), the restore cookie (`login.token.restore`) and the access-check audit
+  (`access.audit.record`) are all wired — see **Sessions, refresh tokens & audit** below.
 - **Test endpoints**: `adapter/dbTest/accessTestPrivate` (protected) and `accessTestPublic`
   (`auth: false`) are reference endpoints proving the 401/403/200 gate — replace with real business
   actions.
@@ -434,8 +501,8 @@ DB-backed and add revocation + inactivity + renewal + audit on top of that fast 
   access token + a **rotated** refresh token, and rotates `tokenHash`. Reuse of an already-rotated
   refresh token revokes the session.
 - **Close** (`access.session.close` / logout): `isRevoked=1`, `revokedAt=now`, cookie cleared.
-  Already-issued access tokens keep working until they expire — renewal is refused, so the client
-  is effectively logged out within one access-token lifetime.
+  Already-issued access tokens keep working until they expire — renewal is refused, so the client is
+  effectively logged out within one access-token lifetime.
 - **Inactivity / deletion**: sessions idle longer than `login.expire.inactivity` (default 30 m) are
   refused renewal; `access.session.cleanup` purges stale/revoked/expired rows after
   `login.expire.deleteAfter` (default 24 h). Cleanup is dialect-neutral knex (no stored procs).
@@ -464,12 +531,12 @@ are enforced at the session-lifecycle operations — `login.token.create` / `log
 - **Per-user** — `user.isActive` must be `true`. Deactivating a user refuses new logins (already
   checked at `access.credential.check`) and now also refuses renewal/restore, so the disable takes
   effect within one access-token lifetime.
-- **Per-role** — the user's effective permission set must include the well-known `accessLogin` action
-  (unconditional), granted the usual way: `role → capability → action`. The shared blong-access
-  **production seed** already grants `Admin` the `loginCapability` (→ `accessLogin`) capability, so a
-  realm only needs to add it for any **additional** roles that may log in (e.g.
-  `capability: loginCapability: accessLogin` in `meta/db/accessAuthorizationMerge.yaml`). Removing it
-  from a role disables logins for that role.
+- **Per-role** — the user's effective permission set must include the well-known `accessLogin`
+  action (unconditional), granted the usual way: `role → capability → action`. The shared
+  blong-access **production seed** already grants `Admin` the `loginCapability` (→ `accessLogin`)
+  capability, so a realm only needs to add it for any **additional** roles that may log in (e.g.
+  `capability: loginCapability: accessLogin` in `meta/db/accessAuthorizationMerge.yaml`). Removing
+  it from a role disables logins for that role.
 
 Failed gates throw `login.userInactive` / `login.loginNotAllowed` (401) and are audited.
 `access.session.verify` (the critical-operation gate) ALSO enforces login eligibility — after the
@@ -479,12 +546,13 @@ immediately, not just at the next renewal.
 
 ### blong-login works without blong-access (configurable methods)
 
-`blong-login` does not hard-depend on blong-access: every access method it calls is configurable
-via `login.methods.*` (wire name) and defaults to the blong-access handler. A lightweight suite
-without blong-access can override a method with its own handler, or set one to `false` to disable
-that functionality — e.g. `sessionCreate`/`sessionVerify`/… = `false` for stateless tokens,
+`blong-login` does not hard-depend on blong-access: every access method it calls is configurable via
+`login.methods.*` (wire name) and defaults to the blong-access handler. A lightweight suite without
+blong-access can override a method with its own handler, or set one to `false` to disable that
+functionality — e.g. `sessionCreate`/`sessionVerify`/… = `false` for stateless tokens,
 `auditRecord = false` to skip auditing, `permissionList = false` to issue tokens without RBAC
-permissions. A flow that needs a method which is disabled fails with a clear `login.configurationError`.
+permissions. A flow that needs a method which is disabled fails with a clear
+`login.configurationError`.
 
 ### Audit
 
@@ -538,8 +606,8 @@ These patterns work for any resource-based entity (core, party, access):
 
 - **`remove` doesn't delete the `core_resource` row** (orphaned resource — known gap). Handle
   cleanup explicitly if it matters.
-- **Consider registering tables with order > core's.** `core.*` = order 1; party 300+, access 200+. A
-  lower/equal order can break FK creation.
+- **Consider registering tables with order > core's.** `core.*` = order 1; party 300+, access 200+.
+  A lower/equal order can break FK creation.
 
 ---
 

@@ -12,7 +12,7 @@ into `core.path`.
 | ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `access.user`       | `userId` → `core.resource.resourceId`       | emailAddress, isActive                                                                                                                     |
 | `access.credential` | `credentialId` (increment)                  | FK userId; credentialType (`password`/`clientSecret`), secret hash + salt, `credentialParamsJSON` (function + params), isActive, expiresAt |
-| `access.role`       | `roleId` → `core.resource.resourceId`       | roleBit (0–1023, unique), description                                                                                                      |
+| `access.role`       | `roleId` → `core.resource.resourceId`       | roleBit (0–1023, unique; **allocated**, never reused), description                                                                         |
 | `access.capability` | `capabilityId` → `core.resource.resourceId` | bundles actions into a "what"                                                                                                              |
 | `access.action`     | `actionId` → `core.resource.resourceId`     | name = the semantic triple / RPC method                                                                                                    |
 | `access.policy`     | `policyId` → `core.resource.resourceId`     | credential complexity/lifecycle rules + `credentialParamsJSON` (dictated credential-function params; the `password` policy is seeded)      |
@@ -21,10 +21,12 @@ into `core.path`.
 | `access.session`    | `sessionId` (uid)                           | active sessions — created on login, refreshed on renewal, revoked on logout                                                                |
 | `access.audit`      | `auditId` (ulid)                            | append-only access-control + auth event log                                                                                                |
 
-Access tables are registered with order numbers 200–209. `user`/`role`/`capability`/`action` are
+Access tables are registered with order numbers 200–210. `user`/`role`/`capability`/`action` are
 fully wired end-to-end; `policy` is wired for credential params (a seeded `password` policy dictates
-hashing params); `flow`/`access` exist as schema entities; `session` and `audit` are fully wired
-(see [Sessions, refresh tokens & audit](#sessions-refresh-tokens--audit)).
+hashing params); `flow`/`access` exist as schema entities; `session` and `audit` are fully wired,
+and the record-level ACL lives in `access.acl` (held by an `aclId` ULID; principal + action +
+target + effect) — see [Record-level ACL](#record-level-acl) and
+[Sessions, refresh tokens & audit](#sessions-refresh-tokens--audit).
 
 ## The RBAC model
 
@@ -45,6 +47,89 @@ Two SQL views (`access_effectiveRolePath`, `access_effectiveActionPath`) and one
 `core.path` (a single indexed lookup on `originId` + `pathType`), never recursive `core.triple`
 traversal. After any RBAC graph mutation, run `CALL access_pathRefresh()` (the
 `accessAuthorizationMerge` handler does this automatically).
+
+## Record-level ACL
+
+RBAC decides _which methods_ a caller may invoke; the ACL narrows **which records** those methods
+may act on. It is opt-in per table:
+
+```ts
+// realm/<realm>/meta/db/db.ts
+'party.person': {
+    order: 300,
+    resource: {nameColumn: 'lastName'},
+    acl: {mode: 'scoped', scopes: ['belongsTo'], addScope: {predicate: 'belongsTo'}},
+},
+```
+
+`mode` is `none` (the default — nothing changes), `scoped` (grants may target a scope) or `explicit`
+(only per-record grants count). `access_acl` holds one rule per row:
+
+- **`principalId`** — a user, role, unit or capability resource, so a rule can sit at any level of
+  the hierarchy
+- **`actionId`** — the `access_action` resource, i.e. the guarded method
+- **`targetKind`** — `record` (one row) or `scope` (every record linked to that scope)
+- **`targetId`** — the guarded record, or the scope node
+- **`effect`** — `allow` / `deny`; **a deny always wins**
+
+Two halves make up the effective ACL:
+
+- **implicit** — a `<principal> --hasScope--> <scope>` graph edge: the organizational grant. It
+  covers every action the principal holds and every record linked to the scope through the table's
+  declared `scopes` predicates, **including the records of descendant scopes** (a grant on a parent
+  unit covers its branches through the materialized `access.effectiveScope` path).
+- **explicit** — `access_acl` rules targeting a scope or a single record. This is also how an
+  implicitly enabled record is explicitly forbidden (`effect: 'deny'`).
+
+The effective ACL is evaluated in SQL at query time — there is no materialized effective table, so a
+change takes effect immediately. A record that participates in **no** scope has nothing to be
+narrowed against and falls back to RBAC alone, which is what makes opting a table in safe for
+existing data.
+
+Two scope shapes are supported. The usual one follows a predicate **from the record**
+(`party.person --belongsTo--> unit`), so a grant on a parent unit covers the record through the
+materialized `access.effectiveScope` path. When the hierarchy points the other way —
+`party.unit --belongsTo--> party.organization`, so an organization owns units but carries no scope
+edge of its own — the table declares `selfScope: true`: the record **is** its own scope, admitted by
+a grant naming the organization (or a parent organization), with no RBAC fallback, so an
+organization no grant covers is invisible. That is how the organization level of the authorization
+hierarchy is enforced.
+
+### Enforcement
+
+- **`get`** — refused as `acl.notFound` (404), so a denied record does not leak existence
+- **`edit` / `remove`** — refused as `acl.denied` (403)
+- **`find`** — filtered **before paging**, so the total only counts readable records
+- **`add`** — checked against the scope named by `addScope` → `acl.scopeDenied` (403)
+- **`{subject}.dropdown.list`** — filtered for guarded tables (a dropdown is a read path)
+- **`access.session.verify`** — the action is re-validated live and the record (or scope) is
+  required for guarded entities
+
+Realm handlers reach the same SQL through the port (`await this.aclCheck({recordId}, $meta)`) or use
+`access.acl.assert`, which throws the realm error family. Critical writes pass the record to the
+session gate:
+
+```typescript
+await handler.accessSessionVerify(
+    {action: 'party.person.edit', record: {entity: 'party.person', recordId}},
+    $meta,
+); // throws acl.notPermitted / acl.denied / acl.notFound
+```
+
+The refusals are `acl.denied` (403), `acl.scopeDenied` (403), `acl.notFound` (404) and
+`acl.notPermitted` (403, with `reason: 'actionNotPermitted' | 'recordRequired' | 'scopeRequired'`).
+
+### Managing the ACL
+
+- **ACL Rules** (`access.acl` model) — the explicit rules: principal, action, target kind, target,
+  effect, active. `access.acl.find` / `.get` join the names for display; the write handlers drop
+  them again so they never reach the table.
+- **Role / User → Access tab** — a read-only _Effective Access_ table fed by `access.acl.list`:
+  every applicable rule with its `source` (`explicit` / `implicit`) and the principal it came from,
+  so an administrator sees _why_ something is allowed.
+- **Seeds** — `accessAuthorizationMerge` accepts `scope:` (implicit `hasScope` grants: `role`,
+  `user`, `scope`, `scopeType`) and `acl:` (explicit rules: `principal`, `principalType`, `action`,
+  `target`, `targetType`, `targetKind`, `effect`) alongside its RBAC blocks.
 
 ## Authentication flow
 
@@ -205,9 +290,11 @@ test client entry that proxies the `access` and `login` namespaces to the server
   `meta/db/` or `meta/dbTest/`; add a gateway `validation` wrapper to expose it as RPC; grant it to
   a capability via `hasAction`.
 - **New capability / role / user**: seed with `resourceType` + `name`, or use
-  `accessAuthorizationMerge` (reference entities by **name**, never raw IDs). Roles need a free
-  `roleBit` — a new role must be pre-seeded via `accessRoleMerge.yaml` because the merge handler
-  hardcodes bit 0.
+  `accessAuthorizationMerge` (reference entities by **name**, never raw IDs). A role needs **no**
+  bit in the seed: `access.role.merge` → `access.role.ensure` allocates `MAX(roleBit) + 1` when the
+  role is first created and never reuses a freed one, so seed files list roles by name only. A
+  declared bit is honoured or refused (`role.bitTaken`) — never silently skipped — and an existing
+  role always keeps the bit it has (`role.bitImmutable` on a change attempt).
 - **Bulk RBAC setup** (test data): `meta/dbTest/accessAuthorizationMerge.yaml` —
   `user: {name: {password, roles}}`, `role: {name: capability}`, `capability: {name: action}`. The
   blong-access merge file seeds the access realm's own users/roles/capabilities (testAdmin, Admin,

@@ -26,4 +26,24 @@ export default {
     // Closing a session that is not the caller's own without the
     // `access.session.close` permission.
     'session.closeForbidden': {message: 'Not allowed to close this session', statusCode: 403},
+    // Record-level (ACL) refusals.  `reason` rides on `error.params.reason`
+    // (`recordRequired` / `scopeRequired` / `denied` / `notFound` / `notPermitted`)
+    // so a caller can branch without parsing the message.
+    // A record the caller may not act on: 403 for writes, 404 for a
+    // single-record read so it does not leak the record's existence.
+    'acl.denied': {message: 'Not allowed to access this record', statusCode: 403},
+    'acl.notFound': {message: 'Record not found', statusCode: 404},
+    // The action itself is no longer permitted (revoked since the token was
+    // issued) — raised by the `access.session.verify` live action check.
+    'acl.notPermitted': {message: 'Not allowed to perform this action', statusCode: 403},
+    // Creating a record in a scope the caller has no grant on.
+    'acl.scopeDenied': {message: 'Not allowed to create a record in this scope', statusCode: 403},
+    // Role bits.  A bit is the role's position in a token's permission mask, so
+    // it is allocated once (`MAX(roleBit) + 1`, never reused) and never moved:
+    // an explicitly requested bit that is taken, out of range, or different from
+    // the one a role already owns is refused instead of being silently dropped.
+    'role.bitTaken': 'Role bit {roleBit} is already used by the role {roleName}',
+    'role.bitInvalid': 'Role bit {roleBit} is not a number between 0 and 1023',
+    'role.bitImmutable':
+        'The role bit of {roleName} is {roleBit} and cannot be changed (tokens are bound to it)',
 };

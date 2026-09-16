@@ -16,6 +16,17 @@ import {v4} from 'uuid';
 import yaml from 'yaml';
 import {methodParts} from '../../lib.ts';
 import {
+    aclActionId,
+    aclActionName,
+    aclActorId,
+    aclActorOf,
+    aclAllowed,
+    aclCheckSql,
+    aclConfig,
+    aclEntityOf,
+    aclKeyColumn,
+} from './acl.ts';
+import {
     binaryToStr,
     discoverBinaryColumns,
     isBinaryColumn,
@@ -37,6 +48,7 @@ import {
     schemaTableSyncImpl,
 } from '../schema/knex/schemaTable.ts';
 import {
+    type IAclTableSpec,
     type IConfig,
     type IEdgeBinding,
     type IKnexConfig,
@@ -71,6 +83,16 @@ const errorMap: IErrorMap = {
     'knex.exists': 'Knex Exists',
     'knex.unique': 'Knex Unique',
     'knex.missingKey': 'Missing key value for {key}',
+    // Record-level (ACL) refusals from the generic CRUD — the same `acl.*` family
+    // the access realm declares, so a caller sees one error name wherever the
+    // check runs (adapter or realm handler).
+    'acl.denied': {message: 'Not allowed to access this record', statusCode: 403},
+    'acl.scopeDenied': {
+        message: 'Not allowed to create a record in this scope',
+        statusCode: 403,
+    },
+    // A single-record read refuses with "not found" so it does not leak existence.
+    'acl.notFound': {message: 'Record not found', statusCode: 404},
 };
 
 let _errors: Errors<typeof errorMap>;
@@ -404,8 +426,10 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
             // resource-backed table of the subject (see `_dropdownList`).
             if (object === 'dropdown' && operation === 'list') {
                 return (
-                    this as unknown as {_dropdownList(s: string): Promise<unknown>}
-                )._dropdownList(subject);
+                    this as unknown as {
+                        _dropdownList(s: string, meta?: IMeta): Promise<unknown>;
+                    }
+                )._dropdownList(subject, $meta);
             }
             // Structure discovery for the commander explorer:
             //   `{ns}.schema.list` — databases/schemas on the server
@@ -453,6 +477,149 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                 };
             }
             const table = `${subject}_${object}`;
+            // ── Record-level (ACL) gates ──────────────────────────────────────
+            // A table opts into record-level authorization with
+            // `acl: {mode, scopes, addScope}`; everything below is a no-op for a
+            // table that does not (`mode: 'none'`, the default) and for system
+            // calls, which carry no `$meta.auth` (seed merges, internal dispatches).
+            const aclCfg = aclConfig(this.config.schema?.acl);
+            const aclActor = ($meta?.auth as {actorId?: string} | undefined)?.actorId;
+            /** The guarded table's PK column (the record key). */
+            const aclKeyName = (): string => aclKeyColumn(objectSchema, subject, object);
+
+            /**
+             * Gate a single-record operation (`get` / `edit` / `remove`).
+             * Writes are refused with 403; a read refuses with 404 so it does not
+             * leak the record's existence.
+             */
+            const aclCheckRecord = async (
+                opts: IResolvedTableOptions,
+                operation: string,
+                recordId: Buffer | undefined,
+            ): Promise<void> => {
+                const mode = opts.acl.mode ?? 'none';
+                if (mode === 'none' || !aclActor || !recordId) return;
+                const actionId = await aclActionId(this.config.context.queryBuilder!, aclCfg, method!);
+                if (!actionId) return; // the method is not an RBAC-managed action
+                const allowed = await aclAllowed(this.config.context.queryBuilder!, {
+                    cfg: aclCfg,
+                    actorId: aclActorId(aclActor),
+                    actionId,
+                    recordRef: '?',
+                    recordId,
+                    scopes: opts.acl.scopes,
+                    selfScope: opts.acl.selfScope,
+                    mode,
+                });
+                if (allowed) return;
+                throw this.error(
+                    operation === 'get'
+                        ? _errors['acl.notFound']({params: {reason: 'notFound'}})
+                        : _errors['acl.denied']({params: {reason: 'denied'}}),
+                    $meta,
+                );
+            };
+
+            /**
+             * Release the ACL rules that reference a guarded record about to be
+             * removed.
+             *
+             * `access_acl` keeps foreign keys to `core_resource` on
+             * `principalId`, `actionId` and `targetId`, so a rule left behind
+             * makes the resource delete fail *after* the entity row is already
+             * gone.  What remains is a resource-only ghost, and because
+             * `core.resource.ensure` matches a record by name it then skips the
+             * entity insert — the entity can never be created again.  A record
+             * that is being removed can no longer be a principal, a target or an
+             * action, so its rules go first.
+             */
+            const aclReleaseResource = async (
+                opts: IResolvedTableOptions,
+                recordId: Buffer,
+            ): Promise<void> => {
+                const mode = opts.acl.mode ?? 'none';
+                if (mode === 'none') return;
+                await this.config.context
+                    .queryBuilder!(aclCfg.table)
+                    .where('principalId', recordId)
+                    .orWhere('targetId', recordId)
+                    .orWhere('actionId', recordId)
+                    .del();
+            };
+
+            /**
+             * The ACL predicate for a multi-record read, correlated on the guarded
+             * table's key — applied to the query **before** paging so the result
+             * set (and its total) only contains records the caller may see.
+             */
+            const aclReadFilter = async (
+                opts: IResolvedTableOptions,
+            ): Promise<{sql: string; bindings: unknown[]} | undefined> => {
+                const mode = opts.acl.mode ?? 'none';
+                if (mode === 'none' || !aclActor) return undefined;
+                const actionId = await aclActionId(this.config.context.queryBuilder!, aclCfg, method!);
+                if (!actionId) return undefined;
+                return aclCheckSql({
+                    cfg: aclCfg,
+                    actorId: aclActorId(aclActor),
+                    actionId,
+                    recordRef: `${table}.${aclKeyName()}`,
+                    scopes: opts.acl.scopes,
+                    selfScope: opts.acl.selfScope,
+                    mode,
+                });
+            };
+
+            /**
+             * Gate `add`, which has no record key yet: the check runs against the
+             * scope named by the declaration (`addScope.column` on the payload, or
+             * `addScope.predicate` reading the ids of the submitted scope edges).
+             */
+            const aclCheckAdd = async (
+                opts: IResolvedTableOptions,
+                cols: Record<string, unknown>,
+                rest: Record<string, unknown>,
+            ): Promise<void> => {
+                const mode = opts.acl.mode ?? 'none';
+                const addScope = opts.acl.addScope;
+                if (mode === 'none' || !aclActor || !addScope) return;
+                const ids: string[] = [];
+                if (addScope.column && typeof cols[addScope.column] === 'string') {
+                    ids.push(cols[addScope.column] as string);
+                }
+                if (addScope.predicate) {
+                    // The payload array is keyed by the edge's object name
+                    // (`unit`), which the declared binding owns.
+                    const binding = opts.edges.find(e => e.predicate === addScope.predicate);
+                    const detailObject =
+                        binding?.object ?? addScope.predicate.replace(/^has/, '').toLowerCase();
+                    for (const row of (rest[detailObject] as Array<Record<string, unknown>>) ?? []) {
+                        // The scope id is the object's key in the edge row —
+                        // `{unitId: '<base64>'}` for a `belongsTo` edge.
+                        const found = Object.entries(row ?? {}).find(
+                            ([key, value]) => key.endsWith('Id') && typeof value === 'string',
+                        );
+                        if (found) ids.push(found[1] as string);
+                    }
+                }
+                if (!ids.length) return;
+                const actionId = await aclActionId(this.config.context.queryBuilder!, aclCfg, method!);
+                if (!actionId) return;
+                const allowed = await aclAllowed(this.config.context.queryBuilder!, {
+                    cfg: aclCfg,
+                    actorId: aclActorId(aclActor),
+                    actionId,
+                    scopeIds: ids.map(id => strToBinary(id)),
+                    mode,
+                });
+                if (!allowed) {
+                    throw this.error(
+                        _errors['acl.scopeDenied']({params: {reason: 'scopeDenied'}}),
+                        $meta,
+                    );
+                }
+            };
+
             switch (operation) {
                 case 'get': {
                     const {select: _select, ...where} = params;
@@ -478,13 +645,25 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     // the row in place (Buffers → base64 strings). The edge
                     // attachment needs the binary master key.
                     const masterKey = row?.[keyName];
+                    // Record-level ACL: checked after the fetch so a `where` that
+                    // does not carry the key (e.g. by email address) is covered too.
+                    await aclCheckRecord(
+                        opts,
+                        'get',
+                        Buffer.isBuffer(masterKey) ? masterKey : undefined,
+                    );
                     const result: Record<string, unknown> = {
                         [object]: prepareResultRow(row, binaryCols, table),
                     };
                     const masterRow = result[object] as Record<string, unknown> | undefined;
                     // Resource-backed: join the display name from
                     // `core_resource.resourceName` as `${object}Name`.
-                    if (opts.resource && masterRow && typeof masterRow[keyName] === 'string') {
+                    if (
+                        opts.resource &&
+                        !opts.nameColumn &&
+                        masterRow &&
+                        typeof masterRow[keyName] === 'string'
+                    ) {
                         const [joined] = await joinResourceNames(
                             qb,
                             [masterRow],
@@ -560,13 +739,19 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             });
                     }
                     if (order) query = query.orderBy(order);
+                    // Record-level ACL: the filter is applied before paging so both
+                    // the page and its total only contain readable records.
+                    const aclFilter = await aclReadFilter(opts);
+                    if (aclFilter) query = query.whereRaw(aclFilter.sql, aclFilter.bindings as never[]);
                     if (limit) query = query.limit(limit);
                     if (offset) query = query.offset(offset);
                     const rows = (await query.select(select)) as Record<string, unknown>[];
                     const prepared = prepareResultRows(rows, binaryCols, table);
                     // Resource-backed: join the display name from
-                    // `core_resource.resourceName` as `${object}Name`.
-                    if (opts.resource) {
+                    // `core_resource.resourceName` as `${object}Name`.  A table
+                    // declaring `resource: {nameColumn}` keeps its real display
+                    // column — no virtual field is synthesised.
+                    if (opts.resource && !opts.nameColumn) {
                         return joinResourceNames(qb, prepared, `${object}Id`, `${object}Name`);
                     }
                     return prepared;
@@ -601,13 +786,18 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const binaryCols = getBinaryCols(this.config.context);
                     const opts = tableOptions(objectSchema, this.config, subject, object);
                     const cols = columns as Record<string, unknown>;
-                    // Resource-backed: `${object}Name` is a virtual display field
-                    // (the name lives in `core_resource.resourceName`) — capture
-                    // it for the resource row and exclude it from the table insert.
+                    // Resource-backed: the display name lives in
+                    // `core_resource.resourceName`.  By default it is the virtual
+                    // `${object}Name` field — captured for the resource row and
+                    // excluded from the table insert.  A table declaring
+                    // `resource: {nameColumn}` names the resource from that real
+                    // column instead, which therefore stays in the insert.
                     const nameColValue = opts.resource
-                        ? (cols[`${object}Name`] as string | undefined)
+                        ? ((opts.nameColumn ? cols[opts.nameColumn] : cols[`${object}Name`]) as
+                              | string
+                              | undefined)
                         : undefined;
-                    if (opts.resource) {
+                    if (opts.resource && !opts.nameColumn) {
                         delete cols[`${object}Name`];
                     }
                     // Generate real PKs server-side for id columns that carry a
@@ -677,6 +867,9 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                             await ensureResourceRow(generatedKey, keyName);
                         }
                     }
+                    // Record-level ACL: `add` has no record key yet, so the scope
+                    // declared by `addScope` decides whether it may be created.
+                    await aclCheckAdd(opts, cols, rest);
                     // Convert any string values for binary columns to Buffer
                     const insertCols = prepareInputParams(cols, binaryCols, table);
                     const inserted = await qb(table).insert(insertCols);
@@ -756,7 +949,7 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     }
                     // Resource-backed: join the display name onto the master so
                     // the caller sees `${object}Name` in the created row.
-                    if (opts.resource && Buffer.isBuffer(masterKey)) {
+                    if (opts.resource && !opts.nameColumn && Buffer.isBuffer(masterKey)) {
                         const masterRow = result[object] as Record<string, unknown> | undefined;
                         if (masterRow && typeof masterRow[`${object}Id`] === 'string') {
                             const [joined] = await joinResourceNames(
@@ -779,15 +972,20 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                     const {[keyName]: key, ...update} = cols as Record<string, unknown>;
                     const isBinaryKey =
                         isBinaryColumn(binaryCols, table, keyName) && typeof key === 'string';
-                    // Resource-backed: `${object}Name` is a virtual field — the
-                    // display name lives in `core_resource.resourceName`, so
-                    // rename that row instead of updating a table column.
+                    // Resource-backed: the display name lives in
+                    // `core_resource.resourceName`, so a change to the display
+                    // field renames that row.  With `resource: {nameColumn}` the
+                    // real column is updated as well (it stays in the update).
+                    const nameField = opts.nameColumn ?? `${object}Name`;
                     const resourceName = opts.resource
-                        ? (update[`${object}Name`] as string | undefined)
+                        ? (update[nameField] as string | undefined)
                         : undefined;
-                    if (opts.resource) {
+                    if (opts.resource && !opts.nameColumn) {
                         delete update[`${object}Name`];
                     }
+                    // Record-level ACL: refuse an edit of a record the caller may
+                    // not act on, before anything is written.
+                    await aclCheckRecord(opts, 'edit', isBinaryKey ? strToBinary(key) : undefined);
                     // Convert any string values for binary columns to Buffer (the
                     // form round-trips them as base64 strings returned by `get`).
                     const preparedUpdate = prepareInputParams(update, binaryCols, table);
@@ -891,6 +1089,16 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         throw this.error(_errors['knex.missingKey']({key: keyName}), $meta);
                     }
                     const qb = this.config.context.queryBuilder!;
+                    // Record-level ACL: refuse to delete a record the caller may
+                    // not act on before anything is touched.
+                    await aclCheckRecord(
+                        opts,
+                        'remove',
+                        Buffer.isBuffer(masterKey) ? masterKey : undefined,
+                    );
+                    // …then release the rules that reference the record, before
+                    // the entity row is deleted (see `aclReleaseResource`).
+                    if (Buffer.isBuffer(masterKey)) await aclReleaseResource(opts, masterKey);
                     // Master-detail: delete each FK-constrained detail table's
                     // rows for this master BEFORE deleting the master row, so a
                     // non-cascading FK does not block the delete.
@@ -1034,9 +1242,133 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
          * spec (see `ISchemaTable`): `typeAlias`, `joinTable`, `joinColumn`,
          * `labelColumn`.
          */
+        /**
+         * Evaluate the record-level ACL for one record — or for one or more
+         * scopes, which is what `add` needs (the record has no key yet).
+         *
+         * Realm handlers cannot import this module (the runtime is not a library
+         * dependency of a realm), so they reach it through the port —
+         * `await this.aclCheck({recordId}, $meta)` — while the generic CRUD calls
+         * the same helper directly.
+         *
+         * `guarded: false` means the table does not opt into the ACL, or the
+         * method is not an RBAC-managed action at all: the caller is allowed.
+         * `actionId` (a raw Buffer — this call never crosses a realm boundary)
+         * and `predicate` are returned even for an unguarded entity, so a caller
+         * can reuse them for its own live-permission check.
+         */
+        async aclCheck(
+            params: {
+                /** Guarded entity as `subject.object` — defaults to the entity of `method`. */
+                entity?: string;
+                /** The method whose action is checked — defaults to `$meta.method`. */
+                method?: string;
+                /** Binary record key as a base64/hex string. */
+                recordId?: string;
+                /** Scope ids (used by `add`) as base64/hex strings. */
+                scopeIds?: string[];
+                /** Actor id override — defaults to `$meta.auth.actorId`. */
+                actorId?: string;
+            },
+            $meta?: IMeta,
+        ): Promise<{
+            guarded: boolean;
+            allowed: boolean;
+            entity?: string;
+            predicate?: string;
+            actionId?: Buffer;
+        }> {
+            const qb = this.config?.context?.queryBuilder;
+            const method = params.method ?? $meta?.method;
+            const actor = params.actorId ?? aclActorOf($meta);
+            if (!qb || !method) return {guarded: false, allowed: true};
+            const entity = params.entity ?? aclEntityOf(method);
+            const predicate = methodParts(method).split('.').pop();
+            const [subject, object] = entity ? entity.split('.') : [undefined, undefined];
+            const spec =
+                subject && object
+                    ? resolveTableSpec(
+                          objectSchema,
+                          this.config?.schema?.tables?.[`${subject}.${object}`],
+                          subject,
+                          object,
+                      ).acl
+                    : undefined;
+            const cfg = aclConfig(this.config?.schema?.acl);
+            const actionId = await aclActionId(qb, cfg, method);
+            const mode = spec?.mode ?? 'none';
+            const verdict = {entity, predicate, actionId};
+            if (!actionId || mode === 'none' || !actor) {
+                return {guarded: false, allowed: true, ...verdict};
+            }
+            const allowed = await aclAllowed(qb, {
+                cfg,
+                actionId,
+                actorId: aclActorId(actor),
+                recordRef: params.recordId ? '?' : undefined,
+                recordId: params.recordId ? strToBinary(params.recordId) : undefined,
+                scopeIds: params.scopeIds?.map(id => strToBinary(id)),
+                scopes: spec?.scopes,
+                selfScope: spec?.selfScope,
+                mode,
+            });
+            return {guarded: true, allowed, ...verdict};
+        },
+
+        /**
+         * The ACL predicate that filters a whole result set, correlated on the
+         * guarded table's key column — realm handlers apply it with
+         * `query.whereRaw(sql, bindings)` before paging.  Returns `undefined`
+         * when the entity is not guarded.
+         */
+        async aclFilter(
+            params: {entity: string; method?: string; actorId?: string},
+            $meta?: IMeta,
+        ): Promise<{sql: string; bindings: unknown[]} | undefined> {
+            const method = params.method ?? $meta?.method;
+            const [subject, object] = params.entity.split('.');
+            const actor = params.actorId ?? aclActorOf($meta);
+            const qb = this.config?.context?.queryBuilder;
+            const spec = resolveTableSpec(
+                objectSchema,
+                this.config?.schema?.tables?.[params.entity],
+                subject,
+                object,
+            ).acl;
+            const mode = spec?.mode ?? 'none';
+            if (mode === 'none' || !actor || !method || !qb) return undefined;
+            const cfg = aclConfig(this.config?.schema?.acl);
+            const actionId = await aclActionId(qb, cfg, method);
+            if (!actionId) return undefined;
+            return aclCheckSql({
+                cfg,
+                actionId,
+                actorId: aclActorId(actor),
+                recordRef: `${subject}_${object}.${aclKeyColumn(objectSchema, subject, object)}`,
+                scopes: spec?.scopes,
+                selfScope: spec?.selfScope,
+                mode,
+            });
+        },
+
+        /**
+         * `{subject}.dropdown.list` — produce `{value, label}` pairs for every
+         * resource-backed table of the subject.  A table is resource-backed when
+         * its PK (or any column) is a FK to `core.resource.resourceId`.
+         *
+         * Entries are resolved directly from `core_resource` (joined with
+         * `core_type` by `typeAlias = ${subject}.${object}`), so every realm gets
+         * dropdowns for free, matching the `blong-mock` `{subject}.dropdown.list`
+         * shape (`{value: base64, label: resourceName}`).
+         *
+         * Per-table overrides are declared via the `dropdown` option on the table
+         * spec (see `ISchemaTable`): `typeAlias`, `joinTable`, `joinColumn`,
+         * `labelColumn`.
+         */
         async _dropdownList(
             this: Adapter<IConfig>,
             subject: string,
+            $meta?: IMeta,
         ): Promise<Record<string, Array<{value: string; label: string}>>> {
             const qb = this.config.context?.queryBuilder;
             if (!qb) return {};
@@ -1077,6 +1409,31 @@ export default adapter<IConfig>(({utError, schema: objectSchema}) => {
                         `${dropdown.joinTable}.${joinColumn}`,
                         'r.resourceId',
                     );
+                }
+                // Record-level ACL: a dropdown is a read path, so a guarded entity
+                // must not offer records the caller may not read.
+                const aclSpec = resolveTableSpec(objectSchema, tableConfig, s, object).acl;
+                const aclMode = aclSpec?.mode ?? 'none';
+                const dropdownActor = ($meta?.auth as {actorId?: string} | undefined)?.actorId;
+                if (aclMode !== 'none' && dropdownActor) {
+                    const dropdownAcl = aclConfig(this.config.schema?.acl);
+                    const actionId = await aclActionId(
+                        qb,
+                        dropdownAcl,
+                        aclActionName(s, object, 'find'),
+                    );
+                    if (actionId) {
+                        const filter = aclCheckSql({
+                            cfg: dropdownAcl,
+                            actorId: aclActorId(dropdownActor),
+                            actionId,
+                            recordRef: 'r.resourceId',
+                            scopes: aclSpec?.scopes,
+                            selfScope: aclSpec?.selfScope,
+                            mode: aclMode,
+                        });
+                        query = query.whereRaw(filter.sql, filter.bindings as never[]);
+                    }
                 }
                 const rows = (await query) as Array<{resourceId: Buffer; label: string}>;
                 result[`${s}.${object}`] = rows.map(r => ({
@@ -1238,8 +1595,16 @@ export {attachHandlers, methodId, snakeToCamel};
 export interface IResolvedTableOptions {
     /** Whether the table is resource-backed (PK → `core.resource`). */
     resource: boolean;
+    /**
+     * Real display-name column when it is not the virtual `${object}Name`
+     * (declared as `resource: {nameColumn}`) — the resource row is named from it
+     * and the column stays a normal table column.
+     */
+    nameColumn?: string;
     /** Declarative graph-edge master-detail bindings. */
     edges: IEdgeBinding[];
+    /** Record-level ACL guard (`mode` defaults to `none`). */
+    acl: IAclTableSpec;
 }
 
 /**
@@ -1260,7 +1625,9 @@ function resolveTableSpec(
     definition?: TObject;
     dropdown?: ISchemaTable['dropdown'];
     resource?: boolean;
+    nameColumn?: string;
     edges?: IEdgeBinding[];
+    acl?: IAclTableSpec;
 } {
     if (tableConfig === undefined) return {};
     if (typeof tableConfig === 'number') {
@@ -1275,14 +1642,21 @@ function resolveTableSpec(
             'order' in tableConfig ||
             'dropdown' in tableConfig ||
             'resource' in tableConfig ||
-            'edges' in tableConfig
+            'edges' in tableConfig ||
+            'acl' in tableConfig
         ) {
             const spec = tableConfig as ISchemaTable;
+            const resourceSpec =
+                typeof spec.resource === 'object' && spec.resource !== null
+                    ? spec.resource
+                    : undefined;
             return {
                 definition: spec.definition ?? objectSchema[subject]?.[object],
                 dropdown: spec.dropdown,
-                resource: spec.resource,
+                resource: resourceSpec ? true : spec.resource === true,
+                nameColumn: resourceSpec?.nameColumn,
                 edges: spec.edges,
+                acl: spec.acl,
             };
         }
         return {definition: tableConfig as TObject};
@@ -1308,8 +1682,13 @@ function tableOptions(
             : {};
     const edges = spec.edges ?? [];
     return {
-        resource: spec.resource === true || edges.length > 0,
+        // `resource` is declared explicitly — an `edges` binding alone does NOT
+        // switch on the resource-backed name machinery (a table may carry edges
+        // while keeping its own display-name column).
+        resource: spec.resource === true,
+        nameColumn: spec.nameColumn,
         edges,
+        acl: spec.acl ?? {},
     };
 }
 

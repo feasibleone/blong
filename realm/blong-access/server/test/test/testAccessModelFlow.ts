@@ -7,7 +7,11 @@ import {type IAssert, type IMeta, handler} from '@feasibleone/blong';
  * 1. Logs in as `testAdmin` (asserts the permission map contains the access
  *    actions).
  * 2. Creates a role (`access.role.add`), reads it back (`access.role.get` —
- *    capability detail array).
+ *    capability detail array), then proves the role-bit contract: a role added
+ *    **without** a bit is allocated a real one (and it is persisted), an
+ *    explicit bit owned by another role is refused (`role.bitTaken`) instead of
+ *    being silently skipped, and an edit that tries to change a bit is refused
+ *    (`role.bitImmutable`).
  * 3. Creates a user (`access.user.add`) with the role, reads it back
  *    (`access.user.get` — credential + role detail arrays), edits it
  *    (`access.user.edit`) and lists users (`access.user.find`).
@@ -24,6 +28,7 @@ export default handler(
             loginTokenCreate,
             accessRoleAdd,
             accessRoleGet,
+            accessRoleEdit,
             accessUserAdd,
             accessUserGet,
             accessUserEdit,
@@ -31,6 +36,7 @@ export default handler(
             accessSessionClose,
             accessUserRemove,
             accessRoleRemove,
+            accessRoleMerge,
         },
     }) => ({
         testAccessModelFlow: ({name = 'access model flow'}: {name?: string} = {}) =>
@@ -98,7 +104,115 @@ export default handler(
                     return created;
                 },
 
+                // 2b. A role created without a bit is **allocated** one.  The old
+                //     path passed `roleBit: 0`, which collided with Admin and was
+                //     silently dropped by `INSERT IGNORE` — leaving a role resource
+                //     with no role row, a name nobody could reuse and a role nobody
+                //     could browse (T-102).
+                async function addRoleAutoBit(
+                    assert: IAssert,
+                    {$meta}: {$meta: IMeta},
+                ): Promise<{roleId: string; roleName: string; roleBit: number}> {
+                    const result = await accessRoleAdd<{
+                        role: {roleId: string; roleName: string; roleBit: number};
+                    }>(
+                        {
+                            role: {
+                                roleName: `MODEL-TEST-AUTO-BIT-${Date.now()}`,
+                                description: 'allocated role bit',
+                            },
+                        },
+                        $meta,
+                    );
+                    assert.ok(
+                        Number.isInteger(result.role?.roleBit) && result.role.roleBit >= 0,
+                        'a role created without a bit is given a real one',
+                    );
+                    const stored = await accessRoleGet<{role: {roleBit: number}}>(
+                        {roleId: result.role.roleId},
+                        $meta,
+                    );
+                    assert.equal(
+                        Number(stored.role.roleBit),
+                        Number(result.role.roleBit),
+                        'the allocated bit is persisted on the role row',
+                    );
+                    return result.role;
+                },
+
+                // 2c. An explicit bit owned by another role is refused loudly
+                //     (Admin holds bit 0) instead of being silently skipped.
+                async function addRoleTakenBit(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    let failure = '';
+                    try {
+                        await accessRoleAdd(
+                            {role: {roleName: `MODEL-TEST-TAKEN-${Date.now()}`, roleBit: 0}},
+                            {...$meta, expect: ['role.bitTaken']},
+                        );
+                    } catch (error) {
+                        failure = (error as {type?: string}).type ?? '';
+                    }
+                    assert.equal(failure, 'role.bitTaken', 'a taken role bit is refused');
+                    return {failure};
+                },
+
+                // 2d. A bit never moves: it is the role's position in the `per`
+                //     mask of already-minted tokens, so an edit that changes it is
+                //     refused rather than silently re-pointing live permissions.
+                async function editRoleBit(
+                    assert: IAssert,
+                    {
+                        $meta,
+                        getRole: role,
+                    }: {
+                        $meta: IMeta;
+                        getRole: Promise<{roleId: string; roleName: string}>;
+                    },
+                ) {
+                    const created = await role;
+                    let failure = '';
+                    try {
+                        await accessRoleEdit(
+                            {role: {roleId: created.roleId, roleBit: 997}},
+                            {...$meta, expect: ['role.bitImmutable']},
+                        );
+                    } catch (error) {
+                        failure = (error as {type?: string}).type ?? '';
+                    }
+                    assert.equal(failure, 'role.bitImmutable', 'a role bit cannot be changed');
+                    return created;
+                },
+
+                // 2e. The seed path (`meta/db/1-accessRoleMerge.yaml`) allocates a
+                //     bit per role in file order, which is what lets a seed file
+                //     list roles by name only — no hand-maintained bit table, and
+                //     no way to collide with a role another realm seeded.
+                async function mergeRoleList(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    const suffix = Date.now();
+                    const result = await accessRoleMerge<{
+                        role: Array<{roleId: string; name: string; roleBit: number}>;
+                    }>(
+                        {
+                            resourceType: 'access.role',
+                            role: [
+                                {name: `MODEL-TEST-SEED-A-${suffix}`, description: 'seed a'},
+                                {name: `MODEL-TEST-SEED-B-${suffix}`, description: 'seed b'},
+                            ],
+                        },
+                        $meta,
+                    );
+                    assert.equal(result.role.length, 2, 'the merge returns one entry per role');
+                    assert.equal(
+                        result.role[1].roleBit,
+                        result.role[0].roleBit + 1,
+                        'bits are allocated in file order',
+                    );
+                    return result.role;
+                },
+
                 // 3. Create a user with the role, read it back, edit it, list it.
+                //    The list step looks the user up by the email minted here — the
+                //    table grows with every run, so an unfiltered page would miss it.
                 async function addUser(
                     assert: IAssert,
                     {
@@ -110,7 +224,9 @@ export default handler(
                     },
                 ) {
                     const created = await role;
-                    const result = await accessUserAdd<{user: {userId: string}}>(
+                    const result = await accessUserAdd<{
+                        user: {userId: string; emailAddress: string};
+                    }>(
                         {
                             user: {
                                 emailAddress: `model-test-${Date.now()}@example.com`,
@@ -121,6 +237,7 @@ export default handler(
                         $meta,
                     );
                     assert.ok(result.user?.userId, 'user add succeeds');
+                    assert.ok(result.user?.emailAddress, 'user add returns the email');
                     return result.user;
                 },
 
@@ -131,7 +248,7 @@ export default handler(
                         addUser: user,
                     }: {
                         $meta: IMeta;
-                        addUser: Promise<{userId: string}>;
+                        addUser: Promise<{userId: string; emailAddress: string}>;
                     },
                 ) {
                     const created = await user;
@@ -156,7 +273,7 @@ export default handler(
                         getUserDetails: user,
                     }: {
                         $meta: IMeta;
-                        getUserDetails: Promise<{userId: string}>;
+                        getUserDetails: Promise<{userId: string; emailAddress: string}>;
                     },
                 ) {
                     const created = await user;
@@ -177,13 +294,19 @@ export default handler(
                         editUser: user,
                     }: {
                         $meta: IMeta;
-                        editUser: Promise<{userId: string}>;
+                        editUser: Promise<{userId: string; emailAddress: string}>;
                     },
                 ) {
                     const created = await user;
                     const result = await accessUserFind<
                         Array<{userId: string; emailAddress: string}>
-                    >({paging: {pageNumber: 1, pageSize: 100}}, $meta);
+                    >(
+                        {
+                            filterBy: {emailAddress: created.emailAddress},
+                            paging: {pageNumber: 1, pageSize: 10},
+                        },
+                        $meta,
+                    );
                     assert.ok(
                         result.some(item => item.userId === created.userId),
                         'user find returns the added user',
@@ -210,15 +333,28 @@ export default handler(
                         $meta,
                         findUsers: user,
                         addRole: role,
+                        addRoleAutoBit: autoRole,
+                        mergeRoleList: seededRoles,
                     }: {
                         $meta: IMeta;
-                        findUsers: Promise<{userId: string}>;
+                        findUsers: Promise<{userId: string; emailAddress: string}>;
                         addRole: Promise<{roleId: string; roleName: string}>;
+                        addRoleAutoBit: Promise<{roleId: string; roleName: string}>;
+                        mergeRoleList: Promise<Array<{roleId: string; name: string}>>;
                     },
                 ) {
-                    const [createdUser, createdRole] = await Promise.all([user, role]);
+                    const [createdUser, createdRole, allocatedRole, seeds] = await Promise.all([
+                        user,
+                        role,
+                        autoRole,
+                        seededRoles,
+                    ]);
                     await accessUserRemove({userId: createdUser.userId}, $meta);
                     await accessRoleRemove({roleId: createdRole.roleId}, $meta);
+                    await accessRoleRemove({roleId: allocatedRole.roleId}, $meta);
+                    for (const seed of seeds) {
+                        await accessRoleRemove({roleId: seed.roleId}, $meta);
+                    }
                     assert.ok(true, 'cleanup removed the created entities');
                 },
             ]),

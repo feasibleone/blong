@@ -12,9 +12,9 @@ description:
 # Full-Stack Testing with Playwright
 
 > **Scaffold, don't transcribe.** Generate the spec with
-> `kukum test add --subject=<realm> --object=<entity> --kind=playwright`
-> (`[KUKUM_API]` in `_shared/conventions.md`) — a scaffolded realm already ships
-> `playwright.config.ts` and the `blong-dev playwright` scripts.
+> `kukum test add --subject=<realm> --object=<entity> --kind=playwright` (`[KUKUM_API]` in
+> `_shared/conventions.md`) — a scaffolded realm already ships `playwright.config.ts` and the
+> `blong-dev playwright` scripts.
 
 ## Overview
 
@@ -399,6 +399,30 @@ createAndEditModel(test, expect, {
     details: [{object: 'line', rows: 2, fields: {lineName: 'Widget', lineQuantity: 2}}],
 });
 ```
+
+**A detail whose rows are not deterministic must be filtered.** Declare `filters: {column: 'text'}`
+on the detail: the helper fills the column filter input (`${object}-filter-${column}`, see the
+_Column filters_ section of the blong-model skill) before every capture, so the screenshot shows
+only the rows the spec means to show. The ACL matrix is the case that needs it — its rows are every
+role, user and organization in the graph, so without a filter the capture changes with whatever else
+the database holds:
+
+```typescript
+details: [
+    {
+        object: 'matrix',
+        tab: 'Record Access',
+        pivot: true,
+        // One deterministic row: the wildcard scope (green check + red cross).
+        filters: {targetName: '(all records)'},
+        fields: {find: {widget: 'cycle', value: 'Allow'}, get: {widget: 'cycle', value: 'Deny'}},
+    },
+];
+```
+
+A detail that is _created_ by the spec also needs a `search` text, or the edit test opens whatever
+row the browse lists first — the ACL matrix spec matches its own role's description
+(`search: 'matrix role'`) for that reason.
 
 Gotcha-s that bite master-detail realms:
 

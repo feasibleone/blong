@@ -465,6 +465,10 @@ export default class Watch extends Internal implements IWatch {
                                   this.#config.enabled ? filename + '?' + Date.now() : filename
                               )
                           ).default;
+                // A module without a default export is a plain module shared by
+                // the group's handlers (e.g. `account.ts`, `accessModel.ts`), not
+                // a handler — the loader ignores it.
+                if (!item) return (api: T) => api;
                 const expectedName = this.#platform
                     .basename(filename, this.#platform.extname(filename))
                     .match(prefixRE)?.[1];

@@ -10,3 +10,41 @@ capability:
   unitView: party.unit.find,party.unit.get
   unitEdit: party.unit.edit,party.unit.add
   unitDelete: party.unit.remove
+
+# Implicit ACL grants — `<role> --hasScope--> <scope>` — for the record-level
+# ACL tests (`test.acl.flow`).  The `Admin` role is created above in this same
+# file, so it may be referenced here; the units/persons are seeded by
+# `9-partyHierarchyMerge.yaml`, which runs first.
+scope:
+  - role: Admin
+    scope: Head Office
+  - role: Admin
+    scope: Global Bank Corp
+    scopeType: organization
+
+# Explicit denials.  Jane Smith is reachable through the `Head Office` grant
+# (Corporate Branch is part of it), so these rows deliberately forbid her — a
+# deny always wins over an implicit allow, and over the Admin role's wildcard
+# allow-all rule seeded by the access realm.
+acl:
+  - principal: Admin
+    principalType: role
+    action: party.person.get
+    target: Jane Smith
+    targetType: person
+    targetKind: record
+    effect: deny
+  - principal: Admin
+    principalType: role
+    action: party.person.find
+    target: Jane Smith
+    targetType: person
+    targetKind: record
+    effect: deny
+  - principal: Admin
+    principalType: role
+    action: party.person.edit
+    target: Jane Smith
+    targetType: person
+    targetKind: record
+    effect: deny

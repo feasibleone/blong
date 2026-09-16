@@ -17,9 +17,12 @@ test('portal loads after login', async ({portal}) => {
 
 test('open and close person browse tab', async ({portal}) => {
     await portal.menuClick('party.person.browse');
-    await portal.waitForTableData();
-    // Filter to seed data only — screenshots must be stable across runs
-    await portal.page.getByTestId('browse-search').fill('John');
+    // Filter first: the unfiltered person list is large (guest registrations
+    // accumulate) and waiting for the whole page can exceed the element timeout,
+    // while the filtered table is what the screenshot shows anyway.
+    const search = portal.page.getByTestId('browse-search');
+    await search.waitFor({state: 'visible'});
+    await search.fill('John');
     await portal.page.waitForTimeout(500);
     await portal.waitForTableData();
     await expect(portal.page).toHaveScreenshot('portal-person-tab.png');

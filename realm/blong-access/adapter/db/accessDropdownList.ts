@@ -6,7 +6,8 @@ type KnexQb = any;
 
 /**
  * `access.dropdown.list` — the auto-bound per-table dropdowns plus the
- * `access.crudEntity` list backing the capability action pivot.
+ * `access.crudEntity` list backing the capability action pivot, and the two ACL
+ * lists used by the ACL pages.
  *
  * The base dropdowns (`access.user`, `access.role`, `access.capability`,
  * `access.action`, …) come from `super.exec` (the knex adapter's generic
@@ -14,6 +15,11 @@ type KnexQb = any;
  * `access<Entity>` prefixes of every standard-CRUD action registered in
  * `access_action`, so the capability pivot can list one row per entity with
  * the CRUD verbs (`find`/`get`/`add`/`edit`/`remove`) as columns.
+ *
+ * `access.aclPrincipal` / `access.aclTarget` list the graph resources an ACL
+ * rule can name, labelled `<short type>: <name>` — principals are the users,
+ * roles, units and capabilities the rules hang off; targets are the records and
+ * scopes they point at.
  */
 export default handler(() => ({
     async accessDropdownList(
@@ -33,9 +39,23 @@ export default handler(() => ({
         }
         return {
             ...base,
-            'access.crudEntity': [...entities]
-                .sort()
-                .map(name => ({value: name, label: name})),
+            'access.crudEntity': [...entities].sort().map(name => ({value: name, label: name})),
+            'access.aclPrincipal': await model.resourceOptions(qb, [
+                'access.user',
+                'access.role',
+                'party.unit',
+                'access.capability',
+            ]),
+            'access.aclTarget': await model.resourceOptions(qb, [
+                'party.unit',
+                'party.organization',
+                'party.person',
+                'access.role',
+                'access.user',
+                // The wildcard rule target: a rule anchored on it matches every
+                // record (`targetKind: 'all'`).
+                'access.any',
+            ]),
         };
     },
 }));

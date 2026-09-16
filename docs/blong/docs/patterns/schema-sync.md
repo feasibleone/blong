@@ -1,8 +1,8 @@
 # Schema Management Patterns (knex adapter)
 
 This page provides implementation details for the declarative schema management feature of
-`adapter.knex`.  See the [concept overview](../concepts/schema-sync.md) for a high-level
-description and the [rationale](../rationale/schema-sync.md) for design motivation.
+`adapter.knex`. See the [concept overview](../concepts/schema-sync.md) for a high-level description
+and the [rationale](../rationale/schema-sync.md) for design motivation.
 
 ---
 
@@ -23,18 +23,18 @@ export default adapter(({schema}) => ({
             knex: {
                 connection: {database: 'demo', user: 'app', password: 'secret'},
             },
-            namespace: 'sql',          // prefix for auto-bound CRUD and procedure handlers
-            imports: ['mysql.sql'],    // handler group name for dispatch routing
+            namespace: 'sql', // prefix for auto-bound CRUD and procedure handlers
+            imports: ['mysql.sql'], // handler group name for dispatch routing
 
             schema: {
-                sync: true,            // run DDL (deployment job only, not normal startup)
+                sync: true, // run DDL (deployment job only, not normal startup)
 
                 tables: {
                     // SQL table name → ISchemaTable spec (or plain TObject)
                     schema_item: {
-                        definition: schema.mysql.item,  // TypeBox TObject
-                        order: 1,                       // creation order (FK dependencies)
-                        dropColumns: true,              // allow dropping removed columns
+                        definition: schema.mysql.item, // TypeBox TObject
+                        order: 1, // creation order (FK dependencies)
+                        dropColumns: true, // allow dropping removed columns
                     },
                 },
 
@@ -59,16 +59,16 @@ export default adapter(({schema}) => ({
 
 ### `schema` config fields
 
-| Field              | Type                             | Default  | Description                                                       |
-| ------------------ | -------------------------------- | -------- | ----------------------------------------------------------------- |
-| `sync`             | `boolean`                        | `false`  | Enable schema sync (deployment-time job only, not normal startup) |
-| `tables`           | `Record<string, ISchemaTable\|TObject>` | `{}` | Tables to create/alter                                       |
-| `seed`             | `boolean`                        | `false`  | Enable production seed data from `.db.asset` YAML/JSON files      |
-| `dbTest`           | `boolean`                        | `false`  | Enable test seed data from `.dbTest.asset` YAML/JSON files        |
-| `procedurePaths`   | `string[]`                       | `[]`     | Folders scanned for `*.sql` files (base name = procedure name)    |
-| `procedures`       | `Record<string, string>`         | `{}`     | Inline procedure SQL (backward compat; prefer `procedurePaths`)   |
+| Field            | Type                                    | Default | Description                                                       |
+| ---------------- | --------------------------------------- | ------- | ----------------------------------------------------------------- |
+| `sync`           | `boolean`                               | `false` | Enable schema sync (deployment-time job only, not normal startup) |
+| `tables`         | `Record<string, ISchemaTable\|TObject>` | `{}`    | Tables to create/alter                                            |
+| `seed`           | `boolean`                               | `false` | Enable production seed data from `.db.asset` YAML/JSON files      |
+| `dbTest`         | `boolean`                               | `false` | Enable test seed data from `.dbTest.asset` YAML/JSON files        |
+| `procedurePaths` | `string[]`                              | `[]`    | Folders scanned for `*.sql` files (base name = procedure name)    |
+| `procedures`     | `Record<string, string>`                | `{}`    | Inline procedure SQL (backward compat; prefer `procedurePaths`)   |
 
-`namespace` is a sibling field next to `schema`, not inside it.  It controls the prefix of all
+`namespace` is a sibling field next to `schema`, not inside it. It controls the prefix of all
 auto-bound handler names.
 
 ---
@@ -95,12 +95,12 @@ export default schema(async ({lib: {type}}) => ({
 - **Property names** are used as SQL column names verbatim (camelCase is preserved).
 - Any property whose name ends in `Id` and has type `Type.Integer()` is created as an
   `AUTO_INCREMENT` primary key column.
-- Any property whose name ends in `Id` and has any other type (e.g. `Type.String()`) is treated
-  as a plain column — no auto-increment.
-- Properties listed in the schema's `required` array generate `NOT NULL` columns; all others
-  are nullable.
-- Use `dropColumns: true` in the `ISchemaTable` spec to let the adapter remove columns that are
-  no longer present in the TypeBox schema.
+- Any property whose name ends in `Id` and has any other type (e.g. `Type.String()`) is treated as a
+  plain column — no auto-increment.
+- Properties listed in the schema's `required` array generate `NOT NULL` columns; all others are
+  nullable.
+- Use `dropColumns: true` in the `ISchemaTable` spec to let the adapter remove columns that are no
+  longer present in the TypeBox schema.
 
 **Structured JSON columns (`*JSON` suffix):** any column whose name ends in `JSON` is
 auto-(de)serialized by the knex adapter — object/array values are `JSON.stringify`'d on
@@ -108,23 +108,24 @@ auto-(de)serialized by the knex adapter — object/array values are `JSON.string
 columns as plain strings (`Type.String()` / `type.stringNull()` → `VARCHAR`); no manual
 (de)serialization is needed in handlers. This is a name-based convention applied to every
 queryBuilder produced by the shared `srv.db` adapter — see
-`core/blong-gogo/src/adapter/schema/knex/json.ts`. Example: `access_credential.credentialParamsJSON`.
+`core/blong-gogo/src/adapter/schema/knex/json.ts`. Example:
+`access_credential.credentialParamsJSON`.
 
 ### TypeBox → SQL type mapping
 
-| TypeBox type                         | SQL column type                                         |
-| ------------------------------------ | ------------------------------------------------------- |
-| `Type.Integer()`                     | `INT` / `AUTO_INCREMENT` (if name ends `Id`)            |
-| `Type.String({maxLength: N≤255})`    | `VARCHAR(N)`                                            |
-| `Type.String({maxLength: N>255})`    | `TEXT`                                                  |
-| `Type.String()` (no maxLength)       | `VARCHAR(255)` (default when no maxLength given)        |
-| `Type.String({format: 'date-time'})` | `DATETIME`                                              |
-| `Type.String({format: 'date'})`      | `DATE`                                                  |
-| `Type.String({format: 'uuid'})`      | `UUID`                                                  |
-| `Type.Boolean()`                     | `BOOLEAN`                                               |
-| `Type.Number()`                      | `DOUBLE`                                                |
-| `Type.Unknown()` / `Type.Object()`   | `JSON`                                                  |
-| `Type.Optional(T)`                   | nullable column                                         |
+| TypeBox type                         | SQL column type                                  |
+| ------------------------------------ | ------------------------------------------------ |
+| `Type.Integer()`                     | `INT` / `AUTO_INCREMENT` (if name ends `Id`)     |
+| `Type.String({maxLength: N≤255})`    | `VARCHAR(N)`                                     |
+| `Type.String({maxLength: N>255})`    | `TEXT`                                           |
+| `Type.String()` (no maxLength)       | `VARCHAR(255)` (default when no maxLength given) |
+| `Type.String({format: 'date-time'})` | `DATETIME`                                       |
+| `Type.String({format: 'date'})`      | `DATE`                                           |
+| `Type.String({format: 'uuid'})`      | `UUID`                                           |
+| `Type.Boolean()`                     | `BOOLEAN`                                        |
+| `Type.Number()`                      | `DOUBLE`                                         |
+| `Type.Unknown()` / `Type.Object()`   | `JSON`                                           |
+| `Type.Optional(T)`                   | nullable column                                  |
 
 ---
 
@@ -173,19 +174,19 @@ type.Object(
 
 ### Constraint reference
 
-| Constraint  | Type form                                                       | Description                                       |
-| ----------- | --------------------------------------------------------------- | ------------------------------------------------- |
-| `primaryKey` | `string` (single column) or `{columns, constraintName?}`       | Composite primary key. Single-column PKs are auto-detected via `*Id` + `Integer` and do not need to be declared here. |
-| `unique`    | `Record<string, {columns?}>`                                   | Unique constraint. Key = constraint name (used to generate `{table}_ux_{key}`). Omit `columns` to apply to the key-named column. |
-| `foreign`   | `Record<string, string\|{references, columns?, onDelete?, onUpdate?}>` | Foreign key. `references` uses `{table}.{column}` format. Key = local column name. |
-| `index`     | `Record<string, {columns?, indexType?}>`                       | Index. `indexType` can be `'FULLTEXT'`, `'SPATIAL'`, etc. Key = index name (used to generate `{table}_idx_{key}`). |
+| Constraint   | Type form                                                              | Description                                                                                                                      |
+| ------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `primaryKey` | `string` (single column) or `{columns, constraintName?}`               | Composite primary key. Single-column PKs are auto-detected via `*Id` + `Integer` and do not need to be declared here.            |
+| `unique`     | `Record<string, {columns?}>`                                           | Unique constraint. Key = constraint name (used to generate `{table}_ux_{key}`). Omit `columns` to apply to the key-named column. |
+| `foreign`    | `Record<string, string\|{references, columns?, onDelete?, onUpdate?}>` | Foreign key. `references` uses `{table}.{column}` format. Key = local column name.                                               |
+| `index`      | `Record<string, {columns?, indexType?}>`                               | Index. `indexType` can be `'FULLTEXT'`, `'SPATIAL'`, etc. Key = index name (used to generate `{table}_idx_{key}`).               |
 
 ### Two-pass constraint sync
 
-Constraints are applied in a **separate pass** after all tables have been created. This is
-necessary because foreign keys reference other tables that must already exist.
+Constraints are applied in a **separate pass** after all tables have been created. This is necessary
+because foreign keys reference other tables that must already exist.
 
-```
+```text
 Pass 1 — schemaTableSyncImpl:
   Create/alter all tables in ascending `order`
 
@@ -194,16 +195,16 @@ Pass 2 — schemaTableConstraintSyncImpl:
 ```
 
 Both passes are **idempotent**. Already-present constraints (checked via
-`information_schema.TABLE_CONSTRAINTS` and `information_schema.STATISTICS`) are skipped.
-Running the sync multiple times on an unchanged schema produces zero SQL.
+`information_schema.TABLE_CONSTRAINTS` and `information_schema.STATISTICS`) are skipped. Running the
+sync multiple times on an unchanged schema produces zero SQL.
 
 ### Constraint naming
 
-| Constraint type | Generated name pattern | Example |
-| --------------- | ---------------------- | ------- |
-| Primary key     | `{table}_pk`           | `realmname_item_pk` |
-| Unique          | `{table}_ux_{key}`     | `realmname_item_ux_itemName` |
-| Index           | `{table}_idx_{key}`    | `realmname_item_idx_itemName` |
+| Constraint type | Generated name pattern | Example                        |
+| --------------- | ---------------------- | ------------------------------ |
+| Primary key     | `{table}_pk`           | `realmname_item_pk`            |
+| Unique          | `{table}_ux_{key}`     | `realmname_item_ux_itemName`   |
+| Index           | `{table}_idx_{key}`    | `realmname_item_idx_itemName`  |
 | Foreign key     | `{table}_fk_{key}`     | `realmname_item_fk_categoryId` |
 
 ---
@@ -220,7 +221,7 @@ are enabled.
 Place YAML files in the `meta/db/` folder alongside `db.ts`. They are processed when
 `schema.seed: true` via `processSeedAssets(ctx, /\.db\.asset$/)`.
 
-```
+```text
 realmname/meta/db/
 ├── db.ts
 ├── 0-coreTypeMerge.yaml       ← .db.asset — production seed
@@ -230,47 +231,52 @@ realmname/meta/db/
 **Method name derivation:** The method name is the part of the filename after the **last `-`**
 character (minus the extension). Examples:
 
-| Filename | Method name |
-| --- | --- |
-| `0-coreTypeMerge.yaml` | `coreTypeMerge` |
+| Filename                  | Method name          |
+| ------------------------- | -------------------- |
+| `0-coreTypeMerge.yaml`    | `coreTypeMerge`      |
 | `realmnameRoleMerge.yaml` | `realmnameRoleMerge` |
-| `accessRoleMerge.yaml` | `accessRoleMerge` |
+| `accessRoleMerge.yaml`    | `accessRoleMerge`    |
 
-**Processing:** Each file is parsed (YAML or JSON) and dispatched via `ctx.handle!(params, {method})`.
-The YAML content becomes the params object:
+**Processing:** Each file is parsed (YAML or JSON) and dispatched via
+`ctx.handle!(params, {method})`. The YAML content becomes the params object:
 
 ```yaml
 # realmnameRoleMerge.yaml
 resourceType: realmname.role
 role:
-  - roleBit: 0
-    name: Admin
-    description: Full access
+    - roleBit: 0
+      name: Admin
+      description: Full access
 ```
 
-This dispatches to `{handlerMethod}({resourceType: 'realmname.role', role: [...]}, {method: 'realmnameRoleMerge'})`.
+This dispatches to
+`{handlerMethod}({resourceType: 'realmname.role', role: [...]}, {method: 'realmnameRoleMerge'})`.
+
+Because the method name comes from the file, a realm can **override** the merge for its own type:
+`blong-access` handles `access.role.merge` itself, so a seed row lists a role by name and the unique
+`roleBit` is allocated instead of declared (see the [RBAC pattern](rbac.md)).
 
 ### Test seeds (`.dbTest.asset`)
 
-Place YAML files in the `meta/dbTest/` folder. They are processed when both `schema.seed: true`
-AND `schema.dbTest: true` via `processSeedAssets(ctx, /\.dbTest\.asset$/)`.
+Place YAML files in the `meta/dbTest/` folder. They are processed when both `schema.seed: true` AND
+`schema.dbTest: true` via `processSeedAssets(ctx, /\.dbTest\.asset$/)`.
 
-```
+```text
 realmname/meta/dbTest/
 └── realmnameEntityMerge.yaml    ← .dbTest.asset — test seed only
 ```
 
-Test seeds follow the same naming and processing rules as production seeds, but are only loaded
-in `dev` and `integration` intents — never in `upgrade` or `microservice`.
+Test seeds follow the same naming and processing rules as production seeds, but are only loaded in
+`dev` and `integration` intents — never in `upgrade` or `microservice`.
 
 ### Intent-specific behaviour
 
-| Intent | `schema.seed` | `schema.dbTest` |
-| --- | --- | --- |
-| `dev` | ✅ | ✅ |
-| `integration` | ✅ | ✅ |
-| `upgrade` | ✅ | ❌ |
-| `microservice` | ❌ | ❌ |
+| Intent         | `schema.seed` | `schema.dbTest` |
+| -------------- | ------------- | --------------- |
+| `dev`          | ✅            | ✅              |
+| `integration`  | ✅            | ✅              |
+| `upgrade`      | ✅            | ❌              |
+| `microservice` | ❌            | ❌              |
 
 ---
 
@@ -289,13 +295,13 @@ BEGIN
 END
 ```
 
-The file's base name (without `.sql`) becomes the SQL procedure name.  The adapter compares the
+The file's base name (without `.sql`) becomes the SQL procedure name. The adapter compares the
 procedure body against `information_schema.ROUTINES.ROUTINE_DEFINITION` and only re-creates the
 procedure when the body differs — so repeated restarts with an unchanged schema produce no SQL.
 
 ### Private procedures (underscore prefix)
 
-Name a procedure `_my_helper` to mark it as a **private DB helper**.  It will be synced to the
+Name a procedure `_my_helper` to mark it as a **private DB helper**. It will be synced to the
 database but **not** exposed as a synthetic handler on the API surface.
 
 ---
@@ -303,7 +309,7 @@ database but **not** exposed as a synthetic handler on the API surface.
 ## Auto-bound synthetic handlers
 
 After `ready()`, every procedure whose name does **not** start with `_` is callable as a synthetic
-own-property handler on the adapter.  For a procedure named `sql_item_list_active`:
+own-property handler on the adapter. For a procedure named `sql_item_list_active`:
 
 ```text
 sql_item_list_active  →  sqlItemListActive  (camelCase, for super calls)
@@ -317,30 +323,32 @@ const rows = await handler.sqlItemListActive({}, $meta);
 ```
 
 Input parameters are mapped from camelCase object keys matching the procedure's `IN`/`INOUT`
-parameters (declared order is respected).  For a procedure parameter named `item_status`, the
-caller passes `{itemStatus: value}`.
+parameters (declared order is respected). For a procedure parameter named `item_status`, the caller
+passes `{itemStatus: value}`.
 
 ---
 
 ## Auto-bound CRUD handlers
 
-When `namespace` is set, the adapter generates six CRUD handlers for every declared table, stored
-as synthetic own-property handlers (same mechanism as procedures):
+When `namespace` is set, the adapter generates six CRUD handlers for every declared table, stored as
+synthetic own-property handlers (same mechanism as procedures):
 
-| Handler name pattern            | Example (`namespace=sql`, `table=item`) |
-| ------------------------------- | --------------------------------------- |
-| `${ns}${Table}Get`              | `sqlItemGet`                            |
-| `${ns}${Table}Find`             | `sqlItemFind`                           |
-| `${ns}${Table}Add`              | `sqlItemAdd`                            |
-| `${ns}${Table}Edit`             | `sqlItemEdit`                           |
-| `${ns}${Table}Remove`           | `sqlItemRemove`                         |
-| `${ns}${Table}Merge`            | `sqlItemMerge`                          |
+| Handler name pattern  | Example (`namespace=sql`, `table=item`) |
+| --------------------- | --------------------------------------- |
+| `${ns}${Table}Get`    | `sqlItemGet`                            |
+| `${ns}${Table}Find`   | `sqlItemFind`                           |
+| `${ns}${Table}Add`    | `sqlItemAdd`                            |
+| `${ns}${Table}Edit`   | `sqlItemEdit`                           |
+| `${ns}${Table}Remove` | `sqlItemRemove`                         |
+| `${ns}${Table}Merge`  | `sqlItemMerge`                          |
 
-These are bound **automatically** — no handler files are needed.  To use them from a test or
+These are bound **automatically** — no handler files are needed. To use them from a test or
 orchestrator, import them by name in the `handler:{}` proxy:
 
 ```typescript
-handler: {sqlItemAdd, sqlItemFind, sqlItemRemove}
+handler: {
+    (sqlItemAdd, sqlItemFind, sqlItemRemove);
+}
 ```
 
 ---
@@ -382,12 +390,12 @@ framework stores synthetic handlers under both keys to support this pattern.
 The adapter also exposes schema operations as callable handler methods for cases where explicit
 imperative control is needed (e.g., integration test cleanup or one-off migrations):
 
-| Handler                  | Description                                                  |
-| ------------------------ | ------------------------------------------------------------ |
-| `sqlSchemaTableSync`     | Create or alter a specific table to match a TypeBox schema   |
-| `sqlSchemaTableDrop`     | Drop a specific table                                        |
-| `sqlSchemaProcedureSync` | Create / replace a list of stored procedures                 |
-| `sqlSchemaProcedureBind` | Discover all procedures and return them as handler closures  |
+| Handler                  | Description                                                 |
+| ------------------------ | ----------------------------------------------------------- |
+| `sqlSchemaTableSync`     | Create or alter a specific table to match a TypeBox schema  |
+| `sqlSchemaTableDrop`     | Drop a specific table                                       |
+| `sqlSchemaProcedureSync` | Create / replace a list of stored procedures                |
+| `sqlSchemaProcedureBind` | Discover all procedures and return them as handler closures |
 
 For normal development the declarative config path is preferred over these helpers.
 
@@ -396,7 +404,7 @@ For normal development the declarative config path is preferred over these helpe
 ## Integration test pattern
 
 The `blong-int-adapter` mysql suite demonstrates the full declarative path in
-`mysql/server/test/test/testMysqlSchema.ts`.  The table and procedure are created by the adapter's
+`mysql/server/test/test/testMysqlSchema.ts`. The table and procedure are created by the adapter's
 `ready()` hook before any test step runs — the test does not call `sqlSchemaTableSync` or
 `sqlSchemaProcedureSync` for setup.
 

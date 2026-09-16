@@ -1,7 +1,7 @@
 import {type IMeta, handler} from '@feasibleone/blong';
 
-import * as account from './account.ts';
 import * as model from './accessModel.ts';
+import * as account from './account.ts';
 
 type KnexQb = any;
 
@@ -12,7 +12,8 @@ type KnexQb = any;
  * Reuses `core.resource.ensure` to create the resource-backed row (the generic
  * knex `add` cannot — the PK is `uidNotNull`, not `uuid()`), and
  * `core.triple.merge` for the `hasRole` edges. Credentials are hashed via the
- * shared password library.
+ * shared password library. A submitted `matrix` seeds the user's own
+ * scope-level `access_acl` rules.
  */
 export default handler(
     ({
@@ -20,13 +21,14 @@ export default handler(
             'db/coreResourceEnsure': coreResourceEnsure,
             'db/coreTripleMerge': coreTripleMerge,
         },
-        lib: {hashPassword, credentialPolicyParams},
+        lib: {hashPassword, credentialPolicyParams, ulid, crockfordDecode},
     }) => ({
         async accessUserAdd(
             params: {
                 user?: {emailAddress?: string; isActive?: boolean; userName?: string};
                 credential?: Array<Record<string, unknown>>;
                 role?: Array<{roleId?: string; roleName?: string; granted?: boolean}>;
+                matrix?: model.AclMatrixRow[];
             },
             $meta: IMeta,
         ): Promise<Record<string, unknown>> {
@@ -63,6 +65,18 @@ export default handler(
                 .filter((x): x is string => !!x);
             if (roleIds.length) {
                 await model.syncEdges(qb, coreTripleMerge, userIdHex, 'hasRole', roleIds, $meta);
+            }
+            if (Array.isArray(params.matrix) && params.matrix.length) {
+                await model.syncAclMatrix(
+                    qb,
+                    {
+                        coreResourceEnsure,
+                        newAclId: () => Buffer.from(crockfordDecode(ulid())),
+                    },
+                    userIdHex,
+                    params.matrix,
+                    $meta,
+                );
             }
             return {
                 user: {

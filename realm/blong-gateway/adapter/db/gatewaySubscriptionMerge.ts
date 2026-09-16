@@ -16,6 +16,7 @@ type KnexQb = any;
 export default handler(
     ({
         handler: {
+            'db/accessRoleEnsure': accessRoleEnsure,
             'db/coreResourceEnsure': coreResourceEnsure,
             'db/coreTripleMerge': coreTripleMerge,
         },
@@ -63,16 +64,18 @@ export default handler(
                 );
 
                 // The bundle's role IS the bundle resource (bundleId === roleId).
-                const {resourceId: roleId} = await coreResourceEnsure<{resourceId: string}>(
+                // A role the seed names must exist: the bit is allocated when it
+                // is new (it used to be hardcoded to 0 and silently skipped).
+                const {role: ensuredRole} = await accessRoleEnsure<{role: {roleId: string}}>(
                     {
-                        name: subDef.bundle ?? '',
-                        typeAlias: 'access.role',
-                        table: 'access_role',
-                        extraColumns: {roleBit: 0, description: `${subDef.bundle} bundle role`},
-                        keyName: 'roleId',
+                        role: {
+                            roleName: subDef.bundle ?? '',
+                            description: `${subDef.bundle} bundle role`,
+                        },
                     },
                     $meta,
                 );
+                const roleId = ensuredRole.roleId;
 
                 // Subscription row — upsert on (applicationId, bundleId) so the
                 // seed is idempotent across server restarts.

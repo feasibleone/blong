@@ -38,7 +38,7 @@ export default server(() => ({
         },
         integration: {
             watch: {
-                test: ['test.registration.flow'],
+                test: ['test.registration.flow', 'test.acl.flow'],
             },
         },
     },

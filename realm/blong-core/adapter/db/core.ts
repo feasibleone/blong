@@ -33,3 +33,31 @@ export async function ensureType(qb: KnexQb, typeAlias: string): Promise<number>
     const inserted = await qb.select('typeId').from('core_type').where({typeAlias}).first();
     return inserted!.typeId;
 }
+
+/**
+ * Next value for a UNIQUE counter column: `MAX(column) + 1`, starting at 0.
+ *
+ * Allocation is **monotonic and never reuses a value freed by a deleted row**,
+ * on purpose.  Such a counter is part of the record's identity on the wire — an
+ * `access_role.roleBit` is the bit *position* of the role in a minted token's
+ * `per` permission mask — so handing a freed value to a new record could
+ * silently give a still-valid token the new record's permissions.  Gaps after a
+ * delete are the price, and they are harmless.
+ *
+ * Throws when the space is exhausted rather than wrapping around.
+ */
+export async function nextCounter(
+    qb: KnexQb,
+    table: string,
+    column: string,
+    max: number,
+): Promise<number> {
+    const row = (await qb(table).max(`${column} as value`).first()) as
+        | {value?: number | string | null}
+        | undefined;
+    const next = Number(row?.value ?? -1) + 1;
+    if (!Number.isFinite(next) || next > max) {
+        throw new Error(`No free ${table}.${column} left (the highest allowed value is ${max})`);
+    }
+    return next;
+}

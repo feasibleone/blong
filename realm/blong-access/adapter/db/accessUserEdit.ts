@@ -10,19 +10,24 @@ type KnexQb = any;
  *
  * The standard `access_user` update runs through the automatic knex CRUD
  * (`super.exec`). Credential rows are then synced (only when the form actually
- * submitted a `credential` array — otherwise they are left untouched), and the
- * `hasRole` edges are brought in line with the submitted `role` array.
+ * submitted a `credential` array — otherwise they are left untouched), the
+ * `hasRole` edges are brought in line with the submitted `role` array, and the
+ * `matrix` array updates the user's own scope-level `access_acl` rules.
  */
 export default handler(
     ({
-        handler: {'db/coreTripleMerge': coreTripleMerge},
-        lib: {hashPassword, credentialPolicyParams},
+        handler: {
+            'db/coreResourceEnsure': coreResourceEnsure,
+            'db/coreTripleMerge': coreTripleMerge,
+        },
+        lib: {hashPassword, credentialPolicyParams, ulid, crockfordDecode},
     }) => ({
         async accessUserEdit(
             params: {
                 user?: {userId?: string; emailAddress?: string; isActive?: boolean};
                 credential?: Array<Record<string, unknown>>;
                 role?: Array<{roleId?: string; roleName?: string; granted?: boolean}>;
+                matrix?: model.AclMatrixRow[];
             },
             $meta: IMeta,
         ): Promise<unknown> {
@@ -45,6 +50,18 @@ export default handler(
                     .map(r => model.binHex(r.roleId))
                     .filter((x): x is string => !!x);
                 await model.syncEdges(qb, coreTripleMerge, hex, 'hasRole', roleIds, $meta);
+            }
+            if (Array.isArray(params.matrix)) {
+                await model.syncAclMatrix(
+                    qb,
+                    {
+                        coreResourceEnsure,
+                        newAclId: () => Buffer.from(crockfordDecode(ulid())),
+                    },
+                    hex,
+                    params.matrix,
+                    $meta,
+                );
             }
             return result;
         },

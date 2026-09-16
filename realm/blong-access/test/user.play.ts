@@ -56,6 +56,10 @@ test.describe('Access User', () => {
                 pivot: true,
                 fields: {granted: true},
             },
+            // Effective-ACL panel (view-only).  The Record Access matrix has its
+            // own spec (`matrix.play.ts`) — its rows are the graph's roles and
+            // users, so capturing it here would drift as other specs mutate them.
+            {object: 'effective', tab: 'Access', allowAdd: false, screenshots: {empty: false}},
         ],
     });
 });

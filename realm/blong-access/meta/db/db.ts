@@ -44,6 +44,10 @@ export default handler(() => ({
                 'access.flow': {order: 207, resource: true},
                 'access.session': 208,
                 'access.audit': 209,
+                // Record-level ACL rules (explicit allow/deny per principal,
+                // action and target).  Not resource-backed: a rule is identified
+                // by its ULID and displayed through read-time name joins.
+                'access.acl': 210,
             },
             procedurePaths: [_schemaDir],
             accessPathRefresh: true,

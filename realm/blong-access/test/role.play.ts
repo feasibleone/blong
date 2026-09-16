@@ -50,6 +50,11 @@ test.describe('Access Role', () => {
                 fields: {granted: true},
                 editFields: {granted: false},
             },
+            // The effective-ACL panel is view-only (`actions.allowAdd: false`).
+            // The Record Access matrix is *not* captured here: its rows are the
+            // graph's roles and users, so its content shifts as other specs create
+            // and delete them — it has its own spec (`matrix.play.ts`).
+            {object: 'effective', tab: 'Access', allowAdd: false, screenshots: {empty: false}},
         ],
     });
 });

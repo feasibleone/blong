@@ -304,4 +304,57 @@ export default schema(async ({lib: {type}}) => ({
         detail: type.stringNull(),
         occurredAt: type.dateTimeNotNull(),
     }),
+
+    /**
+     * Record-level access control list.
+     *
+     * One row grants or refuses one action on one target for one principal:
+     *
+     * - `principalId` — a user, role, unit or capability resource.  A row on the
+     *   **user** is an *explicit* grant; a row on a role/unit the user inherits is
+     *   the *implicit* half of the ACL (the hierarchy-derived grant).
+     * - `actionId` — the `access_action` resource, i.e. the guarded method.
+     * - `targetKind` — `record` (a single row of the guarded table) or `scope`
+     *   (every record linked to that scope through the table's declared scope
+     *   predicates, e.g. `belongsTo` / `isPartOf`).
+     * - `effect` — `allow` / `deny`.  **A deny always wins**, which is how an
+     *   implicitly enabled record is explicitly forbidden.
+     *
+     * The effective ACL is evaluated in SQL at query time (no materialized
+     * effective table) — see `ISchemaTable.acl` and the adapter's `acl` helpers.
+     * A ULID PK is used because the row is a rule, not a named entity.
+     */
+    acl: type.Object(
+        {
+            aclId: type.ulid(),
+            /** The principal the rule applies to (user / role / unit / capability). */
+            principalId: type.uidNotNull(),
+            /** The guarded action resource (`access_action`). */
+            actionId: type.uidNotNull(),
+            /** The guarded record, or a scope node when `targetKind` is `scope`. */
+            targetId: type.uidNotNull(),
+            /** `record` — a single record; `scope` — every record in that scope. */
+            targetKind: type.stringNotNull({maxLength: 8}),
+            /** `allow` or `deny`; a deny always wins over every allow. */
+            effect: type.stringNotNull({maxLength: 8}),
+            isActive: type.booleanNotNull(),
+        },
+        {
+            constraints: {
+                foreign: {
+                    principalId: 'core.resource.resourceId',
+                    actionId: 'access.action.actionId',
+                    targetId: 'core.resource.resourceId',
+                },
+                unique: {
+                    principalActionTarget: {
+                        columns: ['principalId', 'actionId', 'targetKind', 'targetId'],
+                    },
+                },
+                index: {
+                    target: {columns: ['actionId', 'targetKind', 'targetId']},
+                },
+            },
+        },
+    ),
 }));

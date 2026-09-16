@@ -13,11 +13,11 @@ description:
 
 # Declarative Schema Management (blong-schema)
 
-> **Scaffold, don't transcribe.** Generate schema files with the primitive API
-> (`[KUKUM_API]` in `_shared/conventions.md`) and edit the result:
+> **Scaffold, don't transcribe.** Generate schema files with the primitive API (`[KUKUM_API]` in
+> `_shared/conventions.md`) and edit the result:
 > `kukum schema add --subject=<realm> --object=<entity> --kind=table|register|procedure`,
-> `kukum seed add --subject=<realm> --object=<entity> --kind=prod|test`.
-> The skeletons below are what it emits — use them to read and edit, not to type out.
+> `kukum seed add --subject=<realm> --object=<entity> --kind=prod|test`. The skeletons below are
+> what it emits — use them to read and edit, not to type out.
 
 ## [CRITICAL_GUARDRAILS]
 
@@ -202,6 +202,26 @@ entity, like the access realm's `user`/`role`/`capability`/`action` tables) you 
    `coreResourceEnsure` db handler) and pass the PK explicitly — this is the pattern used before
    `resource: true` existed and for tables whose add logic is otherwise custom (e.g. credential
    hashing).
+
+`resource` also takes an object, `resource: {nameColumn: 'legalName'}`, for a table whose real
+display column is not the virtual `${object}Name`: `core_resource.resourceName` is then read from —
+and renamed with — that column, and no virtual `${object}Name` field is synthesised (the real column
+_is_ the label). `party.organization` / `party.unit` use this. Declaring `edges` does **not** switch
+on resource mode — that is `resource: true` (or the object form) alone.
+
+A table can also opt into the **record-level ACL**:
+
+```ts
+'party.person': {
+    resource: {nameColumn: 'lastName'},
+    acl: {mode: 'scoped', scopes: ['belongsTo'], addScope: {predicate: 'belongsTo'}},
+},
+```
+
+With `mode: 'scoped'` the generic CRUD checks `get`/`edit`/`remove` against the rules in
+`access_acl`, filters `find` **before paging**, checks `add` against the scope carried by the
+payload and filters the auto-bound dropdown lists; `mode: 'explicit'` consults only per-record
+rules. See the blong-core skill and the `blong-access` README for the semantics.
 
 `ulid` PKs (`type.ulid()`) ARE handled by the generic `add` (generated via the `ulidx` monotonic
 factory, same as `uuid`). Both are stored as `binary(16)`.

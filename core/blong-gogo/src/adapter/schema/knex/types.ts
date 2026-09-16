@@ -78,6 +78,82 @@ export interface IEdgeBinding {
     reverse?: boolean;
 }
 
+/**
+ * Resource-backed display-name override.
+ *
+ * By default the display name of a resource-backed row is the virtual
+ * `${object}Name` field.  A table whose real display column is named differently
+ * (e.g. `party_organization.legalName`) declares it here: the `core_resource` row
+ * is then named from that column — and renamed when the column changes — and no
+ * virtual `${object}Name` field is synthesised (the real column *is* the label).
+ */
+export interface IResourceTableSpec {
+    /** Real column of the entity table that supplies `core_resource.resourceName`. */
+    nameColumn?: string;
+}
+
+/**
+ * Record-level (ACL) guard for a table.
+ *
+ * The ACL lives in `access_acl` rows — `(principalId, actionId, targetId,
+ * targetKind, effect)` — where `principalId` is a user, role, unit or capability,
+ * `targetId` is the guarded record (or a scope node) and `effect` is `allow` /
+ * `deny` (deny always wins).
+ */
+export interface IAclTableSpec {
+    /**
+     * - `none` (default) — the entity is not record-guarded; nothing changes.
+     * - `scoped` — a grant may target a scope; it covers the records linked to
+     *   that scope through one of the declared `scopes` predicates.
+     * - `explicit` — only per-record grants count (`scopes` is not consulted).
+     */
+    mode?: 'none' | 'scoped' | 'explicit';
+    /**
+     * Predicates linking a record of this table to the scope(s) it belongs to
+     * (e.g. `belongsTo`, `isPartOf`).  Consulted in `scoped` mode.
+     */
+    scopes?: string[];
+    /**
+     * The record is *its own* scope — for a table whose scopes point at it
+     * rather than the other way round (`party.organization`, which its units
+     * belong to).  Its scope set is the record itself plus its parent scopes,
+     * and `scopes` is ignored.  There is no unscoped fallback: a record is only
+     * reachable through a grant that covers it or one of its parents.
+     */
+    selfScope?: boolean;
+    /**
+     * Where the scope of a NEW record comes from.  `add` has no record key yet,
+     * so the check runs against the scope named in the payload (`column`, e.g.
+     * `unitId`) and/or carried by a declared scope edge (`predicate`, e.g.
+     * `belongsTo`).
+     */
+    addScope?: {
+        /** Payload column holding the scope's resource id. */
+        column?: string;
+        /** Scope predicate whose payload array holds the scope ids. */
+        predicate?: string;
+    };
+}
+
+/**
+ * Adapter-level ACL rules shared by every guarded table (see `ISchemaTable.acl`).
+ * The defaults match `realm/blong-access` and its `access_pathRefresh()` procedure.
+ */
+export interface IAclAdapterConfig {
+    /** The ACL table (default `access_acl`). */
+    table?: string;
+    /** The action entity table whose PK is the action resource (default `access_action`). */
+    actionTable?: string;
+    /** `core.path` pathType whose destinations are the caller's roles (default `access.effectiveRole`). */
+    rolePathType?: string;
+    /** `core.path` pathType whose destinations are the caller's unit scopes (default `access.effectiveScope`). */
+    scopePathType?: string;
+    /** `core_triple` predicate linking a principal to a unit (default `belongsTo`). */
+    unitPredicate?: string;
+    /** `core_triple` predicate linking a principal to a scope directly (default `hasScope`). */
+    scopePredicate?: string;
+}
+
 export interface ISchemaTable {
     /**
      * The TypeBox `TObject` for the table.  Optional when the definition is
@@ -95,8 +171,17 @@ export interface ISchemaTable {
      *  - `find`/`get` join `resourceName` as `${object}Name`;
      *  - `edit` renames `core_resource.resourceName` from `${object}Name`;
      *  - `remove` deletes the `core_resource` row (and the declared `edges`).
+     *
+     * Pass `{nameColumn}` when the table's real display column is not
+     * `${object}Name` (see `IResourceTableSpec`).
      */
-    resource?: boolean;
+    resource?: boolean | IResourceTableSpec;
+    /**
+     * Record-level (ACL) guard: which predicates are narrowed to the records the
+     * caller may act on, and where a new record's scope comes from.  Defaults to
+     * `mode: 'none'` (unguarded) when omitted.
+     */
+    acl?: IAclTableSpec;
     /**
      * Declarative graph-edge master-detail bindings (`core_triple` edges such
      * as `hasRole` / `hasCapability`). `get` attaches the edge rows as a
@@ -224,6 +309,12 @@ export interface IConfig {
          */
         procedurePaths?: string[];
         accessPathRefresh?: boolean; // When `true`, calls `access_pathRefresh()` after schema sync/seed (default: `false`).
+        /**
+         * Record-level (ACL) rules shared by every table declaring
+         * `ISchemaTable.acl` — the ACL table name and the graph predicates/path
+         * types used to resolve the caller's principals and a record's scopes.
+         */
+        acl?: IAclAdapterConfig;
     };
     /**
      * When `true`, mocks some handlers

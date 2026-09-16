@@ -116,7 +116,8 @@ Hard rules — apply first, never contradict.
 - **Conflict priority.** handler/runtime pattern → API definition → adapters/orchestrators → DRY →
   RAD → DMMT → KISS.
 - **Reusable realms.** `realm/blong-core` (resource/party/access graph), `realm/blong-party`,
-  `realm/blong-access` (RBAC: users, roles, capabilities, actions, authz).
+  `realm/blong-access` (RBAC: users, roles, capabilities, actions, authz — plus the opt-in
+  record-level ACL).
 
 ## [CRITICAL_DEPENDENCY_PATHS]
 

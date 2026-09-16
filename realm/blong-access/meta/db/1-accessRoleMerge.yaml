@@ -1,25 +1,23 @@
 resourceType: access.role
 role:
-  - roleBit: 0
-    description: Admin role with full access
+  # No `roleBit` here: a bit is allocated when the role is first created
+  # (`MAX(roleBit) + 1`, never reused) by this realm's `access.role.merge`.
+  # It is the role's position in a token's `per` permission mask, so it is
+  # assigned once and never moves: a fresh database numbers these roles 0..5
+  # exactly as a hand-written table did, while adding a role here can no longer
+  # collide with — or silently destroy — an existing one.
+  - description: Admin role with full access
     name: Admin
-  - roleBit: 1
-    description: Office Manager role with limited access
+  - description: Office Manager role with limited access
     name: Manager
-  - roleBit: 2
-    description: Customer Service role with limited access
+  - description: Customer Service role with limited access
     name: Customer Service
-  - roleBit: 3
-    description: Customer role with limited access
+  - description: Customer role with limited access
     name: Customer
-  - roleBit: 4
-    description: Self-registered guest role with basic access rights
+  - description: Self-registered guest role with basic access rights
     name: Guest
   # Test-only role used by `meta/dbTest/accessAuthorizationMerge.yaml` to prove
   # the login-eligibility gate refuses login/refresh (its role grants no
-  # `accessLogin` action).  Pre-seeded with a free roleBit because the merge
-  # handler (`accessAuthorizationMerge`) hardcodes roleBit 0, which would
-  # collide with Admin's bit 0 and destroy the Admin row on first seed.
-  - roleBit: 5
-    description: Role with no login capability (test-only)
+  # `accessLogin` action).
+  - description: Role with no login capability (test-only)
     name: NoLogin

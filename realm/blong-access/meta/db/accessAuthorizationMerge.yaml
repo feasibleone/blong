@@ -27,3 +27,20 @@ policy:
       keyLength: 64
       digest: sha512
     isActive: 1
+
+# Record-level ACL: the Admin role is granted every guarded action on ALL records
+# (`target: '*'` stores the rule with `targetKind: all`), so an administrator is
+# never narrowed by the record-level ACL — including records created later, which
+# no scope could cover yet.  A `deny` rule still wins over it: the party realm's
+# test seed uses exactly that to hide one organization from the admin as well.
+# List the guarded actions here as realms opt their tables in.
+acl:
+  - principal: Admin
+    principalType: role
+    target: '*'
+    effect: allow
+    actions: >-
+      party.person.find,party.person.get,party.person.add,party.person.edit,party.person.remove,
+      party.unit.find,party.unit.get,party.unit.add,party.unit.edit,party.unit.remove,
+      party.organization.find,party.organization.get,party.organization.add,
+      party.organization.edit,party.organization.remove

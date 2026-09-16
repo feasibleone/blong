@@ -1,7 +1,10 @@
 /**
  * Organization CRUD — Browse, Create, Edit full-stack tests.
  *
- * Covers text, date, and textarea widget types.
+ * `party.organization` is guarded by a record-level ACL whose scope *is* the
+ * organization (units point at it, `selfScope`).  The Admin role carries the
+ * wildcard allow-all rule the access realm seeds, so an organization it creates
+ * stays readable — that is what makes the create flow work.
  */
 import {expect, test} from '@feasibleone/blong-browser/playwright';
 import {browseModel, createAndEditModel} from '@feasibleone/blong-browser/playwright/model';
@@ -31,5 +34,6 @@ test.describe('Party Organization', () => {
         editFields: {
             'organization.legalName': 'Test Playwright Organization Edited',
         },
+        search: 'Test Playwright',
     });
 });
