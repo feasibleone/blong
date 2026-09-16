@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.34.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.33.0...blong-gogo-v1.34.0) (2026-09-16)
+
+
+### Features
+
+* ACL ([0278431](https://github.com/feasibleone/blong/commit/027843153849ece048be0e61de51594f917a6277))
+
 ## [1.33.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.32.0...blong-gogo-v1.33.0) (2026-09-15)
 
 
