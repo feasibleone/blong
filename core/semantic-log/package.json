@@ -1,6 +1,6 @@
 {
     "name": "@feasibleone/semantic-log",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "private": true,
     "description": "Semantic logging front door: standard readable output with locally-minted cross-reference ids",
     "type": "module",
