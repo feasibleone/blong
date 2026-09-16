@@ -33,8 +33,12 @@ active (26)
 - `D-167` · ci — Hidden report folders need include-hidden-files on upload-artifact
 - `D-169` · cross-cutting — The legacy theme frictions are dropped as already covered by the theme
   refs
-- `D-171` · ci — The metrics commit carries skip ci
 - `D-170` · ci — One report is rendered once and posted to both places
+- `D-172` · ci — The metrics baseline reaches the branch through a stacked pull request
+
+superseded (1)
+
+- `D-171` · ci — The metrics commit carries skip ci
 
 <!-- /memory:index -->
 
@@ -369,18 +373,6 @@ border snapping. Only one sub-detail had no home anywhere, Vite's ?direct query 
 page.setContent() harness able to load raw theme CSS, so that alone was migrated. Reconsider if the
 theme skill references are ever retired.
 
-### D-171 — The metrics commit carries skip ci
-
-> _2026-09-15 · ci · active_
-
-The assumption that a workflow-token push cannot start a run proved false in practice: metrics
-commits did start runs, attributed to `github-actions[bot]`, and the most recent landed as
-`action_required` - a maintainer had to approve a full re-run of CI to commit two files the previous
-run had already validated. `paths-ignore` cannot suppress that, because it only fires when those
-files are the pull requests only changes. Trade-off recorded where it bites: a skipped workflow
-leaves its checks pending, which is safe only while the branch requires no status checks (blong
-`main` is unprotected).
-
 ### D-170 — One report is rendered once and posted to both places
 
 > _2026-09-15 · ci · active_
@@ -396,4 +388,46 @@ unconditionally, never as an alternative to the step summary: it is the artifact
 posted from, and writing it only when no step summary existed left CI with a summary and no
 artifact, hence no comment.
 
+### D-172 — The metrics baseline reaches the branch through a stacked pull request
+
+> _2026-09-16 · ci · active_
+
+Committing .github/metrics.json and .github/history.jsonl onto the pull-request head made that
+skipped commit the branch tip, so the tip showed checks that never run instead of the checks of the
+commit that was actually tested - and on a release-please branch, which the bot rewrites whenever
+main moves, the trick of pushing onto it was fragile anyway. commit-metrics now does one thing: it
+pushes the two files to a metrics branch named after the head branch and opens a pull request from
+there onto the branch under test, kept at exactly one commit ahead by a force-push on every run, so
+it rebases itself onto a branch that moved instead of conflicting with it and never accumulates
+commits. The head branch keeps its own commits and their real checks, the baseline becomes
+reviewable and optional (an unmerged one is simply rebuilt by the next run), and nothing is skipped:
+the push and the pull request both use the workflow token, whose events start no run, so the stacked
+commit carries no skip-ci marker - a marker there would travel into the head branch through the
+merge commit and suppress the run for the merged result. No mode input: the old push-onto-the-branch
+behaviour is gone rather than kept as an alternative, so the action has three inputs and rush.yaml
+no longer has a metrics-commit-mode input either. That makes the caller responsible for
+contents:write plus pull-requests:write and for the repository setting that lets GitHub Actions open
+pull requests; with it off the branch is still pushed and the action warns, and the next run
+retries. Verified against a bare repository standing in for GitHub plus a stubbed REST API: create,
+refresh (PATCH), rebase after the branch moved, and skip when the baseline is already merged. D-158
+still holds, except for where the files land; D-171 is superseded, since no commit is made on the
+branch at all.
+
 ## Superseded
+
+### D-171 — The metrics commit carries skip ci
+
+> _2026-09-15 · ci · superseded_
+
+The assumption that a workflow-token push cannot start a run proved false in practice: metrics
+commits did start runs, attributed to `github-actions[bot]`, and the most recent landed as
+`action_required` - a maintainer had to approve a full re-run of CI to commit two files the previous
+run had already validated. `paths-ignore` cannot suppress that, because it only fires when those
+files are the pull requests only changes. Trade-off recorded where it bites: a skipped workflow
+leaves its checks pending, which is safe only while the branch requires no status checks (blong
+`main` is unprotected).
+
+Superseded by `D-172`.
+
+Superseded: the action no longer has a mode that commits onto the pull-request branch, so no metrics
+commit and no skip-ci marker exists in any flow.

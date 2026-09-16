@@ -5,9 +5,9 @@ on:
   pull_request:
     branches: [main]
     # A pull request whose only changes are the rebuilt metrics/history baseline
-    # skips CI entirely. The CI run itself commits those files back onto the pull
-    # request branch; that commit carries `[skip ci]`, because a `paths-ignore`
-    # filter cannot help once the branch also holds code changes.
+    # skips CI entirely. CI never commits those files onto the pull request branch —
+    # the reusable workflow stacks them on a `metrics/` branch of their own — so
+    # this only fires for a pull request that carries nothing else.
     paths-ignore:
       - .github/metrics.json
       - .github/history.jsonl
@@ -15,7 +15,8 @@ on:
 jobs:
   build:
     permissions:
-      # commit-metrics pushes the baseline files to the pull request branch.
+      # contents:write pushes the stacked metrics branch; pull-requests:write opens
+      # the pull request that carries it onto the branch under test.
       contents: write
       packages: write
       security-events: write

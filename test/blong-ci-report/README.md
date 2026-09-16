@@ -22,7 +22,8 @@ rush ci-coverage        →  coverage/lcov.info
 rush ci-report          →  report-data/, ci-report.md, metrics.json,
                            .github/metrics.json + .github/history.jsonl (rebuilt),
                            ci-failures/publish/ (only when something failed)
-commit-metrics          →  commits the two .github files onto the PR branch
+commit-metrics          →  stacks the two .github files on `metrics/<branch>`
+                           and opens a pull request onto the branch under test
 deploy-report           →  publishes the per-package reports and the failures bundle
 ```
 
@@ -72,6 +73,12 @@ matches a CI one. The printed paths mirror exactly what CI produces, including t
   one pull request accumulate data.
 - The failures bundle must keep `failures.json` self-sufficient: an agent is expected to read it
   instead of the CI log or the Allure HTML.
+- The baseline reaches the base branch through a **stacked pull request** (`metrics/<branch>` → the
+  branch under test, opened by `commit-metrics`), never as a commit on the branch itself: a metrics
+  commit is skipped, so committing it would leave the branch tip with checks that never run and hide
+  the checks of the commit that was actually tested. Merging the stacked pull request is what carries
+  it on to `main`; leaving it unmerged is harmless, because the next run rebuilds the baseline as
+  "base branch + this run" and refreshes the same pull request.
 - Do not add a second rendering step in the workflow. The report is complete when `ci-report`
   finishes, which is what keeps the action summary and the pull-request comment identical; the
   published URLs are _predicted_ there (base URL + workflow slug + run number) rather than collected
