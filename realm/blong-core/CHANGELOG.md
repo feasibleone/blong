@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/feasibleone/blong/compare/blong-core-v1.2.0...blong-core-v1.3.0) (2026-09-16)
+
+
+### Features
+
+* ACL ([0278431](https://github.com/feasibleone/blong/commit/027843153849ece048be0e61de51594f917a6277))
+
 ## [1.2.0](https://github.com/feasibleone/blong/compare/blong-core-v1.1.2...blong-core-v1.2.0) (2026-09-15)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.17.0...blong-browser-v1.18.0) (2026-09-16)
+
+
+### Features
+
+* ACL ([0278431](https://github.com/feasibleone/blong/commit/027843153849ece048be0e61de51594f917a6277))
+
 ## [1.17.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.16.4...blong-browser-v1.17.0) (2026-09-15)
 
 
