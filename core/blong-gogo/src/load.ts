@@ -28,7 +28,19 @@ import {devEncryptKey, devSignKey} from './devKeys.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
-const extension = '.ts';
+
+/**
+ * The extension of the source that is about to be imported — `.ts`, this file's own.
+ *
+ * Every loader below spells its specifier `import('./Mcp' + extension)`. Written as
+ * a literal, the concatenation is folded by the bundler, the specifier gets resolved
+ * and the module is bundled: the `@vite-ignore` comment silences the warning but does
+ * not stop the resolution. That is how `fastify` and the semantic-log service, or
+ * `Gateway`, `RpcServer`, `Mcp` and the rest of the server half of the platform map,
+ * ended up in browser builds whose `rootKind` never reaches them. Deriving the value
+ * from this module's own url keeps the meaning while leaving those specifiers opaque.
+ */
+const extension = import.meta.url.endsWith('.ts') ? '.ts' : '.js';
 
 /**
  * A module url as it is compared: the `file://` scheme is not part of a file's

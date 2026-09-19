@@ -23,11 +23,28 @@
  */
 import react from '@vitejs/plugin-react';
 import {dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import gzipPlugin from 'rollup-plugin-gzip';
 import {type UserConfig, defineConfig, mergeConfig} from 'vite';
 import {brotliCompressSync} from 'zlib';
 
 const dir = (url: string) => dirname(url.replace(/file:\//g, ''));
+
+/**
+ * This package, as source — what a suite bundles instead of the published bundle.
+ *
+ * `exports` of `@feasibleone/blong-browser` sends a production build to
+ * `dist/blong-browser.es.js`, and the package's own `build` script emits declarations
+ * only: the bundle is a *publish* artifact, produced by the manual `build_` script,
+ * which no rush build and no workflow in this repository runs. A suite's `vite build`
+ * therefore resolved a file that either does not exist or is whatever a previous
+ * manual run left behind — which is how `@feasibleone/blong-suite` came to fail with
+ * `"DiagramViewer" is not exported by …/dist/blong-browser.es.js` after the viewer was
+ * added, and would have failed the same way on a clean checkout. Bundling the source
+ * is what the dev server already does (the `development` export condition), so the two
+ * now agree; the published package is unchanged for consumers outside the monorepo.
+ */
+const browserEntry = fileURLToPath(new URL('./index.ts', import.meta.url));
 
 export interface IBlongViteOptions {
     /**
@@ -71,6 +88,33 @@ export function defineBlongViteConfig({
             proxy: {
                 '/rpc': rpcTarget,
             },
+            /**
+             * What the watcher must not look at: the artifacts the run itself
+             * writes.
+             *
+             * Playwright's output directory is `.playwright/` here — the default
+             * `test-results/` is in Vite's own ignore list, which is why this was
+             * never a problem before the tooling moved it. Every trace resource it
+             * writes is an `.html` file inside the served root, so the watcher sees
+             * it, the HTML handling treats it as a page, and the browser is told to
+             * **reload** — mid-test. One failing test therefore reloads every test
+             * that follows it, which is how a single flake becomes a run of
+             * failures. The rest of the list is the same class of file: anything a
+             * run writes into its own package.
+             */
+            watch: {
+                ignored: [
+                    '**/.git/**',
+                    '**/node_modules/**',
+                    '**/.playwright/**',
+                    '**/allure-results/**',
+                    '**/allure-report/**',
+                    '**/.ci-report/**',
+                    '**/.tap/**',
+                    '**/coverage/**',
+                    '**/storybook-static/**',
+                ],
+            },
             fs: {
                 // Allow Vite to serve files from the Rush pnpm virtual store.
                 //
@@ -92,13 +136,21 @@ export function defineBlongViteConfig({
             },
         },
         resolve: {
-            alias: {
+            alias: [
+                // Exact match, so the package's own subpath exports (`/vite`,
+                // `/playwright`, `/browser.js`) keep resolving through `exports`.
+                {find: /^@feasibleone\/blong-browser$/, replacement: browserEntry},
                 // In the monorepo, point @feasibleone/blong directly at source
                 // so Vite picks up TypeScript changes without a build step.
-                '@feasibleone/blong/types': new URL(import.meta.resolve('@feasibleone/blong/types'))
-                    .href,
-                '@feasibleone/blong': new URL(import.meta.resolve('@feasibleone/blong')).pathname,
-            },
+                {
+                    find: '@feasibleone/blong/types',
+                    replacement: new URL(import.meta.resolve('@feasibleone/blong/types')).href,
+                },
+                {
+                    find: '@feasibleone/blong',
+                    replacement: new URL(import.meta.resolve('@feasibleone/blong')).pathname,
+                },
+            ],
         },
     };
 
