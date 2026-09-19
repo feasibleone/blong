@@ -1305,9 +1305,6 @@ importers:
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
         version: link:../blong-login
-      '@feasibleone/blong-realm':
-        specifier: workspace:^1.0.0
-        version: link:../../core/blong-realm
       '@feasibleone/blong-server':
         specifier: workspace:^1.0.0
         version: link:../../core/blong-server

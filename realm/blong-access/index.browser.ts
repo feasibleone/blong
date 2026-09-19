@@ -7,6 +7,13 @@ import pkg from './package.json' with {type: 'json'};
  * Wires the built-in blong-browser realm (portal, RPC, auth) around the access
  * realm so the access model pages (Browse/New/Open) can run against the live
  * server, e.g. for the Playwright suite of this package.
+ *
+ * It names no other page-owning realm. It used to load blong-realm for its
+ * hand-written pages, and that made the two packages depend on each other — each
+ * suite loaded the other's realm, which Rush rejects as a workspace cycle. The
+ * composed portal is still proved, by the realms that host more than one: the
+ * gateway and suite packages load both and assert the merged menu
+ * (`test/portalMerge.play.ts`).
  */
 export default browser(blong => ({
     url: import.meta.url,
@@ -19,9 +26,6 @@ export default browser(blong => ({
         access: blong.type.Object({}),
     }),
     children: [
-        async function blong() {
-            return import('@feasibleone/blong-realm/browser.ts');
-        },
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
