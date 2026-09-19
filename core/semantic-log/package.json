@@ -1,11 +1,14 @@
 {
     "name": "@feasibleone/semantic-log",
     "version": "1.0.0",
-    "private": true,
     "description": "Semantic logging front door: standard readable output with locally-minted cross-reference ids",
     "type": "module",
     "exports": {
-        ".": "./index.ts"
+        ".": "./index.ts",
+        "./emitter": "./emitter.ts",
+        "./service": "./service.ts",
+        "./capability": "./capability.ts",
+        "./attachable": "./attachable.ts"
     },
     "bin": {
         "semantic-log-flow": "./flow/run.ts",
@@ -15,15 +18,18 @@
     "scripts": {
         "build": "true",
         "ci-lint": "blong-dev lint",
+        "ci-publish": "node ../../common/scripts/install-run-rush-pnpm.js publish --access public --provenance",
         "ci-test": "blong-dev test --jobs=1",
-        "test": "tap 'src/**/*.test.ts' 'test/**/*.test.ts'"
+        "test": "blong-dev test"
     },
     "dependencies": {
+        "cacache": "^20.0.4",
         "fastify": "^5.12.3",
         "ulidx": "^2.4.1"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",
+        "@types/cacache": "^20.0.1",
         "@types/node": "^24",
         "tap": "^21.6.3"
     },

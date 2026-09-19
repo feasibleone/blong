@@ -141,6 +141,12 @@ by assumption is how a contract gets a rule nobody chose.
 - **Multi-tenancy.** Is intent or tenant a partition key for the registry and its centroids (R7)?
 - **Privacy posture.** Masked values are never transmitted — confirm that no raw value may ever be
   hashed or retained (R1, R10).
+- **Identity on every path.** A record written for an in-process test group, and one written
+  before a request reaches its route, carries no flow yet (T-104/T-105). A diagram is drawn from
+  executions, so until that is closed the renderer, the route and the realm's pages can only be
+  shown to be individually correct — nothing observed ever reaches them, and the honest
+  assertion is that they are empty. Closing it means the entry points the runtime knows become
+  the entry points the emitter is told about.
 
 ## Requirements
 
@@ -172,6 +178,12 @@ demonstration fails there rather than going unnoticed.
 | R19 | **Cross-reference identifiers.** Every record carries compact references minted locally at emit time — record, template, trace, and an inline **payload** reference for a value too large to inline — resolvable on demand through the CLI, and rendered as a clickable hyperlink where the terminal supports it. The kind set is extensible rather than fixed. The HTTP half of the payload kind is **not** delivered: the service holds no payload store, and the §5.1 row says so rather than claiming otherwise. |
 | R20 | **Standard rendered format.** At minimum timestamp, level, service, logger context, message id, operation, message and the record reference, plus structured request and response blocks when the record provides them. Field order and styling are free; presence and structure are not.                                                                                                                                                                                                                            |
 | R21 | **Inspect on demand.** Every record is retained in a bounded local cache keyed by its reference, whether or not the service received it, so a reference resolves after the emitting process has exited. The CLI resolves one reference directly, compactly, in detail or machine-readably.                                                                                                                                                                                                                           |
+
+A caveat on R20's "at minimum": the service name and the version are on every record, but they reach
+the human line — and the base fields (`pid`, `hostname`) are collected at all — only when `details`
+is asked for. The reader of a pod's log already knows which pod it came from, so repeating it on
+every line costs width and buys nothing; the inspector asks for them, because printing one record
+on demand is the case where they are the point.
 
 ## Requirements added by the leg-identity task
 

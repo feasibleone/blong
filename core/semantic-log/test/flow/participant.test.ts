@@ -15,7 +15,7 @@
  * contract, and what these tests pin is a participant using it correctly.
  */
 
-import {mkdtemp, readdir, readFile, rm} from 'node:fs/promises';
+import {mkdtemp, rm} from 'node:fs/promises';
 import {createServer, request as httpRequest} from 'node:http';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -28,6 +28,7 @@ import {
     type Participant,
     type ParticipantOptions,
 } from '../../flow/participant.ts';
+import {cacheRecordIds, openCache} from '../../src/cache.ts';
 import {
     bindInboundLeg,
     bindLeg,
@@ -483,12 +484,15 @@ t.test('a call that reaches the wrong participant is recorded as such (PRD R22)'
             () => undefined,
         );
         await participant.logger.flush();
-        const files = await readdir(join(cacheDir, 'records'));
-        const records = await Promise.all(
-            files.map(async file =>
-                JSON.parse(await readFile(join(cacheDir, 'records', file), 'utf8')),
-            ),
-        );
+        const cache = await openCache({dir: cacheDir, limit: Number.MAX_SAFE_INTEGER, readOnly: true});
+        const records: Array<{msg?: string}> = [];
+        for (const id of await cacheRecordIds(cacheDir)) {
+            const record = await cache.get(id);
+            if (record) {
+                records.push(record);
+            }
+        }
+        await cache.close();
         const mismatch = records.find(
             (record: {msg?: string}) => record.msg === 'leg declared for another participant',
         ) as {levelName?: string; fields?: Record<string, unknown>} | undefined;
@@ -570,9 +574,7 @@ t.test(
             );
             t.equal(events[0]?.service, 'payer', 'carrying the participant that emitted it');
 
-            const retainedLocally = await readdir(join(cacheDir, 'records')).catch(
-                () => [] as string[],
-            );
+            const retainedLocally = await cacheRecordIds(cacheDir);
             t.equal(
                 retainedLocally.length,
                 1,

@@ -22,6 +22,7 @@ export default browser(blong => ({
     },
     validation: blong.type.Object({
         marine: blong.type.Object({}),
+        blong: blong.type.Object({}),
     }),
     children: [
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
@@ -36,6 +37,13 @@ export default browser(blong => ({
         async function marine() {
             return import('@feasibleone/blong-marine/browser.ts');
         },
+        /**
+         * The framework realm: what has been observed, what the service has
+         * learned, what changed, and what broke — the five `blong.*` pages.
+         */
+        async function blong() {
+            return import('@feasibleone/blong-realm/browser.ts');
+        },
     ],
     config: {
         default: {
@@ -48,6 +56,7 @@ export default browser(blong => ({
             },
             login: {},
             marine: {},
+            blong: {},
         },
         integration: {
             ui: {

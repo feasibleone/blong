@@ -59,17 +59,6 @@ const FLOW_KIND: Record<FlowKind, string> = {
     inter: 'transfer.inter',
 };
 
-/**
- * What the originating scheme's own provider indicates for the corridor.
- *
- * Deliberately **not** the receiving provider's default (1.1). Two schemes
- * quoting one corridor quote different numbers, and that divergence is the only
- * reason hub A records its indication beside the corridor's rate: wire both
- * schemes to one provider and the pair it writes can never differ, so nothing
- * could tell a hub that settled on the wrong quote from a correct one.
- */
-const ORIGINATING_RATE = 1.12;
-
 export interface FlowFaults {
     /** F1: the payee refuses the transfer. */
     blockTransfers?: boolean;
@@ -127,7 +116,7 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
 
     async function participant(
         name: string,
-        role: 'payer' | 'hub' | 'fxp' | 'fxpA' | 'payee' | 'hubA' | 'proxy' | 'hubB',
+        role: 'payer' | 'hub' | 'fxp' | 'payee' | 'hubA' | 'proxy' | 'hubB',
     ): Promise<Participant> {
         const created = await createParticipant({
             name,
@@ -183,27 +172,24 @@ export async function startFlow(kind: FlowKind, options: FlowOptions = {}): Prom
         const hubA = await participant('hubA', 'hubA');
         const proxy = await participant('proxy', 'proxy');
         const hubB = await participant('hubB', 'hubB');
-        // Each scheme has its own provider, which is what makes the corridor's rate
-        // and the originating scheme's indication two different numbers — the only
-        // reason hub A records both.
-        const fxpA = await participant('fxpA', 'fxpA');
         installPayee(payee, {
             blockTransfers: faults.blockTransfers,
             stallTransfers: faults.stallTransfers,
         });
+        // One provider per corridor, asked by the receiving scheme's hub — the reference
+        // flow's shape. The originating scheme's hub quotes nothing locally: it crosses,
+        // and the corridor's price is what the payer settles on.
         installFxp(fxp, {declineAll: faults.declineRate});
-        installFxp(fxpA, {rate: ORIGINATING_RATE, declineAll: faults.declineRate});
         const fxpUrl = await start(fxp);
-        const fxpAUrl = await start(fxpA);
         const payeeUrl = await start(payee);
-        // The receiving scheme's hub owns its own provider and the payee.
+        // The receiving scheme's hub owns the payee and the corridor's provider.
         installHub(hubB, {fxpUrl, payeeUrl, rewordLiquidity: faults.rewordLiquidity});
         const hubBUrl = await start(hubB);
         installProxy(proxy, {hubBUrl});
         const proxyUrl = await start(proxy);
-        // The originating scheme's hub keeps its own provider for the local
-        // indication and has no direct route to the payee: it crosses.
-        installHubA(hubA, {proxyUrl, fxpUrl: fxpAUrl});
+        // The originating scheme's hub has no provider of its own and no direct route to
+        // the payee: it crosses.
+        installHubA(hubA, {proxyUrl});
         const hubAUrl = await start(hubA);
         installPayer(payer, {hubUrl: hubAUrl, hubName: 'hubA'});
         payerUrl = await start(payer);

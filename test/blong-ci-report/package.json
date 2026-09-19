@@ -7,9 +7,10 @@
     "scripts": {
         "build": "true",
         "ci-lint": "blong-dev lint",
-        "ci-test": "blong-dev test --jobs=1",
         "ci-report": "blong-dev ci-report",
-        "report:local": "node local.ts"
+        "ci-test": "blong-dev test --jobs=1",
+        "report:local": "node local.ts",
+        "test": "blong-dev test"
     },
     "devDependencies": {
         "@feasibleone/blong-dev": "workspace:*",

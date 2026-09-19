@@ -2,6 +2,7 @@ import type {
     ApiSchema,
     Errors,
     GatewaySchema,
+    ICallLog,
     IErrorFactory,
     IErrorMap,
     IGateway,
@@ -20,12 +21,24 @@ import {Type, type TSchema} from 'typebox';
 import Value from 'typebox/value';
 import {v4} from 'uuid';
 
+import {TRACE_HEADER, withoutCapabilities} from '@feasibleone/semantic-log/capability';
+import {CALLS_CAPABILITY, GRANT_HEADER} from './callTrace.ts';
+import {grantedCalls, grantKeyFrom} from './grant.ts';
+import {
+    callsFor,
+    declareCall,
+    enterCapability,
+    enterRequestFlow,
+    runInFlow,
+} from './semanticContext.ts';
+
 import {type TypeBoxTypeProvider} from '@fastify/type-provider-typebox';
 import type {IResolution} from './Resolution.ts';
 import type {IRpcClient} from './RpcClient.ts';
 import jwt from './jwt.ts';
 import {isExpectedError, methodId, methodParts, snakeToCamel} from './lib.ts';
 import type {IConfig as IConfigMLE} from './mle.ts';
+import isPublic from './public.ts';
 import swagger from './swagger.ts';
 
 const osName: string = [os.type(), os.platform(), os.release()].join(':');
@@ -169,6 +182,8 @@ export default class Gateway extends Internal implements IGateway {
     #resolution: IResolution;
     #log: ILog;
     #logger: ReturnType<ILog['child']> | undefined;
+    /** The gateway's own call channel: the framework's record of the calls it makes. */
+    #calls: ICallLog | undefined;
     #config: IConfig = {
         host: '0.0.0.0',
         port: 8080,
@@ -285,6 +300,13 @@ export default class Gateway extends Internal implements IGateway {
         return (
             [
                 ['x-request-id'],
+                // The framework's own identity header (see `semanticContext.ts`). It
+                // travels in the body as well, but a request that never reached the
+                // route handler — the one the hooks rejected — is only readable from
+                // here, and this is what lets it keep the flow it was given. The
+                // capabilities decided for the flow travel inside it, in its `cap`
+                // field, which the earliest hook has already rewritten.
+                ['x-semantic-trace'],
                 ['x-b3-traceid', () => v4().replace(/-/g, '')],
                 ['x-b3-spanid'],
                 ['x-b3-parentspanid'],
@@ -531,13 +553,23 @@ export default class Gateway extends Internal implements IGateway {
                         if (!('result' in value)) {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
-                            const [result, resultMeta] = (await req.method(params, meta)) ?? null;
+                            // The outermost entry mints the flow: everything this
+                            // request does downstream joins it, and the method it
+                            // was addressed to is the flow's kind.
+                            const [result, resultMeta] =
+                                (await runInFlow(meta as IMeta, methodName, () =>
+                                    req.method(params, meta),
+                                )) ?? null;
                             this._applyMeta(reply, resultMeta as {httpResponse?: unknown});
                             return result;
                         } else if (id == null) {
                             const pub = this.#local.get(pubName);
                             if (!pub) return notfound();
-                            pub.method(params, meta).catch(() => {});
+                            // A notification is an entry of its own, so it starts a
+                            // flow rather than joining one nobody sent.
+                            runInFlow(meta as IMeta, methodName, () =>
+                                pub.method(params, meta),
+                            ).catch(() => {});
                             return {
                                 jsonrpc: '2.0',
                                 result: true,
@@ -545,7 +577,57 @@ export default class Gateway extends Internal implements IGateway {
                         } else {
                             const req = this.#local.get(reqName);
                             if (!req) return notfound();
-                            const [result, resultMeta] = (await req.method(params, meta)) ?? null;
+                            // The same entry as the branch above, and it is the ordinary
+                            // request/response path — which is why it matters most: the
+                            // `onRequest` hook enters the flow with `enterWith`, and that
+                            // does not reach a handler the router schedules from its own
+                            // async resource, so for a while only the *wildcard* branch
+                            // ran inside a flow. Every call the handler made was then
+                            // declared in no flow at all, which is why no served request
+                            // ever produced a leg while tap runs did. `runInFlow` adopts
+                            // the identity the hook published when the meta carries one,
+                            // so this does not mint a second flow for the same request.
+                            const [result, resultMeta] =
+                                (await runInFlow(meta as IMeta, methodName, () =>
+                                    // Declare the hop this route is making. The route is the
+                                    // caller, and `methodName` is already the dotted wire name
+                                    // the leg grammar wants, so the leg names the method the
+                                    // request asked for. The callee's receipt then carries the
+                                    // same leg, which is what makes the drawing a call rather
+                                    // than a participation.
+                                    declareCall(
+                                        'gateway',
+                                        methodName,
+                                        () => {
+                                            // The caller's own records, written inside the leg it
+                                            // just declared: the callee answers with a receipt for
+                                            // the same leg, and a call is finished when it answers -
+                                            // so the start, the end and the failure all belong here.
+                                            // They go through the call channel rather than the level
+                                            // logger: a call is either wanted for the whole flow or
+                                            // it is not, and a request that records nothing pays for
+                                            // no record at all.
+                                            const calls = this.#calls;
+                                            calls?.start(methodName);
+                                            const answered = req.method(params, meta);
+                                            if (answered instanceof Promise) {
+                                                return Promise.resolve(answered).then(
+                                                    value => {
+                                                        calls?.end(methodName);
+                                                        return value;
+                                                    },
+                                                    error => {
+                                                        calls?.error(methodName, error);
+                                                        throw error;
+                                                    },
+                                                );
+                                            }
+                                            calls?.end(methodName);
+                                            return answered;
+                                        },
+                                        meta as IMeta,
+                                    ),
+                                )) ?? null;
                             this._applyMeta(reply, resultMeta as {httpResponse?: unknown});
                             return {
                                 jsonrpc: '2.0',
@@ -602,10 +684,21 @@ export default class Gateway extends Internal implements IGateway {
     public async start(): Promise<IGateway> {
         const old = this.#server;
         this.#logger = this.#log.child({name: 'gateway'}, {level: this.#config.logLevel});
+        // The call channel of *this* component, so its records carry the component the
+        // way its level records do (`logger()` binds the name). Taken once, next to
+        // the logger it belongs to.
+        this.#calls = this.#log.logger(this.#config.logLevel ?? 'info', {name: 'gateway'}).calls;
         try {
             this.#server = fastify({
                 loggerInstance: this.#logger,
                 forceCloseConnections: true,
+                // fastify's own request logging is off, and the framework's records
+                // replace it: it writes the whole request at `info` — headers, the
+                // `Authorization` bearer among them — and a completion line, which is
+                // both more than a reader needs and less than the flow records say.
+                // Nothing else depends on those two lines: the request has a flow, the
+                // flow has its calls, and both are recorded where they belong.
+                disableRequestLogging: true,
                 ajv: {
                     customOptions: {
                         allErrors: true,
@@ -644,6 +737,68 @@ export default class Gateway extends Internal implements IGateway {
                         id: (request.body as {id?: unknown})?.id,
                         error: this._formatError(error),
                     });
+                },
+            );
+            // The entry of a request is its earliest hook, not its route handler: the
+            // authentication and metering hooks run in between, and a call they reject
+            // has no route to be wrapped by, so its records would name no flow at all
+            // (T-105). The identity is published back onto the request headers, which is
+            // where the route handler reads it from when it adopts this same flow.
+            //
+            // Declared with the three-argument callback shape on purpose. Fastify picks the
+            // hook's style from its arity, and a plain function of one argument is awaited
+            // nowhere: every request then stopped in this hook, which looked for a day like a
+            // slow database rather than a signature - the MLE readiness probe timed out at
+            // startup and every realm's tap run failed with a different symptom each time.
+            //
+            // The metadata endpoints and the static assets are not calls: they are the
+            // framework's own plumbing (the MLE key endpoint, the API documentation, what a
+            // browser fetches), and minting an execution per probe filled the observed kinds
+            // with names like `login..well-known.mle` - a deployment's health checks read as
+            // traffic in an observation of its business.
+            this.#server.addHook(
+                'onRequest',
+                async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
+                    const pathname = new URL(request.url, 'http://localhost').pathname;
+                    if (isPublic(pathname) && pathname.includes('/.well-known/')) {
+                        return;
+                    }
+                    // Only what the earliest hook can see: the route handler knows the
+                    // real method and re-enters this flow with it, so a path that does
+                    // not name one is left unlabelled rather than guessed at.
+                    const kind = pathname.startsWith('/rpc/')
+                        ? pathname.slice(5).split('/').filter(Boolean).join('.')
+                        : '';
+                    // A capability decides what this process may cost itself, so an
+                    // outside caller does not get to set one: the field is stripped
+                    // from the identity it arrived with, and the decision is made here
+                    // and published in its place. The rest of the identity is adopted
+                    // exactly as it arrived.
+                    const identity = withoutCapabilities(
+                        request.headers[TRACE_HEADER] as string | undefined,
+                    );
+                    if (identity.length > 0) {
+                        request.headers[TRACE_HEADER] = identity;
+                    } else {
+                        delete request.headers[TRACE_HEADER];
+                    }
+                    // The grant, if one arrived, is verified here and now — once per
+                    // request, at the earliest point there is — and what travels on is
+                    // the capability it decided, not the token.
+                    const grantedCallsToRecord = await grantedCalls(
+                        request.headers[GRANT_HEADER] as string | undefined,
+                        grantKeyFrom(this.#config),
+                    );
+                    // A grant wins over the configuration; with none, the configuration
+                    // answers and the answer is published for the process that serves
+                    // the call. Either way the flow is decided here, before the hooks
+                    // that may reject the request: a flow the entry point refused to
+                    // record is not recorded by the service it reaches.
+                    enterCapability(
+                        CALLS_CAPABILITY,
+                        grantedCallsToRecord || callsFor({forward: request.headers} as IMeta, kind),
+                    );
+                    Object.assign(request.headers, enterRequestFlow(request.headers, kind));
                 },
             );
             await this.#server.register(jwt, {
@@ -704,6 +859,13 @@ export default class Gateway extends Internal implements IGateway {
     }
 
     public async stop(): Promise<IGateway> {
+        // fastify's close() waits on the socket layer, and keep-alive connections made by a
+        // browser backend (or a leftover probe) hold it open indefinitely: the run ends with
+        // a tap "timeout!" against a live server long after every test passed, because the
+        // process never exits. Close the connections first so shutting down actually
+        // shuts down.
+        this.#server?.server.closeIdleConnections?.();
+        this.#server?.server.closeAllConnections?.();
         await this.#server?.close();
         this.#server = null;
         return this;

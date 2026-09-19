@@ -709,6 +709,12 @@
             "projectFolder": "test/blong-ci-report",
             "reviewCategory": "core",
             "tags": ["core"]
+        },
+        {
+            "packageName": "@feasibleone/blong-realm",
+            "projectFolder": "core/blong-realm",
+            "reviewCategory": "core",
+            "tags": ["core"]
         }
     ]
 }

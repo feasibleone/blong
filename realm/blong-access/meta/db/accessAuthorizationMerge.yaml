@@ -7,6 +7,20 @@ role:
   Admin: loginCapability
 capability:
   guestBasic: accessTestGuest,access.profile.get
+  # The framework realm's reads, contributed by `core/blong-realm` — the seed lives
+  # here because the method it dispatches to (`access.authorization.merge`) is
+  # blong-access's, and a realm that ships no `adapter/db` cannot process its own
+  # seed asset: in a suite that loads the realm it was dispatched to the *generic*
+  # knex merge instead, which expects an array of rows under the object key and
+  # therefore read `rows` from an undefined and killed the process at boot.
+  #
+  # Capability entries are the CALLED METHOD NAMES, dotted — not the handler names.
+  # `gateway.authorize` checks the method the request asked for, so a list of
+  # non-dotted handler names grants nothing at all: every read is refused, each
+  # page renders its error dialog, and the screenshots look like a broken realm.
+  blongRealmRead: >-
+    blong.flow.find,blong.flow.get,blong.template.find,
+    blong.search.find,blong.digest.get,blong.incident.find
   # The well-known `accessLogin` action — grants the right to establish/renew a
   # session (the login-eligibility gate is always on).  Grant it to any other
   # role that may log in.

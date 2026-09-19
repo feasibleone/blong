@@ -530,6 +530,13 @@ export default class Registry extends Internal implements IRegistry {
         );
         this.#stopped = true;
         this.#logger = undefined;
+        // The log implementation can hold something the process will not exit without: the
+        // semantic log's in-process cluster service listens on a socket (9455 by default), and
+        // a run that closes every other server still hangs on it — a tap suite that passed
+        // every test then reports "timeout!" against a live server. Stopping it here is what
+        // makes `stop()` mean "nothing of this platform is still running". Optional because
+        // the plain log implementation has nothing to stop.
+        await (this.#log as {stop?: () => Promise<void>})?.stop?.();
         return this;
     }
 

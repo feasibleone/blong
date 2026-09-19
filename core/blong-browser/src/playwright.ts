@@ -30,8 +30,11 @@ export {expect, Page};
  * Kept deliberately short (3-5s) so a genuinely missing element fails fast
  * instead of hanging on the default ~30s test timeout. Test/global timeouts
  * stay generous because network + dev-server compile can still be slow.
+ *
+ * Override with the `BLONG_ELEMENT_TIMEOUT` env var to iterate faster: a page
+ * that fails to render then costs seconds per element instead of minutes.
  */
-export const BLONG_ELEMENT_TIMEOUT = 5_000;
+export const BLONG_ELEMENT_TIMEOUT = Number(process.env['BLONG_ELEMENT_TIMEOUT']) || 5_000;
 
 /** Options configurable via playwright.config.ts `use` block or CLI. */
 export interface IBlongTestOptions {
@@ -49,21 +52,107 @@ export interface IBlongTestOptions {
  */
 export class Portal {
     readonly page: Page;
+
+    /**
+     * Everything the browser said during the session — console errors and warnings,
+     * and uncaught exceptions.
+     *
+     * Collected, not just printed: a broken page is otherwise reported as whichever
+     * element never appeared, and the reason stays in a trace nobody opens.
+     */
+    readonly browserErrors: string[] = [];
+
+    /** The first uncaught exception, if the page threw — the app is dead after it. */
+    fatalError: Error | undefined;
+
+    /** Rejects as soon as the page throws, so no wait outlives the application. */
+    readonly #fatalWait: Promise<never>;
+    #rejectFatal!: (error: Error) => void;
+
     constructor(page: Page) {
         this.page = page;
+        this.#fatalWait = new Promise<never>((_resolve, reject) => {
+            this.#rejectFatal = reject;
+        });
+        // Recorded whether or not anyone is waiting on it; this keeps the rejection
+        // from surfacing as an unhandled one when no wait is in flight.
+        this.#fatalWait.catch(() => undefined);
+
+        page.on('console', message => {
+            if (message.type() !== 'error' && message.type() !== 'warning') return;
+            // Where it came from: a browser message like "Failed to load resource:
+            // 404" names no URL in its text, and the URL is the whole answer.
+            const {url, lineNumber} = message.location();
+            const where = url === undefined ? '' : ` (${url}:${lineNumber})`;
+            this.#note(`${message.type()}: ${message.text()}${where}`);
+        });
+        page.on('pageerror', error => {
+            this.#note(`pageerror: ${error.message}`);
+            this.fatalError ??= error;
+            this.#rejectFatal(error);
+        });
     }
 
-    // ── Login ────────────────────────────────────────────────────────────────
+    /** Record a browser message and echo it, so it is visible while the run goes on. */
+    #note(line: string): void {
+        this.browserErrors.push(line);
+        console.error(`[browser] ${line}`);
+    }
+
+    /** A failure carrying everything the browser said — never a bare timeout. */
+    failure(reason: unknown): Error {
+        const base = reason instanceof Error ? reason : new Error(String(reason));
+        if (this.browserErrors.length === 0) return base;
+        return new Error(
+            `${base.message}\n[browser errors]\n${this.browserErrors
+                .map(line => `  ${line}`)
+                .join('\n')}`,
+            {cause: base},
+        );
+    }
+
+    /**
+     * Run an action, giving up the moment the page throws.
+     *
+     * An uncaught exception means the bundle is dead: every element that follows is
+     * missing for a reason, and waiting an element timeout for each of them buries
+     * the cause behind a slow failure instead of naming it.
+     */
+    async #guard<T>(action: Promise<T>): Promise<T> {
+        if (this.fatalError !== undefined) throw this.failure(this.fatalError);
+        // The race abandons the action, so its own rejection must not go unhandled.
+        action.catch(() => undefined);
+        try {
+            return await Promise.race([action, this.#fatalWait]);
+        } catch (reason) {
+            throw this.failure(this.fatalError ?? reason);
+        }
+    }
+
+    // ── Login ──────────────────────────────────────────────────────────────
 
     /** Log in via the Login form. Waits for the portal menubar to appear. */
     async login(username: string, password: string): Promise<void> {
-        await this.page.fill('input[name="username"]', username);
-        await this.page.fill('input[name="password"]', password);
-        await this.page.getByTestId('login-submit').click();
+        const timeout = BLONG_ELEMENT_TIMEOUT;
+        await this.#guard(this.page.fill('input[name="username"]', username, {timeout}));
+        await this.#guard(this.page.fill('input[name="password"]', password, {timeout}));
+        await this.#guard(this.page.getByTestId('login-submit').click({timeout}));
         // Wait for portal to render (menubar appears)
-        await this.page
-            .locator('.blong-portal-menubar')
-            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+        await this.#guard(
+            this.page
+                .locator('.blong-portal-menubar')
+                .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT}),
+        );
+        // The menubar appears from the suite's own configuration; the composed one —
+        // every page-owning realm's menu, and the brand it may set — is applied a
+        // moment later (App.tsx calls `portalConfigMerge` once authenticated). A
+        // capture taken in between shows a portal that is only half-composed, so
+        // every spec waits for the shell to say the composed answer landed.
+        await this.#guard(
+            this.page
+                .locator('html[data-portal-config="merged"]')
+                .waitFor({state: 'attached', timeout: BLONG_ELEMENT_TIMEOUT}),
+        );
     }
 
     // ── Menu ─────────────────────────────────────────────────────────────────
@@ -80,11 +169,11 @@ export class Portal {
 
         // Open the group menu first (hover to expand submenu)
         const group = this.page.getByTestId(`portal-menu-${subject}`);
-        await group.click();
+        await this.#guard(group.click());
 
         // Click the specific menu item
         const item = this.page.getByTestId(`portal-menu-${menuId}`);
-        await item.click();
+        await this.#guard(item.click({timeout: BLONG_ELEMENT_TIMEOUT}));
     }
 
     // ── Tabs ─────────────────────────────────────────────────────────────────
@@ -164,10 +253,12 @@ export class Portal {
 
     /** Wait for the form to finish loading (loading skeleton disappears). */
     async waitForFormLoad(): Promise<void> {
-        await this.page
-            .locator('.blong-editor')
-            .last()
-            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+        await this.#guard(
+            this.page
+                .locator('.blong-editor')
+                .last()
+                .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT}),
+        );
         // Wait for loading indicators to disappear
         await this.page
             .locator('.p-skeleton')
@@ -182,17 +273,19 @@ export class Portal {
      * to ensure the API response has been received before filling fields.
      */
     async waitForFormData(): Promise<void> {
-        await this.page.waitForFunction(
-            () => {
-                const editors = document.querySelectorAll('.blong-editor');
-                const last = editors[editors.length - 1];
-                if (!last) return false;
-                const inputs = last.querySelectorAll(
-                    'input:not([type="hidden"]):not([type="checkbox"])',
-                );
-                return Array.from(inputs).some(i => (i as HTMLInputElement).value !== '');
-            },
-            {timeout: BLONG_ELEMENT_TIMEOUT},
+        await this.#guard(
+            this.page.waitForFunction(
+                () => {
+                    const editors = document.querySelectorAll('.blong-editor');
+                    const last = editors[editors.length - 1];
+                    if (!last) return false;
+                    const inputs = last.querySelectorAll(
+                        'input:not([type="hidden"]):not([type="checkbox"])',
+                    );
+                    return Array.from(inputs).some(i => (i as HTMLInputElement).value !== '');
+                },
+                {timeout: BLONG_ELEMENT_TIMEOUT},
+            ),
         );
     }
 
@@ -206,10 +299,21 @@ export class Portal {
             .locator('.p-datatable-loading-overlay')
             .waitFor({state: 'hidden', timeout: BLONG_ELEMENT_TIMEOUT})
             .catch(() => {});
-        await this.page
-            .locator('.p-datatable-tbody tr')
-            .first()
-            .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT});
+        await this.#guard(
+            this.page
+                // Either a data row or the table's explicit empty state. A page whose
+                // answer is legitimately empty — a search before it is typed, a filter
+                // that matches nothing — is loaded, and must not be mistaken for a page
+                // that never rendered (which is what the fixtures now report anyway).
+                //
+                // `:visible` because the portal keeps every opened page mounted
+                // (`renderActiveOnly={false}`): the tables of inactive tabs are still
+                // in the DOM, and without this a spec that opens a second page waits
+                // on the first page's hidden row.
+                .locator('.p-datatable-tbody tr:visible, .p-datatable-emptymessage:visible')
+                .first()
+                .waitFor({state: 'visible', timeout: BLONG_ELEMENT_TIMEOUT}),
+        );
     }
 }
 
@@ -233,22 +337,18 @@ export const test = coverageFixture(
         blongPermissions: [false, {option: true}],
 
         portal: async ({page, blongUsername, blongPassword, blongPermissions}, use) => {
-            // Forward browser console errors/warnings to the Playwright runner's
-            // stderr (prefixed `[browser]`) so a coding agent can spot them in
-            // the terminal output without digging into trace artifacts. This
-            // surfaces the app-store mirrors `[blong] error dialog` /
-            // `[blong] error toast` (see appStore.showError/showToast) as well as
-            // any other unhandled browser error.
-            page.on('console', msg => {
-                if (msg.type() === 'error') console.error(`[browser] ${msg.text()}`);
-                else if (msg.type() === 'warning') console.warn(`[browser] ${msg.text()}`);
-            });
-            page.on('pageerror', err => console.error(`[browser] pageerror: ${err.message}`));
-
-            // Navigate to the app root — baseURL is set in playwright.config.ts
-            await page.goto('/');
-
+            // Constructed before navigating so the boot itself is watched: a page that
+            // throws while it loads is exactly the case this fixture exists to report.
+            // `Portal` echoes browser console errors/warnings to the runner's stderr
+            // (prefixed `[browser]`) and gives up a wait the moment the page throws,
+            // instead of letting every later element wait out its full timeout.
             const portal = new Portal(page);
+
+            // Navigate to the app root. Relative (`./`), not `/`: the dev server serves
+            // the app under the framework base path (`/s/`, see `defineBlongViteConfig`),
+            // and an origin-absolute `/` would resolve past it to a 404 page.
+            await page.goto('./');
+
             await portal.login(blongUsername, blongPassword);
 
             if (blongPermissions) {
@@ -263,6 +363,11 @@ export const test = coverageFixture(
 
             // eslint-disable-next-line @eslint-react/rules-of-hooks -- Playwright fixture `use()`, not a React Hook
             await use(portal);
+
+            // An uncaught exception is a broken application, whether or not the
+            // assertion that followed happened to pass. Reporting it here means the
+            // suite never goes green over a page that threw.
+            if (portal.fatalError !== undefined) throw portal.failure(portal.fatalError);
         },
     }),
 );

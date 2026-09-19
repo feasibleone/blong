@@ -178,6 +178,17 @@ function wrapHandlerProxy(handler: AnyHandlerProxy['handler']): AnyHandlerProxy[
                     return result;
                 } catch (err) {
                     blongEvents.emit('action:error', {method, params, error: err});
+                    // Name the failed call in the console. A popup that says only
+                    // "Not Found" does not say what was not found, and neither does
+                    // the dialog's own log line — the method is the context that
+                    // turns that into a one-second answer. This is also the only
+                    // record of a validation failure, which shows no popup at all.
+                    // Parameter *keys* are logged, not values: a login call carries
+                    // credentials as values.
+                    console.error(`[blong] ${method} failed`, {
+                        params: Object.keys((params as object | undefined) ?? {}),
+                        error: err,
+                    });
                     const blongErr = err as Partial<IBlongError>;
                     if (!blongErr.validation?.length) {
                         if (isAuthError(err)) {

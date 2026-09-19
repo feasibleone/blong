@@ -13,8 +13,9 @@ import type net from 'node:net';
 import PQueue from 'p-queue';
 
 import ConfigRuntime from './ConfigRuntime.ts';
-import {isExpectedError} from './lib.ts';
+import {isExpectedError, portLogCalls} from './lib.ts';
 import loop from './loop.ts';
+import {adoptInbound, inboundIdentities, isFlowId} from './semanticContext.ts';
 
 const errorMap: IErrorMap = {
     'adapter.configValidation': 'Adapter config validation:\r\n{message}',
@@ -290,6 +291,26 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
 
     async drain(): Promise<void> {}
 
+    /**
+     * Every handler registered for a method, in load order.
+     *
+     * `findHandler` answers with the one function the proxy will call: the newest
+     * group shadows the earlier ones, which is deliberate — it is how a handler
+     * reaches its super. The shadowed implementations stay in `importedMap`, and
+     * this walks them. It exists for an entry point whose answer is a *composition*
+     * of what every provider says rather than a choice between them (the portal
+     * configuration is the first), where shadowing is the wrong default.
+     */
+    findHandlers(methodName: string): unknown[] {
+        const method = this.methodPath(this._methodId(methodName));
+        const handlers: unknown[] = [];
+        this.importedMap?.forEach(imported => {
+            if (Object.prototype.hasOwnProperty.call(imported, method))
+                handlers.push(imported[method]);
+        });
+        return handlers;
+    }
+
     findHandler(methodName: string): unknown {
         methodName = this.methodPath(this._methodId(methodName));
         return this.imported[methodName];
@@ -350,7 +371,38 @@ export class AdapterBase<T, C extends IContext> implements AdapterHandlerContext
         const method = ($meta && $meta.method) || 'exec';
         const handler = this.findHandler(method) || this.imported['exec'];
         if (handler instanceof Function) {
-            return handler.apply(this, params);
+            const run = () => handler.apply(this, params);
+            // A call the caller declared is answered by writing one record here, inside the
+            // leg that arrived: that is what turns the caller's declaration into a receipt
+            // the ledger can match, and it happens only when a flow was traced at all, so an
+            // untraced request still pays nothing.
+            const answered = (): unknown => {
+                const inbound = inboundIdentities($meta as IMeta);
+                if (isFlowId(inbound.flow) && inbound.leg !== undefined) {
+                    // The receipt is the receiver's record for the leg it was handed. It carries
+                    // no declared target - the caller named the ends - so the ledger can tell a
+                    // receipt from a declaration by the leg alone, in one process or many.
+                    portLogCalls(this)?.received(inbound.leg);
+                }
+                return run();
+            };
+            // The callee adopts the identity its caller declared, so the records its
+            // handler writes belong to the caller's execution and its own calls are
+            // declared against the same one. Only adopt, never mint: the two places
+            // that mint a flow are the external request and the cross-process call,
+            // and a port that invented one would fill the ledger with runs nobody
+            // asked for.
+            //
+            // Measured (T-115): the identity *is* on `$meta` here — the gateway route
+            // publishes it before it makes the local call — while the callee's handler
+            // otherwise runs in whatever context its transport scheduled it in, where
+            // `declareCall` finds no flow. What this does *not* do is make a quiet call
+            // visible: a recorded call is a record written inside it, and the ports that
+            // make calls in a served request log nothing at that moment. The leg is
+            // bound correctly; whether it can be seen depends on the callee logging.
+            return isFlowId(inboundIdentities($meta as IMeta).flow)
+                ? adoptInbound($meta as IMeta, method, answered)
+                : run();
         } else {
             throw this.errors['adapter.methodNotFound']({params: {method}});
         }

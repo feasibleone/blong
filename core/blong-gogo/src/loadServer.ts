@@ -1,4 +1,5 @@
 import type {IPlatformApi} from '@feasibleone/blong';
+import * as semanticVocabulary from '@feasibleone/semantic-log/emitter';
 import {watch} from 'chokidar';
 import type {Dirent} from 'fs';
 import {existsSync, mkdirSync, readFileSync, statSync, writeFileSync} from 'fs';
@@ -13,7 +14,13 @@ import merge from 'ut-function.merge';
 import ConfigRuntime from './ConfigRuntime.ts';
 import './globals.d.ts';
 import load from './load.ts';
+import {attachSemanticVocabulary} from './semanticContext.ts';
 import timing from './timing.ts';
+
+// The emitter's ambient context is `AsyncLocalStorage`-based, so the shared realm
+// machinery reaches it by attachment rather than by import. Only the server has a
+// vocabulary; in the browser every helper degrades to "no identity".
+attachSemanticVocabulary(semanticVocabulary);
 
 const scan = async (...path: string[]): Promise<Dirent[]> =>
     (await readdir(join(...path), {withFileTypes: true})).sort((a, b) =>

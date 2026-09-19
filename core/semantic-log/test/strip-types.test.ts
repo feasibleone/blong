@@ -64,10 +64,10 @@ interface Attempt {
 }
 
 /**
- * The package's shipping modules, relative to the package root: the public
- * entry point, every source module, the shipped `flow/` fixtures and both `bin`
- * entries. Test files are excluded — they run under `tap`, which transforms, so
- * they are not part of the surface this guard protects.
+ * The package's shipping modules, relative to the package root: every entry
+ * point the manifest exports, every source module, the shipped `flow/` fixtures
+ * and both `bin` entries. Test files are excluded — they run under `tap`, which
+ * transforms, so they are not part of the surface this guard protects.
  *
  * `flow/` is shipped, not test-only (Plan 3 decision 3: the flows are runnable
  * by hand), so it is swept here too. Leaving it out would have shipped a
@@ -87,7 +87,7 @@ function shippingModules(): string[] {
         .map(entry => String(entry))
         .filter(entry => entry.endsWith('.ts'))
         .map(entry => `bin/${entry}`);
-    return ['index.ts', ...sources, ...flows, ...bins].sort();
+    return ['index.ts', 'emitter.ts', 'service.ts', ...sources, ...flows, ...bins].sort();
 }
 
 /** Import one module in a bare-node child, reporting the outcome instead of throwing. */
@@ -126,6 +126,8 @@ t.test('every shipping module loads under a bare node that strips types', async 
     // return nothing would leave every loop below empty and the test green.
     t.ok(modules.length >= 20, `the sweep found the package's shipping modules (${modules.length})`);
     t.ok(modules.includes('index.ts'), 'the package root a consumer imports is in the sweep');
+    t.ok(modules.includes('emitter.ts'), 'the emitter entry is in the sweep');
+    t.ok(modules.includes('service.ts'), 'the service entry is in the sweep');
     t.ok(modules.includes('bin/semantic-log-service.ts'), 'the service entry is in the sweep');
     t.ok(modules.includes('flow/participant.ts'), 'the shipped flow fixtures are in the sweep');
 

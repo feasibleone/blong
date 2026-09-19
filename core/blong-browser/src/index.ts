@@ -43,6 +43,17 @@ export { useToast } from './hooks/useToast.js';
 // ── Components ───────────────────────────────────────────────────────────────
 export { AccountMenu, type IAccountMenuProps } from './components/AccountMenu/AccountMenu.js';
 export { ActionButton } from './components/ActionButton/ActionButton.js';
+export {
+    DEFAULT_DIAGRAM_RENDERER,
+    DiagramViewer,
+    getDiagramRenderer,
+    listDiagramRenderers,
+    MermaidRenderer,
+    registerDiagramRenderer,
+    type DiagramRenderer,
+    type IDiagramRendererProps,
+    type IDiagramViewerProps,
+} from './viewers/diagram/index.js';
 export { App, type IAppProps } from './components/App/App.js';
 export { Async } from './components/Async/Async.js';
 export { Button, type ButtonProps } from './components/Button/Button.js';

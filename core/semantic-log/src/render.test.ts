@@ -27,13 +27,40 @@ t.test('a record with no optional detail renders as exactly one line', t => {
 });
 
 t.test('the header carries the listed details in a greppable order', t => {
-    const line = renderHuman(base, {color: false});
+    const line = renderHuman(base, {color: false, details: true});
     // The date is asserted by shape, not by day: `base.time` is a fixed
     // timestamp used only to make the output deterministic.
     t.match(
         line,
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hub quote msg-7 quote\.create quote accepted/,
     );
+    t.end();
+});
+
+t.test('the identity details are left out unless they are asked for', t => {
+    // The compact line is the default: the pod that reads it is already named by
+    // where it came from, so the service, the version and the base fields are on
+    // the record and not on the line (R20).
+    const line = renderHuman({...base, version: '1.2.3'}, {color: false});
+    t.match(
+        line,
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}quote msg-7 quote\.create quote accepted/,
+    );
+    t.notMatch(line, /hub/, 'the service name is not printed');
+    t.notMatch(line, /version=/, 'the version is not printed');
+    t.end();
+});
+
+t.test('a context field is a header token, not a detail line', t => {
+    // The emitter lifts `context` out of the field bag so it prints beside the
+    // level, in the pino-pretty shape; a record that still carries it among its
+    // fields must not render it twice.
+    const line = renderHuman(
+        {...base, context: undefined, fields: {context: 'quote'}},
+        {color: false},
+    );
+    t.match(line, /info {2}quote msg-7/, 'the context is a header token');
+    t.notMatch(line, /\n\s+context: /, 'and not also an indented detail line');
     t.end();
 });
 
@@ -282,9 +309,16 @@ t.test('colour defaults to off when no options are supplied', t => {
     t.end();
 });
 
+t.test('colour is painted on the header and on the detail lines when it is asked for', t => {
+    const line = renderHuman({...base, fields: {attempt: 3}}, {color: true});
+    t.match(line, /\u001B\[36m/, 'the message is painted');
+    t.match(line, /\u001B\[90m/, 'and so is the field line');
+    t.end();
+});
+
 t.test('an unknown level prints its raw value instead of a colour', t => {
     const line = renderHuman({...base, level: 99, levelName: '99'}, {color: false});
-    t.match(line, / 99\s+hub/, 'the raw numeric level stands in for the name');
+    t.match(line, / 99\s+quote msg-7/, 'the raw numeric level stands in for the name');
     t.end();
 });
 

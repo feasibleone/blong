@@ -20,25 +20,147 @@ description:
 - **Standard predicates prioritized.** `get`/`find`/`add`/`edit`/`remove`/`merge`;
   `insert`/`update`/`delete`.
 - **Two-word properties.** `userName` not `name`; `customerId` not `id`.
+- **Do not reach past the adapter.** Your own client is out — `fetch`, a socket, an SDK: the
+  endpoint, credentials, transport, timeouts and error mapping a deployment configured belong to the
+  port. `exec` is the port's own call rather than a bypass — see _Conversions_ below, which is also
+  where to prefer `send` / `receive` when a group's methods share a shape.
 
 Canonical framework rules + `[ARCHETYPE: HANDLER]` type signature:
 `.github/skills/_shared/conventions.md`.
+
+## Conversions — how a group talks to its adapter
+
+A **conversion** is the port's own seam. The loop runs it around _every_ method of the group, so the
+protocol lives in one place instead of in each handler — and that is the point to check **before**
+writing any call to an external system.
+
+A handler that opens its own connection — `fetch`, a socket, an SDK — has re-implemented the adapter
+it is attached to, and quietly opted out of everything that adapter owns: the endpoint the
+deployment configured, the credentials, the transport and its TLS, the timeouts, the retries, the
+error mapping, and any interceptor above it. The two usual symptoms are the ones to look for in
+review:
+
+- **a long handler** — request building, status checks and payload parsing repeated per method;
+- **a misaligned one** — your own client at an endpoint nobody configured, in a realm whose _other_
+  calls go through a port.
+
+`exec` is not the thing to avoid — it _is_ the adapter's call, and `super.exec` is how a handler
+reuses the default (the automatic CRUD, for one). What a conversion buys is _shape_: when a group's
+methods differ only in the path they ask for, six handlers that each build a request say the same
+thing six times.
+
+The adapter side of the same rule — which base adapter to extend, what a port owns — is
+**blong-adapter**.
+
+| Conversion                               | Signature                       | Runs                                  | Holds                                                 |
+| ---------------------------------------- | ------------------------------- | ------------------------------------- | ----------------------------------------------------- |
+| `send`                                   | `(params, $meta, context)`      | before the method                     | the outgoing request: parameters, descriptor, framing |
+| `receive`                                | `(result, $meta, context)`      | after the method                      | the incoming answer: unwrap, decode, check the status |
+| `encode`                                 | `(data, $meta, context, log)`   | before the write (streams)            | object → Buffer                                       |
+| `decode`                                 | `(buffer, $meta, context, log)` | after the read (streams)              | Buffer → object                                       |
+| `exec`                                   | the adapter's own               | when **no** method handler exists     | the call itself (HTTP, knex, …)                       |
+| `ready`                                  | `()`                            | when the port is up                   | what only exists at run time                          |
+| `idleSend` / `idleReceive` / `drainSend` | —                               | keep-alive, idle timeout, empty queue | heartbeats                                            |
+
+### How a conversion is found
+
+The port loop probes **method, then mtid, then nothing**:
+
+1. `<subject>.<object>.<predicate>.<mtid>.<type>` — one method's, e.g.
+   `blong.flow.find.request.send`;
+2. `<mtid>.<type>` — every request or every response, e.g. `request.send`, `response.receive`;
+3. `<type>` — the group's generic `send` / `receive`.
+
+(An opcode-level probe sits between the first and the second, for the stream adapters whose packets
+carry one; a URL port never needs it.)
+
+**Which level you write at is your choice**, and it is the choice this order exists to give you: one
+`send` when a group's methods share a shape, one per method when each asks for something different,
+and the same for the answer — while a codec that already builds the request may need none at all.
+
+So **file name = export = conversion name**, exactly as with handlers: `blongFlowFindRequestSend.ts`
+exports `blongFlowFindRequestSend` (which _is_ `blong.flow.find.request.send`), and one shared
+answer path is `responseReceive.ts` exporting `responseReceive` (`response.receive`). They are
+attached by the port's `imports`, like any other group.
+
+### What `send` returns — HTTP as the example
+
+For an HTTP port (`adapter.http` and everything extending it), `send` returns the request the base
+`exec` will make and `receive` is handed got's response back. That descriptor _is_ the whole
+protocol surface a URL port needs — no client, no `fetch`, no address. The two files below are one
+shape of it: a request per method, and a single answer path shared by all six reads.
+
+```typescript
+// adapter/semlog/blongFlowGetRequestSend.ts — one method's request
+export default handler(
+    () =>
+        function blongFlowGetRequestSend(params: {reference: string}) {
+            return {
+                method: 'GET',
+                path: `/flows/${encodeURIComponent(params.reference)}/diagram`,
+                responseType: 'json',
+            };
+        },
+);
+
+// adapter/semlog/responseReceive.ts — one answer path for the whole group
+export default handler(
+    ({errors}) =>
+        function responseReceive(response: {statusCode: number; body: unknown}) {
+            if (response.statusCode < 200 || response.statusCode >= 300) {
+                throw errors.semlogRefused({statusCode: response.statusCode});
+            }
+            return response.body;
+        },
+);
+```
+
+The shape is the transport's: a stream port's `send` transforms the payload and `encode` / `decode`
+frame it (`test/blong-sim-tcp/payshield/adapter/tcp/echoRequestSend.ts`), and a port over a driver
+(knex, mongodb, s3) leaves the call to `exec` with the connection it was given.
+
+### A group that is only a protocol has no method handlers
+
+`send`'s result is what the method handler would receive, so a handler for a pure read could only
+hand the descriptor back to `exec` — the detour the conversions remove. With no handler at all, the
+port's `handle()` falls back to the adapter's own `exec`, the router still reaches the port through
+its namespace, and the methods are declared by the **gateway** layer's `validation` files (route +
+parameters). `core/blong-realm/adapter/semlog/` is a worked example: six `<method>RequestSend`
+conversions, one `responseReceive`, no handlers, and no HTTP code in the realm at all.
+
+### Conversions stack
+
+A later group's conversion calls `super.send` / `super.receive` to reach the one beneath it — that
+is how the MLE codec wraps the JSON-RPC codec. Return the packet unchanged when there is nothing
+beneath:
+
+```typescript
+export default handler(() => ({
+    async send(params, $meta) {
+        params = normalize(params);
+        return super.send ? super.send(params, $meta) : params;
+    },
+    async receive(result, $meta) {
+        const data = super.receive ? await super.receive(result, $meta) : result;
+        return decorate(data);
+    },
+}));
+```
+
+Worked examples: `core/blong-gogo/src/codec/adapter/jsonrpc/send.ts` and `receive.ts` (the HTTP
+descriptor and the answer, one pair per port), `core/blong-gogo/src/codec/adapter/openapi/ready.ts`
+(`requestSend` + `responseReceive` for a whole group),
+`core/blong-gogo/src/codec/adapter/mle/ready.ts` (per-method conversions that call `super`),
+`test/blong-sim-tcp/payshield/adapter/tcp/echoRequestSend.ts` (one file per conversion), and
+`core/blong-realm/adapter/semlog/` (a realm that is nothing but conversions).
 
 ## Handler Types
 
 ### 1. Internal Handlers
 
-Predefined handlers for adapter/protocol operations:
-
-- **`send`** - Prepare data for sending, adapt for protocol
-- **`receive`** - Transform received data, remove protocol details
-- **`encode`** - Convert JavaScript object to Buffer (TCP)
-- **`decode`** - Convert Buffer to JavaScript object (TCP)
-- **`exec`** - Default handler when no specific handler exists
-- **`ready`** - Called when adapter is ready
-- **`idleSend`** - Send keep-alive message
-- **`idleReceive`** - Handle idle timeout
-- **`drainSend`** - Called when send queue is empty
+Conversions and lifecycle hooks — `send`, `receive`, `encode`, `decode`, `exec`, `ready`,
+`idleSend`, `idleReceive`, `drainSend`. What each one is for, how it is found and how it is named is
+under _Conversions_ above: read that before writing an adapter, or any call to an external system.
 
 ### 2. API Handlers
 
@@ -159,33 +281,30 @@ export default library(
 
 ### Library as a configurable-bindings bundle (soft dependencies)
 
-When a group's handlers share the same configurable dependencies — e.g. which access/external
-method to call — resolve them **once in a `library()` factory** and return the object directly.
-Handlers destructure the members straight from `lib` instead of each handler re-resolving the
-same bindings.
+When a group's handlers share the same configurable dependencies — e.g. which access/external method
+to call — resolve them **once in a `library()` factory** and return the object directly. Handlers
+destructure the members straight from `lib` instead of each handler re-resolving the same bindings.
 
 ```typescript
 // realmname/orchestrator/entity/entityLib.ts
 import {library} from '@feasibleone/blong';
 
-export default library(
-    ({config, handler}) => {
-        // Runs ONCE at layer assembly:
-        const methods = {
-            externalCheck: resolveBinding(config, handler), // soft dependency (handler proxy)
-            audit: resolveBinding(config, handler),
-        };
-        return {
-            /**
-             * Conventional `methods` map — typed via `ILib.methods` in
-             * `core/blong/types.ts`: each value is a bound handler or
-             * `undefined` when disabled.
-             */
-            methods,
-            sha256, // pure helper (no config)
-        };
-    },
-);
+export default library(({config, handler}) => {
+    // Runs ONCE at layer assembly:
+    const methods = {
+        externalCheck: resolveBinding(config, handler), // soft dependency (handler proxy)
+        audit: resolveBinding(config, handler),
+    };
+    return {
+        /**
+         * Conventional `methods` map — typed via `ILib.methods` in
+         * `core/blong/types.ts`: each value is a bound handler or
+         * `undefined` when disabled.
+         */
+        methods,
+        sha256, // pure helper (no config)
+    };
+});
 ```
 
 Handlers read config **directly** — the library never re-exports config values — and call the
@@ -208,15 +327,15 @@ export default handler(
 **Why this pattern:** it is the idiomatic way to create **soft dependencies / configurable
 bindings** between a realm and another component (e.g. blong-login → blong-access) without hard
 imports. One factory resolves every binding from config and from the `handler` proxy into the
-`methods` map; suites override or disable each binding via config, and the whole group picks up
-the change. Plain constants live in config — handlers read their own `config` — so only the
-handler bindings (which need the `handler` proxy) and pure helpers belong in the library.
+`methods` map; suites override or disable each binding via config, and the whole group picks up the
+change. Plain constants live in config — handlers read their own `config` — so only the handler
+bindings (which need the `handler` proxy) and pure helpers belong in the library.
 
 Real-world example: `realm/blong-login/orchestrator/login/sessionLib.ts` — resolves the 11
-configurable `login.methods.*` access methods into the conventional `methods` map and exposes
-pure helpers (`sha256Hex`, `newCookieHandle`, `sessionCookieOptions(config)`, `readSessionCookie`);
-`login.token.create` / `refresh` / `restore` / `revoke` / `exchange` consume `lib.methods` and
-read cookie/expiry values straight from `config`.
+configurable `login.methods.*` access methods into the conventional `methods` map and exposes pure
+helpers (`sha256Hex`, `newCookieHandle`, `sessionCookieOptions(config)`, `readSessionCookie`);
+`login.token.create` / `refresh` / `restore` / `revoke` / `exchange` consume `lib.methods` and read
+cookie/expiry values straight from `config`.
 
 ## API Parameter: Destructuring
 
@@ -322,11 +441,14 @@ Do NOT put DB persistence handlers in `orchestrator/`. See **blong-layer** `[REU
 ### Plain helper files in a handler group
 
 A helper used by handlers in the SAME group may live beside them (e.g. `adapter/db/account.ts`
-exporting `splitNames`). It triggers a benign
-`probably a generic source code was put in a handler group folder` warning — imports still work. For
-helpers shared across groups, prefer a `lib/` group exported through the framework (`library()`
-factory), or a clearly `_`/`.`-prefixed plain file; do not scatter shared helpers across handler
-folders.
+exporting `splitNames`). The loader reports it at **error** level —
+`probably a generic source code was put in a handler group folder` — and imports still work, but the
+line is real output: it reaches whatever reads the log, and `core/blong-realm`'s observed-flows page
+listed it as a template row until the helper became a `library()`. Prefer the framework's own answer
+for anything with logic in it: a helper is a library function (same folder, `library()` default
+export reached through the `lib` proxy _without_ an import — see _Library Function_). For helpers
+shared across groups, prefer a `lib/` group exported through the framework (`library()` factory), or
+a clearly `_`/`.`-prefixed plain file; do not scatter shared helpers across handler folders.
 
 ## Calling Other Handlers
 
@@ -433,28 +555,12 @@ export default handler(({handler: {'db/coreTripleMerge': coreTripleMerge}}) => (
 }));
 ```
 
-### `send` / `receive` — transform parameters and results
+### `send` / `receive` conversions
 
-- `send` transforms the **outgoing parameters** before the method executes.
-- `receive` transforms the **incoming result** after the method returns.
-
-They are conversion handlers probed by the port loop (`getConversion`): a per-method conversion
-(`<subject>.<object>.<predicate>.request.send`), an mtid level conversion (`request.send`), or the
-generic `send`/`receive`. They stack on top of each other — e.g. the MLE codec overrides
-`send`/`receive` and calls `super.send`/`super.receive` to reach the JSON-RPC codec beneath it.
-
-```typescript
-export default handler(() => ({
-    async send(params, $meta) {
-        params = normalize(params);
-        return super.send ? super.send(params, $meta) : params;
-    },
-    async receive(result, $meta) {
-        const data = super.receive ? await super.receive(result, $meta) : result;
-        return decorate(data);
-    },
-}));
-```
+Covered in full under _Conversions_ above — they are the port's seam for the outgoing request and
+the incoming answer, they stack through `super`, and they are where a protocol belongs rather than
+in each handler. The rest of this section is about the other overrides (`super.exec`, the lifecycle
+hooks).
 
 ### Adapter lifecycle overrides
 
@@ -661,6 +767,8 @@ export default handler(
 
 - **Types as API definition:** `type Handler` drives validation + OpenAPI docs (`~.schema.ts`
   auto-generated).
+- **Conversions before code:** when a group's methods share a request shape, say it once in
+  `send`/`receive` (or `encode`/`decode`) instead of in every handler — see _Conversions_.
 - **Errors:** throw domain errors (`errors.xxx`), never generic `Error`.
 - **$meta:** always forward; `{...$meta, expect}` for expected errors.
 - **Co-locate config:** `config.ts` in the handler folder over `server.ts`.

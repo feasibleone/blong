@@ -19,11 +19,12 @@ import './App.css';
 import type {IHandlerProxy, ILogger} from '@feasibleone/blong';
 import React from 'react';
 import {BlongProvider, useBlong, type IBlongPortalConfig} from '../../context/BlongContext.js';
+import {bgLocale} from '../../primereact/locales.js';
 import {useAppStore} from '../../state/appStore.js';
 import {type IPortalConfig} from '../../storybook.js';
+import {AccountMenu} from '../AccountMenu/AccountMenu.js';
 import {ErrorDialog} from '../Error/Error.js';
 import {ActionHint} from '../Hint/Hint.js';
-import {AccountMenu} from '../AccountMenu/AccountMenu.js';
 import {LanguageSwitcher} from '../LanguageSwitcher/LanguageSwitcher.js';
 import {Login} from '../Login/Login.js';
 import {LoginPopup} from '../LoginPopup/LoginPopup.js';
@@ -31,7 +32,6 @@ import {OAuthCallback} from '../OAuthCallback/OAuthCallback.js';
 import {Portal, type IPortalProps} from '../Portal/Portal.js';
 import {Theme, type IThemeConfig} from '../Theme/Theme.js';
 import {ThemeSwitcher} from '../ThemeSwitcher/ThemeSwitcher.js';
-import {bgLocale} from '../../primereact/locales.js';
 
 const DEFAULT_THEME: IThemeConfig = {
     type: 'compact',
@@ -103,9 +103,25 @@ function AppShell({
     const [oauthHandled, setOauthHandled] = React.useState(false);
     React.useEffect(() => {
         if (isAuthenticated) {
-            (handler.portalConfigGet({}, {}) as Promise<IPortalConfig>)?.then(config => {
-                useAppStore.getState().setPortalConfig(config);
-            });
+            // The composing entry point, not `portalConfigGet`: that name resolves
+            // to a single provider, so two realms that own pages would replace each
+            // other's menu (see src/portalConfig.ts).
+            const merged = handler.portalConfigMerge({}, {}) as Promise<IPortalConfig> | undefined;
+            Promise.resolve(merged)
+                .then(config => {
+                    if (config) useAppStore.getState().setPortalConfig(config);
+                })
+                // The composed answer arrives after the suite's own config has
+                // already painted, so the menu (and a realm's brand) changes under
+                // the reader's feet. Say when that has happened, one frame later:
+                // the Playwright fixture waits for it, so a capture never catches
+                // the portal half-composed. Set even when the merge failed, because
+                // the failure is what the fixture reports.
+                .finally(() => {
+                    requestAnimationFrame(() => {
+                        document.documentElement.setAttribute('data-portal-config', 'merged');
+                    });
+                });
         }
     }, [handler, isAuthenticated]);
     const loginHandler = React.useCallback(
@@ -134,7 +150,15 @@ function AppShell({
         void handler.authGoogleRedirect({}, {});
     }, [handler]);
     const onExchange = React.useCallback(
-        async ({code, state, redirectUri}: {code: string; state?: string; redirectUri?: string}) => {
+        async ({
+            code,
+            state,
+            redirectUri,
+        }: {
+            code: string;
+            state?: string;
+            redirectUri?: string;
+        }) => {
             await handler.authGoogleLogin({code, state, redirectUri}, {});
         },
         [handler],
@@ -147,7 +171,12 @@ function AppShell({
         !oauthHandled &&
         window.location.pathname.endsWith('/oauth/callback')
     ) {
-        return <OAuthCallback onExchange={onExchange} onSuccess={() => setOauthHandled(true)} />;
+        return (
+            <OAuthCallback
+                onExchange={onExchange}
+                onSuccess={() => setOauthHandled(true)}
+            />
+        );
     }
 
     // Wait for the boot-time session restore before painting — avoids flashing
@@ -169,17 +198,19 @@ function AppShell({
             />
         );
     }
-    return children ?? (
-        <Portal
-            {...portalProps}
-            menubarEnd={
-                <>
-                    <ThemeSwitcher />
-                    <LanguageSwitcher />
-                    <AccountMenu />
-                </>
-            }
-        />
+    return (
+        children ?? (
+            <Portal
+                {...portalProps}
+                menubarEnd={
+                    <>
+                        <ThemeSwitcher />
+                        <LanguageSwitcher />
+                        <AccountMenu />
+                    </>
+                }
+            />
+        )
     );
 }
 

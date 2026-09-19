@@ -22,7 +22,7 @@ user:
     emailAddress: testNoLogin@example.com
     roles: NoLogin
 role:
-  Admin: testManagement,accessModelAdmin,loginCapability
+  Admin: testManagement,accessModelAdmin,loginCapability,blongRealmRead
   Customer: loginCapability
   Guest: guestBasic,loginCapability
   # No `login` capability → the user cannot establish/renew a session
@@ -41,6 +41,14 @@ capability:
     accessSessionFind,accessSessionClose,accessAuditFind,
     accessAclFind,accessAclGet,accessAclAdd,accessAclEdit,accessAclRemove,accessAclList,
     accessDropdownList,subject.object.schema
+  # The framework realm's reads (see `meta/db/accessAuthorizationMerge.yaml`): the
+  # diagram pages list flows, templates, search results, the change digest and
+  # incidents. `testViewer` (Customer) and `testGuest` (Guest) get none of it,
+  # which is what lets the realm's own spec assert a 403 rather than an empty page.
+  blongRealmRead: >-
+    blong.flow.find,blong.flow.get,blong.template.find,
+    blong.search.find,blong.digest.get,blong.incident.find
+
   # The well-known `accessLogin` action — grants the right to establish/renew
   # a session. Every role that may log in must grant it (the gate is always on).
   loginCapability: accessLogin

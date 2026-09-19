@@ -43,11 +43,15 @@ logger.error('settlement failed', {err: new Error('connection timeout')});
 One greppable header line, with indented detail beneath it:
 
 ```text
-2026-09-13T10:11:12.345Z info  checkout transfer prepared [r=semantic-log://record/01J8Z9… t=semantic-log://template/9f3a2c1d4e5f]
-2026-09-13T10:11:12.346Z error checkout settlement failed [r=semantic-log://record/01J8ZA… t=semantic-log://template/1b2c3d4e5f60]
+2026-09-13T10:11:12.345Z info  transfer prepared [r=semantic-log://record/01J8Z9… t=semantic-log://template/9f3a2c1d4e5f]
+2026-09-13T10:11:12.346Z error settlement failed [r=semantic-log://record/01J8ZA… t=semantic-log://template/1b2c3d4e5f60]
   error  Error: connection timeout
     at Socket.handleTimeout (/app/src/net/pool.ts:42:12)
 ```
+
+That is the compact default. Pass `details: true` to print the service name, the version and the base
+fields (`pid`, `hostname`) on the header as well — the inspector asks for them, a pod's log does not,
+because whoever reads it already knows which pod it came from.
 
 Nothing needs configuring for this to work — no service, no transport, no schema.
 
@@ -55,9 +59,9 @@ Nothing needs configuring for this to work — no service, no transport, no sche
 
 | Option          | Default             | Meaning                                                                                                                            |
 | --------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `service`       | _required_          | service name; carried on every record and rendered in the header                                                                   |
+| `service`       | _required_          | service name; on every record, and on the line with details                                                                        |
 | `level`         | `info`              | threshold; `logger.setLevel()` changes it at run time                                                                              |
-| `version`       | the package version | carried in every record's base fields                                                                                              |
+| `version`       | the package version | on the record; on the line when asked                                                                                              |
 | `context`       | —                   | a context label (component or module) for the whole logger                                                                         |
 | `bindings`      | `{}`                | fields merged into every record; inherited by `child()`                                                                            |
 | `format`        | `human`             | `human` or `json` (one JSON object per record)                                                                                     |

@@ -11,7 +11,7 @@ open (1)
 
 - `F-133` · core/blong-kukum — The generated fixture is destroyed while the test runner may read it
 
-resolved (10)
+resolved (11)
 
 - `F-122` · core/blong-kukum — A record-driven route map collapsed onto one empty key
 - `F-123` · core/blong-kukum — `realm add` needs a single-word realm name
@@ -23,6 +23,7 @@ resolved (10)
 - `F-134` · core/blong-kukum — A generated test paged an unbounded table and failed once it grew
 - `F-135` · core/blong-kukum — Moving a module one folder deeper changed its `import.meta.url` depth
 - `F-136` · core/blong-kukum — Renaming a binding to `find` collided with a local of the same name
+- `F-184` · core/blong-kukum — component add refuses an existing folder and emits a stray import
 
 <!-- /memory:index -->
 
@@ -175,3 +176,19 @@ created (`filterBy: {name}`), never page an unbounded table.
 
 Renaming a binding to `find`, `get` or `tree` collides with local variables of the same name in
 tests: `const find = build(find)` is a self-reference. The local was renamed instead.
+
+### F-184 — component add refuses an existing folder and emits a stray import
+
+> _2026-09-17 · core/blong-kukum · resolved_
+
+Two defects hit while scaffolding the five pages. First, the second component add for a realm fails
+because the component folder already exists, so only the first surface scaffolds and the rest
+silently do not; worked around by scaffolding each one into its own scratch target and copying the
+file. Second, every emitted handler file starts with a line reading import unchanged from the
+package, which is not a real import and fails type checking; worked around by deleting the line
+after copying. Both are worth fixing in the scaffolder, since the natural way to try it is a second
+call.
+
+the stray import is UNCHANGED_MARKER, a deliberate generated marker asserted by engine, scaffold and
+operations tests, and scaffold.test.ts scaffolds every primitive kind into one realm with no
+failures

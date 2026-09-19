@@ -3,6 +3,7 @@ import {Internal, type ILog, type IManifest, type IMeta, type IRpcServer} from '
 import fastify, {type FastifyReply, type FastifyRequest, type RouteOptions} from 'fastify';
 
 import type {IResolution} from './Resolution.ts';
+import {adoptInbound} from './semanticContext.ts';
 
 interface IConfig {
     port: number;
@@ -70,9 +71,15 @@ export default class RpcServer extends Internal implements IRpcServer {
                 opcode: method.split('.').pop(),
             };
             attachCheckpoint?.(newMeta as IMeta);
-            const result = await (callback as (...args: unknown[]) => Promise<unknown>).apply(
-                object,
-                [...params, newMeta],
+            // An inbound call joins the flow it was made in when it carries one,
+            // and is an outermost entry when it does not: a peer that sends no
+            // identity gets a flow of its own rather than a continuation of a flow
+            // nobody named.
+            const result = await adoptInbound(newMeta as IMeta, method, () =>
+                (callback as (...args: unknown[]) => Promise<unknown>).apply(object, [
+                    ...params,
+                    newMeta,
+                ]),
             );
             return {
                 jsonrpc: '2.0',
@@ -161,6 +168,10 @@ export default class RpcServer extends Internal implements IRpcServer {
     }
 
     public async stop(): Promise<IRpcServer> {
+        // See Gateway.stop: leftover keep-alive connections would hold the process open and
+        // turn a green run into a tap "timeout!".
+        this.#server.server.closeIdleConnections?.();
+        this.#server.server.closeAllConnections?.();
         await this.#server.close();
         return this;
     }

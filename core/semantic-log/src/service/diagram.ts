@@ -17,10 +17,20 @@
  * ## What an arrow says
  *
  * An arrow is one call: its caller declared it, and it is drawn to the receiver the
- * caller declared. Whether the receiver was *also* seen — its own records, on the
- * other end — is the `observed` count, and it is drawn rather than hidden:
+ * caller declared. When the receiver was *also* seen — its own record of the same leg,
+ * on the other end — the answer is drawn too, so a reader gets the pair of arrows a
+ * protocol diagram has always shown. Whether the receiver was seen at all is the
+ * `observed` count, and it is drawn rather than hidden:
  *
- * - `->>` the call was answered: both ends were observed.
+ * - `->>` and `-->>` the call was answered: both ends were observed, so the request
+ *   goes out and the answer comes back dashed, under the same leg id — the answer to a
+ *   call is about that call, so it does not need a label of its own. The answer is drawn
+ *   on the *unwind*, after every call the call itself made has been answered, which is
+ *   the order a protocol diagram is read in (see {@link createUnwind}). A call whose
+ *   position the emitter never reported has no known place in that unwind, so its answer
+ *   is left out rather than guessed. A call whose two ends are the *same* participant is
+ *   drawn once: request and answer would carry the same reader, the same label and the
+ *   same step, so the pair says one thing twice ({@link hasTwoEnds}).
  * - `--x` the call was declared and **nothing answered**. That is the interesting
  *   case, and it is the one a diagram drawn from deductions would have omitted
  *   entirely: the receiver is missing, failing, or wired to the wrong address, and
@@ -55,8 +65,9 @@
  * different services as one participant.
  */
 
+import {isLegSeq} from '../context.ts';
 import type {FlowExecution, FlowUnion, LegObservation} from './flowLedger.ts';
-import {comparePosition} from './flowLedger.ts';
+import {attributable, comparePosition} from './flowLedger.ts';
 
 /**
  * The name standing in for a service the union never saw.
@@ -109,8 +120,29 @@ export interface DiagramReceipt {
     notes: string[];
 }
 
+/**
+ * The answer to a call, drawn on the arrow that carries it back.
+ *
+ * A receiver's own record of a leg is the receiving end of that call — a record inside
+ * the leg with no declared target — so an answered call is one such a record was seen
+ * for. Drawing it is what makes a request and its answer one round trip on the page,
+ * which is how the flow is actually read; `observed` alone only said that someone was
+ * there. The label is the leg id, because the answer to a call is about that call.
+ *
+ * A call to one's own participant is the one answer that is never drawn: it would be a
+ * second arrow between the same two ends, saying the same thing (`hasTwoEnds`).
+ */
+export interface DiagramResponse {
+    kind: 'response';
+    leg: string;
+    caller: string;
+    callee: string;
+    step?: string;
+    notes: string[];
+}
+
 /** One thing the diagram draws. */
-export type DiagramItem = DiagramCall | DiagramReceipt;
+export type DiagramItem = DiagramCall | DiagramReceipt | DiagramResponse;
 
 /**
  * What to draw, and nothing about where it came from.
@@ -128,6 +160,73 @@ export interface DiagramModel {
     services: string[];
     /** What to draw, in the order to draw it. */
     items: DiagramItem[];
+}
+
+/**
+ * How deeply a call sits inside the execution, from the position it was given.
+ *
+ * The leg sequence is a depth-first path of counters (`1`, `1.2`, `1.2.1`), so its number
+ * of components *is* the nesting: `1.2` is a call made inside `1`. `undefined` when the
+ * emitter reported no position — the one case in which the diagram cannot say where an
+ * answer belongs.
+ */
+function nestingDepth(seq: string | undefined): number | undefined {
+    return seq !== undefined && isLegSeq(seq) ? seq.split('.').length : undefined;
+}
+
+/**
+ * Does this call have two ends to draw a pair between?
+ *
+ * A **self-hop** — the same participant on both ends — is drawn as one arrow, not two:
+ * `a->>a` followed by `a-->>a` repeats the same reader, the same label and the same step,
+ * and the label is all the answer arrow carries. The dashed arrow exists to show *the
+ * other* participant's record of the leg, which is the one thing a reader cannot infer
+ * from the request; with no other participant there is nothing to show but clutter. It is
+ * what a deployment whose process carries the name of the namespace it serves has, and a
+ * monolith that names nothing is where that happens most.
+ *
+ * Both views ask this of an end, so the two diagrams agree about which calls are
+ * conversations rather than one drawing a pair where the other draws one arrow.
+ */
+function hasTwoEnds(end: {caller: string; callee: string}): boolean {
+    return end.caller !== end.callee;
+}
+
+/**
+ * The calls still waiting for an answer, and where their answers are drawn.
+ *
+ * A call's answer arrives after every call it made has been answered — the caller is
+ * blocked on its callee, which was blocked on its own — so the answers cannot be drawn
+ * with their requests. The positions are what say so: they are depth-first paths, so a
+ * call is finished when a later call arrives at the same or a shallower depth, and the
+ * answers owed inside it go out first. That is the LIFO order the hand-written flow
+ * diagrams have always been read in.
+ *
+ * A call whose position is unknown is at no depth at all: it closes whatever was open,
+ * because nothing says it is nested inside any of it, and it is remembered without its
+ * answer — an arrow in the wrong place is worse than a missing one.
+ */
+function createUnwind(items: DiagramItem[]): {
+    /** Close every call at or below `depth`, drawing the answers it was owed. */
+    closeFrom: (depth: number | undefined) => void;
+    /** Remember that this call is open, and the answers owed when it closes. */
+    owes: (depth: number | undefined, responses?: readonly DiagramResponse[]) => void;
+    /** Close what is left open, at the end of the walk. */
+    closeAll: () => void;
+} {
+    const stack: Array<{depth: number; responses: readonly DiagramResponse[]}> = [];
+    const closeFrom = (depth: number): void => {
+        while (stack.length > 0 && (stack[stack.length - 1] as {depth: number}).depth >= depth) {
+            const closed = stack.pop() as {depth: number; responses: readonly DiagramResponse[]};
+            items.push(...closed.responses);
+        }
+    };
+    return {
+        closeFrom: depth => closeFrom(depth ?? 0),
+        owes: (depth, responses = []) =>
+            stack.push({depth: depth ?? 0, responses: depth === undefined ? [] : responses}),
+        closeAll: () => closeFrom(0),
+    };
 }
 
 /**
@@ -157,28 +256,42 @@ export function modelOfObservations(
         .sort((a, b) =>
             comparePosition({id: a.leg, seq: a.group[0].seq}, {id: b.leg, seq: b.group[0].seq}),
         );
+    const unwind = createUnwind(items);
     for (const {leg, group} of ordered) {
         // A record with no declared receiver is the receiving end of the call: this is
         // the only evidence that the call reached anyone.
         const answered = new Set(group.filter(o => o.to === undefined).map(o => o.service));
         const notes = group.flatMap(o => o.notes ?? []);
+        // Keyed by the caller *and* the callee: the caller is the service that wrote the
+        // record, so two participants declaring the same call are two arrows - the same
+        // reading the ledger's union makes of it. The caller is not read off the leg id:
+        // that names the caller's *namespace*, and a module mounted under another name
+        // (`flow/hub.ts` serving as `hubB`) would be drawn as a participant that is not
+        // deployed at all - which is exactly what the observed flows showed.
         const pairs = new Map<string, {caller: string; callee: string; step?: string}>();
         for (const observation of group) {
-            if (observation.to !== undefined) {
-                const key = `${observation.service}\u0000${observation.to}`;
-                if (!pairs.has(key)) {
-                    pairs.set(key, {
-                        caller: observation.service,
-                        callee: observation.to,
-                        step: observation.step,
-                    });
-                }
+            if (observation.to === undefined) {
+                continue;
+            }
+            const caller = observation.service;
+            const key = `${caller}\u0000${observation.to}`;
+            if (!pairs.has(key)) {
+                pairs.set(key, {
+                    caller,
+                    callee: observation.to,
+                    step: observation.step,
+                });
             }
         }
         if (pairs.size === 0) {
             items.push({kind: 'receipt', leg, service: group[0].service, notes});
             continue;
         }
+        const answeredByReceipt = attributable(pairs.size, answered.size);
+        const depth = nestingDepth(group[0].seq);
+        // Whatever this call is nested inside is still open, and an answer is owed by the
+        // innermost call first: the position is what says how far out this call sits.
+        unwind.closeFrom(depth);
         for (const pair of pairs.values()) {
             items.push({
                 kind: 'call',
@@ -191,10 +304,27 @@ export function modelOfObservations(
                 // than having its notes silently dropped from all but one arrow.
                 notes,
                 count: 1,
-                observed: answered.has(pair.callee) ? 1 : 0,
+                observed: answeredByReceipt ? 1 : 0,
             });
         }
+        // `attributable` holds only for a single declared target that something answered,
+        // so at most one answer is ever owed — and it is drawn when this call closes, not
+        // here, because the calls it made answer first. A self-hop is owed none.
+        unwind.owes(
+            depth,
+            answeredByReceipt
+                ? [...pairs.values()].filter(hasTwoEnds).map(pair => ({
+                      kind: 'response' as const,
+                      leg,
+                      caller: pair.caller,
+                      callee: pair.callee,
+                      step: pair.step,
+                      notes: [],
+                  }))
+                : [],
+        );
     }
+    unwind.closeAll();
     return {services: [...services], items};
 }
 
@@ -212,6 +342,7 @@ export function modelOfExecution(execution: FlowExecution): DiagramModel {
  */
 export function modelOfUnion(union: FlowUnion): DiagramModel {
     const items: DiagramItem[] = [];
+    const unwind = createUnwind(items);
     for (const leg of union.legs) {
         if (leg.ends.length === 0) {
             items.push({
@@ -222,6 +353,8 @@ export function modelOfUnion(union: FlowUnion): DiagramModel {
             });
             continue;
         }
+        const depth = nestingDepth(leg.seq);
+        unwind.closeFrom(depth);
         for (const end of leg.ends) {
             items.push({
                 kind: 'call',
@@ -234,7 +367,24 @@ export function modelOfUnion(union: FlowUnion): DiagramModel {
                 observed: end.observed,
             });
         }
+        // An end that was answered in at least one execution owes an answer here; the
+        // others stay unanswered, which is what their counts already say. A self-hop is
+        // owed none of them, as it is in one execution's diagram.
+        unwind.owes(
+            depth,
+            leg.ends
+                .filter(end => end.observed > 0 && hasTwoEnds(end))
+                .map(end => ({
+                    kind: 'response' as const,
+                    leg: leg.leg,
+                    caller: end.caller,
+                    callee: end.callee,
+                    step: leg.step,
+                    notes: [],
+                })),
+        );
     }
+    unwind.closeAll();
     return {services: [...union.services], items};
 }
 
@@ -273,12 +423,19 @@ function participantNames(services: readonly string[]): Map<string, string> {
 
 /** The participants an item names, in the order it names them. */
 function participantsIn(item: DiagramItem): string[] {
-    return item.kind === 'call' ? [item.caller, item.callee] : [item.service];
+    return item.kind === 'receipt' ? [item.service] : [item.caller, item.callee];
 }
 
-/** The participant a note or an arrow about this item belongs to. */
+/**
+ * The participant a note belongs to.
+ *
+ * Only a call carries notes: the leg's notes are drawn with the call they arrived on and
+ * are not repeated on the answer, so this answers for the two kinds that have any — a
+ * receipt's notes belong to the service that logged it, and a call's to the caller that
+ * declared it.
+ */
 function sourceOf(item: DiagramItem): string {
-    return item.kind === 'call' ? item.caller : item.service;
+    return item.kind === 'receipt' ? item.service : item.caller;
 }
 
 /**
@@ -352,6 +509,12 @@ export function renderSequence(model: DiagramModel): string {
         if (item.kind === 'call') {
             lines.push(
                 `    ${nameOf(item.caller)}${arrowOf(item)}${nameOf(item.callee)}: ${sanitiseText(item.leg)}${suffixOf(item)}`,
+            );
+        } else if (item.kind === 'response') {
+            // The answer travels back the way the request came, dashed so the two are
+            // told apart at a glance, and numbered by `autonumber` like any other message.
+            lines.push(
+                `    ${nameOf(item.callee)}-->>${nameOf(item.caller)}: ${sanitiseText(item.leg)}`,
             );
         } else {
             lines.push(

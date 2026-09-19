@@ -101,6 +101,8 @@ Hard rules — apply first, never contradict.
   (`/rpc/kukum/{primitive}/{predicate}`), MCP tools, or the `kukum` CLI. See
   `.github/skills/_shared/conventions.md` → `[KUKUM_API]`.
 - **Verify after every change** — `get_errors`, tests, lint; never claim "complete" unverified.
+- If you must use double quotes around a command containing an exclamation mark (!), you must escape
+  it with a backslash (\!) to avoid the error "bash: !: event not found"
 
 ## [CORE_PARADIGMS]
 

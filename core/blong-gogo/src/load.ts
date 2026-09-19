@@ -24,10 +24,20 @@ import {Type, type TSchema} from 'typebox';
 import merge from 'ut-function.merge';
 import {methodParts} from './lib.ts';
 
+import {devEncryptKey, devSignKey} from './devKeys.ts';
 import layerProxy from './layerProxy.ts';
 import RealmImpl, {type IRealm} from './Realm.ts';
 import type {IWatch} from './Watch.ts';
 const extension = '.ts';
+
+/**
+ * A module url as it is compared: the `file://` scheme is not part of a file's
+ * identity, and one of the two sides of every comparison (`import.meta.url`) has
+ * it while the other (`createRequire().resolve()`) does not.
+ */
+function normaliseUrl(url: string): string {
+    return url.startsWith('file://') ? url.slice(7) : url;
+}
 
 const LAYER_FILE = 'layer' as const;
 
@@ -48,6 +58,23 @@ function isCI(): boolean {
     return Boolean(
         (globalThis as {process?: {env?: Record<string, string | undefined>}}).process?.env?.['CI'],
     );
+}
+
+/**
+ * Whether stdout is a terminal, in a process that has one.
+ *
+ * The same reason as {@link isCI}: both platforms build this config block, and
+ * `process` does not exist in the browser bundle. Absent, colour is off, which is
+ * the right answer there anyway — a browser writes no stdout.
+ *
+ * It answers for a bare `dev` run, and nothing else: a runtime that pipes this
+ * process's stdout can still be watched — Playwright relays the lines it captures
+ * back into the terminal — so those runs say so with an intent instead
+ * (`playwright`, and `ci` for the captured case), rather than leaving the
+ * platform to infer it from a file descriptor.
+ */
+function isTTY(): boolean {
+    return (globalThis as {process?: {stdout?: {isTTY?: boolean}}}).process?.stdout?.isTTY === true;
 }
 
 /**
@@ -291,6 +318,15 @@ export default async function loadRealm<T extends TSchema>(
         log?: ILog;
         registry?: IRegistry;
         configRuntime?: IConfigRuntime;
+        /**
+         * The realms this load tree has produced, by the file they came from.
+         *
+         * Held on the shared `api` so a nested load can record the realm it
+         * created, which is the only place the url is readable: a suite's child is
+         * the realm *factory*, so the parent's own wrapper finds no `url` on it.
+         * Filled for the platform root and inherited by every load beneath it.
+         */
+        loadedRealmUrls?: Set<string>;
     } & {
         [key: string]: {init?: () => Promise<unknown>};
     },
@@ -392,7 +428,20 @@ export default async function loadRealm<T extends TSchema>(
             throw new Error(`Root realm must be of kind "server" or "browser", got "${defKind}"`);
         }
     }
+    // Whether this is the platform's own load — captured *before* `api` is assigned
+    // below. Read afterwards, the check that gates framework realm auto-inclusion is
+    // always false, and every framework realm is silently absent: the gateway then
+    // refuses every unauthenticated route (no login realm) and RBAC resolves nothing.
+    const isPlatformRoot = api === undefined;
     const mod = await def({type: Type, manifest});
+    // Record the realm's own file in the tree's set, so a realm reached twice -
+    // once as a suite's child and once by the framework's `frameworkRealms` - is
+    // recognised the second time. A realm answers with its *factory*, so its url
+    // is readable only here, where the module has been created; the wrapper around
+    // a suite's children sees the factory and can read nothing off it (F-194).
+    if (typeof (mod as {url?: unknown}).url === 'string') {
+        api?.loadedRealmUrls?.add(normaliseUrl((mod as {url?: string}).url as string));
+    }
     if (!('pkg' in mod) && platformApi.platform === 'server')
         mod.pkg = platformApi.createRequire?.(mod.url)('./package.json');
     const loadedConfigs = [];
@@ -425,7 +474,11 @@ export default async function loadRealm<T extends TSchema>(
                         watch: {
                             test: [],
                         },
-                        log: {},
+                        // The server's log implementation. The browser platform
+                        // keeps its own logger regardless: the loader checks the
+                        // platform before this key, because the emitter's store is
+                        // node-only.
+                        log: {impl: 'semantic'},
                         apiSchema: {},
                         error: {},
                         registry: {},
@@ -450,9 +503,33 @@ export default async function loadRealm<T extends TSchema>(
                             port: 0,
                         },
                         log: {
+                            // The semantic implementation's store, and the pino
+                            // implementation's cache beside it: they share one
+                            // directory and one key space, so a
+                            // `semantic-log://record/<id>` reference resolves
+                            // whichever implementation wrote the entry.
+                            cache: {
+                                dir: '~/.blong/log-cache',
+                                // The framework's own bound, rather than the
+                                // emitter's default: a verbose record is tens of
+                                // kilobytes, so ten thousand of them is most of a
+                                // gigabyte and a slower open for every process in
+                                // dev.
+                                limit: 5000,
+                            },
                             cacache: {
                                 cachePath: '~/.blong/log-cache',
                             },
+                            // Colour when a human is watching, plain text when the
+                            // output is piped or captured, so a terminal keeps the
+                            // colours the pino printer used to give it while a test
+                            // run stays readable as text.
+                            color: isTTY(),
+                            // The service that turns the records into templates,
+                            // flows and diagrams, run in this process: a
+                            // development run can then be drawn from what it just
+                            // did, and a test run leaves diagrams behind.
+                            cluster: {enabled: true},
                         },
                         gateway: {
                             port: 0,
@@ -460,31 +537,16 @@ export default async function loadRealm<T extends TSchema>(
                             debug: true,
                             expectedErrors: true,
                             // Static development keys, so sessions survive server hot-reloads
-                            /* cSpell:disable */
-                            sign: {
-                                kty: 'EC',
-                                crv: 'P-384',
-                                alg: 'ES384',
-                                use: 'sig',
-                                x: 'VlRkjgqRHJSk9WN8CaAqHn34BUMy9pgKQUAAW9MrOqh0yvCmJW7JTr6LUCbm9zfW',
-                                y: '8eYxbAZrv-HZEc4LSgdEHeSp21zO3D8KrynMcVcNAmZKTf3RMkbkh1B26lePHQNz',
-                                d: 'aj6BkYmpwkKRbmcO1LO6d__HX5bvkqcRjqadlX7plXlGfj1d42XiSUWa4c9xrxwt',
-                            },
-                            encrypt: {
-                                kty: 'EC',
-                                crv: 'P-384',
-                                alg: 'ECDH-ES+A256KW',
-                                use: 'enc',
-                                x: '86IBoWsatO3Vky9CRMxmuYcfYoTY1Yr0D1sJGDgLlREMjbL9cIOHcBQnEaW52QJV',
-                                y: 'fsKOmTuXaIRFXXteh7uU0Z8mncX4VsPhqaz9pMKMm8EktQlF7HBS_fYFdkLwqMMN',
-                                d: 'rBY50TZzjONw_oYzWPqaR3DdoFwO-F9sWcmkOltrJHYnfbnTojNImX2xN1DhhC5-',
-                            },
-                            /* cSpell:enable */
+                            // and so `blong grant` can mint a token the same server accepts
+                            // (see `devKeys.ts`).
+                            sign: devSignKey,
+                            encrypt: devEncryptKey,
                         },
                         systemDebug: {enabled: true},
                     },
                     integration: {
                         remote: {canSkipSocket: true},
+                        log: {cluster: {enabled: true}},
                         gateway: {
                             debug: true,
                             expectedErrors: true,
@@ -497,7 +559,34 @@ export default async function loadRealm<T extends TSchema>(
                     // so it has to outlive the test command. Declared here so
                     // the runner can ask the config instead of pattern-matching
                     // the intent names.
-                    playwright: {exit: false},
+                    playwright: {
+                        exit: false,
+                        log: {
+                            cluster: {enabled: true},
+                            // The runner pipes this process's stdout (`stdout: 'pipe'`),
+                            // so `isTTY()` is false and the `dev` block would leave the
+                            // records plain — while the runner relays those very lines
+                            // into the terminal and colours its own output beside them.
+                            // A Playwright run is watched, so the records are too; the
+                            // `ci` block below takes that back for a captured run.
+                            color: true,
+                        },
+                    },
+                    /**
+                     * A run whose output is captured rather than watched. The
+                     * Playwright webServer passes this last in CI, so it wins over the
+                     * `playwright` block's colours.
+                     */
+                    ci: {log: {color: false}},
+                    /**
+                     * A deployed process never runs the service itself: the
+                     * service is deployed once, beside the processes whose
+                     * records it assembles, and they point at it with
+                     * `log.cluster.url`. Left out, a process that happened to
+                     * carry both this intent and a development one would start a
+                     * second service per replica.
+                     */
+                    prod: {log: {cluster: {enabled: false}}},
                     // Schema creation / seeding finishes, then exits.
                     db: {exit: true},
                     /**
@@ -522,8 +611,11 @@ export default async function loadRealm<T extends TSchema>(
                         remote: {canSkipSocket: true},
                         // A command's stdout carries its result and has to stay
                         // parseable, so the framework's own logging is quietened
-                        // here rather than by each CLI remembering to do it.
-                        log: {level: 'warn'},
+                        // here rather than by each CLI remembering to do it. The
+                        // cluster service is off for the same reason it is a
+                        // command: nothing here is long enough to draw, and a
+                        // short-lived process must not hold a socket open.
+                        log: {level: 'warn', cluster: {enabled: false}},
                         apiSchema: {logLevel: 'warn'},
                         exit: true,
                     },
@@ -537,10 +629,20 @@ export default async function loadRealm<T extends TSchema>(
             {
                 name: 'log',
                 deps: [],
-                load: () =>
-                    rootKind === 'browser' && globalThis.window
-                        ? import('./BrowserLog.ts')
-                        : import(/* @vite-ignore */ './Log' + extension),
+                // The implementation is chosen by configuration rather than by
+                // the loader. The closure runs long after every source has
+                // merged, so `log.impl` is settled by the time it is called; the
+                // module is imported lazily either way, so an unselected
+                // implementation is never even loaded.
+                load: () => {
+                    if (rootKind === 'browser' && globalThis.window) {
+                        return import('./BrowserLog.ts');
+                    }
+                    const impl = (mergedConfig as {log?: {impl?: string}} | undefined)?.log?.impl;
+                    return impl === 'semantic'
+                        ? import(/* @vite-ignore */ './SemanticLog' + extension)
+                        : import(/* @vite-ignore */ './Log' + extension);
+                },
             },
             {
                 name: 'apiSchema',
@@ -806,8 +908,170 @@ export default async function loadRealm<T extends TSchema>(
         }
     }
 
+    /**
+     * The realms the framework ships and loads beside a suite that depends on them.
+     *
+     * A suite gets these without naming them, which is the point: the four lines
+     * of imports and the four matching config blocks that every suite used to
+     * repeat are the kind of wiring that drifts — a suite that forgot one failed
+     * later, somewhere else, with a symptom that did not name the cause.
+     *
+     * Two properties make that safe:
+     *
+     * - **Resolution is from the suite's own location**, so a suite that does not
+     *   depend on a realm does not get it. That is why the list may name realms a
+     *   particular suite never installs: an unresolvable package is skipped, not
+     *   reported.
+     * - **A realm the suite already lists is skipped too.** The suite's own
+     *   children load first (they are wrapped to record the realm they produce),
+     *   so by the time these are reached the already-loaded realms are known and
+     *   are not loaded twice — a doubled realm would register every handler twice.
+     *
+     * A suite that wants none of it says so by name, in its own config:
+     *
+     *     config: {default: {framework: {realms: {access: false}}}}
+     *
+     * Only the server platform is covered: the browser loader resolves children
+     * through Vite, which must see the specifier in the source to bundle it, so a
+     * browser suite still names its browser realms itself.
+     */
+    /**
+     * Resolve a framework realm from the suite's own location.
+     *
+     * A suite that does not depend on the package has no such realm, and that is
+     * not an error: the framework ships realms for suites that ship them, and asks
+     * the suite which those are by letting it resolve.
+     */
+    const resolveFromSuite = (specifier: string): string | undefined => {
+        // The suite's own bootstrap file is the base — `mod.url`. `mergedConfig.url`
+        // is the *config* url, which `ConfigRuntime` fills only when a config names
+        // one, so falling back to this module's own location would resolve every
+        // framework realm from `blong-gogo`, which depends on none of them: each one
+        // would be skipped as unresolvable, looking exactly like a suite that ships
+        // none of them. That mistake is invisible in the logs, so the base is taken
+        // from the module and the impossible case warns (see below).
+        const url = mod.url ?? mergedConfig.url;
+        const from = typeof url === 'string' && url.length > 0 ? url : import.meta.url;
+        try {
+            return platformApi.createRequire?.(from)?.resolve(specifier);
+        } catch {
+            return undefined;
+        }
+    };
+
+    /**
+     * The realms the framework ships and loads for a suite that depends on them.
+     *
+     * A suite gets these without naming them, which is the point: the four lines
+     * of imports and the four matching config blocks every suite used to repeat
+     * are the kind of wiring that drifts — a suite that forgot one failed later,
+     * somewhere else, with a symptom that did not name the cause.
+     *
+     * Three properties make it safe:
+     *
+     * - **Resolution is from the suite's own location**, so a suite that does not
+     *   depend on a realm does not get it. That is why the list may name realms a
+     *   particular suite never installs: an unresolvable package is skipped, not
+     *   reported.
+     * - **A realm the suite already lists is skipped too.** The suite's own
+     *   children are wrapped to record the realm each one produces, and these are
+     *   appended after them, so by the time they are reached the already-loaded
+     *   realms are known and nothing is loaded twice — a doubled realm would
+     *   register every handler twice.
+     * - **Only the platform root does this.** `api` is absent exactly when this is
+     *   the load the platform was started with; a nested realm load receives it.
+     *   Without this the framework would add its realms *inside every realm it
+     *   contains*, which is not a bigger list but a different graph.
+     *
+     * A suite that wants none of it says so by name, in its own config:
+     *
+     *     config: {default: {framework: {realms: {access: false}}}}
+     *
+     * Only the server platform is covered: the browser loader resolves children
+     * through Vite, which has to see the specifier in the source to bundle it, so
+     * a browser suite still names its browser realms itself.
+     */
+    const frameworkRealms: ReadonlyArray<{name: string; specifier: string}> = [
+        {name: 'server', specifier: '@feasibleone/blong-server/server.ts'},
+        {name: 'login', specifier: '@feasibleone/blong-login/server.ts'},
+        {name: 'core', specifier: '@feasibleone/blong-core/server.ts'},
+        {name: 'access', specifier: '@feasibleone/blong-access/server.ts'},
+        {name: 'blong', specifier: '@feasibleone/blong-realm/server.ts'},
+    ];
+    // Without a base there is nothing to resolve from, and every framework realm is
+    // silently absent — the symptom is a gateway that refuses every unauthenticated
+    // route (the login realm is not mounted) rather than anything that names this.
+    if (isPlatformRoot && rootKind === 'server' && !mod.url && !mergedConfig.url) {
+        console.warn(
+            'blong: the suite exposes no url, so no framework realm can be resolved from it ' +
+                '(server, login, core, access, blong). Name them as children, or give the suite a url.',
+        );
+    }
+    /**
+     * The realms this load tree produced, by the file they came from.
+     *
+     * Filled where a realm module is created (`loadRealm`), not by the wrapper
+     * below: a suite's child answers with the realm *factory*, and only the load
+     * that calls it can read the url off the module.
+     */
+    const loadedRealmUrls = new Set<string>();
+    if (isPlatformRoot) api!.loadedRealmUrls = loadedRealmUrls;
+    const trackChild = (child: unknown): unknown =>
+        typeof child === 'function'
+            ? Object.defineProperty(
+                  async (): Promise<unknown> => {
+                      const value = await (child as () => Promise<unknown>)();
+                      const url = (value as {url?: unknown} | undefined)?.url;
+                      if (typeof url === 'string') loadedRealmUrls.add(normaliseUrl(url));
+                      return value;
+                  },
+                  'name',
+                  {value: (child as {name?: string}).name ?? 'child', configurable: true},
+              )
+            : child;
+    // `rootKind`, not `platformApi.platform`: the latter names the transport
+    // implementation, and a *browser* suite loaded in a Node process (the tap runner)
+    // gets the server one — which made this load look like the server platform and
+    // pull in the framework realms' `server.ts` entries. blong-login's `./orchestrator`
+    // came with them and its `token.ts` needs a gateway that does not exist there, so
+    // the whole tap process died before a test (T-114). `rootKind` is what the rest of
+    // this loader already asks that question with.
+    const frameworkChildren =
+        isPlatformRoot && rootKind === 'server'
+            ? frameworkRealms.map(({name, specifier}) => {
+                  // The loop below looks a child's config up by its name and skips
+                  // the child when there is none, so a realm loaded this way needs a
+                  // block here. A suite that declares its own keeps it: this fills a
+                  // gap rather than overriding one.
+                  mergedConfig[name] ??= {};
+                  return Object.defineProperty(
+                      async (): Promise<unknown> => {
+                          const realms = (
+                              mergedConfig as {framework?: {realms?: Record<string, unknown>}}
+                          ).framework?.realms;
+                          if (realms?.[name] === false) return undefined;
+                          const resolved = resolveFromSuite(specifier);
+                          if (resolved === undefined) return undefined;
+                          if (loadedRealmUrls.has(normaliseUrl(resolved))) return undefined;
+                          loadedRealmUrls.add(normaliseUrl(resolved));
+                          const loaded = await import(/* @vite-ignore */ resolved);
+                          return loaded.default ?? loaded;
+                      },
+                      'name',
+                      {value: name},
+                  );
+              })
+            : [];
+
     let realm: IRealm;
-    for (let item of items.concat(children).concat(extraChildren)) {
+    for (let item of items
+        .concat(children.map(trackChild) as [])
+        .concat(extraChildren)
+        .concat(frameworkChildren)) {
+        // Deliberately `platformApi.platform` here, not `rootKind`: this gate decides how a
+        // folder-string child is *resolved*, and browser suites in the tap runner rely on the
+        // server-side resolution (their folder layers must still load, or the browser test
+        // group's handlers never register and its calls hang). Do not "fix" this to rootKind.
         if (typeof item === 'string' && platformApi.platform !== 'server') continue;
         const itemName = typeof item === 'string' ? platformApi.basename(item) : item.name;
         const config: Record<string, unknown> = mergedConfig[itemName] as Record<string, unknown>;
@@ -956,6 +1220,14 @@ export default async function loadRealm<T extends TSchema>(
                     for (const module of modules) {
                         const item = await module;
                         const fn = (item as {default?: unknown})?.default ?? item;
+                        // A child may contribute nothing: an optional realm that is not
+                        // configured, an adapter whose dependency is absent, a framework
+                        // realm a suite does not depend on. Reading a kind off that used
+                        // to throw `Symbol(blong:kind)` of undefined — a TypeError that
+                        // names the symbol rather than the child that resolved to nothing,
+                        // and that killed the whole process at boot (a demo suite that
+                        // does not depend on blong-realm never started).
+                        if (fn === undefined || fn === null) continue;
                         if (
                             typeof fn === 'function' &&
                             (fn.prototype instanceof Internal ||

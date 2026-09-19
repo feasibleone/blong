@@ -26,7 +26,8 @@
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
         "ci-lint": "blong-dev lint",
-        "ci-test": "blong-dev test"
+        "ci-test": "blong-dev test",
+        "test": "blong-dev test"
     },
     "dependencies": {
         "acorn": "^8.16.0"

@@ -307,7 +307,8 @@ const MATRIX: Readonly<Record<string, Row>> = {
         verdict: 'dropped',
         covered: [
             CONSEQUENCE +
-                'out of scope: this is a service-side emitter, with one Node entry point and no browser build',
+                'out of scope: this is a service-side emitter with Node entry points only — the ' +
+                'emitter store reaches `node:fs`, the service reaches `fastify` — and no browser build',
         ],
     },
 };
@@ -385,7 +386,31 @@ t.test('the dropped browser row is not contradicted by a browser entry point', a
     ) as {
         exports?: Record<string, unknown>;
     };
-    t.same(Object.keys(manifest.exports ?? {}), ['.'], 'the package exports one Node entry point');
+    // Every entry point is a Node entry point: the emitter deliberately reaches
+    // `node:fs` through its store and the service reaches `fastify`, so neither
+    // half can be bundled for a browser. A new subpath has to be ruled on here,
+    // which is why the list is asserted exactly rather than counted. `./capability`
+    // joins them for the same reason the emitter does: the ambient scope a
+    // capability is carried in is `AsyncLocalStorage`, so a browser cannot import
+    // it either.
+    //
+    // `./attachable` joins the list as the one entry that is *not* Node-only, and
+    // that is the whole point of it: it imports nothing, so a runtime whose code a
+    // browser also bundles can reach identity and capability through it, getting
+    // no-ops until a platform bootstrap attaches the emitter. The assertion below
+    // is what keeps that true — the day it grows an import, the page stops
+    // loading, and the failure belongs here rather than in a bundle nobody
+    // inspects.
+    t.same(
+        Object.keys(manifest.exports ?? {}),
+        ['.', './emitter', './service', './capability', './attachable'],
+        'every export is a Node entry point, except the attachable facade',
+    );
+    t.notMatch(
+        await readFile(new URL('../src/attachable.ts', import.meta.url), 'utf8'),
+        /^import /m,
+        'the attachable facade imports nothing statically, so a browser can load it',
+    );
     await t.rejects(
         stat(new URL('../browser.ts', import.meta.url)),
         'no browser entry point exists',

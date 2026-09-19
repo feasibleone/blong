@@ -17,6 +17,8 @@ Usage:
   blong <intent>...              Run with only the given intents (e.g. integration)
   blong realm <name> [--object]  Scaffold a new realm
   blong create realm <name>      Scaffold a new realm
+  blong grant <capability>       Mint a short-lived capability token
+                                 (e.g. blong grant calls --ttl=15m)
 
 Well-known intents:
   dev            Development — verbose logs, hot reload

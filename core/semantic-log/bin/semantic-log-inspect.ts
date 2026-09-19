@@ -226,15 +226,16 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
         return 3;
     }
 
-    // A lookup never writes, so the bound is irrelevant; the largest legal value
-    // keeps this call from ever pruning the store it is only reading. Laying the
-    // store out can still fail — an unwritable directory, or a plain file where
-    // `records/` must go — and that is an ordinary bad input too, so it is
-    // reported as a usage error rather than escaping as a rejection the entry
-    // point would surface as a crash with a stack trace.
+    // A lookup never writes, so the bound is irrelevant, and `readOnly` is what
+    // makes that a property of the call rather than of the number passed to it:
+    // a read-only open neither sweeps nor replays nor writes the sweep marker, so
+    // an inspection cannot evict the entry it was asked about. Opening can still
+    // fail — an unwritable directory — and that is an ordinary bad input too, so
+    // it is reported as a usage error rather than escaping as a rejection the
+    // entry point would surface as a crash with a stack trace.
     let cache: RecordCache;
     try {
-        cache = await openCache({dir: cacheDir, limit: Number.MAX_SAFE_INTEGER});
+        cache = await openCache({dir: cacheDir, limit: Number.MAX_SAFE_INTEGER, readOnly: true});
     } catch (error) {
         io.err(
             `semantic-log-inspect: cannot open cache at ${cacheDir}: ${(error as Error).message}\n`,
@@ -282,7 +283,10 @@ export async function inspect(argv: string[], io: InspectIo): Promise<number> {
         return 1;
     }
 
-    io.out(`${json ? renderJson(record) : renderHuman(record, {color: false})}\n`);
+    // The inspector opts in to the identity details the emitter leaves out of its
+    // lines: printing one record on demand is the case where knowing which
+    // service, pid and version emitted it is the point of the lookup (R20).
+    io.out(`${json ? renderJson(record) : renderHuman(record, {color: false, details: true})}\n`);
     return 0;
 }
 

@@ -907,7 +907,8 @@ t.test('the kind diagram is the union of the calls observed under it (R23)', asy
             '    participant payer\n' +
             '    participant hub\n' +
             '    Note over payer, hub: PHASE 1: quote\n' +
-            '    payer->>hub: payer.quote.rates\n',
+            '    payer->>hub: payer.quote.rates\n' +
+            '    hub-->>payer: payer.quote.rates\n',
         'and a diagram a browser can parse',
     );
     t.end();

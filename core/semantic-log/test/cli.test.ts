@@ -169,13 +169,26 @@ t.test('a cache path that cannot be inspected is a usage error, not a crash', as
     t.match(err.join(''), /cannot inspect cache path/);
 });
 
-t.test('a cache that cannot be laid out is a usage error, not a crash', async t => {
+t.test('a cache that cannot be opened is a usage error, not a crash', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'semantic-log-cli-'));
     t.teardown(() => rm(dir, {recursive: true, force: true}));
-    // A plain file where `records/` must go makes the store's `mkdir` reject.
-    await writeFile(join(dir, 'records'), 'not a directory');
+    // A read-only open lays nothing out, so the only thing left that can fail is
+    // the store reporting a failure of its own. That is mocked rather than
+    // provoked: provoking it would mean asserting an errno belonging to `cacache`
+    // rather than to this program, which is not the property under test.
+    const {inspect: inspectFailing} = await t.mockImport<typeof import('../bin/semantic-log-inspect.ts')>(
+        '../bin/semantic-log-inspect.ts',
+        {
+            '../src/cache.ts': {
+                openCache: async () => {
+                    throw new Error('store unavailable');
+                },
+                cacheRecordIds: async () => [],
+            },
+        },
+    );
     const {err, io} = sink();
-    t.equal(await inspect(['--cache', dir, ID], io), 3);
+    t.equal(await inspectFailing(['--cache', dir, ID], io), 3);
     t.match(err.join(''), /cannot open cache/);
 });
 
@@ -486,7 +499,7 @@ t.test('the diagram verb summarises withheld bags by category, without repeating
         callRecord(
             ID,
             'hub.transfer.deliver',
-            {to: 'payee', seq: '1'},
+            {to: 'payee', seq: '1', service: 'hub'},
             {
                 fields: {
                     withheld: [
@@ -507,7 +520,7 @@ t.test('the diagram verb summarises withheld bags by category, without repeating
         t.equal(await inspect(['diagram', '--cache', dir, FLOW], io), 0);
         t.match(
             out.join(''),
-            /Note over payer: withheld: liquidity, settlement/,
+            /Note over hub: withheld: liquidity, settlement/,
             'each category once, in order',
         );
     }, records);

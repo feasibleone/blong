@@ -25,7 +25,7 @@ extending** them; for using them to monitor applications, see the **blong-log** 
   (cacache) for on-demand inspection.
 - `tools/blong-dev/src/commands/log.ts` — the `blong-dev log` CLI that reads the cacache cache.
 - `ext/rest-fs/src/extension.ts` — VS Code extension that opens a single cached entry when you click
-  a `blong://log/<ULID>` terminal link.
+  a `semantic-log://record/<ULID>` terminal link.
 
 ## Data flow
 
@@ -74,7 +74,7 @@ tools/blong-dev/src/
   index.ts             ← programmatic exports
 
 ext/rest-fs/src/
-  extension.ts         ← terminal link provider for blong://log/<ULID> + cacache lookup
+  extension.ts         ← terminal link provider for semantic-log://record/<ULID> + cacache lookup
 ```
 
 ## Data model

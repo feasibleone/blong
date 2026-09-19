@@ -124,7 +124,14 @@ diagrams without becoming another one.
 The counts are per execution, so a call a chatty participant logged five records about is
 still one call. \`x2\` on an arrow would be two executions' worth of it, and a crossed arrow
 is a call the caller declared that nothing answered — a deployment fact that a diagram
-drawn from deductions could not show at all.
+drawn from deductions could not show at all. An answered call is a pair: the request out,
+and the answer back on a dashed arrow under the same leg id, because a receiver's own
+record of the leg is what the answer is. The dashed arrow is drawn where the answer
+arrived — after everything the call itself called has been answered, which the positions
+say — so the pairs nest the way the execution did. A call that never leaves its own
+participant is the one exception: it is drawn once, because the answer to it would repeat
+the same caller, the same label and the same step, and the arrow is already solid — the
+receiver's record is what made it solid in the first place.
 `;
 
 /**
@@ -260,6 +267,43 @@ function syncBlock(page: string, kind: string, body: string): string {
     return `${page.slice(0, from)}${body}${page.slice(to + end.length)}`;
 }
 
+/** What the page carries for one block — both markers included — or `undefined` without them. */
+function embeddedBlock(page: string, kind: string): string | undefined {
+    const begin = marker(kind, 'BEGIN');
+    const end = marker(kind, 'END');
+    const from = page.indexOf(begin);
+    const to = page.indexOf(end);
+    return from === -1 || to === -1 ? undefined : page.slice(from, to + end.length);
+}
+
+/**
+ * Is this the same text, once the formatting is taken out of it?
+ *
+ * The block is compared rather than the file, and by its content rather than its bytes: the
+ * docs page is markdown that the repository's formatter owns — prettier aligns the tables
+ * and wraps the prose at 100 columns — so the same block arrives there with different
+ * whitespace, and a byte comparison turned saving the page in an editor into a red suite.
+ * What the test exists to assert is *content*: the page shows what a run observed, not a
+ * diagram someone typed. The artifact in this package is still compared byte for byte,
+ * because nothing reformats it and there byte equality is the point.
+ *
+ * Two things are therefore normalised away, and only two: runs of whitespace (the formatter
+ * wraps and pads) and a table's delimiter row, which is nothing but padding (`| ---- |`
+ * ruled to the width of its column). A delimiter row carries no content of its own — these
+ * tables declare no alignment — so replacing one with a constant cannot hide a difference
+ * in a call, a participant or a count.
+ */
+function sameContent(page: string, expected: string): boolean {
+    const content = (value: string): string =>
+        value
+            .split('\n')
+            .map(line => (/^\s*\|[\s:|-]+\|\s*$/.test(line) ? '| --- |' : line))
+            .join('\n')
+            .replace(/\s+/g, ' ')
+            .trim();
+    return content(page) === content(expected);
+}
+
 await t.test('the published flow shapes are what a run observes (PRD R23)', async t => {
     const unions = await observed();
     const sources = await declaredLegs();
@@ -303,11 +347,12 @@ await t.test('the published flow shapes are what a run observes (PRD R23)', asyn
     t.end();
 });
 
-await t.test('the docs page embeds each block verbatim (D14)', async t => {
+await t.test('the docs page carries each block a run produced (D14)', async t => {
     // The page is where a reader meets these diagrams, so "the docs show what a run observed"
     // is a claim about the page and not about this package's copy of it. Blocks are compared
     // rather than files: the page keeps its own prose around them, and that prose is the part
-    // a person edits.
+    // a person edits. And words rather than bytes, because the page is formatted by the
+    // repository's markdown formatter — see `sameWords`.
     const unions = await observed();
     const sources = await declaredLegs();
     const page = await readFile(PAGE, 'utf8');
@@ -321,8 +366,9 @@ await t.test('the docs page embeds each block verbatim (D14)', async t => {
             `${kind}: the page has exactly one block, so the comparison cannot pass on a duplicate`,
         );
         t.ok(
-            page.includes(expected),
-            `${kind}: the page carries the block a run produced, verbatim`,
+            embeddedBlock(page, kindName) !== undefined &&
+                sameContent(embeddedBlock(page, kindName) as string, expected),
+            `${kind}: the page carries the block a run produced, in the page's own formatting`,
         );
         t.ok(
             page.split(marker(kindName, 'END')).length - 1 === 1,

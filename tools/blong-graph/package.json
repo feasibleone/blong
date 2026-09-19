@@ -25,6 +25,8 @@
         "build": "true",
         "ci-lint": "blong-dev lint",
         "ci-test": "blong-dev test",
+        "playwright": "blong-dev playwright",
+        "playwright:update": "blong-dev playwright --update-snapshots",
         "test": "playwright test",
         "test:server": "npx http-server tests/fixtures -p 3000 -c-1"
     },

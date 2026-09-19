@@ -36,7 +36,7 @@ import type {Expect, Page} from '@playwright/test';
 import {BLONG_ELEMENT_TIMEOUT, type Portal} from '../playwright.js';
 
 /** Minimal test function interface — accepts any Playwright TestType that provides a `portal` fixture. */
-interface ITestFn {
+export interface ITestFn {
     (title: string, fn: (args: {portal: Portal}) => Promise<void>): void;
     describe: (title: string, fn: () => void) => void;
     /** In-body skip: `test.skip(condition, description)` aborts the running test. */

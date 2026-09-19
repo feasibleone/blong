@@ -23,16 +23,31 @@ import {createFanoutWriter, getWriter, type Writer} from './writer.ts';
 export type Format = 'human' | 'json';
 
 export interface LoggerOptions {
-    /** Service name — required; every rendered record carries it (PRD R20). */
+    /**
+     * Service name — required; every record carries it (PRD R20), and the human
+     * line prints it when `details` is asked for.
+     */
     service: string;
     /**
      * Service version — carried in every record's base fields and rendered in
-     * the human header (PRD R20; §5.1 "Base fields (pid, hostname, service,
-     * version)"). Defaults to this package's own version, which is what the
-     * emitter can know without configuration; a service that wants its own
-     * version passes it here.
+     * the human header when `details` is asked for (PRD R20; §5.1 "Base fields
+     * (pid, hostname, service, version)"). Defaults to this package's own
+     * version, which is what the emitter can know without configuration; a
+     * service that wants its own version passes it here.
      */
     version?: string;
+    /**
+     * Print the service name, the version and the base fields (pid, hostname) in
+     * the human line.
+     *
+     * Off by default. The deployment that reads these lines is a Kubernetes pod,
+     * whose identity the reader already knows from where the line came, so the
+     * three cost width on every line and buy little. They are all still on the
+     * record — JSON mode, the retained store and the cluster service read them
+     * there, and §5.1's "Base fields (pid, hostname, service, version)" is about
+     * the record — so this decides the human line alone (R20).
+     */
+    details?: boolean;
     level?: LevelName | number;
     context?: string;
     /** Extra structured fields merged into every record. */
@@ -286,7 +301,14 @@ function create(
     writes: WriteTracker,
 ): Logger {
     const format: Format = options.format ?? 'human';
-    const base = {pid: process.pid, hostname: hostname()};
+    // The base fields are collected only when they are going to be read: `pid`
+    // and `hostname` name a container the pod already identifies, so they are the
+    // least useful thing on its log line and are not carried at all unless the
+    // `details` option asks for them. The other two of §5.1's "Base fields (pid,
+    // hostname, service, version)" — the service and the version — are on every
+    // record unconditionally; only the pod-level pair and the human line are
+    // opt-in.
+    const base = options.details ? {pid: process.pid, hostname: hostname()} : {};
     const version = options.version ?? packageVersion;
     const now = options.now ?? ((): number => Date.now());
     const sinks: readonly Writer[] = options.sinks ?? [];
@@ -532,7 +554,7 @@ function create(
             // (see `service/transport.ts`). That is a deliberate difference from
             // the lone-destination case above, where no isolation exists and the
             // failure is the caller's.
-            const line = `${format === 'json' ? renderJson(record) : renderHuman(record, {color: options.color ?? false})}\n`;
+            const line = `${format === 'json' ? renderJson(record) : renderHuman(record, {color: options.color ?? false, details: options.details ?? false})}\n`;
             writer.write(line, record);
         }
     };

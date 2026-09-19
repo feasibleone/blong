@@ -18,6 +18,9 @@ export default browser(blong => ({
         gateway: blong.type.Object({}),
     }),
     children: [
+        async function blong() {
+            return import('@feasibleone/blong-realm/browser.ts');
+        },
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
@@ -41,6 +44,7 @@ export default browser(blong => ({
             },
             gateway: {},
             login: {},
+            blong: {},
         },
     },
 }));

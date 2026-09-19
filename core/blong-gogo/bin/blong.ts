@@ -55,6 +55,19 @@ if (isRealmCreate) {
     process.chdir(resolve(process.cwd(), realmName));
 }
 
+// `blong grant <capability> [--ttl=15m] [--key=<jwk|ENV_VAR>]` — mint a
+// short-lived capability token (see `src/grant.ts`). Like `blong realm`, this
+// stays within the intent model rather than becoming a subcommand tree: `grant`
+// is only a command when it is the first positional and no positional names an
+// existing path (a suite is never run by a `grant` argument in practice, and
+// `existsSync` is the same guard the realm-create branch uses).
+const isGrantCommand = positionals[0] === 'grant' && !positionals.some(p => existsSync(resolve(p)));
+if (isGrantCommand) {
+    const {runGrantCommand} = await import('../src/grant.ts');
+    await runGrantCommand(positionals, rawArgv);
+    process.exit(0);
+}
+
 const parsed = minimist(process.argv.slice(2)) as {_: string[]};
 // The first positional arg is an optional file/folder target; the rest are intents.
 const [maybeTarget, ...rest] = parsed._;

@@ -1,4 +1,5 @@
-<!-- cspell:ignore dereferenceability EACCES EADDRINUSE ELOOP errno Interledger kindless normativity ONNX Redeliveries unpushed -->
+<!-- cspell:ignore dereferenceability EACCES EADDRINUSE ELOOP errno Interledger kindless -->
+<!-- cspell:ignore normativity ONNX Redeliveries unpushed -->
 
 # semantic-log — decisions
 
@@ -163,6 +164,16 @@ asserted by `--expect-retained`, not guessed from an id's shape or age.
 **One greppable header line, detail indented beneath it, never a raw object dump.** Detail labels
 use _two_ spaces of padding, which the acceptance regexes required; the header is sanitised of
 control characters so no field value can forge a line or inject a terminal escape.
+
+**The human line is compact by default; the identity details are opt-in.** A production reader is a
+Kubernetes pod whose identity is already known from where the line came, so the service name, the
+version and the base fields (`pid`, `hostname`) are printed only when `details` is asked for — the
+inspector asks, the emitter does not. The service and the version stay on every record (JSON mode,
+the retained store, the cluster service), so §5.1's "Base fields (pid, hostname, service, version)"
+still holds of the record; only the pod-level pair is not collected at all unless it is asked for.
+Rejected: printing the service always, which puts a token nobody reads on every line of every pod's
+log. One exception: a line salvaged after a render failure always names the service, because there
+the reader does _not_ know which process produced it.
 
 **References are minted locally at emit time** — `r` (record), `t` (template), `x` (trace) and `p`
 (the causal parent, rendered as a bare id) — so an offline process still produces usable ones. Ids

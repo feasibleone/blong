@@ -10,6 +10,7 @@ import {
     type IConfigRuntime,
     type IErrorFactory,
     type ILog,
+    type IMeta,
     type IModuleConfig,
     type IObjectSchema,
     type IPlatformApi,
@@ -21,6 +22,7 @@ import type {Dirent} from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
+import {runInFlow} from './semanticContext.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
@@ -733,7 +735,15 @@ export default class Watch extends Internal implements IWatch {
 
                     const steps = await Promise.all(
                         ([] as string[]).concat(this.#config.test).map(async method => {
-                            const result = await remote.remote(method)({}, {});
+                            // Nothing above a test group minted a flow, so each group is
+                            // an entry of its own. The groups run in parallel, so one
+                            // flow for the whole run would interleave unrelated
+                            // scenarios into a single diagram; a flow per group gives
+                            // one scenario per flow, which is what there is to draw.
+                            const meta: IMeta = {mtid: 'event', method};
+                            const result = await runInFlow(meta, method, () =>
+                                remote.remote(method)({}, meta),
+                            );
                             if (Array.isArray(result) && !('name' in result)) {
                                 Object.defineProperty(result, 'name', {
                                     value: method.replace(/^test\./, '').replace(/\./g, ' '),
@@ -771,6 +781,20 @@ export default class Watch extends Internal implements IWatch {
     }
 
     public async test(framework: unknown): Promise<void> {
+        // `test()` settles only when the `start()`-registered listener calls `done`, and
+        // that listener is registered only when test groups are declared. Waiting for it
+        // unconditionally hangs the whole run with no output at all — a silent wait, which
+        // is exactly what a suite that loads a platform without test groups (a browser
+        // platform in a tap run, say) used to get. Report it and return: nothing to run is
+        // not an error, it just has to be said out loud.
+        const groups = ([] as string[]).concat(this.#config.test ?? []);
+        if (groups.length === 0) {
+            this.log?.info?.(
+                {$meta: {mtid: 'event', method: 'watch.test.none'}},
+                'no test groups configured on this platform; nothing to run',
+            );
+            return;
+        }
         return new Promise<void>((resolve, reject) => {
             // this.#emit.emit('test', error => (error ? reject(error) : resolve()), framework);
             this.#emit.dispatchEvent(

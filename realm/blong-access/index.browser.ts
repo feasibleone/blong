@@ -19,6 +19,9 @@ export default browser(blong => ({
         access: blong.type.Object({}),
     }),
     children: [
+        async function blong() {
+            return import('@feasibleone/blong-realm/browser.ts');
+        },
         /** Built-in blong-browser realm: RPC, auth, portal, auth orchestrators */
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
@@ -54,24 +57,24 @@ export default browser(blong => ({
                         translations: {
                             en: {},
                             bg: {
-                                'Profile': 'Профил',
+                                Profile: 'Профил',
                                 'Sign out': 'Отписване',
                                 'First Name': 'Собствено име',
                                 'Last Name': 'Фамилия',
-                                'Email': 'Имейл',
+                                Email: 'Имейл',
                                 'Preferred Language': 'Предпочитан език',
                                 'Profile saved': 'Профилът е запазен',
-                                'Save': 'Запази',
+                                Save: 'Запази',
                                 'Change Password': 'Смяна на парола',
                                 'Current Password': 'Текуща парола',
                                 'New Password': 'Нова парола',
                                 'Confirm New Password': 'Потвърди новата парола',
                                 'Password changed': 'Паролата е сменена',
-                                'Roles': 'Роли',
+                                Roles: 'Роли',
                                 'No roles assigned': 'Няма присвоени роли',
                                 'Passwords do not match': 'Паролите не съвпадат',
-                                'Active': 'Активен',
-                                'Inactive': 'Неактивен',
+                                Active: 'Активен',
+                                Inactive: 'Неактивен',
                             },
                         },
                         // UI languages offered by the menubar language switcher
@@ -84,6 +87,7 @@ export default browser(blong => ({
                     },
                 },
             },
+            blong: {},
             login: {},
             access: {},
         },

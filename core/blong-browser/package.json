@@ -34,9 +34,11 @@
         },
         "./storybook.tsx": "./storybook.tsx",
         "./playwright": "./src/playwright.ts",
-        "./playwright/model": "./src/playwright/model.ts",
         "./playwright/config": "./src/playwright/config.ts",
         "./playwright/coverage": "./src/playwright/coverage.ts",
+        "./playwright/diagram": "./src/playwright/diagram.ts",
+        "./playwright/model": "./src/playwright/model.ts",
+        "./playwright/pages": "./src/playwright/pages.ts",
         "./storyHelper": "./src/storyHelper.tsx",
         "./vite": "./src/vite.ts",
         "./storybookMain": "./src/storybookMain.ts",
@@ -72,6 +74,7 @@
         "@feasibleone/blong-template": "workspace:*",
         "@tanstack/react-query": "^5.67.3",
         "ky": "^1.14.2",
+        "mermaid": "^11.0.0",
         "zustand": "^5.0.4"
     },
     "devDependencies": {

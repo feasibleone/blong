@@ -7,6 +7,9 @@ import {
     currentContext,
     currentLeg,
     currentTrace,
+    enterFlow,
+    enterInboundLeg,
+    enterTrace,
     isLegId,
     isLegSeq,
     isServiceName,
@@ -36,6 +39,55 @@ const FLOW_KIND = 'transfer.single';
 
 /** A leg id in the enforced shape (PRD R22): lowercase, dot-separated. */
 const LEG = 'payer.discovery.parties';
+
+t.test('enterFlow names the execution for the rest of it, past an await', async t => {
+    // The hook form. There is no callback to scope — a server hook returns and the
+    // framework continues the request — so the store is entered instead, and the work
+    // that follows (including work started after an await, which is what a request's
+    // later hooks and its route handler are) still names the flow.
+    await (async () => {
+        enterFlow({id: FLOW_ID, kind: FLOW_KIND});
+        enterTrace('tr-hook');
+        t.equal(currentContext().flow?.id, FLOW_ID, 'the entered flow is the ambient one');
+        t.equal(currentContext().flow?.kind, FLOW_KIND, 'with the kind it was entered with');
+        await new Promise(resolve => setTimeout(resolve, 5));
+        t.equal(currentContext().flow?.id, FLOW_ID, 'and it survives the await');
+        t.equal(currentTrace(), 'tr-hook', 'as does the trace entered beside it');
+    })();
+});
+
+t.test('enterInboundLeg answers under the leg a call was received with', async t => {
+    await (async () => {
+        enterFlow({id: FLOW_ID, kind: FLOW_KIND});
+        enterInboundLeg({id: LEG, seq: '1.2'});
+        t.equal(currentLeg()?.id, LEG, 'the received call is the ambient leg');
+        t.equal(currentLeg()?.seq, '1.2', 'with the position it was given');
+    })();
+});
+
+t.test('entering what is not lawful is caller misuse', async t => {
+    t.throws(
+        () => enterFlow({id: 'flow-1', kind: FLOW_KIND}),
+        /flow id/,
+        'a flow id is a ULID',
+    );
+    t.throws(() => enterFlow({id: FLOW_ID, kind: ''}), /flow kind/, 'a flow kind is non-empty');
+    t.throws(
+        () => enterInboundLeg({id: 'not a leg'}),
+        /leg id/,
+        'a leg id is letters, digits and separators',
+    );
+    t.throws(
+        () => enterInboundLeg({id: LEG, seq: 'x'}),
+        /malformed position/,
+        'and its position is a path of counters',
+    );
+    t.throws(
+        () => enterInboundLeg({id: LEG}),
+        /outside a flow/,
+        'and a leg needs a flow to belong to',
+    );
+});
 
 t.test('intent is visible for the whole enclosed scope', async t => {
     t.equal(currentContext().intent, undefined, 'no ambient intent by default');

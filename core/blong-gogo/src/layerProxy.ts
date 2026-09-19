@@ -84,7 +84,15 @@ function createHandlerClosure(
                     );
                 },
             }),
-            handler: createHandlerProxy(local, port, remote, attachCheckpoint, lib, mergedConfig),
+            handler: createHandlerProxy(
+                local,
+                port,
+                remote,
+                attachCheckpoint,
+                lib,
+                mergedConfig,
+                String(moduleName ?? '').replace(/[^A-Za-z0-9.]/g, ''),
+            ),
             errors: target.result.error,
             schema: target.result.schema,
         };

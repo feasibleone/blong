@@ -51,6 +51,21 @@ export interface AmbientContext {
     flow?: FlowState;
     trace?: string;
     /**
+     * The capabilities decided for this execution: one switch per capability
+     * name, `true` for on and `false` for explicitly off.
+     *
+     * A capability is not a level — it does not make a record louder or quieter,
+     * it decides whether a kind of record is produced at all — and it is not a
+     * per-record question either: it belongs to the whole execution, which is why
+     * it lives here rather than being passed to each call. A capability that is
+     * absent is undecided, which is what lets a configured default apply; one
+     * that is present was decided where the execution began (a grant, a
+     * configuration, a caller in another process) and every record written inside
+     * inherits it. See `src/capability.ts` for the switches that use it, and
+     * `src/propagation.ts` for how a decision reaches the next process.
+     */
+    capabilities?: Record<string, boolean>;
+    /**
      * The leg this scope is part of (PRD R22) — the one call it performs, or the
      * one it is answering.
      *
@@ -108,9 +123,52 @@ export function withIntent<T>(intent: IntentState, fn: () => T): T {
     return storage.run(extend({intent}), fn);
 }
 
+/**
+ * Run `fn` with `name` switched on or off.
+ *
+ * The switch covers everything the scope does, including what its calls do in
+ * another process: the decision is published with the identity
+ * (`identityHeaders`), so a capability turned off here is off downstream too.
+ * Nested scopes may override one capability without disturbing the others, which
+ * is what keeps a decision taken at the entry point intact while a particular
+ * span changes its mind.
+ */
+export function withCapability<T>(name: string, on: boolean, fn: () => T): T {
+    return storage.run(extend({capabilities: {...currentCapabilities(), [name]: on}}), fn);
+}
+
+/**
+ * Enter a capability for the rest of the current async execution —
+ * {@link withCapability}'s hook form, for a boundary that decides before the
+ * code it decides for runs (an HTTP hook, for instance).
+ */
+export function enterCapability(name: string, on: boolean): void {
+    storage.enterWith(extend({capabilities: {...currentCapabilities(), [name]: on}}));
+}
+
+/** The decided state of a capability, or `undefined` when nothing decided it. */
+export function capabilityState(name: string): boolean | undefined {
+    return currentContext().capabilities?.[name];
+}
+
+/** Every capability decided in this scope, as a copy the caller may keep. */
+export function currentCapabilities(): Record<string, boolean> {
+    return {...currentContext().capabilities};
+}
+
 /** Associate a causal trace id with the current scope (PRD R7). */
 export function bindTrace<T>(trace: string, fn: () => T): T {
     return storage.run(extend({trace}), fn);
+}
+
+/**
+ * Enter a trace for the rest of the current async execution — {@link bindTrace}'s
+ * hook form.
+ *
+ * See {@link enterFlow} for when entering is the right shape and what it costs.
+ */
+export function enterTrace(trace: string): void {
+    storage.enterWith(extend({trace}));
 }
 
 /** The ambient trace id, which becomes the record's `trace` reference. */
@@ -286,6 +344,26 @@ export function bindLeg<T>(leg: {id: string; to: string}, fn: () => T): T {
  * malformed id or position from *here* is caller misuse and throws.
  */
 export function bindInboundLeg<T>(leg: {id: string; seq?: string}, fn: () => T): T {
+    assertInboundLeg(leg);
+    return enter({id: leg.id, seq: leg.seq}, fn);
+}
+
+/**
+ * Enter a received call's leg for the rest of the current async execution —
+ * {@link bindInboundLeg}'s hook form.
+ *
+ * The leg a request is *answered* under has to be installed before the framework
+ * hooks that reject it, or the one call that failed is the one the observed picture
+ * cannot show. Validated the same way and for the same reason: what reaches either
+ * of these was chosen in code, so a malformed value is caller misuse.
+ */
+export function enterInboundLeg(leg: {id: string; seq?: string}): void {
+    assertInboundLeg(leg);
+    storage.enterWith(extend(legIdentity({id: leg.id, seq: leg.seq})));
+}
+
+/** Reject a leg that was chosen in code but is not lawful (PRD R22). */
+function assertInboundLeg(leg: {id: string; seq?: string}): void {
     if (!isLegId(leg.id)) {
         throw new TypeError(
             `leg id must be letters, digits and '.', '-' or '_', got ${JSON.stringify(leg.id)}`,
@@ -296,21 +374,26 @@ export function bindInboundLeg<T>(leg: {id: string; seq?: string}, fn: () => T):
             `leg ${JSON.stringify(leg.id)} has a malformed position, got ${JSON.stringify(leg.seq)}`,
         );
     }
-    return enter({id: leg.id, seq: leg.seq}, fn);
 }
 
 /** Install one leg for `fn`, from a local declaration or an adopted one. */
 function enter<T>(leg: {id: string; to?: string; seq?: string}, fn: () => T): T {
+    return storage.run(extend(legIdentity(leg)), fn);
+}
+
+/** The leg a scope is part of, as the ambient context holds it. */
+function legIdentity(leg: {
+    id: string;
+    to?: string;
+    seq?: string;
+}): Pick<AmbientContext, 'leg' | 'legTo' | 'legSeq' | 'legCounter'> {
     assertInFlow(leg.id);
-    // The memory box has to exist *before* the leg scope is entered: `run` spreads
+    // The memory box has to exist *before* the leg scope is entered: entering spreads
     // the context, so a box first installed inside the leg would never reach the
     // scope that encloses the call, and the caller's next record would lose its
     // causal parent (PRD R7).
     ensureRecordMemory();
-    return storage.run(
-        extend({leg: leg.id, legTo: leg.to, legSeq: leg.seq, legCounter: {next: 0}}),
-        fn,
-    );
+    return {leg: leg.id, legTo: leg.to, legSeq: leg.seq, legCounter: {next: 0}};
 }
 
 /** The ambient leg, or `undefined` when this scope is not part of a call. */
@@ -337,29 +420,55 @@ export function currentLeg(): LegIdentity | undefined {
  * trace id (a trace may span more than one flow) and neither value is minted
  * here — the library only carries what the caller supplies.
  */
-export function withFlow<T>(
-    flow: {id: string; kind: string; step?: string | null},
-    fn: () => T,
-): T {
+/** The flow a scope runs in, as the ambient context holds it. Validates the identity. */
+function flowIdentity(flow: {
+    id: string;
+    kind: string;
+    step?: string | null;
+}): Pick<AmbientContext, 'flow' | 'steps'> {
     assertUlid(flow.id, 'flow id');
     if (typeof flow.kind !== 'string' || flow.kind.length === 0) {
         throw new TypeError(
             `flow kind must be a non-empty string, got ${JSON.stringify(flow.kind)}`,
         );
     }
-    return storage.run(
-        extend({
-            flow: {
-                id: flow.id,
-                kind: flow.kind,
-                step: flow.step ?? undefined,
-                index: -1,
-                status: 'running',
-            },
-            steps: [],
-        }),
-        fn,
-    );
+    return {
+        flow: {
+            id: flow.id,
+            kind: flow.kind,
+            step: flow.step ?? undefined,
+            index: -1,
+            status: 'running',
+        },
+        steps: [],
+    };
+}
+
+export function withFlow<T>(
+    flow: {id: string; kind: string; step?: string | null},
+    fn: () => T,
+): T {
+    return storage.run(extend(flowIdentity(flow)), fn);
+}
+
+/**
+ * Enter a flow for the rest of the current async execution (PRD R9) — the hook
+ * form of {@link withFlow}.
+ *
+ * `withFlow` scopes a callback, which is the wrong shape for a server hook: a
+ * Fastify `onRequest` hook returns, and the framework that called it continues the
+ * request. There is no callback to wrap, yet the work that follows — the auth and
+ * metering hooks, the route handler, every call they make — must still name the
+ * flow. `enterWith` publishes the store for the current execution and everything
+ * created from it afterwards, which is exactly that reach.
+ *
+ * What it costs, and why both exist: an entered store is never popped, so it stays
+ * visible to whatever else that execution starts. That is right for one request's
+ * own hooks and wrong for a library call, so `withFlow` remains the default and
+ * this is used where a framework boundary makes it unavoidable.
+ */
+export function enterFlow(flow: {id: string; kind: string}): void {
+    storage.enterWith(extend(flowIdentity(flow)));
 }
 
 /**

@@ -143,7 +143,7 @@ t.test('a linked invocation resolves a record whose writer has exited', async t 
 
     const emitted = await attempt(process.execPath, [join(root, 'emit.mjs')]);
     t.equal(emitted.code, 0, 'the writer exits cleanly with no service configured (R18)');
-    t.match(emitted.stdout, /payer transfer prepared/, 'readable stdout from a real process (R18)');
+    t.match(emitted.stdout, /transfer prepared/, 'readable stdout from a real process (R18)');
     const reference = /r=(semantic-log:\/\/record\/[0-9A-Z]+)/.exec(emitted.stdout)?.[1];
     t.ok(reference, 'the rendered line carries a reference, minted without contacting anything (R19)');
 

@@ -15,7 +15,8 @@
         "build": "true",
         "ci-lint": "blong-dev lint",
         "ci-test": "blong-dev test",
-        "cli": "node ./bin/blong-cli.ts"
+        "cli": "node ./bin/blong-cli.ts",
+        "test": "blong-dev test"
     },
     "dependencies": {
         "@feasibleone/blong": "workspace:^1.0.0",

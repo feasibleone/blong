@@ -34,7 +34,7 @@ They are **loosely based** on two published Mojaloop features:
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | An **Oracle** resolves the party identifier, and `GET /parties` is answered with a `PUT /parties/{ID}`                                                            | Three generic `POST` routes — `/parties`, `/quotes`, `/transfers` — with no directory; the payee answers directly       |
 | Two `POST /quotes` rounds (liquidity cover from the FXP, then the transfer terms from the payee), plus the Payer's own confirmation step                          | One quote round: the provider's rate is threaded through the payee and returned to the payer once                       |
-| An FX marketplace: several FXPs bid for the conversion and the DFSP selects one                                                                                   | One provider per scheme, chosen by configuration                                                                        |
+| An FX marketplace: several FXPs bid for the conversion and the DFSP selects one                                                                                   | One provider for the corridor, by configuration                                                                         |
 | Real ILP cryptographic conditions and fulfilment preimages                                                                                                        | Placeholder strings (`sha256:condition`, `sha256:preimage`); nothing is cryptographically verified                      |
 | Two-phase reserve/commit across ledgers, atomic settlement, clearing accounts                                                                                     | A single `withhold` and its release on failure — which is the observability the library needs to demonstrate            |
 | Abort flows                                                                                                                                                       | A refusal status (409, 422, 503) and an error record                                                                    |
@@ -46,10 +46,9 @@ nothing here is a statement about how a real scheme should behave.
 
 ### What the fixtures add
 
-Four things in the fixtures are deliberately absent from the drawings, because they exist for the
-observability rather than for the protocol: the originating scheme's `fxpA` local indication, the
-proxy's `hold` branch, the two identity headers on every hop, and the optional cluster-service sink.
-They are listed with their reasons under
+Three things in the fixtures are deliberately absent from the drawings, because they exist for the
+observability rather than for the protocol: the proxy's `hold` branch, the two identity headers on
+every hop, and the optional cluster-service sink. They are listed with their reasons under
 [legs the fixture adds](#legs-the-fixture-adds-and-the-diagrams-do-not-draw).
 
 ## How to read the annotations
@@ -74,9 +73,13 @@ carry no number. The table is the diagram in full, and it says what a picture ca
 | `declared in`       | the file and line that declares the id                                                                                      |
 
 An arrow drawn with a cross (`--x`) is a call the caller declared that nothing answered — a receiver
-that is missing, failing, or wired to the wrong address. A call seen only from its receiver's side
-is drawn as a note rather than an arrow, because an arrow needs a caller and the only one available
-would be an invention.
+that is missing, failing, or wired to the wrong address. An arrow drawn dashed (`-->>`) is the
+receiver's own record of the leg: the answer on its way back, under the same id, drawn where it
+arrived — after everything that call itself called has been answered. A call that never leaves its
+own participant is the one call drawn without a pair, because the answer to it would repeat the same
+caller, the same label and the same step. A call seen only from its receiver's side is drawn as a
+note rather than an arrow, because an arrow needs a caller and the only one available would be an
+invention.
 
 **The protocol is deliberately simplified.** The fixture collapses Mojaloop's published exchange
 (`GET`/`PUT` resource pairs, two quote rounds, separate FX settlement legs) onto three generic
@@ -116,6 +119,7 @@ tables carried that a generated table cannot: which parts of the published excha
 deliberately does not implement.
 
 <!-- BEGIN OBSERVED FLOWS: transfer.single -->
+
 Participants: `payer`, `hub`, `payee`, `fxp`. 7 calls observed across 1 execution(s).
 
 ```mermaid
@@ -128,35 +132,45 @@ sequenceDiagram
     Note over payer, fxp: PHASE 1: discovery
     payer->>hub: payer.discovery.parties
     hub->>payee: hub.discovery.payee
+    payee-->>hub: hub.discovery.payee
+    hub-->>payer: payer.discovery.parties
     Note over payer, fxp: PHASE 2: quote
     payer->>hub: payer.quote.rates
     hub->>fxp: hub.quote.fx
+    fxp-->>hub: hub.quote.fx
     hub->>payee: hub.quote.payee
+    payee-->>hub: hub.quote.payee
+    hub-->>payer: payer.quote.rates
     Note over payer, fxp: PHASE 3: transfer
     payer->>hub: payer.transfer.submit
     hub->>payee: hub.transfer.deliver
+    payee-->>hub: hub.transfer.deliver
+    hub-->>payer: payer.transfer.submit
 ```
 
-| call | caller → receiver | phase | position | declared | answered | declared in |
-| ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
-| `payer.discovery.parties` | `payer` → `hub` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
-| `hub.discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:68` |
-| `payer.quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
-| `hub.quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:99` |
-| `hub.quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:110` |
-| `payer.transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
-| `hub.transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:141` |
+| call                      | caller → receiver | phase     | position | declared | answered | declared in         |
+| ------------------------- | ----------------- | --------- | -------- | -------- | -------- | ------------------- |
+| `payer.discovery.parties` | `payer` → `hub`   | discovery | 1        | 1        | 1        | `flow/payer.ts:66`  |
+| `hub.discovery.payee`     | `hub` → `payee`   | discovery | 1.1      | 1        | 1        | `flow/hub.ts:68`    |
+| `payer.quote.rates`       | `payer` → `hub`   | quote     | 2        | 1        | 1        | `flow/payer.ts:82`  |
+| `hub.quote.fx`            | `hub` → `fxp`     | quote     | 2.1      | 1        | 1        | `flow/hub.ts:99`    |
+| `hub.quote.payee`         | `hub` → `payee`   | quote     | 2.2      | 1        | 1        | `flow/hub.ts:110`   |
+| `payer.transfer.submit`   | `payer` → `hub`   | transfer  | 3        | 1        | 1        | `flow/payer.ts:121` |
+| `hub.transfer.deliver`    | `hub` → `payee`   | transfer  | 3.1      | 1        | 1        | `flow/hub.ts:141`   |
+
 <!-- END OBSERVED FLOWS: transfer.single -->
 
 ## Inter-scheme cross-currency
 
-Seven participants: `payer`, `hubA`, `fxpA`, `proxy`, `hubB`, `fxp`, `payee`. Wired by
-`startFlow('inter')`. The two schemes each hold **their own** provider, which is what makes the
-corridor's rate and the originating scheme's indication two different numbers — see the additions
-below the block.
+Six participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxp`. Wired by `startFlow('inter')`.
+One provider sits on the corridor and the receiving scheme's hub asks it (`hub.quote.fx`); the
+originating hub quotes nothing locally, so the corridor's price is the only price the run records —
+the shape the published flow has. See the additions below the block.
 
 <!-- BEGIN OBSERVED FLOWS: transfer.inter -->
-Participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxpA`, `fxp`. 14 calls observed across 1 execution(s).
+
+Participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxp`. 13 calls observed across 1
+execution(s).
 
 ```mermaid
 sequenceDiagram
@@ -166,53 +180,60 @@ sequenceDiagram
     participant proxy
     participant hubB
     participant payee
-    participant fxpA
     participant fxp
     Note over payer, fxp: PHASE 1: discovery
     payer->>hubA: payer.discovery.parties
     hubA->>proxy: hubA.discovery.proxy
     proxy->>hubB: proxy.discovery.corridor
     hubB->>payee: hub.discovery.payee
+    payee-->>hubB: hub.discovery.payee
+    hubB-->>proxy: proxy.discovery.corridor
+    proxy-->>hubA: hubA.discovery.proxy
+    hubA-->>payer: payer.discovery.parties
     Note over payer, fxp: PHASE 2: quote
     payer->>hubA: payer.quote.rates
-    hubA->>fxpA: hubA.quote.local
     hubA->>proxy: hubA.quote.proxy
     proxy->>hubB: proxy.quote.corridor
     hubB->>fxp: hub.quote.fx
+    fxp-->>hubB: hub.quote.fx
     hubB->>payee: hub.quote.payee
+    payee-->>hubB: hub.quote.payee
+    hubB-->>proxy: proxy.quote.corridor
+    proxy-->>hubA: hubA.quote.proxy
+    hubA-->>payer: payer.quote.rates
     Note over payer, fxp: PHASE 3: transfer
     payer->>hubA: payer.transfer.submit
     hubA->>proxy: hubA.transfer.proxy
     proxy->>hubB: proxy.transfer.corridor
     hubB->>payee: hub.transfer.deliver
+    payee-->>hubB: hub.transfer.deliver
+    hubB-->>proxy: proxy.transfer.corridor
+    proxy-->>hubA: hubA.transfer.proxy
+    hubA-->>payer: payer.transfer.submit
 ```
 
-| call | caller → receiver | phase | position | declared | answered | declared in |
-| ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
-| `payer.discovery.parties` | `payer` → `hubA` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
-| `hubA.discovery.proxy` | `hubA` → `proxy` | discovery | 1.1 | 1 | 1 | `flow/hubA.ts:60` |
-| `proxy.discovery.corridor` | `proxy` → `hubB` | discovery | 1.1.1 | 1 | 1 | `flow/proxy.ts:45` |
-| `hub.discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:68` |
-| `payer.quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
-| `hubA.quote.local` | `hubA` → `fxpA` | quote | 2.1 | 1 | 1 | `flow/hubA.ts:94` |
-| `hubA.quote.proxy` | `hubA` → `proxy` | quote | 2.2 | 1 | 1 | `flow/hubA.ts:102` |
-| `proxy.quote.corridor` | `proxy` → `hubB` | quote | 2.2.1 | 1 | 1 | `flow/proxy.ts:46` |
-| `hub.quote.fx` | `hubB` → `fxp` | quote | 2.2.1.1 | 1 | 1 | `flow/hub.ts:99` |
-| `hub.quote.payee` | `hubB` → `payee` | quote | 2.2.1.2 | 1 | 1 | `flow/hub.ts:110` |
-| `payer.transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
-| `hubA.transfer.proxy` | `hubA` → `proxy` | transfer | 3.1 | 1 | 1 | `flow/hubA.ts:136` |
-| `proxy.transfer.corridor` | `proxy` → `hubB` | transfer | 3.1.1 | 1 | 1 | `flow/proxy.ts:47` |
-| `hub.transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:141` |
+| call                       | caller → receiver | phase     | position | declared | answered | declared in         |
+| -------------------------- | ----------------- | --------- | -------- | -------- | -------- | ------------------- |
+| `payer.discovery.parties`  | `payer` → `hubA`  | discovery | 1        | 1        | 1        | `flow/payer.ts:66`  |
+| `hubA.discovery.proxy`     | `hubA` → `proxy`  | discovery | 1.1      | 1        | 1        | `flow/hubA.ts:53`   |
+| `proxy.discovery.corridor` | `proxy` → `hubB`  | discovery | 1.1.1    | 1        | 1        | `flow/proxy.ts:45`  |
+| `hub.discovery.payee`      | `hubB` → `payee`  | discovery | 1.1.1.1  | 1        | 1        | `flow/hub.ts:68`    |
+| `payer.quote.rates`        | `payer` → `hubA`  | quote     | 2        | 1        | 1        | `flow/payer.ts:82`  |
+| `hubA.quote.proxy`         | `hubA` → `proxy`  | quote     | 2.1      | 1        | 1        | `flow/hubA.ts:87`   |
+| `proxy.quote.corridor`     | `proxy` → `hubB`  | quote     | 2.1.1    | 1        | 1        | `flow/proxy.ts:46`  |
+| `hub.quote.fx`             | `hubB` → `fxp`    | quote     | 2.1.1.1  | 1        | 1        | `flow/hub.ts:99`    |
+| `hub.quote.payee`          | `hubB` → `payee`  | quote     | 2.1.1.2  | 1        | 1        | `flow/hub.ts:110`   |
+| `payer.transfer.submit`    | `payer` → `hubA`  | transfer  | 3        | 1        | 1        | `flow/payer.ts:121` |
+| `hubA.transfer.proxy`      | `hubA` → `proxy`  | transfer  | 3.1      | 1        | 1        | `flow/hubA.ts:119`  |
+| `proxy.transfer.corridor`  | `proxy` → `hubB`  | transfer  | 3.1.1    | 1        | 1        | `flow/proxy.ts:47`  |
+| `hub.transfer.deliver`     | `hubB` → `payee`  | transfer  | 3.1.1.1  | 1        | 1        | `flow/hub.ts:141`   |
+
 <!-- END OBSERVED FLOWS: transfer.inter -->
 
 Relative to the published exchange, this fixture:
 
 - **routes the corridor through a proxy participant** — hub A holds no directory of its own, so
   `hubA.discovery.proxy` is a real hop to a real participant rather than a URL change;
-- **keeps two providers, one per scheme** — hub A asks `fxpA` for its own indication
-  (`hubA.quote.local`) and the corridor's rate comes from hub B's provider (`hub.quote.fx`). Wiring
-  both schemes to one provider would make the pair hub A writes unable to differ, so nothing could
-  tell a hub that settled on the wrong quote from a correct one;
 - **carries each phase end to end** — one leg per hop per phase, which is what makes the counter
   paths read as a depth-first walk of the corridor (`1.1.1.1`, `2.2.1.2`, `3.1.1.1`).
 
@@ -222,15 +243,14 @@ The generated blocks draw what the service **observed**; this section is about t
 additions relative to the published protocol — the records the both-ends discipline requires, which
 are calls rather than protocol legs.
 
-The fixtures are not only a transcription of the diagrams. Four things they carry are absent from
+The fixtures are not only a transcription of the diagrams. Three things they carry are absent from
 the drawings, and each is deliberate:
 
-| Addition                          | Where                              | Why it is there                                                                                                                                                                                                                                                                             |
-| --------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hubA → fxpA` local indication    | `hubA.ts` route `/quotes`          | two schemes quoting one corridor quote different numbers; recording the local indication beside the corridor's rate is what lets an operator tell a moved corridor from a moved local price. Recorded **beside** the answer, never gating it — a declined indication is reported, not fatal |
-| The proxy's `hold` branch         | `proxy.ts` (`ROUTES`, `reachable`) | a proxy whose receiving link is not configured has no route and must hold (503) rather than forward into an address it was never given. Reachability is derived from the deployment, so the branch is real and not a guard against something that never happens                             |
-| Two identity headers on every hop | `participant.ts` (`hop`)           | `x-semantic-trace` (causal correlation) and `x-semantic-flow` (the execution ULID) — the diagram draws the protocol, not the observability envelope                                                                                                                                         |
-| The optional cluster-service sink | `participant.ts`, `flows.ts`       | with `--service`, each participant's records are shipped **beside** the local cache; without it the run is complete and offline (R18)                                                                                                                                                       |
+| Addition                          | Where                              | Why it is there                                                                                                                                                                                                                                                 |
+| --------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The proxy's `hold` branch         | `proxy.ts` (`ROUTES`, `reachable`) | a proxy whose receiving link is not configured has no route and must hold (503) rather than forward into an address it was never given. Reachability is derived from the deployment, so the branch is real and not a guard against something that never happens |
+| Two identity headers on every hop | `participant.ts` (`hop`)           | `x-semantic-trace` (causal correlation) and `x-semantic-flow` (the execution ULID) — the diagram draws the protocol, not the observability envelope                                                                                                             |
+| The optional cluster-service sink | `participant.ts`, `flows.ts`       | with `--service`, each participant's records are shipped **beside** the local cache; without it the run is complete and offline (R18)                                                                                                                           |
 
 ## What the flow code demonstrates
 

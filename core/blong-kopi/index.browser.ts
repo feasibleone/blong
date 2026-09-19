@@ -14,6 +14,9 @@ export default browser(blong => ({
         $subject: blong.type.Object({}),
     }),
     children: [
+        async function blong() {
+            return import('@feasibleone/blong-realm/browser.ts');
+        },
         async function ui() {
             return import('@feasibleone/blong-browser/browser.ts');
         },
@@ -33,6 +36,7 @@ export default browser(blong => ({
                     },
                 },
             },
+            blong: {},
             login: {},
             $subject: {},
         },

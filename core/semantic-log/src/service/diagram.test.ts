@@ -21,7 +21,9 @@ function drawn(model: {items: readonly DiagramItem[]}): string[] {
     return model.items.map(item =>
         item.kind === 'call'
             ? `call ${item.leg} ${item.caller}->${item.callee} x${item.count}/${item.observed}`
-            : `receipt ${item.leg} ${item.service}`,
+            : item.kind === 'response'
+              ? `response ${item.leg} ${item.callee}->${item.caller}`
+              : `receipt ${item.leg} ${item.service}`,
     );
 }
 
@@ -40,7 +42,8 @@ function unionLeg(leg: string, ends: LegEnd[], rest: Partial<ObservedLeg> = {}):
 
 t.test('a call is one call however many records were logged inside it', t => {
     // Several records from one call site are one call: counting them would report a
-    // chatty participant as a busy one. The receiver answered, so it is answered.
+    // chatty participant as a busy one. The receiver answered, so it is answered — and
+    // the answer is drawn back over the same leg id rather than folded into the call.
     const model = modelOfObservations([
         observed('payer.quote.rates', 'payer', {
             to: 'hub',
@@ -55,7 +58,11 @@ t.test('a call is one call however many records were logged inside it', t => {
             notes: ['withheld: routing'],
         }),
     ]);
-    t.same(drawn(model), ['call payer.quote.rates payer->hub x1/1'], 'one call, answered');
+    t.same(
+        drawn(model),
+        ['call payer.quote.rates payer->hub x1/1', 'response payer.quote.rates hub->payer'],
+        'one call, answered, and the answer drawn back',
+    );
     const call = model.items[0] as DiagramCall;
     t.same(
         call.notes,
@@ -63,6 +70,91 @@ t.test('a call is one call however many records were logged inside it', t => {
         'every note the leg carried travels with it, from whichever end logged it',
     );
     t.same(model.services, [], 'a model with no declared services names its own');
+    t.end();
+});
+
+t.test('an answer is drawn on the unwind, after the calls it made were answered', t => {
+    // The caller is blocked on its callee, which was blocked on its own: the payer's
+    // answer arrives after the hub has answered the payee, not when the request went out.
+    // The positions are what say so — `1.1` is a call made inside `1`.
+    const model = modelOfObservations([
+        observed('payer.discovery.parties', 'payer', {to: 'hub', seq: '1'}),
+        observed('payer.discovery.parties', 'hub', {seq: '1'}),
+        observed('hub.discovery.payee', 'hub', {to: 'payee', seq: '1.1'}),
+        observed('hub.discovery.payee', 'payee', {seq: '1.1'}),
+    ]);
+    t.equal(
+        renderSequence(model),
+        'sequenceDiagram\n' +
+            '    autonumber\n' +
+            '    participant payer\n' +
+            '    participant hub\n' +
+            '    participant payee\n' +
+            '    payer->>hub: payer.discovery.parties\n' +
+            '    hub->>payee: hub.discovery.payee\n' +
+            '    payee-->>hub: hub.discovery.payee\n' +
+            '    hub-->>payer: payer.discovery.parties\n',
+        'the nested answer comes back before the answer that carried it',
+    );
+    t.end();
+});
+
+t.test('a call that never leaves its own participant is drawn once', t => {
+    // A self-hop — the same participant named on both ends — is one arrow, not a pair. The
+    // answer back would repeat the caller, the receiver, the label and the step, which is
+    // exactly the repetition a sequence diagram is read to avoid: the dashed arrow exists
+    // to show *another* participant answering, and there is no other participant here. The
+    // call is still an *answered* call — the receiver's record is there, so the arrow stays
+    // solid rather than crossed — so "answered" is not lost with the pair.
+    const observations = [
+        observed('gateway.blong.flow.find', 'blong', {to: 'blong', seq: '1'}),
+        observed('gateway.blong.flow.find', 'blong', {seq: '1'}),
+    ];
+    t.same(
+        drawn(modelOfObservations(observations)),
+        ['call gateway.blong.flow.find blong->blong x1/1'],
+        'one execution: the call, and no answer to itself',
+    );
+    t.equal(
+        renderSequence(modelOfObservations(observations)),
+        'sequenceDiagram\n' +
+            '    autonumber\n' +
+            '    participant blong\n' +
+            '    blong->>blong: gateway.blong.flow.find\n',
+        'and it renders as the solid arrow it is',
+    );
+    t.same(
+        drawn(
+            modelOfUnion({
+                kind: 'blong.flow.find',
+                executions: 1,
+                services: ['blong'],
+                legs: [
+                    unionLeg('gateway.blong.flow.find', [
+                        {caller: 'blong', callee: 'blong', count: 1, observed: 1},
+                    ]),
+                ],
+            }),
+        ),
+        ['call gateway.blong.flow.find blong->blong x1/1'],
+        'the union keeps the same rule, so the two views cannot disagree about a self-hop',
+    );
+    t.end();
+});
+
+t.test('a call with no position has no place for its answer, so none is drawn', t => {
+    // Nothing says where such a call sits, so an answer would be an arrow in a place the
+    // records do not support. The call itself is still drawn — and still answered: its
+    // count is the evidence, and it is what a reader is left with.
+    const model = modelOfObservations([
+        observed('payer.quote.rates', 'payer', {to: 'hub'}),
+        observed('payer.quote.rates', 'hub', {}),
+    ]);
+    t.same(
+        drawn(model),
+        ['call payer.quote.rates payer->hub x1/1'],
+        'the call, its count, and no arrow that could not be placed',
+    );
     t.end();
 });
 
@@ -88,7 +180,9 @@ t.test('a call only its receiver shows cannot be an arrow', t => {
 
 t.test('a reused id is two arrows, and its notes are not dropped', t => {
     // One id declared to two receivers is the mistake the id exists to make
-    // impossible, so it is reported rather than resolved.
+    // impossible, so it is reported rather than resolved: a receipt says the leg was
+    // answered and not which of the two declared targets answered it, so neither arrow
+    // claims an answer - the same reading the ledger's union makes of it (D-211).
     const model = modelOfObservations([
         observed('payer.quote.rates', 'payer', {to: 'hub', seq: '1', notes: ['one']}),
         observed('payer.quote.rates', 'payer', {to: 'payee', seq: '1'}),
@@ -96,8 +190,8 @@ t.test('a reused id is two arrows, and its notes are not dropped', t => {
     ]);
     t.same(
         drawn(model),
-        ['call payer.quote.rates payer->hub x1/0', 'call payer.quote.rates payer->payee x1/1'],
-        'both attempts, and only the one whose receiver answered is answered',
+        ['call payer.quote.rates payer->hub x1/0', 'call payer.quote.rates payer->payee x1/0'],
+        'both attempts, and neither of them claims the receipt',
     );
     t.same(
         (model.items[0] as DiagramCall).notes,
@@ -200,8 +294,13 @@ t.test('a kind model carries the union it was aggregated from', t => {
     });
     t.same(
         drawn(model),
-        ['call payer.quote.rates payer->hub x12/12', 'call hub.transfer.deliver hub->payee x12/11'],
-        'the counts are what a kind diagram has that an execution diagram cannot',
+        [
+            'call payer.quote.rates payer->hub x12/12',
+            'response payer.quote.rates hub->payer',
+            'call hub.transfer.deliver hub->payee x12/11',
+            'response hub.transfer.deliver payee->hub',
+        ],
+        'the counts a kind diagram has that an execution diagram cannot, each with its answer',
     );
     t.same(model.services, ['payer', 'hub'], 'the union names its participants');
     t.end();
@@ -254,23 +353,25 @@ t.test('a rendered diagram is a sequence diagram of what was observed', t => {
             '    participant payee\n' +
             '    Note over payer, payee: PHASE 1: discovery\n' +
             '    payer->>hub: payer.discovery.parties\n' +
+            '    hub-->>payer: payer.discovery.parties\n' +
             '    Note over payer, payee: PHASE 2: quote\n' +
             '    Note over payer: decision: accept\n' +
             '    payer->>hub: payer.quote.rates\n' +
+            '    hub-->>payer: payer.quote.rates\n' +
             '    Note over payer, payee: PHASE 3: transfer\n' +
             '    payer--xhub: payer.transfer.submit (no receipt)\n' +
             '    payer--xpayee: payer.transfer.submit (no receipt)\n',
-        'the arrows are the calls, banded by the steps, in position order',
+        'the calls, the answers that came back, and the bands they were observed in',
     );
     t.end();
 });
 
 t.test('a step that repeats is a new band, and a call with no step is drawn bare', t => {
     const model = modelOfObservations([
-        observed('a.b', 'payer', {to: 'hub', seq: '1'}),
-        observed('a.c', 'payer', {to: 'hub', seq: '2', step: 'quote'}),
-        observed('a.d', 'payer', {to: 'hub', seq: '3', step: 'quote'}),
-        observed('a.e', 'payer', {to: 'hub', seq: '4', step: 'transfer'}),
+        observed('payer.b', 'payer', {to: 'hub', seq: '1'}),
+        observed('payer.c', 'payer', {to: 'hub', seq: '2', step: 'quote'}),
+        observed('payer.d', 'payer', {to: 'hub', seq: '3', step: 'quote'}),
+        observed('payer.e', 'payer', {to: 'hub', seq: '4', step: 'transfer'}),
     ]);
     const bands = renderSequence(model)
         .split('\n')
@@ -282,7 +383,7 @@ t.test('a step that repeats is a new band, and a call with no step is drawn bare
     );
     t.equal(
         renderSequence(model).trimEnd().split('\n')[4],
-        '    payer--xhub: a.b (no receipt)',
+        '    payer--xhub: payer.b (no receipt)',
         'a call with no step is drawn bare, before any band',
     );
     t.end();
@@ -358,8 +459,12 @@ t.test('the counts a call did not have the usual shape for are said out loud', t
 });
 
 t.test('a call nothing answered crosses rather than points', t => {
-    const model = modelOfObservations([observed('a.b', 'payer', {to: 'hub'})]);
-    t.match(renderSequence(model), /payer--xhub: a\.b \(no receipt\)/, 'crossed, and it says why');
+    const model = modelOfObservations([observed('payer.b', 'payer', {to: 'hub'})]);
+    t.match(
+        renderSequence(model),
+        /payer--xhub: payer\.b \(no receipt\)/,
+        'crossed, and it says why',
+    );
     t.end();
 });
 
@@ -399,6 +504,10 @@ t.test('a note cannot carry a statement separator or a line break into the diagr
 });
 
 t.test('a hostile service name cannot become an arrow', t => {
+    // The name is caller text, so the diagram has to fold it: the caller is the service
+    // that wrote the record, and a name carrying `;`, `->>` or `:` would close the
+    // statement and draw an arrow of its own. The name is drawn - it is who called - but
+    // what it must not do is become syntax. The target is folded for the same reason.
     const model = modelOfObservations([
         observed('payer.quote.rates', 'evil;\npayer->>victim: forged', {to: 'hub;x->>y', seq: '1'}),
     ]);
@@ -406,26 +515,41 @@ t.test('a hostile service name cannot become an arrow', t => {
     t.notMatch(rendered, /;/, 'the separator is gone from the participant names too');
     t.match(
         rendered,
-        /evil__payer-__victim__forged--xhub_x-__y: payer\.quote\.rates \(no receipt\)/,
-        'exactly the one arrow the model asked for',
-    );
-    t.match(
-        rendered,
         /participant evil__payer-__victim__forged/,
         'a name outside the safe set is folded to underscores',
     );
     t.match(rendered, /participant hub_x-__y/, 'on both ends');
+    t.match(
+        rendered,
+        /evil__payer-__victim__forged--xhub_x-__y: payer\.quote\.rates \(no receipt\)/,
+        'exactly the one arrow the model asked for',
+    );
+    t.end();
+});
+
+t.test('a hostile service name is folded where it is the only caller named', t => {
+    // The folding is what keeps a caller-controlled name from becoming syntax, with no
+    // second participant to read it against: the emitter's own name is what the arrow
+    // carries, and it is folded rather than dropped.
+    const model = modelOfObservations([
+        observed('single', 'evil;\npayer->>victim: forged', {to: 'hub', seq: '1'}),
+    ]);
+    const rendered = renderSequence(model);
+    t.notMatch(rendered, /;/, 'no statement separator survives');
+    t.match(rendered, /participant evil__payer-__victim__forged/, 'folded to underscores');
+    t.match(rendered, /evil__payer-__victim__forged--xhub: single/, 'and drawn on the arrow');
     t.end();
 });
 
 t.test('two services that fold to the same name are numbered apart, not merged', t => {
     // `a b` and `a_b` are two services, not one with a typo, so the second is numbered
     // rather than drawn as the first. The third collides with a name already numbered,
-    // so the suffix itself is tried again until it is free.
+    // so the suffix itself is tried again until it is free. The legs here name no caller
+    // (no dot in the id), which is what puts the emitting service on the arrow.
     const model = modelOfObservations([
-        observed('a.b', 'a b', {to: 'c d', seq: '1'}),
-        observed('a.c', 'a_b_2', {to: 'c d', seq: '2'}),
-        observed('a.d', 'a_b', {to: 'c_d', seq: '3'}),
+        observed('one', 'a b', {to: 'c d', seq: '1'}),
+        observed('two', 'a_b_2', {to: 'c d', seq: '2'}),
+        observed('three', 'a_b', {to: 'c_d', seq: '3'}),
     ]);
     const names = renderSequence(model)
         .split('\n')
@@ -446,7 +570,9 @@ t.test('two services that fold to the same name are numbered apart, not merged',
 });
 
 t.test('a service name with no characters at all is still a participant', t => {
-    const model = modelOfObservations([observed('a.b', '', {to: 'hub'})]);
+    // A nameless service is folded like any other caller text: the record's service is who
+    // called, and there is nothing else to read it from.
+    const model = modelOfObservations([observed('single', '', {to: 'hub'})]);
     t.match(renderSequence(model), /participant unobserved\n/, 'a name cannot be empty either');
     t.end();
 });
@@ -481,7 +607,7 @@ t.test('the same model renders the same text, and layout cannot change it', t =>
 t.test('a participant a hand-built model omitted is still declared', t => {
     // The model is public and the renderer is total: an undeclared participant would
     // be a mermaid name mermaid invents, in an order the model did not choose.
-    const model = modelOfObservations([observed('a.b', 'payer', {to: 'hub'})], ['payee']);
+    const model = modelOfObservations([observed('payer.b', 'payer', {to: 'hub'})], ['payee']);
     t.same(
         renderSequence(model)
             .split('\n')

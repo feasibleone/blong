@@ -61,6 +61,39 @@ export const TO_FIELD = 'to';
 /** The leg's position in the execution: a path of counters, e.g. `1.2`. */
 export const SEQ_FIELD = 'seq';
 
+/**
+ * The capabilities decided for the execution, as one field of this header.
+ *
+ * They travel *with* the identity rather than beside it because they are part of
+ * the same statement — "this is the execution this call belongs to, and this is
+ * what was decided for it" — and because one header is one thing to set, copy and
+ * parse wherever a call is made. The value is a dot-separated list of names, with
+ * a leading `-` for the ones explicitly switched off:
+ *
+ *     x-semantic-trace: trace=tr-1,flow=01ARZ3NDEKTSV4RRFFQ69G5FAV,cap=calls.-payloads
+ *
+ * Dots rather than commas *inside* the field, because the header's own separator
+ * is a comma: a list that used it would split into fields, and half of a
+ * capability is worse than none — the receiving end would adopt `payloads` as a
+ * trace field or reject the identity outright. Capability names are therefore
+ * simple words (`[A-Za-z0-9_-]+`), which is what a switch's name should be.
+ *
+ * Switching one off explicitly matters as much as switching one on: without it, a
+ * process that has no decision would fall back to its own configuration and record
+ * half of a flow the entry point had decided not to record.
+ */
+export const CAP_FIELD = 'cap';
+
+/**
+ * The separator *inside* the capability field.
+ *
+ * Never a comma: the header's own separator is a comma, so a list written with one
+ * would split into fields (see above). A dot is already the separator inside a leg
+ * id and inside a method name, and it is lawful in a header value, so it needs no
+ * escaping and reads as what it is.
+ */
+const CAP_SEPARATOR = '.';
+
 /** The identities bound in a scope, each absent unless it was bound. */
 export interface Identities {
     trace?: string;
@@ -68,6 +101,62 @@ export interface Identities {
     leg?: string;
     to?: string;
     seq?: string;
+    /** The capabilities decided for the execution, as name → on/off. */
+    capabilities?: Record<string, boolean>;
+}
+
+/**
+ * A capability set as the header's field value: `calls,-payloads`.
+ *
+ * Sorted, so two processes that decided the same set write the same text — a
+ * value that differs only in order is a value that looks changed when it is not.
+ */
+export function encodeCapabilities(capabilities: Record<string, boolean>): string {
+    return Object.keys(capabilities)
+        .sort()
+        .map(name => (capabilities[name] ? name : `-${name}`))
+        .join(CAP_SEPARATOR);
+}
+
+/**
+ * Read a capability field.
+ *
+ * Tolerant by design: this value arrives from another process, and a field that
+ * cannot be read is a field that was not decided — never a reason to reject the
+ * call it arrived with. An empty name, an empty value and a repeated name are
+ * dropped for the same reason a malformed identity field is (see above): a
+ * corrupt answer that still looks like one is worse than no answer.
+ */
+export function decodeCapabilities(value: string): Record<string, boolean> | undefined {
+    const capabilities: Record<string, boolean> = {};
+    let seen = false;
+    for (const part of value.split(CAP_SEPARATOR)) {
+        const entry = part.trim();
+        if (entry.length === 0) continue;
+        const off = entry.startsWith('-');
+        const name = off ? entry.slice(1).trim() : entry;
+        if (name.length === 0 || name in capabilities) continue;
+        capabilities[name] = !off;
+        seen = true;
+    }
+    return seen ? capabilities : undefined;
+}
+
+/**
+ * The same header value with the capability field removed.
+ *
+ * A trust boundary needs it: a capability decides what a process may cost itself,
+ * so a value that arrived from outside the deployment must not be adopted — the
+ * entry point strips it and publishes its own decision in its place. The rest of
+ * the identity is left exactly as it arrived.
+ */
+export function withoutCapabilities(value: string | undefined): string {
+    if (typeof value !== 'string' || !value.includes(`${CAP_FIELD}=`)) return value ?? '';
+    const fields = value
+        .split(',')
+        .map(field => field.trim())
+        .filter(field => field.length > 0 && !field.startsWith(`${CAP_FIELD}=`));
+    return fields.join(',');
 }
 
 /**
@@ -84,6 +173,8 @@ export function identityHeaders(extra?: Record<string, string>): Record<string, 
     if (context.leg !== undefined) fields.push(`${LEG_FIELD}=${context.leg}`);
     if (context.legTo !== undefined) fields.push(`${TO_FIELD}=${context.legTo}`);
     if (context.legSeq !== undefined) fields.push(`${SEQ_FIELD}=${context.legSeq}`);
+    const capabilities = encodeCapabilities(context.capabilities ?? {});
+    if (capabilities.length > 0) fields.push(`${CAP_FIELD}=${capabilities}`);
     if (fields.length === 0) {
         return {...extra};
     }
@@ -136,6 +227,11 @@ export function readIdentities(headers: Record<string, unknown>): Identities {
             case SEQ_FIELD:
                 identities.seq = value;
                 break;
+            case CAP_FIELD: {
+                const capabilities = decodeCapabilities(value);
+                if (capabilities !== undefined) identities.capabilities = capabilities;
+                break;
+            }
             default:
                 // A field this version does not know is ignored rather than fatal, so
                 // an emitter from a later version still reaches a receiver from an

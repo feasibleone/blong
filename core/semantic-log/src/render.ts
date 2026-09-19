@@ -1,8 +1,12 @@
 /**
  * Standard rendered format (PRD R20) and the reference rendering (PRD R19).
  *
- * The header is always exactly one line; optional detail is indented beneath
- * it. Detail is rendered as labelled structured lines — never a raw object
+ * The header is always exactly one line. It is compact by default: the service
+ * name, the version and the base fields are all on the record, but the line does
+ * not repeat them, because the deployment that reads it is a Kubernetes pod
+ * whose identity the reader already knows from where the line came.
+ * `RenderOptions.details` puts them back. Optional detail is indented beneath
+ * the header; it is rendered as labelled structured lines — never a raw object
  * dump — because the spec's acceptance criteria say so in as many words.
  *
  * Rendering is a pure read: the record is never mutated, so a caller may cache
@@ -18,6 +22,24 @@ export interface RenderOptions {
     color?: boolean;
     /** Injectable clock for deterministic tests. */
     formatTime?: (time: number) => string;
+    /**
+     * Print the identity details the human line leaves out by default: the
+     * service name and the `version=` token. The base fields (`pid`, `hostname`)
+     * follow the record's own `fields`, so they are printed when, and only when,
+     * the record carries them — which is what `LoggerOptions.details` decides.
+     *
+     * Off by default: the pod that reads these lines is already named by where
+     * the line came from, so repeating it costs width and buys nothing. The
+     * record always carries all of them (JSON mode, the retained store, the
+     * cluster service), so this changes the human line alone. The inspector opts
+     * in, because printing one record on demand is the case where knowing which
+     * service emitted it is the point (R20).
+     *
+     * One line ignores the flag: the salvage a failed render falls back to always
+     * names the service, because a line that exists only because rendering broke
+     * is worth nothing if the reader cannot tell which process produced it.
+     */
+    details?: boolean;
 }
 
 const ANSI = {
@@ -25,10 +47,12 @@ const ANSI = {
     dim: '\u001B[2m',
     red: '\u001B[31m',
     green: '\u001B[32m',
+    greenBright: '\u001B[92m',
     yellow: '\u001B[33m',
     blue: '\u001B[34m',
     magenta: '\u001B[35m',
     cyan: '\u001B[36m',
+    gray: '\u001B[90m',
 } as const;
 
 const LEVEL_COLOR: Record<number, string> = {
@@ -123,11 +147,16 @@ function header(record: LogRecord, options: RenderOptions): string {
     const parts = [
         renderTime(record.time, formatTime),
         paint(LEVEL_COLOR[record.level] ?? '', levelName(record.level).padEnd(5)),
-        paint(ANSI.cyan, sanitise(record.service)),
     ];
+    // The service name is the first of R20's identity details, printed only when
+    // they were asked for. Everything a line needs to be greppable without them
+    // is below: level, context, message id, operation and the message.
+    if (options.details) parts.push(paint(ANSI.cyan, sanitise(record.service)));
     if (record.context) parts.push(sanitise(record.context));
-    if (record.messageId) parts.push(sanitise(record.messageId));
-    if (record.operation) parts.push(sanitise(record.operation));
+    if (record.fields?.context)
+        parts.push(paint(ANSI.greenBright, sanitise(record.fields?.context)));
+    if (record.messageId) parts.push(paint(ANSI.magenta, sanitise(record.messageId)));
+    if (record.operation) parts.push(paint(ANSI.yellow, sanitise(record.operation)));
     if (record.flow) {
         const index = record.flow.index ?? -1;
         parts.push(
@@ -145,15 +174,16 @@ function header(record: LogRecord, options: RenderOptions): string {
         }
     }
     if (record.intent) parts.push(`intent=${sanitise(record.intent.name)}`);
-    parts.push(sanitise(record.msg));
-    // The version of the base fields rides the header too (§5.1 "Base fields
-    // (pid, hostname, service, version)"). It is placed *after* R20's normative
-    // details — timestamp, level, service, context, message id, operation,
-    // message — so that order stays intact, and before the reference group,
-    // which stays last. `version=` rather than a bare token keeps it distinct
-    // from the message it follows.
-    if (record.version) parts.push(`version=${sanitise(record.version)}`);
-    parts.push(renderRefs(record));
+    parts.push(paint(ANSI.cyan, sanitise(record.msg)));
+    // The version of the base fields rides the header too, under the same flag as
+    // the service it belongs with (§5.1 "Base fields (pid, hostname, service,
+    // version)"). It is placed *after* R20's normative details — timestamp,
+    // level, context, message id, operation, message — so that order stays intact
+    // whenever the details are asked for, and before the reference group, which
+    // stays last. `version=` rather than a bare token keeps it distinct from the
+    // message it follows.
+    if (options.details && record.version) parts.push(`version=${sanitise(record.version)}`);
+    parts.push(paint(ANSI.gray, renderRefs(record)));
     return parts.filter(Boolean).join(' ');
 }
 
@@ -283,6 +313,12 @@ function salvageJson(record: LogRecord): string {
 /**
  * One greppable line rebuilt from primitives, so assembling it cannot fail.
  *
+ * Unlike the header it stands in for, this line always names the service. The
+ * compact default exists because a routine line's reader already knows which pod
+ * it came from; a line produced *because rendering failed* is the one case where
+ * that is exactly what the reader does not know, and a salvage nobody can
+ * attribute is a salvage that did not work.
+ *
  * `service` and `msg` are caller text and pass through `sanitise` here too: a
  * newline in either would split the salvaged line, which is the one thing the
  * salvage exists to avoid — the whole record would then be read as a record
@@ -306,10 +342,14 @@ function salvageHuman(record: LogRecord): string {
  * to a minimal reconstructed line, rather than a guard beside every read.
  */
 export function renderHuman(record: LogRecord, options: RenderOptions = {}): string {
+    const paint = options.color
+        ? (code: string, text: string): string => `${code}${text}${ANSI.reset}`
+        : (_code: string, text: string): string => text;
     try {
         const resolved: RenderOptions = {
             color: options.color ?? false,
             formatTime: options.formatTime,
+            details: options.details ?? false,
         };
         const lines = [header(record, resolved)];
 
@@ -355,7 +395,8 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
             // value is what keeps a caller's text from forging a second line that
             // has neither.
             const payloads = record.refs.payloads;
-            for (const [key, value] of Object.entries(record.fields)) {
+            const {context: _, ...fields} = record.fields;
+            for (const [key, value] of Object.entries(fields)) {
                 if (isSkippedField(value)) continue;
                 const text = renderField(value);
                 const payload = payloads?.[key];
@@ -377,7 +418,7 @@ export function renderHuman(record: LogRecord, options: RenderOptions = {}): str
                     payload !== undefined && text.length >= PAYLOAD_THRESHOLD
                         ? refUri('payload', payload)
                         : sanitise(text);
-                lines.push(`  ${sanitise(key)}: ${rendered}`);
+                lines.push(paint(ANSI.gray, `  ${sanitise(key)}: ${rendered}`));
             }
         }
         return lines.join('\n');

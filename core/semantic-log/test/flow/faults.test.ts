@@ -22,12 +22,13 @@
  * *later* task owns became this task's debt.
  */
 
-import {mkdtemp, readdir, readFile, rm} from 'node:fs/promises';
+import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 
 import t from 'tap';
 
+import {cacheRecordIds, openCache} from '../../src/cache.ts';
 import type {LogRecord} from '../../src/record.ts';
 import {renderHuman} from '../../src/render.ts';
 import {createApp} from '../../src/service/app.ts';
@@ -49,12 +50,16 @@ t.afterEach(() => setWriter(RESTORE_WRITER));
 
 /** Every record the participant retained, read back out of the store it wrote. */
 async function retained(participant: Participant): Promise<LogRecord[]> {
-    const dir = join(participant.cacheDir, 'records');
-    const files = await readdir(dir).catch(() => [] as string[]);
+    const dir = participant.cacheDir;
+    const cache = await openCache({dir, limit: Number.MAX_SAFE_INTEGER, readOnly: true});
     const records: LogRecord[] = [];
-    for (const file of files) {
-        records.push(JSON.parse(await readFile(join(dir, file), 'utf8')) as LogRecord);
+    for (const id of await cacheRecordIds(dir)) {
+        const record = await cache.get(id);
+        if (record) {
+            records.push(record);
+        }
     }
+    await cache.close();
     return records;
 }
 

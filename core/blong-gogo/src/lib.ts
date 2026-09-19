@@ -1,3 +1,4 @@
+import type {ICallLog, ILog} from '@feasibleone/blong/types';
 import ky from 'ky';
 
 export function methodId<T>(what: T): T {
@@ -100,6 +101,20 @@ export function parseAnnotatedKey(key: string): {
         }
     }
     return {annotations, handlerName};
+}
+
+/**
+ * A port's call channel, when it has one.
+ *
+ * A port is reachable as `unknown` from the places that want to record a call
+ * through it (the handler proxy, the adapter's receipt), because a port is an
+ * object the framework attaches handlers to rather than a type it owns. The cast
+ * lives here so it stays in one place, and so a port whose logger is a third
+ * party's — one without a call channel — simply records nothing instead of
+ * throwing on the way through a dispatch.
+ */
+export function portLogCalls(port: unknown): ICallLog | undefined {
+    return (port as {log?: ILog})?.log?.calls;
 }
 
 /**

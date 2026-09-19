@@ -27,6 +27,12 @@ Framework-level hard rules. Every skill assumes these. Apply first; never contra
   (namespace) + `adapter/db/*.ts` handlers + `meta/`.
 - **[DB_ACCESS]** DB persistence handlers live in `adapter/db/` and reach the shared knex pool via
   `this.config?.context?.queryBuilder` — not in `orchestrator/`.
+- **Do not reach past the adapter.** A handler must not drive a client of its own — `fetch`, a
+  socket, an SDK — to reach what a port is attached to: the endpoint, credentials, transport,
+  timeouts and error mapping a deployment configured are the port's. The port's `exec` is its own
+  call, not a bypass (and `super.exec` is how a handler reuses the default behaviour); where a
+  group's methods share a shape, a `send` / `receive` conversion states it once. See
+  `[ARCHETYPE: CONVERSION]` and **blong-handler** → _Conversions_.
 - **Never enable `systemDebug` in production.**
 - **Never commit to `dev/`** (gitignored).
 
@@ -77,7 +83,45 @@ export default adapter.http({
 ```
 
 Rule: adapters translate semantic-triple internal API ↔ external system API; self-contained
-(`activation` config co-located in the layer file).
+(`activation` config co-located in the layer file). The translation itself belongs in the port's
+conversions — see `[ARCHETYPE: CONVERSION]`.
+
+---
+
+## [ARCHETYPE: CONVERSION]
+
+```typescript
+// adapter/<group>/<method>RequestSend.ts — one method's request (URL port; base `exec` makes it)
+export default handler(
+    () =>
+        function subjectObjectPredicateRequestSend(params) {
+            return {method: 'GET', path: `/things/${params.thingId}`, responseType: 'json'};
+        },
+);
+
+// adapter/<group>/responseReceive.ts — one answer path for the whole group
+export default handler(
+    ({errors}) =>
+        function responseReceive(response) {
+            if (response.statusCode < 200 || response.statusCode >= 300) {
+                throw errors.serviceRefused({statusCode: response.statusCode});
+            }
+            return response.body;
+        },
+);
+```
+
+The shape is the transport's: a URL port returns that descriptor, a stream port transforms the
+payload in `send` and frames it with `encode` / `decode`, and a port over a driver (knex, mongodb,
+s3) leaves the call to `exec` with the connection it was given.
+
+Rule: the port loop probes `send` / `receive` **by method, then mtid, then generically** — which is
+what makes the granularity a choice: one conversion for a whole group, one per method, or none where
+a codec builds the request. File name = export = conversion name (`blongFlowFindRequestSend` is
+`blong.flow.find.request.send`), and one `responseReceive` can serve every method of a group. A
+group that is nothing but a protocol has **no method handlers**: what `send` returns is handed to
+the base adapter's `exec`, and the methods are declared by the gateway layer. Details and worked
+examples: **blong-handler** → _Conversions_.
 
 ---
 

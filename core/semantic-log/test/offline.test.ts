@@ -36,8 +36,16 @@ t.test('a default logger emits with no service configured', t => {
         process.stdout.write = original;
         setWriter(stdoutWriter);
     }
-    t.match(writes.join(''), /hub no service anywhere/, 'the record still emits with no service anywhere');
-    t.match(writes.join(''), /r=semantic-log:\/\/record\//, 'and it still carries a local reference');
+    t.match(
+        writes.join(''),
+        /no service anywhere/,
+        'the record still emits with no service anywhere',
+    );
+    t.match(
+        writes.join(''),
+        /r=semantic-log:\/\/record\//,
+        'and it still carries a local reference',
+    );
     t.end();
 });
 
@@ -64,7 +72,12 @@ t.test('a hung cache cannot stall an emit, however large the burst', async t => 
     // when every assertion above it passed.
     t.teardown(() => setWriter(stdoutWriter));
     setWriter({write: (line: string): void => void lines.push(line)});
-    const logger = createLogger({service: 'payer', level: 'trace', cache: hung, now: () => 1757765472345});
+    const logger = createLogger({
+        service: 'payer',
+        level: 'trace',
+        cache: hung,
+        now: () => 1757765472345,
+    });
     // This is the property the test exists for: an emit never waits on the
     // store. Every one of the 10,000 calls has to have returned for the writer
     // to have seen 10,000 records, and the elapsed budget below is far under any
@@ -77,8 +90,15 @@ t.test('a hung cache cannot stall an emit, however large the burst', async t => 
     }
     const elapsed = Date.now() - started;
     t.equal(lines.length, 10_000, 'every record reached the writer without waiting on the store');
-    t.equal(put, 0, "the store was not touched on the caller's stack: the write is queued, never awaited");
-    t.ok(elapsed < 5_000, `a 10k burst completes promptly (${elapsed}ms), far below the store's latency`);
+    t.equal(
+        put,
+        0,
+        "the store was not touched on the caller's stack: the write is queued, never awaited",
+    );
+    t.ok(
+        elapsed < 5_000,
+        `a 10k burst completes promptly (${elapsed}ms), far below the store's latency`,
+    );
 
     // Unwind the stack: the queued drain now runs. Exactly *one* write is
     // dispatched, and that is the tracker working as designed rather than the
@@ -93,7 +113,11 @@ t.test('a hung cache cannot stall an emit, however large the burst', async t => 
     // `hung` above is a hand-written `RecordStore` — and the ordering lives in
     // the tracker.)
     await new Promise<void>(resolve => setImmediate(resolve));
-    t.equal(put, 1, 'exactly one write was dispatched: the serialised queue is held by the store that never answers');
+    t.equal(
+        put,
+        1,
+        'exactly one write was dispatched: the serialised queue is held by the store that never answers',
+    );
 
     // The queue is bounded, and its loss is observable rather than silent: the
     // next record reports the writes the bound evicted. This replaces
@@ -101,84 +125,117 @@ t.test('a hung cache cannot stall an emit, however large the burst', async t => 
     // loop that incremented `emitted` and so could not fail. `put` stays 1
     // because the bound drops queued writes; it does not fan them out.
     logger.trace('after the burst');
-    t.match(lines[10_000], /writeDropped: 9000/, 'the bound evicted the oldest 9,000, and the loss is reported');
+    t.match(
+        lines[10_000],
+        /writeDropped: 9000/,
+        'the bound evicted the oldest 9,000, and the loss is reported',
+    );
 
     const settled = await Promise.race([
         logger.flush().then(() => 'settled'),
         new Promise<string>(resolve => setTimeout(() => resolve('pending'), 10)),
     ]);
-    t.equal(settled, 'pending', 'flush still reports the writes as outstanding, as the store never answered');
+    t.equal(
+        settled,
+        'pending',
+        'flush still reports the writes as outstanding, as the store never answered',
+    );
     t.end();
 });
 
-t.test('only the declared service modules reach the network; every emitter module stays offline', async t => {
-    // The scan stays total, and that is the point of it. It used to read `src/`
-    // one level deep and name one bin file by hand, so `src/service/app.ts`
-    // (which imports `fastify`) and `bin/semantic-log-service.ts` were never
-    // read at all: the guard kept reporting green while the first module that
-    // opens this package to the network sat outside it. Naming paths by hand
-    // recreates that hole the next time a file is added, and the cluster
-    // service is planned to grow to a dozen modules under `src/service/`, so
-    // the directories are walked instead of enumerated. Only shipping sources
-    // are walked — `test/` and `*.test.ts` are excluded because a test may
-    // legitimately stub a transport — and every module below `src/` or `bin/`,
-    // at any depth, is covered without further edits here.
-    //
-    // The remote embedding provider and the cluster-service sink are genuinely
-    // network code, so the audit is scoped rather than narrowed: a declared
-    // allowlist names the modules that may contain a network form, and it is
-    // asserted to be *exactly* the set of scanned modules that do. It therefore
-    // fails in both directions — a module that gains a network call without
-    // being declared fails, and a declared module that stops using the network
-    // fails too — which a hand-maintained skip list inside the loop could never
-    // do. The prefix assertion below keeps
-    // the original intent: every allowlisted module is service code, so the emit
-    // path (logger, cache, buffer, writer, render, refs, record, level,
-    // normalize, stack, fingerprint, redact, context, decide) can never be on
-    // this list, and R18's independence from the service is preserved.
-    const sources: Array<{path: string; url: URL}> = [
-        {path: 'index.ts', url: new URL('../index.ts', import.meta.url)},
-    ];
-    for (const dir of ['src', 'bin']) {
-        const base = new URL(`../${dir}/`, import.meta.url);
-        const names = (await readdir(base, {recursive: true})) as string[];
-        for (const name of names) {
-            if (name.endsWith('.ts') && !name.endsWith('.test.ts')) {
-                sources.push({path: `${dir}/${name}`, url: new URL(name, base)});
+t.test(
+    'only the declared service modules reach the network; every emitter module stays offline',
+    async t => {
+        // The scan stays total, and that is the point of it. It used to read `src/`
+        // one level deep and name one bin file by hand, so `src/service/app.ts`
+        // (which imports `fastify`) and `bin/semantic-log-service.ts` were never
+        // read at all: the guard kept reporting green while the first module that
+        // opens this package to the network sat outside it. Naming paths by hand
+        // recreates that hole the next time a file is added, and the cluster
+        // service is planned to grow to a dozen modules under `src/service/`, so
+        // the directories are walked instead of enumerated. Only shipping sources
+        // are walked — `test/` and `*.test.ts` are excluded because a test may
+        // legitimately stub a transport — and every module below `src/` or `bin/`,
+        // at any depth, is covered without further edits here.
+        //
+        // The remote embedding provider and the cluster-service sink are genuinely
+        // network code, so the audit is scoped rather than narrowed: a declared
+        // allowlist names the modules that may contain a network form, and it is
+        // asserted to be *exactly* the set of scanned modules that do. It therefore
+        // fails in both directions — a module that gains a network call without
+        // being declared fails, and a declared module that stops using the network
+        // fails too — which a hand-maintained skip list inside the loop could never
+        // do. The prefix assertion below keeps
+        // the original intent: every allowlisted module is service code, so the emit
+        // path (logger, cache, buffer, writer, render, refs, record, level,
+        // normalize, stack, fingerprint, redact, context, decide) can never be on
+        // this list, and R18's independence from the service is preserved.
+        const sources: Array<{path: string; url: URL}> = [
+            {path: 'index.ts', url: new URL('../index.ts', import.meta.url)},
+        ];
+        for (const dir of ['src', 'bin']) {
+            const base = new URL(`../${dir}/`, import.meta.url);
+            const names = (await readdir(base, {recursive: true})) as string[];
+            for (const name of names) {
+                if (name.endsWith('.ts') && !name.endsWith('.test.ts')) {
+                    sources.push({path: `${dir}/${name}`, url: new URL(name, base)});
+                }
             }
         }
-    }
-    // The enumeration is asserted, not assumed: a scan that silently matched
-    // nothing would pass every check below. These are the modules the previous
-    // hand-written list could not see, plus one emitter module, so the check
-    // that the emit path is scanned cannot disappear behind the service.
-    const scanned = sources.map(source => source.path).join('\n');
-    t.match(scanned, /^src\/service\/app\.ts$/m, 'the service entry point is scanned');
-    t.match(scanned, /^src\/service\/provider\.ts$/m, 'the embedding providers are scanned');
-    t.match(scanned, /^bin\/semantic-log-service\.ts$/m, 'the service bin entry point is scanned');
-    t.match(scanned, /^src\/logger\.ts$/m, 'and so is the emit path, which must never be allowed to network');
+        // The enumeration is asserted, not assumed: a scan that silently matched
+        // nothing would pass every check below. These are the modules the previous
+        // hand-written list could not see, plus one emitter module, so the check
+        // that the emit path is scanned cannot disappear behind the service.
+        const scanned = sources.map(source => source.path).join('\n');
+        t.match(scanned, /^src\/service\/app\.ts$/m, 'the service entry point is scanned');
+        t.match(scanned, /^src\/service\/provider\.ts$/m, 'the embedding providers are scanned');
+        t.match(
+            scanned,
+            /^bin\/semantic-log-service\.ts$/m,
+            'the service bin entry point is scanned',
+        );
+        t.match(
+            scanned,
+            /^src\/logger\.ts$/m,
+            'and so is the emit path, which must never be allowed to network',
+        );
 
-    // Static, so it fails the moment such a call is written rather than when it
-    // happens to be reached. The dynamic half of the proof is the burst above:
-    // nothing that blocks can complete a 10k burst promptly.
-    const network = /from 'node:(?:net|http|https|dns|tls|dgram|http2)'|\bfetch\s*\(/;
-    const online = new Set<string>();
-    for (const source of sources) {
-        if (network.test(await readFile(source.url, 'utf8'))) {
-            online.add(source.path);
+        // Static, so it fails the moment such a call is written rather than when it
+        // happens to be reached. The dynamic half of the proof is the burst above:
+        // nothing that blocks can complete a 10k burst promptly.
+        const network = /from 'node:(?:net|http|https|dns|tls|dgram|http2)'|\bfetch\s*\(/;
+        const online = new Set<string>();
+        for (const source of sources) {
+            if (network.test(await readFile(source.url, 'utf8'))) {
+                online.add(source.path);
+            }
         }
-    }
 
-    // Data, not an exemption buried in the loop: the equality below is what
-    // makes the declaration load-bearing.
-    const NETWORK_ALLOWLIST = ['src/service/provider.ts', 'src/service/transport.ts'];
-    t.ok(NETWORK_ALLOWLIST.length > 0, 'the allowlist is not empty, so the scoping check below is not vacuous');
-    for (const allowed of NETWORK_ALLOWLIST) {
-        t.match(allowed, /^src\/service\//, `${allowed} is service code, never part of the emit path (R18)`);
-    }
-    t.same(
-        [...online].sort(),
-        [...NETWORK_ALLOWLIST].sort(),
-        'exactly the declared modules use the network: no undeclared use, and no stale declaration',
-    );
-});
+        // Data, not an exemption buried in the loop: the equality below is what
+        // makes the declaration load-bearing. `start.ts` binds a socket, which is as
+        // much a network reach as `app.ts` merely importing `fastify` was — it is the
+        // listener for the service's own port, on loopback, and it never joins the
+        // emit path.
+        const NETWORK_ALLOWLIST = [
+            'src/service/provider.ts',
+            'src/service/start.ts',
+            'src/service/transport.ts',
+        ];
+        t.ok(
+            NETWORK_ALLOWLIST.length > 0,
+            'the allowlist is not empty, so the scoping check below is not vacuous',
+        );
+        for (const allowed of NETWORK_ALLOWLIST) {
+            t.match(
+                allowed,
+                /^src\/service\//,
+                `${allowed} is service code, never part of the emit path (R18)`,
+            );
+        }
+        t.same(
+            [...online].sort(),
+            [...NETWORK_ALLOWLIST].sort(),
+            'exactly the declared modules use the network: no undeclared use, and no stale declaration',
+        );
+    },
+);

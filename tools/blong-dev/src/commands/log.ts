@@ -4,7 +4,7 @@
  *
  * Blong's pino-cacache transport stores full log entries on disk (default
  * `~/.blong/log-cache`) so they can be inspected on demand. The VS Code
- * extension reads them when clicking `blong://log/<ULID>` terminal links; this
+ * extension reads them when clicking `semantic-log://record/<ULID>` terminal links; this
  * command exposes the same data on the CLI for coding agents and humans.
  *
  * Output modes:
@@ -32,6 +32,11 @@
  *   --after <ulid>       only entries newer than this ULID
  *   --limit <n>          max entries (default: 50; 0 = all)
  *   --no-color           disable ANSI colors (pretty output)
+ *   --payloads           include retained payload blobs, which are hidden by default
+ *
+ * Entries are read in the shape the semantic logger writes: `service` and
+ * `context` say what logged, `operation` is the method it was about, and
+ * `refs.trace` is the execution it belongs to.
  */
 import * as cacache from 'cacache';
 import {existsSync} from 'node:fs';
@@ -40,6 +45,8 @@ import {resolve} from 'node:path';
 
 const DEFAULT_CACHE_PATH = '~/.blong/log-cache';
 const RETENTION_STATE_KEY = '__blong_retention_state__';
+const KIND_RECORD: EntryKind = 'record';
+const KIND_PAYLOAD: EntryKind = 'payload';
 const CONCURRENCY = 32;
 
 /** Pino numeric level per name. */
@@ -84,14 +91,19 @@ const LEVEL_COLORS: Record<number, string> = {
     60: ANSI.redBright,
 };
 
+/** Which surface of the shared store an entry belongs to. */
+type EntryKind = 'record' | 'payload';
+
 interface ILogEntry {
     /** The cacache key — the entry's monotonic ULID. */
     id: string;
     /** Epoch milliseconds (restored from the entry's cacache metadata). */
     time: number;
-    /** Pino numeric level. */
+    /** Log level. A payload has none, and reads as `info`. */
     level: number;
-    /** Full entry with `id` and `time` restored. */
+    /** Which half of the store it came from. */
+    kind: EntryKind;
+    /** The record, or the payload value, with `id` and `time` restored. */
     data: Record<string, unknown>;
 }
 
@@ -144,8 +156,16 @@ function quoteMessage(msg: string): string {
     return JSON.stringify(msg);
 }
 
-/** Read every log entry (content + restored id/time) from the cacache index. */
-async function listEntries(cachePath: string): Promise<ILogEntry[]> {
+/**
+ * Read the entries of the shared store, newest or not, as the shape they were
+ * written in.
+ *
+ * The store holds two bounded surfaces, told apart by the entry's `kind`: the
+ * records a logger retained, and the payload blobs its large field values were
+ * kept as. Payloads are left out unless asked for, because a listing that mixed
+ * them would bury the log lines under values nothing asked to see.
+ */
+async function listEntries(cachePath: string, includePayloads: boolean): Promise<ILogEntry[]> {
     const index = await cacache.ls(cachePath);
     const keys = Object.keys(index).filter(key => key !== RETENTION_STATE_KEY);
     const entries: ILogEntry[] = [];
@@ -155,17 +175,24 @@ async function listEntries(cachePath: string): Promise<ILogEntry[]> {
         while (cursor < keys.length) {
             const key = keys[cursor++];
             const info = index[key];
+            const kind: EntryKind =
+                (info.metadata as {kind?: string} | undefined)?.kind === KIND_PAYLOAD
+                    ? KIND_PAYLOAD
+                    : KIND_RECORD;
+            if (kind === KIND_PAYLOAD && !includePayloads) {
+                continue;
+            }
             try {
                 const result = await cacache.get(cachePath, key);
-                const parsed = JSON.parse(result.data.toString()) as Record<string, unknown>;
+                const parsed = JSON.parse(result.data.toString()) as unknown;
                 const timestamp =
                     (result.metadata as {timestamp?: number} | undefined)?.timestamp ?? info.time;
-                entries.push({
-                    id: key,
-                    time: timestamp,
-                    level: levelOf(parsed.level),
-                    data: {...parsed, id: key, time: timestamp},
-                });
+                const isObject =
+                    typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+                const data: Record<string, unknown> = isObject
+                    ? {...(parsed as Record<string, unknown>), id: key, time: timestamp}
+                    : {value: parsed, id: key, time: timestamp};
+                entries.push({id: key, time: timestamp, level: levelOf(data.level), kind, data});
             } catch {
                 // Skip entries whose content was pruned or is unreadable.
             }
@@ -175,19 +202,46 @@ async function listEntries(cachePath: string): Promise<ILogEntry[]> {
     return entries;
 }
 
+/** The component that logged a record: its `context`, or the service it came from. */
+function componentOf(data: Record<string, unknown>): string {
+    if (typeof data.context === 'string') return data.context;
+    return typeof data.service === 'string' ? data.service : '';
+}
+
+/** The method a record is about, which the framework writes as `operation`. */
+function methodOf(data: Record<string, unknown>): string {
+    return typeof data.operation === 'string' ? data.operation : '';
+}
+
+/** The execution a record belongs to, which the emitter writes under `refs`. */
+function traceOf(data: Record<string, unknown>): string {
+    const refs = data.refs as {trace?: string} | undefined;
+    return typeof refs?.trace === 'string' ? refs.trace : '';
+}
+
+/** One line for a payload entry, whose value is a field's content rather than a record. */
+function formatPayload(entry: ILogEntry): string {
+    const value = entry.data.value;
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    return `${new Date(entry.time).toISOString()} payload ${quoteMessage(text)}  id=${entry.id}`;
+}
+
 function formatCondensed(entry: ILogEntry): string {
+    if (entry.kind === KIND_PAYLOAD) {
+        return formatPayload(entry);
+    }
     const {id, time, level, data} = entry;
-    const name = typeof data.name === 'string' ? data.name : '';
     const msg = typeof data.msg === 'string' ? data.msg : '';
     const iso = new Date(time).toISOString();
     const levelName = LEVEL_NAMES[level] ?? String(level);
     const extra: string[] = [`id=${id}`];
-    const context = typeof data.context === 'string' ? data.context : '';
-    if (context) extra.push(`context=${context}`);
-    const $meta = data.$meta as {method?: string} | undefined;
-    if ($meta?.method) extra.push(`method=${$meta.method}`);
-    if (typeof data.traceId === 'string') extra.push(`traceId=${data.traceId}`);
-    let line = `${iso} ${levelName.padEnd(5)} ${name}`;
+    const service = typeof data.service === 'string' ? data.service : '';
+    if (service) extra.push(`service=${service}`);
+    const method = methodOf(data);
+    if (method) extra.push(`method=${method}`);
+    const trace = traceOf(data);
+    if (trace) extra.push(`traceId=${trace}`);
+    let line = `${iso} ${levelName.padEnd(5)} ${componentOf(data)}`;
     if (msg) line += ` ${quoteMessage(msg)}`;
     if (extra.length) line += `  ${extra.join(' ')}`;
     return line;
@@ -195,8 +249,13 @@ function formatCondensed(entry: ILogEntry): string {
 
 function formatPretty(entry: ILogEntry, useColor: boolean): string {
     const {id, time, level, data} = entry;
-    const name = typeof data.name === 'string' ? data.name : '';
-    const msg = typeof data.msg === 'string' ? data.msg : '';
+    const name = entry.kind === KIND_PAYLOAD ? KIND_PAYLOAD : componentOf(data);
+    const msg =
+        entry.kind === KIND_PAYLOAD
+            ? JSON.stringify(data.value)
+            : typeof data.msg === 'string'
+              ? data.msg
+              : '';
     const iso = new Date(time).toISOString();
     const levelText = (LEVEL_NAMES[level] ?? String(level)).padEnd(5);
     const levelColor = LEVEL_COLORS[level] ?? ANSI.reset;
@@ -207,7 +266,23 @@ function formatPretty(entry: ILogEntry, useColor: boolean): string {
         name,
     )}): ${msg ? quoteMessage(msg) : ''}`;
     const lines = [header.trimEnd(), `    id: ${color(ANSI.dim, id)}`];
-    const SKIP = new Set(['id', 'time', 'level', 'name', 'msg', 'hostname', 'pid', 'v']);
+    // What the header already carries is not repeated in the detail beneath it.
+    const SKIP = new Set([
+        'id',
+        'time',
+        'level',
+        'levelName',
+        'name',
+        'msg',
+        'service',
+        'context',
+        'operation',
+        'template',
+        'fingerprint',
+        'hostname',
+        'pid',
+        'v',
+    ]);
     for (const key of Object.keys(data).sort()) {
         if (SKIP.has(key)) continue;
         const value = data[key];
@@ -255,7 +330,7 @@ export async function log(args: string[]): Promise<void> {
     }
     const useColor = output === 'pretty' && !flags.has('no-color') && process.stdout.isTTY === true;
 
-    const entries = await listEntries(cachePath);
+    const entries = await listEntries(cachePath, flags.has('payloads'));
 
     if (positional[0]) {
         const id = positional[0];
@@ -293,16 +368,11 @@ export async function log(args: string[]): Promise<void> {
     const lower = (s: string): string => s.toLowerCase();
     const filtered = entries.filter(e => {
         if (minLevel !== undefined && e.level < minLevel) return false;
-        if (
-            nameFilter &&
-            !(typeof e.data.name === 'string' && lower(e.data.name).includes(lower(nameFilter)))
-        )
-            return false;
-        if (traceIdFilter && e.data.traceId !== traceIdFilter) return false;
-        if (methodFilter) {
-            const method = (e.data.$meta as {method?: string} | undefined)?.method ?? '';
-            if (!lower(method).includes(lower(methodFilter))) return false;
-        }
+        // `--name` matches the component that logged, whether the record names it
+        // as a context or only as the service it came from.
+        if (nameFilter && !lower(componentOf(e.data)).includes(lower(nameFilter))) return false;
+        if (traceIdFilter && traceOf(e.data) !== traceIdFilter) return false;
+        if (methodFilter && !lower(methodOf(e.data)).includes(lower(methodFilter))) return false;
         if (searchFilter && !lower(JSON.stringify(e.data)).includes(lower(searchFilter)))
             return false;
         if (afterFilter && e.id <= afterFilter) return false;

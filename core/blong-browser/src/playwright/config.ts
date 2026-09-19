@@ -213,7 +213,7 @@ export function defineBlongConfig(
         timeout: 60_000,
         retries: 1,
         use: {
-            baseURL: `http://localhost:${frontendPort}`,
+            baseURL: `http://localhost:${frontendPort}/s/`,
             colorScheme: 'dark',
             viewport: {width: 1600, height: 900},
             trace: 'retain-on-failure',
@@ -255,7 +255,9 @@ export function defineBlongConfig(
                 command: process.env.CI
                     ? `node --run dev -- --port ${frontendPort} --force`
                     : `node --run dev -- --port ${frontendPort}`,
-                url: `http://localhost:${frontendPort}`,
+                // The dev server serves the app under the framework base path (`/s/` in
+                // `defineBlongViteConfig`), so probing the bare origin would 404.
+                url: `http://localhost:${frontendPort}/s/`,
                 reuseExistingServer: !process.env.CI,
                 stdout: 'pipe',
                 timeout: 30_000,

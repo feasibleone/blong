@@ -21,12 +21,13 @@ describe('App', () => {
         expect(container.querySelector('.blong-portal')).toBeInTheDocument();
     });
 
-    it('calls portal.config.get when authenticated', async () => {
+    it('composes the portal config when authenticated', async () => {
         const dispatch = vi.fn().mockResolvedValue({ok: true});
         tlRender(<App handlerProxy={makeHandlerProxy(dispatch)} />);
         await flushEffects();
-        // If it renders without throwing, the provider is set up
-        expect(dispatch).toHaveBeenCalledWith('portalConfigGet', {}, {});
+        // The composing method, so a suite with two page-owning realms keeps both
+        // menus — `portalConfigGet` resolves to one provider only.
+        expect(dispatch).toHaveBeenCalledWith('portalConfigMerge', {}, {});
     });
 
     it('accepts portal config via handlerProxy.config.portal', async () => {

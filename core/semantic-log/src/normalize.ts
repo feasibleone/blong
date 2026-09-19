@@ -2,11 +2,23 @@
  * Variable masking (PRD R1).
  *
  * Order is significant: the ordered patterns must run most-specific first,
- * otherwise `<NUM>` would consume the digits inside a timestamp, a UUID or an
- * IP and destroy the structure we are trying to preserve.
+ * otherwise `<NUM>` would consume the digits inside a timestamp, a UUID, an IP
+ * or a username and destroy the structure we are trying to preserve.
  */
 
 const PATTERNS: ReadonlyArray<[RegExp, string]> = [
+    // A home directory, in the spellings the three families write it:
+    // /home/<user> (Linux, and every CI runner), /Users/<user> or /users/<user>
+    // (macOS is case-insensitive) and C:\Users\<user> (Windows, drive letter
+    // optional and either separator accepted). It runs before `<NUM>` so a
+    // username that contains a digit is masked whole, and the lookbehind keeps
+    // it to a home that opens a path: `proj/home/api` and `srv/users/data` are
+    // ordinary directory names.
+    [/(?<![\w.-])(?:[A-Za-z]:)?[\\/](?:Users|users|home)[\\/][A-Za-z0-9._-]+/g, '<HOME>'],
+    // The root user's home carries no username segment to consume: in
+    // /root/.blong the account directory is the one being masked, not a name
+    // inside it.
+    [/(?<![\w.-])[\\/]root(?=[\\/\s]|$)/g, '<HOME>'],
     // 2026-09-13T10:11:12.345Z / 2026-09-13 10:11:12
     [/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<TS>'],
     // 26-character Crockford base32 ULID: base32 minus I, L, O and U. The
@@ -25,12 +37,23 @@ const PATTERNS: ReadonlyArray<[RegExp, string]> = [
     [/\b\d+/g, '<NUM>'],
 ];
 
-/** Reduce free text to its structural form by replacing variable values. */
-export function mask(text: string): string {
-    if (!text) {
+/**
+ * Reduce free text to its structural form by replacing variable values.
+ *
+ * Total over whatever a caller passes: a logging call must never throw, and the
+ * message reaches here from a call site that may have handed over an object
+ * rather than text — a pino-shaped consumer such as fastify logs the request
+ * itself. Anything without a text form is coerced, so an unexpected message
+ * degrades to a readable record instead of aborting the call that logged it.
+ */
+export function mask(text: unknown): string {
+    if (text === undefined || text === null) {
         return '';
     }
-    let out = text;
+    let out = String(text);
+    if (!out) {
+        return '';
+    }
     for (const [pattern, token] of PATTERNS) {
         out = out.replace(pattern, token);
     }

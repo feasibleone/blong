@@ -178,3 +178,96 @@ cannot see an untaken side of `??` or `?.`, and it says nothing about whether a 
 written is ever read. When adding an assertion, re-inject the bug it is meant to catch and confirm
 the suite goes red for that reason — and check the test count is right first, because a crashed run
 also reads as red.
+
+## Making the framework use it
+
+The runtime selects the implementation once, in `blong-gogo`'s framework config:
+
+```ts
+config: {
+    default: {
+        log: {impl: 'semantic'},
+    },
+    dev: {
+        log: {
+            format: 'human',
+            cache: {dir: '~/.blong/log-cache', limit: 5000},
+            cacache: {cachePath: '~/.blong/log-cache'},
+            color: true,
+            cluster: {enabled: true},
+        },
+    },
+}
+```
+
+- `impl` (`'semantic'` or `'pino'`) — which logger the runtime installs.
+- `level` (level name) — records below it are not emitted at all.
+- `format` (`'human'` or `'json'`) — one readable line, or one JSON object per record.
+- `color` (`boolean`) — ANSI in human format; on by default at a terminal.
+- `cache` (`{dir, limit}`) — the store: where records live, and how many.
+- `cluster.enabled` (`boolean`) — run the service in this process.
+- `cluster.port` / `cluster.host` — where it binds; the bound port is read back and reported.
+
+`cluster` is on in `dev`, `integration` and `playwright`, and off in `cli` and `prod`: a development
+run can then be drawn from what it just did, and a test run leaves diagrams behind, without a
+production process holding a service open.
+
+## Exposing it to a reader
+
+A method is routed by the gateway only when the realm's **`gateway` layer** declares it — the layer,
+not the adapter:
+
+```ts
+// core/blong-realm/gateway/blong/blongFlowFind.ts
+export default validation(
+    async ({lib: {type}}) =>
+        function blongFlowFind() {
+            return {params: type.Object({}), result: type.Unknown()};
+        },
+);
+```
+
+Without that declaration the gateway answers `-32000 Not Found` while the same method resolves
+in-process, because an in-process call never touches the gateway's routes. `blong-dev proxy` is the
+way to check: it puts plain JSON in front of the MLE-encrypted RPC endpoint.
+
+And the grant lists **called method names**, not handler names:
+
+```yaml
+role:
+    Admin: blongRealmRead
+capability:
+    blongRealmRead: >-
+        blong.flow.find,blong.flow.get,blong.template.find,
+        blong.search.find,blong.digest.get,blong.incident.find
+```
+
+`blongFlowFind` in that list matches nothing, because `gateway.authorize` compares
+`blong.flow.find`.
+
+## Reading the pages in a spec
+
+- **Pin what you capture.** A page whose content grows every run is only worth capturing once its
+  rows are pinned — `searchText` types into the page's filter, the way `browseModel`'s `searchText`
+  does.
+- **Mask what cannot repeat.** An execution id is minted per execution, a timestamp is a wall clock
+  and a home directory names one machine; `mask` hides those cells while the rest of the page stays
+  visible.
+- **A DataTable's empty state is a row**, so `tbody tr` matches it as readily as a row of data.
+  Recognise a data row by a cell it renders, never by excluding the empty state's class or text —
+  excluding a thing by what it looks like reads the same whether it is right or wrong.
+
+## Regenerating the diagrams artifact
+
+`core/blong-realm/docs/observedFlows.md` is committed documentation, regenerated only when the flag
+says so:
+
+```bash
+BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update-snapshots
+```
+
+It holds the mermaid the service drew for one real execution of the realm's own read, so both ends
+of its arrow are named by the deployment: the caller is the service that emitted the record — the
+framework's own process, `blong` unless `log.service` says otherwise — and the receiver is the
+namespace the leg id names. In a monolith that configures neither, the two names coincide and the
+diagram says so rather than inventing a participant.

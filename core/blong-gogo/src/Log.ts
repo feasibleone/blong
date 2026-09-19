@@ -1,12 +1,33 @@
 import {withProgress} from '@feasibleone/blong-lib';
-import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
+import {Internal, type ICallLog, type ILog, type ILogger} from '@feasibleone/blong/types';
+import {createCallChannel} from '@feasibleone/semantic-log/capability';
 import {pino, type Logger, type LoggerOptions} from 'pino';
 import {monotonicFactory} from 'ulidx';
+import {callRecord, configureCallTrace, type CallTraceConfig} from './callTrace.ts';
 import type {CacacheTransportOptions} from './pino-cacache.js';
 
 // echo -e "\u001B]8;;https://google.com\u001B\\Кликни тук\u001B]8;;\e\\"
 
 export interface LogConfig extends LoggerOptions {
+    /**
+     * Which implementation is active. This class serves every value except
+     * `semantic`, so it never acts on the key — it is declared because the merged
+     * `log` config is handed to whichever implementation the loader chose, and
+     * stripped before the rest reaches pino.
+     */
+    impl?: string;
+    /** The semantic implementation's store. Not a pino option; stripped below. */
+    cache?: unknown;
+    /**
+     * The call channel: whether a flow's calls are recorded, and whether they
+     * are shown.
+     *
+     * `stdout` is the whole switch under this implementation, because pino has
+     * no retention store and no cluster sink - a record it is not printing does
+     * not exist. The framework's `enabled`/`off` decision still applies first,
+     * so a flow that opted out records nothing whichever logger runs.
+     */
+    calls?: CallTraceConfig;
     /** When provided, log entries are cached to disk via cacache for later inspection. */
     cacache?: CacacheTransportOptions;
 }
@@ -84,6 +105,7 @@ export default class Log extends Internal implements ILog {
     public constructor(config: LogConfig) {
         super();
         this.merge(this.#config, config);
+        configureCallTrace(this.#config.calls);
 
         // Inject a monotonic ULID `id` into every log entry before it reaches any transport
 
@@ -103,10 +125,29 @@ export default class Log extends Internal implements ILog {
             };
         }
 
-        // Remove the cacache option before passing to pino — it is not a pino option
-        const {cacache: _cacacheConfig, ...pinoConfig} = this.#config;
+        // Remove the framework's own keys before passing the rest to pino — none
+        // of them is a pino option. `impl` chose this implementation (reaching
+        // here means it is not `semantic`) and `cache` configures the semantic
+        // implementation's store; `cacache` is this implementation's transport
+        // and is passed to it separately, through the transport targets below.
+        const {
+            cacache: _cacacheConfig,
+            impl: _impl,
+            cache: _semanticCache,
+            calls: _calls,
+            ...pinoConfig
+        } = this.#config;
         this.#logger = pino(pinoConfig);
     }
+
+    /**
+     * Attach the call channel's scope.
+     *
+     * Nothing to attach: the ambient scope a capability is carried in is
+     * semantic-log's own (`AsyncLocalStorage`), reached by the vocabulary the
+     * server bootstrap attaches, and the channel reads it directly.
+     */
+    public async init(): Promise<void> {}
 
     public child<T extends string>(...params: Parameters<Logger<never>['child']>): Logger<T> {
         return this.#logger.child(...params) as Logger<T>;
@@ -142,6 +183,35 @@ export default class Log extends Internal implements ILog {
         return {
             ...result,
             progress: (label, promise, options) => withProgress(result, label, promise, options),
+            calls: this.#callsChannel(child),
         };
+    }
+
+    /**
+     * The framework's own account of the calls made through this log.
+     *
+     * Written through the logger it is asked of, so a component's call records carry
+     * the component — the same `name` binding every other record from it does. Under
+     * pino the destination *is* the level: there is nothing to store, so a call
+     * record that is not printed has nowhere else to go. Whether the flow records at
+     * all is the capability's decision, asked before the writer is called, and it is
+     * the same one the semantic implementation asks.
+     */
+    #callsChannel(child: Logger): ICallLog {
+        return createCallChannel(({leg, phase, message, error, fields}) => {
+            child.info(
+                {
+                    ...callRecord(leg, phase),
+                    ...(error === undefined ? {} : {err: error}),
+                    ...fields,
+                },
+                message,
+            );
+        });
+    }
+
+    /** The call channel, as a component that holds the log rather than a logger reaches it. */
+    public get calls(): ICallLog {
+        return this.#callsChannel(this.#logger);
     }
 }

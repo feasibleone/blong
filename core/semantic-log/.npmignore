@@ -1,0 +1,11 @@
+*
+!/package.json
+!/index.ts
+!/emitter.ts
+!/service.ts
+!/bin
+!/bin/**
+!/src
+!/src/**
+!/flow
+!/flow/**

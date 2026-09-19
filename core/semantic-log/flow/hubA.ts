@@ -7,16 +7,11 @@
  * withhold-then-escalate shape as the receiving hub, seen from the side that
  * takes the risk first (PRD R10).
  *
- * It also prices locally before it prices the corridor: the originating scheme's
- * **own** provider (a different participant from the receiving scheme's, so the two
- * quote different numbers) gives an indication, and the cross-scheme quote is what
- * the transfer actually settles on. Both are recorded together, so an operator
- * looking at a disputed rate can see whether the corridor moved or the local
- * indication did. The indication is deliberately **not** a gate — it is
- * reporting, and refusing to cross because a local indication is unavailable
- * would turn a diagnostic detail into a new failure mode. Its status travels in
- * the record instead, so a declined indication is visible without being fatal,
- * and the corridor still decides the outcome.
+ * It prices the corridor and nothing else. The originating scheme keeps no FX
+ * provider of its own — one provider per corridor, asked by the receiving
+ * scheme's hub, which is the shape the reference flow has — so the cross-scheme
+ * quote is the only price it records, and a disputed rate traces back to the
+ * quote that produced it.
  *
  * The status is set on the reply explicitly; a returned `{status, body}` object
  * would be answered with HTTP 200 by fastify, so a cross-border failure would
@@ -30,8 +25,6 @@ import {hop, type Participant} from './participant.ts';
 
 export interface HubAOptions {
     proxyUrl: string;
-    /** The originating scheme's own FX provider, used for the local indication. */
-    fxpUrl: string;
 }
 
 export function installHubA(participant: Participant, options: HubAOptions): void {
@@ -88,17 +81,9 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
                     from: body.from,
                     to: body.to,
                 });
-                // The origin scheme's own indication, and the corridor's quote, are two
-                // separate calls — which is why they are two legs and not one. Folding
-                // them together would report a corridor price the far scheme never gave.
-                const local = await bindLeg({id: 'hubA.quote.local', to: 'fxpA'}, async () => {
-                    logger.info('local indication requested', {from: body.from, to: body.to});
-                    return hop(participant, options.fxpUrl, '/quotes', {
-                        amount: body.amount,
-                        from: body.from,
-                        to: body.to,
-                    });
-                });
+                // One call, because there is one quote: the corridor's. The originating
+                // scheme keeps no provider of its own, so there is no local indication to
+                // record beside it — the price the payer settles on is this one.
                 const crossed = await bindLeg({id: 'hubA.quote.proxy', to: 'proxy'}, async () => {
                     logger.info('corridor quote requested', {amount: body.amount});
                     return hop(participant, options.proxyUrl, '/quotes', body);
@@ -106,8 +91,6 @@ export function installHubA(participant: Participant, options: HubAOptions): voi
                 logger.info('cross-scheme quote assembled', {
                     res: {status: crossed.status},
                     rate: (crossed.body as {rate?: number} | undefined)?.rate,
-                    localRate: (local.body as {rate?: number} | undefined)?.rate,
-                    localStatus: local.status,
                 });
                 return {status: crossed.status, body: crossed.body};
             }),

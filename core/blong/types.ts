@@ -87,8 +87,58 @@ export type BrowserContext = {
 export type AdapterContext = ServerContext & BrowserContext;
 
 export interface ILog {
-    logger: (level: Level, bindings: object) => ILogger;
+    logger: (level: Level | 'silent', bindings: object) => ILogger;
     child: PinoLogger['child'];
+    /**
+     * The call channel — the framework's account of the calls a process makes
+     * and answers. Deliberately *not* part of the level API: see {@link ICallLog}.
+     */
+    calls?: ICallLog;
+}
+
+/**
+ * The four phases of one call, as the framework's own tracing names them.
+ *
+ * A **caller** writes `start`, then `end` or `error`; the **receiver** writes
+ * `received` for the leg it was handed. The observed-flow ledger is built from
+ * these records alone — a leg it can see is a call it can draw — which is why
+ * they are produced by default and only their *destination* is a choice.
+ */
+export type CallPhase = 'start' | 'end' | 'error' | 'received';
+
+/**
+ * The call channel: the framework's own record of a call, beside the level API
+ * rather than part of it.
+ *
+ * Level logging answers "how loud is this message", and a call's two ends are
+ * not louder or quieter than anything else — they are either wanted for a whole
+ * flow or they are not. So they have no level here, and no threshold decides
+ * them: the decision is taken once, where the flow is minted (see
+ * `callTrace.ts`), and every method below is a cheap no-op for a flow that
+ * answered "no".
+ *
+ * Being level-free is also what lets them be *stored without being shown*: the
+ * records reach the retention store and the cluster service — where they become
+ * flows, diagrams and incidents — while stdout stays quiet unless the process
+ * opted in (`log.calls.stdout`).
+ */
+export interface ICallLog {
+    /**
+     * Whether this flow records calls at all.
+     *
+     * Exposed so a caller that would have to build a field bag first can ask
+     * before doing the work; the phase methods check it themselves, so asking is
+     * an optimisation and never a correctness requirement.
+     */
+    enabled(): boolean;
+    /** The caller's record for the call it is about to make. */
+    start(leg: string, fields?: Record<string, unknown>): void;
+    /** The caller's record for the call that answered. */
+    end(leg: string, fields?: Record<string, unknown>): void;
+    /** The caller's record for the call that failed. */
+    error(leg: string, error?: unknown, fields?: Record<string, unknown>): void;
+    /** The receiver's receipt for the leg it was handed. */
+    received(leg: string, fields?: Record<string, unknown>): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -870,6 +920,11 @@ export interface ILogger {
             level?: 'info' | 'warn';
         },
     ) => Promise<T>;
+    /**
+     * The call channel, bound to this logger's process. Present on the loggers
+     * the framework itself hands out, and absent on a third party's.
+     */
+    calls?: ICallLog;
 }
 
 export interface IStep {

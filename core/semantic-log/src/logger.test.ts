@@ -1,9 +1,9 @@
-import {existsSync, readFileSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import t from 'tap';
-import {openCache, type RecordStore} from './cache.ts';
+import {cachePaths, openCache, type RecordStore} from './cache.ts';
 import {bindInboundLeg, bindLeg, bindTrace, step, withFlow, withIntent} from './context.ts';
 import {captureProcessFailures, createLogger} from './logger.ts';
 import type {ErrorDetail, LogRecord} from './record.ts';
@@ -22,7 +22,7 @@ t.test('zero-config usage writes a readable line to the configured writer', t =>
     logger.info('hello');
     t.equal(lines.length, 1);
     // Asserted by shape, not by day: the injected clock only makes output deterministic.
-    t.match(lines[0], /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hub hello/);
+    t.match(lines[0], /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z info {2}hello \[r=/);
     t.match(lines[0], /r=semantic-log:\/\/record\//, 'a reference is always present');
     t.end();
 });
@@ -54,19 +54,56 @@ t.test('child loggers inherit bindings and can add their own', t => {
 t.test('base fields are always present', t => {
     const {lines, writer} = capture();
     createLogger({service: 'hub', writer}).info('x');
-    // The service name is a header token (`info  hub x`), not a `service=` pair — the renderer
-    // writes it bare, and R20 lists it as a header detail.
-    t.match(lines[0], /info {2}hub x/, 'the service name is in the header');
-    // The version is a header detail too, defaulted from the package manifest.
-    t.ok(lines[0].includes(`version=${packageVersion} `), 'the emitter version is in the header');
+    // They are always on the *record*, which is what §5.1's "Base fields (pid,
+    // hostname, service, version)" asks for. The human line prints them only when
+    // `details` is asked for, because the pod that reads the line is already named
+    // by where the line came from.
+    t.notMatch(lines[0], /hub/, 'the service name is not a header token by default');
+    t.notMatch(lines[0], /version=/, 'the version is not in the line by default');
+    t.notMatch(lines[0], /pid:/, 'the process id is not in the line by default');
+    const json = capture();
+    createLogger({service: 'hub', writer: json.writer, format: 'json'}).info('x');
+    const record = JSON.parse(json.lines[0]) as {
+        service: string;
+        version: string;
+        fields: {pid?: number; hostname?: string};
+    };
+    t.equal(record.service, 'hub', 'the service is on the record');
+    t.equal(record.version, packageVersion, 'the version is on the record');
+    t.notOk(record.fields.pid, 'the process id is not collected unless it is asked for');
+    t.notOk(record.fields.hostname, 'nor is the hostname');
+    // Asked for, they are all back — in the header, in R20's order, and on the record.
+    const detailed = capture();
+    createLogger({service: 'hub', writer: detailed.writer, details: true}).info('x');
+    t.match(detailed.lines[0], /info {2}hub x/, 'the service name is in the header');
+    t.ok(
+        detailed.lines[0].includes(`version=${packageVersion} `),
+        'the emitter version is in the header',
+    );
     // Base fields (process id, hostname) travel in `record.fields`, rendered one per indented line.
-    t.match(lines[0], /\n\s+pid: \d+/, 'the process id is reported');
+    t.match(detailed.lines[0], /\n\s+pid: \d+/, 'the process id is reported');
+    const detailedJson = capture();
+    createLogger({
+        service: 'hub',
+        writer: detailedJson.writer,
+        format: 'json',
+        details: true,
+    }).info('x');
+    const detailedRecord = JSON.parse(detailedJson.lines[0]) as {
+        fields: {pid?: number; hostname?: string};
+    };
+    t.match(
+        String(detailedRecord.fields.pid),
+        /^\d+$/,
+        'the process id is on the record when it is asked for',
+    );
+    t.ok(detailedRecord.fields.hostname, 'and so is the hostname');
     t.end();
 });
 
 t.test('the version reaches the header and json mode, and a service can override it', t => {
     const human = capture();
-    createLogger({service: 'hub', writer: human.writer}).info('x');
+    createLogger({service: 'hub', writer: human.writer, details: true}).info('x');
     t.ok(
         human.lines[0].includes(`version=${packageVersion} `),
         'the default is the package version',
@@ -223,6 +260,25 @@ t.test('fatal exits through the injected exit function', t => {
     t.end();
 });
 
+/**
+ * The synchronous writes staged in the sidecar, in the order they landed.
+ *
+ * A synchronous write is staged rather than stored, so this is the file that
+ * exists the moment `putSync` returns — which is what the tests below read,
+ * synchronously and with no `await` in between, to tell a completed write from
+ * one still queued on the event loop.
+ */
+function stagedEntries(dir: string): Array<{id: string; time: number; kind: string; json: string}> {
+    try {
+        return readFileSync(cachePaths.sidecarFile(dir), 'utf8')
+            .split('\n')
+            .filter(line => line.trim().length > 0)
+            .map(line => JSON.parse(line) as {id: string; time: number; kind: string; json: string});
+    } catch {
+        return [];
+    }
+}
+
 t.test('a fatal record is on disk the moment fatal returns, with no flush (PRD R21)', async t => {
     const dir = await mkdtemp(join(tmpdir(), 'semantic-log-logger-'));
     t.teardown(() => rm(dir, {recursive: true, force: true}));
@@ -242,17 +298,12 @@ t.test('a fatal record is on disk the moment fatal returns, with no flush (PRD R
     // to be looked up survive the `exit` that follows.
     const id = /r=semantic-log:\/\/record\/([0-9A-Z]+)/.exec(lines[0])?.[1] ?? '';
     t.ok(id, 'the rendered line carries the id');
-    const stored = JSON.parse(
-        readFileSync(join(dir, 'records', `${id}.json`), 'utf8'),
-    ) as LogRecord;
+    const staged = stagedEntries(dir);
+    const stored = JSON.parse(staged.find(entry => entry.id === id)?.json ?? '{}') as LogRecord;
     t.equal(stored.msg, 'unrecoverable', 'the fatal record is retained before exit');
     t.equal(stored.levelName, 'fatal');
     t.equal(stored.refs.record, id, 'the retained copy names itself');
-    t.equal(
-        readFileSync(join(dir, 'index.jsonl'), 'utf8').trim().split('\n').length,
-        1,
-        'the index line landed too, so the record is not an orphan',
-    );
+    t.equal(staged.length, 1, 'the staging line landed too, so the record is not an orphan');
     t.same(exited, [1], 'the exit still ran immediately');
     // No flush of any kind was called, and the normal lookup path resolves it.
     t.equal((await cache.get(id))?.msg, 'unrecoverable');
@@ -489,16 +540,14 @@ t.test('a fatal record retains its payload synchronously, before exit (PRD R19/R
             lines[0],
         )?.[1] ?? '';
     t.ok(id, 'the rendered line names the payload');
+    const staged = stagedEntries(dir).filter(entry => entry.kind === 'payload');
+    const staged_payload = staged.find(candidate => candidate.id === id);
     t.equal(
-        JSON.parse(readFileSync(join(dir, 'payloads', `${id}.json`), 'utf8')),
+        JSON.parse(staged_payload?.json ?? 'null'),
         large,
         'the payload is on disk the moment fatal returns',
     );
-    t.match(
-        readFileSync(join(dir, 'payloads.jsonl'), 'utf8'),
-        new RegExp(id),
-        'the payload index line landed too',
-    );
+    t.equal(staged.length, 1, 'staged as one payload, and not as a record');
     await cache.close();
 });
 
@@ -766,19 +815,16 @@ t.test(
         const fatal = idOf(lines[1]);
         t.ok(predecessor && fatal, 'both records carry their references');
         t.ok(
-            existsSync(join(dir, 'records', `${fatal}.json`)),
-            'the fatal record is retained before fatal returns',
+            stagedEntries(dir).some(entry => entry.id === fatal),
+            'the fatal record is staged before fatal returns',
         );
         t.notOk(
-            existsSync(join(dir, 'records', `${predecessor}.json`)),
+            stagedEntries(dir).some(entry => entry.id === predecessor),
             'the earlier queued write is not drained by fatal',
         );
         t.same(exited, [1], 'the exit is still immediate');
         await logger.flush();
-        t.ok(
-            existsSync(join(dir, 'records', `${predecessor}.json`)),
-            'the queued write runs once the loop turns',
-        );
+        t.ok(await cache.get(predecessor), 'the queued write runs once the loop turns');
         await cache.close();
     },
 );
@@ -921,7 +967,7 @@ t.test('messageId and operation reach the header, not the field bag', t => {
     // R20's normative header details were unreachable through the front door:
     // `emit` left them in `fields`, where they rendered as ordinary detail lines.
     const {lines, writer} = capture();
-    createLogger({service: 'hub', writer}).info('quoted', {
+    createLogger({service: 'hub', writer, details: true}).info('quoted', {
         messageId: 'msg-7',
         operation: 'quote.create',
     });
@@ -1052,7 +1098,7 @@ t.test('a sink is appended to the writer and never displaces it', t => {
     t.equal(primary.lines.length, 1, 'the primary writer still receives the record');
     t.match(
         primary.lines[0],
-        /info {2}hub two places/,
+        /info {2}two places/,
         'the primary writer receives the rendered line',
     );
     t.same(sinkLines, primary.lines, 'the sink receives the same line, not a second rendering');

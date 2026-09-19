@@ -18,8 +18,15 @@ interface BlongLogTerminalLink extends vscode.TerminalLink {
     logId: string;
 }
 
-/** Regex matching the ULID embedded in blong://log/<ULID> OSC 8 link text. */
-const LOG_LINK_REGEX = /blong:\/\/log\/([0-9A-Z]+)/;
+/**
+ * Regex matching the ULID embedded in a `semantic-log://record/<ULID>` link.
+ *
+ * The same scheme the emitter mints for a record's own reference, so the link
+ * the terminal renders and the `r=` token in the line are one string: whichever
+ * implementation wrote the entry — the semantic logger or the pino transport —
+ * the reader matches it.
+ */
+const LOG_LINK_REGEX = /semantic-log:\/\/record\/([0-9A-Z]+)/;
 
 /**
  * This method is called when your extension is activated
@@ -190,7 +197,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(shellTaskProviderRegistration);
 
-    // Register terminal link provider for blong://log/<ULID> links emitted by pino-cacache
+    // Register terminal link provider for semantic-log://record/<ULID> links
     const logLinkProvider = vscode.window.registerTerminalLinkProvider({
         provideTerminalLinks(
             terminalContext: vscode.TerminalLinkContext,

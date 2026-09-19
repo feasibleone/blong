@@ -22,6 +22,7 @@
         "@feasibleone/blong-access": "workspace:^1.0.0",
         "@feasibleone/blong-core": "workspace:^1.0.0",
         "@feasibleone/blong-marine": "workspace:^1.0.0",
+        "@feasibleone/blong-realm": "workspace:^1.0.0",
         "@feasibleone/blong-server": "workspace:^1.0.0",
         "react": "^19.1.0",
         "react-dom": "^19.1.0"

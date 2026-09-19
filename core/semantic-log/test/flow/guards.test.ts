@@ -31,7 +31,7 @@
  * so nothing here is satisfied by a branch having been entered.
  */
 
-import {mkdtemp, readdir, readFile, rm} from 'node:fs/promises';
+import {mkdtemp, rm} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -43,6 +43,7 @@ import {installHubA} from '../../flow/hubA.ts';
 import {createParticipant, type Participant} from '../../flow/participant.ts';
 import {installPayer} from '../../flow/payer.ts';
 import {installProxy} from '../../flow/proxy.ts';
+import {cacheRecordIds, openCache} from '../../src/cache.ts';
 import type {LogRecord} from '../../src/record.ts';
 import {getWriter, setWriter} from '../../src/writer.ts';
 
@@ -58,12 +59,16 @@ t.afterEach(() => setWriter(RESTORE_WRITER));
 
 /** Every record the participant retained, read back out of the store it wrote. */
 async function retained(participant: Participant): Promise<LogRecord[]> {
-    const dir = join(participant.cacheDir, 'records');
-    const files = await readdir(dir).catch(() => [] as string[]);
+    const dir = participant.cacheDir;
+    const cache = await openCache({dir, limit: Number.MAX_SAFE_INTEGER, readOnly: true});
     const records: LogRecord[] = [];
-    for (const file of files) {
-        records.push(JSON.parse(await readFile(join(dir, file), 'utf8')) as LogRecord);
+    for (const id of await cacheRecordIds(dir)) {
+        const record = await cache.get(id);
+        if (record) {
+            records.push(record);
+        }
     }
+    await cache.close();
     return records;
 }
 
@@ -475,8 +480,7 @@ t.test('a body-less request to the inter-scheme hub is answered, not a 500', asy
         // deployment decision, so it is exactly what the guard is deployed against.
         const hubA = await deploy(
             'hubA',
-            participant =>
-                installHubA(participant, {proxyUrl: downstream.url, fxpUrl: downstream.url}),
+            participant => installHubA(participant, {proxyUrl: downstream.url}),
             'transfer.inter',
         );
         try {
@@ -496,8 +500,8 @@ t.test('a body-less request to the inter-scheme hub is answered, not a 500', asy
             // well-formed empty body rather than the participant throwing on undefined.
             t.same(
                 downstream.received('/quotes'),
-                [{}, {}],
-                'the local indication and the corridor quote both carried the absent body as an empty object',
+                [{}],
+                'the corridor quote carried the absent body as an empty object',
             );
             const records = await hubA.records();
             t.ok(

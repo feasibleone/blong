@@ -17,7 +17,12 @@ description:
 ## [CRITICAL_GUARDRAILS]
 
 - **Adapters never call other adapters directly** — coordinate via orchestrators.
-- **Thin layer.** Translate semantic-triple internal API ↔ external system API; no business logic.
+- **Thin layer.** Translate semantic-triple internal API ↔ external system API; no business logic —
+  and translate it in the port's **conversions** (`send` / `receive`, `encode` / `decode`) where the
+  group's methods share a shape. Never with your own client — `fetch`, a socket, an SDK — which
+  would bypass the endpoint, credentials, transport, timeouts and error mapping the deployment
+  configured; the adapter's own `exec` is not that, it _is_ the call (**blong-handler** →
+  _Conversions_).
 - **Translate protocol errors to domain errors** (`errors.xxx`) — never leak raw protocol errors.
 - **Never import other handlers.** Use the `handler`/`lib` proxies (IoC).
 - **Always forward `$meta`** on every downstream call.
@@ -46,6 +51,9 @@ For higher-level protocols:
 - **Flow:** `send` → `execute` → `receive` → `dispatch`
 - **Examples:** REST APIs, SOAP, database clients
 - **No codec needed:** JavaScript objects used directly
+- **The request is shaped in a conversion** — `send` before the call, `receive` on the answer, which
+  is the same pair the codecs use one level down. See _Conversions_ under **Adapter Loop** for the
+  granularity, and `core/blong-realm/adapter/semlog/` for a realm that is nothing but conversions.
 
 ## File Structure
 
@@ -341,7 +349,23 @@ activation: {
 
 ## Adapter Loop
 
-Adapters follow a sequence of handler calls:
+Adapters follow a sequence of handler calls, and the sequence is the same set of **conversion
+handlers** over every transport.
+
+### Conversions
+
+`send` / `receive` wrap the call and `encode` / `decode` wrap the wire, so a protocol belongs in the
+conversions whatever the transport is:
+
+- a **stream** port shapes the payload in `send` and frames it with `encode` / `decode`;
+- a **URL** port returns a request descriptor from `send`, and the base `exec` makes the call;
+- a **driver** port (knex, mongodb, s3) leaves the call to `exec` with the connection it was given.
+
+How many conversions you write is the choice the probe order gives you: one for a whole group, one
+per method (`<method>RequestSend.ts`), or none where a codec already builds the request. What is not
+an option is your own client — `fetch`, a socket, an SDK — because it bypasses the endpoint, the
+credentials, the transport, the timeouts and the error mapping the deployment configured
+(**blong-handler** → _Conversions_).
 
 ### Stream-Based Flow
 

@@ -1,5 +1,5 @@
-import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
 import {withProgress} from '@feasibleone/blong-lib';
+import {Internal, type ILog, type ILogger} from '@feasibleone/blong/types';
 import type {Level, Logger as PinoLogger} from 'pino';
 
 // ── level constants (bunyan numeric levels) ──────────────────────────────────
@@ -160,6 +160,17 @@ function createLogger(
     };
 }
 
+/**
+ * The browser's console logger, and the reason it has no call channel.
+ *
+ * A capability is carried in semantic-log's ambient scope, which is
+ * `AsyncLocalStorage` — Node-only and deliberately kept out of the page — and a
+ * page has no retention store and no cluster sink either, so a call record it
+ * could write would exist only to be printed among the messages a developer is
+ * already reading. `ILog.calls` is therefore absent here, and the framework's
+ * call sites fall silent: the same answer the server gives for a flow that opted
+ * out, for a better reason.
+ */
 export default class BrowserLog extends Internal implements ILog {
     #config: IBrowserLogConfig = {level: 'info', logByLevel: false};
     #logger: ISimpleLogger;
@@ -184,7 +195,10 @@ export default class BrowserLog extends Internal implements ILog {
         ) as unknown as PinoLogger<T>;
     }
 
-    public logger(level: Level = this.#config.level ?? 'info', bindings: object): ILogger {
+    public logger(
+        level: Level | 'silent' = this.#config.level ?? 'info',
+        bindings: object,
+    ): ILogger {
         const child = this.#logger.child(bindings as Record<string, unknown>, {level});
         const result: ILogger = {
             trace: undefined,

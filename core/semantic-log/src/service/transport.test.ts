@@ -248,7 +248,7 @@ t.test('a record reaches stdout and the service in parallel (§5.1)', async t =>
     }
     await writer.flush();
 
-    t.match(written.join(''), /info {2}hub fan-out works/, 'stdout still carries the record');
+    t.match(written.join(''), /info {2}fan-out works/, 'stdout still carries the record');
     const templates = (await app.inject({method: 'GET', url: '/templates'})).json() as Array<{
         service: string;
         count: number;
@@ -299,7 +299,7 @@ t.test('stdout, the service and a file all receive the same record (§5.1 row)',
     await service.flush();
 
     t.equal(written.length, 2, 'stdout carried both records');
-    t.match(written.join(''), /info {2}hub three ways/, 'the human line reached stdout');
+    t.match(written.join(''), /info {2}three ways/, 'the human line reached stdout');
     t.equal(
         await readFile(file, 'utf8'),
         written.join(''),

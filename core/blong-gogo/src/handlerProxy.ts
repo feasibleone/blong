@@ -1,7 +1,46 @@
 import type {Adapter, ILib, IMeta} from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
-import {camelToSentence, parseAnnotatedKey} from './lib.ts';
+import {camelToSentence, parseAnnotatedKey, portLogCalls} from './lib.ts';
+import {declareCall} from './semanticContext.ts';
+
+/**
+ * Record the call itself, from inside the leg its caller declared.
+ *
+ * This is the framework's own tracing, not one of the log levels: a handler that
+ * calls another method produces one start and one end record for the call, and an
+ * error record if it throws. They are written *inside* the leg `declareCall`
+ * bound, which is what makes them the call's evidence rather than a participant's,
+ * and - because they go through the call channel - they are stored rather than
+ * printed unless the process asked for them on stdout. Nothing is assembled at all
+ * for a flow that opted out, which is what keeps a high-throughput flow from
+ * paying for a picture of itself.
+ */
+function recordedCall<T>(port: unknown, leg: string, fn: () => T): T {
+    const calls = portLogCalls(port);
+    if (!calls?.enabled()) return fn();
+    calls.start(leg);
+    try {
+        const result = fn();
+        if (result instanceof Promise) {
+            return result.then(
+                value => {
+                    calls.end(leg);
+                    return value;
+                },
+                error => {
+                    calls.error(leg, error);
+                    throw error;
+                },
+            ) as T;
+        }
+        calls.end(leg);
+        return result;
+    } catch (error) {
+        calls.error(leg, error);
+        throw error;
+    }
+}
 
 /**
  * Rename a function's `.name` property.
@@ -13,6 +52,18 @@ function rename<T>(value: string, fn: T): T {
         enumerable: false,
     });
     return fn;
+}
+
+/**
+ * The name a leg can hold.
+ *
+ * A handler-group call arrives as a path (`db/accessRoleEnsure`), and its two halves are
+ * exactly what a leg is made of - the callee namespace and the method - so a separator
+ * becomes a dot. Lookups keep the original name: only the declaration is normalised,
+ * because the registry knows the path and the leg grammar does not.
+ */
+function legName(name: string): string {
+    return name.includes('/') ? name.replace(/\//g, '.') : name;
 }
 
 /**
@@ -29,10 +80,21 @@ export default function createHandlerProxy(
     attachCheckpoint: ((meta: IMeta) => void) | undefined,
     lib: ILib,
     mergedConfig: Record<string, unknown>,
+    layerName?: string,
 ): object {
     return new Proxy(local, {
         get(target: unknown, handlerName: string) {
             if (typeof handlerName !== 'string') return undefined;
+
+            // The port making the call names the leg it declares: `access.db` for a handler
+            // group calling through its layer's proxy, `srv.subject` for the shared subject
+            // orchestrator. A layer-built proxy whose port has no id of its own falls back to
+            // the layer's name, because a leg whose first segment is not a real name is
+            // rejected by the grammar and that rejection is silent (F-198) - the placeholder
+            // is the last resort, not the default.
+            const callerId = String(
+                (port as unknown as {config?: {id?: string}})?.config?.id || layerName || 'port',
+            );
 
             function resolveHandler(resolvedName: string): (...params: unknown[]) => unknown {
                 let fn: (() => unknown) | undefined;
@@ -54,10 +116,42 @@ export default function createHandlerProxy(
                         if ($meta && typeof $meta === 'object') {
                             attachCheckpoint?.($meta);
                         }
-                        return nameSteps(fn.apply(port, params as []));
+                        // The caller declares the call, so the records its handler
+                        // writes inside it name the same leg the callee's do. A same-port
+                        // call is not a hop, so its own records are written only for a
+                        // port that asks for them.
+                        const record =
+                            (port as unknown as {config?: {recordCalls?: boolean}})?.config
+                                ?.recordCalls === true;
+                        return nameSteps(
+                            declareCall(
+                                callerId,
+                                legName(resolvedName),
+                                () =>
+                                    record
+                                        ? recordedCall(port, resolvedName, () =>
+                                              fn?.apply(port, params as []),
+                                          )
+                                        : fn?.apply(port, params as []),
+                                $meta,
+                            ),
+                        );
                     });
                 }
-                return remote(resolvedName);
+                // A remote call carries its identity in `$meta`, which travels in
+                // the request body and in the outbound headers — so the declaration
+                // has to be made before the transport builds the request.
+                const remoteCall = remote(resolvedName) as (...params: unknown[]) => unknown;
+                return rename(resolvedName, function (...params: unknown[]) {
+                    const $meta = params.length > 1 ? (params[1] as IMeta) : undefined;
+                    return declareCall(
+                        callerId,
+                        legName(resolvedName),
+                        () =>
+                            recordedCall(port, legName(resolvedName), () => remoteCall(...params)),
+                        $meta,
+                    );
+                });
             }
 
             function wrapWithMeta(

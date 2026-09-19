@@ -172,7 +172,7 @@ curl -s 'http://127.0.0.1:9998/api/search?search=statusCode' | jq '.entries[] | 
 Beyond the live log server, Blong's `pino-cacache` transport stores every log entry **on disk**
 (default `~/.blong/log-cache`) with full detail, so they can be inspected later in greater detail
 even after the process has exited. The VS Code extension reads this cache when you click a
-`blong://log/<ULID>` link in the terminal. Coding agents can read it directly with the
+`semantic-log://record/<ULID>` link in the terminal. Coding agents can read it directly with the
 `blong-dev log` CLI:
 
 ```bash
@@ -329,3 +329,32 @@ curl -s 'http://127.0.0.1:9998/api/entries?level=error&limit=10' | jq '.entries[
 
 When adding new features to the logging or introspection tooling, update this skill to include the
 new capabilities and usage patterns.
+
+## Call records (the flow ledger's input)
+
+`call start` / `call end` / `call error` / `call received` are **not level records**: they go
+through `log.calls`, they are produced for a whole flow or not at all, and by default they are
+**stored but not printed** — so a quiet stdout is not evidence that nothing was recorded.
+
+```bash
+# Show them on stdout for a run (they still reach the cache and the service)
+blong-watch -- microservice integration dev --log.calls.stdout=true
+
+# Read them back after a run, exactly as they were retained
+blong-dev log --search "call received"
+
+# Opt a high-throughput flow out (matched against the entry method it was minted with)
+blong ... --log.calls.off=payment --log.calls.off=ledger.entry.post
+
+# Ask for one flow's calls on a running deployment (gateway verifies, then forgets the token)
+blong grant calls --ttl=15m
+curl -H "x-blong-grant: <token>" ...          # a 401/403 request records no calls: nothing ran
+```
+
+The files to read when this needs changing: `@feasibleone/semantic-log/capability` (the ambient
+switch, the `cap` field of the identity header, the four phases and the channel),
+`@feasibleone/semantic-log/emitter` (`LogBase` — the destination: the channel's per-component
+loggers, and the `envelope`/`translate` options a runtime fills in),
+`core/blong-gogo/src/callTrace.ts` (the config, the opt-out patterns and the record envelope),
+`grant.ts` (mint/verify), `SemanticLog.ts` (what blong passes to `LogBase`), and `bin/blong.ts`
+(`blong grant`).

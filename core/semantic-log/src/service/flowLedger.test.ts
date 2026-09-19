@@ -105,10 +105,12 @@ t.test('a declared call is an edge even when nothing answers (PRD R22)', t => {
     t.end();
 });
 
-t.test('a receipt credits only the call that aimed at it', t => {
-    // Two declarations of one call id, to two different receivers: a reused id, which
-    // is the mistake the id exists to make impossible — so it is reported rather than
-    // resolved. Both are attempts, and only the one whose receiver answered is credited.
+t.test('a receipt for a leg declared toward two receivers credits neither', t => {
+    // Two declarations of one call id, to two different receivers: a reused id, which is
+    // the mistake the id exists to make impossible. The receipt says the leg was answered,
+    // and not which of the two declared targets answered it — so neither edge is credited
+    // and both are drawn unanswered, which is the conservative reading of contradictory
+    // data rather than a coin flip between the two.
     const ledger = new FlowLedger();
     ledger.observe(event({id: 'a', time: 1, leg: 'payer.quote.rates', to: 'hub', seq: '1'}));
     ledger.observe(event({id: 'b', time: 2, leg: 'payer.quote.rates', to: 'payee', seq: '1'}));
@@ -117,9 +119,48 @@ t.test('a receipt credits only the call that aimed at it', t => {
         ledger.unionOf(KIND)?.legs[0]?.ends,
         [
             {caller: 'payer', callee: 'hub', count: 1, observed: 0},
-            {caller: 'payer', callee: 'payee', count: 1, observed: 1},
+            {caller: 'payer', callee: 'payee', count: 1, observed: 0},
         ],
-        'the call that aimed at the answering receiver is the answered one',
+        'the receipt cannot be attributed, so neither edge claims an answer',
+    );
+    t.end();
+});
+
+t.test('a leg id that names no caller falls back to the service that wrote it', t => {
+    // The id is `<caller>.<method>`, so an id with no dot in it names no caller at all -
+    // and the one honest answer left is the service the record came from. That is the
+    // fallback, not the rule: every id the framework mints begins with the caller's own
+    // name.
+    const ledger = new FlowLedger();
+    ledger.observe(event({id: 'a', time: 1, leg: 'single', to: 'hub', seq: '1'}));
+    t.same(
+        ledger.unionOf(KIND)?.legs[0]?.ends,
+        [{caller: 'payer', callee: 'hub', count: 1, observed: 0}],
+        'the emitting service names the edge instead',
+    );
+    t.end();
+});
+
+t.test('a receipt is credited by the declaration, not by the name of its writer', t => {
+    // One process hosts many namespaces — every realm of a suite, in development — so a
+    // credit that compared the writer's service to the declared callee would make "was
+    // this call answered" a property of how the deployment is split (D-210). The leg
+    // named one target and that target's side answered it; the name on the record is
+    // information for whoever reads the diagram.
+    const ledger = new FlowLedger();
+    ledger.observe(event({id: 'a', time: 1, leg: 'payer.quote.rates', to: 'hub', seq: '1'}));
+    ledger.observe(
+        event({id: 'b', time: 2, service: 'everything', leg: 'payer.quote.rates', seq: '1'}),
+    );
+    t.same(
+        ledger.unionOf(KIND)?.legs[0]?.ends,
+        [{caller: 'payer', callee: 'hub', count: 1, observed: 1}],
+        'the service that wrote the receipt is information, not a condition',
+    );
+    t.same(
+        ledger.unionOf(KIND)?.legs[0]?.services,
+        ['payer', 'everything'],
+        'and the call still names who was seen on either side of it',
     );
     t.end();
 });
@@ -146,8 +187,19 @@ t.test('a receipt that arrives before the declaration still credits it', t => {
 });
 
 t.test('a receiver that logs three records about one call answered it once', t => {
+    // The leg names its caller (`hub`), and that is the edge's caller whatever service the
+    // records happen to be written by: the emitting service is information.
     const ledger = new FlowLedger();
-    ledger.observe(event({id: 'a', time: 1, leg: 'hub.transfer.deliver', to: 'payee', seq: '1'}));
+    ledger.observe(
+        event({
+            id: 'a',
+            time: 1,
+            service: 'hub',
+            leg: 'hub.transfer.deliver',
+            to: 'payee',
+            seq: '1',
+        }),
+    );
     ledger.observe(
         event({id: 'b', time: 2, service: 'payee', leg: 'hub.transfer.deliver', seq: '1'}),
     );
@@ -159,7 +211,7 @@ t.test('a receiver that logs three records about one call answered it once', t =
     );
     t.same(
         ledger.unionOf(KIND)?.legs[0]?.ends,
-        [{caller: 'payer', callee: 'payee', count: 1, observed: 1}],
+        [{caller: 'hub', callee: 'payee', count: 1, observed: 1}],
         'the counters are per execution, not per record',
     );
     t.end();

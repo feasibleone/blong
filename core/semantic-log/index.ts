@@ -8,6 +8,8 @@
  * still exists.
  */
 
+export {attachSemanticVocabulary, detachSemanticVocabulary, vocabulary} from './src/attachable.ts';
+export type {AttachedVocabulary} from './src/attachable.ts';
 export {createRingBuffer} from './src/buffer.ts';
 export type {RingBuffer} from './src/buffer.ts';
 export {cachePaths, cacheRecordIds, openCache} from './src/cache.ts';
@@ -18,13 +20,21 @@ export type {
     RecordCache,
     RecordStore,
 } from './src/cache.ts';
+export {callPhaseMessage, CALLS_CAPABILITY, createCallChannel} from './src/capability.ts';
+export type {CallChannel, CallEvent, CallPhase, CallWriter} from './src/capability.ts';
 export {
     bindInboundLeg,
     bindLeg,
     bindTrace,
+    capabilityState,
+    currentCapabilities,
     currentContext,
     currentLeg,
     currentTrace,
+    enterCapability,
+    enterFlow,
+    enterInboundLeg,
+    enterTrace,
     isLegId,
     isLegSeq,
     isServiceName,
@@ -33,6 +43,7 @@ export {
     rememberRecord,
     step,
     takeDecision,
+    withCapability,
     withFlow,
     withIntent,
 } from './src/context.ts';
@@ -48,10 +59,23 @@ export type {Branch} from './src/decide.ts';
 export {fingerprint, serializeForIdentity, withIdentity} from './src/fingerprint.ts';
 export {enabled, LEVEL_NAMES, levelName, LEVELS, levelValue} from './src/level.ts';
 export type {LevelName} from './src/level.ts';
+export {DEFAULT_RETENTION_LIMIT, LogBase, resolveHome} from './src/logBase.ts';
+export type {
+    CallOptions,
+    ClusterOptions,
+    LogBaseOptions,
+    LoggerFace,
+    RetentionOptions,
+} from './src/logBase.ts';
+export {toLogCall} from './src/logCall.ts';
+export type {LogCall} from './src/logCall.ts';
 export {captureProcessFailures, createLogger} from './src/logger.ts';
 export type {Format, Logger, LoggerOptions} from './src/logger.ts';
 export {mask} from './src/normalize.ts';
 export {
+    CAP_FIELD,
+    decodeCapabilities,
+    encodeCapabilities,
     FLOW_FIELD,
     identityHeaders,
     LEG_FIELD,
@@ -60,6 +84,7 @@ export {
     TO_FIELD,
     TRACE_FIELD,
     TRACE_HEADER,
+    withoutCapabilities,
 } from './src/propagation.ts';
 export type {Identities} from './src/propagation.ts';
 export type {
@@ -81,6 +106,7 @@ export {createApp} from './src/service/app.ts';
 export type {ServiceOptions} from './src/service/app.ts';
 export {cosine, distance, DriftTracker, updateCentroid} from './src/service/centroid.ts';
 export type {DriftOptions, DriftResult} from './src/service/centroid.ts';
+export {openCluster} from './src/service/cluster.ts';
 export {DetectorSuite} from './src/service/detectors.ts';
 export type {
     Anomaly,
@@ -130,6 +156,8 @@ export {legOf, refFromFingerprint, TemplateRegistry} from './src/service/registr
 export type {IngestEvent, TemplateEntry, UpsertResult} from './src/service/registry.ts';
 export {deployDiff, searchTemplates} from './src/service/search.ts';
 export type {DeployDiff, SearchResult, TimeRange} from './src/service/search.ts';
+export {DEFAULT_SERVICE_PORT, startService} from './src/service/start.ts';
+export type {RunningService, StartServiceOptions} from './src/service/start.ts';
 export {createServiceWriter} from './src/service/transport.ts';
 export type {ServiceTransportOptions, ServiceWriter} from './src/service/transport.ts';
 export {compactStack} from './src/stack.ts';

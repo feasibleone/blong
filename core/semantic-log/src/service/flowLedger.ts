@@ -18,12 +18,21 @@
  *
  * ## A call is a declaration, not a deduction
  *
- * The caller names both ends: its own service is on its records, and the receiver
- * it expects is the `to` it declared (`legTo` on the record). So an edge is known
- * from **one** observation — the caller's — and a receiver that never answers
- * (missing, failing, or wired to the wrong address) still appears in the observed
- * shape. What its silence costs is the `observed` count on the edge, which is a
- * fact about the deployment instead of a line that cannot be drawn.
+ * The caller names both ends: the leg id it mints begins with its own name
+ * (`legIdFor`), and the receiver it expects is the `to` it declared (`legTo` on the
+ * record). So an edge is known from **one** observation — the caller's — and a
+ * receiver that never answers (missing, failing, or wired to the wrong address)
+ * still appears in the observed shape. What its silence costs is the `observed`
+ * count on the edge, which is a fact about the deployment instead of a line that
+ * cannot be drawn.
+ *
+ * Whether that edge was *answered* is a separate question, answered by the
+ * **declaration** rather than by the record that carries the receipt. A leg a caller
+ * declared toward one target, and then observed from the receiving side, was
+ * answered by that target — whatever name the process that wrote the record happens
+ * to have. One process hosts many namespaces, and in development a whole suite, so a
+ * credit that compared the writer's service to the callee would make an answered call
+ * a property of how the deployment is split rather than of what happened (D-210).
  *
  * ## Position, not time
  *
@@ -142,8 +151,29 @@ interface Declaration {
 interface LegSeen {
     /** Declarations made for the call, by pair. */
     declared: Map<string, Declaration>;
-    /** Services observed carrying the call without declaring it — its receivers. */
+    /**
+     * Services observed carrying the call without declaring it — the receiving side.
+     * Who wrote a receipt is **information**, for the reader of a diagram: the credit
+     * below rests on the declaration, never on these names.
+     */
     answered: Set<string>;
+}
+
+/**
+ * Whether a receipt seen for a leg can be attributed to a declaration.
+ *
+ * A record with no declared target says *that* the leg was answered, and not which target
+ * answered it. That is enough when the leg was declared toward one callee in this
+ * execution — and not when it was declared toward two, which is one call id reused toward
+ * two receivers, i.e. the caller misuse the id exists to make impossible. Contradictory
+ * data gets the conservative reading: neither edge is credited, so both are drawn
+ * unanswered, instead of a coin flip deciding which of them claims to have been answered.
+ *
+ * Exported so the diagram and the ledger reach the same verdict about an arrow
+ * from this rule, and a second copy of it is how the two views drifted once already.
+ */
+export function attributable(declaredTargets: number, receipts: number): boolean {
+    return declaredTargets === 1 && receipts > 0;
 }
 
 /** Per-execution state. */
@@ -507,6 +537,10 @@ export class FlowLedger {
      * A call seen only from the receiver's side appears with **no end at all**, which is
      * the honest shape of it: nobody said who called, and the union reports that rather
      * than inventing a caller from whichever service it happened to see first.
+     *
+     * A receipt is credited to the declaration, and attributed through it (see
+     * {@link attributable}): the receiving side's own name is on the observation and in
+     * the union's `services`, but it is never the condition.
      */
     private aggregate(state: ExecutionState, observation: LegObservation): void {
         const kindState = state.union;
@@ -540,6 +574,11 @@ export class FlowLedger {
         };
         state.legs.set(observation.leg, seen);
         if (observation.to === undefined) {
+            // A record with no declared target is the receiving side of this leg. Which
+            // service wrote it is information, not a condition: one service can host many
+            // realms, adapters and orchestrators, so requiring its name to equal the callee
+            // would make an answered call a property of how the deployment is split rather
+            // than of what happened.
             seen.answered.add(observation.service);
         } else {
             // Created **once** per pair: a call site that logs several records about the
@@ -547,10 +586,18 @@ export class FlowLedger {
             // is one attempt, and re-creating the entry would reset the flags below and
             // count the same attempt again — which is how the payer's discovery, logged
             // twice inside one leg, came to be reported as two calls.
-            const key = pairKey(observation.service, observation.to);
+            // The caller is the service that wrote the record: the participant that made the
+            // call. Reading it off the leg id instead names the caller's *namespace*, which
+            // is wrong the moment a module is mounted under another name - the receiving
+            // scheme runs `flow/hub.ts` as `hubB`, so the id's head drew a `hub` nothing
+            // deployed, beside it, and the two schemes' hubs as one participant. What the leg
+            // is worth here is the *relationship*, and the two views of it have to agree: the
+            // ledger counts the ends and the diagram draws them.
+            const caller = observation.service;
+            const key = pairKey(caller, observation.to);
             if (!seen.declared.has(key)) {
                 seen.declared.set(key, {
-                    caller: observation.service,
+                    caller,
                     callee: observation.to,
                     counted: false,
                     credited: false,
@@ -570,7 +617,7 @@ export class FlowLedger {
                 aggregate.count++;
                 end.count++;
             }
-            if (!declared.credited && seen.answered.has(declared.callee)) {
+            if (!declared.credited && attributable(seen.declared.size, seen.answered.size)) {
                 declared.credited = true;
                 end.observed++;
             }
