@@ -43,8 +43,14 @@ const dir = (url: string) => dirname(url.replace(/file:\//g, ''));
  * added, and would have failed the same way on a clean checkout. Bundling the source
  * is what the dev server already does (the `development` export condition), so the two
  * now agree; the published package is unchanged for consumers outside the monorepo.
+ *
+ * Kept lazy and scheme-agnostic because this module is also loaded outside a build:
+ * `browserBundle.test.ts` imports it, and there `import.meta.url` is not a file url.
  */
-const browserEntry = fileURLToPath(new URL('./index.ts', import.meta.url));
+const browserEntry = (() => {
+    const entry = new URL('./index.ts', import.meta.url);
+    return entry.protocol === 'file:' ? fileURLToPath(entry) : entry.href;
+})();
 
 export interface IBlongViteOptions {
     /**
