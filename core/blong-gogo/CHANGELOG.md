@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.35.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.34.0...blong-gogo-v1.35.0) (2026-09-19)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* build ([18ea6c6](https://github.com/feasibleone/blong/commit/18ea6c6c737e70ebb8715eba8bd19c7f459c2c41))
+
 ## [1.34.0](https://github.com/feasibleone/blong/compare/blong-gogo-v1.33.0...blong-gogo-v1.34.0) (2026-09-16)
 
 
