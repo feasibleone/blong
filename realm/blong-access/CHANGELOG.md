@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0](https://github.com/feasibleone/blong/compare/blong-access-v1.6.0...blong-access-v1.7.0) (2026-09-19)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* remove dep cycle ([428877b](https://github.com/feasibleone/blong/commit/428877b7db0979173fcb5fc8c581a1a7416e02f4))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-access-v1.5.0...blong-access-v1.6.0) (2026-09-16)
 
 

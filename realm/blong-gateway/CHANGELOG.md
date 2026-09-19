@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.3.0...blong-gateway-v1.4.0) (2026-09-19)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.2.3...blong-gateway-v1.3.0) (2026-09-16)
 
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.19.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.18.0...blong-browser-v1.19.0) (2026-09-19)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* build ([18ea6c6](https://github.com/feasibleone/blong/commit/18ea6c6c737e70ebb8715eba8bd19c7f459c2c41))
+
 ## [1.18.0](https://github.com/feasibleone/blong/compare/blong-browser-v1.17.0...blong-browser-v1.18.0) (2026-09-16)
 
 
