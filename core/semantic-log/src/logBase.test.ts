@@ -278,6 +278,11 @@ t.test('a configured cluster with no opener installs no sink', async t => {
     log.componentFace('realm', 'info', {}).info('still emitted');
     await log.stop();
     t.equal(lines.length, 1, 'the log works; it simply has nowhere to send a copy');
+    t.equal(
+        log.clusterUrl,
+        undefined,
+        'and no address is published: this process is not running a service',
+    );
     t.end();
 });
 
@@ -322,7 +327,7 @@ t.test('the sink the opener answered with takes a copy of every record', async t
         // the service refused.
         report(new Error('port in use'), 'start');
         report(new Error('bad request'), 'send');
-        return {sink, close: async () => void (closed += 1)};
+        return {sink, url: 'http://127.0.0.1:43210', close: async () => void (closed += 1)};
     };
     const log = new LogBase({
         service: 'hub',
@@ -335,6 +340,14 @@ t.test('the sink the opener answered with takes a copy of every record', async t
 
     t.equal(sent.length, 1, 'the sink the opener answered with was used');
     t.equal(closed, 1, 'and closing the log closed what the opener opened');
+    // The address is published because only this process can know it: a service
+    // started on a port the operating system chose has no name to look up, and a
+    // reader in the same process has to be told where the service is.
+    t.equal(
+        log.clusterUrl,
+        'http://127.0.0.1:43210',
+        'the address the sink writes to is published for this process to read',
+    );
     t.match(
         lines.join('\n'),
         /was not started: Error: port in use/,

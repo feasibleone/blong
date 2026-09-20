@@ -68,8 +68,38 @@ type BlongConfig = PlaywrightTestConfig<IBlongTestOptions> & {
     frontendPort?: number;
 };
 
+/**
+ * Resolve a realm package's test directory, from the suite's own package.
+ *
+ * The base of the resolution is not a detail. An isolated (pnpm) install links a
+ * package only beside its dependents, so a realm a suite *declares* is resolvable
+ * from the suite and not from this module — blong-browser does not depend on the
+ * realms a suite hands it, which is why `realmPackages` makes the suite hand them
+ * over at all. Asking from here therefore answered "no" for a realm the suite
+ * declares: the project was skipped, the suite's own project was left unnamed
+ * (it is named `suite` only when at least one realm project resolved), and
+ * because Playwright appends a *named* project to every snapshot file name, the
+ * same baselines were written as `portal-merged-linux.png` locally and read as
+ * `portal-merged-suite-linux.png` in CI — one name existing, the other not
+ * (F-208). Under the tap runner's `NODE_PATH` the same call could also answer
+ * "yes" for a realm the suite never declared, by finding the store's published
+ * copy, whose `test/` directory does not exist.
+ *
+ * `process.cwd()` is the suite's package root: `blong-dev playwright` runs from
+ * there and so does CI, and it is the same assumption `resolveUniquePorts` already
+ * makes when it looks the suite up in `rush.json`. A run from anywhere else has no
+ * suite to resolve from, and inventing one would put the guess back.
+ */
 function resolveRealmTestDir(packageName: string): string | null {
-    const require = createRequire(import.meta.url);
+    const suitePackage = findUp(process.cwd(), 'package.json');
+    if (!suitePackage) {
+        console.warn(
+            `[blong-browser/playwright] No package.json at or above ${process.cwd()}, so no ` +
+                `realm test directory can be resolved for ${packageName}`,
+        );
+        return null;
+    }
+    const require = createRequire(suitePackage);
     try {
         const pkgPath = require.resolve(`${packageName}/package.json`);
         return dirname(pkgPath) + '/test';

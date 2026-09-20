@@ -94,6 +94,15 @@ export interface ILog {
      * and answers. Deliberately *not* part of the level API: see {@link ICallLog}.
      */
     calls?: ICallLog;
+    /**
+     * Where this process's records are assembled, when it started a service for
+     * them. Published by the log because only the process that bound the port knows
+     * which one it was — an in-process service asks the operating system for a free
+     * port so that two processes on one machine do not want the same one — and the
+     * components that *read* the service need to be told. Absent means no service is
+     * running here: a deployment points its readers at one elsewhere.
+     */
+    clusterUrl?: string;
 }
 
 /**
@@ -546,6 +555,18 @@ export interface IApi {
     ) => unknown;
     attach: (target: object, patterns: (string | RegExp)[] | string | RegExp) => Promise<object>;
     createLog: ILog['logger'];
+    /**
+     * The running log, for the few components that need more than a logger from it.
+     *
+     * `createLog` is what a component normally wants — a logger bound to itself. This
+     * is the log itself, and the reason it is reachable is that it *publishes* what
+     * only it can know: the address of the service this process started for its own
+     * records ({@link ILog.clusterUrl}). A component that reads that service — a
+     * realm's port — takes its default address from here and its configured one from
+     * its own config, which is what makes an in-process service work on a port
+     * nobody named.
+     */
+    log?: ILog;
     attachCheckpoint?: (meta: IMeta) => void;
     handlers?: (api: {
         utError: IError;

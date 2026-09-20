@@ -162,6 +162,20 @@ export default class SemanticLog extends Internal implements ILog {
     }
 
     /**
+     * The address of the cluster service this process started, once it started one.
+     *
+     * The framework publishes it to the components that read the service — the realm
+     * whose pages ask it what it observed. It is the *bound* address rather than a
+     * configured one because the port is asked for, not named: two framework
+     * processes on one machine are ordinary (a dev server beside a test run, or CI
+     * running packages in parallel) and a fixed port leaves the second one with no
+     * service at all while its readers keep looking at the first one's.
+     */
+    public get clusterUrl(): string | undefined {
+        return this.#base.clusterUrl;
+    }
+
+    /**
      * Install the call gate, then open the store and the cluster.
      *
      * The gate's configuration goes first: `enabled`/`off` decide whether a flow

@@ -689,6 +689,9 @@ importers:
       '@feasibleone/blong-login':
         specifier: workspace:^1.0.0
         version: link:../../realm/blong-login
+      '@feasibleone/blong-realm':
+        specifier: workspace:^1.0.0
+        version: link:../blong-realm
       '@feasibleone/blong-test':
         specifier: workspace:^1.0.0
         version: link:../../realm/blong-test

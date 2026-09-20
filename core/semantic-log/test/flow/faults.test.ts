@@ -28,6 +28,8 @@ import {dirname, join} from 'node:path';
 
 import t from 'tap';
 
+import {startFlow, type FlowFaults, type FlowHandle} from '../../flow/flows.ts';
+import type {Participant} from '../../flow/participant.ts';
 import {cacheRecordIds, openCache} from '../../src/cache.ts';
 import type {LogRecord} from '../../src/record.ts';
 import {renderHuman} from '../../src/render.ts';
@@ -35,8 +37,6 @@ import {createApp} from '../../src/service/app.ts';
 import {DetectorSuite} from '../../src/service/detectors.ts';
 import {createServiceWriter} from '../../src/service/transport.ts';
 import {getWriter, setWriter} from '../../src/writer.ts';
-import {startFlow, type FlowFaults, type FlowHandle} from '../../flow/flows.ts';
-import type {Participant} from '../../flow/participant.ts';
 
 /**
  * The participants log to stdout by default; silence the destination so the
@@ -92,7 +92,10 @@ interface FaultRun {
  * a tick after the log call returns, so without the flush the run's last record —
  * the failure the run exists to demonstrate — would still be in flight.
  */
-async function runWithFaults(faults: FlowFaults, fn: (run: FaultRun) => Promise<void>): Promise<void> {
+async function runWithFaults(
+    faults: FlowFaults,
+    fn: (run: FaultRun) => Promise<void>,
+): Promise<void> {
     const cacheDir = await mkdtemp(join(tmpdir(), 'semantic-log-flow-fault-'));
     const flow = await startFlow('single', {cacheDir, faults});
     try {
@@ -142,21 +145,39 @@ function released(record: LogRecord): Record<string, unknown>[] {
 }
 
 /** The `settlement` detail a failure record released, or undefined when it released none. */
-function releasedSettlement(record: LogRecord): {attempted?: number; payeeResponse?: string} | undefined {
+function releasedSettlement(
+    record: LogRecord,
+): {attempted?: number; payeeResponse?: string} | undefined {
     const found = released(record).find(fields => fields.settlement !== undefined);
     return found?.settlement as {attempted?: number; payeeResponse?: string} | undefined;
 }
 
 t.test('F5: a declined rate stops the chain at the provider and nothing settles', async t => {
     await runWithFaults({declineRate: true}, async ({result, records}) => {
-        t.equal(result.status, 409, 'the payer refuses the quote rather than settling on a rate nobody offered');
+        t.equal(
+            result.status,
+            409,
+            'the payer refuses the quote rather than settling on a rate nobody offered',
+        );
 
         const declined = find(records, 'fxp', 'rate declined');
         t.ok(declined, 'the provider recorded its own refusal');
-        t.equal(declined?.levelName, 'warn', 'a refusal is a warning, not a failure of the provider');
+        t.equal(
+            declined?.levelName,
+            'warn',
+            'a refusal is a warning, not a failure of the provider',
+        );
         t.equal(declined?.fields?.rate, 1.1, 'the refused rate is in the record');
-        t.equal(declined?.fields?.rateLimit, 1.15, 'and so is the limit it exceeded, so the branch is attributable');
-        t.equal(find(records, 'fxp', 'rate published'), undefined, 'declineAll published no rate at all');
+        t.equal(
+            declined?.fields?.rateLimit,
+            1.15,
+            'and so is the limit it exceeded, so the branch is attributable',
+        );
+        t.equal(
+            find(records, 'fxp', 'rate published'),
+            undefined,
+            'declineAll published no rate at all',
+        );
 
         // R11 is this fault's whole reason for existing, and it is the one thing the
         // other assertions here do not reach: they pin *that* the provider refused,
@@ -168,7 +189,11 @@ t.test('F5: a declined rate stops the chain at the provider and nothing settles'
             'the provider recorded which discriminator it consulted',
         );
         t.equal(declined?.decision?.chosen, 'decline', 'and the branch it took');
-        t.same(declined?.decision?.candidates, ['decline', 'accept'], 'and both branches it considered');
+        t.same(
+            declined?.decision?.candidates,
+            ['decline', 'accept'],
+            'and both branches it considered',
+        );
         t.same(
             declined?.decision?.values,
             {rate: 1.1, rateLimit: 1.15},
@@ -177,69 +202,127 @@ t.test('F5: a declined rate stops the chain at the provider and nothing settles'
 
         const hub = find(records, 'hub', 'provider declined the quote');
         t.ok(hub, 'the hub recorded that the provider declined');
-        t.equal(hub?.res?.status, 409, "the hub carries the provider's status instead of synthesising a rate");
+        t.equal(
+            hub?.res?.status,
+            409,
+            "the hub carries the provider's status instead of synthesising a rate",
+        );
         t.equal(hub?.err?.message, 'fxp returned 409', 'and names the provider as the source');
-        t.equal(find(records, 'hub', 'quote assembled'), undefined, 'no quote was assembled from a declined rate');
+        t.equal(
+            find(records, 'hub', 'quote assembled'),
+            undefined,
+            'no quote was assembled from a declined rate',
+        );
 
         const payer = find(records, 'payer', 'quote refused');
         t.ok(payer, 'the payer recorded its refusal');
-        t.equal(payer?.fields?.reason, 'rate above limit', 'the payer refused on the rate it did not receive');
+        t.equal(
+            payer?.fields?.reason,
+            'rate above limit',
+            'the payer refused on the rate it did not receive',
+        );
         t.equal(find(records, 'payer', 'quote accepted'), undefined, 'no quote was accepted');
 
-        t.equal(find(records, 'payer', 'submitting transfer'), undefined, 'no transfer was ever submitted');
-        t.equal(find(records, 'hub', 'settlement committed'), undefined, 'nothing settled');
-        t.equal(find(records, 'hub', 'settlement failed'), undefined, 'and nothing failed to settle: the chain stopped at the quote');
-    });
-});
-
-t.test('F3: a reworded message is the one recorded, and the old wording is gone (PRD R6c)', async t => {
-    await runWithFaults({rewordLiquidity: true}, async ({result, records}) => {
-        t.equal(result.status, 200, 'rewording a message does not disturb the transfer');
-
-        const reworded = find(records, 'hub', 'liquidity hold placed');
-        t.ok(reworded, "the hub recorded the deploy's wording, not the one compiled in");
-        t.equal(reworded?.fields?.amount, 100, 'and the reworded record still carries the amount it reserved');
-        t.equal(find(records, 'hub', 'liquidity reserved'), undefined, 'the previous wording is not recorded at all');
-
-        t.equal(find(records, 'hub', 'settlement committed')?.res?.status, 200, 'the transfer still settles');
-    });
-});
-
-t.test('F1: a refused transfer is attributed to the payee and the hub releases what it withheld', async t => {
-    await runWithFaults({blockTransfers: true}, async ({result, records}) => {
-        t.equal(result.status, 502, 'the payer reports the failure it was told about');
-
-        const refused = find(records, 'payee', 'transfer refused');
-        t.ok(refused, 'the payee recorded the refusal');
-        t.equal(refused?.levelName, 'error', 'the refusal is the origin of the failure');
-        t.equal(refused?.err?.message, 'account blocked', 'the origin names its own reason');
-
-        const failed = find(records, 'hub', 'settlement failed');
-        t.ok(failed, 'the hub recorded the failed settlement');
-        t.equal(failed?.res?.status, 422, "the payee's own status reaches the hub rather than a hub timeout");
-        t.equal(failed?.err?.message, 'payee refused: account blocked', 'and the failure is attributed to the payee');
-
-        // Withholding is the hub's whole reason for holding routing and liquidity
-        // locally: the detail is released onto the failure, and only then.
-        const settlement = failed === undefined ? undefined : releasedSettlement(failed);
-        t.ok(settlement, 'the failure record carries the settlement detail the hub withheld before the hop');
-        t.equal(settlement?.attempted, 100, 'the released detail names the amount that failed');
-        t.equal(settlement?.payeeResponse, 'account blocked', 'and the reason the payee gave');
-        const routing = failed === undefined ? undefined : released(failed).find(fields => fields.routing !== undefined);
-        t.ok(routing, 'the routing detail withheld earlier in the step is released with it');
-        t.ok(
-            failed === undefined ? undefined : released(failed).find(fields => fields.liquidity !== undefined),
-            'and so is the liquidity it reserved',
+        t.equal(
+            find(records, 'payer', 'submitting transfer'),
+            undefined,
+            'no transfer was ever submitted',
         );
-
-        const rejected = find(records, 'payer', 'transfer rejected');
-        t.ok(rejected, 'the payer recorded the rejection');
-        t.equal(rejected?.res?.status, 502, 'the payer saw the hub fail');
-        t.equal(rejected?.err?.message, 'hub returned 502');
-
-        t.equal(find(records, 'hub', 'settlement committed'), undefined, 'the settlement is never reported as committed');
+        t.equal(find(records, 'hub', 'settlement committed'), undefined, 'nothing settled');
+        t.equal(
+            find(records, 'hub', 'settlement failed'),
+            undefined,
+            'and nothing failed to settle: the chain stopped at the quote',
+        );
     });
 });
+
+t.test(
+    'F3: a reworded message is the one recorded, and the old wording is gone (PRD R6c)',
+    async t => {
+        await runWithFaults({rewordLiquidity: true}, async ({result, records}) => {
+            t.equal(result.status, 200, 'rewording a message does not disturb the transfer');
+
+            const reworded = find(records, 'hub', 'liquidity hold placed');
+            t.ok(reworded, "the hub recorded the deploy's wording, not the one compiled in");
+            t.equal(
+                reworded?.fields?.amount,
+                100,
+                'and the reworded record still carries the amount it reserved',
+            );
+            t.equal(
+                find(records, 'hub', 'liquidity reserved'),
+                undefined,
+                'the previous wording is not recorded at all',
+            );
+
+            t.equal(
+                find(records, 'hub', 'settlement committed')?.res?.status,
+                200,
+                'the transfer still settles',
+            );
+        });
+    },
+);
+
+t.test(
+    'F1: a refused transfer is attributed to the payee and the hub releases what it withheld',
+    async t => {
+        await runWithFaults({blockTransfers: true}, async ({result, records}) => {
+            t.equal(result.status, 502, 'the payer reports the failure it was told about');
+
+            const refused = find(records, 'payee', 'transfer refused');
+            t.ok(refused, 'the payee recorded the refusal');
+            t.equal(refused?.levelName, 'error', 'the refusal is the origin of the failure');
+            t.equal(refused?.err?.message, 'account blocked', 'the origin names its own reason');
+
+            const failed = find(records, 'hub', 'settlement failed');
+            t.ok(failed, 'the hub recorded the failed settlement');
+            t.equal(
+                failed?.res?.status,
+                422,
+                "the payee's own status reaches the hub rather than a hub timeout",
+            );
+            t.equal(
+                failed?.err?.message,
+                'payee refused: account blocked',
+                'and the failure is attributed to the payee',
+            );
+
+            // Withholding is the hub's whole reason for holding routing and liquidity
+            // locally: the detail is released onto the failure, and only then.
+            const settlement = failed === undefined ? undefined : releasedSettlement(failed);
+            t.ok(
+                settlement,
+                'the failure record carries the settlement detail the hub withheld before the hop',
+            );
+            t.equal(settlement?.attempted, 100, 'the released detail names the amount that failed');
+            t.equal(settlement?.payeeResponse, 'account blocked', 'and the reason the payee gave');
+            const routing =
+                failed === undefined
+                    ? undefined
+                    : released(failed).find(fields => fields.routing !== undefined);
+            t.ok(routing, 'the routing detail withheld earlier in the step is released with it');
+            t.ok(
+                failed === undefined
+                    ? undefined
+                    : released(failed).find(fields => fields.liquidity !== undefined),
+                'and so is the liquidity it reserved',
+            );
+
+            const rejected = find(records, 'payer', 'transfer rejected');
+            t.ok(rejected, 'the payer recorded the rejection');
+            t.equal(rejected?.res?.status, 502, 'the payer saw the hub fail');
+            t.equal(rejected?.err?.message, 'hub returned 502');
+
+            t.equal(
+                find(records, 'hub', 'settlement committed'),
+                undefined,
+                'the settlement is never reported as committed',
+            );
+        });
+    },
+);
 
 t.test('F4: a stalled payee is attributed to the payee and its wait is recorded', async t => {
     await runWithFaults({stallTransfers: true}, async ({result, records}) => {
@@ -253,19 +336,35 @@ t.test('F4: a stalled payee is attributed to the payee and its wait is recorded'
         // payee was slow, but that the record says *which step* it was slow in, so a
         // reader knows how far the transfer got before it stopped.
         t.equal(waiting?.flow?.step, 'transfer', 'and the step it stalled inside is recorded');
-        t.equal(find(records, 'payee', 'transfer fulfilled'), undefined, 'the transfer was never fulfilled');
+        t.equal(
+            find(records, 'payee', 'transfer fulfilled'),
+            undefined,
+            'the transfer was never fulfilled',
+        );
 
         const failed = find(records, 'hub', 'settlement failed');
         t.ok(failed, 'the hub recorded the failed settlement');
-        t.equal(failed?.res?.status, 504, "the stall reaches the hub as the payee's own 504, not a hub timeout");
-        t.equal(failed?.err?.message, 'payee refused: no fulfilment', 'and is attributed to the payee');
+        t.equal(
+            failed?.res?.status,
+            504,
+            "the stall reaches the hub as the payee's own 504, not a hub timeout",
+        );
+        t.equal(
+            failed?.err?.message,
+            'payee refused: no fulfilment',
+            'and is attributed to the payee',
+        );
         t.equal(
             failed === undefined ? undefined : releasedSettlement(failed)?.payeeResponse,
             'no fulfilment',
             'the detail the hub withheld on the failure names the stall',
         );
 
-        t.equal(find(records, 'payer', 'transfer rejected')?.res?.status, 502, 'the payer recorded the rejection');
+        t.equal(
+            find(records, 'payer', 'transfer rejected')?.res?.status,
+            502,
+            'the payer recorded the rejection',
+        );
         t.equal(find(records, 'hub', 'settlement committed'), undefined, 'nothing settled');
     });
 });
@@ -293,7 +392,11 @@ t.test('a flow with no cache root creates its own and retains records there (PRD
             );
         }
         const roots = new Set(flow.participants.map(participant => dirname(participant.cacheDir)));
-        t.equal(roots.size, 1, 'every participant of one flow shares the one root the flow created');
+        t.equal(
+            roots.size,
+            1,
+            'every participant of one flow shares the one root the flow created',
+        );
     } finally {
         const roots = new Set(flow.participants.map(participant => dirname(participant.cacheDir)));
         await flow.close();
@@ -303,111 +406,162 @@ t.test('a flow with no cache root creates its own and retains records there (PRD
     }
 });
 
-t.test('F2: a retry burst is one template at a rate-shift, not 41 new templates (PRD R6b, R12)', async t => {
-    // The fault is the retry; the requirements are what the service makes of it. A
-    // burst the service reported as 41 novel templates would satisfy any test that
-    // only counted attempts, so both halves are asserted.
-    //
-    // The rate baseline is per template and is made of **completed windows**, so a
-    // surge can only be scored once a baseline exists. One quiet execution runs
-    // first and the test crosses a window boundary before the burst: without both,
-    // the burst becomes its own baseline and is compared against itself. The window
-    // is set to *this fixture's* timescale — the shipped default is five completed
-    // **60-second** windows, which no test-length run can fill (see `todo.md`).
-    const dir = await root(t);
-    const service = createApp({
-        detectors: new DetectorSuite({
-            drift: {epsilon: 0.25, learningRate: 0.2},
-            rate: {windowMs: 120, buckets: 1, zThreshold: 4},
-        }),
-    });
-    let sink: ReturnType<typeof createServiceWriter> | undefined;
-    try {
-        const address = await service.listen({port: 0, host: '127.0.0.1'});
-        sink = createServiceWriter({url: address});
+t.test(
+    'F2: a retry burst is one template at a rate-shift, not 41 new templates (PRD R6b, R12)',
+    async t => {
+        // The fault is the retry; the requirements are what the service makes of it. A
+        // burst the service reported as 41 novel templates would satisfy any test that
+        // only counted attempts, so both halves are asserted.
+        //
+        // The rate baseline is per template and is made of **completed windows**, so a
+        // surge can only be scored once a baseline exists. One quiet execution runs
+        // first and the test crosses a window boundary before the burst: without both,
+        // the burst becomes its own baseline and is compared against itself. The window
+        // is set to *this fixture's* timescale — the shipped default is five completed
+        // **60-second** windows, which no test-length run can fill (see `todo.md`).
+        //
+        // The window is wide on purpose, and the sleep crosses a whole one plus a margin.
+        // At 120ms a loaded runner shifted the reading of the same code: the assertion
+        // about *which* template the shift was stamped on failed in CI while the file
+        // passed locally (T-126). A window a scheduling hiccup can straddle lets the
+        // baseline and the burst meet in a window neither of them intended, and widening
+        // it costs a slower test rather than a weaker assertion.
+        const WINDOW_MS = 500;
+        const dir = await root(t);
+        const service = createApp({
+            detectors: new DetectorSuite({
+                drift: {epsilon: 0.25, learningRate: 0.2},
+                rate: {windowMs: WINDOW_MS, buckets: 1, zThreshold: 4},
+            }),
+            // The stream is sized against what the burst publishes. Every record of the
+            // surging window scores above its template's baseline, so 41 retries publish
+            // several hundred rate-shifts, and the digest evicts the *oldest* entries to
+            // stay inside its budget — which is the payer's own, and the one this test
+            // reads. At the service's default budget the assertion was a race: the same
+            // code passed or failed depending on how many anomalies the burst emitted
+            // before the read (T-126).
+            digestLimit: 20_000,
+        });
+        let sink: ReturnType<typeof createServiceWriter> | undefined;
+        try {
+            const address = await service.listen({port: 0, host: '127.0.0.1'});
+            sink = createServiceWriter({url: address});
 
-        const quiet = await startFlow('single', {cacheDir: join(dir, 'quiet')});
-        await quiet.run();
-        await quiet.close();
-        for (const record of await collected(quiet)) {
-            sink.write(renderHuman(record), record);
+            const quiet = await startFlow('single', {cacheDir: join(dir, 'quiet')});
+            await quiet.run();
+            await quiet.close();
+            for (const record of await collected(quiet)) {
+                sink.write(renderHuman(record), record);
+            }
+            // Flushed before the boundary: the baseline is a *completed* window, and a
+            // batch still in the queue would arrive after the burst it is meant to
+            // measure.
+            await sink.flush();
+
+            // Past a whole window boundary and a margin, so the quiet window closes and
+            // becomes the baseline wherever inside its window the quiet record landed.
+            await new Promise(resolve => setTimeout(resolve, WINDOW_MS + 300));
+
+            const burst = await startFlow('single', {
+                cacheDir: join(dir, 'burst'),
+                faults: {retries: 40},
+            });
+            const result = await burst.run();
+            await burst.close();
+            const burstRecords = await collected(burst);
+            for (const record of burstRecords) {
+                sink.write(renderHuman(record), record);
+            }
+            await sink.flush();
+
+            t.equal(result.status, 200, 'every retry settles: the burst is rate, not failure');
+            const attempts = burstRecords.filter(
+                record => record.service === 'payer' && record.msg === 'submitting transfer',
+            );
+            t.equal(
+                attempts.length,
+                41,
+                'the driver really retried — one attempt for the first try and each of the 40',
+            );
+
+            // R12 in miniature: 41 executions of unchanged code are ONE identifier. A
+            // driver that minted a template per attempt would make the burst invisible and
+            // the registry unbounded.
+            const templates = new Set(attempts.map(record => record.refs.template));
+            t.equal(
+                templates.size,
+                1,
+                'PRD R12: 41 occurrences of unchanged code share one template identifier',
+            );
+
+            const digest = (
+                await service.inject({method: 'GET', url: '/digest?since=0'})
+            ).json() as {
+                entries: Array<{
+                    kind: string;
+                    data: {kind?: string; anomalyRef?: string; time?: number};
+                }>;
+            };
+            const shifts = digest.entries.filter(
+                entry => entry.kind === 'anomaly' && entry.data.kind === 'rate-shift',
+            );
+            t.ok(shifts.length > 0, 'PRD R6b: the burst is reported as a rate-shift');
+            t.ok(
+                shifts.some(
+                    entry =>
+                        entry.data.anomalyRef !== undefined && templates.has(entry.data.anomalyRef),
+                ),
+                'and it is stamped on the template the payer repeated rather than on a new one',
+            );
+            // Bounded to the burst: the quiet run's own first occurrences are novelty by
+            // definition, and counting those would make this assertion about the wrong run.
+            const burstStart = Math.min(...burstRecords.map(record => record.time));
+            const novel = digest.entries.filter(
+                entry =>
+                    entry.kind === 'anomaly' &&
+                    entry.data.kind === 'novelty' &&
+                    entry.data.time !== undefined &&
+                    entry.data.time >= burstStart,
+            );
+            t.equal(novel.length, 0, 'the burst is not reported as 41 new templates');
+        } finally {
+            await sink?.flush();
+            await service.close();
         }
+    },
+);
 
-        // Past a window boundary, so the quiet window closes and becomes the baseline.
-        await new Promise(resolve => setTimeout(resolve, 160));
+t.test(
+    'F3: a reworded message is a template of its own, which is what makes a deploy visible (R6c, R14)',
+    async t => {
+        // The plan's own sketch for this fault asserted the opposite — that the template
+        // ref survives a reword — and that assertion could never have passed: identity is
+        // derived from the masked **message text** (`src/fingerprint.ts`), and `mask`
+        // (`src/normalize.ts`) replaces variable *values*, not words. R12's "stable" is
+        // about masked variables; what a reword produces is a new template, and that is
+        // exactly what R14's deploy diff reports as one added and one gone.
+        const dir = await root(t);
+        const before = await startFlow('single', {cacheDir: join(dir, 'before')});
+        await before.run();
+        await before.close();
+        const after = await startFlow('single', {
+            cacheDir: join(dir, 'after'),
+            faults: {rewordLiquidity: true},
+        });
+        await after.run();
+        await after.close();
 
-        const burst = await startFlow('single', {cacheDir: join(dir, 'burst'), faults: {retries: 40}});
-        const result = await burst.run();
-        await burst.close();
-        const burstRecords = await collected(burst);
-        for (const record of burstRecords) {
-            sink.write(renderHuman(record), record);
-        }
-        await sink.flush();
-
-        t.equal(result.status, 200, 'every retry settles: the burst is rate, not failure');
-        const attempts = burstRecords.filter(
-            record => record.service === 'payer' && record.msg === 'submitting transfer',
+        const liquidityOf = (all: LogRecord[]): LogRecord | undefined =>
+            all.find(record => record.service === 'hub' && record.msg.startsWith('liquidity'));
+        const original = liquidityOf(await collected(before));
+        const reworded = liquidityOf(await collected(after));
+        t.ok(original && reworded, 'both runs recorded the liquidity hold');
+        t.not(original?.msg, reworded?.msg, 'the message really changed');
+        t.not(original?.fingerprint, reworded?.fingerprint, 'and the identity moved with it');
+        t.not(
+            original?.refs.template,
+            reworded?.refs.template,
+            'PRD R6c/R14: the reworded message is its own template, so the deploy is visible as one added and one removed',
         );
-        t.equal(attempts.length, 41, 'the driver really retried — one attempt for the first try and each of the 40');
-
-        // R12 in miniature: 41 executions of unchanged code are ONE identifier. A
-        // driver that minted a template per attempt would make the burst invisible and
-        // the registry unbounded.
-        const templates = new Set(attempts.map(record => record.refs.template));
-        t.equal(templates.size, 1, 'PRD R12: 41 occurrences of unchanged code share one template identifier');
-
-        const digest = (await service.inject({method: 'GET', url: '/digest?since=0'})).json() as {
-            entries: Array<{kind: string; data: {kind?: string; anomalyRef?: string; time?: number}}>;
-        };
-        const shifts = digest.entries.filter(entry => entry.kind === 'anomaly' && entry.data.kind === 'rate-shift');
-        t.ok(shifts.length > 0, 'PRD R6b: the burst is reported as a rate-shift');
-        t.ok(
-            shifts.some(entry => entry.data.anomalyRef !== undefined && templates.has(entry.data.anomalyRef)),
-            'and it is stamped on the template the payer repeated rather than on a new one',
-        );
-        // Bounded to the burst: the quiet run's own first occurrences are novelty by
-        // definition, and counting those would make this assertion about the wrong run.
-        const burstStart = Math.min(...burstRecords.map(record => record.time));
-        const novel = digest.entries.filter(
-            entry =>
-                entry.kind === 'anomaly' &&
-                entry.data.kind === 'novelty' &&
-                entry.data.time !== undefined &&
-                entry.data.time >= burstStart,
-        );
-        t.equal(novel.length, 0, 'the burst is not reported as 41 new templates');
-    } finally {
-        await sink?.flush();
-        await service.close();
-    }
-});
-
-t.test('F3: a reworded message is a template of its own, which is what makes a deploy visible (R6c, R14)', async t => {
-    // The plan's own sketch for this fault asserted the opposite — that the template
-    // ref survives a reword — and that assertion could never have passed: identity is
-    // derived from the masked **message text** (`src/fingerprint.ts`), and `mask`
-    // (`src/normalize.ts`) replaces variable *values*, not words. R12's "stable" is
-    // about masked variables; what a reword produces is a new template, and that is
-    // exactly what R14's deploy diff reports as one added and one gone.
-    const dir = await root(t);
-    const before = await startFlow('single', {cacheDir: join(dir, 'before')});
-    await before.run();
-    await before.close();
-    const after = await startFlow('single', {cacheDir: join(dir, 'after'), faults: {rewordLiquidity: true}});
-    await after.run();
-    await after.close();
-
-    const liquidityOf = (all: LogRecord[]): LogRecord | undefined =>
-        all.find(record => record.service === 'hub' && record.msg.startsWith('liquidity'));
-    const original = liquidityOf(await collected(before));
-    const reworded = liquidityOf(await collected(after));
-    t.ok(original && reworded, 'both runs recorded the liquidity hold');
-    t.not(original?.msg, reworded?.msg, 'the message really changed');
-    t.not(original?.fingerprint, reworded?.fingerprint, 'and the identity moved with it');
-    t.not(
-        original?.refs.template,
-        reworded?.refs.template,
-        'PRD R6c/R14: the reworded message is its own template, so the deploy is visible as one added and one removed',
-    );
-});
+    },
+);

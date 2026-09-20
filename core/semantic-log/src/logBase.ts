@@ -112,6 +112,13 @@ export interface ClusterSink extends Writer {
 export interface OpenedCluster {
     /** Where records go. */
     sink: ClusterSink;
+    /**
+     * The service's address. Published because a service started with no port named
+     * binds whatever the operating system gives it, and only the process that
+     * started it can know which: a reader in the same process has to be told, or it
+     * will look where the *other* process on the machine is listening.
+     */
+    url: string;
     /** Flush the sink and stop the service this process started, if it started one. */
     close: () => Promise<void>;
 }
@@ -312,6 +319,12 @@ export class LogBase {
     /** The cluster sink, once a URL is known. */
     #cluster?: ClusterSink;
 
+    /**
+     * Where that sink writes. Read from the socket when the service was started with
+     * no port named, and published to the process through the log (see the getter).
+     */
+    #clusterUrl?: string;
+
     /** How to stop what the opener started, when it started something. */
     #closeCluster?: () => Promise<void>;
 
@@ -340,6 +353,20 @@ export class LogBase {
         payloadStats: (): {size: number; dropped: number} =>
             this.#cache?.payloadStats() ?? {size: 0, dropped: 0},
     };
+
+    /**
+     * Where this process's records are assembled, once a cluster is open.
+     *
+     * The framework publishes it to the components that read the service, and that is
+     * the whole point of it being here rather than in the sink: a service started
+     * with no port named binds whatever the operating system offers — which is what
+     * lets two framework processes share a machine — and only this process can know
+     * which port it got. `undefined` means no cluster is configured, which is a
+     * deployment that pointed its readers at a service somewhere else.
+     */
+    public get clusterUrl(): string | undefined {
+        return this.#clusterUrl;
+    }
 
     public constructor(config: LogBaseOptions = {}) {
         this.config = config;
@@ -544,6 +571,7 @@ export class LogBase {
             return;
         }
         this.#cluster = opened.sink;
+        this.#clusterUrl = opened.url;
         this.#closeCluster = opened.close;
     }
 

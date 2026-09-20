@@ -45,7 +45,7 @@ COVER_PKGS=()
 if [ -n "${COVERAGE_PACKAGES:-}" ]; then
     read -r -a COVER_PKGS <<< "$COVERAGE_PACKAGES"
 else
-    COVER_PKGS=(blong-gogo framework blong-int-adapter blong-marine blong-suite blong-cli blong-kukum blong-kopi)
+    COVER_PKGS=(blong-gogo framework blong-int-adapter blong-marine blong-suite blong-cli blong-kukum blong-kopi semantic-log blong-party blong-realm blong-access blong-gateway blong-commander blong-core)
 fi
 
 # Map a coverage package name to its path relative to the repo root.
@@ -59,6 +59,13 @@ pkg_path() {
         blong-cli)         echo "demo/blong-cli" ;;
         blong-kukum)       echo "core/blong-kukum" ;;
         blong-kopi)        echo "core/blong-kopi" ;;
+        semantic-log)      echo "core/semantic-log" ;;
+        blong-realm)       echo "core/blong-realm" ;;
+        blong-party)       echo "realm/blong-party" ;;
+        blong-access)      echo "realm/blong-access" ;;
+        blong-gateway)     echo "realm/blong-gateway" ;;
+        blong-commander)   echo "realm/blong-commander" ;;
+        blong-core)        echo "core/blong-core" ;;
         *)                 echo "" ;;
     esac
 }

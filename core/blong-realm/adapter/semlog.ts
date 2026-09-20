@@ -29,16 +29,40 @@ import {adapter} from '@feasibleone/blong';
  * a deployment points the realm at its service by configuration alone, and the conversion
  * handlers above never see an address, a credential or a timeout.
  */
-export default adapter<{url?: string}>(() => ({
+/**
+ * The service's address, as this process publishes it.
+ *
+ * The framework starts the cluster service for a development or test run and binds it
+ * on a port the operating system chooses — two framework processes on one machine are
+ * ordinary (a dev server beside a Playwright run, or CI running packages in parallel)
+ * and a fixed port leaves the second one with no service while its readers keep talking
+ * to the first one's. Only the process that bound it knows which port that is, so the
+ * framework publishes it on the manifest, and the reader takes it from there.
+ *
+ * Read as a *string* rather than as the manifest's value, because the manifest proxy
+ * answers an unpublished property with a placeholder that resolves when someone writes
+ * it: a run with no in-process service (a deployment, or a suite that pointed its
+ * readers at a service elsewhere) would otherwise hand a thenable to the HTTP adapter as
+ * its base address.
+ */
+const IN_PROCESS_URL = 'http://127.0.0.1:9455';
+
+function serviceUrl(manifest: {clusterUrl?: unknown} | undefined): string {
+    const published = manifest?.clusterUrl;
+    return typeof published === 'string' && published.length > 0 ? published : IN_PROCESS_URL;
+}
+
+export default adapter<{url?: string}>(api => ({
     extends: 'adapter.http',
     activation: {
         default: {
             namespace: 'semlog',
             imports: [/\.semlog$/],
-            // The port the framework's own in-process service binds
-            // (`log.cluster.port`), so a development run needs no configuration
-            // at all; a deployment points this at the service's address.
-            url: 'http://127.0.0.1:9455',
+            // The service this process runs, when it runs one; the conventional port
+            // (`log.cluster.port`'s default) otherwise, which is what a suite with no
+            // in-process service and no configuration of its own gets. A deployment
+            // points this at the service it runs, by configuring the port.
+            url: serviceUrl(api.manifest),
         },
     },
 }));

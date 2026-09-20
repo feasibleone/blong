@@ -70,6 +70,16 @@ export interface ServiceOptions {
     logger?: boolean;
     /** Full records retained per template (PRD R13). */
     exemplarLimit?: number;
+    /**
+     * The digest's eviction budget (PRD R8, see `digest.ts`).
+     *
+     * A caller that generates a burst sizes it against what the burst publishes:
+     * the stream keeps the *newest* entries, so a run whose reading is an older one
+     * — the F2 fixture asserting on the template a retry burst was stamped on —
+     * would be asserting on an entry the stream is entitled to have dropped.
+     * Defaults to the service's own budget, which a deployed process stays inside.
+     */
+    digestLimit?: number;
     /** Injected so tests can count embedding calls (PRD R3). */
     cache?: EmbeddingCache;
     /** Injected so a restarted service can continue from a loaded registry (PRD R4). */
@@ -148,7 +158,7 @@ export function createApp(options: ServiceOptions = {}): FastifyInstance {
         new EmbeddingCache(createProvider(options.embedding ?? {kind: 'offline', dimension: 64}));
     const detectors = options.detectors ?? new DetectorSuite(DETECTORS);
     const exemplars = new ExemplarStore({limit: options.exemplarLimit ?? 5});
-    const digest = new DigestLog({limit: 1000});
+    const digest = new DigestLog({limit: options.digestLimit ?? 1000});
     const flowDrift = options.driftHistory ?? new FlowDriftHistory();
     const ledger = options.flowLedger ?? new FlowLedger();
     const lineage = options.lineage ?? new LineageIndex();

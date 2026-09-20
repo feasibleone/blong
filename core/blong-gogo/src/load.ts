@@ -348,9 +348,13 @@ export default async function loadRealm<T extends TSchema>(
     // read and resolves them on first write. This lets callers pass a plain
     // object and have properties like `gatewayPort` transparently work as
     // cross-platform synchronization points.
-    // Only wrap when a manifest is explicitly provided, so callers that omit
-    // it (defaulting to undefined) preserve the existing no-sharing behavior.
-    if (manifest) manifest = createManifestProxy(manifest);
+    //
+    // A run that supplies no manifest still gets one, because the manifest is also how
+    // a component tells **the rest of its own process** something only it can know: the
+    // address of the in-process cluster service, which is bound on a port the operating
+    // system chooses. Nothing about a caller that omits the object changes — it was
+    // `undefined` before, and no component could publish into it.
+    manifest = createManifestProxy(manifest ?? {});
     const defKind = kind(def);
     if (!rootKind) {
         if (defKind === 'server' || defKind === 'browser') rootKind = defKind;
@@ -541,7 +545,19 @@ export default async function loadRealm<T extends TSchema>(
                             // flows and diagrams, run in this process: a
                             // development run can then be drawn from what it just
                             // did, and a test run leaves diagrams behind.
-                            cluster: {enabled: true},
+                            //
+                            // The port is asked for, never named. Two framework
+                            // processes on one machine are ordinary — a dev server
+                            // beside a Playwright run, or CI running packages in
+                            // parallel — and only one of them can hold a fixed port.
+                            // The loser is not degraded but *blind*: its own records
+                            // never reach a service, while its readers keep looking at
+                            // whatever holds the port, which is another process's
+                            // service. `0` asks the operating system, and the address
+                            // it gets is published by the log it started
+                            // (`ILog.clusterUrl`), which is how a realm's port learns
+                            // where to read.
+                            cluster: {enabled: true, port: 0},
                         },
                         gateway: {
                             port: 0,
@@ -558,7 +574,9 @@ export default async function loadRealm<T extends TSchema>(
                     },
                     integration: {
                         remote: {canSkipSocket: true},
-                        log: {cluster: {enabled: true}},
+                        // Port 0, for the reason the `dev` block gives: two processes on
+                        // one machine must not want the same socket.
+                        log: {cluster: {enabled: true, port: 0}},
                         gateway: {
                             debug: true,
                             expectedErrors: true,
@@ -574,7 +592,8 @@ export default async function loadRealm<T extends TSchema>(
                     playwright: {
                         exit: false,
                         log: {
-                            cluster: {enabled: true},
+                            // Port 0, for the reason the `dev` block gives.
+                            cluster: {enabled: true, port: 0},
                             // The runner pipes this process's stdout (`stdout: 'pipe'`),
                             // so `isTTY()` is false and the `dev` block would leave the
                             // records plain — while the runner relays those very lines
@@ -1306,7 +1325,7 @@ export default async function loadRealm<T extends TSchema>(
                         ) {
                             api![itemName] = new (fn as IConstructor)(config, api);
                             await api![itemName].init?.();
-                            if (itemName === 'log')
+                            if (itemName === 'log') {
                                 logger = api!.log?.logger(
                                     mergedConfig[rootKind === 'browser' ? 'browser' : 'server']
                                         ?.load?.logLevel,
@@ -1315,6 +1334,20 @@ export default async function loadRealm<T extends TSchema>(
                                         context: `${defKind}`,
                                     },
                                 );
+                                // Publish the address of the service this process started for
+                                // its own records, if it started one. The realm that reads
+                                // that service answers on a *port*, and a port needs an
+                                // address: the service is bound on one the operating system
+                                // chose (`log.cluster.port: 0`), so without this the reader
+                                // would fall back to the conventional port and reach
+                                // whichever *other* process on the machine holds it. Set
+                                // before the realms load — the log is the first component —
+                                // so a realm's port reads it as the string it is rather than
+                                // as the manifest proxy's pending placeholder.
+                                const clusterUrl = (api!.log as {clusterUrl?: string} | undefined)
+                                    ?.clusterUrl;
+                                if (clusterUrl !== undefined) manifest.clusterUrl = clusterUrl;
+                            }
                         } else if (
                             ['solution', 'server', 'browser'].includes(
                                 kind(fn as Record<symbol, Kinds>),

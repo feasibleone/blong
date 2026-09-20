@@ -56,6 +56,7 @@ export const openCluster: ClusterOpener = async (
     });
     return {
         sink,
+        url,
         close: async (): Promise<void> => {
             await sink.flush();
             await stop?.();

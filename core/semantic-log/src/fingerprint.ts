@@ -33,7 +33,16 @@ export function serializeForIdentity(record: LogRecord): string {
             parts.push(`[ERR_MSG: ${mask(record.err.message)}]`);
         }
         if (record.err.stack) {
-            parts.push(`[STACK: ${compactStack(record.err.stack)}]`);
+            // Masked as well as compacted, and for the same reason: a stack names the
+            // files the frames live in, so an identity that kept their paths would
+            // differ between two machines running the same code — `/home/kalin/...`
+            // locally and `/home/runner/...` in CI — and the same failure would file
+            // itself as two templates whose fingerprints (and so their rows on the
+            // template page) never match. Depth and line numbers are dropped for the
+            // same class of reason (PRD R2); the tokens are what MSG and ERR_MSG
+            // already go through. `mask` runs *after* compaction because it flattens
+            // whitespace, and compaction is what reads the newlines.
+            parts.push(`[STACK: ${mask(compactStack(record.err.stack))}]`);
         }
     }
     // A caller's `redact` pattern can replace the rationale itself
