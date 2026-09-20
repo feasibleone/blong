@@ -930,10 +930,9 @@ export default async function loadRealm<T extends TSchema>(
      *
      * Two properties make that safe:
      *
-     * - **Resolution is from the suite's own location**, so a suite that does not
-     *   depend on a realm does not get it. That is why the list may name realms a
-     *   particular suite never installs: an unresolvable package is skipped, not
-     *   reported.
+     * - **The suite's own manifest decides**, so a suite that does not depend on a
+     *   realm is not given one. That is why the list may name realms a particular
+     *   suite never installs: an undeclared package is skipped, not reported.
      * - **A realm the suite already lists is skipped too.** The suite's own
      *   children load first (they are wrapped to record the realm they produce),
      *   so by the time these are reached the already-loaded realms are known and
@@ -948,13 +947,71 @@ export default async function loadRealm<T extends TSchema>(
      * browser suite still names its browser realms itself.
      */
     /**
+     * The package a specifier names — `@scope/name/sub` → `@scope/name`, `name/sub`
+     * → `name` — so that the suite's manifest can be asked about it.
+     */
+    const packageNameOf = (specifier: string): string => {
+        const parts = specifier.split('/');
+        return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : (parts[0] as string);
+    };
+
+    /**
+     * The packages the suite declares in its own manifest.
+     *
+     * The framework realms are loaded because the suite *depends* on them, and the
+     * manifest is where a suite says so — `dependencies`, `devDependencies` and
+     * `peerDependencies` alike, because a realm a suite uses only from its own tests
+     * is still a realm that suite declares. `core/blong-realm/index.ts` is exactly
+     * that case: it names its own realm and leaves blong-server, blong-login,
+     * blong-core and blong-access to the framework, and declares all four in
+     * `devDependencies`.
+     *
+     * Asking by resolution instead asks a different question, and one the ambient
+     * environment answers: `createRequire(...).resolve()` falls back to `NODE_PATH`,
+     * which the tap runner points at the pnpm store, so under `blong-dev test` every
+     * suite resolved every framework realm. A suite that declares none of them then
+     * loaded blong-server's knex adapter — pointed at a database named after the
+     * suite — and died on the connection: `demo/blong-cli` exited 1 with `Unknown
+     * database 'blong-cli'` and `test/framework/nscfg` with `ER_BAD_DB_ERROR`
+     * (F-206). A manifest cannot be reached that way.
+     */
+    const declaredDependencies: ReadonlySet<string> = (() => {
+        const url = mod.url ?? mergedConfig.url;
+        const from = typeof url === 'string' && url.length > 0 ? url : undefined;
+        /** The names declared in the three maps an installed dependency appears in. */
+        const names = (manifest: unknown): string[] =>
+            ['dependencies', 'devDependencies', 'peerDependencies'].flatMap(map =>
+                Object.keys((manifest as Record<string, object> | null)?.[map] ?? {}),
+            );
+        // `mod.pkg` is normally the suite's own package.json — the loader reads the
+        // file beside the suite when the suite supplies none — but a suite may supply
+        // a *trimmed* manifest (`blong-suite/server.ts` passes `{name, version}`), and
+        // a trimmed manifest must not be read as a suite that declares nothing. The
+        // file beside the suite is the authority, so it is asked as well; only a suite
+        // with no manifest at all ends up declaring nothing.
+        const manifests: unknown[] = [mod.pkg];
+        if (from) {
+            try {
+                manifests.push(platformApi.createRequire?.(from)?.('./package.json'));
+            } catch {
+                // No manifest beside the suite — nothing to declare.
+            }
+        }
+        return new Set(manifests.flatMap(names));
+    })();
+
+    /**
      * Resolve a framework realm from the suite's own location.
      *
      * A suite that does not depend on the package has no such realm, and that is
      * not an error: the framework ships realms for suites that ship them, and asks
-     * the suite which those are by letting it resolve.
+     * the suite's manifest which those are. A specifier the manifest does not
+     * declare is not resolved at all — resolution on its own is not that question,
+     * because `NODE_PATH` can make it succeed for a suite that depends on nothing
+     * (see `declaredDependencies`).
      */
     const resolveFromSuite = (specifier: string): string | undefined => {
+        if (!declaredDependencies.has(packageNameOf(specifier))) return undefined;
         // The suite's own bootstrap file is the base — `mod.url`. `mergedConfig.url`
         // is the *config* url, which `ConfigRuntime` fills only when a config names
         // one, so falling back to this module's own location would resolve every
@@ -981,10 +1038,12 @@ export default async function loadRealm<T extends TSchema>(
      *
      * Three properties make it safe:
      *
-     * - **Resolution is from the suite's own location**, so a suite that does not
-     *   depend on a realm does not get it. That is why the list may name realms a
-     *   particular suite never installs: an unresolvable package is skipped, not
-     *   reported.
+     * - **The suite's own manifest decides**, so a suite that does not depend on a
+     *   realm does not get it — the dependency is looked for in `dependencies`,
+     *   `devDependencies` and `peerDependencies`, never in whatever the ambient
+     *   resolution happens to find (see `declaredDependencies`). That is why the
+     *   list may name realms a particular suite never installs: an undeclared
+     *   package is skipped, not reported.
      * - **A realm the suite already lists is skipped too.** The suite's own
      *   children are wrapped to record the realm each one produces, and these are
      *   appended after them, so by the time they are reached the already-loaded

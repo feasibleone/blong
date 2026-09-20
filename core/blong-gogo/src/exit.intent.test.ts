@@ -9,9 +9,16 @@ import load from './loadServer.ts';
  * intent names (which is what `runServer` used to do with
  * `process.env.CI && !intents.includes('playwright')`).
  *
- * Only `load` is exercised, never `start`, so nothing binds a port and no
- * watcher is created — the assertions here are about the flag, and the
- * "no listener" property is checked by actually running `blong cli`.
+ * Only `load` is exercised, never `start`, so no watcher is created and the
+ * assertions here are about the flag — the "no listener" property is checked by
+ * actually running `blong cli`.
+ *
+ * Every load is stopped though, because `load` is not as idle as it looks: the
+ * `dev` and `integration` intents open the semantic-log cluster service, which
+ * listens on a socket, and a registry that is never stopped leaves it open. The
+ * suite then passes every assertion and reports `timeout!` — what a live server
+ * does to a tap process that has nothing left to run (`Registry.stop` closes it
+ * for the same reason).
  */
 
 /**
@@ -41,7 +48,11 @@ async function exitFor(intents: string[]): Promise<boolean | undefined> {
         {},
         intents,
     );
-    return registry.exit;
+    try {
+        return registry.exit;
+    } finally {
+        await registry.stop();
+    }
 }
 
 test('cli and db are short-lived', async t => {
@@ -93,6 +104,10 @@ test('the cli intent turns off everything that would outlive a command', async t
         {},
         ['cli'],
     );
-    t.equal(registry.exit, true, 'short-lived');
-    t.ok(Array.isArray(registry.describe?.().realms), 'the realm still loaded');
+    try {
+        t.equal(registry.exit, true, 'short-lived');
+        t.ok(Array.isArray(registry.describe?.().realms), 'the realm still loaded');
+    } finally {
+        await registry.stop();
+    }
 });
