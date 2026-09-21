@@ -49,7 +49,7 @@
  * arrive rather than when an execution ends, so a *stalled* flow still contributes
  * the calls it was seen to make, and evicting an execution's detail does not
  * un-observe it. Retention has two bounds, and neither loss is silent — an execution
- * dropped by the cap is reported by {@link FlowLedger.evictions} and a step dropped
+ * dropped by the cap is reported by {@link FlowLedger.evictions} and a call dropped
  * by the per-execution cap by {@link FlowLedger.truncations}.
  */
 
@@ -59,7 +59,7 @@ import {legOf, refFromFingerprint, type IngestEvent} from './registry.ts';
 /** Executions whose detail is retained for the instance view. */
 const DEFAULT_EXECUTION_LIMIT = 1000;
 
-/** Steps one execution retains. The shape it is drawn from is far shorter. */
+/** Calls one execution retains in detail, each end of a call counted apart. */
 const DEFAULT_STEP_LIMIT = 256;
 
 /** One observed traversal of one call, as one event reported it. */
@@ -212,6 +212,17 @@ interface ExecutionState {
     /** Event ids already observed, so a redelivery is not a second attempt. */
     seen: Set<string>;
     /**
+     * The observations this execution already retains, one per call and end.
+     *
+     * A call site that makes the same call again in one execution — a loop over a
+     * list, a retry — is still the one call a diagram draws, and {@link FlowLedger.aggregate}
+     * already counts it once. Without this, every record of every repetition was
+     * retained, and the per-execution budget was spent on one call: measured on the
+     * gateway's test flow, 296 records for four leg ids truncated 150 steps, and the
+     * diagram showed only the first step of the group.
+     */
+    retained: Set<string>;
+    /**
      * What this execution declared and saw answered, per call.
      *
      * Kept per execution because both counters are **per execution**: a receiver that
@@ -356,21 +367,30 @@ export class FlowLedger {
         const leg = legOf(event);
         if (leg !== undefined && !state.seen.has(event.id)) {
             state.seen.add(event.id);
-            if (state.observations.length < this.stepLimit) {
-                const observation: LegObservation = {
-                    leg: leg.id,
-                    service: event.service,
-                    to: leg.to,
-                    seq: leg.seq,
-                    step: flow.step,
-                    index: flow.index,
-                    time: event.time,
-                    ref: event.id,
-                };
-                state.observations.push(observation);
-                this.aggregate(state, observation);
-            } else {
-                this.truncationCount++;
+            const observation: LegObservation = {
+                leg: leg.id,
+                service: event.service,
+                to: leg.to,
+                seq: leg.seq,
+                step: flow.step,
+                index: flow.index,
+                time: event.time,
+                ref: event.id,
+            };
+            // The counters are kept for every record — they are per execution and
+            // idempotent, and a repetition's own timestamps are the honest ones — while
+            // the *detail* is retained once per call and end: a leg is one call however
+            // many records were logged about it, which is the unit the cap is meant to
+            // bound.
+            this.aggregate(state, observation);
+            const call = `${leg.id}\u0000${leg.to === undefined ? 'receipt' : 'declaration'}`;
+            if (!state.retained.has(call)) {
+                state.retained.add(call);
+                if (state.observations.length < this.stepLimit) {
+                    state.observations.push(observation);
+                } else {
+                    this.truncationCount++;
+                }
             }
         }
         if (state.refs.length < this.stepLimit) {
@@ -468,7 +488,7 @@ export class FlowLedger {
         return this.evictionCount;
     }
 
-    /** Steps dropped by the per-execution cap. */
+    /** Calls dropped by the per-execution cap. */
     truncations(): number {
         return this.truncationCount;
     }
@@ -518,6 +538,7 @@ export class FlowLedger {
             services: new Set<string>(),
             observations: [],
             seen: new Set<string>(),
+            retained: new Set<string>(),
             legs: new Map<string, LegSeen>(),
             refs: [],
             closed: false,

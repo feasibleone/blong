@@ -78,17 +78,19 @@ test('a flow this realm served is drawn as a diagram', async ({portal}) => {
 
     // What the service should draw: the hop this realm's answer declared. The
     // framework records a proxied call by itself — the gateway's dispatch declares
-    // `gateway.gateway.bundle.find` and the realm answers with a receipt for it — so
+    // `public.gateway.bundle.find` and the realm answers with a receipt for it — so
     // the arrow exists without the application logging anything.
     //
     // Both ends of the arrow are read off the call, not off the process: the caller is the
     // **logical unit** the leg id names and the receiver is the namespace it was aimed at.
-    // The leg here is `gateway.gateway.bundle.find` — the public surface (`gateway`) calling
-    // the management namespace, which this realm answers as `gateway` too — so the two ends
-    // coincide and the call is drawn once, with no answer back to itself: the dashed arrow
-    // exists to show *another* participant's record of the leg. Naming the caller after the
-    // process that wrote the record would draw `blong->>gateway`, which is how a monolith
-    // collapses to one participant rather than a property of what happened.
+    // The leg here is `public.gateway.bundle.find` — the public surface calling the management
+    // namespace, which this realm answers as `gateway` — so the drawing has two participants
+    // before the realm's own read adds `db` behind the second. The caller is named `public`
+    // and not `gateway` for that reason: the surface and the realm's namespace are different
+    // units, and one name for both drew them as a single participant with the call as a
+    // self-hop. Naming the caller after the process that wrote the record would draw
+    // `blong->>gateway`, which is how a monolith collapses to one participant rather than a
+    // property of what happened.
     const diagram = await diagramText(portal);
     // A crossed arrow is content, not a failure: "the caller declared a call and
     // nothing answered" is a deployment fact, and a diagram drawn from deductions

@@ -18,14 +18,15 @@
  * - **A participant is an RPC namespace** — `party`, `db`, `subject`. It is what
  *   a call targets, what becomes a Kubernetes service, and what the emitter
  *   derives for a record from the method name, so the two agree by construction.
- * - **A leg is one call site**, named `<caller port id>.<called method>`. The
- *   emitter's own grammar allows letters, digits and `.`, `-`, `_` only, so the
- *   plan's `a -> b` arrow is written as a dot path and anything else in a port id
- *   or method name is flattened to `-`. The id is declared by the caller, against
- *   the namespace it **aimed at** — which is the namespace the callee will derive
- *   for itself, because blong's destination rewrite (`party.subject.find` becomes
- *   `db/party.subject.find`) happens *inside* the receiving port, as a call of its
- *   own.
+ * - **A leg is one call site**, named `<caller>.<called method>`, where the caller
+ *   is the logical unit that made the call — the namespace it answers for, not the
+ *   process it runs in. The emitter's own grammar allows letters, digits and `.`,
+ *   `-`, `_` only, so the plan's `a -> b` arrow is written as a dot path and anything
+ *   else in a caller or method name is flattened to `-`. The id is declared by the
+ *   caller, against the namespace it **aimed at** — which is the namespace the callee
+ *   will derive for itself, because blong's destination rewrite (`party.subject.find`
+ *   becomes `db/party.subject.find`) happens *inside* the receiving port, as a call of
+ *   its own.
  *
  * ## Propagation, and where it rides
  *
@@ -79,6 +80,7 @@ const {
     isLegSeq,
     isServiceName,
     readIdentities,
+    step,
     withCapability,
     withFlow,
 } = vocabulary;
@@ -105,6 +107,16 @@ export function callsFor(meta: IMeta | undefined, entry: string): boolean {
  * and re-exported beside the reader so the two cannot drift.
  */
 export const enterCapability = vocabulary.enterCapability;
+
+/**
+ * Advance the flow to `name` while `fn` runs, so the calls of one phase are banded
+ * together in the diagram.
+ *
+ * Exported for the entry that owns the flow and knows what its parts are called —
+ * the test runner is one: its group is the flow, and the group's display name is the
+ * phase a reader needs to see over the sequence.
+ */
+export const withStep = step;
 
 /** The capability decided for this scope, or `undefined` when nothing decided it. */
 export const capabilityOf = vocabulary.capabilityState;

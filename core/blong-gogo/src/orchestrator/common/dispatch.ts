@@ -1,4 +1,6 @@
 import {orchestrator, type IMeta} from '@feasibleone/blong/types';
+import {legName, recordedCall} from '../../lib.ts';
+import {declareCall, namespaceOf} from '../../semanticContext.ts';
 
 export default orchestrator<{destination?: string; appendNamespace?: string}>(({remote}) => ({
     activation: {
@@ -20,12 +22,34 @@ export default orchestrator<{destination?: string; appendNamespace?: string}>(({
         if (prefix && params.length > 1) {
             const $meta = params.pop() as IMeta;
             if ($meta?.method) {
-                return (
-                    (await remote.dispatch(...params, {
-                        ...$meta,
-                        method: prefix + separator + $meta.method,
-                    })) as unknown[]
-                )?.[0];
+                const forwarded = prefix + separator + $meta.method;
+                // The hop this orchestrator makes is a call of the flow like any other, so
+                // it is declared and recorded exactly as a proxied call is. Both halves are
+                // needed: the declaration names the call, and the record is the evidence the
+                // ledger reads. A leg nobody wrote a record inside is one it only ever hears
+                // about from the callee's receipt, and the diagram then says so ("received,
+                // no caller was observed") instead of drawing the arrow.
+                //
+                // The caller is the namespace this orchestrator answers for, not the process:
+                // the dispatcher is shared by every namespace that has one, so the process
+                // name would credit the hop to whichever namespace happened to be served
+                // alongside it.
+                //
+                // The leg is spelled as every other leg is, `<caller>.<target>.<method>`:
+                // slash routing is the wire form only, and a `/` in an id is flattened to `-`
+                // by the leg grammar, which would hide the target the arrow names.
+                const declared = legName(forwarded);
+                const forward = async (): Promise<unknown[] | undefined> =>
+                    (await recordedCall(this, declared, () =>
+                        remote.dispatch(...params, {...$meta, method: forwarded}),
+                    )) as unknown[] | undefined;
+                const dispatched = await declareCall(
+                    namespaceOf($meta.method),
+                    declared,
+                    forward,
+                    $meta,
+                );
+                return dispatched?.[0];
             }
         }
     },

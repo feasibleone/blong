@@ -26,19 +26,19 @@
  *
  *   MyStory.decorators = [withDispatch({}, {notify: false})];
  */
-import type { IHandlerProxy } from '@feasibleone/blong';
+import type {IHandlerProxy} from '@feasibleone/blong';
 import React from 'react';
-import { App } from '../src/components/App/App.js';
-import { Explorer } from '../src/components/Explorer/Explorer.js';
-import { useBlongForm } from '../src/components/Form/FormContext.js';
-import { Hint } from '../src/components/Hint/Hint.js';
-import { SelfRegistration } from '../src/components/SelfRegistration/SelfRegistration.js';
-import type { IThemeConfig } from '../src/components/Theme/Theme.js';
-import { makeHandlerProxy, type IBlongPortalConfig } from '../src/context/BlongContext.js';
-import type { IModelSpec } from '../src/index.js';
-import { blongEvents } from '../src/lib/eventBus.js';
-import { useAppStore } from '../src/state/appStore.js';
-import type { IBlongError } from '../src/types/action.js';
+import {App} from '../src/components/App/App.js';
+import {Explorer} from '../src/components/Explorer/Explorer.js';
+import {useBlongForm} from '../src/components/Form/FormContext.js';
+import {Hint} from '../src/components/Hint/Hint.js';
+import {SelfRegistration} from '../src/components/SelfRegistration/SelfRegistration.js';
+import type {IThemeConfig} from '../src/components/Theme/Theme.js';
+import {makeHandlerProxy, type IBlongPortalConfig} from '../src/context/BlongContext.js';
+import type {IModelSpec} from '../src/index.js';
+import {blongEvents} from '../src/lib/eventBus.js';
+import {useAppStore} from '../src/state/appStore.js';
+import type {IBlongError} from '../src/types/action.js';
 import {
     coralCategoryFixtures,
     coralFixtures,
@@ -56,15 +56,30 @@ import {
 export type NotifyConfig = boolean | string[] | ((method: string) => boolean);
 
 /**
- * Default notify config used by `withDispatch`.
- * Shows toasts for every handler EXCEPT known read-only / background ones:
- * `portalDropdownList`, and methods ending with Get/Load/Find/List/Fetch.
+ * Read-only / background calls that are dispatched as a side effect of
+ * rendering, not because the reader asked for them. Storybook neither fetches
+ * them as queries nor announces them with a toast:
+ *
+ * - `portalDropdownList` — every dropdown widget loading its options.
+ * - `portalConfigMerge` — `<App>` composing the portal configuration on mount.
+ *   Its result is the whole suite's portal config, so a toast would carry a large
+ *   object that says nothing, and it would appear in every story's screenshot.
  */
-const DEFAULT_NOTIFY: NotifyConfig = (method: string) => {
-    if (method === 'portalDropdownList') return false;
-    if (/(?:Get|Load|Find|List|Fetch)$/i.test(method)) return false;
-    return true;
-};
+const BACKGROUND_METHODS = new Set(['portalDropdownList', 'portalConfigMerge']);
+
+/** A method that only reads: named in the list above, or suffixed with a read verb. */
+function isReadOnlyMethod(method: string): boolean {
+    if (BACKGROUND_METHODS.has(method)) return true;
+    return /(?:Get|Load|Find|List|Fetch)$/i.test(method);
+}
+
+/**
+ * Default notify config used by `withDispatch`.
+ * Shows toasts for every handler EXCEPT the read-only / background ones
+ * (`isReadOnlyMethod`), which nobody asked for and whose results are not worth
+ * announcing.
+ */
+const DEFAULT_NOTIFY: NotifyConfig = (method: string) => !isReadOnlyMethod(method);
 
 function shouldNotify(notify: NotifyConfig, method: string): boolean {
     if (notify === false) return false;
@@ -311,7 +326,7 @@ export const bgTranslations = parseTranslations(`
 // Marine fixture data imported from ./marine.js:
 //   coralStoryValue, marineDropdownData, coralCategoryFixtures, coralFixtures
 // Re-export for any story files that import them directly from this module.
-export { coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData };
+export {coralCategoryFixtures, coralFixtures, coralStoryValue, marineDropdownData};
 
 // ── Handlers ───────────────────────────────────────────────────────────────────
 
@@ -721,8 +736,11 @@ export function withDispatch(
     // Register query (read) actions so TanStack Query can show loading state.
     // Register mutation (write) actions with mutates:true so they are NOT
     // auto-fetched by TanStack Query — only called when explicitly invoked.
+    // Shares `BACKGROUND_METHODS` with the toast rule above, so a method that
+    // must not be toasted is a read action here too; the `…Error` alternatives
+    // cover the stories whose load rejects on purpose.
     const isReadAction = (name: string) =>
-        name === 'portalDropdownList' || /(?:Get|Load|Find|List|Fetch)(?:Error)?$/i.test(name);
+        BACKGROUND_METHODS.has(name) || /(?:Get|Load|Find|List|Fetch)(?:Error)?$/i.test(name);
     const actionEntries = Object.fromEntries(
         Object.keys({...defaultHandlers, ...overrides}).map(name => [
             name,

@@ -1,46 +1,8 @@
 import type {Adapter, ILib, IMeta} from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
-import {camelToSentence, methodParts, parseAnnotatedKey, portLogCalls} from './lib.ts';
+import {camelToSentence, legName, parseAnnotatedKey, recordedCall} from './lib.ts';
 import {declareCall} from './semanticContext.ts';
-
-/**
- * Record the call itself, from inside the leg its caller declared.
- *
- * This is the framework's own tracing, not one of the log levels: a handler that
- * calls another method produces one start and one end record for the call, and an
- * error record if it throws. They are written *inside* the leg `declareCall`
- * bound, which is what makes them the call's evidence rather than a participant's,
- * and - because they go through the call channel - they are stored rather than
- * printed unless the process asked for them on stdout. Nothing is assembled at all
- * for a flow that opted out, which is what keeps a high-throughput flow from
- * paying for a picture of itself.
- */
-function recordedCall<T>(port: unknown, leg: string, fn: () => T): T {
-    const calls = portLogCalls(port);
-    if (!calls?.enabled()) return fn();
-    calls.start(leg);
-    try {
-        const result = fn();
-        if (result instanceof Promise) {
-            return result.then(
-                value => {
-                    calls.end(leg);
-                    return value;
-                },
-                error => {
-                    calls.error(leg, error);
-                    throw error;
-                },
-            ) as T;
-        }
-        calls.end(leg);
-        return result;
-    } catch (error) {
-        calls.error(leg, error);
-        throw error;
-    }
-}
 
 /**
  * Rename a function's `.name` property.
@@ -52,22 +14,6 @@ function rename<T>(value: string, fn: T): T {
         enumerable: false,
     });
     return fn;
-}
-
-/**
- * The name a leg can hold: the wire name the call will actually reach.
- *
- * A handler-group call arrives as a path (`db/accessRoleEnsure`), and its two halves are
- * exactly what a leg is made of - the callee namespace and the method - so a separator
- * becomes a dot; a handler name arrives in camel case (`accessPermissionList`) and the wire
- * name it dispatches under is its dotted form (`access.permission.list`), which is what the
- * declaration has to carry: the callee half of a leg is read as the namespace the call was
- * aimed at, so a handler name there would name a participant that does not exist. Lookups
- * keep the original name: only the declaration is normalised, because the registry knows the
- * path and the leg grammar does not.
- */
-function legName(name: string): string {
-    return methodParts(name).replace(/\//g, '.');
 }
 
 /**
@@ -121,7 +67,8 @@ export default function createHandlerProxy(
 
             // The namespace this port serves names the leg it declares, so the arrow a diagram
             // draws starts at a namespace rather than at the process or at the port. The route
-            // that owns the call is the exception and declares itself (`Gateway`).
+            // that owns the call is the exception and declares itself (`public`, see
+            // `Gateway.ts`).
             const callerId = callerOf(port, layerName);
 
             function resolveHandler(resolvedName: string): (...params: unknown[]) => unknown {

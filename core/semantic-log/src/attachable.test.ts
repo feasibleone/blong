@@ -10,7 +10,7 @@ import {attachSemanticVocabulary, detachSemanticVocabulary, vocabulary} from './
 const FLOW = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const LEG = 'gateway.party.partyFind';
 
-t.test('unattached, every reader degrades and every scope still runs', t => {
+t.test('unattached, every reader degrades and every scope still runs', async t => {
     detachSemanticVocabulary();
 
     t.same(vocabulary.readIdentities({flow: FLOW}), {}, 'an identity bag decodes to nothing');
@@ -63,13 +63,21 @@ t.test('unattached, every reader degrades and every scope still runs', t => {
         'done',
         'and one scoped to a capability',
     );
+    t.equal(
+        await vocabulary.step('gateway meter flow', () => {
+            ran += 1;
+            return 'done';
+        }),
+        'done',
+        'and one scoped to a phase',
+    );
     // The enter-style members have no scope to enter and no return value: what
     // matters is that calling them unattached is not an error.
     vocabulary.enterFlow({id: FLOW, kind: 'party.party.find'});
     vocabulary.enterTrace('abc');
     vocabulary.enterInboundLeg({id: LEG, seq: '1'});
     vocabulary.enterCapability('calls.-payloads', true);
-    t.equal(ran, 5, 'every scope ran its function exactly once');
+    t.equal(ran, 6, 'every scope ran its function exactly once');
     t.end();
 });
 
@@ -139,4 +147,9 @@ t.test('attached, the facade is the emitter vocabulary itself', async t => {
     t.equal(vocabulary.currentContext().trace, 'abc', 'and a trace too');
     vocabulary.enterInboundLeg({id: LEG, seq: '2'});
     t.equal(vocabulary.currentContext().leg, LEG, 'which the enter-style members share');
+    t.equal(
+        await vocabulary.step('gateway meter flow', () => vocabulary.currentContext().flow?.step),
+        'gateway meter flow',
+        'and a phase-scoped region is entered with the phase it named',
+    );
 });

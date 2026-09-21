@@ -589,21 +589,24 @@ export default class Gateway extends Internal implements IGateway {
                             // so this does not mint a second flow for the same request.
                             const [result, resultMeta] =
                                 (await runInFlow(meta as IMeta, methodName, () =>
-                                    // Declare the hop this route is making. The caller is the
-                                    // **gateway** - the logical unit that owns this public
-                                    // surface, and the namespace the API gateway realm answers
-                                    // as - rather than the process that happens to be serving:
-                                    // a leg id names a unit, and one process hosts a whole
-                                    // suite, so naming the process here would draw every flow of
-                                    // a monolith as the same participant and would hide the hop
-                                    // of a realm whose own namespace is that name.
+                                    // Declare the hop this route is making. The caller is
+                                    // **`public`** - the surface that answered the request,
+                                    // named apart from the namespace it calls. The gateway realm
+                                    // is a namespace called `gateway`, so a leg whose caller was
+                                    // also called `gateway` drew the public surface and that
+                                    // namespace as one participant, and a realm answering a call
+                                    // to its own namespace read as a self-call. A leg id names a
+                                    // unit, and the API surface is a unit of its own - not the
+                                    // process either: one process hosts a whole suite, so naming
+                                    // the process here would draw every flow of a monolith as the
+                                    // same participant.
                                     // `methodName` is already the dotted wire name the leg
                                     // grammar wants, so the leg names the method the request
                                     // asked for. The callee's receipt then carries the same leg,
                                     // which is what makes the drawing a call rather than a
                                     // participation.
                                     declareCall(
-                                        'gateway',
+                                        'public',
                                         methodName,
                                         () => {
                                             // The caller's own records, written inside the leg it

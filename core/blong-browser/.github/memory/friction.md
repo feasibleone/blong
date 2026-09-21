@@ -11,7 +11,7 @@ open (1)
 
 - `F-175` · core/blong-browser — Dropping PrimeReact's filter row changes more than the filter UI
 
-resolved (10)
+resolved (11)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -27,6 +27,7 @@ resolved (10)
   failure path
 - `F-216` · core/blong-browser — A condition that had always been an object flipped the diagram
   theme to light
+- `F-222` · core/blong-browser — A shell-wide overflow fix moved the problem into the page captures
 
 <!-- /memory:index -->
 
@@ -171,3 +172,19 @@ only the code.
 The viewer reads the palette from the theme system (D-238), so the dark theme is a decision rather
 than an accident; the unit test asserts both palettes and the fallback, and the ObservedFlow story
 draws #1f2020 again.
+
+### F-222 — A shell-wide overflow fix moved the problem into the page captures
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+A page taller than its tab was unreachable (the panel is bounded, the page overflows it, and
+.blong-app clips at overflow: hidden), so the first fix made .p-tabview-panel scroll. It does fix
+the class: the diagram became reachable and the page fitted. But three realm page baselines then
+failed, and stayed failing after regenerating: a page that scrolls can be scrolled by an element
+capture, so what a later page screenshot shows depends on the run. The page-level fix (D-243) keeps
+the page fitting its panel and has no such effect. Lesson: a scroll container added to the shell is
+a shared layout decision - check what the screenshots that pass through it are anchored to before
+keeping it, and prefer bounding the content that overflows.
+
+Resolved by fixing the page instead: Flow.tsx bounds its list and diagram (D-243), the shell change
+was reverted, and the realm and gateway suites pass twice each.

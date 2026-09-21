@@ -70,6 +70,9 @@ export const vocabulary = {
     withFlow: <T>(identity: Parameters<AttachedVocabulary['withFlow']>[0], fn: () => T): T =>
         attached === undefined ? fn() : attached.withFlow(identity, fn),
 
+    step: async <T>(name: string, fn: () => Promise<T> | T): Promise<T> =>
+        attached === undefined ? fn() : attached.step(name, fn),
+
     bindTrace: <T>(trace: string, fn: () => T): T =>
         attached === undefined ? fn() : attached.bindTrace(trace, fn),
 

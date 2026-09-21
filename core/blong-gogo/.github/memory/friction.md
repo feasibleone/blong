@@ -22,7 +22,7 @@ open (9)
 - `F-214` · core/blong-gogo — The test-group flow observed nothing
 - `F-215` · core/blong-gogo — A rule restored in one package and left broken in the other
 
-resolved (18)
+resolved (19)
 
 - `F-094` · core/blong-gogo — Knex `table.list` prefixed table names with the subject twice
 - `F-095` · core/blong-gogo — tap's order-sensitive snapshots broke on an appended `id` field
@@ -44,6 +44,8 @@ resolved (18)
 - `F-142` · core/blong-gogo — A per-intent activation block with a different shape needs a generic
 - `F-143` · core/blong-gogo — `--output` defaults on `isTTY`, so a piped child gets JSON
 - `F-144` · core/blong-gogo — Component logs go to fd 1 directly, so redirecting stdout misses them
+- `F-220` · core/blong-gogo — A declared call nobody recorded is only ever seen from the callee's
+  side
 
 <!-- /memory:index -->
 
@@ -388,3 +390,18 @@ explicitly; the mismatch cost one debugging cycle.
 Pino writes component logs to file descriptor 1 directly rather than through `process.stdout.write`,
 so the CLI's stdout redirect does not catch them and they land in the result. Configuration, not
 redirection, is what quiets them.
+
+### F-220 — A declared call nobody recorded is only ever seen from the callee's side
+
+> _2026-09-21 · core/blong-gogo · resolved_
+
+Declaring the dispatch orchestrator's hop (declareCall) made the ledger aware of the leg only
+through the callee's receipt: the diagram drew 'received, no caller was observed' instead of the
+arrow, because a leg is evidence only when a record is written inside it and the dispatcher's own
+port record is written before the leg is declared. Declaring and recording are one act in the
+handler proxy (declareCall around recordedCall); a caller that declares without recording buys a leg
+nobody can see. Lesson: when adding a declaration to a new call path, check what record that path
+writes inside the scope - the framework's tracing is the proxy's, not the ports'.
+
+Fixed: the dispatch orchestrator records its hop through the call channel inside the leg it declares
+(D-239, D-240). The gateway realm's observed flow now draws gateway->>db with its answer.

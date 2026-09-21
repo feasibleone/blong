@@ -22,7 +22,7 @@ import type {Dirent} from 'node:fs';
 import merge from 'ut-function.merge';
 
 import layerProxy from './layerProxy.ts';
-import {runInFlow} from './semanticContext.ts';
+import {runInFlow, withStep} from './semanticContext.ts';
 
 export interface IWatch {
     start: (realm: IRegistry, remote: IRemote, configOverride: object) => Promise<void>;
@@ -65,6 +65,16 @@ const isPlay = (filename: string): boolean => /\.play\.[mc]?[tj]sx?$/i.test(file
 const isTest = (filename: string): boolean => /\.test\.[mc]?[tj]sx?$/i.test(filename);
 
 const prefixRE: RegExp = /(?:\d+-)?(.*)/;
+
+/**
+ * The name a test group is displayed by: `test.meter.flow` reads as `meter flow`.
+ *
+ * The group's handler may name itself instead (`group("gateway meter flow")`), which
+ * is what the handler's own reader sees; this is the name to fall back to.
+ */
+function groupName(method: string): string {
+    return method.replace(/^test\./, '').replace(/\./g, ' ');
+}
 
 interface IConfig {
     enabled: boolean;
@@ -757,13 +767,24 @@ export default class Watch extends Internal implements IWatch {
                                     const steps = await remote.remote(method)({}, meta);
                                     if (Array.isArray(steps) && !('name' in steps)) {
                                         Object.defineProperty(steps, 'name', {
-                                            value: method
-                                                .replace(/^test\./, '')
-                                                .replace(/\./g, ' '),
+                                            value: groupName(method),
                                             configurable: true,
                                         });
                                     }
-                                    await chain(steps as Parameters<typeof chain>[0]);
+                                    // The group's display name is also the flow's *phase*: a
+                                    // sequence that runs a whole scenario reads as one band, and
+                                    // the band is what tells a reader which scenario it is.
+                                    const named =
+                                        typeof steps === 'object' && steps !== null
+                                            ? (steps as {name?: unknown})
+                                            : undefined;
+                                    const phase =
+                                        typeof named?.name === 'string'
+                                            ? named.name
+                                            : groupName(method);
+                                    await withStep(phase, () =>
+                                        chain(steps as Parameters<typeof chain>[0]),
+                                    );
                                 });
                                 executed += 1;
                             }),

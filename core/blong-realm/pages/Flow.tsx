@@ -1,8 +1,8 @@
+import {DiagramViewer, useBlong, useText} from '@feasibleone/blong-browser';
 import {Column} from 'primereact/column';
 import {DataTable} from 'primereact/datatable';
 import {InputText} from 'primereact/inputtext';
 import {useState} from 'react';
-import {DiagramViewer, useBlong, useText} from '@feasibleone/blong-browser';
 import {useRealmCall, useRealmRead} from './useRealmData.js';
 
 /**
@@ -56,48 +56,84 @@ export function Flow() {
     };
 
     return (
-        <div className="flex flex-column gap-3">
+        <div
+            className="flex flex-column gap-3"
+            // The page fills the tab it was given and hands the leftover height to the
+            // diagram. A sequence of a long flow is thousands of pixels tall, and a page
+            // that lets it take its natural height is *clipped* by the shell — measured on
+            // the gateway's test flow: 4484px of content in a 664px panel, with no
+            // scrollbar anywhere to reach the rest of it.
+            style={{height: '100%', minHeight: 0}}
+        >
             {flows.error !== undefined && <small className="text-red-500">{flows.error}</small>}
             <InputText
                 data-testid="browse-search"
                 value={filter}
                 onChange={event => setFilter(event.target.value)}
                 placeholder={useText('Filter')}
+                style={{flexShrink: 0}}
             />
-            <DataTable
-                value={flows.data?.executions ?? []}
-                loading={flows.loading}
-                globalFilter={filter}
-                globalFilterFields={['kind', 'id']}
-                selectionMode="single"
-                onSelectionChange={event => {
-                    const row = event.value as IFlowSummary;
-                    if (row.id !== undefined) void showDiagram(row.id);
-                }}
-                dataKey="id"
-                emptyMessage={useText('Nothing observed yet')}
+            {/* The list and the diagram each get a box of their own and scroll inside it:
+                between them they hold everything the panel was given, so the page never
+                outgrows it. A list of every execution the process has served is as long as
+                the service has been up, and a sequence diagram is as tall as the flow was
+                busy - both were previously clipped by the shell, unreachable below the fold
+                (measured: 20187px of page in a 670px panel). The list gives way first: half
+                the page is the most it may hold, and the diagram keeps what it does not. */}
+            <div
+                data-testid="flow-executions"
+                style={{flex: '0 1 auto', maxHeight: '50%', minHeight: 0, overflow: 'auto'}}
             >
-                <Column field="kind" header={useText('Kind')} />
-                <Column
-                    field="id"
-                    header={useText('Execution')}
-                    // Masked in captures: an execution id is minted per execution, so
-                    // it can never be the same value twice.
-                    body={(row: IFlowSummary) => (
-                        <span data-testid="flow-execution">{row.id ?? ''}</span>
-                    )}
-                />
-                <Column
-                    header={useText('Calls')}
-                    body={(row: IFlowSummary) => row.legs?.length ?? 0}
-                />
-                <Column
-                    header={useText('Services')}
-                    body={(row: IFlowSummary) => (row.services ?? []).join(', ')}
-                />
-            </DataTable>
+                <DataTable
+                    value={flows.data?.executions ?? []}
+                    loading={flows.loading}
+                    globalFilter={filter}
+                    globalFilterFields={['kind', 'id']}
+                    selectionMode="single"
+                    onSelectionChange={event => {
+                        const row = event.value as IFlowSummary;
+                        if (row.id !== undefined) void showDiagram(row.id);
+                    }}
+                    dataKey="id"
+                    emptyMessage={useText('Nothing observed yet')}
+                >
+                    <Column
+                        field="kind"
+                        header={useText('Kind')}
+                    />
+                    <Column
+                        field="id"
+                        header={useText('Execution')}
+                        // Masked in captures: an execution id is minted per execution, so
+                        // it can never be the same value twice.
+                        body={(row: IFlowSummary) => (
+                            <span data-testid="flow-execution">{row.id ?? ''}</span>
+                        )}
+                    />
+                    <Column
+                        header={useText('Calls')}
+                        body={(row: IFlowSummary) => row.legs?.length ?? 0}
+                    />
+                    <Column
+                        header={useText('Services')}
+                        body={(row: IFlowSummary) => (row.services ?? []).join(', ')}
+                    />
+                </DataTable>
+            </div>
             {diagram !== undefined && (
-                <DiagramViewer diagram={diagram} renderer={rendererName(config)} />
+                <div
+                    data-testid="flow-diagram"
+                    // The diagram scrolls *here*, inside the page: the box takes the height
+                    // the table leaves and turns everything past it into a scrollbar, so a
+                    // long sequence is readable end to end without the page itself growing
+                    // past the panel.
+                    style={{flex: '1 1 auto', minHeight: '8rem', overflow: 'auto'}}
+                >
+                    <DiagramViewer
+                        diagram={diagram}
+                        renderer={rendererName(config)}
+                    />
+                </div>
             )}
         </div>
     );

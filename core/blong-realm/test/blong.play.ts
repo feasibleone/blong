@@ -17,8 +17,8 @@ import {openPages} from '@feasibleone/blong-browser/playwright/pages';
  * this realm's own flow and the hop that served it is its one arrow.
  *
  * Both ends of that arrow are read off the call, not off the deployment: the caller is the
- * **logical unit** the leg id names — `gateway`, the public surface that received the request —
- * and the receiver is the namespace it was aimed at, `blong`. So this deployment draws two
+ * **logical unit** the leg id names — `public`, the surface that received the request — and the
+ * receiver is the namespace it was aimed at, `blong`. So this deployment draws two
  * participants, and the hop the artifact exists to show is visible. Naming either end after the
  * process that wrote the record would collapse a monolith to one participant, which is a
  * property of how a suite is split rather than of what happened.
@@ -141,6 +141,32 @@ test('an observed execution is drawn as a diagram', async ({portal}) => {
     // And the diagram itself: mermaid's chunk is cold on a first run, which is more
     // than the suite's deliberately short element budget allows for.
     await expect(portal.page.locator('[data-diagram-rendered]')).toBeVisible({timeout: 30_000});
+
+    // A long sequence is taller than any screen and the list of executions is as long as
+    // the process has been up, so each is given a box of its own that scrolls: the page
+    // never outgrows the panel, and what does not fit stays reachable. That is the bug this
+    // asserts against — the panel clipped the page at `overflow: hidden` and nothing
+    // anywhere scrolled (measured: 20187px of page in a 670px panel, so everything below
+    // the fold of either the list or the diagram was simply unreachable). A page that fits
+    // is also what keeps a capture of it comparable between runs, which is why the panel is
+    // asserted *not* to scroll.
+    const layout = await portal.page.evaluate(() => {
+        const box = (testId: string): {overflow: string} => {
+            const element = document.querySelector(`[data-testid="${testId}"]`);
+            return {overflow: element === null ? 'absent' : getComputedStyle(element).overflowY};
+        };
+        const panel = document.querySelector('.p-tabview-panel');
+        return {
+            executions: box('flow-executions'),
+            diagram: box('flow-diagram'),
+            pageOverflows: panel !== null && panel.scrollHeight > panel.clientHeight,
+        };
+    });
+    expect(layout.executions.overflow, 'the list of executions scrolls in its own box').toBe(
+        'auto',
+    );
+    expect(layout.diagram.overflow, 'the diagram scrolls in its own box').toBe('auto');
+    expect(layout.pageOverflows, 'and the page fits the panel it was given').toBe(false);
 
     // The same policy as `realm/blong-gateway/test/observedFlow.play.ts`, through the
     // same helper: capture the screenshot and the mermaid text when a call was
