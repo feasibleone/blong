@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/feasibleone/blong/compare/blong-commander-v1.1.0...blong-commander-v1.1.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+
 ## [1.1.0](https://github.com/feasibleone/blong/compare/blong-commander-v1.0.2...blong-commander-v1.1.0) (2026-09-15)
 
 

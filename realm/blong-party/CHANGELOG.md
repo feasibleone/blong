@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/feasibleone/blong/compare/blong-party-v1.6.0...blong-party-v1.6.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+
 ## [1.6.0](https://github.com/feasibleone/blong/compare/blong-party-v1.5.0...blong-party-v1.6.0) (2026-09-16)
 
 

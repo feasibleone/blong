@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.14.0...blong-kopi-v1.15.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+
 ## [1.14.0](https://github.com/feasibleone/blong/compare/blong-kopi-v1.13.0...blong-kopi-v1.14.0) (2026-09-15)
 
 

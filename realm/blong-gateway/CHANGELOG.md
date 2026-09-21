@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.3.0...blong-gateway-v1.4.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* CI test failures ([f13d3db](https://github.com/feasibleone/blong/commit/f13d3db0e5bed93ae633e2bfcead4e7acced5894))
+* CI test failures ([f1f4783](https://github.com/feasibleone/blong/commit/f1f4783828b0904f8addecec42c87dd7d406286f))
+* decouple sequence diagrams from services ([9bc672a](https://github.com/feasibleone/blong/commit/9bc672a184ed07582452ede3a556aaf3ed0726d9))
+* sequence diagram leg capturing logic ([65f51cf](https://github.com/feasibleone/blong/commit/65f51cf98f4691caead56d9e4d22200fe40cc5bf))
+
 ## [1.3.0](https://github.com/feasibleone/blong/compare/blong-gateway-v1.2.3...blong-gateway-v1.3.0) (2026-09-16)
 
 

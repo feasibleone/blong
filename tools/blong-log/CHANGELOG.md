@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/feasibleone/blong/compare/blong-log-v1.4.3...blong-log-v1.5.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* upgrade chromatic ([ba61c34](https://github.com/feasibleone/blong/commit/ba61c34a557ad14349e710e073e3d9e137593c75))
+
 ## [1.4.3](https://github.com/feasibleone/blong/compare/blong-log-v1.4.2...blong-log-v1.4.3) (2026-09-10)
 
 

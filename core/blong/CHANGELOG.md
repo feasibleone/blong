@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.29.0](https://github.com/feasibleone/blong/compare/blong-v1.28.0...blong-v1.29.0) (2026-09-21)
+
+
+### Features
+
+* semantic log integration ([b1c0d4a](https://github.com/feasibleone/blong/commit/b1c0d4ab32fb54cda54d20deeaf9162b7c4a3db4))
+
+
+### Bug Fixes
+
+* test failures ([6aad7e4](https://github.com/feasibleone/blong/commit/6aad7e444238b7ad9801de4017eaedadb55f16cc))
+
 ## [1.28.0](https://github.com/feasibleone/blong/compare/blong-v1.27.0...blong-v1.28.0) (2026-09-16)
 
 
