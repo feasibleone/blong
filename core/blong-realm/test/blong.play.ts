@@ -16,13 +16,12 @@ import {openPages} from '@feasibleone/blong-browser/playwright/pages';
  * dispatches to the `blong` namespace, and this realm answers — so the diagram is
  * this realm's own flow and the hop that served it is its one arrow.
  *
- * Both ends of that arrow are named by the deployment: the caller is the service
- * that emitted the record (the framework's process, `blong` unless `log.service`
- * says otherwise) and the receiver is the namespace the leg id names. This
- * deployment names no component, so the two tokens coincide and the artifact reads
- * `blong->>blong` — the process calling the namespace. That is what was observed,
- * and a diagram that renamed either end to look tidier would be inventing a
- * deployment that does not exist (D-216).
+ * Both ends of that arrow are read off the call, not off the deployment: the caller is the
+ * **logical unit** the leg id names — `gateway`, the public surface that received the request —
+ * and the receiver is the namespace it was aimed at, `blong`. So this deployment draws two
+ * participants, and the hop the artifact exists to show is visible. Naming either end after the
+ * process that wrote the record would collapse a monolith to one participant, which is a
+ * property of how a suite is split rather than of what happened.
  */
 const REALM_KIND = 'blong.flow.find';
 

@@ -18,7 +18,7 @@
     "dependencies": {
         "@feasibleone/blong-lint": "workspace:*",
         "@feasibleone/blong-mle": "workspace:^1.0.0",
-        "@playwright/test": "^1.60.0",
+        "@playwright/test": "^1.63.0",
         "allure": "^3.17.0",
         "cacache": "^20.0.4",
         "cspell": "^10.0.0",

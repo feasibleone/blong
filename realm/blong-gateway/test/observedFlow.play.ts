@@ -81,12 +81,14 @@ test('a flow this realm served is drawn as a diagram', async ({portal}) => {
     // `gateway.gateway.bundle.find` and the realm answers with a receipt for it — so
     // the arrow exists without the application logging anything.
     //
-    // The **caller** is the service that emitted the record, not the namespace the leg
-    // id begins with: the leg names the caller's *namespace*, which is the surface here
-    // and would be wrong the moment a module is deployed under another name (a scheme
-    // running `flow/hub.ts` as `hubB` declares `hub.*` legs). This deployment names no
-    // component of its own, so the caller is the framework's process, `blong` — hence
-    // `blong->>gateway`, and the answer back on the dashed arrow under the same leg id.
+    // Both ends of the arrow are read off the call, not off the process: the caller is the
+    // **logical unit** the leg id names and the receiver is the namespace it was aimed at.
+    // The leg here is `gateway.gateway.bundle.find` — the public surface (`gateway`) calling
+    // the management namespace, which this realm answers as `gateway` too — so the two ends
+    // coincide and the call is drawn once, with no answer back to itself: the dashed arrow
+    // exists to show *another* participant's record of the leg. Naming the caller after the
+    // process that wrote the record would draw `blong->>gateway`, which is how a monolith
+    // collapses to one participant rather than a property of what happened.
     const diagram = await diagramText(portal);
     // A crossed arrow is content, not a failure: "the caller declared a call and
     // nothing answered" is a deployment fact, and a diagram drawn from deductions

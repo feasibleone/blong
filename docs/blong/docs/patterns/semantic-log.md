@@ -266,8 +266,8 @@ says so:
 BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update-snapshots
 ```
 
-It holds the mermaid the service drew for one real execution of the realm's own read, so both ends
-of its arrow are named by the deployment: the caller is the service that emitted the record — the
-framework's own process, `blong` unless `log.service` says otherwise — and the receiver is the
-namespace the leg id names. In a monolith that configures neither, the two names coincide and the
-diagram says so rather than inventing a participant.
+It holds the mermaid the service drew for one real execution of the realm's own read. Both ends of
+its arrow are read off the call: the caller is the **logical unit the leg id names** — the
+namespace, in blong, never the process that happened to write the record — and the receiver is the
+namespace the leg id was aimed at. A monolith therefore draws the units a request travelled
+through rather than one participant per process.

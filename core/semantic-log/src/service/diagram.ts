@@ -67,7 +67,7 @@
 
 import {isLegSeq} from '../context.ts';
 import type {FlowExecution, FlowUnion, LegObservation} from './flowLedger.ts';
-import {attributable, comparePosition} from './flowLedger.ts';
+import {attributable, callerOfLeg, comparePosition} from './flowLedger.ts';
 
 /**
  * The name standing in for a service the union never saw.
@@ -155,7 +155,9 @@ export interface DiagramModel {
     /**
      * Participants to declare, in this order. Any participant an item names and this
      * list omits is declared after these, in the order the items use it — so a model
-     * assembled by hand cannot produce an undeclared participant.
+     * assembled by hand cannot produce an undeclared participant. The builders fill it
+     * from the items ({@link participantsOf}), because a participant is what a call
+     * names rather than what a record happened to be filed under.
      */
     services: string[];
     /** What to draw, in the order to draw it. */
@@ -237,10 +239,7 @@ function createUnwind(items: DiagramItem[]): {
  * one call, and counting them would report a chatty participant as a busy one. That
  * is the same rule the union's counters keep, so the two diagrams agree about a run.
  */
-export function modelOfObservations(
-    observations: readonly DiagramObservation[],
-    services: readonly string[] = [],
-): DiagramModel {
+export function modelOfObservations(observations: readonly DiagramObservation[]): DiagramModel {
     const groups = new Map<string, DiagramObservation[]>();
     for (const observation of observations) {
         const group = groups.get(observation.leg);
@@ -262,18 +261,18 @@ export function modelOfObservations(
         // the only evidence that the call reached anyone.
         const answered = new Set(group.filter(o => o.to === undefined).map(o => o.service));
         const notes = group.flatMap(o => o.notes ?? []);
-        // Keyed by the caller *and* the callee: the caller is the service that wrote the
-        // record, so two participants declaring the same call are two arrows - the same
-        // reading the ledger's union makes of it. The caller is not read off the leg id:
-        // that names the caller's *namespace*, and a module mounted under another name
-        // (`flow/hub.ts` serving as `hubB`) would be drawn as a participant that is not
-        // deployed at all - which is exactly what the observed flows showed.
+        // Keyed by the caller *and* the callee, both read off the call: the leg id names the
+        // logical unit that declared it and `to` names the receiver it aimed at, so an arrow
+        // is a fact about the call rather than about which process happened to write the
+        // record. The writer is information — one process hosts many namespaces, and in
+        // development a whole suite — so an identity taken from it would draw every call of a
+        // monolith from one participant.
         const pairs = new Map<string, {caller: string; callee: string; step?: string}>();
         for (const observation of group) {
             if (observation.to === undefined) {
                 continue;
             }
-            const caller = observation.service;
+            const caller = callerOfLeg(observation.leg, observation.service);
             const key = `${caller}\u0000${observation.to}`;
             if (!pairs.has(key)) {
                 pairs.set(key, {
@@ -325,12 +324,12 @@ export function modelOfObservations(
         );
     }
     unwind.closeAll();
-    return {services: [...services], items};
+    return {services: participantsOf(items), items};
 }
 
 /** The model of one execution the ledger retains. */
 export function modelOfExecution(execution: FlowExecution): DiagramModel {
-    return modelOfObservations(execution.observations, execution.services);
+    return modelOfObservations(execution.observations);
 }
 
 /**
@@ -385,7 +384,7 @@ export function modelOfUnion(union: FlowUnion): DiagramModel {
         );
     }
     unwind.closeAll();
-    return {services: [...union.services], items};
+    return {services: participantsOf(items), items};
 }
 
 /** One label: no statement separator, no line break, no run of spaces. */
@@ -424,6 +423,29 @@ function participantNames(services: readonly string[]): Map<string, string> {
 /** The participants an item names, in the order it names them. */
 function participantsIn(item: DiagramItem): string[] {
     return item.kind === 'receipt' ? [item.service] : [item.caller, item.callee];
+}
+
+/**
+ * The participants a model declares, in the order the calls first name them.
+ *
+ * Read from the items rather than from the records' services: a participant is the logical
+ * unit a call names — its caller's namespace and the receiver it aimed at — and a record
+ * that carries no call names no unit at all. A flow whose process writes every record under
+ * one service name therefore draws the units it travelled through, which is the same picture
+ * a microservice deployment of it draws.
+ */
+function participantsOf(items: readonly DiagramItem[]): string[] {
+    const order: string[] = [];
+    const known = new Set<string>();
+    for (const item of items) {
+        for (const participant of participantsIn(item)) {
+            if (!known.has(participant)) {
+                known.add(participant);
+                order.push(participant);
+            }
+        }
+    }
+    return order;
 }
 
 /**

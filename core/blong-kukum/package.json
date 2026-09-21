@@ -42,7 +42,7 @@
         "@feasibleone/blong-login": "workspace:^1.0.0",
         "@feasibleone/blong-realm": "workspace:^1.0.0",
         "@feasibleone/blong-test": "workspace:^1.0.0",
-        "@playwright/test": "^1.60.0",
+        "@playwright/test": "^1.63.0",
         "@types/node": "^24",
         "tap": "^21.6.3",
         "typescript": "^6.0.3"

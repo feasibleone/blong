@@ -9,7 +9,7 @@ This page covers the practical patterns for writing full-stack Playwright tests 
 ```json
 {
     "devDependencies": {
-        "@playwright/test": "^1.52.0",
+        "@playwright/test": "^1.63.0",
         "@feasibleone/blong-browser": "workspace:^1.0.0",
         "@feasibleone/blong-dev": "workspace:*"
     },
@@ -40,8 +40,8 @@ export default defineBlongConfig({
 });
 ```
 
-`defineBlongConfig()` includes `webServer` entries that auto-start the blong server (port 8080)
-and Vite dev server (port 5173) in CI (`reuseExistingServer: !process.env.CI`).
+`defineBlongConfig()` includes `webServer` entries that auto-start the blong server (port 8080) and
+Vite dev server (port 5173) in CI (`reuseExistingServer: !process.env.CI`).
 
 ## Test File Pattern
 
@@ -71,7 +71,7 @@ test.describe('Entity CRUD', () => {
     browseModel(test, expect, {
         subject: 'realm',
         object: 'entity',
-        searchText: 'Filter Text',  // optional: filters table before screenshot
+        searchText: 'Filter Text', // optional: filters table before screenshot
     });
 
     createAndEditModel(test, expect, {
@@ -79,11 +79,11 @@ test.describe('Entity CRUD', () => {
         object: 'entity',
         fields: {
             'entity.entityName': 'New Entity',
-            'entity.entityType': 'typeA',           // auto-detected as select
-            'entity.parentId': 'Parent Name',        // auto-detected as dropdown
-            'entity.quantity': 42,                   // auto-detected as number
-            'entity.active': true,                   // auto-detected as checkbox
-            'entity.createdDate': '06/15/2024',      // auto-detected as date
+            'entity.entityType': 'typeA', // auto-detected as select
+            'entity.parentId': 'Parent Name', // auto-detected as dropdown
+            'entity.quantity': 42, // auto-detected as number
+            'entity.active': true, // auto-detected as checkbox
+            'entity.createdDate': '06/15/2024', // auto-detected as date
         },
         editFields: {
             'entity.entityName': 'Edited Entity',
@@ -235,12 +235,12 @@ node --run playwright -- --ui
 ## Waiting for Form Data Pattern
 
 When opening an existing record for editing, the form renders immediately but API data arrives
-asynchronously. Use `waitForFormData()` after `waitForFormLoad()` to avoid filling fields before
-the API response populates them:
+asynchronously. Use `waitForFormData()` after `waitForFormLoad()` to avoid filling fields before the
+API response populates them:
 
 ```typescript
-await portal.waitForFormLoad();   // Form visible, skeleton gone
-await portal.waitForFormData();   // At least one input has a value from the API
+await portal.waitForFormLoad(); // Form visible, skeleton gone
+await portal.waitForFormData(); // At least one input has a value from the API
 
 // Now safe to fill fields
 await fillFields(portal.page, editFields);
@@ -306,14 +306,14 @@ flowchart TD
 
 **Server-side:** When `--coverage` is passed, the `blong-dev playwright` command sets the
 `NODE_V8_COVERAGE` environment variable. The blong server process (spawned by Playwright's
-`webServer` config) inherits this and writes V8 coverage data to `.playwright/coverage/v8/`
-when the process exits.
+`webServer` config) inherits this and writes V8 coverage data to `.playwright/coverage/v8/` when the
+process exits.
 
-**Browser-side:** The `@feasibleone/blong-browser/playwright` package includes a coverage
-fixture that runs automatically for every test. It uses Playwright's Chromium-specific
-`page.coverage.startJSCoverage()` API to collect JavaScript coverage from the browser.
-After each test, it maps Vite dev server URLs (e.g. `http://localhost:5173/src/...`) to
-filesystem paths and writes V8-format JSON files.
+**Browser-side:** The `@feasibleone/blong-browser/playwright` package includes a coverage fixture
+that runs automatically for every test. It uses Playwright's Chromium-specific
+`page.coverage.startJSCoverage()` API to collect JavaScript coverage from the browser. After each
+test, it maps Vite dev server URLs (e.g. `http://localhost:5173/src/...`) to filesystem paths and
+writes V8-format JSON files.
 
 After all tests complete, both sets of coverage files are copied with a `pw-` prefix into
 `core/blong-gogo/.tap/coverage/`, where they are picked up by the next `c8 report` run.
@@ -321,8 +321,8 @@ After all tests complete, both sets of coverage files are copied with a `pw-` pr
 ### Coverage Fixture
 
 The coverage fixture is built into the test object exported by
-`@feasibleone/blong-browser/playwright`. Test files do **not** need to import a separate
-fixture — coverage is collected automatically when `NODE_V8_COVERAGE` is set:
+`@feasibleone/blong-browser/playwright`. Test files do **not** need to import a separate fixture —
+coverage is collected automatically when `NODE_V8_COVERAGE` is set:
 
 ```typescript
 import {test, expect} from '@feasibleone/blong-browser/playwright';
@@ -331,16 +331,16 @@ import {test, expect} from '@feasibleone/blong-browser/playwright';
 
 The fixture:
 
-- Starts JS coverage with `resetOnNavigation: false` so coverage accumulates across
-  multi-page workflows (login → navigation → form interaction)
+- Starts JS coverage with `resetOnNavigation: false` so coverage accumulates across multi-page
+  workflows (login → navigation → form interaction)
 - Writes browser coverage files named `browser-{md5hash}.json` to the `NODE_V8_COVERAGE` dir
 - Skips silently when `NODE_V8_COVERAGE` is not set (normal development)
 - Skips silently in non-Chromium browsers (Firefox/WebKit don't support `page.coverage`)
 
 #### Composing Fixtures Manually
 
-If you create a custom test object (e.g., extending the portal fixture with additional
-fixtures), you can compose the coverage fixture:
+If you create a custom test object (e.g., extending the portal fixture with additional fixtures),
+you can compose the coverage fixture:
 
 ```typescript
 import {test as baseTest} from '@feasibleone/blong-browser/playwright';
@@ -349,17 +349,19 @@ import {addExtraFixture} from './my-fixture';
 
 // Compose coverage + portal + extra fixture
 const test = coverageFixture(baseTest);
-test.extend({/* your extra fixtures */});
+test.extend({
+    /* your extra fixtures */
+});
 ```
 
 ### CI Integration
 
 In CI, coverage flows through the Rush pipeline:
 
-1. `rush ci-test` — runs all test passes including `blong-dev playwright --coverage`,
-   which writes coverage data to `core/blong-gogo/.tap/coverage/`
-2. `rush ci-coverage` — runs `core/blong-gogo/run-coverage.sh`, which aggregates all
-   coverage (tap + Playwright) into a single `lcov.info`
+1. `rush ci-test` — runs all test passes including `blong-dev playwright --coverage`, which writes
+   coverage data to `core/blong-gogo/.tap/coverage/`
+2. `rush ci-coverage` — runs `core/blong-gogo/run-coverage.sh`, which aggregates all coverage (tap +
+   Playwright) into a single `lcov.info`
 3. `romeovs/lcov-reporter-action` — posts a coverage summary on the PR
 
 The `run-coverage.sh` script detects Playwright coverage files automatically:
@@ -373,16 +375,15 @@ fi
 
 ### Path Mapping
 
-Browser coverage URLs from Vite (e.g. `http://localhost:5173/src/components/Portal.tsx`)
-are mapped to filesystem paths by stripping the protocol/host prefix and resolving
-relative to the project root. Files from `node_modules`, Vite's HMR client, and
-`@react-refresh` are excluded automatically.
+Browser coverage URLs from Vite (e.g. `http://localhost:5173/src/components/Portal.tsx`) are mapped
+to filesystem paths by stripping the protocol/host prefix and resolving relative to the project
+root. Files from `node_modules`, Vite's HMR client, and `@react-refresh` are excluded automatically.
 
 ## Stateful Mock Pattern (Dirty Cycle)
 
-When the mock adapter mutates an in-memory array, records persist across test runs. This means
-edit tests may find the record already contains the expected values, leaving react-hook-form
-in a clean state (Save button disabled).
+When the mock adapter mutates an in-memory array, records persist across test runs. This means edit
+tests may find the record already contains the expected values, leaving react-hook-form in a clean
+state (Save button disabled).
 
 The `createAndEditModel()` helper uses a dirty cycle to work around this:
 

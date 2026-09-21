@@ -6,6 +6,16 @@ function decodeToken(token: string): Record<string, unknown> {
     return JSON.parse(Buffer.from(payload, 'base64url').toString()) as Record<string, unknown>;
 }
 
+/**
+ * The client ids this suite registers, by which its leftovers are recognised.
+ *
+ * The browser group's two carry a timestamp so that a run's applications are fresh (a
+ * fresh crockford id is what makes the metering keys fresh), so they can only be matched
+ * as prefixes - the alternative would be a run that cannot clean up after the one before
+ * it, which is exactly how these rows came to accumulate.
+ */
+const REGISTERED_APPLICATION = /^(?:test-app$|http-(?:rate|credit)-)/;
+
 /** Extract the `per` claim (base64 permissionMap) from a JWT. */
 function decodePermissionMap(token: string): Buffer {
     return Buffer.from(decodeToken(token).per as string, 'base64');
@@ -24,6 +34,10 @@ export default handler(
             gatewayApplicationRegister,
             gatewayBundleMerge,
             gatewaySubscriptionMerge,
+            gatewayApplicationRemove,
+            gatewaySubscriptionFind,
+            gatewaySubscriptionRemove,
+            gatewayDropdownList,
             accessAuthorizationList,
             gatewayMeterCheck,
             gatewayCreditAdjust,
@@ -32,6 +46,57 @@ export default handler(
     }) => ({
         testMeterFlow: ({name = 'gateway meter flow'}: {name?: string} = {}) =>
             group(name)([
+                // Remove what this suite registered before registering anything else.
+                //
+                // The tap suite shares its database with the Playwright suite, whose
+                // subscription browse capture holds the *seeded* rows - and a registered
+                // application is one more active subscription in it. The Playwright backend
+                // boots this very group before it runs a spec, so cleaning first is what
+                // leaves the capture looking at the seed. Cleaning at the *start* rather
+                // than at the end is what a run that fails halfway cannot skip: its rows
+                // are removed by the next run either way.
+                //
+                // The names are the suite's own: this group registers `test-app`, and the
+                // browser group (`test.meter.http.flow`) registers an application per run
+                // (`http-rate-<timestamp>` / `http-credit-<timestamp>`), which is why two of
+                // the three patterns are prefixes. The cleanup lives here rather than in
+                // both groups because this is the one that runs wherever the suite runs,
+                // and the groups are started in parallel, so two cleanups would race.
+                async function cleanupRegistered(assert: IAssert, {$meta}: {$meta: IMeta}) {
+                    const lists = await gatewayDropdownList<
+                        Record<string, {value: string; label: string}[]>
+                    >({}, $meta);
+                    const registered = (lists['gateway.application'] ?? []).filter(option =>
+                        REGISTERED_APPLICATION.test(option.label),
+                    );
+                    let subscriptions = 0;
+                    for (const application of registered) {
+                        // The subscriptions go first: they are the rows a reader sees, and
+                        // their foreign key is not cascaded on every path that deletes an
+                        // application.
+                        const rows = await gatewaySubscriptionFind<{subscriptionId: string}[]>(
+                            {filterBy: {applicationId: application.value}},
+                            $meta,
+                        );
+                        for (const row of rows) {
+                            await gatewaySubscriptionRemove(
+                                {subscriptionId: row.subscriptionId},
+                                $meta,
+                            );
+                            subscriptions += 1;
+                        }
+                        await gatewayApplicationRemove(
+                            {applicationId: application.value},
+                            $meta,
+                        );
+                    }
+                    assert.ok(
+                        true,
+                        `removed ${registered.length} application(s) and ${subscriptions} subscription(s) left by earlier runs`,
+                    );
+                    return {applications: registered.length, subscriptions};
+                },
+
                 // Log in as the seeded developer (testUser) to derive the owner id.
                 async function loginDeveloper(assert: IAssert, {$meta}: {$meta: IMeta}) {
                     const result = await loginTokenCreate<{

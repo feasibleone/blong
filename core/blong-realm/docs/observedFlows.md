@@ -3,6 +3,8 @@
 ```mermaid
 sequenceDiagram
     autonumber
+    participant gateway
     participant blong
-    blong->>blong: gateway.blong.flow.find
+    gateway->>blong: gateway.blong.flow.find
+    blong-->>gateway: gateway.blong.flow.find
 ```

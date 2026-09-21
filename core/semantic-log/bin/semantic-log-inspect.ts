@@ -307,9 +307,10 @@ const ONE_STORE =
  * Draw one execution's — or one flow kind's — observed shape from the local store.
  *
  * The reference's shape decides which, as it does over HTTP: a ULID is an execution the emitter
- * minted, and anything else is a kind. Records that carry no call are still evidence of a
- * participant (the entry records between hops belong to the flow), which is why the participants
- * come from every matching record rather than from the calls alone.
+ * minted, and anything else is a kind. The participants come from the calls the records declare,
+ * because a participant is the logical unit a leg id names and a record that carries no call
+ * names none: the store's service names are reported beside them as information, for a reader who
+ * wants to know which process wrote what.
  *
  * Exit codes follow the CLI's own contract: `0` drew something, `1` nothing matches, `3` the
  * invocation or the store was unusable. There is no `2` here — that code means "the caller
@@ -336,10 +337,7 @@ async function renderFlowDiagram(
         return 1;
     }
     const observations = matching.flatMap(annotatedObservations);
-    const model = modelOfObservations(
-        observations,
-        matching.map(record => record.service),
-    );
+    const model = modelOfObservations(observations);
     if (json) {
         io.out(
             `${JSON.stringify(

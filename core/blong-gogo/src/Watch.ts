@@ -733,39 +733,42 @@ export default class Watch extends Internal implements IWatch {
                         await import('./chain.ts')
                     ).default(test as ITestContext, this.log);
 
-                    const steps = await Promise.all(
-                        ([] as string[]).concat(this.#config.test).map(async method => {
-                            // Nothing above a test group minted a flow, so each group is
-                            // an entry of its own. The groups run in parallel, so one
-                            // flow for the whole run would interleave unrelated
-                            // scenarios into a single diagram; a flow per group gives
-                            // one scenario per flow, which is what there is to draw.
-                            const meta: IMeta = {mtid: 'event', method};
-                            const result = await runInFlow(meta, method, () =>
-                                remote.remote(method)({}, meta),
-                            );
-                            if (Array.isArray(result) && !('name' in result)) {
-                                Object.defineProperty(result, 'name', {
-                                    value: method.replace(/^test\./, '').replace(/\./g, ' '),
-                                    configurable: true,
-                                });
-                            }
-                            return result;
-                        }),
-                    );
+                    const groups = ([] as string[]).concat(this.#config.test);
                     let executed = 0;
                     await withProgress(
                         this.log,
                         'run test groups',
-                        (async () => {
-                            await Promise.all(
-                                steps.map(async step => {
-                                    await chain(step as Parameters<typeof chain>[0]);
-                                    executed += 1;
-                                }),
-                            );
-                        })(),
-                        {getProgress: () => ({done: executed, total: steps.length})},
+                        Promise.all(
+                            groups.map(async method => {
+                                // Nothing above a test group minted a flow, so each group is
+                                // an entry of its own. The groups run in parallel, so one
+                                // flow for the whole run would interleave unrelated
+                                // scenarios into a single diagram; a flow per group gives
+                                // one scenario per flow, which is what there is to draw.
+                                //
+                                // The flow wraps the *execution*, not just the dispatch: a
+                                // group answers with its steps and they run afterwards, so a
+                                // flow that ended with the dispatch covered nothing but the
+                                // call that built the scenario - the calls the scenario made
+                                // were then made in no flow at all, and the observed flow the
+                                // run was supposed to leave behind never existed.
+                                const meta: IMeta = {mtid: 'event', method};
+                                await runInFlow(meta, method, async () => {
+                                    const steps = await remote.remote(method)({}, meta);
+                                    if (Array.isArray(steps) && !('name' in steps)) {
+                                        Object.defineProperty(steps, 'name', {
+                                            value: method
+                                                .replace(/^test\./, '')
+                                                .replace(/\./g, ' '),
+                                            configurable: true,
+                                        });
+                                    }
+                                    await chain(steps as Parameters<typeof chain>[0]);
+                                });
+                                executed += 1;
+                            }),
+                        ),
+                        {getProgress: () => ({done: executed, total: groups.length})},
                     );
                 } catch (error) {
                     this.log?.error?.(error);

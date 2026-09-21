@@ -69,7 +69,7 @@ t.test('a call is one call however many records were logged inside it', t => {
         ['rate limit 5%', 'withheld: routing'],
         'every note the leg carried travels with it, from whichever end logged it',
     );
-    t.same(model.services, [], 'a model with no declared services names its own');
+    t.same(model.services, ['payer', 'hub'], 'the participants are the units the call names');
     t.end();
 });
 
@@ -106,13 +106,16 @@ t.test('a call that never leaves its own participant is drawn once', t => {
     // to show *another* participant answering, and there is no other participant here. The
     // call is still an *answered* call — the receiver's record is there, so the arrow stays
     // solid rather than crossed — so "answered" is not lost with the pair.
+    //
+    // Both ends are read off the call, so a self-hop is an id that names its own target as
+    // its caller: `blong.flow.find` aimed at `blong` is the `blong` unit calling itself.
     const observations = [
-        observed('gateway.blong.flow.find', 'blong', {to: 'blong', seq: '1'}),
-        observed('gateway.blong.flow.find', 'blong', {seq: '1'}),
+        observed('blong.flow.find', 'blong', {to: 'blong', seq: '1'}),
+        observed('blong.flow.find', 'blong', {seq: '1'}),
     ];
     t.same(
         drawn(modelOfObservations(observations)),
-        ['call gateway.blong.flow.find blong->blong x1/1'],
+        ['call blong.flow.find blong->blong x1/1'],
         'one execution: the call, and no answer to itself',
     );
     t.equal(
@@ -120,7 +123,7 @@ t.test('a call that never leaves its own participant is drawn once', t => {
         'sequenceDiagram\n' +
             '    autonumber\n' +
             '    participant blong\n' +
-            '    blong->>blong: gateway.blong.flow.find\n',
+            '    blong->>blong: blong.flow.find\n',
         'and it renders as the solid arrow it is',
     );
     t.same(
@@ -130,13 +133,13 @@ t.test('a call that never leaves its own participant is drawn once', t => {
                 executions: 1,
                 services: ['blong'],
                 legs: [
-                    unionLeg('gateway.blong.flow.find', [
+                    unionLeg('blong.flow.find', [
                         {caller: 'blong', callee: 'blong', count: 1, observed: 1},
                     ]),
                 ],
             }),
         ),
-        ['call gateway.blong.flow.find blong->blong x1/1'],
+        ['call blong.flow.find blong->blong x1/1'],
         'the union keeps the same rule, so the two views cannot disagree about a self-hop',
     );
     t.end();
@@ -302,7 +305,11 @@ t.test('a kind model carries the union it was aggregated from', t => {
         ],
         'the counts a kind diagram has that an execution diagram cannot, each with its answer',
     );
-    t.same(model.services, ['payer', 'hub'], 'the union names its participants');
+    t.same(
+        model.services,
+        ['payer', 'hub', 'payee'],
+        'the participants are the units its calls name, over every execution',
+    );
     t.end();
 });
 
@@ -328,22 +335,19 @@ t.test('a union leg with no end names the service that logged it, or says it can
 });
 
 t.test('a rendered diagram is a sequence diagram of what was observed', t => {
-    const model = modelOfObservations(
-        [
-            observed('payer.discovery.parties', 'payer', {to: 'hub', seq: '1', step: 'discovery'}),
-            observed('payer.discovery.parties', 'hub', {seq: '1', step: 'discovery'}),
-            observed('payer.quote.rates', 'payer', {
-                to: 'hub',
-                seq: '2',
-                step: 'quote',
-                notes: ['decision: accept'],
-            }),
-            observed('payer.quote.rates', 'hub', {seq: '2', step: 'quote'}),
-            observed('payer.transfer.submit', 'payer', {to: 'hub', seq: '3', step: 'transfer'}),
-            observed('payer.transfer.submit', 'payer', {to: 'payee', seq: '3', step: 'transfer'}),
-        ],
-        ['payer'],
-    );
+    const model = modelOfObservations([
+        observed('payer.discovery.parties', 'payer', {to: 'hub', seq: '1', step: 'discovery'}),
+        observed('payer.discovery.parties', 'hub', {seq: '1', step: 'discovery'}),
+        observed('payer.quote.rates', 'payer', {
+            to: 'hub',
+            seq: '2',
+            step: 'quote',
+            notes: ['decision: accept'],
+        }),
+        observed('payer.quote.rates', 'hub', {seq: '2', step: 'quote'}),
+        observed('payer.transfer.submit', 'payer', {to: 'hub', seq: '3', step: 'transfer'}),
+        observed('payer.transfer.submit', 'payer', {to: 'payee', seq: '3', step: 'transfer'}),
+    ]);
     t.equal(
         renderSequence(model),
         'sequenceDiagram\n' +
@@ -503,34 +507,31 @@ t.test('a note cannot carry a statement separator or a line break into the diagr
     t.end();
 });
 
-t.test('a hostile service name cannot become an arrow', t => {
-    // The name is caller text, so the diagram has to fold it: the caller is the service
-    // that wrote the record, and a name carrying `;`, `->>` or `:` would close the
-    // statement and draw an arrow of its own. The name is drawn - it is who called - but
-    // what it must not do is become syntax. The target is folded for the same reason.
+t.test('a hostile name cannot become an arrow', t => {
+    // The caller and the receiver are read off the call, and both arrive from a store the
+    // renderer did not validate (the local inspector reads records back, and a model can be
+    // assembled by hand), so the diagram has to fold them itself: a name carrying `;`, `->>`
+    // or `:` would close the statement and draw an arrow of its own. The names are drawn —
+    // they are who was called — but what they must not do is become syntax.
     const model = modelOfObservations([
-        observed('payer.quote.rates', 'evil;\npayer->>victim: forged', {to: 'hub;x->>y', seq: '1'}),
+        observed('evil;x.payer', 'payer', {to: 'hub;x->>y', seq: '1'}),
     ]);
     const rendered = renderSequence(model);
     t.notMatch(rendered, /;/, 'the separator is gone from the participant names too');
-    t.match(
-        rendered,
-        /participant evil__payer-__victim__forged/,
-        'a name outside the safe set is folded to underscores',
-    );
+    t.match(rendered, /participant evil_x/, 'the caller read off the id is folded to underscores');
     t.match(rendered, /participant hub_x-__y/, 'on both ends');
     t.match(
         rendered,
-        /evil__payer-__victim__forged--xhub_x-__y: payer\.quote\.rates \(no receipt\)/,
+        /evil_x--xhub_x-__y: evil x.payer \(no receipt\)/,
         'exactly the one arrow the model asked for',
     );
     t.end();
 });
 
-t.test('a hostile service name is folded where it is the only caller named', t => {
-    // The folding is what keeps a caller-controlled name from becoming syntax, with no
-    // second participant to read it against: the emitter's own name is what the arrow
-    // carries, and it is folded rather than dropped.
+t.test('a hostile writer name is folded where it is the only caller named', t => {
+    // The folding is what keeps a caller-controlled name from becoming syntax. Only a leg id
+    // that names no caller falls back to the writer, so this is the shape that reaches the
+    // arrow with the emitter's own name on it — folded rather than dropped.
     const model = modelOfObservations([
         observed('single', 'evil;\npayer->>victim: forged', {to: 'hub', seq: '1'}),
     ]);
@@ -541,11 +542,11 @@ t.test('a hostile service name is folded where it is the only caller named', t =
     t.end();
 });
 
-t.test('two services that fold to the same name are numbered apart, not merged', t => {
-    // `a b` and `a_b` are two services, not one with a typo, so the second is numbered
+t.test('two writer names that fold to the same name are numbered apart, not merged', t => {
+    // `a b` and `a_b` are two names, not one with a typo, so the second is numbered
     // rather than drawn as the first. The third collides with a name already numbered,
     // so the suffix itself is tried again until it is free. The legs here name no caller
-    // (no dot in the id), which is what puts the emitting service on the arrow.
+    // (no dot in the id), which is the one case that falls back to the writer's name.
     const model = modelOfObservations([
         observed('one', 'a b', {to: 'c d', seq: '1'}),
         observed('two', 'a_b_2', {to: 'c d', seq: '2'}),
@@ -593,27 +594,33 @@ t.test('the same model renders the same text, and layout cannot change it', t =>
         observed('payer.quote.rates', 'payer', {to: 'hub', seq: '2', step: 'quote'}),
         observed('payer.discovery.parties', 'payer', {to: 'hub', seq: '1', step: 'discovery'}),
     ];
-    const first = renderSequence(modelOfObservations(observations, ['payer']));
-    const again = renderSequence(modelOfObservations([...observations].reverse(), ['payer']));
+    const first = renderSequence(modelOfObservations(observations));
+    const again = renderSequence(modelOfObservations([...observations].reverse()));
     t.equal(first, again, 'arrival order is not part of the output');
-    t.equal(
-        renderSequence(modelOfObservations(observations, ['payer'])),
-        first,
-        'and neither is the clock',
-    );
+    t.equal(renderSequence(modelOfObservations(observations)), first, 'and neither is the clock');
     t.end();
 });
 
-t.test('a participant a hand-built model omitted is still declared', t => {
+t.test('a participant a model declares and no item names is still declared first', t => {
     // The model is public and the renderer is total: an undeclared participant would
-    // be a mermaid name mermaid invents, in an order the model did not choose.
-    const model = modelOfObservations([observed('payer.b', 'payer', {to: 'hub'})], ['payee']);
-    t.same(
-        renderSequence(model)
+    // be a mermaid name mermaid invents, in an order the model did not choose. The
+    // builders take their participants from the calls, so a model that declares one is
+    // built by hand — which is what this does.
+    const model = modelOfObservations([observed('payer.b', 'payer', {to: 'hub'})]);
+    const declared = (source: {services: string[]; items: DiagramItem[]}): string[] =>
+        renderSequence(source)
             .split('\n')
-            .filter(line => line.startsWith('    participant')),
-        ['    participant payee', '    participant payer', '    participant hub'],
+            .filter(line => line.startsWith('    participant'))
+            .map(line => line.slice(4));
+    t.same(
+        declared({services: ['payee'], items: [...model.items]}),
+        ['participant payee', 'participant payer', 'participant hub'],
         'the declared order first, then whoever the items name',
+    );
+    t.same(
+        declared(model),
+        ['participant payer', 'participant hub'],
+        'and a model the builders produced declares the units its call names',
     );
     t.end();
 });

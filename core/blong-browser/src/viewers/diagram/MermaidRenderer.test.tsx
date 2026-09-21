@@ -1,5 +1,6 @@
-import {render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {Theme} from '../../components/Theme/Theme.js';
+import {render, screen, waitFor} from '../../test/render.js';
 import MermaidRenderer from './MermaidRenderer.js';
 
 /**
@@ -15,7 +16,16 @@ import MermaidRenderer from './MermaidRenderer.js';
  * asked, what it is initialised with, and what is left behind afterwards (F-212,
  * F-213).
  */
-const mermaid = vi.hoisted(() => ({initialize: vi.fn(), render: vi.fn()}));
+const mermaid = vi.hoisted(() => ({
+    initialize: vi.fn(),
+    render: vi.fn(),
+    /**
+     * The theme mermaid is holding, as `initialize` last set it. Deliberately *not*
+     * reset between tests: it is global configuration, it outlives a component, and
+     * a mock that forgot it would let a renderer that stopped re-initialising pass.
+     */
+    theme: undefined as string | undefined,
+}));
 
 vi.mock('mermaid', () => ({default: mermaid}));
 
@@ -28,9 +38,9 @@ function workingElement(id: string): void {
     document.body.append(wrapper);
 }
 
-/** The drawing mermaid hands back as a string, carrying the id it drew under. */
+/** The drawing mermaid hands back, carrying the id — and the theme — it drew under. */
 function drawing(id: string): string {
-    return `<svg id="${id}" viewBox="0 0 1 1"></svg>`;
+    return `<svg id="${id}" data-theme="${mermaid.theme}" viewBox="0 0 1 1"></svg>`;
 }
 
 /** Let React finish every render and effect it has already scheduled. */
@@ -38,14 +48,26 @@ async function settle(): Promise<void> {
     for (let tick = 0; tick < 5; tick += 1) await new Promise(resolve => setTimeout(resolve, 0));
 }
 
+/** The theme the diagram on screen was drawn with. */
+async function drawnTheme(): Promise<string | undefined> {
+    const drawn = await waitFor(() => {
+        const element = document.querySelector('[data-diagram-rendered] svg');
+        expect(element).toBeTruthy();
+        return element as SVGElement;
+    });
+    return drawn.getAttribute('data-theme') ?? undefined;
+}
+
 beforeEach(() => {
-    localStorage.removeItem('blong-browser-dark-mode');
     mermaid.initialize.mockClear();
     mermaid.render.mockReset();
     mermaid.render.mockImplementation(async (id: string) => ({
         svg: drawing(id),
         diagramType: 'sequence',
     }));
+    mermaid.initialize.mockImplementation(({theme}: {theme?: string}) => {
+        mermaid.theme = theme;
+    });
 });
 
 afterEach(() => {
@@ -112,28 +134,52 @@ describe('MermaidRenderer', () => {
         expect(mermaid.render).not.toHaveBeenCalled();
     });
 
-    it('initialises mermaid for the theme in force, and again when the theme changes', async () => {
-        const light = render(<MermaidRenderer diagram={DIAGRAM} />);
-        await waitFor(() => expect(document.querySelector('[data-diagram-rendered]')).toBeTruthy());
+    it('draws in the palette the page is in', async () => {
+        render(
+            <Theme theme={{type: 'compact', palette: 'light'}}>
+                <MermaidRenderer diagram={DIAGRAM} />
+            </Theme>,
+        );
+        expect(await drawnTheme()).toBe('neutral');
+    });
+
+    it('draws dark where no theme is in force, which is the platform default', async () => {
+        // A viewer used outside `<Theme>` still has to draw something, and the
+        // platform's own default is dark — the app config, the portal's
+        // `DEFAULT_THEME` and the shared story decorator all say so.
+        render(<MermaidRenderer diagram={DIAGRAM} />);
+        expect(await drawnTheme()).toBe('dark');
+    });
+
+    it('redraws when the palette changes under it, and leaves nothing behind', async () => {
+        const light = render(
+            <Theme theme={{type: 'compact', palette: 'light'}}>
+                <MermaidRenderer diagram={DIAGRAM} />
+            </Theme>,
+        );
+        expect(await drawnTheme()).toBe('neutral');
         light.unmount();
 
-        localStorage.setItem('blong-browser-dark-mode', 'true');
-        render(<MermaidRenderer diagram={DIAGRAM} />);
-
-        // Asserted after the change rather than before it: the leading light render
-        // is what guarantees the initialisation below is a *change* of theme, so the
-        // expectation does not depend on which test ran first.
-        await waitFor(() =>
-            expect(mermaid.initialize).toHaveBeenLastCalledWith(
-                expect.objectContaining({
-                    theme: 'dark',
-                    // Mermaid's own error diagram is redundant — the fallback shows
-                    // the text — and it is abandoned on `document.body` when drawn.
-                    suppressErrorRendering: true,
-                    securityLevel: 'strict',
-                    startOnLoad: false,
-                }),
-            ),
+        render(
+            <Theme theme={{type: 'compact', palette: 'dark'}}>
+                <MermaidRenderer diagram={DIAGRAM} />
+            </Theme>,
         );
+
+        // Initialised with the theme that is now in force, not the one the first
+        // diagram happened to see (D-235) — and with the two settings that keep a
+        // refused diagram from littering the document: `strict` sanitises what is
+        // injected, `suppressErrorRendering` stops mermaid drawing its own error
+        // diagram into an element it then abandons (F-213).
+        expect(await drawnTheme()).toBe('dark');
+        expect(mermaid.initialize).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                theme: 'dark',
+                suppressErrorRendering: true,
+                securityLevel: 'strict',
+                startOnLoad: false,
+            }),
+        );
+        expect(document.querySelectorAll('[id^="dblong-diagram-"]').length).toBe(0);
     });
 });

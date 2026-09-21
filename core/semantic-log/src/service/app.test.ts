@@ -986,6 +986,9 @@ t.test('an execution with no calls still diagrams, saying there is nothing to dr
     const response = await app.inject({method: 'GET', url: `/flows/${flowId}/diagram`});
     t.equal(response.statusCode, 200);
     t.same(response.json().observed.legs, []);
-    t.equal(response.json().diagram, 'sequenceDiagram\n    autonumber\n    participant payer\n');
+    // A participant is the unit a call names, so an execution whose records carry no call
+    // names none: the diagram is the empty one rather than a participant invented from the
+    // process that wrote the records. Which process wrote them is still on `observed`.
+    t.equal(response.json().diagram, 'sequenceDiagram\n    autonumber\n');
     t.end();
 });

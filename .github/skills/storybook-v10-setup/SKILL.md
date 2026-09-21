@@ -1,6 +1,11 @@
 ---
 name: storybook-v10-setup
-description: Initial Storybook v10 setup and configuration for React/TypeScript projects. Use this skill for any first-time Storybook installation or major configuration task — even if the user just says 'set up Storybook', 'add Storybook to this project', or 'configure addons'. Covers addon setup, monorepo composition, and CI/CD integration. For development workflow and testing patterns, see the storybook-testing-workflow skill.
+description:
+    Initial Storybook v10 setup and configuration for React/TypeScript projects. Use this skill for
+    any first-time Storybook installation or major configuration task — even if the user just says
+    'set up Storybook', 'add Storybook to this project', or 'configure addons'. Covers addon setup,
+    monorepo composition, and CI/CD integration. For development workflow and testing patterns, see
+    the storybook-testing-workflow skill.
 ---
 
 # Storybook v10 Component Testing
@@ -76,7 +81,7 @@ Add to `package.json`:
         "@storybook/addon-a11y": "^10.2.14",
         "@storybook/addon-docs": "^10.2.14",
         "@storybook/test-runner": "^0.24.2",
-        "@playwright/test": "^1.40.0",
+        "@playwright/test": "^1.63.0",
         "jest-image-snapshot": "^6.4.0"
     },
     "scripts": {

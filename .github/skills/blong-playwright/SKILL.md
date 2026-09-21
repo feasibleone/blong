@@ -111,54 +111,55 @@ Two traps it settles cheaply:
   server-side tap test passes while every page fails: methods are routed only when the realm's
   `gateway` layer declares them.
 - **`Authorization denied: method "x" not allowed` means the grant lists the wrong names.** A
-  capability lists the *called method names*, dotted (`blong.flow.find`), not handler names
+  capability lists the _called method names_, dotted (`blong.flow.find`), not handler names
   (`blongFlowFind`).
 
 ### The app is served under `/s/`
 
 `defineBlongViteConfig` serves every package under `base: '/s/'`. `defineBlongConfig` therefore sets
 `baseURL` to `http://localhost:<port>/s/` and the fixture navigates with `page.goto('./')`. An
-origin-absolute `page.goto('/')` resolves *past* the base and lands on a 404 page — which then looks
+origin-absolute `page.goto('/')` resolves _past_ the base and lands on a 404 page — which then looks
 exactly like a login form that never appeared.
 
 ### Errors must reach the output, and something must prove it
 
 - Console errors and warnings are echoed to stdout as `[browser] <type>: <text> (<url>:<line>)`, and
   collected on `portal.browserErrors`.
-- An **uncaught exception** (`pageerror`) is treated as fatal: it is collected, it fails the test even
-  when the assertion that followed passed, and any subsequent wait aborts at once instead of waiting
-  out its timeout.
+- An **uncaught exception** (`pageerror`) is treated as fatal: it is collected, it fails the test
+  even when the assertion that followed passed, and any subsequent wait aborts at once instead of
+  waiting out its timeout.
 - App-level call failures are logged by the handler proxy as `[blong] <method> failed`, which also
   covers validation failures that show no popup at all.
-- `realm/blong-gateway/test/errors.play.ts` is the proof spec for this path: one test asserts what was
-  collected, and one is marked `test.fail(true, …)` so the failing path is exercised while the run
-  stays green.
+- `realm/blong-gateway/test/errors.play.ts` is the proof spec for this path: one test asserts what
+  was collected, and one is marked `test.fail(true, …)` so the failing path is exercised while the
+  run stays green.
 
 ### Writing page specs
 
 - `openPages` states a realm's pages as a list; `searchText` pins the rows a capture should show and
   `mask` hides the cells whose value cannot repeat (a minted id, a wall clock).
-- **`searchText` pins *which* rows, not *how many*.** A table that grows during a run — a change
+- **`searchText` pins _which_ rows, not _how many_.** A table that grows during a run — a change
   digest, a list of what has been observed so far — cannot be captured whole however well it is
-  filtered: the row count alone differs run to run. Give that page a `region` and capture the row
-  it is about, usually the newest one.
+  filtered: the row count alone differs run to run. Give that page a `region` and capture the row it
+  is about, usually the newest one.
 - **A DataTable renders its empty state as a row**, so `tbody tr` matches "Nothing observed yet" as
   readily as data. Recognise a data row by a cell it renders — excluding the empty state by class or
   text reads the same whether it is right or wrong.
 - Never regenerate baselines to make a suite green: `--update-snapshots=all` bakes in whatever the
   pages showed, including an error dialog. Open the images.
-- `captureDiagram` (from `blong-browser/playwright/diagram`) screenshots a rendered diagram and writes
-  its mermaid text to a committed markdown artifact, read from the renderer's `data-diagram-text` when
-  the caller does not supply it. Artifacts are rewritten only with `BLONG_REGENERATE_DIAGRAMS=1` and
-  compared otherwise.
-- **One portal, one config provider.** A realm that ships pages of its own answers `portalConfigGet`,
-  and the portal asks a single handler for it: loading a second such realm into a suite replaces that
-  suite's menu, and the realm's own model specs then time out on `portal-menu-<subject>` — one child
-  entry cost thirteen failures in `realm/blong-gateway`. Check which handler wins before adding a
-  page-owning realm to another, and treat the other realm's suite as the evidence.
-- **A path of the app cannot 404.** The dev server answers the SPA shell for unknown paths, so a spec
-  that needs a failed request has to ask an origin that cannot answer. The browser's message names no
-  URL, which is exactly what the collected `[browser]` note carries.
+- `captureDiagram` (from `blong-browser/playwright/diagram`) screenshots a rendered diagram and
+  writes its mermaid text to a committed markdown artifact, read from the renderer's
+  `data-diagram-text` when the caller does not supply it. Artifacts are rewritten only with
+  `BLONG_REGENERATE_DIAGRAMS=1` and compared otherwise.
+- **One portal, one config provider.** A realm that ships pages of its own answers
+  `portalConfigGet`, and the portal asks a single handler for it: loading a second such realm into a
+  suite replaces that suite's menu, and the realm's own model specs then time out on
+  `portal-menu-<subject>` — one child entry cost thirteen failures in `realm/blong-gateway`. Check
+  which handler wins before adding a page-owning realm to another, and treat the other realm's suite
+  as the evidence.
+- **A path of the app cannot 404.** The dev server answers the SPA shell for unknown paths, so a
+  spec that needs a failed request has to ask an origin that cannot answer. The browser's message
+  names no URL, which is exactly what the collected `[browser]` note carries.
 
 ### CI / automated runs
 
@@ -260,7 +261,7 @@ Add to `package.json`:
         "playwright:update": "blong-dev playwright --update-snapshots"
     },
     "devDependencies": {
-        "@playwright/test": "^1.52.0"
+        "@playwright/test": "^1.63.0"
     }
 }
 ```
@@ -484,7 +485,7 @@ createAndEditModel(test, expect, {
 
 **A detail whose rows are not deterministic must be filtered.** Declare `filters: {column: 'text'}`
 on the detail: the helper fills the column filter input (`${object}-filter-${column}`, see the
-*Column filters* section of the blong-model skill) before every capture, so the screenshot shows
+_Column filters_ section of the blong-model skill) before every capture, so the screenshot shows
 only the rows the spec means to show. The ACL matrix is the case that needs it — its rows are every
 role, user and organization in the graph, so without a filter the capture changes with whatever else
 the database holds:
@@ -502,7 +503,7 @@ details: [
 ];
 ```
 
-A detail that is *created* by the spec also needs a `search` text, or the edit test opens whatever
+A detail that is _created_ by the spec also needs a `search` text, or the edit test opens whatever
 row the browse lists first — the ACL matrix spec matches its own role's description
 (`search: 'matrix role'`) for that reason.
 

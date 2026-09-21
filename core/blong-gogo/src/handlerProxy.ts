@@ -1,7 +1,7 @@
 import type {Adapter, ILib, IMeta} from '@feasibleone/blong/types';
 import merge from 'ut-function.merge';
 
-import {camelToSentence, parseAnnotatedKey, portLogCalls} from './lib.ts';
+import {camelToSentence, methodParts, parseAnnotatedKey, portLogCalls} from './lib.ts';
 import {declareCall} from './semanticContext.ts';
 
 /**
@@ -55,15 +55,48 @@ function rename<T>(value: string, fn: T): T {
 }
 
 /**
- * The name a leg can hold.
+ * The name a leg can hold: the wire name the call will actually reach.
  *
  * A handler-group call arrives as a path (`db/accessRoleEnsure`), and its two halves are
  * exactly what a leg is made of - the callee namespace and the method - so a separator
- * becomes a dot. Lookups keep the original name: only the declaration is normalised,
- * because the registry knows the path and the leg grammar does not.
+ * becomes a dot; a handler name arrives in camel case (`accessPermissionList`) and the wire
+ * name it dispatches under is its dotted form (`access.permission.list`), which is what the
+ * declaration has to carry: the callee half of a leg is read as the namespace the call was
+ * aimed at, so a handler name there would name a participant that does not exist. Lookups
+ * keep the original name: only the declaration is normalised, because the registry knows the
+ * path and the leg grammar does not.
  */
 function legName(name: string): string {
-    return name.includes('/') ? name.replace(/\//g, '.') : name;
+    return methodParts(name).replace(/\//g, '.');
+}
+
+/**
+ * The unit that declares a call: the namespace the calling port serves.
+ *
+ * A leg id names the **logical unit** that made the call - the namespace, which is what a
+ * call targets and what becomes a Kubernetes service - so it cannot name the port. A port id
+ * is an artefact of how one process happens to be wired (`srv.db` hosts the db handlers of
+ * every realm, `login.loginDispatch` is one realm's dispatch), and a diagram drawn from it
+ * would label its arrows with names nothing is deployed as. The process's own name is
+ * deliberately not a candidate either: one process hosts many namespaces, so it would draw
+ * every participant of a monolith as one.
+ *
+ * A port that serves several namespaces - the shared subject orchestrator answers for each
+ * realm that contributes to it - declares its calls under the first it serves. A layer-built
+ * proxy whose port names no namespace falls back to the layer's name, and the placeholder is
+ * the last resort rather than the default: a leg whose first segment is not a usable name is
+ * rejected by the grammar, and that rejection is silent (F-198).
+ */
+function callerOf(port: unknown, layerName: string | undefined): string {
+    const namespace = (
+        port as {config?: {namespace?: string | string[] | Record<string, unknown>}} | undefined
+    )?.config?.namespace;
+    const first = Array.isArray(namespace)
+        ? namespace.find(entry => typeof entry === 'string')
+        : typeof namespace === 'object' && namespace !== null
+          ? Object.keys(namespace)[0]
+          : namespace;
+    return String(first || layerName || 'port');
 }
 
 /**
@@ -86,15 +119,10 @@ export default function createHandlerProxy(
         get(target: unknown, handlerName: string) {
             if (typeof handlerName !== 'string') return undefined;
 
-            // The port making the call names the leg it declares: `access.db` for a handler
-            // group calling through its layer's proxy, `srv.subject` for the shared subject
-            // orchestrator. A layer-built proxy whose port has no id of its own falls back to
-            // the layer's name, because a leg whose first segment is not a real name is
-            // rejected by the grammar and that rejection is silent (F-198) - the placeholder
-            // is the last resort, not the default.
-            const callerId = String(
-                (port as unknown as {config?: {id?: string}})?.config?.id || layerName || 'port',
-            );
+            // The namespace this port serves names the leg it declares, so the arrow a diagram
+            // draws starts at a namespace rather than at the process or at the port. The route
+            // that owns the call is the exception and declares itself (`Gateway`).
+            const callerId = callerOf(port, layerName);
 
             function resolveHandler(resolvedName: string): (...params: unknown[]) => unknown {
                 let fn: (() => unknown) | undefined;

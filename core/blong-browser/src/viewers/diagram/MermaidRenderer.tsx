@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {useDarkMode} from '../../hooks/useDarkMode.js';
+import {useThemePalette} from '../../components/Theme/Theme.js';
 import type {IDiagramRendererProps} from './rendererRegistry.js';
 
 /**
@@ -39,6 +39,11 @@ import type {IDiagramRendererProps} from './rendererRegistry.js';
  *   parses first, and `''` is a parse failure — so asking it to draw one spends an
  *   attempt, a temporary element and a console error to learn what the render below
  *   already knows.
+ * - **Its colours are the page's.** The theme comes from the palette in force, not from
+ *   a preference of the diagram's own: a diagram in a mode the surrounding page is not
+ *   in reads as pasted in, and the earlier reading of the dark-mode hook — an object,
+ *   always truthy, so "dark" whatever the page said (F-216) — was a coincidence that
+ *   held only while every surface happened to be dark.
  */
 /** The theme mermaid was last initialised with; `mermaid.initialize` is global. */
 let appliedTheme: string | undefined;
@@ -52,12 +57,16 @@ interface IRenderState {
 }
 
 export default function MermaidRenderer({diagram, className}: IDiagramRendererProps) {
-    // The primitive, not the hook's result object. A dependency is compared by
-    // identity, and the object was new on every render, so an effect that also writes
-    // state re-ran forever — a fresh diagram per pass, in a page that never settles
-    // (F-212). The hook now hands out one result object as well (D-234); this is the
-    // second half of the same fix, because what the effect reads is the theme.
-    const {isDark} = useDarkMode();
+    // The palette the page is showing, from the theme system — the portal's palette and
+    // `Theme`'s own default of `dark`. Outside a `<Theme>` there is no page to match, and
+    // the platform's default is what the app config, the portal's `DEFAULT_THEME` and
+    // every story decorator already pass, so that is what an unmatched diagram draws in
+    // (D-238).
+    //
+    // A primitive, and deliberately: this is an effect dependency, a dependency is
+    // compared by identity, and an object here re-ran the effect after every render —
+    // one diagram draw per pass, in a page that never settles (F-212).
+    const isDark = (useThemePalette() ?? 'dark') === 'dark';
     const [state, setState] = useState<IRenderState>(() => ({diagram}));
 
     useEffect(() => {
@@ -72,8 +81,9 @@ export default function MermaidRenderer({diagram, className}: IDiagramRendererPr
                 const theme = isDark ? 'dark' : 'neutral';
                 // Only when the theme actually changed: `initialize` sets global
                 // configuration, and honouring the theme by initialising once left a
-                // diagram drawn in the mode the page was in when it first appeared —
-                // and left the theme a dependency that changed nothing (D-235).
+                // diagram drawn in the palette the page was in when it first appeared —
+                // which the theme switcher changes at runtime, so this is the normal
+                // path rather than a hypothetical one (D-235).
                 if (appliedTheme !== theme) {
                     mermaid.initialize({
                         startOnLoad: false,

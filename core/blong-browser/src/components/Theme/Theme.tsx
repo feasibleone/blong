@@ -17,8 +17,8 @@ import './glass.css';
 import './wood-assets.css';
 import './wood.css';
 
-import { addLocale, locale } from '../../primereact/index.js';
-import { updateGlassReflections } from './glassReflection.js';
+import {addLocale, locale} from '../../primereact/index.js';
+import {updateGlassReflections} from './glassReflection.js';
 import {
     FALLBACK_THEME_OPTION,
     loadThemeCss,
@@ -30,8 +30,8 @@ import {
     type IPrimeThemeOption,
 } from './themeRegistry.js';
 
-import { createContext, use, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { useAppStore } from '../../state/appStore.js';
+import {createContext, use, useCallback, useEffect, useRef, type ReactNode} from 'react';
+import {useAppStore} from '../../state/appStore.js';
 
 export type PaletteType = 'light' | 'dark';
 export type ThemeType = 'big' | 'compact';
@@ -137,6 +137,20 @@ export function useTheme(): IThemeContextValue {
     return context;
 }
 
+/**
+ * The palette in force, for a component that may be rendered outside `<Theme>`.
+ *
+ * `useTheme` throws where there is no provider, which is right for a component that
+ * *needs* the theme: without one it is being used wrongly, and a crash names the
+ * mistake. A viewer is not such a component — it draws what it is handed, and which
+ * colours it draws in is an appearance rather than a requirement — so it reads the
+ * palette when one is in force and gets `undefined` when none is, leaving the
+ * meaning of "no theme" to the caller.
+ */
+export function useThemePalette(): PaletteType | undefined {
+    return use(ThemeContext)?.palette;
+}
+
 interface IThemeProps {
     theme: IThemeConfig;
     children: ReactNode;
@@ -168,7 +182,9 @@ export function Theme({theme, children}: IThemeProps) {
     const defaultFolder = PRIMEREACT_PALETTE_THEMES[type][palette];
     const named = theme.name ? themeOptionByName(theme.name) : undefined;
     const baseFolder =
-        named && !named.option.variant ? resolveThemeFolder(named.option, named.palette) : defaultFolder;
+        named && !named.option.variant
+            ? resolveThemeFolder(named.option, named.palette)
+            : defaultFolder;
     const basePalette = named?.palette ?? paletteOfFolder(defaultFolder) ?? palette;
 
     // The option implied by the config — used until the user picks one. The
@@ -220,8 +236,7 @@ export function Theme({theme, children}: IThemeProps) {
     // Portal overlays (dropdowns, panels) mount OUTSIDE the `.blong-app-*`
     // wrapper, so expose a root marker class that the variant CSS can scope
     // those overlays to (e.g. `blong-theme-glass`).
-    const rootMarker =
-        variant === 'standard' ? null : `blong-theme-${variant}`;
+    const rootMarker = variant === 'standard' ? null : `blong-theme-${variant}`;
     useEffect(() => {
         if (!rootMarker) return undefined;
         const root = document.documentElement;
@@ -279,7 +294,9 @@ export function Theme({theme, children}: IThemeProps) {
         loadThemeCss(folder)
             .then(css => {
                 if (cancelled || !css || typeof document === 'undefined') return;
-                let element = document.getElementById('blong-prime-theme') as HTMLStyleElement | null;
+                let element = document.getElementById(
+                    'blong-prime-theme',
+                ) as HTMLStyleElement | null;
                 if (!element) {
                     element = document.createElement('style');
                     element.id = 'blong-prime-theme';

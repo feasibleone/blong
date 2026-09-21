@@ -11,7 +11,7 @@ open (1)
 
 - `F-175` · core/blong-browser — Dropping PrimeReact's filter row changes more than the filter UI
 
-resolved (9)
+resolved (10)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -25,6 +25,8 @@ resolved (9)
   writes state
 - `F-213` · core/blong-browser — Mermaid leaves its working element on document.body on every
   failure path
+- `F-216` · core/blong-browser — A condition that had always been an object flipped the diagram
+  theme to light
 
 <!-- /memory:index -->
 
@@ -151,3 +153,21 @@ Proven with a jsdom probe: after a failed render the body held one wrapper befor
 suppressErrorRendering: true plus a finally that removes the temporary wrapper and its sandbox twin;
 NotADiagram, Empty and ObservedFlow all render in Storybook with no leftover elements and a 739px
 page.
+
+### F-216 — A condition that had always been an object flipped the diagram theme to light
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+MermaidRenderer chose its theme by asking whether `dark` was truthy, where `dark` was
+`useDarkMode()` - the hook result object, always true. Every diagram this project has drawn was
+therefore dark by accident, and the committed captures say so: the diagram snapshots in
+core/blong-realm and realm/blong-gateway both show mermaid dark actor boxes. Making the condition
+honest (the F-212 fix destructures the boolean) turned both screenshots light, on pages whose
+palette is dark, which is how this was reported. Lesson: when a value is used as a condition, check
+what it is, because an object literal is always true; and when an honest reading moves a committed
+artifact, that artifact was the only place the accident was written down, so read the snapshots, not
+only the code.
+
+The viewer reads the palette from the theme system (D-238), so the dark theme is a decision rather
+than an accident; the unit test asserts both palettes and the fallback, and the ObservedFlow story
+draws #1f2020 again.

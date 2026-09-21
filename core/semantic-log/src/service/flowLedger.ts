@@ -65,7 +65,7 @@ const DEFAULT_STEP_LIMIT = 256;
 /** One observed traversal of one call, as one event reported it. */
 export interface LegObservation {
     leg: string;
-    /** The service that emitted the record — the caller, or the receiver. */
+    /** The process that emitted the record — information, never the caller. */
     service: string;
     /** The receiver the **caller** declared; absent on a receiver's own records. */
     to?: string;
@@ -174,6 +174,26 @@ interface LegSeen {
  */
 export function attributable(declaredTargets: number, receipts: number): boolean {
     return declaredTargets === 1 && receipts > 0;
+}
+
+/**
+ * The unit that declared a call: the first half of its leg id.
+ *
+ * A leg id is `<caller>.<called method>`, so its head names the **logical unit** that made
+ * the call — the namespace, in blong — and the arrow a diagram draws starts there. The
+ * process that wrote the record is *information* and never the condition: one process hosts
+ * many namespaces (in development, a whole suite), so an identity taken from the writer
+ * collapses every participant of a monolith into one, which is a property of how the
+ * deployment is split rather than of what happened (D-210).
+ *
+ * A leg id with no dot carries no caller to read — it names a call site and nothing about
+ * who holds it — so the writer is the only name left and is used. Exported because the
+ * ledger and the diagram must reach the same verdict about an arrow's source, and a second
+ * copy of the rule is how the two views drifted once already.
+ */
+export function callerOfLeg(leg: string, writer: string): string {
+    const at = leg.indexOf('.');
+    return at === -1 ? writer : leg.slice(0, at);
 }
 
 /** Per-execution state. */
@@ -586,14 +606,11 @@ export class FlowLedger {
             // is one attempt, and re-creating the entry would reset the flags below and
             // count the same attempt again — which is how the payer's discovery, logged
             // twice inside one leg, came to be reported as two calls.
-            // The caller is the service that wrote the record: the participant that made the
-            // call. Reading it off the leg id instead names the caller's *namespace*, which
-            // is wrong the moment a module is mounted under another name - the receiving
-            // scheme runs `flow/hub.ts` as `hubB`, so the id's head drew a `hub` nothing
-            // deployed, beside it, and the two schemes' hubs as one participant. What the leg
-            // is worth here is the *relationship*, and the two views of it have to agree: the
-            // ledger counts the ends and the diagram draws them.
-            const caller = observation.service;
+            // The caller is the leg id's own head — the logical unit that declared the call —
+            // so an arrow starts at a namespace and reads the same in a monolith and in
+            // microservices. The writer is a fallback for an id that names no caller, never
+            // the identity of the edge.
+            const caller = callerOfLeg(observation.leg, observation.service);
             const key = pairKey(caller, observation.to);
             if (!seen.declared.has(key)) {
                 seen.declared.set(key, {

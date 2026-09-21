@@ -74,10 +74,9 @@ otherwise:
 BLONG_REGENERATE_DIAGRAMS=1 node --run playwright -- test/blong.play.ts --update-snapshots
 ```
 
-Both ends of its arrow are named by _the deployment_, not by this realm: the caller is the service
-that emitted the record — the framework's own process, called `blong` unless `log.service` says
-otherwise — and the receiver is the namespace the leg id names. A monolith that configures neither
-draws the framework's process calling the `blong` namespace, and here the two names coincide — so
-the artifact is one arrow: an answer drawn back to the same participant would repeat the same
-caller, the same label and the same step. A crossed arrow (`--x`) is the other honest outcome: a
-call was declared and nothing answered it.
+Both ends of its arrow are read off the call, not off the deployment: the caller is the logical
+unit the leg id names — `gateway`, the public surface that received the request — and the receiver
+is the namespace it was aimed at. Naming either end after the process that happened to write the
+record would draw a monolith as a single participant, which is a property of how a suite is split
+rather than of what happened. A crossed arrow (`--x`) is the other honest outcome: a call was
+declared and nothing answered it.

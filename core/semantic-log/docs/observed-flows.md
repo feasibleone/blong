@@ -64,12 +64,12 @@ sequenceDiagram
 | call | caller → receiver | phase | position | declared | answered | declared in |
 | ---- | ----------------- | ----- | -------- | -------- | -------- | ----------- |
 | `payer.discovery.parties` | `payer` → `hub` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
-| `hub.discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:68` |
+| `hub.discovery.payee` | `hub` → `payee` | discovery | 1.1 | 1 | 1 | `flow/hub.ts:57` |
 | `payer.quote.rates` | `payer` → `hub` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
-| `hub.quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:99` |
-| `hub.quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:110` |
+| `hub.quote.fx` | `hub` → `fxp` | quote | 2.1 | 1 | 1 | `flow/hub.ts:58` |
+| `hub.quote.payee` | `hub` → `payee` | quote | 2.2 | 1 | 1 | `flow/hub.ts:59` |
 | `payer.transfer.submit` | `payer` → `hub` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
-| `hub.transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:141` |
+| `hub.transfer.deliver` | `hub` → `payee` | transfer | 3.1 | 1 | 1 | `flow/hub.ts:60` |
 <!-- END OBSERVED FLOWS: transfer.single -->
 <!-- BEGIN OBSERVED FLOWS: transfer.inter -->
 Participants: `payer`, `hubA`, `proxy`, `hubB`, `payee`, `fxp`. 13 calls observed across 1 execution(s).
@@ -87,8 +87,8 @@ sequenceDiagram
     payer->>hubA: payer.discovery.parties
     hubA->>proxy: hubA.discovery.proxy
     proxy->>hubB: proxy.discovery.corridor
-    hubB->>payee: hub.discovery.payee
-    payee-->>hubB: hub.discovery.payee
+    hubB->>payee: hubB.discovery.payee
+    payee-->>hubB: hubB.discovery.payee
     hubB-->>proxy: proxy.discovery.corridor
     proxy-->>hubA: hubA.discovery.proxy
     hubA-->>payer: payer.discovery.parties
@@ -96,10 +96,10 @@ sequenceDiagram
     payer->>hubA: payer.quote.rates
     hubA->>proxy: hubA.quote.proxy
     proxy->>hubB: proxy.quote.corridor
-    hubB->>fxp: hub.quote.fx
-    fxp-->>hubB: hub.quote.fx
-    hubB->>payee: hub.quote.payee
-    payee-->>hubB: hub.quote.payee
+    hubB->>fxp: hubB.quote.fx
+    fxp-->>hubB: hubB.quote.fx
+    hubB->>payee: hubB.quote.payee
+    payee-->>hubB: hubB.quote.payee
     hubB-->>proxy: proxy.quote.corridor
     proxy-->>hubA: hubA.quote.proxy
     hubA-->>payer: payer.quote.rates
@@ -107,8 +107,8 @@ sequenceDiagram
     payer->>hubA: payer.transfer.submit
     hubA->>proxy: hubA.transfer.proxy
     proxy->>hubB: proxy.transfer.corridor
-    hubB->>payee: hub.transfer.deliver
-    payee-->>hubB: hub.transfer.deliver
+    hubB->>payee: hubB.transfer.deliver
+    payee-->>hubB: hubB.transfer.deliver
     hubB-->>proxy: proxy.transfer.corridor
     proxy-->>hubA: hubA.transfer.proxy
     hubA-->>payer: payer.transfer.submit
@@ -119,14 +119,14 @@ sequenceDiagram
 | `payer.discovery.parties` | `payer` → `hubA` | discovery | 1 | 1 | 1 | `flow/payer.ts:66` |
 | `hubA.discovery.proxy` | `hubA` → `proxy` | discovery | 1.1 | 1 | 1 | `flow/hubA.ts:53` |
 | `proxy.discovery.corridor` | `proxy` → `hubB` | discovery | 1.1.1 | 1 | 1 | `flow/proxy.ts:45` |
-| `hub.discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:68` |
+| `hubB.discovery.payee` | `hubB` → `payee` | discovery | 1.1.1.1 | 1 | 1 | `flow/hub.ts:63` |
 | `payer.quote.rates` | `payer` → `hubA` | quote | 2 | 1 | 1 | `flow/payer.ts:82` |
 | `hubA.quote.proxy` | `hubA` → `proxy` | quote | 2.1 | 1 | 1 | `flow/hubA.ts:87` |
 | `proxy.quote.corridor` | `proxy` → `hubB` | quote | 2.1.1 | 1 | 1 | `flow/proxy.ts:46` |
-| `hub.quote.fx` | `hubB` → `fxp` | quote | 2.1.1.1 | 1 | 1 | `flow/hub.ts:99` |
-| `hub.quote.payee` | `hubB` → `payee` | quote | 2.1.1.2 | 1 | 1 | `flow/hub.ts:110` |
+| `hubB.quote.fx` | `hubB` → `fxp` | quote | 2.1.1.1 | 1 | 1 | `flow/hub.ts:64` |
+| `hubB.quote.payee` | `hubB` → `payee` | quote | 2.1.1.2 | 1 | 1 | `flow/hub.ts:65` |
 | `payer.transfer.submit` | `payer` → `hubA` | transfer | 3 | 1 | 1 | `flow/payer.ts:121` |
 | `hubA.transfer.proxy` | `hubA` → `proxy` | transfer | 3.1 | 1 | 1 | `flow/hubA.ts:119` |
 | `proxy.transfer.corridor` | `proxy` → `hubB` | transfer | 3.1.1 | 1 | 1 | `flow/proxy.ts:47` |
-| `hub.transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:141` |
+| `hubB.transfer.deliver` | `hubB` → `payee` | transfer | 3.1.1.1 | 1 | 1 | `flow/hub.ts:66` |
 <!-- END OBSERVED FLOWS: transfer.inter -->
