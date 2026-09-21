@@ -239,7 +239,9 @@ export function defineBlongConfig(
         // Test-level timeout stays generous (network + dev-server compile can be
         // slow, and a model form with several detail tabs captures a screenshot
         // per tab). Element-level waits in the Portal helpers deliberately use
-        // the shorter BLONG_ELEMENT_TIMEOUT (5s) so missing elements fail fast.
+        // the shorter BLONG_ELEMENT_TIMEOUT (5s) so missing elements fail fast —
+        // except the first element after a navigation, which is the app booting
+        // rather than an element being missing and gets BLONG_BOOT_TIMEOUT.
         timeout: 60_000,
         retries: 1,
         use: {

@@ -85,6 +85,14 @@ node --run playwright
 - **Element waits are short on purpose.** `BLONG_ELEMENT_TIMEOUT` defaults to 5s and every Portal
   helper uses it, so a missing element fails in seconds. Override it per run with
   `BLONG_ELEMENT_TIMEOUT=2000` while iterating; a broken page then costs seconds, not minutes.
+- **The app's first paint is not an element wait.** The dev server serves the module graph one file
+  per request, so a freshly loaded page is blank for seconds — 3-4.5s measured in CI before the
+  app's first log line. `Portal.login` therefore waits for the login form under `BLONG_BOOT_TIMEOUT`
+  (default 15s, same env-var override), because a fill bounded by the 5s element budget is racing
+  the server and reports a correct render as `page.fill: Timeout 5000ms exceeded`. Everything after
+  that first element keeps the element budget. Keep any boot wait inside the realm's own test
+  timeout: `core/blong-realm` runs 20s smoke checks, so 15s is the ceiling a framework default can
+  assume.
 - **A test timeout caps its assertions.** An `expect(...).toBeVisible({timeout: 30_000})` inside a
   20s test never sees its 30s: the test times out first. When a single step genuinely needs longer —
   mermaid's lazily loaded chunk on a cold run, a first Vite optimisation pass — raise it with

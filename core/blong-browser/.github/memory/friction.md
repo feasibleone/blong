@@ -11,7 +11,7 @@ open (1)
 
 - `F-175` · core/blong-browser — Dropping PrimeReact's filter row changes more than the filter UI
 
-resolved (11)
+resolved (13)
 
 - `F-086` · core/blong-browser — `?inline` CSS is denied under Vitest but loads in the real app
 - `F-087` · core/blong-browser — Model pages never populated their pivot-table dropdowns
@@ -28,6 +28,9 @@ resolved (11)
 - `F-216` · core/blong-browser — A condition that had always been an object flipped the diagram
   theme to light
 - `F-222` · core/blong-browser — A shell-wide overflow fix moved the problem into the page captures
+- `F-223` · core/blong-browser — A login fill was racing the app's boot, not a missing element
+- `F-224` · core/blong-browser — A diagram screenshot was 358px tall on one machine and 359px on the
+  next
 
 <!-- /memory:index -->
 
@@ -188,3 +191,43 @@ keeping it, and prefer bounding the content that overflows.
 
 Resolved by fixing the page instead: Flow.tsx bounds its list and diagram (D-243), the shell change
 was reverted, and the realm and gateway suites pass twice each.
+
+### F-223 — A login fill was racing the app's boot, not a missing element
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+Four CI Playwright failures were all page.fill: Timeout 5000ms exceeded on input[name=username],
+reported as 'the login form never appeared'. The traces said otherwise: in every one the app's first
+boot log lands 3.3-4.5s after page.goto() resolved with load, and the input does not exist at all
+when the fill starts, because the dev server serves the module graph one file per request. The
+fill's timeout covers waiting for the locator and filling it, so a 5s budget was spent on the server
+compiling. Lesson: 'the first element after a navigation' is a boot wait in element clothing -
+measure when the app's first log line appears before deciding an element budget is too small, and
+give that one wait its own budget.
+
+Fixed by D-246: Portal.login waits for the login form under BLONG_BOOT_TIMEOUT (15s) and fills it
+under the element budget, so the fill no longer spends its 5s on the server compiling. Verified by
+A/B with a cold Vite cache: with the wait disabled the form is absent (locator.waitFor Timeout 1ms
+exceeded) and with it the same spec passes; realm/blong-party is 16/16 green including the two specs
+that failed and the two that were flaky.
+
+### F-224 — A diagram screenshot was 358px tall on one machine and 359px on the next
+
+> _2026-09-21 · core/blong-browser · resolved_
+
+The gateway diagram capture failed as a bare size mismatch: expected 1600x358, received 1600x359,
+with the two images identical in content apart from a shift that grows towards the bottom. Decoding
+the trace's frame snapshot gave the SVG's viewBox (770x355, so a whole-pixel drawing), and row
+profiling showed the wrapper carried 3px of line-box descender: an inline SVG sits on a text
+baseline, and those pixels are fractional. Which of 358/359 the clip snapped to then depended on
+where the element sat on the pixel grid, which is why the same CI run rendered the realm's diagram
+at 358 (passing against a 358 baseline) and the gateway's at 359 (failing). Fix: display:block on
+the injected SVG, after which the wrapper is exactly the drawing's 355px. Lesson: a screenshot of an
+element whose height is a *sum* of an integer and a font's descender is a coin flip, and
+toHaveScreenshot refuses to compare images of different sizes at all - look for the fractional
+addend before accepting a new baseline.
+
+Fixed by MermaidRenderer.css (display:block on the injected SVG) and the two regenerated baselines
+(observed-flow-gateway, observed-flow-realm), both now exactly the drawing height of 355px rather
+than a font-dependent 358/359. Eight consecutive green runs of the gateway spec, and the realm suite
+is 7/7.

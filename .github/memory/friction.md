@@ -19,7 +19,7 @@ open (8)
   loading
 - `F-221` · cross-cutting — A diagram baseline follows the run's log content, not just the code
 
-resolved (21)
+resolved (22)
 
 - `F-083` · cross-cutting — The workspace markdown validator mis-resolves two link forms
 - `F-084` · cross-cutting — `[CRITICAL_GUARDRAILS]` headings trip a 'No link definition found'
@@ -44,6 +44,7 @@ resolved (21)
 - `F-147` · ci — Four independent CI causes behind three apparently unrelated failures
 - `F-148` · ci — A nested `tap` run ignores `--reporter=json` and reports zero tests
 - `F-193` · cross-cutting — One portal can only be configured by one handler
+- `F-225` · ci — tap 30s subprocess default is smaller than an integration file startup
 
 <!-- /memory:index -->
 
@@ -366,3 +367,25 @@ other realm own suite as the evidence.
 
 orchestrator/portal/portalConfigMerge.ts merges every portalConfigGet provider via
 mergePortalConfigs, and portalMerge.play.ts proves two menus compose
+
+### F-225 — tap 30s subprocess default is smaller than an integration file startup
+
+> _2026-09-21 · ci · resolved_
+
+realm/blong-access failed CI with a single `timeout!` failure and 52 tests passing, which reads as a
+hung suite. Running the same file locally took 25.9s, and instrumenting it showed where the time
+goes: 13.5s of `load()` (both platforms through the runtime) before any test runs, 0.5s of
+`start()`, 2.7s of tests, 2.3s of `stop()`.
+
+tap's default is 30 seconds for the subprocess, and it is the same number tap hands the child as the
+per-test timeout, so one budget answers two questions. `--timeout` takes **seconds**, which tap's
+own source comment ("timeout in ms for test subprocesses") contradicts: `--timeout=1` reproduces the
+CI failure exactly, while `--timeout=20000` does nothing at all.
+
+Lesson: a tap file whose fixed startup dominates its runtime is judged against a budget it cannot
+see, and `timeout!` names the failure after the mechanism rather than the cause — measure the phases
+before believing a suite hung.
+
+Fixed by D-247: blong-dev test passes --timeout=180 unless the invocation sets its own.
+realm/blong-access now runs its 52 tap tests green in ~26s, and --timeout=1 still reproduces the CI
+failure, so the override path works.

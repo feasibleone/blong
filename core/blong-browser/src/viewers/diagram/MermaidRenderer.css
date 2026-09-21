@@ -1,0 +1,22 @@
+/**
+ * The drawn diagram is a block box.
+ *
+ * Mermaid lays a sequence diagram out in whole pixels and hands back an SVG of that
+ * size, but an **inline** SVG also sits on a text baseline: the wrapper then measures
+ * the drawing *plus* the line box's descender, a few pixels of nothing that belong to
+ * the surrounding font. Those pixels are fractional, so the wrapper's height lands
+ * between two device pixels — 358.4px tall, say — and which of 358/359 it is snapped to
+ * depends on where the element happens to sit on the pixel grid, not on the diagram.
+ *
+ * That is invisible to a reader and fatal to a capture: a Playwright element screenshot
+ * is clipped to whole pixels, and `toHaveScreenshot` refuses to compare two images whose
+ * sizes differ at all. So the same diagram is a passing baseline on one run and
+ * `Expected an image 1600px by 358px, received 1600px by 359px` on the next — the
+ * failure F-224 records, where nothing about the drawing had changed.
+ *
+ * A block box makes the wrapper exactly as tall as the drawing, on every machine and in
+ * every run, because the drawing's height is mermaid's own integer.
+ */
+[data-diagram-rendered]>svg {
+    display: block;
+}

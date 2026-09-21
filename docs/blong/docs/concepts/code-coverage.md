@@ -47,8 +47,13 @@ flowchart LR
 Each package that contributes to coverage runs `blong-dev test`, which wraps `tap` with:
 
 ```bash
---allow-incomplete-coverage --coverage-report=none
+--allow-incomplete-coverage --coverage-report=none --timeout=180
 ```
+
+The timeout is raised from tap's 30s default because an integration entry point loads both platforms
+before its first test (measured at 13.5s of a ~26s file in `realm/blong-access`), which a cold CI
+runner can push past 30s — reported as `✖ timeout!` with no failing test. An explicit `--timeout` in
+the invocation wins over it.
 
 This tells tap to collect V8 coverage (which it does by default via `@tapjs/processinfo`) but skip
 generating its own report. The raw V8 coverage JSON files land in `.tap/coverage/` within each

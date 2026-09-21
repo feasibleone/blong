@@ -308,6 +308,10 @@ collection paths feed into the aggregation:
 Each package's `ci-test` runs `blong-dev test`, which wraps `tap` with:
 
 - `--allow-incomplete-coverage --coverage-report=none`
+- `--timeout=180` — tap's own default of 30s is smaller than the fixed cost of an integration entry
+  point, which loads both platforms before its first test (measured: 13.5s of a ~26s file), so on a
+  cold CI runner the file was reported as `✖ timeout!` with every test inside it passing. An
+  explicit `--timeout` in the invocation wins over this default.
 - V8 coverage is saved into the package's `.tap/coverage/` directory automatically.
 
 ### Playwright collection (full-stack browser tests)

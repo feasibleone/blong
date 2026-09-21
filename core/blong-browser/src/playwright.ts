@@ -36,6 +36,29 @@ export {expect, Page};
  */
 export const BLONG_ELEMENT_TIMEOUT = Number(process.env['BLONG_ELEMENT_TIMEOUT']) || 5_000;
 
+/**
+ * Timeout (ms) for the app's **first** element after a navigation.
+ *
+ * The element budget above covers elements inside an application that is already
+ * running. The login form is not one of them: the dev server serves the module graph
+ * one file per request, so the app starts executing seconds after `page.goto()` has
+ * resolved with `load`. Measured in CI, the app's first boot log appears 3-4.5s after
+ * the document loaded and the form is in the DOM ~6s in, and the page is blank until
+ * then — with several suites booting in parallel on a cold runner it is slower still.
+ *
+ * Bounding that wait by `BLONG_ELEMENT_TIMEOUT` is not "failing fast on a missing
+ * element", it is racing the server: the fill is given its whole budget while there is
+ * no form to fill, and a run where everything renders correctly is reported as
+ * `page.fill: Timeout 5000ms exceeded`.
+ *
+ * 15s is roughly 2.5x the slowest boot measured in CI (F-223), and stays inside the
+ * tightest test budget in the repository: `core/blong-realm` runs 20s smoke checks, and
+ * a boot wait longer than the test it belongs to would be cut off by the test timeout
+ * instead of reporting itself (D-246). Override with `BLONG_BOOT_TIMEOUT` to iterate
+ * faster.
+ */
+export const BLONG_BOOT_TIMEOUT = Number(process.env['BLONG_BOOT_TIMEOUT']) || 15_000;
+
 /** Options configurable via playwright.config.ts `use` block or CLI. */
 export interface IBlongTestOptions {
     /** Login username. */
@@ -133,6 +156,16 @@ export class Portal {
 
     /** Log in via the Login form. Waits for the portal menubar to appear. */
     async login(username: string, password: string): Promise<void> {
+        // The login form is the app's first paint, so it is the one element waited for
+        // with the boot budget rather than the element budget — see
+        // {@link BLONG_BOOT_TIMEOUT}. Waiting for it here and filling it below keeps the
+        // two questions apart: "is the app up?" is the server's pace, "can this field be
+        // filled?" is the element budget, and one budget cannot answer both.
+        await this.#guard(
+            this.page
+                .locator('input[name="username"]')
+                .waitFor({state: 'visible', timeout: BLONG_BOOT_TIMEOUT}),
+        );
         const timeout = BLONG_ELEMENT_TIMEOUT;
         await this.#guard(this.page.fill('input[name="username"]', username, {timeout}));
         await this.#guard(this.page.fill('input[name="password"]', password, {timeout}));

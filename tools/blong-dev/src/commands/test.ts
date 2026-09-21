@@ -6,6 +6,23 @@ import {runTap} from '../report/tapReport.ts';
 import {toolEnv} from '../utils/toolPath.ts';
 
 /**
+ * Seconds a package's tap subprocess is given, passed to tap as `--timeout`.
+ *
+ * tap's default is 30 seconds, which is smaller than the *fixed* cost of an
+ * integration entry point: `index.test.ts` loads the server and the browser platform
+ * through the runtime before a single test runs, measured at 13.5s of a ~26s file in
+ * `realm/blong-access`. On a cold CI runner that exceeded the default, and the file was
+ * reported as `✖ timeout!` with every test inside it passing — the budget was too
+ * small, and the report reads as a hung suite instead.
+ *
+ * Generous rather than tight because tap hands the same number to the child as its
+ * per-test timeout, so this is the ceiling for a genuine hang rather than a budget a
+ * suite is expected to approach (D-247, F-225). Override per run with an explicit
+ * `--timeout`, which this default never shadows.
+ */
+const TAP_TIMEOUT_SECONDS = 180;
+
+/**
  * Run tap tests in the current working directory.
  *
  * Delegates to {@link runTap}, which keeps the full TAP stream in
@@ -29,8 +46,13 @@ export async function test(args: string[]): Promise<void> {
     // `core/blong-chain` excludes its intentionally failing `examples/`.
     const hasOwnGlobs = args.some(arg => !arg.startsWith('-'));
     const globs = hasOwnGlobs ? [] : ['*.test.ts', '**/*.test.ts'];
+    // An explicit `--timeout` wins: the default exists so an integration suite is not
+    // judged against a budget smaller than its own startup, not to overrule a run that
+    // says otherwise.
+    const hasOwnTimeout = args.some(arg => arg === '--timeout' || arg.startsWith('--timeout='));
+    const timeout = hasOwnTimeout ? [] : [`--timeout=${TAP_TIMEOUT_SECONDS}`];
     const exitCode = await runTap(
-        [...globs, '--allow-incomplete-coverage', '--coverage-report=none', ...args],
+        [...globs, '--allow-incomplete-coverage', '--coverage-report=none', ...timeout, ...args],
         cwd,
         env,
     );

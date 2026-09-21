@@ -1,3 +1,5 @@
+import './MermaidRenderer.css';
+
 import {useEffect, useState} from 'react';
 import {useThemePalette} from '../../components/Theme/Theme.js';
 import type {IDiagramRendererProps} from './rendererRegistry.js';
@@ -44,7 +46,13 @@ import type {IDiagramRendererProps} from './rendererRegistry.js';
  *   in reads as pasted in, and the earlier reading of the dark-mode hook — an object,
  *   always truthy, so "dark" whatever the page said (F-216) — was a coincidence that
  *   held only while every surface happened to be dark.
+ * - **The drawing is a block box, and the wrapper is exactly as tall as the drawing.**
+ *   The SVG mermaid returns is inline by default, so the wrapper measured it plus a
+ *   baseline descender — fractional pixels that put the wrapper's height between two
+ *   device pixels and made a screenshot of it 358px tall in one run and 359px in the
+ *   next (F-224). See `MermaidRenderer.css`.
  */
+
 /** The theme mermaid was last initialised with; `mermaid.initialize` is global. */
 let appliedTheme: string | undefined;
 let sequence = 0;
